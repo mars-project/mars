@@ -1,0 +1,117 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-03 16:55+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.tensor.rst:2
+msgid "mars.tensor.tensor"
+msgstr ""
+
+#: mars.tensor.tensor:1 of
+msgid "Create a tensor."
+msgstr ""
+
+#: mars.tensor.tensor:6 of
+msgid "data"
+msgstr ""
+
+#: mars.tensor.tensor:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.tensor:6 of
+msgid ""
+"An array, any object exposing the array interface, an object whose "
+"__array__ method returns an array, or any (nested) sequence."
+msgstr ""
+
+#: mars.tensor.tensor:11 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.tensor:10 of
+msgid "data-type, optional"
+msgstr ""
+
+#: mars.tensor.tensor:9 of
+msgid ""
+"The desired data-type for the array.  If not given, then the type will be"
+" determined as the minimum type required to hold the objects in the "
+"sequence.  This argument can only be used to 'upcast' the array.  For "
+"downcasting, use the .astype(t) method."
+msgstr ""
+
+#: mars.tensor.tensor:13 of
+msgid "chunks: int, tuple, optional"
+msgstr ""
+
+#: mars.tensor.tensor:14 of
+msgid "Specifies chunk size for each dimension."
+msgstr ""
+
+#: mars.tensor.tensor:15 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.tensor:14 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.tensor:16 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.tensor:18 of
+msgid "sparse: bool, optional"
+msgstr ""
+
+#: mars.tensor.tensor:18 of
+msgid "Create sparse tensor if True, False as default"
+msgstr ""
+
+#: mars.tensor.tensor:23 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.tensor:22 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.tensor:23 of
+msgid "An tensor object satisfying the specified requirements."
+msgstr ""
+
+#: mars.tensor.tensor:27 of
+msgid "empty, empty_like, zeros, zeros_like, ones, ones_like, full, full_like"
+msgstr ""
+
+#: mars.tensor.tensor:36 of
+msgid "Upcasting:"
+msgstr ""
+
+#: mars.tensor.tensor:41 of
+msgid "More than one dimension:"
+msgstr ""
+
+#: mars.tensor.tensor:47 of
+msgid "Minimum dimensions 2:"
+msgstr ""
+
+#: mars.tensor.tensor:52 of
+msgid "Type provided:"
+msgstr ""
+

@@ -1,0 +1,65 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.argwhere.rst:2
+msgid "mars.tensor.argwhere"
+msgstr ""
+
+#: mars.tensor.argwhere:1 of
+msgid "Find the indices of tensor elements that are non-zero, grouped by element."
+msgstr ""
+
+#: mars.tensor.argwhere:6 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.argwhere:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.argwhere:6 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.argwhere:11 of
+msgid "index_tensor"
+msgstr ""
+
+#: mars.tensor.argwhere:10 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.argwhere:11 of
+msgid "Indices of elements that are non-zero. Indices are grouped by element."
+msgstr ""
+
+#: mars.tensor.argwhere:15 of
+msgid "where, nonzero"
+msgstr ""
+
+#: mars.tensor.argwhere:19 of
+msgid "``mt.argwhere(a)`` is the same as ``mt.transpose(mt.nonzero(a))``."
+msgstr ""
+
+#: mars.tensor.argwhere:21 of
+msgid ""
+"The output of ``argwhere`` is not suitable for indexing tensors. For this"
+" purpose use ``nonzero(a)`` instead."
+msgstr ""
+

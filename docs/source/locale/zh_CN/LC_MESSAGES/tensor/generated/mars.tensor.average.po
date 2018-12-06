@@ -1,0 +1,138 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.average.rst:2
+msgid "mars.tensor.average"
+msgstr ""
+
+#: mars.tensor.average:1 of
+msgid "Compute the weighted average along the specified axis."
+msgstr ""
+
+#: mars.tensor.average:6 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.average:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.average:6 of
+msgid ""
+"Tensor containing data to be averaged. If `a` is not a tensor, a "
+"conversion is attempted."
+msgstr ""
+
+#: mars.tensor.average:14 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.average:13 of
+msgid "None or int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.average:9 of
+msgid ""
+"Axis or axes along which to average `a`.  The default, axis=None, will "
+"average over all of the elements of the input tensor. If axis is negative"
+" it counts from the last to the first axis."
+msgstr ""
+
+#: mars.tensor.average:13 of
+msgid ""
+"If axis is a tuple of ints, averaging is performed on all of the axes "
+"specified in the tuple instead of a single axis or all the axes as "
+"before."
+msgstr ""
+
+#: mars.tensor.average:21 of
+msgid "weights"
+msgstr ""
+
+#: mars.tensor.average:20 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.average:17 of
+msgid ""
+"A tensor of weights associated with the values in `a`. Each value in `a` "
+"contributes to the average according to its associated weight. The "
+"weights tensor can either be 1-D (in which case its length must be the "
+"size of `a` along the given axis) or of the same shape as `a`. If "
+"`weights=None`, then all data in `a` are assumed to have a weight equal "
+"to one."
+msgstr ""
+
+#: mars.tensor.average:28 of
+msgid "returned"
+msgstr ""
+
+#: mars.tensor.average:27 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.average:24 of
+msgid ""
+"Default is `False`. If `True`, the tuple (`average`, `sum_of_weights`) is"
+" returned, otherwise only the average is returned. If `weights=None`, "
+"`sum_of_weights` is equivalent to the number of elements over which the "
+"average is taken."
+msgstr ""
+
+#: mars.tensor.average:37 of
+msgid "average, [sum_of_weights]"
+msgstr ""
+
+#: mars.tensor.average:36 of
+msgid "tensor_type or double"
+msgstr ""
+
+#: mars.tensor.average:33 of
+msgid ""
+"Return the average along the specified axis. When returned is `True`, "
+"return a tuple with the average as the first element and the sum of the "
+"weights as the second element. The return type is `Float` if `a` is of "
+"integer type, otherwise it is of the same type as `a`. `sum_of_weights` "
+"is of the same type as `average`."
+msgstr ""
+
+#: mars.tensor.average:42 of
+msgid "ZeroDivisionError"
+msgstr ""
+
+#: mars.tensor.average:42 of
+msgid ""
+"When all weights along axis are zero. See `numpy.ma.average` for a "
+"version robust to this type of error."
+msgstr ""
+
+#: mars.tensor.average:46 of
+msgid "TypeError"
+msgstr ""
+
+#: mars.tensor.average:45 of
+msgid ""
+"When the length of 1D `weights` is not the same as the shape of `a` along"
+" axis."
+msgstr ""
+
+#: mars.tensor.average:50 of
+msgid "mean"
+msgstr ""
+

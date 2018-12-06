@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.rollaxis.rst:2
+msgid "mars.tensor.rollaxis"
+msgstr ""
+
+#: mars.tensor.rollaxis:1 of
+msgid "Roll the specified axis backwards, until it lies in a given position."
+msgstr ""
+
+#: mars.tensor.rollaxis:3 of
+msgid ""
+"This function continues to be supported for backward compatibility, but "
+"you should prefer `moveaxis`."
+msgstr ""
+
+#: mars.tensor.rollaxis:8 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.rollaxis:7 mars.tensor.rollaxis:19 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.rollaxis:9 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.rollaxis:11 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.rollaxis:10 of
+msgid "int"
+msgstr ""
+
+#: mars.tensor.rollaxis:11 of
+msgid ""
+"The axis to roll backwards.  The positions of the other axes do not "
+"change relative to one another."
+msgstr ""
+
+#: mars.tensor.rollaxis:15 of
+msgid "start"
+msgstr ""
+
+#: mars.tensor.rollaxis:14 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.rollaxis:14 of
+msgid ""
+"The axis is rolled until it lies before this position.  The default, 0, "
+"results in a \"complete\" roll."
+msgstr ""
+
+#: mars.tensor.rollaxis:20 of
+msgid "res"
+msgstr ""
+
+#: mars.tensor.rollaxis:20 of
+msgid "a view of `a` is always returned."
+msgstr ""
+
+#: mars.tensor.rollaxis:24 of
+msgid ""
+"moveaxis : Move array axes to new positions. roll : Roll the elements of "
+"an array by a number of positions along a"
+msgstr ""
+
+#: mars.tensor.rollaxis:26 of
+msgid "given axis."
+msgstr ""
+

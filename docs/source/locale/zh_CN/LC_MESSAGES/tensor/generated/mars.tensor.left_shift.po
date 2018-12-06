@@ -1,0 +1,100 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.left_shift.rst:2
+msgid "mars.tensor.left\\_shift"
+msgstr ""
+
+#: mars.tensor.left_shift:1 of
+msgid "Shift the bits of an integer to the left."
+msgstr ""
+
+#: mars.tensor.left_shift:3 of
+msgid ""
+"Bits are shifted to the left by appending `x2` 0s at the right of `x1`. "
+"Since the internal representation of numbers is in binary format, this "
+"operation is equivalent to multiplying `x1` by ``2**x2``."
+msgstr ""
+
+#: mars.tensor.left_shift:9 of
+msgid "x1"
+msgstr ""
+
+#: mars.tensor.left_shift:8 mars.tensor.left_shift:10 of
+msgid "array_like of integer type"
+msgstr ""
+
+#: mars.tensor.left_shift:10 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.left_shift:11 of
+msgid "x2"
+msgstr ""
+
+#: mars.tensor.left_shift:12 of
+msgid "Number of zeros to append to `x1`. Has to be non-negative."
+msgstr ""
+
+#: mars.tensor.left_shift:16 mars.tensor.left_shift:26 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.left_shift:15 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.left_shift:14 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.left_shift:19 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.left_shift:18 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.left_shift:19 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.left_shift:21 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.left_shift:25 of
+msgid "tensor of integer type"
+msgstr ""
+
+#: mars.tensor.left_shift:26 of
+msgid "Return `x1` with bits shifted `x2` times to the left."
+msgstr ""
+
+#: mars.tensor.left_shift:30 of
+msgid "right_shift : Shift the bits of an integer to the right."
+msgstr ""
+

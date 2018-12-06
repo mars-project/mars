@@ -1,0 +1,503 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 12:01+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:2
+msgid "mars.tensor.core.Tensor"
+msgstr ""
+
+#: mars.tensor.core.Tensor.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.tensor.core.Tensor.__init__>`\\ \\(\\*args\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`all <mars.tensor.core.Tensor.all>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Test whether all array elements along a given axis evaluate to True."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`any <mars.tensor.core.Tensor.any>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Test whether any tensor element along a given axis evaluates to True."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`argmax <mars.tensor.core.Tensor.argmax>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns the indices of the maximum values along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`argmin <mars.tensor.core.Tensor.argmin>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns the indices of the minimum values along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`astype <mars.tensor.core.Tensor.astype>`\\ \\(dtype\\[\\, "
+"casting\\, copy\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Copy of the tensor, cast to a specified type."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`build_graph <mars.tensor.core.Tensor.build_graph>`\\ \\(\\[graph\\,"
+" cls\\, tiled\\, compose\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`choose <mars.tensor.core.Tensor.choose>`\\ \\(choices\\[\\, "
+"mode\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Construct a tensor from an index tensor and a set of tensors to choose "
+"from."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`cls <mars.tensor.core.Tensor.cls>`\\ \\(provider\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`compress <mars.tensor.core.Tensor.compress>`\\ \\(condition\\[\\, "
+"axis\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`conj <mars.tensor.core.Tensor.conj>`\\ \\(\\[out\\, where\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the complex conjugate, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`conjugate <mars.tensor.core.Tensor.conjugate>`\\ \\(\\[out\\, "
+"where\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`copy <mars.tensor.core.Tensor.copy>`\\ \\(\\*\\*kw\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`copy_from <mars.tensor.core.Tensor.copy_from>`\\ \\(obj\\[\\, "
+"attrs\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`copy_to <mars.tensor.core.Tensor.copy_to>`\\ \\(obj\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`copyto <mars.tensor.core.Tensor.copyto>`\\ \\(obj\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`cumprod <mars.tensor.core.Tensor.cumprod>`\\ \\(\\[axis\\, dtype\\,"
+" out\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the cumulative product of elements along a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`cumsum <mars.tensor.core.Tensor.cumsum>`\\ \\(\\[axis\\, dtype\\, "
+"out\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the cumulative sum of the elements along a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`deserialize <mars.tensor.core.Tensor.deserialize>`\\ \\(provider\\,"
+" obj\\[\\, callbacks\\, ...\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`dot <mars.tensor.core.Tensor.dot>`\\ \\(b\\[\\, out\\, sparse\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Dot product of two arrays."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`execute <mars.tensor.core.Tensor.execute>`\\ \\(\\[session\\, "
+"n\\_parallel\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`flatten <mars.tensor.core.Tensor.flatten>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a flattened tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`from_json <mars.tensor.core.Tensor.from_json>`\\ \\(obj\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`from_pb <mars.tensor.core.Tensor.from_pb>`\\ \\(obj\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`get_chunk_slices <mars.tensor.core.Tensor.get_chunk_slices>`\\ "
+"\\(idx\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`is_coarse <mars.tensor.core.Tensor.is_coarse>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`is_scalar <mars.tensor.core.Tensor.is_scalar>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`is_sparse <mars.tensor.core.Tensor.is_sparse>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`isscalar <mars.tensor.core.Tensor.isscalar>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`issparse <mars.tensor.core.Tensor.issparse>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`max <mars.tensor.core.Tensor.max>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the maximum of an array or maximum along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`mean <mars.tensor.core.Tensor.mean>`\\ \\(\\[axis\\, dtype\\, "
+"out\\, keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the arithmetic mean along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`min <mars.tensor.core.Tensor.min>`\\ \\(\\[axis\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the minimum of a tensor or minimum along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`nonzero <mars.tensor.core.Tensor.nonzero>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the indices of the elements that are non-zero."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`prod <mars.tensor.core.Tensor.prod>`\\ \\(\\[axis\\, dtype\\, "
+"out\\, keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the product of tensor elements over a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`rechunk <mars.tensor.core.Tensor.rechunk>`\\ \\(chunks\\[\\, "
+"threshold\\, chunk\\_size\\_limit\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`repeat <mars.tensor.core.Tensor.repeat>`\\ \\(repeats\\[\\, "
+"axis\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Repeat elements of a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ \\(shape\\, "
+"\\*shapes\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns a tensor containing the same data with a new shape."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`round <mars.tensor.core.Tensor.round>`\\ \\(\\[decimals\\, out\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Evenly round to the given number of decimals."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`serialize <mars.tensor.core.Tensor.serialize>`\\ \\(provider\\[\\, "
+"obj\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`single_tiles <mars.tensor.core.Tensor.single_tiles>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`squeeze <mars.tensor.core.Tensor.squeeze>`\\ \\(\\[axis\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Remove single-dimensional entries from the shape of a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`std <mars.tensor.core.Tensor.std>`\\ \\(\\[axis\\, dtype\\, out\\, "
+"ddof\\, keepdims\\, ...\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the standard deviation along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`sum <mars.tensor.core.Tensor.sum>`\\ \\(\\[axis\\, dtype\\, out\\, "
+"keepdims\\, combine\\_size\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Sum of tensor elements over a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`swapaxes <mars.tensor.core.Tensor.swapaxes>`\\ \\(axis1\\, axis2\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Interchange two axes of a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`take <mars.tensor.core.Tensor.take>`\\ \\(indices\\[\\, axis\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Take elements from a tensor along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`tiles <mars.tensor.core.Tensor.tiles>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`to_graph <mars.tensor.core.Tensor.to_graph>`\\ \\(\\[graph\\, "
+"graph\\_cls\\, substitutes\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`to_json <mars.tensor.core.Tensor.to_json>`\\ \\(\\[obj\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`to_pb <mars.tensor.core.Tensor.to_pb>`\\ \\(\\[obj\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`todense <mars.tensor.core.Tensor.todense>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`tosparse <mars.tensor.core.Tensor.tosparse>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`transpose <mars.tensor.core.Tensor.transpose>`\\ \\(\\*axes\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns a view of the tensor with axes transposed."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`update_key <mars.tensor.core.Tensor.update_key>`\\ \\(\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`var <mars.tensor.core.Tensor.var>`\\ \\(\\[axis\\, dtype\\, out\\, "
+"ddof\\, keepdims\\, ...\\]\\)"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the variance along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+":obj:`visualize <mars.tensor.core.Tensor.visualize>`\\ "
+"\\(\\[graph\\_attrs\\, node\\_attrs\\]\\)"
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:79
+msgid "Attributes"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`T <mars.tensor.core.Tensor.T>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Same as self.transpose(), except that self is returned if self.ndim < 2."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`chunk_shape <mars.tensor.core.Tensor.chunk_shape>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`chunks <mars.tensor.core.Tensor.chunks>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`cix <mars.tensor.core.Tensor.cix>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`dtype <mars.tensor.core.Tensor.dtype>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`id <mars.tensor.core.Tensor.id>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`imag <mars.tensor.core.Tensor.imag>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`inputs <mars.tensor.core.Tensor.inputs>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`key <mars.tensor.core.Tensor.key>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`nbytes <mars.tensor.core.Tensor.nbytes>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`ndim <mars.tensor.core.Tensor.ndim>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`nsplits <mars.tensor.core.Tensor.nsplits>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`op <mars.tensor.core.Tensor.op>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`params <mars.tensor.core.Tensor.params>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`real <mars.tensor.core.Tensor.real>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`shape <mars.tensor.core.Tensor.shape>`\\"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`size <mars.tensor.core.Tensor.size>`\\"
+msgstr ""
+

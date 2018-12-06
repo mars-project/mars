@@ -1,0 +1,101 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.tan.rst:2
+msgid "mars.tensor.tan"
+msgstr ""
+
+#: mars.tensor.tan:1 of
+msgid "Compute tangent element-wise."
+msgstr ""
+
+#: mars.tensor.tan:3 of
+msgid "Equivalent to ``mt.sin(x)/mt.cos(x)`` element-wise."
+msgstr ""
+
+#: mars.tensor.tan:7 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.tan:6 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.tan:8 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.tan:12 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.tan:11 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.tan:10 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.tan:15 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.tan:14 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.tan:15 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.tan:17 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.tan:22 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.tan:21 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.tan:22 of
+msgid "The corresponding tangent values."
+msgstr ""
+
+#: mars.tensor.tan:26 of
+msgid ""
+"If `out` is provided, the function writes the result into it, and returns"
+" a reference to `out`.  (See Examples)"
+msgstr ""
+
+#: mars.tensor.tan:31 of
+msgid ""
+"M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions. New "
+"York, NY: Dover, 1972."
+msgstr ""
+

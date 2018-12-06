@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.greater_equal.rst:2
+msgid "mars.tensor.greater\\_equal"
+msgstr ""
+
+#: mars.tensor.greater_equal:1 of
+msgid "Return the truth value of (x1 >= x2) element-wise."
+msgstr ""
+
+#: mars.tensor.greater_equal:7 of
+msgid "x1, x2"
+msgstr ""
+
+#: mars.tensor.greater_equal:6 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.greater_equal:6 of
+msgid ""
+"Input tensors.  If ``x1.shape != x2.shape``, they must be broadcastable "
+"to a common shape (which may be the shape of one or the other)."
+msgstr ""
+
+#: mars.tensor.greater_equal:12 mars.tensor.greater_equal:22 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.greater_equal:11 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.greater_equal:10 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.greater_equal:15 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.greater_equal:14 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.greater_equal:15 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.greater_equal:17 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.greater_equal:21 of
+msgid "bool or Tensor of bool"
+msgstr ""
+
+#: mars.tensor.greater_equal:22 of
+msgid "Array of bools, or a single bool if `x1` and `x2` are scalars."
+msgstr ""
+
+#: mars.tensor.greater_equal:26 of
+msgid "greater, less, less_equal, equal, not_equal"
+msgstr ""
+

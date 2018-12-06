@@ -1,0 +1,92 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.stack.rst:2
+msgid "mars.tensor.stack"
+msgstr ""
+
+#: mars.tensor.stack:1 of
+msgid "Join a sequence of tensors along a new axis."
+msgstr ""
+
+#: mars.tensor.stack:3 of
+msgid ""
+"The `axis` parameter specifies the index of the new axis in the "
+"dimensions of the result. For example, if ``axis=0`` it will be the first"
+" dimension and if ``axis=-1`` it will be the last dimension."
+msgstr ""
+
+#: mars.tensor.stack:9 of
+msgid "tensors"
+msgstr ""
+
+#: mars.tensor.stack:8 of
+msgid "sequence of array_like"
+msgstr ""
+
+#: mars.tensor.stack:10 of
+msgid "Each tensor must have the same shape."
+msgstr ""
+
+#: mars.tensor.stack:11 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.stack:10 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.stack:12 of
+msgid "The axis in the result tensor along which the input tensors are stacked."
+msgstr ""
+
+#: mars.tensor.stack:16 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.stack:15 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.stack:14 of
+msgid ""
+"If provided, the destination to place the result. The shape must be "
+"correct, matching that of what stack would have returned if no out "
+"argument were specified."
+msgstr ""
+
+#: mars.tensor.stack:21 of
+msgid "stacked"
+msgstr ""
+
+#: mars.tensor.stack:20 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.stack:21 of
+msgid "The stacked tensor has one more dimension than the input tensors."
+msgstr ""
+
+#: mars.tensor.stack:25 of
+msgid ""
+"concatenate : Join a sequence of tensors along an existing axis. split : "
+"Split tensor into a list of multiple sub-tensors of equal size. block : "
+"Assemble tensors from blocks."
+msgstr ""
+

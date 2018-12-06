@@ -1,0 +1,83 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.moveaxis.rst:2
+msgid "mars.tensor.moveaxis"
+msgstr ""
+
+#: mars.tensor.moveaxis:1 of
+msgid "Move axes of a tensor to new positions."
+msgstr ""
+
+#: mars.tensor.moveaxis:3 of
+msgid "Other axes remain in their original order."
+msgstr ""
+
+#: mars.tensor.moveaxis:7 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.moveaxis:6 mars.tensor.moveaxis:17 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.moveaxis:8 of
+msgid "The tensor whose axes should be reordered."
+msgstr ""
+
+#: mars.tensor.moveaxis:9 of
+msgid "source"
+msgstr ""
+
+#: mars.tensor.moveaxis:8 mars.tensor.moveaxis:12 of
+msgid "int or sequence of int"
+msgstr ""
+
+#: mars.tensor.moveaxis:10 of
+msgid "Original positions of the axes to move. These must be unique."
+msgstr ""
+
+#: mars.tensor.moveaxis:13 of
+msgid "destination"
+msgstr ""
+
+#: mars.tensor.moveaxis:12 of
+msgid ""
+"Destination positions for each of the original axes. These must also be "
+"unique."
+msgstr ""
+
+#: mars.tensor.moveaxis:18 of
+msgid "result"
+msgstr ""
+
+#: mars.tensor.moveaxis:18 of
+msgid "Array with moved axes. This tensor is a view of the input tensor."
+msgstr ""
+
+#: mars.tensor.moveaxis:22 of
+msgid ""
+"transpose: Permute the dimensions of an array. swapaxes: Interchange two "
+"axes of an array."
+msgstr ""
+
+#: mars.tensor.moveaxis:35 of
+msgid "These all achieve the same result:"
+msgstr ""
+

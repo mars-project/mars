@@ -1,0 +1,38 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.dsplit.rst:2
+msgid "mars.tensor.dsplit"
+msgstr ""
+
+#: mars.tensor.dsplit:1 of
+msgid "Split tensor into multiple sub-tensors along the 3rd axis (depth)."
+msgstr ""
+
+#: mars.tensor.dsplit:3 of
+msgid ""
+"Please refer to the `split` documentation.  `dsplit` is equivalent to "
+"`split` with ``axis=2``, the array is always split along the third axis "
+"provided the tensor dimension is greater than or equal to 3."
+msgstr ""
+
+#: mars.tensor.dsplit:9 of
+msgid "split : Split a tensor into multiple sub-arrays of equal size."
+msgstr ""
+

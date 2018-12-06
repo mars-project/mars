@@ -1,0 +1,72 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 22:45+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/execution.rst:2
+msgid "Execution"
+msgstr ""
+
+#: ../../source/tensor/execution.rst:4
+msgid ""
+"Mars tensor will not be executed unless users call ``execute`` or "
+"``session.run`` methods."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:6
+msgid ""
+"If no session is created explicitly, the ``execute`` will create a local "
+"session, and mark it as a default session."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:9
+msgid "Session"
+msgstr ""
+
+#: ../../source/tensor/execution.rst:11
+msgid ""
+"Users can create a new session by ``new_session`` method, if no argument "
+"is provided, a local session will be generated."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:21
+msgid ""
+"By calling ``as_default`` of a session, the session will be marked as the"
+" default session."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:29
+msgid ""
+"More than one mars tensors can be passed to ``session.run``, and "
+"calculate the results for each tensor."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:49
+msgid "Execute a tensor"
+msgstr ""
+
+#: ../../source/tensor/execution.rst:51
+msgid "For a single tensor, ``execute`` can be called."
+msgstr ""
+
+#: ../../source/tensor/execution.rst:59
+msgid "Session can be specified by the argument ``session=``."
+msgstr ""
+
+#~ msgid "To a single tensor, ``execute`` can be called."
+#~ msgstr ""
+

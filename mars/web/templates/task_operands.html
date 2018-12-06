@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% set active_page = 'task_operand' %}
+{% block body %}
+    <div class="row">
+        <h2>Total Progress</h2>
+        {{ '%0.2f%%' % progress }}
+        <h2>Task Progresses</h2>
+        {{ plot_div|safe }}
+    </div>
+{% endblock %}
+{% block footer %}
+    {{ plot_script|safe }}
+{% endblock %}

@@ -1,0 +1,320 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:27+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/creation.rst:2
+msgid "Tensor Creation Routines"
+msgstr ""
+
+#: ../../source/tensor/creation.rst:5
+msgid "Basic creation routines"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.empty <mars.tensor.empty>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a new tensor of given shape and type, without initializing entries."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.empty_like <mars.tensor.empty_like>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a new tensor with the same shape and type as a given tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.eye <mars.tensor.eye>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a 2-D tensor with ones on the diagonal and zeros elsewhere."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.identity <mars.tensor.identity>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the identity tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ones <mars.tensor.ones>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a new tensor of given shape and type, filled with ones."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ones_like <mars.tensor.ones_like>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a tensor of ones with the same shape and type as a given tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.zeros <mars.tensor.zeros>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a new tensor of given shape and type, filled with zeros."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.zeros_like <mars.tensor.zeros_like>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a tensor of zeros with the same shape and type as a given tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.full <mars.tensor.full>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a new tensor of given shape and type, filled with `fill_value`."
+msgstr ""
+
+#: ../../source/tensor/creation.rst:23
+msgid "Creation from other data"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.array <mars.tensor.array>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Create a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.asarray <mars.tensor.asarray>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Convert the input to an array."
+msgstr ""
+
+#: ../../source/tensor/creation.rst:34
+msgid "Numerical ranges"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arange <mars.tensor.arange>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return evenly spaced values within a given interval."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.linspace <mars.tensor.linspace>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return evenly spaced numbers over a specified interval."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.meshgrid <mars.tensor.meshgrid>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return coordinate matrices from coordinate vectors."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.mgrid <mars.tensor.mgrid>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Construct a multi-dimensional \"meshgrid\"."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ogrid <mars.tensor.ogrid>`"
+msgstr ""
+
+#: ../../source/tensor/creation.rst:48
+msgid "Building matrices"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.diag <mars.tensor.diag>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Extract a diagonal or construct a diagonal tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.diagflat <mars.tensor.diagflat>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Create a two-dimensional tensor with the flattened input as a diagonal."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.tril <mars.tensor.tril>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Lower triangle of a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.triu <mars.tensor.triu>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Upper triangle of a tensor."
+msgstr ""
+
+#~ msgid ""
+#~ "You can create mars tensor from "
+#~ "Python array like object just like "
+#~ "Numpy, or create from Numpy array "
+#~ "directly."
+#~ msgstr ""
+
+#~ msgid "Create an array."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "You can create mars tensor from "
+#~ "Python array like object just like "
+#~ "Numpy, or create from Numpy array "
+#~ "directly. More details on :doc:`array "
+#~ "creation routine <routines/creation>`."
+#~ msgstr ""
+
+#~ msgid "Create Mars tensor"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "You can create mars tensor from "
+#~ "Python array like object just like "
+#~ "Numpy, or create from Numpy array "
+#~ "directly. More details on :doc:`array "
+#~ "creation routine <routines/creation>` and "
+#~ ":doc:`random sampling <routines/random>`."
+#~ msgstr ""
+
+#~ msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"
+#~ msgstr ""
+
+#~ msgid "Create tensor on GPU"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Mars tensor can run on GPU, for"
+#~ " tensor creation, just add a ``gpu``"
+#~ " parameter, and set it to ``True``."
+#~ msgstr ""
+
+#~ msgid "Create sparse tensor"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Mars tensor can be sparse, "
+#~ "unfortunately, only 2-D sparse tensors "
+#~ "are supported for now, multi-dimensional"
+#~ " tensor will be supported later soon."
+#~ msgstr ""
+
+#~ msgid "Chunks"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "In mars tensor, we tile a tensor"
+#~ " into small chunks. Argument ``chunks`` "
+#~ "is not always required, a chunk's "
+#~ "bytes occupation will be 128M for "
+#~ "the default setting. However, user can"
+#~ " specify each chunk's size in a "
+#~ "more flexible way which may be "
+#~ "adaptive to the data scale. The "
+#~ "fact is that chunk's size may "
+#~ "effect heavily on the performance of "
+#~ "execution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "The options or arguments which will "
+#~ "effect the chunk's size are listed "
+#~ "below:"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Change ``options.tensor.chunk_size_limit`` which is"
+#~ " 128*1024*1024(128M) by default."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Specify ``chunks`` as integer, like "
+#~ "``5000``, means chunk's size is 5000 "
+#~ "at most for all dimensions"
+#~ msgstr ""
+
+#~ msgid "Specify ``chunks`` as tuple, like ``(5000, 3000)``"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Explicitly define sizes of all chunks"
+#~ " along all dimensions, like ``((5000, "
+#~ "5000, 2000), (2000, 1000))``"
+#~ msgstr ""
+
+#~ msgid "Chunks Examples"
+#~ msgstr ""
+
+#~ msgid "Assume we have such a tensor with the data shown below."
+#~ msgstr ""
+
+#~ msgid "We will show how different ``chunks=`` arguments will tile the tensor."
+#~ msgstr ""
+
+#~ msgid "``chunks=3``:"
+#~ msgstr ""
+
+#~ msgid "``chunks=2``:"
+#~ msgstr ""
+
+#~ msgid "``chunks=(3, 2)``:"
+#~ msgstr ""
+
+#~ msgid "``chunks=((3, 1, 2, 2), (3, 2, 1))``:"
+#~ msgstr ""
+
+#~ msgid ":obj:`mars.tensor.full_like <mars.tensor.full_like>`"
+#~ msgstr ""
+
+#~ msgid ":obj:`mars.tensor.tri <mars.tensor.tri>`"
+#~ msgstr ""
+
+#~ msgid "Tensor(Array) Creation Routines"
+#~ msgstr ""
+

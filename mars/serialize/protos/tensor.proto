@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "mars/serialize/protos/value.proto";
+import "mars/serialize/protos/chunk.proto";
+
+
+message TensorDef {
+    string key = 1;
+    repeated int64 shape = 2;
+    Value dtype = 3;
+    Value op = 4;  // just store key here
+    Value nsplits = 5;
+    repeated ChunkDef chunks = 6;
+    Value params = 7;
+    string id = 8;
+}

@@ -1,0 +1,711 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/math.rst:2
+msgid "Mathematical Functions"
+msgstr ""
+
+#: ../../source/tensor/math.rst:5
+msgid "Trigonometric functions"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sin <mars.tensor.sin>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Trigonometric sine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cos <mars.tensor.cos>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Cosine element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.tan <mars.tensor.tan>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute tangent element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arcsin <mars.tensor.arcsin>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Inverse sine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arccos <mars.tensor.arccos>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Trigonometric inverse cosine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arctan <mars.tensor.arctan>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Trigonometric inverse tangent, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.hypot <mars.tensor.hypot>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Given the \"legs\" of a right triangle, return its hypotenuse."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arctan2 <mars.tensor.arctan2>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Element-wise arc tangent of ``x1/x2`` choosing the quadrant correctly."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.degrees <mars.tensor.degrees>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Convert angles from radians to degrees."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.radians <mars.tensor.radians>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Convert angles from degrees to radians."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.deg2rad <mars.tensor.deg2rad>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.rad2deg <mars.tensor.rad2deg>`"
+msgstr ""
+
+#: ../../source/tensor/math.rst:26
+msgid "Hyperbolic functions"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sinh <mars.tensor.sinh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Hyperbolic sine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cosh <mars.tensor.cosh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Hyperbolic cosine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.tanh <mars.tensor.tanh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute hyperbolic tangent element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arcsinh <mars.tensor.arcsinh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Inverse hyperbolic sine element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arccosh <mars.tensor.arccosh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Inverse hyperbolic cosine, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.arctanh <mars.tensor.arctanh>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Inverse hyperbolic tangent element-wise."
+msgstr ""
+
+#: ../../source/tensor/math.rst:41
+msgid "Rounding"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.around <mars.tensor.around>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Evenly round to the given number of decimals."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.round_ <mars.tensor.round_>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.rint <mars.tensor.rint>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Round elements of the tensor to the nearest integer."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.fix <mars.tensor.fix>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Round to nearest integer towards zero."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.floor <mars.tensor.floor>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the floor of the input, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ceil <mars.tensor.ceil>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the ceiling of the input, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.trunc <mars.tensor.trunc>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the truncated value of the input, element-wise."
+msgstr ""
+
+#: ../../source/tensor/math.rst:57
+msgid "Sums, products, differences"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.prod <mars.tensor.prod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the product of tensor elements over a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sum <mars.tensor.sum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Sum of tensor elements over a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanprod <mars.tensor.nanprod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the product of array elements over a given axis treating Not a "
+"Numbers (NaNs) as ones."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nansum <mars.tensor.nansum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the sum of array elements over a given axis treating Not a Numbers"
+" (NaNs) as zero."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cumprod <mars.tensor.cumprod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the cumulative product of elements along a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cumsum <mars.tensor.cumsum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the cumulative sum of the elements along a given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nancumprod <mars.tensor.nancumprod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the cumulative product of tensor elements over a given axis "
+"treating Not a Numbers (NaNs) as one."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nancumsum <mars.tensor.nancumsum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the cumulative sum of tensor elements over a given axis treating "
+"Not a Numbers (NaNs) as zero."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.diff <mars.tensor.diff>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Calculate the n-th discrete difference along the given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ediff1d <mars.tensor.ediff1d>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "The differences between consecutive elements of a tensor."
+msgstr ""
+
+#: ../../source/tensor/math.rst:76
+msgid "Exponential and logarithms"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.exp <mars.tensor.exp>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Calculate the exponential of all elements in the input tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.expm1 <mars.tensor.expm1>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Calculate ``exp(x) - 1`` for all elements in the tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.exp2 <mars.tensor.exp2>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Calculate `2**p` for all `p` in the input tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.log <mars.tensor.log>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Natural logarithm, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.log10 <mars.tensor.log10>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the base 10 logarithm of the input tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.log2 <mars.tensor.log2>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Base-2 logarithm of `x`."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.log1p <mars.tensor.log1p>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the natural logarithm of one plus the input tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.logaddexp <mars.tensor.logaddexp>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Logarithm of the sum of exponentiations of the inputs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.logaddexp2 <mars.tensor.logaddexp2>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Logarithm of the sum of exponentiations of the inputs in base-2."
+msgstr ""
+
+#: ../../source/tensor/math.rst:94
+msgid "Other special functions"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.i0 <mars.tensor.i0>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Modified Bessel function of the first kind, order 0."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sinc <mars.tensor.sinc>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the sinc function."
+msgstr ""
+
+#: ../../source/tensor/math.rst:105
+msgid "Floating point routines"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.signbit <mars.tensor.signbit>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns element-wise True where signbit is set (less than zero)."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.copysign <mars.tensor.copysign>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Change the sign of x1 to that of x2, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.frexp <mars.tensor.frexp>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Decompose the elements of x into mantissa and twos exponent."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ldexp <mars.tensor.ldexp>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns x1 * 2**x2, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nextafter <mars.tensor.nextafter>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the next floating-point value after x1 towards x2, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.spacing <mars.tensor.spacing>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the distance between x and the nearest adjacent number."
+msgstr ""
+
+#: ../../source/tensor/math.rst:120
+msgid "Arithmetic operations"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.add <mars.tensor.add>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Add arguments element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.reciprocal <mars.tensor.reciprocal>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the reciprocal of the argument, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.positive <mars.tensor.positive>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Numerical positive, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.negative <mars.tensor.negative>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Numerical negative, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.multiply <mars.tensor.multiply>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Multiply arguments element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.divide <mars.tensor.divide>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Divide arguments element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.power <mars.tensor.power>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "First tensor elements raised to powers from second tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.subtract <mars.tensor.subtract>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Subtract arguments, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.true_divide <mars.tensor.true_divide>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns a true division of the inputs, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.floor_divide <mars.tensor.floor_divide>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the largest integer smaller or equal to the division of the inputs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.float_power <mars.tensor.float_power>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "First tensor elements raised to powers from second array, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.fmod <mars.tensor.fmod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the element-wise remainder of division."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.mod <mars.tensor.mod>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return element-wise remainder of division."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.modf <mars.tensor.modf>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the fractional and integral parts of a tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.remainder <mars.tensor.remainder>`"
+msgstr ""
+
+#: ../../source/tensor/math.rst:144
+msgid "Handling complex numbers"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.angle <mars.tensor.angle>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the angle of the complex argument."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.real <mars.tensor.real>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the real part of the complex argument."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.imag <mars.tensor.imag>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the imaginary part of the complex argument."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.conj <mars.tensor.conj>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the complex conjugate, element-wise."
+msgstr ""
+
+#: ../../source/tensor/math.rst:157
+msgid "Miscellaneous"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.clip <mars.tensor.clip>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Clip (limit) the values in a tensor."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sqrt <mars.tensor.sqrt>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the positive square-root of an tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cbrt <mars.tensor.cbrt>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the cube-root of an tensor, element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.square <mars.tensor.square>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the element-wise square of the input."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.absolute <mars.tensor.absolute>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Calculate the absolute value element-wise."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.sign <mars.tensor.sign>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Returns an element-wise indication of the sign of a number."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.maximum <mars.tensor.maximum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Element-wise maximum of tensor elements."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.minimum <mars.tensor.minimum>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Element-wise minimum of tensor elements."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.fmax <mars.tensor.fmax>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Element-wise maximum of array elements."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.fmin <mars.tensor.fmin>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Element-wise minimum of array elements."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nan_to_num <mars.tensor.nan_to_num>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Replace nan with zero and inf with large finite numbers."
+msgstr ""
+

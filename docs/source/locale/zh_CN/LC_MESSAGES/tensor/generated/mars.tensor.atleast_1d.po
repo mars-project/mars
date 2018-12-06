@@ -1,0 +1,63 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.atleast_1d.rst:2
+msgid "mars.tensor.atleast\\_1d"
+msgstr ""
+
+#: mars.tensor.atleast_1d:1 of
+msgid "Convert inputs to tensors with at least one dimension."
+msgstr ""
+
+#: mars.tensor.atleast_1d:3 of
+msgid ""
+"Scalar inputs are converted to 1-dimensional tensors, whilst higher-"
+"dimensional inputs are preserved."
+msgstr ""
+
+#: mars.tensor.atleast_1d:9 of
+msgid "tensors1, tensors2, ..."
+msgstr ""
+
+#: mars.tensor.atleast_1d:8 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.atleast_1d:9 of
+msgid "One or more input tensors."
+msgstr ""
+
+#: mars.tensor.atleast_1d:15 of
+msgid "ret"
+msgstr ""
+
+#: mars.tensor.atleast_1d:14 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.atleast_1d:14 of
+msgid ""
+"An tensor, or list of tensors, each with ``a.ndim >= 1``. Copies are made"
+" only if necessary."
+msgstr ""
+
+#: mars.tensor.atleast_1d:19 of
+msgid "atleast_2d, atleast_3d"
+msgstr ""
+

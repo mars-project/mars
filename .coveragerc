@@ -1,0 +1,12 @@
+[run]
+branch = True
+concurrency = multiprocessing,gevent
+plugins = Cython.Coverage
+
+[report]
+omit =
+    mars/lib/functools32/*
+    mars/lib/futures/*
+    mars/protos/*
+    mars/lib/enum.py
+    mars/lib/six.py

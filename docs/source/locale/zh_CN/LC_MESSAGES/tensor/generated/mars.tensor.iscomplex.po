@@ -1,0 +1,67 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.iscomplex.rst:2
+msgid "mars.tensor.iscomplex"
+msgstr ""
+
+#: mars.tensor.iscomplex:1 of
+msgid "Returns a bool tensor, where True if input element is complex."
+msgstr ""
+
+#: mars.tensor.iscomplex:3 of
+msgid ""
+"What is tested is whether the input has a non-zero imaginary part, not if"
+" the input type is complex."
+msgstr ""
+
+#: mars.tensor.iscomplex:9 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.iscomplex:8 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.iscomplex:9 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.iscomplex:14 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.iscomplex:13 of
+msgid "Tensor of bools"
+msgstr ""
+
+#: mars.tensor.iscomplex:14 of
+msgid "Output tensor."
+msgstr ""
+
+#: mars.tensor.iscomplex:18 of
+msgid ""
+"isreal iscomplexobj : Return True if x is a complex type or an array of "
+"complex"
+msgstr ""
+
+#: mars.tensor.iscomplex:20 of
+msgid "numbers."
+msgstr ""
+

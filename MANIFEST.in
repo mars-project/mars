@@ -1,0 +1,5 @@
+include requirements.txt
+include mars/.git-branch
+recursive-include mars/web/static *
+recursive-include mars/web/templates *
+global-exclude .DS_Store

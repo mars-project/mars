@@ -1,0 +1,112 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.diag.rst:2
+msgid "mars.tensor.diag"
+msgstr ""
+
+#: mars.tensor.diag:1 of
+msgid "Extract a diagonal or construct a diagonal tensor."
+msgstr ""
+
+#: mars.tensor.diag:3 of
+msgid ""
+"See the more detailed documentation for ``mt.diagonal`` if you use this "
+"function to extract a diagonal and wish to write to the resulting tensor"
+msgstr ""
+
+#: mars.tensor.diag:10 of
+msgid "v"
+msgstr ""
+
+#: mars.tensor.diag:9 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.diag:9 of
+msgid ""
+"If `v` is a 2-D tensor, return its `k`-th diagonal. If `v` is a 1-D "
+"tensor, return a 2-D tensor with `v` on the `k`-th diagonal."
+msgstr ""
+
+#: mars.tensor.diag:14 of
+msgid "k"
+msgstr ""
+
+#: mars.tensor.diag:13 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.diag:13 of
+msgid ""
+"Diagonal in question. The default is 0. Use `k>0` for diagonals above the"
+" main diagonal, and `k<0` for diagonals below the main diagonal."
+msgstr ""
+
+#: mars.tensor.diag:16 of
+msgid "sparse: bool, optional"
+msgstr ""
+
+#: mars.tensor.diag:17 of
+msgid "Create sparse tensor if True, False as default"
+msgstr ""
+
+#: mars.tensor.diag:18 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.diag:17 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.diag:19 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.diag:21 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.diag:20 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.diag:21 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.diag:26 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.diag:25 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.diag:26 of
+msgid "The extracted diagonal or constructed diagonal tensor."
+msgstr ""
+
+#: mars.tensor.diag:30 of
+msgid ""
+"diagonal : Return specified diagonals. diagflat : Create a 2-D array with"
+" the flattened input as a diagonal. trace : Sum along diagonals. triu : "
+"Upper triangle of a tensor. tril : Lower triangle of a tensor."
+msgstr ""
+

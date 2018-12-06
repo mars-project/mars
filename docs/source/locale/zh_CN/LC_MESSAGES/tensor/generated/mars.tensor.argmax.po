@@ -1,0 +1,105 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.argmax.rst:2
+msgid "mars.tensor.argmax"
+msgstr ""
+
+#: mars.tensor.argmax:1 of
+msgid "Returns the indices of the maximum values along an axis."
+msgstr ""
+
+#: mars.tensor.argmax:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.argmax:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.argmax:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.argmax:8 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.argmax:7 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.argmax:8 of
+msgid ""
+"By default, the index is into the flattened tensor, otherwise along the "
+"specified axis."
+msgstr ""
+
+#: mars.tensor.argmax:11 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.argmax:10 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.argmax:11 of
+msgid ""
+"If provided, the result will be inserted into this tensor. It should be "
+"of the appropriate shape and dtype."
+msgstr ""
+
+#: mars.tensor.argmax:14 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.argmax:14 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.argmax:20 of
+msgid "index_array"
+msgstr ""
+
+#: mars.tensor.argmax:19 of
+msgid "Tensor of ints"
+msgstr ""
+
+#: mars.tensor.argmax:19 of
+msgid ""
+"Tensor of indices into the tensor. It has the same shape as `a.shape` "
+"with the dimension along `axis` removed."
+msgstr ""
+
+#: mars.tensor.argmax:24 of
+msgid ""
+"Tensor.argmax, argmin amax : The maximum value along a given axis. "
+"unravel_index : Convert a flat index into an index tuple."
+msgstr ""
+
+#: mars.tensor.argmax:30 of
+msgid ""
+"In case of multiple occurrences of the maximum values, the indices "
+"corresponding to the first occurrence are returned."
+msgstr ""
+
+#: mars.tensor.argmax:51 of
+msgid "Indexes of the maximal elements of a N-dimensional tensor:"
+msgstr ""
+

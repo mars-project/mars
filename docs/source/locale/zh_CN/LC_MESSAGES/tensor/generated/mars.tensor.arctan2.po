@@ -1,0 +1,210 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.arctan2.rst:2
+msgid "mars.tensor.arctan2"
+msgstr ""
+
+#: mars.tensor.arctan2:1 of
+msgid "Element-wise arc tangent of ``x1/x2`` choosing the quadrant correctly."
+msgstr ""
+
+#: mars.tensor.arctan2:3 of
+msgid ""
+"The quadrant (i.e., branch) is chosen so that ``arctan2(x1, x2)`` is the "
+"signed angle in radians between the ray ending at the origin and passing "
+"through the point (1,0), and the ray ending at the origin and passing "
+"through the point (`x2`, `x1`).  (Note the role reversal: the "
+"\"`y`-coordinate\" is the first function parameter, the "
+"\"`x`-coordinate\" is the second.)  By IEEE convention, this function is "
+"defined for `x2` = +/-0 and for either or both of `x1` and `x2` = +/-inf "
+"(see Notes for specific values)."
+msgstr ""
+
+#: mars.tensor.arctan2:12 of
+msgid ""
+"This function is not defined for complex-valued arguments; for the so-"
+"called argument of complex values, use `angle`."
+msgstr ""
+
+#: mars.tensor.arctan2:17 of
+msgid "x1"
+msgstr ""
+
+#: mars.tensor.arctan2:16 mars.tensor.arctan2:19 of
+msgid "array_like, real-valued"
+msgstr ""
+
+#: mars.tensor.arctan2:18 of
+msgid "`y`-coordinates."
+msgstr ""
+
+#: mars.tensor.arctan2:20 of
+msgid "x2"
+msgstr ""
+
+#: mars.tensor.arctan2:20 of
+msgid ""
+"`x`-coordinates. `x2` must be broadcastable to match the shape of `x1` or"
+" vice versa."
+msgstr ""
+
+#: mars.tensor.arctan2:25 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.arctan2:24 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.arctan2:23 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.arctan2:28 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.arctan2:27 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.arctan2:28 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.arctan2:30 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.arctan2:35 of
+msgid "angle"
+msgstr ""
+
+#: mars.tensor.arctan2:34 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.arctan2:35 of
+msgid "Array of angles in radians, in the range ``[-pi, pi]``."
+msgstr ""
+
+#: mars.tensor.arctan2:39 of
+msgid "arctan, tan, angle"
+msgstr ""
+
+#: mars.tensor.arctan2:43 of
+msgid ""
+"*arctan2* is identical to the `atan2` function of the underlying C "
+"library.  The following special values are defined in the C standard: "
+"[1]_"
+msgstr ""
+
+#: mars.tensor.arctan2:48 of
+msgid "`x1`"
+msgstr ""
+
+#: mars.tensor.arctan2:48 of
+msgid "`x2`"
+msgstr ""
+
+#: mars.tensor.arctan2:48 of
+msgid "`arctan2(x1,x2)`"
+msgstr ""
+
+#: mars.tensor.arctan2:50 mars.tensor.arctan2:51 of
+msgid "+/- 0"
+msgstr ""
+
+#: mars.tensor.arctan2:50 of
+msgid "+0"
+msgstr ""
+
+#: mars.tensor.arctan2:51 of
+msgid "-0"
+msgstr ""
+
+#: mars.tensor.arctan2:51 of
+msgid "+/- pi"
+msgstr ""
+
+#: mars.tensor.arctan2:52 of
+msgid "> 0"
+msgstr ""
+
+#: mars.tensor.arctan2:52 mars.tensor.arctan2:53 mars.tensor.arctan2:54
+#: mars.tensor.arctan2:55 of
+msgid "+/-inf"
+msgstr ""
+
+#: mars.tensor.arctan2:52 of
+msgid "+0 / +pi"
+msgstr ""
+
+#: mars.tensor.arctan2:53 of
+msgid "< 0"
+msgstr ""
+
+#: mars.tensor.arctan2:53 of
+msgid "-0 / -pi"
+msgstr ""
+
+#: mars.tensor.arctan2:54 of
+msgid "+inf"
+msgstr ""
+
+#: mars.tensor.arctan2:54 of
+msgid "+/- (pi/4)"
+msgstr ""
+
+#: mars.tensor.arctan2:55 of
+msgid "-inf"
+msgstr ""
+
+#: mars.tensor.arctan2:55 of
+msgid "+/- (3*pi/4)"
+msgstr ""
+
+#: mars.tensor.arctan2:58 of
+msgid ""
+"Note that +0 and -0 are distinct floating point numbers, as are +inf and "
+"-inf."
+msgstr ""
+
+#: mars.tensor.arctan2:63 of
+msgid "ISO/IEC standard 9899:1999, \"Programming language C.\""
+msgstr ""
+
+#: mars.tensor.arctan2:67 of
+msgid "Consider four points in different quadrants: >>> import mars.tensor as mt"
+msgstr ""
+
+#: mars.tensor.arctan2:75 of
+msgid ""
+"Note the order of the parameters. `arctan2` is defined also when `x2` = 0"
+" and at several other special points, obtaining values in the range "
+"``[-pi, pi]``:"
+msgstr ""
+

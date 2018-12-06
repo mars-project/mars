@@ -1,0 +1,117 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.nanargmax.rst:2
+msgid "mars.tensor.nanargmax"
+msgstr ""
+
+#: mars.tensor.nanargmax:1 of
+msgid ""
+"Return the indices of the maximum values in the specified axis ignoring "
+"NaNs. For all-NaN slices ``ValueError`` is raised. Warning: the results "
+"cannot be trusted if a slice contains only NaNs and -Infs."
+msgstr ""
+
+#: mars.tensor.nanargmax:8 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.nanargmax:7 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.nanargmax:9 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.nanargmax:10 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.nanargmax:9 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.nanargmax:11 of
+msgid "Axis along which to operate.  By default flattened input is used."
+msgstr ""
+
+#: mars.tensor.nanargmax:15 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.nanargmax:14 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.nanargmax:13 of
+msgid ""
+"Alternate output tensor in which to place the result.  The default is "
+"``None``; if provided, it must have the same shape as the expected "
+"output, but the type will be cast if necessary. See `doc.ufuncs` for "
+"details."
+msgstr ""
+
+#: mars.tensor.nanargmax:25 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.nanargmax:24 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.nanargmax:18 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor."
+msgstr ""
+
+#: mars.tensor.nanargmax:22 of
+msgid ""
+"If the default value is passed, then `keepdims` will not be passed "
+"through to the `mean` method of sub-classes of `Tensor`, however any non-"
+"default value will be.  If the sub-classes `sum` method does not "
+"implement `keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.nanargmax:28 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.nanargmax:28 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.nanargmax:33 of
+msgid "index_array"
+msgstr ""
+
+#: mars.tensor.nanargmax:32 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.nanargmax:33 of
+msgid "An tensor of indices or a single index value."
+msgstr ""
+
+#: mars.tensor.nanargmax:37 of
+msgid "argmax, nanargmin"
+msgstr ""
+

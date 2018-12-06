@@ -1,0 +1,115 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.corrcoef.rst:2
+msgid "mars.tensor.corrcoef"
+msgstr ""
+
+#: mars.tensor.corrcoef:1 of
+msgid "Return Pearson product-moment correlation coefficients."
+msgstr ""
+
+#: mars.tensor.corrcoef:3 of
+msgid ""
+"Please refer to the documentation for `cov` for more detail.  The "
+"relationship between the correlation coefficient matrix, `R`, and the "
+"covariance matrix, `C`, is"
+msgstr ""
+
+#: mars.tensor.corrcoef:9 of
+msgid "The values of `R` are between -1 and 1, inclusive."
+msgstr ""
+
+#: mars.tensor.corrcoef:15 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.corrcoef:14 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.corrcoef:14 of
+msgid ""
+"A 1-D or 2-D array containing multiple variables and observations. Each "
+"row of `x` represents a variable, and each column a single observation of"
+" all those variables. Also see `rowvar` below."
+msgstr ""
+
+#: mars.tensor.corrcoef:18 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.corrcoef:17 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.corrcoef:18 of
+msgid ""
+"An additional set of variables and observations. `y` has the same shape "
+"as `x`."
+msgstr ""
+
+#: mars.tensor.corrcoef:24 of
+msgid "rowvar"
+msgstr ""
+
+#: mars.tensor.corrcoef:23 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.corrcoef:21 of
+msgid ""
+"If `rowvar` is True (default), then each row represents a variable, with "
+"observations in the columns. Otherwise, the relationship is transposed: "
+"each column represents a variable, while the rows contain observations."
+msgstr ""
+
+#: mars.tensor.corrcoef:29 of
+msgid "R"
+msgstr ""
+
+#: mars.tensor.corrcoef:28 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.corrcoef:29 of
+msgid "The correlation coefficient matrix of the variables."
+msgstr ""
+
+#: mars.tensor.corrcoef:33 of
+msgid "cov : Covariance matrix"
+msgstr ""
+
+#: mars.tensor.corrcoef:37 of
+msgid ""
+"Due to floating point rounding the resulting tensor may not be Hermitian,"
+" the diagonal elements may not be 1, and the elements may not satisfy the"
+" inequality abs(a) <= 1. The real and imaginary parts are clipped to the "
+"interval [-1,  1] in an attempt to improve on that situation but is not "
+"much help in the complex case."
+msgstr ""
+
+#: mars.tensor.corrcoef:43 of
+msgid ""
+"This function accepts but discards arguments `bias` and `ddof`.  This is "
+"for backwards compatibility with previous versions of this function.  "
+"These arguments had no effect on the return values of the function and "
+"can be safely ignored in this and previous versions of numpy."
+msgstr ""
+

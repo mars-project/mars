@@ -1,0 +1,65 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.broadcast_to.rst:2
+msgid "mars.tensor.broadcast\\_to"
+msgstr ""
+
+#: mars.tensor.broadcast_to:1 of
+msgid "Broadcast an tensor to a new shape."
+msgstr ""
+
+#: mars.tensor.broadcast_to:5 of
+msgid "tensor"
+msgstr ""
+
+#: mars.tensor.broadcast_to:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.broadcast_to:6 of
+msgid "The tensor to broadcast."
+msgstr ""
+
+#: mars.tensor.broadcast_to:8 of
+msgid "shape"
+msgstr ""
+
+#: mars.tensor.broadcast_to:7 of
+msgid "tuple"
+msgstr ""
+
+#: mars.tensor.broadcast_to:8 of
+msgid "The shape of the desired array."
+msgstr ""
+
+#: mars.tensor.broadcast_to:12 of
+msgid "broadcast : Tensor"
+msgstr ""
+
+#: mars.tensor.broadcast_to:18 of
+msgid "ValueError"
+msgstr ""
+
+#: mars.tensor.broadcast_to:17 of
+msgid ""
+"If the tensor is not compatible with the new shape according to Mars's "
+"broadcasting rules."
+msgstr ""
+

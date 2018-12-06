@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="165.625 425.3 419.25 75.7" width="419.25pt" height="75.7pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.4.3 
+    <dc:date>2018-11-06 09:49:34 +0000</dc:date>
+  </metadata>
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="#7f8080">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 1</title>
+    <rect fill="white" width="419.25" height="75.7"/>
+    <g>
+      <title>Layer 1</title>
+      <circle cx="219.625" cy="441.5" r="12.50002" fill="white"/>
+      <circle cx="219.625" cy="441.5" r="12.50002" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <circle cx="327.875" cy="441.5" r="12.50002" fill="white"/>
+      <circle cx="327.875" cy="441.5" r="12.50002" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <circle cx="436.125" cy="441.5" r="12.50002" fill="white"/>
+      <circle cx="436.125" cy="441.5" r="12.50002" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(170.625 459.776)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x=".104" y="15" textLength="62.24">ALLOCA</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="60.872" y="15" textLength="37.024">TING</tspan>
+      </text>
+      <text transform="translate(282.875 459.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x=".272" y="15" textLength="41.472">PREP</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="40.56" y="15" textLength="49.168">ARING</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="16.416" y="33.448" textLength="57.168">INPUTS</tspan>
+      </text>
+      <text transform="translate(381.625 459.776)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x=".132" y="15" textLength="73.184">CALCULA</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="71.844" y="15" textLength="37.024">TING</tspan>
+      </text>
+      <circle cx="544.375" cy="441.5" r="12.50002" fill="white"/>
+      <circle cx="544.375" cy="441.5" r="12.50002" stroke="gray" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(508.875 459.776)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x=".244" y="15" textLength="70.512">STORING</tspan>
+      </text>
+      <line x1="232.125" y1="441.5" x2="305.475" y2="441.5" marker-end="url(#FilledArrow_Marker)" stroke="#7f8080" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="340.375" y1="441.5" x2="413.725" y2="441.5" marker-end="url(#FilledArrow_Marker)" stroke="#7f8080" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="448.625" y1="441.5" x2="521.975" y2="441.5" marker-end="url(#FilledArrow_Marker)" stroke="#7f8080" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    </g>
+  </g>
+</svg>

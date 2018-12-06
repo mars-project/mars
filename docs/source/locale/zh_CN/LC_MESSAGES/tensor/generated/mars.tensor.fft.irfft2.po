@@ -1,0 +1,95 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.fft.irfft2.rst:2
+msgid "mars.tensor.fft.irfft2"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:1 of
+msgid "Compute the 2-dimensional inverse FFT of a real array."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:6 of
+msgid "The input tensor"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:7 of
+msgid "s"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:6 mars.tensor.fft.irfft2:9 of
+msgid "sequence of ints, optional"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:8 of
+msgid "Shape of the inverse FFT."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:10 of
+msgid "axes"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:10 of
+msgid ""
+"The axes over which to compute the inverse fft. Default is the last two "
+"axes."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:13 of
+msgid "norm"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:12 of
+msgid "{None, \"ortho\"}, optional"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:13 of
+msgid "Normalization mode (see `mt.fft`). Default is None."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:18 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:17 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.fft.irfft2:18 of
+msgid "The result of the inverse real 2-D FFT."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:22 of
+msgid "irfftn : Compute the inverse of the N-dimensional FFT of real input."
+msgstr ""
+
+#: mars.tensor.fft.irfft2:26 of
+msgid ""
+"This is really `irfftn` with different defaults. For more details see "
+"`irfftn`."
+msgstr ""
+

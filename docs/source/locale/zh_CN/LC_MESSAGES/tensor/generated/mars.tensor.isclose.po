@@ -1,0 +1,114 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.isclose.rst:2
+msgid "mars.tensor.isclose"
+msgstr ""
+
+#: mars.tensor.isclose:1 of
+msgid ""
+"Returns a boolean tensor where two tensors are element-wise equal within "
+"a tolerance."
+msgstr ""
+
+#: mars.tensor.isclose:4 of
+msgid ""
+"The tolerance values are positive, typically very small numbers.  The "
+"relative difference (`rtol` * abs(`b`)) and the absolute difference "
+"`atol` are added together to compare against the absolute difference "
+"between `a` and `b`."
+msgstr ""
+
+#: mars.tensor.isclose:11 of
+msgid "a, b"
+msgstr ""
+
+#: mars.tensor.isclose:10 mars.tensor.isclose:25 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.isclose:12 of
+msgid "Input tensors to compare."
+msgstr ""
+
+#: mars.tensor.isclose:13 of
+msgid "rtol"
+msgstr ""
+
+#: mars.tensor.isclose:12 mars.tensor.isclose:14 of
+msgid "float"
+msgstr ""
+
+#: mars.tensor.isclose:14 of
+msgid "The relative tolerance parameter (see Notes)."
+msgstr ""
+
+#: mars.tensor.isclose:15 of
+msgid "atol"
+msgstr ""
+
+#: mars.tensor.isclose:16 of
+msgid "The absolute tolerance parameter (see Notes)."
+msgstr ""
+
+#: mars.tensor.isclose:19 of
+msgid "equal_nan"
+msgstr ""
+
+#: mars.tensor.isclose:18 of
+msgid "bool"
+msgstr ""
+
+#: mars.tensor.isclose:18 of
+msgid ""
+"Whether to compare NaN's as equal.  If True, NaN's in `a` will be "
+"considered equal to NaN's in `b` in the output tensor."
+msgstr ""
+
+#: mars.tensor.isclose:26 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.isclose:24 of
+msgid ""
+"Returns a boolean tensor of where `a` and `b` are equal within the given "
+"tolerance. If both `a` and `b` are scalars, returns a single boolean "
+"value."
+msgstr ""
+
+#: mars.tensor.isclose:30 of
+msgid "allclose"
+msgstr ""
+
+#: mars.tensor.isclose:35 of
+msgid ""
+"For finite values, isclose uses the following equation to test whether "
+"two floating point values are equivalent."
+msgstr ""
+
+#: mars.tensor.isclose:38 of
+msgid "absolute(`a` - `b`) <= (`atol` + `rtol` * absolute(`b`))"
+msgstr ""
+
+#: mars.tensor.isclose:40 of
+msgid ""
+"The above equation is not symmetric in `a` and `b`, so that `isclose(a, "
+"b)` might be different from `isclose(b, a)` in some rare cases."
+msgstr ""
+

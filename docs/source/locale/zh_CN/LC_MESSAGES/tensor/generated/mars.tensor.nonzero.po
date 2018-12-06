@@ -1,0 +1,107 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.nonzero.rst:2
+msgid "mars.tensor.nonzero"
+msgstr ""
+
+#: mars.tensor.nonzero:1 of
+msgid "Return the indices of the elements that are non-zero."
+msgstr ""
+
+#: mars.tensor.nonzero:3 of
+msgid ""
+"Returns a tuple of tensors, one for each dimension of `a`, containing the"
+" indices of the non-zero elements in that dimension. The values in `a` "
+"are always tested and returned. The corresponding non-zero values can be "
+"obtained with::"
+msgstr ""
+
+#: mars.tensor.nonzero:11 of
+msgid "To group the indices by element, rather than dimension, use::"
+msgstr ""
+
+#: mars.tensor.nonzero:15 of
+msgid ""
+"The result of this is always a 2-D array, with a row for each non-zero "
+"element."
+msgstr ""
+
+#: mars.tensor.nonzero:21 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.nonzero:20 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.nonzero:21 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.nonzero:26 of
+msgid "tuple_of_arrays"
+msgstr ""
+
+#: mars.tensor.nonzero:25 of
+msgid "tuple"
+msgstr ""
+
+#: mars.tensor.nonzero:26 of
+msgid "Indices of elements that are non-zero."
+msgstr ""
+
+#: mars.tensor.nonzero:31 of
+msgid "flatnonzero :"
+msgstr ""
+
+#: mars.tensor.nonzero:31 of
+msgid ""
+"Return indices that are non-zero in the flattened version of the input "
+"tensor."
+msgstr ""
+
+#: mars.tensor.nonzero:33 of
+msgid "Tensor.nonzero :"
+msgstr ""
+
+#: mars.tensor.nonzero:34 of
+msgid "Equivalent tensor method."
+msgstr ""
+
+#: mars.tensor.nonzero:36 of
+msgid "count_nonzero :"
+msgstr ""
+
+#: mars.tensor.nonzero:36 of
+msgid "Counts the number of non-zero elements in the input tensor."
+msgstr ""
+
+#: mars.tensor.nonzero:57 of
+msgid ""
+"A common use for ``nonzero`` is to find the indices of an array, where a "
+"condition is True.  Given an array `a`, the condition `a` > 3 is a "
+"boolean array and since False is interpreted as 0, np.nonzero(a > 3) "
+"yields the indices of the `a` where the condition is true."
+msgstr ""
+
+#: mars.tensor.nonzero:70 of
+msgid "The ``nonzero`` method of the boolean array can also be called."
+msgstr ""
+

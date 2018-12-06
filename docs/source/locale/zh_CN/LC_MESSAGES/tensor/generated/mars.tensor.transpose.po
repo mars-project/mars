@@ -1,0 +1,79 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.transpose.rst:2
+msgid "mars.tensor.transpose"
+msgstr ""
+
+#: mars.tensor.transpose:1 of
+msgid "Permute the dimensions of a tensor."
+msgstr ""
+
+#: mars.tensor.transpose:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.transpose:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.transpose:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.transpose:9 of
+msgid "axes"
+msgstr ""
+
+#: mars.tensor.transpose:8 of
+msgid "list of ints, optional"
+msgstr ""
+
+#: mars.tensor.transpose:8 of
+msgid ""
+"By default, reverse the dimensions, otherwise permute the axes according "
+"to the values given."
+msgstr ""
+
+#: mars.tensor.transpose:15 of
+msgid "p"
+msgstr ""
+
+#: mars.tensor.transpose:14 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.transpose:14 of
+msgid "`a` with its axes permuted.  A view is returned whenever possible."
+msgstr ""
+
+#: mars.tensor.transpose:19 of
+msgid "moveaxis argsort"
+msgstr ""
+
+#: mars.tensor.transpose:24 of
+msgid ""
+"Use `transpose(a, argsort(axes))` to invert the transposition of tensors "
+"when using the `axes` keyword argument."
+msgstr ""
+
+#: mars.tensor.transpose:27 of
+msgid "Transposing a 1-D array returns an unchanged view of the original tensor."
+msgstr ""
+

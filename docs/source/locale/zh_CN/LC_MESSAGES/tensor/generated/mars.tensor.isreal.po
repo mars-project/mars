@@ -1,0 +1,61 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.isreal.rst:2
+msgid "mars.tensor.isreal"
+msgstr ""
+
+#: mars.tensor.isreal:1 of
+msgid "Returns a bool tensor, where True if input element is real."
+msgstr ""
+
+#: mars.tensor.isreal:3 of
+msgid ""
+"If element has complex type with zero complex part, the return value for "
+"that element is True."
+msgstr ""
+
+#: mars.tensor.isreal:9 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.isreal:8 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.isreal:9 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.isreal:14 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.isreal:13 of
+msgid "Tensor, bool"
+msgstr ""
+
+#: mars.tensor.isreal:14 of
+msgid "Boolean tensor of same shape as `x`."
+msgstr ""
+
+#: mars.tensor.isreal:18 of
+msgid "iscomplex isrealobj : Return True if x is not a complex type."
+msgstr ""
+

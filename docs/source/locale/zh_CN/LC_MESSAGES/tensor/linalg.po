@@ -1,0 +1,102 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:08+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/linalg.rst:2
+msgid "Linear Algebra (``mars.tensor.linalg``)"
+msgstr ""
+
+#: ../../source/tensor/linalg.rst:5
+msgid "Matrix and vector products"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.dot <mars.tensor.dot>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Dot product of two arrays."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.vdot <mars.tensor.vdot>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the dot product of two vectors."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.matmul <mars.tensor.matmul>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Matrix product of two tensors."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.tensordot <mars.tensor.tensordot>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute tensor dot product along specified axes for tensors >= 1-D."
+msgstr ""
+
+#: ../../source/tensor/linalg.rst:17
+msgid "Decompositions"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.linalg.cholesky <mars.tensor.linalg.cholesky>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Cholesky decomposition."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.linalg.qr <mars.tensor.linalg.qr>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the qr factorization of a matrix."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.linalg.svd <mars.tensor.linalg.svd>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Singular Value Decomposition."
+msgstr ""
+
+#: ../../source/tensor/linalg.rst:29
+msgid "Norms and other numbers"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.linalg.norm <mars.tensor.linalg.norm>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Matrix or vector norm."
+msgstr ""
+
+#~ msgid "Linear Algebra"
+#~ msgstr ""
+

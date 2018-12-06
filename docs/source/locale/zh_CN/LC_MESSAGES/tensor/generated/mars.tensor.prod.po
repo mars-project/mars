@@ -1,0 +1,177 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.prod.rst:2
+msgid "mars.tensor.prod"
+msgstr ""
+
+#: mars.tensor.prod:1 of
+msgid "Return the product of tensor elements over a given axis."
+msgstr ""
+
+#: mars.tensor.prod:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.prod:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.prod:6 of
+msgid "Input data."
+msgstr ""
+
+#: mars.tensor.prod:14 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.prod:13 of
+msgid "None or int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.prod:8 of
+msgid ""
+"Axis or axes along which a product is performed.  The default, axis=None,"
+" will calculate the product of all the elements in the input tensor. If "
+"axis is negative it counts from the last to the first axis."
+msgstr ""
+
+#: mars.tensor.prod:13 of
+msgid ""
+"If axis is a tuple of ints, a product is performed on all of the axes "
+"specified in the tuple instead of a single axis or all the axes as "
+"before."
+msgstr ""
+
+#: mars.tensor.prod:21 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.prod:20 of
+msgid "dtype, optional"
+msgstr ""
+
+#: mars.tensor.prod:17 of
+msgid ""
+"The type of the returned tensor, as well as of the accumulator in which "
+"the elements are multiplied.  The dtype of `a` is used by default unless "
+"`a` has an integer dtype of less precision than the default platform "
+"integer.  In that case, if `a` is signed then the platform integer is "
+"used while if `a` is unsigned then an unsigned integer of the same "
+"precision as the platform integer is used."
+msgstr ""
+
+#: mars.tensor.prod:25 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.prod:24 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.prod:24 of
+msgid ""
+"Alternative output tensor in which to place the result. It must have the "
+"same shape as the expected output, but the type of the output values will"
+" be cast if necessary."
+msgstr ""
+
+#: mars.tensor.prod:35 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.prod:34 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.prod:28 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input array."
+msgstr ""
+
+#: mars.tensor.prod:32 of
+msgid ""
+"If the default value is passed, then `keepdims` will not be passed "
+"through to the `prod` method of sub-classes of `Tensor`, however any non-"
+"default value will be.  If the sub-classes `sum` method does not "
+"implement `keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.prod:38 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.prod:38 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.prod:44 of
+msgid "product_along_axis : Tensor, see `dtype` parameter above."
+msgstr ""
+
+#: mars.tensor.prod:43 of
+msgid "Tensor, see dtype parameter above."
+msgstr ""
+
+#: mars.tensor.prod:43 of
+msgid ""
+"An tensor shaped as `a` but with the specified axis removed. Returns a "
+"reference to `out` if specified."
+msgstr ""
+
+#: mars.tensor.prod:48 of
+msgid "Tensor.prod : equivalent method"
+msgstr ""
+
+#: mars.tensor.prod:52 of
+msgid ""
+"Arithmetic is modular when using integer types, and no error is raised on"
+" overflow.  That means that, on a 32-bit platform:"
+msgstr ""
+
+#: mars.tensor.prod:61 of
+msgid "The product of an empty array is the neutral element 1:"
+msgstr ""
+
+#: mars.tensor.prod:68 of
+msgid "By default, calculate the product of all elements:"
+msgstr ""
+
+#: mars.tensor.prod:73 of
+msgid "Even when the input array is two-dimensional:"
+msgstr ""
+
+#: mars.tensor.prod:78 of
+msgid "But we can also specify the axis over which to multiply:"
+msgstr ""
+
+#: mars.tensor.prod:83 of
+msgid ""
+"If the type of `x` is unsigned, then the output type is the unsigned "
+"platform integer:"
+msgstr ""
+
+#: mars.tensor.prod:90 of
+msgid ""
+"If `x` is of a signed integer type, then the output type is the default "
+"platform integer:"
+msgstr ""
+

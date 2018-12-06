@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.arcsinh.rst:2
+msgid "mars.tensor.arcsinh"
+msgstr ""
+
+#: mars.tensor.arcsinh:1 of
+msgid "Inverse hyperbolic sine element-wise."
+msgstr ""
+
+#: mars.tensor.arcsinh:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.arcsinh:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.arcsinh:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.arcsinh:10 mars.tensor.arcsinh:20 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.arcsinh:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.arcsinh:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.arcsinh:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.arcsinh:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.arcsinh:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.arcsinh:15 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.arcsinh:19 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.arcsinh:20 of
+msgid "Tensor of of the same shape as `x`."
+msgstr ""
+
+#: mars.tensor.arcsinh:24 of
+msgid ""
+"`arcsinh` is a multivalued function: for each `x` there are infinitely "
+"many numbers `z` such that `sinh(z) = x`. The convention is to return the"
+" `z` whose imaginary part lies in `[-pi/2, pi/2]`."
+msgstr ""
+
+#: mars.tensor.arcsinh:28 of
+msgid ""
+"For real-valued input data types, `arcsinh` always returns real output. "
+"For each value that cannot be expressed as a real number or infinity, it "
+"returns ``nan`` and sets the `invalid` floating point error flag."
+msgstr ""
+
+#: mars.tensor.arcsinh:32 of
+msgid ""
+"For complex-valued input, `arccos` is a complex analytical function that "
+"has branch cuts `[1j, infj]` and `[-1j, -infj]` and is continuous from "
+"the right on the former and from the left on the latter."
+msgstr ""
+
+#: mars.tensor.arcsinh:36 of
+msgid "The inverse hyperbolic sine is also known as `asinh` or ``sinh^-1``."
+msgstr ""
+
+#: mars.tensor.arcsinh:40 of
+msgid ""
+"M. Abramowitz and I.A. Stegun, \"Handbook of Mathematical Functions\", "
+"10th printing, 1964, pp. 86. http://www.math.sfu.ca/~cbm/aands/"
+msgstr ""
+
+#: mars.tensor.arcsinh:42 of
+msgid ""
+"Wikipedia, \"Inverse hyperbolic function\", "
+"http://en.wikipedia.org/wiki/Arcsinh"
+msgstr ""
+

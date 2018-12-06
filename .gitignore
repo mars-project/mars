@@ -1,0 +1,79 @@
+*.py[cod]
+
+# C extensions
+*.so
+
+# sqlite3 db files
+*.db
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+var
+sdist
+develop-eggs
+.installed.cfg
+lib64
+__pycache__
+mars/.git-branch
+
+# Installer logs
+pip-log.txt
+
+# config files
+logging.conf
+
+# node-js
+node_modules
+jspm_packages
+
+npm-debug.log*
+.npm
+.node_repl_history
+.grunt
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+htmlcov
+.tox
+nosetests.xml
+.cache
+.pytest*
+test.conf
+
+# IDEs
+.idea
+.vscode
+*.iml
+
+# virtualenv
+env
+
+.DS_Store
+
+# notebook
+.ipynb_checkpoints
+test*.ipynb
+
+# tmp files
+*.tmp
+*.log
+*.swp
+
+# docs mo
+*.mo
+
+# test files
+bin/etcd*
+
+# cython compiled files
+mars/*.c*
+mars/lib/*.c*
+mars/actors/*.c*
+mars/actors/pool/*.c*
+mars/serialize/*.c*

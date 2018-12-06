@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% set active_page = 'worker_list' %}
+{% block custom_head %}
+    <script type="text/javascript">
+    $(function() {
+        function reloader() {
+            $.get(document.URL, function(txt) {
+                $('#worker-list').replaceWith($(txt).find('#worker-list'));
+            }, 'text');
+            window.setTimeout(reloader, 10000);
+        }
+        window.setTimeout(reloader, 10000);
+    });
+    </script>
+{% endblock %}
+{% block body %}
+    <div id="worker-list" class="row">
+        <h2>Worker List</h2>
+        <table class="table sortable">
+            <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>CPU</th>
+                <th>Mem</th>
+                <th>Shared</th>
+                <th>Update Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            {%- if worker_metrics %}
+                {%- for endpoint in worker_metrics%}
+                    {% set metrics = worker_metrics[endpoint]['hardware'] %}
+                    <tr>
+                        <td><a href="/worker?endpoint={{ endpoint }}">{{ endpoint }}</a></td>
+                        <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
+                        <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
+                        <td>{{ metrics['cached_hold'] | readable_size }} / {{ metrics['cached_total'] | readable_size }}</td>
+                        <td>{{ worker_metrics[endpoint]['update_time'] }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor -%}
+            {% else %}
+                <tr>
+                    <td colspan="8" style="font-style: italic; text-align: center">No workers attached.</td>
+                </tr>
+            {% endif -%}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

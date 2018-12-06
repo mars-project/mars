@@ -1,0 +1,51 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.positive.rst:2
+msgid "mars.tensor.positive"
+msgstr ""
+
+#: mars.tensor.positive:1 of
+msgid "Numerical positive, element-wise."
+msgstr ""
+
+#: mars.tensor.positive:6 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.positive:5 of
+msgid "array_like or scalar"
+msgstr ""
+
+#: mars.tensor.positive:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.positive:10 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.positive:9 of
+msgid "Tensor or scalar"
+msgstr ""
+
+#: mars.tensor.positive:11 of
+msgid "Returned array or scalar: `y = +x`."
+msgstr ""
+

@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.where.rst:2
+msgid "mars.tensor.where"
+msgstr ""
+
+#: mars.tensor.where:1 of
+msgid "Return elements, either from `x` or `y`, depending on `condition`."
+msgstr ""
+
+#: mars.tensor.where:3 of
+msgid "If only `condition` is given, return ``condition.nonzero()``."
+msgstr ""
+
+#: mars.tensor.where:7 of
+msgid "condition"
+msgstr ""
+
+#: mars.tensor.where:6 of
+msgid "array_like, bool"
+msgstr ""
+
+#: mars.tensor.where:8 of
+msgid "When True, yield `x`, otherwise yield `y`."
+msgstr ""
+
+#: mars.tensor.where:11 of
+msgid "x, y"
+msgstr ""
+
+#: mars.tensor.where:10 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.where:10 of
+msgid ""
+"Values from which to choose. `x`, `y` and `condition` need to be "
+"broadcastable to some shape."
+msgstr ""
+
+#: mars.tensor.where:21 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.where:20 of
+msgid "Tensor or tuple of Tensors"
+msgstr ""
+
+#: mars.tensor.where:16 of
+msgid ""
+"If both `x` and `y` are specified, the output tensor contains elements of"
+" `x` where `condition` is True, and elements from `y` elsewhere."
+msgstr ""
+
+#: mars.tensor.where:20 of
+msgid ""
+"If only `condition` is given, return the tuple ``condition.nonzero()``, "
+"the indices where `condition` is True."
+msgstr ""
+
+#: mars.tensor.where:25 of
+msgid "nonzero, choose"
+msgstr ""
+
+#: mars.tensor.where:29 of
+msgid ""
+"If `x` and `y` are given and input arrays are 1-D, `where` is equivalent "
+"to::"
+msgstr ""
+
+#: mars.tensor.where:58 of
+msgid "Find the indices of elements of `x` that are in `goodvalues`."
+msgstr ""
+

@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:46+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/overview.rst:2
+msgid "Overview"
+msgstr ""
+
+#: ../../source/tensor/overview.rst:4
+msgid ""
+"Mars tensor is the counterpart of Numpy :class:`numpy.ndarray` and "
+"implements a subset of the Numpy ndarray interface. It tiles a large "
+"tensor into small chunks and describe the inner computation with a "
+"directed graph. This lets us compute on tensors larger than memory and "
+"take advantage of the ability of multi-cores or distributed clusters."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:9
+msgid "The following is a brief overview of supported subset of Numpy interface."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:11
+msgid ""
+"Arithmetic and mathematics: ``+``, ``-``, ``*``, ``/``, ``exp``, ``log``,"
+" etc."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:12
+msgid "Reduction along axes (``sum``, ``max``, ``argmax``, etc)."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:13
+msgid ""
+"Most of the `array creation routines "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"creation.html>`_ (``empty``, ``ones_like``, ``diag``, etc). What's more, "
+"Mars does not only support create array/tensor on GPU, but also support "
+"create sparse tensor."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:16
+msgid ""
+"Most of the `array manipulation routines "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, etc.)"
+msgstr ""
+
+#: ../../source/tensor/overview.rst:18
+msgid ""
+"`Basic indexing "
+"<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
+"(indexing by ints, slices, newaxes, and Ellipsis)"
+msgstr ""
+
+#: ../../source/tensor/overview.rst:20
+msgid ""
+"Fancy indexing along single axis with lists or numpy arrays, e.g. x[[1, "
+"4, 8], :5]"
+msgstr ""
+
+#: ../../source/tensor/overview.rst:21
+msgid ""
+"`universal functions "
+"<https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_ for "
+"elementwise operations."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:23
+msgid ""
+"`Linear algebra functions "
+"<https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, "
+"including product (``dot``, ``matmul``, etc.) and decomposition "
+"(``cholesky``, ``svd``, etc.)."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:26
+msgid ""
+"However, Mars has not implemented entire Numpy interface, either the time"
+" limitation or difficulty is the main handicap. Any contribution from "
+"community is sincerely welcomed. The main feature not implemented are "
+"listed below:"
+msgstr ""
+
+#: ../../source/tensor/overview.rst:29
+msgid "Tensor with unknown shape does not support all operations."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:30
+msgid "Only small subset of ``np.linalg`` are implemented."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:31
+msgid ""
+"Operations like ``sort`` which is hard to execute in parallel are not "
+"implemented."
+msgstr ""
+
+#: ../../source/tensor/overview.rst:32
+msgid ""
+"Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` "
+"etc, because the iteration or loops over a large tensor is very "
+"inefficient."
+msgstr ""
+

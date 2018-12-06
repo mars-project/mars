@@ -1,0 +1,40 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.array_split.rst:2
+msgid "mars.tensor.array\\_split"
+msgstr ""
+
+#: mars.tensor.array_split:1 of
+msgid "Split a tensor into multiple sub-tensors."
+msgstr ""
+
+#: mars.tensor.array_split:3 of
+msgid ""
+"Please refer to the ``split`` documentation.  The only difference between"
+" these functions is that ``array_split`` allows `indices_or_sections` to "
+"be an integer that does *not* equally divide the axis. For a tensor of "
+"length l that should be split into n sections, it returns l % n sub-"
+"arrays of size l//n + 1 and the rest of size l//n."
+msgstr ""
+
+#: mars.tensor.array_split:12 of
+msgid "split : Split tensor into multiple sub-tensors of equal size."
+msgstr ""
+

@@ -1,0 +1,92 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.copysign.rst:2
+msgid "mars.tensor.copysign"
+msgstr ""
+
+#: mars.tensor.copysign:1 of
+msgid "Change the sign of x1 to that of x2, element-wise."
+msgstr ""
+
+#: mars.tensor.copysign:3 of
+msgid ""
+"If both arguments are arrays or sequences, they have to be of the same "
+"length. If `x2` is a scalar, its sign will be copied to all elements of "
+"`x1`."
+msgstr ""
+
+#: mars.tensor.copysign:9 of
+msgid "x1"
+msgstr ""
+
+#: mars.tensor.copysign:8 mars.tensor.copysign:10 mars.tensor.copysign:25 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.copysign:10 of
+msgid "Values to change the sign of."
+msgstr ""
+
+#: mars.tensor.copysign:11 of
+msgid "x2"
+msgstr ""
+
+#: mars.tensor.copysign:12 of
+msgid "The sign of `x2` is copied to `x1`."
+msgstr ""
+
+#: mars.tensor.copysign:16 mars.tensor.copysign:26 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.copysign:15 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.copysign:14 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.copysign:19 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.copysign:18 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.copysign:19 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.copysign:21 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.copysign:26 of
+msgid "The values of `x1` with the sign of `x2`."
+msgstr ""
+

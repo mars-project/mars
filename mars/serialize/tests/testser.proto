@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "mars/serialize/protos/value.proto";
+
+
+message Node1Def {
+    string a = 1;
+    int32 b = 2;
+    Value c = 3;
+    Node2Def d = 4;
+    repeated Value e = 5;
+    repeated Node1Def f = 6;
+}
+
+
+message Node2Def {
+    Value a = 1;
+    string key = 2;
+    repeated int32 data = 3;
+    string id = 4;
+}
+
+
+message Node3Def {
+    oneof value {
+        Node1Def n1 = 1;
+        Node2Def n2 = 2;
+    }
+}
+
+
+message Node4Def {
+    map<string, Value> attr = 1;
+}

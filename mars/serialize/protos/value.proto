@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+message Value {
+
+    message List {
+        bool is_tuple = 1;
+        repeated Value value = 2;
+    }
+
+    message Slice {
+        bool is_null = 4;
+        oneof start { int64 start_val = 1; }
+        oneof stop { int64 stop_val = 2; }
+        oneof step { int64 step_val = 3; }
+    }
+
+    message Dict {
+        List keys = 1;
+        List values = 2;
+    }
+
+    message Key {
+        string key = 1;
+        string id = 2;  // since different object may have the same key, we need an identity
+    }
+
+    oneof value {
+        bool is_null = 1; // NULL
+        bool b = 2;  // bool
+        int64 i = 3;  // int
+        float f = 4;  // float
+        bytes s = 5;  // bytes
+        string u = 6;  // unicode
+        List list = 7;
+        Dict dict = 8;
+        Slice slice = 9;
+        bytes arr = 10;  // ndarray
+        bytes dtype = 11;  // data type
+        Key key = 12;  // BaseWithKey object, only save `key`
+        bytes datetime64 = 13; // numpy datetime64
+        bytes timedelta64 = 14; // numpy timedelta64
+    }
+
+}

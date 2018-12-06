@@ -1,0 +1,164 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.random.logseries.rst:2
+msgid "mars.tensor.random.logseries"
+msgstr ""
+
+#: mars.tensor.random.logseries:1 of
+msgid "Draw samples from a logarithmic series distribution."
+msgstr ""
+
+#: mars.tensor.random.logseries:3 of
+msgid ""
+"Samples are drawn from a log series distribution with specified shape "
+"parameter, 0 < ``p`` < 1."
+msgstr ""
+
+#: mars.tensor.random.logseries:8 of
+msgid "p"
+msgstr ""
+
+#: mars.tensor.random.logseries:7 of
+msgid "float or array_like of floats"
+msgstr ""
+
+#: mars.tensor.random.logseries:9 of
+msgid "Shape parameter for the distribution.  Must be in the range (0, 1)."
+msgstr ""
+
+#: mars.tensor.random.logseries:13 of
+msgid "size"
+msgstr ""
+
+#: mars.tensor.random.logseries:12 of
+msgid "int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.logseries:11 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``p`` is a scalar.  Otherwise, ``np.array(p).size`` samples "
+"are drawn."
+msgstr ""
+
+#: mars.tensor.random.logseries:15 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.random.logseries:14 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.logseries:16 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.logseries:18 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.random.logseries:17 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.random.logseries:18 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.logseries:23 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.random.logseries:22 of
+msgid "Tensor or scalar"
+msgstr ""
+
+#: mars.tensor.random.logseries:23 of
+msgid "Drawn samples from the parameterized logarithmic series distribution."
+msgstr ""
+
+#: mars.tensor.random.logseries:28 of
+msgid "scipy.stats.logser"
+msgstr ""
+
+#: mars.tensor.random.logseries:27 of
+msgid "probability density function, distribution or"
+msgstr ""
+
+#: mars.tensor.random.logseries:28 of
+msgid "cumulative density function, etc."
+msgstr ""
+
+#: mars.tensor.random.logseries:32 of
+msgid "The probability density for the Log Series distribution is"
+msgstr ""
+
+#: mars.tensor.random.logseries:35 of
+msgid "rac{-p^k}{k \\ln(1-p)},"
+msgstr ""
+
+#: mars.tensor.random.logseries:37 of
+msgid "where p = probability."
+msgstr ""
+
+#: mars.tensor.random.logseries:39 of
+msgid ""
+"The log series distribution is frequently used to represent species "
+"richness and occurrence, first proposed by Fisher, Corbet, and Williams "
+"in 1943 [2].  It may also be used to model the numbers of occupants seen "
+"in cars [3]."
+msgstr ""
+
+#: mars.tensor.random.logseries:46 of
+msgid ""
+"Buzas, Martin A.; Culver, Stephen J.,  Understanding regional species "
+"diversity through the log series distribution of occurrences: "
+"BIODIVERSITY RESEARCH Diversity & Distributions, Volume 5, Number 5, "
+"September 1999 , pp. 187-195(9)."
+msgstr ""
+
+#: mars.tensor.random.logseries:50 of
+msgid ""
+"Fisher, R.A,, A.S. Corbet, and C.B. Williams. 1943. The relation between "
+"the number of species and the number of individuals in a random sample of"
+" an animal population. Journal of Animal Ecology, 12:42-58."
+msgstr ""
+
+#: mars.tensor.random.logseries:54 of
+msgid ""
+"D. J. Hand, F. Daly, D. Lunn, E. Ostrowski, A Handbook of Small Data "
+"Sets, CRC Press, 1994."
+msgstr ""
+
+#: mars.tensor.random.logseries:56 of
+msgid ""
+"Wikipedia, \"Logarithmic distribution\", "
+"http://en.wikipedia.org/wiki/Logarithmic_distribution"
+msgstr ""
+
+#: mars.tensor.random.logseries:61 of
+msgid "Draw samples from the distribution:"
+msgstr ""
+
+#: mars.tensor.random.logseries:70 of
+msgid "#   plot against distribution"
+msgstr ""
+

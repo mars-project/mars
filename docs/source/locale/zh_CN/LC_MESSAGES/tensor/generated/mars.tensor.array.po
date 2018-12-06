@@ -1,0 +1,131 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-03 16:55+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.array.rst:2
+msgid "mars.tensor.array"
+msgstr ""
+
+#: mars.tensor.array:1 of
+msgid "Create a tensor."
+msgstr ""
+
+#: mars.tensor.array:6 of
+msgid "object"
+msgstr ""
+
+#: mars.tensor.array:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.array:6 of
+msgid ""
+"An array, any object exposing the array interface, an object whose "
+"__array__ method returns an array, or any (nested) sequence."
+msgstr ""
+
+#: mars.tensor.array:11 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.array:10 of
+msgid "data-type, optional"
+msgstr ""
+
+#: mars.tensor.array:9 of
+msgid ""
+"The desired data-type for the array.  If not given, then the type will be"
+" determined as the minimum type required to hold the objects in the "
+"sequence.  This argument can only be used to 'upcast' the array.  For "
+"downcasting, use the .astype(t) method."
+msgstr ""
+
+#: mars.tensor.array:16 of
+msgid "copy"
+msgstr ""
+
+#: mars.tensor.array:15 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.array:14 of
+msgid ""
+"If true (default), then the object is copied.  Otherwise, a copy will "
+"only be made if __array__ returns a copy, if obj is a nested sequence, or"
+" if a copy is needed to satisfy any of the other requirements (`dtype`, "
+"`order`, etc.)."
+msgstr ""
+
+#: mars.tensor.array:20 of
+msgid "ndmin"
+msgstr ""
+
+#: mars.tensor.array:19 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.array:19 of
+msgid ""
+"Specifies the minimum number of dimensions that the resulting array "
+"should have.  Ones will be pre-pended to the shape as needed to meet this"
+" requirement."
+msgstr ""
+
+#: mars.tensor.array:23 of
+msgid "chunks: int, tuple, optional"
+msgstr ""
+
+#: mars.tensor.array:23 of
+msgid "Specifies chunk size for each dimension."
+msgstr ""
+
+#: mars.tensor.array:28 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.array:27 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.array:28 of
+msgid "An tensor object satisfying the specified requirements."
+msgstr ""
+
+#: mars.tensor.array:32 of
+msgid "empty, empty_like, zeros, zeros_like, ones, ones_like, full, full_like"
+msgstr ""
+
+#: mars.tensor.array:41 of
+msgid "Upcasting:"
+msgstr ""
+
+#: mars.tensor.array:46 of
+msgid "More than one dimension:"
+msgstr ""
+
+#: mars.tensor.array:52 of
+msgid "Minimum dimensions 2:"
+msgstr ""
+
+#: mars.tensor.array:57 of
+msgid "Type provided:"
+msgstr ""
+
+#~ msgid "Create an array."
+#~ msgstr ""
+

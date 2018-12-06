@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.negative.rst:2
+msgid "mars.tensor.negative"
+msgstr ""
+
+#: mars.tensor.negative:1 of
+msgid "Numerical negative, element-wise."
+msgstr ""
+
+#: mars.tensor.negative:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.negative:4 of
+msgid "array_like or scalar"
+msgstr ""
+
+#: mars.tensor.negative:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.negative:10 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.negative:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.negative:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.negative:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.negative:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.negative:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.negative:17 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.negative:16 of
+msgid ""
+"For other keyword-only arguments, see the :ref:`ufunc docs "
+"<ufuncs.kwargs>`."
+msgstr ""
+
+#: mars.tensor.negative:22 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.negative:21 of
+msgid "Tensor or scalar"
+msgstr ""
+
+#: mars.tensor.negative:22 of
+msgid "Returned array or scalar: `y = -x`."
+msgstr ""
+

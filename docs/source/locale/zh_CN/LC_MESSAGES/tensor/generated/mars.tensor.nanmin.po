@@ -1,0 +1,188 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.nanmin.rst:2
+msgid "mars.tensor.nanmin"
+msgstr ""
+
+#: mars.tensor.nanmin:1 of
+msgid ""
+"Return minimum of a tensor or minimum along an axis, ignoring any NaNs. "
+"When all-NaN slices are encountered a ``RuntimeWarning`` is raised and "
+"Nan is returned for that slice."
+msgstr ""
+
+#: mars.tensor.nanmin:8 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.nanmin:7 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.nanmin:8 of
+msgid ""
+"Tensor containing numbers whose minimum is desired. If `a` is not an "
+"tensor, a conversion is attempted."
+msgstr ""
+
+#: mars.tensor.nanmin:11 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.nanmin:10 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.nanmin:11 of
+msgid ""
+"Axis along which the minimum is computed. The default is to compute the "
+"minimum of the flattened tensor."
+msgstr ""
+
+#: mars.tensor.nanmin:16 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.nanmin:15 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.nanmin:14 of
+msgid ""
+"Alternate output tensor in which to place the result.  The default is "
+"``None``; if provided, it must have the same shape as the expected "
+"output, but the type will be cast if necessary.  See `doc.ufuncs` for "
+"details."
+msgstr ""
+
+#: mars.tensor.nanmin:25 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.nanmin:24 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.nanmin:19 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the original `a`."
+msgstr ""
+
+#: mars.tensor.nanmin:23 of
+msgid ""
+"If the value is anything but the default, then `keepdims` will be passed "
+"through to the `min` method of sub-classes of `Tensor`.  If the sub-"
+"classes methods does not implement `keepdims` any exceptions will be "
+"raised."
+msgstr ""
+
+#: mars.tensor.nanmin:28 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.nanmin:28 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.nanmin:35 of
+msgid "nanmin"
+msgstr ""
+
+#: mars.tensor.nanmin:34 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.nanmin:33 of
+msgid ""
+"An tensor with the same shape as `a`, with the specified axis removed.  "
+"If `a` is a 0-d tensor, or if axis is None, a tensor scalar is returned."
+"  The same dtype as `a` is returned."
+msgstr ""
+
+#: mars.tensor.nanmin:39 of
+msgid "nanmax :"
+msgstr ""
+
+#: mars.tensor.nanmin:40 of
+msgid "The maximum value of an array along a given axis, ignoring any NaNs."
+msgstr ""
+
+#: mars.tensor.nanmin:41 of
+msgid "amin :"
+msgstr ""
+
+#: mars.tensor.nanmin:42 of
+msgid "The minimum value of an array along a given axis, propagating any NaNs."
+msgstr ""
+
+#: mars.tensor.nanmin:43 of
+msgid "fmin :"
+msgstr ""
+
+#: mars.tensor.nanmin:44 of
+msgid "Element-wise minimum of two arrays, ignoring any NaNs."
+msgstr ""
+
+#: mars.tensor.nanmin:45 of
+msgid "minimum :"
+msgstr ""
+
+#: mars.tensor.nanmin:46 of
+msgid "Element-wise minimum of two arrays, propagating any NaNs."
+msgstr ""
+
+#: mars.tensor.nanmin:47 of
+msgid "isnan :"
+msgstr ""
+
+#: mars.tensor.nanmin:48 of
+msgid "Shows which elements are Not a Number (NaN)."
+msgstr ""
+
+#: mars.tensor.nanmin:50 of
+msgid "isfinite:"
+msgstr ""
+
+#: mars.tensor.nanmin:50 of
+msgid "Shows which elements are neither NaN nor infinity."
+msgstr ""
+
+#: mars.tensor.nanmin:52 of
+msgid "amax, fmax, maximum"
+msgstr ""
+
+#: mars.tensor.nanmin:56 of
+msgid ""
+"Mars uses the IEEE Standard for Binary Floating-Point for Arithmetic "
+"(IEEE 754). This means that Not a Number is not equivalent to infinity. "
+"Positive infinity is treated as a very large number and negative infinity"
+" is treated as a very small (i.e. negative) number."
+msgstr ""
+
+#: mars.tensor.nanmin:61 of
+msgid "If the input has a integer type the function is equivalent to mt.min."
+msgstr ""
+
+#: mars.tensor.nanmin:75 of
+msgid "When positive infinity and negative infinity are present:"
+msgstr ""
+

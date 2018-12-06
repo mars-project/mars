@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.random.sample.rst:2
+msgid "mars.tensor.random.sample"
+msgstr ""
+
+#: mars.tensor.random.sample:1 of
+msgid "Return random floats in the half-open interval [0.0, 1.0)."
+msgstr ""
+
+#: mars.tensor.random.sample:3 of
+msgid ""
+"Results are from the \"continuous uniform\" distribution over the stated "
+"interval.  To sample :math:`Unif[a, b), b > a` multiply the output of "
+"`random_sample` by `(b-a)` and add `a`::"
+msgstr ""
+
+#: mars.tensor.random.sample:13 of
+msgid "size"
+msgstr ""
+
+#: mars.tensor.random.sample:12 of
+msgid "int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.sample:12 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  Default is None, in which case a single value is"
+" returned."
+msgstr ""
+
+#: mars.tensor.random.sample:15 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.random.sample:14 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.sample:16 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.sample:18 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.random.sample:17 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.random.sample:18 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.sample:24 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.random.sample:23 of
+msgid "float or Tensor of floats"
+msgstr ""
+
+#: mars.tensor.random.sample:23 of
+msgid ""
+"Array of random floats of shape `size` (unless ``size=None``, in which "
+"case a single float is returned)."
+msgstr ""
+
+#: mars.tensor.random.sample:37 of
+msgid "Three-by-two array of random numbers from [-5, 0):"
+msgstr ""
+

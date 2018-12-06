@@ -1,0 +1,152 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.fft.ifft.rst:2
+msgid "mars.tensor.fft.ifft"
+msgstr ""
+
+#: mars.tensor.fft.ifft:1 of
+msgid "Compute the one-dimensional inverse discrete Fourier Transform."
+msgstr ""
+
+#: mars.tensor.fft.ifft:3 of
+msgid ""
+"This function computes the inverse of the one-dimensional *n*-point "
+"discrete Fourier transform computed by `fft`.  In other words, "
+"``ifft(fft(a)) == a`` to within numerical accuracy. For a general "
+"description of the algorithm and definitions, see `mt.fft`."
+msgstr ""
+
+#: mars.tensor.fft.ifft:9 of
+msgid "The input should be ordered in the same way as is returned by `fft`, i.e.,"
+msgstr ""
+
+#: mars.tensor.fft.ifft:12 of
+msgid "``a[0]`` should contain the zero frequency term,"
+msgstr ""
+
+#: mars.tensor.fft.ifft:13 of
+msgid "``a[1:n//2]`` should contain the positive-frequency terms,"
+msgstr ""
+
+#: mars.tensor.fft.ifft:14 of
+msgid ""
+"``a[n//2 + 1:]`` should contain the negative-frequency terms, in "
+"increasing order starting from the most negative frequency."
+msgstr ""
+
+#: mars.tensor.fft.ifft:17 of
+msgid ""
+"For an even number of input points, ``A[n//2]`` represents the sum of the"
+" values at the positive and negative Nyquist frequencies, as the two are "
+"aliased together. See `numpy.fft` for details."
+msgstr ""
+
+#: mars.tensor.fft.ifft:23 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.fft.ifft:22 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.fft.ifft:24 of
+msgid "Input tensor, can be complex."
+msgstr ""
+
+#: mars.tensor.fft.ifft:29 of
+msgid "n"
+msgstr ""
+
+#: mars.tensor.fft.ifft:28 mars.tensor.fft.ifft:31 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.fft.ifft:26 of
+msgid ""
+"Length of the transformed axis of the output. If `n` is smaller than the "
+"length of the input, the input is cropped. If it is larger, the input is "
+"padded with zeros.  If `n` is not given, the length of the input along "
+"the axis specified by `axis` is used. See notes about padding issues."
+msgstr ""
+
+#: mars.tensor.fft.ifft:32 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.fft.ifft:32 of
+msgid ""
+"Axis over which to compute the inverse DFT.  If not given, the last axis "
+"is used."
+msgstr ""
+
+#: mars.tensor.fft.ifft:35 of
+msgid "norm"
+msgstr ""
+
+#: mars.tensor.fft.ifft:34 of
+msgid "{None, \"ortho\"}, optional"
+msgstr ""
+
+#: mars.tensor.fft.ifft:35 of
+msgid "Normalization mode (see `numpy.fft`). Default is None."
+msgstr ""
+
+#: mars.tensor.fft.ifft:41 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.fft.ifft:40 of
+msgid "complex Tensor"
+msgstr ""
+
+#: mars.tensor.fft.ifft:40 of
+msgid ""
+"The truncated or zero-padded input, transformed along the axis indicated "
+"by `axis`, or the last one if `axis` is not specified."
+msgstr ""
+
+#: mars.tensor.fft.ifft:46 of
+msgid "IndexError"
+msgstr ""
+
+#: mars.tensor.fft.ifft:46 of
+msgid "If `axes` is larger than the last axis of `a`."
+msgstr ""
+
+#: mars.tensor.fft.ifft:50 of
+msgid ""
+"mt.fft : An introduction, with definitions and general explanations. fft "
+": The one-dimensional (forward) FFT, of which `ifft` is the inverse ifft2"
+" : The two-dimensional inverse FFT. ifftn : The n-dimensional inverse "
+"FFT."
+msgstr ""
+
+#: mars.tensor.fft.ifft:57 of
+msgid ""
+"If the input parameter `n` is larger than the size of the input, the "
+"input is padded by appending zeros at the end.  Even though this is the "
+"common approach, it might lead to surprising results.  If a different "
+"padding is desired, it must be performed before calling `ifft`."
+msgstr ""
+
+#: mars.tensor.fft.ifft:69 of
+msgid "Create and plot a band-limited signal with random phases:"
+msgstr ""
+

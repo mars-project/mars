@@ -1,0 +1,88 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.spacing.rst:2
+msgid "mars.tensor.spacing"
+msgstr ""
+
+#: mars.tensor.spacing:1 of
+msgid "Return the distance between x and the nearest adjacent number."
+msgstr ""
+
+#: mars.tensor.spacing:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.spacing:4 mars.tensor.spacing:19 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.spacing:6 of
+msgid "Values to find the spacing of."
+msgstr ""
+
+#: mars.tensor.spacing:10 mars.tensor.spacing:20 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.spacing:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.spacing:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.spacing:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.spacing:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.spacing:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.spacing:15 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.spacing:20 of
+msgid "The spacing of values of `x1`."
+msgstr ""
+
+#: mars.tensor.spacing:24 of
+msgid ""
+"It can be considered as a generalization of EPS: ``spacing(mt.float64(1))"
+" == mt.finfo(mt.float64).eps``, and there should not be any representable"
+" number between ``x + spacing(x)`` and x for any finite x."
+msgstr ""
+
+#: mars.tensor.spacing:29 of
+msgid "Spacing of +- inf and NaN is NaN."
+msgstr ""
+

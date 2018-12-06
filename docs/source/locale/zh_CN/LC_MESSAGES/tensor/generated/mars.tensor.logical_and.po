@@ -1,0 +1,91 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.logical_and.rst:2
+msgid "mars.tensor.logical\\_and"
+msgstr ""
+
+#: mars.tensor.logical_and:1 of
+msgid "Compute the truth value of x1 AND x2 element-wise."
+msgstr ""
+
+#: mars.tensor.logical_and:5 of
+msgid "x1, x2"
+msgstr ""
+
+#: mars.tensor.logical_and:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.logical_and:6 of
+msgid "Input tensors. `x1` and `x2` must be of the same shape."
+msgstr ""
+
+#: mars.tensor.logical_and:10 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.logical_and:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.logical_and:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.logical_and:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.logical_and:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.logical_and:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.logical_and:15 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.logical_and:21 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.logical_and:20 of
+msgid "Tensor or bool"
+msgstr ""
+
+#: mars.tensor.logical_and:20 of
+msgid ""
+"Boolean result with the same shape as `x1` and `x2` of the logical AND "
+"operation on corresponding elements of `x1` and `x2`."
+msgstr ""
+
+#: mars.tensor.logical_and:25 of
+msgid "logical_or, logical_not, logical_xor bitwise_and"
+msgstr ""
+

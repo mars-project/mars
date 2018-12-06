@@ -1,0 +1,127 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.exp.rst:2
+msgid "mars.tensor.exp"
+msgstr ""
+
+#: mars.tensor.exp:1 of
+msgid "Calculate the exponential of all elements in the input tensor."
+msgstr ""
+
+#: mars.tensor.exp:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.exp:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.exp:6 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.exp:10 mars.tensor.exp:22 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.exp:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.exp:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.exp:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.exp:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.exp:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.exp:17 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.exp:16 of
+msgid ""
+"For other keyword-only arguments, see the :ref:`ufunc docs "
+"<ufuncs.kwargs>`."
+msgstr ""
+
+#: mars.tensor.exp:21 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.exp:22 of
+msgid "Output tensor, element-wise exponential of `x`."
+msgstr ""
+
+#: mars.tensor.exp:26 of
+msgid ""
+"expm1 : Calculate ``exp(x) - 1`` for all elements in the array. exp2  : "
+"Calculate ``2**x`` for all elements in the array."
+msgstr ""
+
+#: mars.tensor.exp:31 of
+msgid ""
+"The irrational number ``e`` is also known as Euler's number.  It is "
+"approximately 2.718281, and is the base of the natural logarithm, ``ln`` "
+"(this means that, if :math:`x = \\ln y = \\log_e y`, then :math:`e^x = "
+"y`. For real input, ``exp(x)`` is always positive."
+msgstr ""
+
+#: mars.tensor.exp:36 of
+msgid ""
+"For complex arguments, ``x = a + ib``, we can write :math:`e^x = e^a "
+"e^{ib}`.  The first term, :math:`e^a`, is already known (it is the real "
+"argument, described above).  The second term, :math:`e^{ib}`, is "
+":math:`\\cos b + i \\sin b`, a function with magnitude 1 and a periodic "
+"phase."
+msgstr ""
+
+#: mars.tensor.exp:44 of
+msgid ""
+"Wikipedia, \"Exponential function\", "
+"http://en.wikipedia.org/wiki/Exponential_function"
+msgstr ""
+
+#: mars.tensor.exp:46 of
+msgid ""
+"M. Abramovitz and I. A. Stegun, \"Handbook of Mathematical Functions with"
+" Formulas, Graphs, and Mathematical Tables,\" Dover, 1964, p. 69, "
+"http://www.math.sfu.ca/~cbm/aands/page_69.htm"
+msgstr ""
+
+#: mars.tensor.exp:52 of
+msgid "Plot the magnitude and phase of ``exp(x)`` in the complex plane:"
+msgstr ""
+

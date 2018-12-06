@@ -1,0 +1,62 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.column_stack.rst:2
+msgid "mars.tensor.column\\_stack"
+msgstr ""
+
+#: mars.tensor.column_stack:1 of
+msgid "Stack 1-D tensors as columns into a 2-D tensor."
+msgstr ""
+
+#: mars.tensor.column_stack:3 of
+msgid ""
+"Take a sequence of 1-D tensors and stack them as columns to make a single"
+" 2-D tensor. 2-D tensors are stacked as-is, just like with `hstack`.  1-D"
+" tensors are turned into 2-D columns first."
+msgstr ""
+
+#: mars.tensor.column_stack:11 of
+msgid "tup"
+msgstr ""
+
+#: mars.tensor.column_stack:10 of
+msgid "sequence of 1-D or 2-D tensors."
+msgstr ""
+
+#: mars.tensor.column_stack:11 of
+msgid "Tensors to stack. All of them must have the same first dimension."
+msgstr ""
+
+#: mars.tensor.column_stack:16 of
+msgid "stacked"
+msgstr ""
+
+#: mars.tensor.column_stack:15 of
+msgid "2-D tensor"
+msgstr ""
+
+#: mars.tensor.column_stack:16 of
+msgid "The tensor formed by stacking the given tensors."
+msgstr ""
+
+#: mars.tensor.column_stack:20 of
+msgid "stack, hstack, vstack, concatenate"
+msgstr ""
+

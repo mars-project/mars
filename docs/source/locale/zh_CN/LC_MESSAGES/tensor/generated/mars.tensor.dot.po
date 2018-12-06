@@ -1,0 +1,137 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.dot.rst:2
+msgid "mars.tensor.dot"
+msgstr ""
+
+#: mars.tensor.dot:1 of
+msgid "Dot product of two arrays. Specifically,"
+msgstr ""
+
+#: mars.tensor.dot:3 of
+msgid ""
+"If both `a` and `b` are 1-D arrays, it is inner product of vectors "
+"(without complex conjugation)."
+msgstr ""
+
+#: mars.tensor.dot:6 of
+msgid ""
+"If both `a` and `b` are 2-D arrays, it is matrix multiplication, but "
+"using :func:`matmul` or ``a @ b`` is preferred."
+msgstr ""
+
+#: mars.tensor.dot:9 of
+msgid ""
+"If either `a` or `b` is 0-D (scalar), it is equivalent to "
+":func:`multiply` and using ``numpy.multiply(a, b)`` or ``a * b`` is "
+"preferred."
+msgstr ""
+
+#: mars.tensor.dot:12 of
+msgid ""
+"If `a` is an N-D array and `b` is a 1-D array, it is a sum product over "
+"the last axis of `a` and `b`."
+msgstr ""
+
+#: mars.tensor.dot:15 of
+msgid ""
+"If `a` is an N-D array and `b` is an M-D array (where ``M>=2``), it is a "
+"sum product over the last axis of `a` and the second-to-last axis of "
+"`b`::"
+msgstr ""
+
+#: mars.tensor.dot:22 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.dot:21 mars.tensor.dot:23 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.dot:23 of
+msgid "First argument."
+msgstr ""
+
+#: mars.tensor.dot:24 of
+msgid "b"
+msgstr ""
+
+#: mars.tensor.dot:25 of
+msgid "Second argument."
+msgstr ""
+
+#: mars.tensor.dot:32 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.dot:31 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.dot:27 of
+msgid ""
+"Output argument. This must have the exact kind that would be returned if "
+"it was not used. In particular, it must have the right type, must be "
+"C-contiguous, and its dtype must be the dtype that would be returned for "
+"`dot(a,b)`. This is a performance feature. Therefore, if these conditions"
+" are not met, an exception is raised, instead of attempting to be "
+"flexible."
+msgstr ""
+
+#: mars.tensor.dot:40 of
+msgid "output"
+msgstr ""
+
+#: mars.tensor.dot:39 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.dot:37 of
+msgid ""
+"Returns the dot product of `a` and `b`.  If `a` and `b` are both scalars "
+"or both 1-D arrays then a scalar is returned; otherwise a tensor is "
+"returned. If `out` is given, then it is returned."
+msgstr ""
+
+#: mars.tensor.dot:46 of
+msgid "ValueError"
+msgstr ""
+
+#: mars.tensor.dot:45 of
+msgid ""
+"If the last dimension of `a` is not the same size as the second-to-last "
+"dimension of `b`."
+msgstr ""
+
+#: mars.tensor.dot:50 of
+msgid ""
+"vdot : Complex-conjugating dot product. tensordot : Sum products over "
+"arbitrary axes. einsum : Einstein summation convention. matmul : '@' "
+"operator as method with out parameter."
+msgstr ""
+
+#: mars.tensor.dot:62 of
+msgid "Neither argument is complex-conjugated:"
+msgstr ""
+
+#: mars.tensor.dot:67 of
+msgid "For 2-D arrays it is the matrix product:"
+msgstr ""
+

@@ -1,0 +1,71 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.unravel_index.rst:2
+msgid "mars.tensor.unravel\\_index"
+msgstr ""
+
+#: mars.tensor.unravel_index:1 of
+msgid ""
+"Converts a flat index or tensor of flat indices into a tuple of "
+"coordinate tensors."
+msgstr ""
+
+#: mars.tensor.unravel_index:7 of
+msgid "indices"
+msgstr ""
+
+#: mars.tensor.unravel_index:6 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.unravel_index:7 of
+msgid ""
+"An integer tensor whose elements are indices into the flattened version "
+"of a tensor of dimensions ``dims``."
+msgstr ""
+
+#: mars.tensor.unravel_index:10 of
+msgid "dims"
+msgstr ""
+
+#: mars.tensor.unravel_index:9 of
+msgid "tuple of ints"
+msgstr ""
+
+#: mars.tensor.unravel_index:10 of
+msgid "The shape of the tensor to use for unraveling ``indices``."
+msgstr ""
+
+#: mars.tensor.unravel_index:16 of
+msgid "unraveled_coords"
+msgstr ""
+
+#: mars.tensor.unravel_index:15 of
+msgid "tuple of Tensor"
+msgstr ""
+
+#: mars.tensor.unravel_index:15 of
+msgid "Each tensor in the tuple has the same shape as the ``indices`` tensor."
+msgstr ""
+
+#: mars.tensor.unravel_index:20 of
+msgid "ravel_multi_index"
+msgstr ""
+

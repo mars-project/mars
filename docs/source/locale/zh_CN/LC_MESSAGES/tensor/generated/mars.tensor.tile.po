@@ -1,0 +1,93 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.tile.rst:2
+msgid "mars.tensor.tile"
+msgstr ""
+
+#: mars.tensor.tile:1 of
+msgid "Construct a tensor by repeating A the number of times given by reps."
+msgstr ""
+
+#: mars.tensor.tile:3 of
+msgid ""
+"If `reps` has length ``d``, the result will have dimension of ``max(d, "
+"A.ndim)``."
+msgstr ""
+
+#: mars.tensor.tile:6 of
+msgid ""
+"If ``A.ndim < d``, `A` is promoted to be d-dimensional by prepending new "
+"axes. So a shape (3,) array is promoted to (1, 3) for 2-D replication, or"
+" shape (1, 1, 3) for 3-D replication. If this is not the desired "
+"behavior, promote `A` to d-dimensions manually before calling this "
+"function."
+msgstr ""
+
+#: mars.tensor.tile:12 of
+msgid ""
+"If ``A.ndim > d``, `reps` is promoted to `A`.ndim by pre-pending 1's to "
+"it. Thus for an `A` of shape (2, 3, 4, 5), a `reps` of (2, 2) is treated "
+"as (1, 1, 2, 2)."
+msgstr ""
+
+#: mars.tensor.tile:16 of
+msgid ""
+"Note : Although tile may be used for broadcasting, it is strongly "
+"recommended to use Mars' broadcasting operations and functions."
+msgstr ""
+
+#: mars.tensor.tile:21 of
+msgid "A"
+msgstr ""
+
+#: mars.tensor.tile:20 mars.tensor.tile:23 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.tile:22 of
+msgid "The input tensor."
+msgstr ""
+
+#: mars.tensor.tile:24 of
+msgid "reps"
+msgstr ""
+
+#: mars.tensor.tile:24 of
+msgid "The number of repetitions of `A` along each axis."
+msgstr ""
+
+#: mars.tensor.tile:29 of
+msgid "c"
+msgstr ""
+
+#: mars.tensor.tile:28 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.tile:29 of
+msgid "The tiled output tensor."
+msgstr ""
+
+#: mars.tensor.tile:33 of
+msgid ""
+"repeat : Repeat elements of a tensor. broadcast_to : Broadcast a tensor "
+"to a new shape"
+msgstr ""
+

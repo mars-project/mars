@@ -1,0 +1,74 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.ravel.rst:2
+msgid "mars.tensor.ravel"
+msgstr ""
+
+#: mars.tensor.ravel:1 of
+msgid "Return a contiguous flattened array."
+msgstr ""
+
+#: mars.tensor.ravel:3 of
+msgid ""
+"A 1-D array, containing the elements of the input, is returned.  A copy "
+"is made only if needed."
+msgstr ""
+
+#: mars.tensor.ravel:9 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.ravel:8 mars.tensor.ravel:16 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.ravel:9 of
+msgid "Input tensor.  The elements in `a` are packed as a 1-D tensor."
+msgstr ""
+
+#: mars.tensor.ravel:17 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.ravel:14 of
+msgid ""
+"If `a` is a matrix, y is a 1-D tensor, otherwise y is a tensor of the "
+"same subtype as `a`. The shape of the returned array is ``(a.size,)``. "
+"Matrices are special cased for backward compatibility."
+msgstr ""
+
+#: mars.tensor.ravel:21 of
+msgid ""
+"Tensor.flat : 1-D iterator over an array. Tensor.flatten : 1-D array copy"
+" of the elements of an array"
+msgstr ""
+
+#: mars.tensor.ravel:23 of
+msgid "in row-major order."
+msgstr ""
+
+#: mars.tensor.ravel:24 of
+msgid "Tensor.reshape : Change the shape of an array without changing its data."
+msgstr ""
+
+#: mars.tensor.ravel:28 of
+msgid "It is equivalent to ``reshape(-1)``."
+msgstr ""
+

@@ -1,0 +1,255 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.linalg.norm.rst:2
+msgid "mars.tensor.linalg.norm"
+msgstr ""
+
+#: mars.tensor.linalg.norm:1 of
+msgid "Matrix or vector norm."
+msgstr ""
+
+#: mars.tensor.linalg.norm:3 of
+msgid ""
+"This function is able to return one of eight different matrix norms, or "
+"one of an infinite number of vector norms (described below), depending on"
+" the value of the ``ord`` parameter."
+msgstr ""
+
+#: mars.tensor.linalg.norm:9 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.linalg.norm:8 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.linalg.norm:10 of
+msgid "Input tensor.  If `axis` is None, `x` must be 1-D or 2-D."
+msgstr ""
+
+#: mars.tensor.linalg.norm:12 mars.tensor.linalg.norm:39 of
+msgid "ord"
+msgstr ""
+
+#: mars.tensor.linalg.norm:11 of
+msgid "{non-zero int, inf, -inf, 'fro', 'nuc'}, optional"
+msgstr ""
+
+#: mars.tensor.linalg.norm:12 of
+msgid ""
+"Order of the norm (see table under ``Notes``). inf means mars tensor's "
+"`inf` object."
+msgstr ""
+
+#: mars.tensor.linalg.norm:18 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.linalg.norm:17 of
+msgid "{int, 2-tuple of ints, None}, optional"
+msgstr ""
+
+#: mars.tensor.linalg.norm:15 of
+msgid ""
+"If `axis` is an integer, it specifies the axis of `x` along which to "
+"compute the vector norms.  If `axis` is a 2-tuple, it specifies the axes "
+"that hold 2-D matrices, and the matrix norms of these matrices are "
+"computed.  If `axis` is None then either a vector norm (when `x` is 1-D) "
+"or a matrix norm (when `x` is 2-D) is returned."
+msgstr ""
+
+#: mars.tensor.linalg.norm:23 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.linalg.norm:22 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.linalg.norm:21 of
+msgid ""
+"If this is set to True, the axes which are normed over are left in the "
+"result as dimensions with size one.  With this option the result will "
+"broadcast correctly against the original `x`."
+msgstr ""
+
+#: mars.tensor.linalg.norm:28 of
+msgid "n"
+msgstr ""
+
+#: mars.tensor.linalg.norm:27 of
+msgid "float or Tensor"
+msgstr ""
+
+#: mars.tensor.linalg.norm:28 of
+msgid "Norm of the matrix or vector(s)."
+msgstr ""
+
+#: mars.tensor.linalg.norm:32 of
+msgid ""
+"For values of ``ord <= 0``, the result is, strictly speaking, not a "
+"mathematical 'norm', but it may still be useful for various numerical "
+"purposes."
+msgstr ""
+
+#: mars.tensor.linalg.norm:36 of
+msgid "The following norms can be calculated:"
+msgstr ""
+
+#: mars.tensor.linalg.norm:39 of
+msgid "norm for matrices"
+msgstr ""
+
+#: mars.tensor.linalg.norm:39 of
+msgid "norm for vectors"
+msgstr ""
+
+#: mars.tensor.linalg.norm:41 of
+msgid "None"
+msgstr ""
+
+#: mars.tensor.linalg.norm:41 mars.tensor.linalg.norm:42 of
+msgid "Frobenius norm"
+msgstr ""
+
+#: mars.tensor.linalg.norm:41 of
+msgid "2-norm"
+msgstr ""
+
+#: mars.tensor.linalg.norm:42 of
+msgid "'fro'"
+msgstr ""
+
+#: mars.tensor.linalg.norm:42 mars.tensor.linalg.norm:43
+#: mars.tensor.linalg.norm:46 mars.tensor.linalg.norm:51 of
+msgid "--"
+msgstr ""
+
+#: mars.tensor.linalg.norm:43 of
+msgid "'nuc'"
+msgstr ""
+
+#: mars.tensor.linalg.norm:43 of
+msgid "nuclear norm"
+msgstr ""
+
+#: mars.tensor.linalg.norm:44 of
+msgid "inf"
+msgstr ""
+
+#: mars.tensor.linalg.norm:44 of
+msgid "max(sum(abs(x), axis=1))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:44 of
+msgid "max(abs(x))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:45 of
+msgid "-inf"
+msgstr ""
+
+#: mars.tensor.linalg.norm:45 of
+msgid "min(sum(abs(x), axis=1))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:45 of
+msgid "min(abs(x))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:46 of
+msgid "0"
+msgstr ""
+
+#: mars.tensor.linalg.norm:46 of
+msgid "sum(x != 0)"
+msgstr ""
+
+#: mars.tensor.linalg.norm:47 of
+msgid "1"
+msgstr ""
+
+#: mars.tensor.linalg.norm:47 of
+msgid "max(sum(abs(x), axis=0))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:47 mars.tensor.linalg.norm:48
+#: mars.tensor.linalg.norm:49 mars.tensor.linalg.norm:50 of
+msgid "as below"
+msgstr ""
+
+#: mars.tensor.linalg.norm:48 of
+msgid "-1"
+msgstr ""
+
+#: mars.tensor.linalg.norm:48 of
+msgid "min(sum(abs(x), axis=0))"
+msgstr ""
+
+#: mars.tensor.linalg.norm:49 of
+msgid "2"
+msgstr ""
+
+#: mars.tensor.linalg.norm:49 of
+msgid "2-norm (largest sing. value)"
+msgstr ""
+
+#: mars.tensor.linalg.norm:50 of
+msgid "-2"
+msgstr ""
+
+#: mars.tensor.linalg.norm:50 of
+msgid "smallest singular value"
+msgstr ""
+
+#: mars.tensor.linalg.norm:51 of
+msgid "other"
+msgstr ""
+
+#: mars.tensor.linalg.norm:51 of
+msgid "sum(abs(x)**ord)**(1./ord)"
+msgstr ""
+
+#: mars.tensor.linalg.norm:54 of
+msgid "The Frobenius norm is given by [1]_:"
+msgstr ""
+
+#: mars.tensor.linalg.norm:56 of
+msgid ":math:`||A||_F = [\\sum_{i,j} abs(a_{i,j})^2]^{1/2}`"
+msgstr ""
+
+#: mars.tensor.linalg.norm:58 of
+msgid "The nuclear norm is the sum of the singular values."
+msgstr ""
+
+#: mars.tensor.linalg.norm:62 of
+msgid ""
+"G. H. Golub and C. F. Van Loan, *Matrix Computations*, Baltimore, MD, "
+"Johns Hopkins University Press, 1985, pg. 15"
+msgstr ""
+
+#: mars.tensor.linalg.norm:115 of
+msgid "Using the `axis` argument to compute vector norms:"
+msgstr ""
+
+#: mars.tensor.linalg.norm:126 of
+msgid "Using the `axis` argument to compute matrix norms:"
+msgstr ""
+

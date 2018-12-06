@@ -1,0 +1,78 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.vstack.rst:2
+msgid "mars.tensor.vstack"
+msgstr ""
+
+#: mars.tensor.vstack:1 of
+msgid "Stack tensors in sequence vertically (row wise)."
+msgstr ""
+
+#: mars.tensor.vstack:3 of
+msgid ""
+"This is equivalent to concatenation along the first axis after 1-D "
+"tensors of shape `(N,)` have been reshaped to `(1,N)`. Rebuilds tensors "
+"divided by `vsplit`."
+msgstr ""
+
+#: mars.tensor.vstack:7 of
+msgid ""
+"This function makes most sense for tensors with up to 3 dimensions. For "
+"instance, for pixel-data with a height (first axis), width (second axis),"
+" and r/g/b channels (third axis). The functions `concatenate`, `stack` "
+"and `block` provide more general stacking and concatenation operations."
+msgstr ""
+
+#: mars.tensor.vstack:16 of
+msgid "tup"
+msgstr ""
+
+#: mars.tensor.vstack:15 of
+msgid "sequence of tensors"
+msgstr ""
+
+#: mars.tensor.vstack:15 of
+msgid ""
+"The tensors must have the same shape along all but the first axis. 1-D "
+"tensors must have the same length."
+msgstr ""
+
+#: mars.tensor.vstack:21 of
+msgid "stacked"
+msgstr ""
+
+#: mars.tensor.vstack:20 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.vstack:21 of
+msgid "The tensor formed by stacking the given tensors, will be at least 2-D."
+msgstr ""
+
+#: mars.tensor.vstack:25 of
+msgid ""
+"stack : Join a sequence of tensors along a new axis. hstack : Stack "
+"tensors in sequence horizontally (column wise). dstack : Stack tensors in"
+" sequence depth wise (along third dimension). concatenate : Join a "
+"sequence of tensors along an existing axis. vsplit : Split tensor into a "
+"list of multiple sub-arrays vertically. block : Assemble tensors from "
+"blocks."
+msgstr ""
+

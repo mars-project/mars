@@ -1,0 +1,88 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.expand_dims.rst:2
+msgid "mars.tensor.expand\\_dims"
+msgstr ""
+
+#: mars.tensor.expand_dims:1 of
+msgid "Expand the shape of a tensor."
+msgstr ""
+
+#: mars.tensor.expand_dims:3 of
+msgid ""
+"Insert a new axis that will appear at the `axis` position in the expanded"
+" array shape."
+msgstr ""
+
+#: mars.tensor.expand_dims:8 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.expand_dims:7 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.expand_dims:9 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.expand_dims:11 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.expand_dims:10 of
+msgid "int"
+msgstr ""
+
+#: mars.tensor.expand_dims:11 of
+msgid "Position in the expanded axes where the new axis is placed."
+msgstr ""
+
+#: mars.tensor.expand_dims:17 of
+msgid "res"
+msgstr ""
+
+#: mars.tensor.expand_dims:16 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.expand_dims:16 of
+msgid ""
+"Output tensor. The number of dimensions is one greater than that of the "
+"input tensor."
+msgstr ""
+
+#: mars.tensor.expand_dims:21 of
+msgid ""
+"squeeze : The inverse operation, removing singleton dimensions reshape : "
+"Insert, remove, and combine dimensions, and resize existing ones "
+"doc.indexing, atleast_1d, atleast_2d, atleast_3d"
+msgstr ""
+
+#: mars.tensor.expand_dims:33 of
+msgid "The following is equivalent to ``x[mt.newaxis,:]`` or ``x[mt.newaxis]``:"
+msgstr ""
+
+#: mars.tensor.expand_dims:48 of
+msgid ""
+"Note that some examples may use ``None`` instead of ``np.newaxis``.  "
+"These are the same objects:"
+msgstr ""
+

@@ -1,0 +1,80 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.extract.rst:2
+msgid "mars.tensor.extract"
+msgstr ""
+
+#: mars.tensor.extract:1 of
+msgid "Return the elements of a tensor that satisfy some condition."
+msgstr ""
+
+#: mars.tensor.extract:3 of
+msgid ""
+"This is equivalent to ``mt.compress(ravel(condition), ravel(arr))``.  If "
+"`condition` is boolean ``mt.extract`` is equivalent to "
+"``arr[condition]``."
+msgstr ""
+
+#: mars.tensor.extract:6 of
+msgid "Note that `place` does the exact opposite of `extract`."
+msgstr ""
+
+#: mars.tensor.extract:11 of
+msgid "condition"
+msgstr ""
+
+#: mars.tensor.extract:10 mars.tensor.extract:13 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.extract:11 of
+msgid ""
+"An array whose nonzero or True entries indicate the elements of `arr` to "
+"extract."
+msgstr ""
+
+#: mars.tensor.extract:14 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.extract:14 of
+msgid "Input tensor of the same size as `condition`."
+msgstr ""
+
+#: mars.tensor.extract:19 of
+msgid "extract"
+msgstr ""
+
+#: mars.tensor.extract:18 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.extract:19 of
+msgid "Rank 1 tensor of values from `arr` where `condition` is True."
+msgstr ""
+
+#: mars.tensor.extract:23 of
+msgid "take, put, copyto, compress, place"
+msgstr ""
+
+#: mars.tensor.extract:43 of
+msgid "If `condition` is boolean:"
+msgstr ""
+

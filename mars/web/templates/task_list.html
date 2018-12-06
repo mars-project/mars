@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% set active_page = 'task_list' %}
+{% block body %}
+    <div class="row">
+        <h2>Session List</h2>
+        {% for session_id in sessions %}
+            {% set tasks = sessions[session_id]['tasks'] %}
+            <h3>{{ sessions[session_id]['name'] }}</h3>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Task ID</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                    <th>Graph Size</th>
+                    <th>State</th>
+                </tr>
+                </thead>
+                <tbody>
+                {%- for task_id in tasks %}
+                    {% set task_desc = tasks[task_id] %}
+                    <tr>
+                        {% if task_desc['state'] == 'preparing'%}
+                            <td>{{ task_id }}</td>
+                        {% else %}
+                            <td><a href="/task?session_id={{ session_id }}&task_id={{ task_id }}">{{ task_id }}</a></td>
+                        {% endif %}
+                        <td>{{ task_desc['start_time']  if 'start_time' in task_desc else 'N/A' }}</td>
+                        <td>{{ task_desc['end_time'] if 'end_time' in task_desc else 'N/A' }}</td>
+                        <td>{{ task_desc['graph_size'] if 'graph_size' in task_desc else 'N/A' }}</td>
+                        <td>{{ task_desc['state'] if 'state' in task_desc else 'N/A'}}</td>
+                    </tr>
+                {% endfor -%}
+                </tbody>
+            </table>
+        {% endfor %}
+    </div>
+{% endblock %}

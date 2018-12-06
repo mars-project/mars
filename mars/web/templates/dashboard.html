@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% set active_page = 'dashboard' %}
+{% block body %}
+    {% for node_info in infos %}
+        <div class="row">
+            <div><h2>Scheduler{{ loop.index }} Info</h2></div>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Git Branch</td>
+                    <td><pre class="plain-pre">{{ node_info['git_info'] }}</pre></td>
+                </tr>
+                <tr>
+                    <td>Platform</td>
+                    <td><pre class="plain-pre">{{ node_info['platform'] }}</pre></td>
+                </tr>
+                <tr>
+                    <td>Python Version</td>
+                    <td><pre class="plain-pre">{{ node_info['sys_version'] }}</pre></td>
+                </tr>
+                </tbody>
+            </table>
+            <div><h2>Resources</h2></div>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>CPU Info</td>
+                    <td><pre class="plain-pre">{{ node_info['cpu_info'] }}</pre></td>
+                </tr>
+                <tr>
+                    <td>Memory Info</td>
+                    <td><pre class="plain-pre">{{ node_info['memory_info'] }}</pre></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
+{% endblock %}

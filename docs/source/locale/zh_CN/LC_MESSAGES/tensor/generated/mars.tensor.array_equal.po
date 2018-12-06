@@ -1,0 +1,67 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.array_equal.rst:2
+msgid "mars.tensor.array\\_equal"
+msgstr ""
+
+#: mars.tensor.array_equal:1 of
+msgid "True if two tensors have the same shape and elements, False otherwise."
+msgstr ""
+
+#: mars.tensor.array_equal:6 of
+msgid "a1, a2"
+msgstr ""
+
+#: mars.tensor.array_equal:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.array_equal:6 of
+msgid "Input arrays."
+msgstr ""
+
+#: mars.tensor.array_equal:11 of
+msgid "b"
+msgstr ""
+
+#: mars.tensor.array_equal:10 of
+msgid "bool"
+msgstr ""
+
+#: mars.tensor.array_equal:11 of
+msgid "Returns True if the tensors are equal."
+msgstr ""
+
+#: mars.tensor.array_equal:15 of
+msgid "allclose: Returns True if two tensors are element-wise equal within a"
+msgstr ""
+
+#: mars.tensor.array_equal:16 of
+msgid "tolerance."
+msgstr ""
+
+#: mars.tensor.array_equal:18 of
+msgid "array_equiv: Returns True if input tensors are shape consistent and all"
+msgstr ""
+
+#: mars.tensor.array_equal:18 of
+msgid "elements equal."
+msgstr ""
+

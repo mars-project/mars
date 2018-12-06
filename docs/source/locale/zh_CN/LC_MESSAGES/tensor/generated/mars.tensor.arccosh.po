@@ -1,0 +1,122 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.arccosh.rst:2
+msgid "mars.tensor.arccosh"
+msgstr ""
+
+#: mars.tensor.arccosh:1 of
+msgid "Inverse hyperbolic cosine, element-wise."
+msgstr ""
+
+#: mars.tensor.arccosh:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.arccosh:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.arccosh:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.arccosh:10 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.arccosh:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.arccosh:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.arccosh:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.arccosh:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.arccosh:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.arccosh:15 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.arccosh:20 of
+msgid "arccosh"
+msgstr ""
+
+#: mars.tensor.arccosh:19 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.arccosh:20 of
+msgid "Array of the same shape as `x`."
+msgstr ""
+
+#: mars.tensor.arccosh:25 of
+msgid "cosh, arcsinh, sinh, arctanh, tanh"
+msgstr ""
+
+#: mars.tensor.arccosh:29 of
+msgid ""
+"`arccosh` is a multivalued function: for each `x` there are infinitely "
+"many numbers `z` such that `cosh(z) = x`. The convention is to return the"
+" `z` whose imaginary part lies in `[-pi, pi]` and the real part in ``[0, "
+"inf]``."
+msgstr ""
+
+#: mars.tensor.arccosh:34 of
+msgid ""
+"For real-valued input data types, `arccosh` always returns real output. "
+"For each value that cannot be expressed as a real number or infinity, it "
+"yields ``nan`` and sets the `invalid` floating point error flag."
+msgstr ""
+
+#: mars.tensor.arccosh:38 of
+msgid ""
+"For complex-valued input, `arccosh` is a complex analytical function that"
+" has a branch cut `[-inf, 1]` and is continuous from above on it."
+msgstr ""
+
+#: mars.tensor.arccosh:43 of
+msgid ""
+"M. Abramowitz and I.A. Stegun, \"Handbook of Mathematical Functions\", "
+"10th printing, 1964, pp. 86. http://www.math.sfu.ca/~cbm/aands/"
+msgstr ""
+
+#: mars.tensor.arccosh:45 of
+msgid ""
+"Wikipedia, \"Inverse hyperbolic function\", "
+"http://en.wikipedia.org/wiki/Arccosh"
+msgstr ""
+

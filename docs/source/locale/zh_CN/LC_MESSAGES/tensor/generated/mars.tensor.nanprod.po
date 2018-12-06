@@ -1,0 +1,138 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.nanprod.rst:2
+msgid "mars.tensor.nanprod"
+msgstr ""
+
+#: mars.tensor.nanprod:1 of
+msgid ""
+"Return the product of array elements over a given axis treating Not a "
+"Numbers (NaNs) as ones."
+msgstr ""
+
+#: mars.tensor.nanprod:4 of
+msgid "One is returned for slices that are all-NaN or empty."
+msgstr ""
+
+#: mars.tensor.nanprod:9 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.nanprod:8 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.nanprod:9 of
+msgid ""
+"Tensor containing numbers whose product is desired. If `a` is not an "
+"tensor, a conversion is attempted."
+msgstr ""
+
+#: mars.tensor.nanprod:12 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.nanprod:11 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.nanprod:12 of
+msgid ""
+"Axis along which the product is computed. The default is to compute the "
+"product of the flattened tensor."
+msgstr ""
+
+#: mars.tensor.nanprod:19 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.nanprod:18 of
+msgid "data-type, optional"
+msgstr ""
+
+#: mars.tensor.nanprod:15 of
+msgid ""
+"The type of the returned tensor and of the accumulator in which the "
+"elements are summed.  By default, the dtype of `a` is used.  An exception"
+" is when `a` has an integer type with less precision than the platform "
+"(u)intp. In that case, the default will be either (u)int32 or (u)int64 "
+"depending on whether the platform is 32 or 64 bits. For inexact inputs, "
+"dtype must be inexact."
+msgstr ""
+
+#: mars.tensor.nanprod:25 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.nanprod:24 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.nanprod:22 of
+msgid ""
+"Alternate output tensor in which to place the result.  The default is "
+"``None``. If provided, it must have the same shape as the expected "
+"output, but the type will be cast if necessary.  See `doc.ufuncs` for "
+"details. The casting of NaN to integer can yield unexpected results."
+msgstr ""
+
+#: mars.tensor.nanprod:29 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.nanprod:28 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.nanprod:28 of
+msgid ""
+"If True, the axes which are reduced are left in the result as dimensions "
+"with size one. With this option, the result will broadcast correctly "
+"against the original `arr`."
+msgstr ""
+
+#: mars.tensor.nanprod:32 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.nanprod:32 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.nanprod:38 of
+msgid "nanprod"
+msgstr ""
+
+#: mars.tensor.nanprod:37 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.nanprod:37 of
+msgid ""
+"A new tensor holding the result is returned unless `out` is specified, in"
+" which case it is returned."
+msgstr ""
+
+#: mars.tensor.nanprod:42 of
+msgid ""
+"mt.prod : Product across array propagating NaNs. isnan : Show which "
+"elements are NaN."
+msgstr ""
+

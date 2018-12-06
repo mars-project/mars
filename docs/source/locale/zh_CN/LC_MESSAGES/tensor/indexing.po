@@ -1,0 +1,107 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 15:36+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/indexing.rst:2
+msgid "Indexing Routines"
+msgstr ""
+
+#: ../../source/tensor/indexing.rst:5
+msgid "Generating index arrays"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nonzero <mars.tensor.nonzero>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the indices of the elements that are non-zero."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.where <mars.tensor.where>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return elements, either from `x` or `y`, depending on `condition`."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.indices <mars.tensor.indices>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return a tensor representing the indices of a grid."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ogrid <mars.tensor.ogrid>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Construct a multi-dimensional \"meshgrid\"."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.unravel_index <mars.tensor.unravel_index>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Converts a flat index or tensor of flat indices into a tuple of "
+"coordinate tensors."
+msgstr ""
+
+#: ../../source/tensor/indexing.rst:19
+msgid "Indexing-like opeartions"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.take <mars.tensor.take>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Take elements from a tensor along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.choose <mars.tensor.choose>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Construct a tensor from an index tensor and a set of tensors to choose "
+"from."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.compress <mars.tensor.compress>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return selected slices of a tensor along given axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.diag <mars.tensor.diag>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Extract a diagonal or construct a diagonal tensor."
+msgstr ""
+

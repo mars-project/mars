@@ -1,0 +1,185 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.choose.rst:2
+msgid "mars.tensor.choose"
+msgstr ""
+
+#: mars.tensor.choose:1 of
+msgid ""
+"Construct a tensor from an index tensor and a set of tensors to choose "
+"from."
+msgstr ""
+
+#: mars.tensor.choose:3 of
+msgid ""
+"First of all, if confused or uncertain, definitely look at the Examples -"
+" in its full generality, this function is less simple than it might seem "
+"from the following code description (below ndi = `mt.lib.index_tricks`):"
+msgstr ""
+
+#: mars.tensor.choose:8 of
+msgid ""
+"``mt.choose(a,c) == mt.array([c[a[I]][I] for I in "
+"ndi.ndindex(a.shape)])``."
+msgstr ""
+
+#: mars.tensor.choose:10 of
+msgid "But this omits some subtleties.  Here is a fully general summary:"
+msgstr ""
+
+#: mars.tensor.choose:12 of
+msgid ""
+"Given an \"index\" tensor (`a`) of integers and a sequence of `n` tensors"
+" (`choices`), `a` and each choice tensor are first broadcast, as "
+"necessary, to tensors of a common shape; calling these *Ba* and "
+"*Bchoices[i], i = 0,...,n-1* we have that, necessarily, ``Ba.shape == "
+"Bchoices[i].shape`` for each `i`.  Then, a new array with shape "
+"``Ba.shape`` is created as follows:"
+msgstr ""
+
+#: mars.tensor.choose:19 of
+msgid ""
+"if ``mode=raise`` (the default), then, first of all, each element of `a` "
+"(and thus `Ba`) must be in the range `[0, n-1]`; now, suppose that `i` "
+"(in that range) is the value at the `(j0, j1, ..., jm)` position in `Ba` "
+"- then the value at the same position in the new array is the value in "
+"`Bchoices[i]` at that same position;"
+msgstr ""
+
+#: mars.tensor.choose:25 of
+msgid ""
+"if ``mode=wrap``, values in `a` (and thus `Ba`) may be any (signed) "
+"integer; modular arithmetic is used to map integers outside the range "
+"`[0, n-1]` back into that range; and then the new array is constructed as"
+" above;"
+msgstr ""
+
+#: mars.tensor.choose:30 of
+msgid ""
+"if ``mode=clip``, values in `a` (and thus `Ba`) may be any (signed) "
+"integer; negative integers are mapped to 0; values greater than `n-1` are"
+" mapped to `n-1`; and then the new tensor is constructed as above."
+msgstr ""
+
+#: mars.tensor.choose:38 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.choose:37 of
+msgid "int tensor"
+msgstr ""
+
+#: mars.tensor.choose:37 of
+msgid ""
+"This tensor must contain integers in `[0, n-1]`, where `n` is the number "
+"of choices, unless ``mode=wrap`` or ``mode=clip``, in which cases any "
+"integers are permissible."
+msgstr ""
+
+#: mars.tensor.choose:43 of
+msgid "choices"
+msgstr ""
+
+#: mars.tensor.choose:42 of
+msgid "sequence of tensors"
+msgstr ""
+
+#: mars.tensor.choose:41 of
+msgid ""
+"Choice tensors. `a` and all of the choices must be broadcastable to the "
+"same shape.  If `choices` is itself a tensor (not recommended), then its "
+"outermost dimension (i.e., the one corresponding to ``choices.shape[0]``)"
+" is taken as defining the \"sequence\"."
+msgstr ""
+
+#: mars.tensor.choose:46 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.choose:45 of
+msgid "tensor, optional"
+msgstr ""
+
+#: mars.tensor.choose:46 of
+msgid ""
+"If provided, the result will be inserted into this tensor. It should be "
+"of the appropriate shape and dtype."
+msgstr ""
+
+#: mars.tensor.choose:53 of
+msgid "mode"
+msgstr ""
+
+#: mars.tensor.choose:52 of
+msgid "{'raise' (default), 'wrap', 'clip'}, optional"
+msgstr ""
+
+#: mars.tensor.choose:49 of
+msgid "Specifies how indices outside `[0, n-1]` will be treated:"
+msgstr ""
+
+#: mars.tensor.choose:51 of
+msgid "'raise' : an exception is raised"
+msgstr ""
+
+#: mars.tensor.choose:52 of
+msgid "'wrap' : value becomes value mod `n`"
+msgstr ""
+
+#: mars.tensor.choose:53 of
+msgid "'clip' : values < 0 are mapped to 0, values > n-1 are mapped to n-1"
+msgstr ""
+
+#: mars.tensor.choose:58 of
+msgid "merged_array"
+msgstr ""
+
+#: mars.tensor.choose:57 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.choose:58 of
+msgid "The merged result."
+msgstr ""
+
+#: mars.tensor.choose:64 of
+msgid "ValueError: shape mismatch"
+msgstr ""
+
+#: mars.tensor.choose:63 of
+msgid "If `a` and each choice tensor are not all broadcastable to the same shape."
+msgstr ""
+
+#: mars.tensor.choose:68 of
+msgid "Tensor.choose : equivalent method"
+msgstr ""
+
+#: mars.tensor.choose:72 of
+msgid ""
+"To reduce the chance of misinterpretation, even though the following "
+"\"abuse\" is nominally supported, `choices` should neither be, nor be "
+"thought of as, a single tensor, i.e., the outermost sequence-like "
+"container should be either a list or a tuple."
+msgstr ""
+
+#: mars.tensor.choose:98 of
+msgid "A couple examples illustrating how choose broadcasts:"
+msgstr ""
+

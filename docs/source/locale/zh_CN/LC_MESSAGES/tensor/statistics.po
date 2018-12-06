@@ -1,0 +1,165 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:34+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/statistics.rst:2
+msgid "Statistics"
+msgstr ""
+
+#: ../../source/tensor/statistics.rst:5
+msgid "Order statistics"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.amin <mars.tensor.amin>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the minimum of a tensor or minimum along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.amax <mars.tensor.amax>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return the maximum of an array or maximum along an axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanmin <mars.tensor.nanmin>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return minimum of a tensor or minimum along an axis, ignoring any NaNs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanmax <mars.tensor.nanmax>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the maximum of an array or maximum along an axis, ignoring any "
+"NaNs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.ptp <mars.tensor.ptp>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Range of values (maximum - minimum) along an axis."
+msgstr ""
+
+#: ../../source/tensor/statistics.rst:19
+msgid "Average and variances"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.average <mars.tensor.average>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the weighted average along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.mean <mars.tensor.mean>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the arithmetic mean along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.std <mars.tensor.std>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the standard deviation along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.var <mars.tensor.var>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the variance along the specified axis."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanmean <mars.tensor.nanmean>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the arithmetic mean along the specified axis, ignoring NaNs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanstd <mars.tensor.nanstd>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Compute the standard deviation along the specified axis, while ignoring "
+"NaNs."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.nanvar <mars.tensor.nanvar>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Compute the variance along the specified axis, while ignoring NaNs."
+msgstr ""
+
+#: ../../source/tensor/statistics.rst:35
+msgid "Correlating"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.corrcoef <mars.tensor.corrcoef>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Return Pearson product-moment correlation coefficients."
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.cov <mars.tensor.cov>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid "Estimate a covariance matrix, given data and weights."
+msgstr ""
+
+#: ../../source/tensor/statistics.rst:46
+msgid "Histograms"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ":obj:`mars.tensor.digitize <mars.tensor.digitize>`"
+msgstr ""
+
+#: ../../<autosummary>:1
+msgid ""
+"Return the indices of the bins to which each value in input tensor "
+"belongs."
+msgstr ""
+

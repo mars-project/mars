@@ -1,0 +1,115 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.compress.rst:2
+msgid "mars.tensor.compress"
+msgstr ""
+
+#: mars.tensor.compress:1 of
+msgid "Return selected slices of a tensor along given axis."
+msgstr ""
+
+#: mars.tensor.compress:3 of
+msgid ""
+"When working along a given axis, a slice along that axis is returned in "
+"`output` for each index where `condition` evaluates to True. When working"
+" on a 1-D array, `compress` is equivalent to `extract`."
+msgstr ""
+
+#: mars.tensor.compress:11 of
+msgid "condition"
+msgstr ""
+
+#: mars.tensor.compress:10 of
+msgid "1-D tensor of bools"
+msgstr ""
+
+#: mars.tensor.compress:10 of
+msgid ""
+"Tensor that selects which entries to return. If len(condition) is less "
+"than the size of `a` along the given axis, then output is truncated to "
+"the length of the condition tensor."
+msgstr ""
+
+#: mars.tensor.compress:13 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.compress:12 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.compress:14 of
+msgid "Tensor from which to extract a part."
+msgstr ""
+
+#: mars.tensor.compress:16 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.compress:15 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.compress:16 of
+msgid ""
+"Axis along which to take slices. If None (default), work on the flattened"
+" tensor."
+msgstr ""
+
+#: mars.tensor.compress:20 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.compress:19 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.compress:19 of
+msgid ""
+"Output tensor.  Its type is preserved and it must be of the right shape "
+"to hold the output."
+msgstr ""
+
+#: mars.tensor.compress:26 of
+msgid "compressed_array"
+msgstr ""
+
+#: mars.tensor.compress:25 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.compress:25 of
+msgid ""
+"A copy of `a` without the slices along axis for which `condition` is "
+"false."
+msgstr ""
+
+#: mars.tensor.compress:30 of
+msgid ""
+"take, choose, diag, diagonal, select Tensor.compress : Equivalent method "
+"in ndarray mt.extract: Equivalent method when working on 1-D arrays"
+msgstr ""
+
+#: mars.tensor.compress:53 of
+msgid ""
+"Working on the flattened tensor does not return slices along an axis but "
+"selects elements."
+msgstr ""
+

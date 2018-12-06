@@ -1,0 +1,161 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.random.negative_binomial.rst:2
+msgid "mars.tensor.random.negative\\_binomial"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:1 of
+msgid "Draw samples from a negative binomial distribution."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:3 of
+msgid ""
+"Samples are drawn from a negative binomial distribution with specified "
+"parameters, `n` trials and `p` probability of success where `n` is an "
+"integer > 0 and `p` is in the interval [0, 1]."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:10 of
+msgid "n"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:9 of
+msgid "int or array_like of ints"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:10 of
+msgid ""
+"Parameter of the distribution, > 0. Floats are also accepted, but they "
+"will be truncated to integers."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:12 of
+msgid "p"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:11 of
+msgid "float or array_like of floats"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:13 of
+msgid "Parameter of the distribution, >= 0 and <=1."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:17 of
+msgid "size"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:16 of
+msgid "int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:15 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``n`` and ``p`` are both scalars. Otherwise, "
+"``np.broadcast(n, p).size`` samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:19 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:18 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:20 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:22 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:21 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:22 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:30 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:29 of
+msgid "Tensor or scalar"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:27 of
+msgid ""
+"Drawn samples from the parameterized negative binomial distribution, "
+"where each sample is equal to N, the number of trials it took to achieve "
+"n - 1 successes, N - (n - 1) failures, and a success on the, (N + n)th "
+"trial."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:34 of
+msgid "The probability density for the negative binomial distribution is"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:38 of
+msgid ""
+"where :math:`n-1` is the number of successes, :math:`p` is the "
+"probability of success, and :math:`N+n-1` is the number of trials. The "
+"negative binomial distribution gives the probability of n-1 successes and"
+" N failures in N+n-1 trials, and success on the (N+n)th trial."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:44 of
+msgid ""
+"If one throws a die repeatedly until the third time a \"1\" appears, then"
+" the probability distribution of the number of non-\"1\"s that appear "
+"before the third \"1\" is a negative binomial distribution."
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:50 of
+msgid ""
+"Weisstein, Eric W. \"Negative Binomial Distribution.\" From MathWorld--A "
+"Wolfram Web Resource. "
+"http://mathworld.wolfram.com/NegativeBinomialDistribution.html"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:53 of
+msgid ""
+"Wikipedia, \"Negative binomial distribution\", "
+"http://en.wikipedia.org/wiki/Negative_binomial_distribution"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:58 of
+msgid "Draw samples from the distribution:"
+msgstr ""
+
+#: mars.tensor.random.negative_binomial:60 of
+msgid ""
+"A real world example. A company drills wild-cat oil exploration wells, "
+"each with an estimated probability of success of 0.1.  What is the "
+"probability of having one success for each successive well, that is what "
+"is the probability of a single success after drilling 5 wells, after 6 "
+"wells, etc.?"
+msgstr ""
+

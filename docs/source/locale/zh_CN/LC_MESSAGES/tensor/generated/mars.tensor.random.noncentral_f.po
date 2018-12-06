@@ -1,0 +1,149 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.random.noncentral_f.rst:2
+msgid "mars.tensor.random.noncentral\\_f"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:1 of
+msgid "Draw samples from the noncentral F distribution."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:3 of
+msgid ""
+"Samples are drawn from an F distribution with specified parameters, "
+"`dfnum` (degrees of freedom in numerator) and `dfden` (degrees of freedom"
+" in denominator), where both parameters > 1. `nonc` is the non-centrality"
+" parameter."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:10 of
+msgid "dfnum"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:9 mars.tensor.random.noncentral_f:11
+#: mars.tensor.random.noncentral_f:14 of
+msgid "float or array_like of floats"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:11 of
+msgid "Numerator degrees of freedom, should be > 0."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:12 of
+msgid "dfden"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:13 of
+msgid "Denominator degrees of freedom, should be > 0."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:15 of
+msgid "nonc"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:15 of
+msgid ""
+"Non-centrality parameter, the sum of the squares of the numerator means, "
+"should be >= 0."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:21 of
+msgid "size"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:20 of
+msgid "int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:18 of
+msgid ""
+"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
+" k`` samples are drawn.  If size is ``None`` (default), a single value is"
+" returned if ``dfnum``, ``dfden``, and ``nonc`` are all scalars.  "
+"Otherwise, ``np.broadcast(dfnum, dfden, nonc).size`` samples are drawn."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:23 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:22 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:24 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:26 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:25 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:26 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:31 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:30 of
+msgid "Tensor or scalar"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:31 of
+msgid "Drawn samples from the parameterized noncentral Fisher distribution."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:35 of
+msgid ""
+"When calculating the power of an experiment (power = probability of "
+"rejecting the null hypothesis when a specific alternative is true) the "
+"non-central F statistic becomes important.  When the null hypothesis is "
+"true, the F statistic follows a central F distribution. When the null "
+"hypothesis is not true, then it follows a non-central F statistic."
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:43 of
+msgid ""
+"Weisstein, Eric W. \"Noncentral F-Distribution.\" From MathWorld--A "
+"Wolfram Web Resource. http://mathworld.wolfram.com/NoncentralF-"
+"Distribution.html"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:46 of
+msgid ""
+"Wikipedia, \"Noncentral F-distribution\", http://en.wikipedia.org/wiki"
+"/Noncentral_F-distribution"
+msgstr ""
+
+#: mars.tensor.random.noncentral_f:51 of
+msgid ""
+"In a study, testing for a specific alternative to the null hypothesis "
+"requires use of the Noncentral F distribution. We need to calculate the "
+"area in the tail of the distribution that exceeds the value of the F "
+"distribution for the null hypothesis.  We'll plot the two probability "
+"distributions for comparison."
+msgstr ""
+

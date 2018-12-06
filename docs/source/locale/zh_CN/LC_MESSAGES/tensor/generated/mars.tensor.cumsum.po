@@ -1,0 +1,120 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.cumsum.rst:2
+msgid "mars.tensor.cumsum"
+msgstr ""
+
+#: mars.tensor.cumsum:1 of
+msgid "Return the cumulative sum of the elements along a given axis."
+msgstr ""
+
+#: mars.tensor.cumsum:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.cumsum:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.cumsum:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.cumsum:8 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.cumsum:7 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.cumsum:8 of
+msgid ""
+"Axis along which the cumulative sum is computed. The default (None) is to"
+" compute the cumsum over the flattened tensor."
+msgstr ""
+
+#: mars.tensor.cumsum:14 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.cumsum:13 of
+msgid "dtype, optional"
+msgstr ""
+
+#: mars.tensor.cumsum:11 of
+msgid ""
+"Type of the returned tensor and of the accumulator in which the elements "
+"are summed.  If `dtype` is not specified, it defaults to the dtype of "
+"`a`, unless `a` has an integer dtype with a precision less than that of "
+"the default platform integer.  In that case, the default platform integer"
+" is used."
+msgstr ""
+
+#: mars.tensor.cumsum:20 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.cumsum:19 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.cumsum:17 of
+msgid ""
+"Alternative output tensor in which to place the result. It must have the "
+"same shape and buffer length as the expected output but the type will be "
+"cast if necessary. See `doc.ufuncs` (Section \"Output arguments\") for "
+"more details."
+msgstr ""
+
+#: mars.tensor.cumsum:29 of
+msgid "cumsum_along_axis"
+msgstr ""
+
+#: mars.tensor.cumsum:28 of
+msgid "Tensor."
+msgstr ""
+
+#: mars.tensor.cumsum:25 of
+msgid ""
+"A new tensor holding the result is returned unless `out` is specified, in"
+" which case a reference to `out` is returned. The result has the same "
+"size as `a`, and the same shape as `a` if `axis` is not None or `a` is a "
+"1-d tensor."
+msgstr ""
+
+#: mars.tensor.cumsum:33 of
+msgid "sum : Sum tensor elements."
+msgstr ""
+
+#: mars.tensor.cumsum:35 of
+msgid "trapz : Integration of tensor values using the composite trapezoidal rule."
+msgstr ""
+
+#: mars.tensor.cumsum:37 of
+msgid "diff :  Calculate the n-th discrete difference along given axis."
+msgstr ""
+
+#: mars.tensor.cumsum:41 of
+msgid ""
+"Arithmetic is modular when using integer types, and no error is raised on"
+" overflow."
+msgstr ""
+

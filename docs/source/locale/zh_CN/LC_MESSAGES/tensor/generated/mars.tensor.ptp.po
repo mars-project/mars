@@ -1,0 +1,80 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:35+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.ptp.rst:2
+msgid "mars.tensor.ptp"
+msgstr ""
+
+#: mars.tensor.ptp:1 of
+msgid "Range of values (maximum - minimum) along an axis."
+msgstr ""
+
+#: mars.tensor.ptp:3 of
+msgid "The name of the function comes from the acronym for 'peak to peak'."
+msgstr ""
+
+#: mars.tensor.ptp:7 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.ptp:6 mars.tensor.ptp:14 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.ptp:8 of
+msgid "Input values."
+msgstr ""
+
+#: mars.tensor.ptp:10 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.ptp:9 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.ptp:10 of
+msgid "Axis along which to find the peaks.  By default, flatten the array."
+msgstr ""
+
+#: mars.tensor.ptp:15 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.ptp:13 of
+msgid ""
+"Alternative output tensor in which to place the result. It must have the "
+"same shape and buffer length as the expected output, but the type of the "
+"output values will be cast if necessary."
+msgstr ""
+
+#: mars.tensor.ptp:21 of
+msgid "ptp"
+msgstr ""
+
+#: mars.tensor.ptp:20 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.ptp:20 of
+msgid ""
+"A new tensor holding the result, unless `out` was specified, in which "
+"case a reference to `out` is returned."
+msgstr ""
+

@@ -1,0 +1,128 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.argmin.rst:2
+msgid "mars.tensor.argmin"
+msgstr ""
+
+#: mars.tensor.argmin:1 of
+msgid "Returns the indices of the minimum values along an axis."
+msgstr ""
+
+#: mars.tensor.argmin:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.argmin:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.argmin:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.argmin:8 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.argmin:7 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.argmin:8 of
+msgid ""
+"By default, the index is into the flattened tensor, otherwise along the "
+"specified axis."
+msgstr ""
+
+#: mars.tensor.argmin:11 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.argmin:10 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.argmin:11 of
+msgid ""
+"If provided, the result will be inserted into this tensor. It should be "
+"of the appropriate shape and dtype."
+msgstr ""
+
+#: mars.tensor.argmin:21 of
+msgid "keepdims"
+msgstr ""
+
+#: mars.tensor.argmin:20 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.argmin:14 of
+msgid ""
+"If this is set to True, the axes which are reduced are left in the result"
+" as dimensions with size one. With this option, the result will broadcast"
+" correctly against the input tensor."
+msgstr ""
+
+#: mars.tensor.argmin:18 of
+msgid ""
+"If the default value is passed, then `keepdims` will not be passed "
+"through to the `mean` method of sub-classes of `Tensor`, however any non-"
+"default value will be.  If the sub-classes `sum` method does not "
+"implement `keepdims` any exceptions will be raised."
+msgstr ""
+
+#: mars.tensor.argmin:24 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.argmin:24 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.argmin:30 of
+msgid "index_array"
+msgstr ""
+
+#: mars.tensor.argmin:29 of
+msgid "Tensor of ints"
+msgstr ""
+
+#: mars.tensor.argmin:29 of
+msgid ""
+"Tensor of indices into the tensor. It has the same shape as `a.shape` "
+"with the dimension along `axis` removed."
+msgstr ""
+
+#: mars.tensor.argmin:34 of
+msgid ""
+"Tensor.argmin, argmax amin : The minimum value along a given axis. "
+"unravel_index : Convert a flat index into an index tuple."
+msgstr ""
+
+#: mars.tensor.argmin:40 of
+msgid ""
+"In case of multiple occurrences of the minimum values, the indices "
+"corresponding to the first occurrence are returned."
+msgstr ""
+
+#: mars.tensor.argmin:61 of
+msgid "Indices of the minimum elements of a N-dimensional tensor:"
+msgstr ""
+

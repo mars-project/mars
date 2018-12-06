@@ -1,0 +1,96 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.hypot.rst:2
+msgid "mars.tensor.hypot"
+msgstr ""
+
+#: mars.tensor.hypot:1 of
+msgid "Given the \"legs\" of a right triangle, return its hypotenuse."
+msgstr ""
+
+#: mars.tensor.hypot:3 of
+msgid ""
+"Equivalent to ``sqrt(x1**2 + x2**2)``, element-wise.  If `x1` or `x2` is "
+"scalar_like (i.e., unambiguously cast-able to a scalar type), it is "
+"broadcast for use with each element of the other argument. (See Examples)"
+msgstr ""
+
+#: mars.tensor.hypot:10 of
+msgid "x1, x2"
+msgstr ""
+
+#: mars.tensor.hypot:9 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.hypot:11 of
+msgid "Leg of the triangle(s)."
+msgstr ""
+
+#: mars.tensor.hypot:15 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.hypot:14 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.hypot:13 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated array is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.hypot:18 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.hypot:17 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.hypot:18 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.hypot:20 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.hypot:25 of
+msgid "z"
+msgstr ""
+
+#: mars.tensor.hypot:24 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.hypot:25 of
+msgid "The hypotenuse of the triangle(s)."
+msgstr ""
+
+#: mars.tensor.hypot:36 of
+msgid "Example showing broadcast of scalar_like argument:"
+msgstr ""
+

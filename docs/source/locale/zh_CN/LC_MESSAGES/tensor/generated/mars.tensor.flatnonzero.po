@@ -1,0 +1,66 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 17:25+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.flatnonzero.rst:2
+msgid "mars.tensor.flatnonzero"
+msgstr ""
+
+#: mars.tensor.flatnonzero:1 of
+msgid "Return indices that are non-zero in the flattened version of a."
+msgstr ""
+
+#: mars.tensor.flatnonzero:3 of
+msgid "This is equivalent to a.ravel().nonzero()[0]."
+msgstr ""
+
+#: mars.tensor.flatnonzero:8 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.flatnonzero:7 mars.tensor.flatnonzero:13 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.flatnonzero:8 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.flatnonzero:14 of
+msgid "res"
+msgstr ""
+
+#: mars.tensor.flatnonzero:13 of
+msgid ""
+"Output tensor, containing the indices of the elements of `a.ravel()` that"
+" are non-zero."
+msgstr ""
+
+#: mars.tensor.flatnonzero:18 of
+msgid ""
+"nonzero : Return the indices of the non-zero elements of the input "
+"tensor. ravel : Return a 1-D tensor containing the elements of the input "
+"tensor."
+msgstr ""
+
+#: mars.tensor.flatnonzero:31 of
+msgid ""
+"Use the indices of the non-zero elements as an index array to extract "
+"these elements:"
+msgstr ""
+

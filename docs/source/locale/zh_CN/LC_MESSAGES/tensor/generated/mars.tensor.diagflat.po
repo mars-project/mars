@@ -1,0 +1,106 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.diagflat.rst:2
+msgid "mars.tensor.diagflat"
+msgstr ""
+
+#: mars.tensor.diagflat:1 of
+msgid "Create a two-dimensional tensor with the flattened input as a diagonal."
+msgstr ""
+
+#: mars.tensor.diagflat:6 of
+msgid "v"
+msgstr ""
+
+#: mars.tensor.diagflat:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.diagflat:6 of
+msgid ""
+"Input data, which is flattened and set as the `k`-th diagonal of the "
+"output."
+msgstr ""
+
+#: mars.tensor.diagflat:10 of
+msgid "k"
+msgstr ""
+
+#: mars.tensor.diagflat:9 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.diagflat:9 of
+msgid ""
+"Diagonal to set; 0, the default, corresponds to the \"main\" diagonal, a "
+"positive (negative) `k` giving the number of the diagonal above (below) "
+"the main."
+msgstr ""
+
+#: mars.tensor.diagflat:12 of
+msgid "sparse: bool, optional"
+msgstr ""
+
+#: mars.tensor.diagflat:13 of
+msgid "Create sparse tensor if True, False as default"
+msgstr ""
+
+#: mars.tensor.diagflat:14 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.diagflat:13 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.diagflat:15 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.diagflat:17 of
+msgid "chunks"
+msgstr ""
+
+#: mars.tensor.diagflat:16 of
+msgid "int or tuple of int or tuple of ints, optional"
+msgstr ""
+
+#: mars.tensor.diagflat:17 of
+msgid "Desired chunk size on each dimension"
+msgstr ""
+
+#: mars.tensor.diagflat:22 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.diagflat:21 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.diagflat:22 of
+msgid "The 2-D output tensor."
+msgstr ""
+
+#: mars.tensor.diagflat:26 of
+msgid ""
+"diag : MATLAB work-alike for 1-D and 2-D tensors. diagonal : Return "
+"specified diagonals. trace : Sum along diagonals."
+msgstr ""
+

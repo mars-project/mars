@@ -1,0 +1,86 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.reshape.rst:2
+msgid "mars.tensor.reshape"
+msgstr ""
+
+#: mars.tensor.reshape:1 of
+msgid "Gives a new shape to a tensor without changing its data."
+msgstr ""
+
+#: mars.tensor.reshape:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.reshape:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.reshape:6 of
+msgid "Tensor to be reshaped."
+msgstr ""
+
+#: mars.tensor.reshape:11 of
+msgid "newshape"
+msgstr ""
+
+#: mars.tensor.reshape:10 of
+msgid "int or tuple of ints"
+msgstr ""
+
+#: mars.tensor.reshape:8 of
+msgid ""
+"The new shape should be compatible with the original shape. If an "
+"integer, then the result will be a 1-D tensor of that length. One shape "
+"dimension can be -1. In this case, the value is inferred from the length "
+"of the tensor and remaining dimensions."
+msgstr ""
+
+#: mars.tensor.reshape:17 of
+msgid "reshaped_array"
+msgstr ""
+
+#: mars.tensor.reshape:16 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.reshape:16 of
+msgid "This will be a new view object if possible; otherwise, it will be a copy."
+msgstr ""
+
+#: mars.tensor.reshape:21 of
+msgid "Tensor.reshape : Equivalent method."
+msgstr ""
+
+#: mars.tensor.reshape:25 of
+msgid ""
+"It is not always possible to change the shape of a tensor without copying"
+" the data. If you want an error to be raised when the data is copied, you"
+" should assign the new shape to the shape attribute of the array::"
+msgstr ""
+
+#: mars.tensor.reshape:37 of
+msgid ""
+"You can think of reshaping as first raveling the tensor (using the given "
+"index order), then inserting the elements from the raveled tensor into "
+"the new tensor using the same kind of index ordering as was used for the "
+"raveling."
+msgstr ""
+

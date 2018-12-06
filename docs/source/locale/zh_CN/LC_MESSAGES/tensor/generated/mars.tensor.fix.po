@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.fix.rst:2
+msgid "mars.tensor.fix"
+msgstr ""
+
+#: mars.tensor.fix:1 of
+msgid "Round to nearest integer towards zero."
+msgstr ""
+
+#: mars.tensor.fix:3 of
+msgid ""
+"Round a tensor of floats element-wise to nearest integer towards zero. "
+"The rounded values are returned as floats."
+msgstr ""
+
+#: mars.tensor.fix:8 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.fix:7 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.fix:9 of
+msgid "An tensor of floats to be rounded"
+msgstr ""
+
+#: mars.tensor.fix:11 mars.tensor.fix:16 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.fix:10 of
+msgid "Tensor, optional"
+msgstr ""
+
+#: mars.tensor.fix:11 of
+msgid "Output tensor"
+msgstr ""
+
+#: mars.tensor.fix:15 of
+msgid "Tensor of floats"
+msgstr ""
+
+#: mars.tensor.fix:16 of
+msgid "The array of rounded numbers"
+msgstr ""
+
+#: mars.tensor.fix:20 of
+msgid "trunc, floor, ceil around : Round to given number of decimals"
+msgstr ""
+

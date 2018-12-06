@@ -1,0 +1,85 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.zeros_like.rst:2
+msgid "mars.tensor.zeros\\_like"
+msgstr ""
+
+#: mars.tensor.zeros_like:1 of
+msgid "Return a tensor of zeros with the same shape and type as a given tensor."
+msgstr ""
+
+#: mars.tensor.zeros_like:6 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.zeros_like:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.zeros_like:6 of
+msgid ""
+"The shape and data-type of `a` define these same attributes of the "
+"returned array."
+msgstr ""
+
+#: mars.tensor.zeros_like:8 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.zeros_like:7 of
+msgid "data-type, optional"
+msgstr ""
+
+#: mars.tensor.zeros_like:9 of
+msgid "Overrides the data type of the result."
+msgstr ""
+
+#: mars.tensor.zeros_like:11 of
+msgid "gpu"
+msgstr ""
+
+#: mars.tensor.zeros_like:10 of
+msgid "bool, optional"
+msgstr ""
+
+#: mars.tensor.zeros_like:11 of
+msgid "Allocate the tensor on GPU if True, False as default"
+msgstr ""
+
+#: mars.tensor.zeros_like:16 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.zeros_like:15 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.zeros_like:16 of
+msgid "tensor of zeros with the same shape and type as `a`."
+msgstr ""
+
+#: mars.tensor.zeros_like:20 of
+msgid ""
+"ones_like : Return an array of ones with shape and type of input. "
+"empty_like : Return an empty array with shape and type of input. zeros : "
+"Return a new array setting values to zero. ones : Return a new array "
+"setting values to one. empty : Return a new uninitialized array."
+msgstr ""
+

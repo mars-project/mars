@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import numpy as np
+
+from .... import operands
+from .core import TensorRandomOperandMixin, handle_array
+
+
+class TensorGeometric(operands.Geometric, TensorRandomOperandMixin):
+    __slots__ = '_p', '_size'
+    _input_fields_ = ['_p']
+
+    def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
+        dtype = np.dtype(dtype) if dtype is not None else dtype
+        super(TensorGeometric, self).__init__(_state=state, _size=size, _dtype=dtype,
+                                              _gpu=gpu, **kw)
+
+    def __call__(self, p, chunks=None):
+        return self.new_tensor([p], None, raw_chunks=chunks)
+
+
+def geometric(random_state, p, size=None, chunks=None, gpu=None, **kw):
+    """
+    Draw samples from the geometric distribution.
+
+    Bernoulli trials are experiments with one of two outcomes:
+    success or failure (an example of such an experiment is flipping
+    a coin).  The geometric distribution models the number of trials
+    that must be run in order to achieve success.  It is therefore
+    supported on the positive integers, ``k = 1, 2, ...``.
+
+    The probability mass function of the geometric distribution is
+
+    .. math:: f(k) = (1 - p)^{k - 1} p
+
+    where `p` is the probability of success of an individual trial.
+
+    Parameters
+    ----------
+    p : float or array_like of floats
+        The probability of success of an individual trial.
+    size : int or tuple of ints, optional
+        Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
+        ``m * n * k`` samples are drawn.  If size is ``None`` (default),
+        a single value is returned if ``p`` is a scalar.  Otherwise,
+        ``mt.array(p).size`` samples are drawn.
+    chunks : int or tuple of int or tuple of ints, optional
+        Desired chunk size on each dimension
+    gpu : bool, optional
+        Allocate the tensor on GPU if True, False as default
+
+    Returns
+    -------
+    out : Tensor or scalar
+        Drawn samples from the parameterized geometric distribution.
+
+    Examples
+    --------
+    Draw ten thousand values from the geometric distribution,
+    with the probability of an individual success equal to 0.35:
+
+    >>> import mars.tensor as mt
+
+    >>> z = mt.random.geometric(p=0.35, size=10000)
+
+    How many trials succeeded after a single run?
+
+    >>> ((z == 1).sum() / 10000.).execute()
+    0.34889999999999999 #random
+    """
+    if 'dtype' not in kw:
+        kw['dtype'] = np.random.RandomState().geometric(
+            handle_array(p), size=(0,)).dtype
+    size = random_state._handle_size(size)
+    op = TensorGeometric(state=random_state._state, size=size, gpu=gpu, **kw)
+    return op(p, chunks=chunks)

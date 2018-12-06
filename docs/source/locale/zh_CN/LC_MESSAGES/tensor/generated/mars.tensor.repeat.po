@@ -1,0 +1,83 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.repeat.rst:2
+msgid "mars.tensor.repeat"
+msgstr ""
+
+#: mars.tensor.repeat:1 of
+msgid "Repeat elements of a tensor."
+msgstr ""
+
+#: mars.tensor.repeat:5 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.repeat:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.repeat:6 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.repeat:8 of
+msgid "repeats"
+msgstr ""
+
+#: mars.tensor.repeat:7 of
+msgid "int or tensor of ints"
+msgstr ""
+
+#: mars.tensor.repeat:8 of
+msgid ""
+"The number of repetitions for each element.  `repeats` is broadcasted to "
+"fit the shape of the given axis."
+msgstr ""
+
+#: mars.tensor.repeat:12 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.repeat:11 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.repeat:11 of
+msgid ""
+"The axis along which to repeat values.  By default, use the flattened "
+"input tensor, and return a flat output tensor."
+msgstr ""
+
+#: mars.tensor.repeat:18 of
+msgid "repeated_tensor"
+msgstr ""
+
+#: mars.tensor.repeat:17 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.repeat:17 of
+msgid "Output array which has the same shape as `a`, except along the given axis."
+msgstr ""
+
+#: mars.tensor.repeat:22 of
+msgid "tile : Tile a tensor."
+msgstr ""
+

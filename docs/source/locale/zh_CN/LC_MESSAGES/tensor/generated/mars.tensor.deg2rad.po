@@ -1,0 +1,95 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.deg2rad.rst:2
+msgid "mars.tensor.deg2rad"
+msgstr ""
+
+#: mars.tensor.deg2rad:1 of
+msgid "Convert angles from degrees to radians."
+msgstr ""
+
+#: mars.tensor.deg2rad:5 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.deg2rad:4 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.deg2rad:6 of
+msgid "Angles in degrees."
+msgstr ""
+
+#: mars.tensor.deg2rad:10 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.deg2rad:9 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.deg2rad:8 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.deg2rad:13 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.deg2rad:12 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.deg2rad:13 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.deg2rad:15 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.deg2rad:20 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.deg2rad:19 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.deg2rad:20 of
+msgid "The corresponding angle in radians."
+msgstr ""
+
+#: mars.tensor.deg2rad:24 of
+msgid ""
+"rad2deg : Convert angles from radians to degrees. unwrap : Remove large "
+"jumps in angle by wrapping."
+msgstr ""
+
+#: mars.tensor.deg2rad:29 of
+msgid "``deg2rad(x)`` is ``x * pi / 180``."
+msgstr ""
+

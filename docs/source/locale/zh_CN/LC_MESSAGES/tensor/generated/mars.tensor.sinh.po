@@ -1,0 +1,103 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.sinh.rst:2
+msgid "mars.tensor.sinh"
+msgstr ""
+
+#: mars.tensor.sinh:1 of
+msgid "Hyperbolic sine, element-wise."
+msgstr ""
+
+#: mars.tensor.sinh:3 of
+msgid ""
+"Equivalent to ``1/2 * (mt.exp(x) - mt.exp(-x))`` or ``-1j * "
+"mt.sin(1j*x)``."
+msgstr ""
+
+#: mars.tensor.sinh:8 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.sinh:7 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.sinh:9 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.sinh:13 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.sinh:12 of
+msgid "Tensor, None, or tuple of Tensor and None, optional"
+msgstr ""
+
+#: mars.tensor.sinh:11 of
+msgid ""
+"A location into which the result is stored. If provided, it must have a "
+"shape that the inputs broadcast to. If not provided or `None`, a freshly-"
+"allocated tensor is returned. A tuple (possible only as a keyword "
+"argument) must have length equal to the number of outputs."
+msgstr ""
+
+#: mars.tensor.sinh:16 of
+msgid "where"
+msgstr ""
+
+#: mars.tensor.sinh:15 of
+msgid "array_like, optional"
+msgstr ""
+
+#: mars.tensor.sinh:16 of
+msgid ""
+"Values of True indicate to calculate the ufunc at that position, values "
+"of False indicate to leave the value in the output alone."
+msgstr ""
+
+#: mars.tensor.sinh:18 of
+msgid "**kwargs"
+msgstr ""
+
+#: mars.tensor.sinh:23 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.sinh:22 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.sinh:23 of
+msgid "The corresponding hyperbolic sine values."
+msgstr ""
+
+#: mars.tensor.sinh:27 of
+msgid ""
+"If `out` is provided, the function writes the result into it, and returns"
+" a reference to `out`.  (See Examples)"
+msgstr ""
+
+#: mars.tensor.sinh:32 of
+msgid ""
+"M. Abramowitz and I. A. Stegun, Handbook of Mathematical Functions. New "
+"York, NY: Dover, 1972, pg. 83."
+msgstr ""
+

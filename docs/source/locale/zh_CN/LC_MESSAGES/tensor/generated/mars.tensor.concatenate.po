@@ -1,0 +1,89 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.concatenate.rst:2
+msgid "mars.tensor.concatenate"
+msgstr ""
+
+#: mars.tensor.concatenate:1 of
+msgid "Join a sequence of arrays along an existing axis."
+msgstr ""
+
+#: mars.tensor.concatenate:6 of
+msgid "a1, a2, ..."
+msgstr ""
+
+#: mars.tensor.concatenate:5 of
+msgid "sequence of array_like"
+msgstr ""
+
+#: mars.tensor.concatenate:6 of
+msgid ""
+"The tensors must have the same shape, except in the dimension "
+"corresponding to `axis` (the first, by default)."
+msgstr ""
+
+#: mars.tensor.concatenate:9 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.concatenate:8 of
+msgid "int, optional"
+msgstr ""
+
+#: mars.tensor.concatenate:9 of
+msgid "The axis along which the tensors will be joined.  Default is 0."
+msgstr ""
+
+#: mars.tensor.concatenate:14 of
+msgid "res"
+msgstr ""
+
+#: mars.tensor.concatenate:13 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.concatenate:14 of
+msgid "The concatenated tensor."
+msgstr ""
+
+#: mars.tensor.concatenate:18 of
+msgid "array_split"
+msgstr ""
+
+#: mars.tensor.concatenate:17 of
+msgid "Split a tensor into multiple sub-arrays of equal or"
+msgstr ""
+
+#: mars.tensor.concatenate:19 of
+msgid "near-equal size."
+msgstr ""
+
+#: mars.tensor.concatenate:20 of
+msgid ""
+"split : Split tensor into a list of multiple sub-tensors of equal size. "
+"hsplit : Split tensor into multiple sub-tensors horizontally (column "
+"wise) vsplit : Split tensor into multiple sub-tensors vertically (row "
+"wise) dsplit : Split tensor into multiple sub-tensors along the 3rd axis "
+"(depth). stack : Stack a sequence of tensors along a new axis. hstack : "
+"Stack tensors in sequence horizontally (column wise) vstack : Stack "
+"tensors in sequence vertically (row wise) dstack : Stack tensors in "
+"sequence depth wise (along third dimension)"
+msgstr ""
+

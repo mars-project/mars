@@ -1,0 +1,81 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 11:23+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.asarray.rst:2
+msgid "mars.tensor.asarray"
+msgstr ""
+
+#: mars.tensor.asarray:1 of
+msgid "Convert the input to an array."
+msgstr ""
+
+#: mars.tensor.asarray:7 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.asarray:6 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.asarray:6 of
+msgid ""
+"Input data, in any form that can be converted to a tensor.  This includes"
+" lists, lists of tuples, tuples, tuples of tuples, tuples of lists and "
+"tensors."
+msgstr ""
+
+#: mars.tensor.asarray:10 of
+msgid "dtype"
+msgstr ""
+
+#: mars.tensor.asarray:9 of
+msgid "data-type, optional"
+msgstr ""
+
+#: mars.tensor.asarray:10 of
+msgid "By default, the data-type is inferred from the input data."
+msgstr ""
+
+#: mars.tensor.asarray:17 of
+msgid "out"
+msgstr ""
+
+#: mars.tensor.asarray:16 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.asarray:15 of
+msgid ""
+"Tensor interpretation of `a`.  No copy is performed if the input is "
+"already an ndarray with matching dtype and order.  If `a` is a subclass "
+"of ndarray, a base class ndarray is returned."
+msgstr ""
+
+#: mars.tensor.asarray:21 of
+msgid "Convert a list into an array:"
+msgstr ""
+
+#: mars.tensor.asarray:29 of
+msgid "Existing arrays are not copied:"
+msgstr ""
+
+#: mars.tensor.asarray:35 of
+msgid "If `dtype` is set, array is copied only if dtype does not match:"
+msgstr ""
+

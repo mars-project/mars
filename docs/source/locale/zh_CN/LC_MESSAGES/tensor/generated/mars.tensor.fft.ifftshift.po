@@ -1,0 +1,69 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.fft.ifftshift.rst:2
+msgid "mars.tensor.fft.ifftshift"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:1 of
+msgid ""
+"The inverse of `fftshift`. Although identical for even-length `x`, the "
+"functions differ by one sample for odd-length `x`."
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:6 of
+msgid "x"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:5 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:7 of
+msgid "Input tensor."
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:9 of
+msgid "axes"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:8 of
+msgid "int or shape tuple, optional"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:9 of
+msgid "Axes over which to calculate.  Defaults to None, which shifts all axes."
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:14 of
+msgid "y"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:13 of
+msgid "Tensor"
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:14 of
+msgid "The shifted tensor."
+msgstr ""
+
+#: mars.tensor.fft.ifftshift:18 of
+msgid "fftshift : Shift zero-frequency component to the center of the spectrum."
+msgstr ""
+

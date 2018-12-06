@@ -1,0 +1,87 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-05-07 22:16+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.5.3\n"
+
+#: ../../source/tensor/generated/mars.tensor.count_nonzero.rst:2
+msgid "mars.tensor.count\\_nonzero"
+msgstr ""
+
+#: mars.tensor.count_nonzero:1 of
+msgid "Counts the number of non-zero values in the tensor ``a``."
+msgstr ""
+
+#: mars.tensor.count_nonzero:3 of
+msgid ""
+"The word \"non-zero\" is in reference to the Python 2.x built-in method "
+"``__nonzero__()`` (renamed ``__bool__()`` in Python 3.x) of Python "
+"objects that tests an object's \"truthfulness\". For example, any number "
+"is considered truthful if it is nonzero, whereas any string is considered"
+" truthful if it is not the empty string. Thus, this function "
+"(recursively) counts how many elements in ``a`` (and in sub-tensors "
+"thereof) have their ``__nonzero__()`` or ``__bool__()`` method evaluated "
+"to ``True``."
+msgstr ""
+
+#: mars.tensor.count_nonzero:15 of
+msgid "a"
+msgstr ""
+
+#: mars.tensor.count_nonzero:14 of
+msgid "array_like"
+msgstr ""
+
+#: mars.tensor.count_nonzero:16 of
+msgid "The tensor for which to count non-zeros."
+msgstr ""
+
+#: mars.tensor.count_nonzero:20 of
+msgid "axis"
+msgstr ""
+
+#: mars.tensor.count_nonzero:19 of
+msgid "int or tuple, optional"
+msgstr ""
+
+#: mars.tensor.count_nonzero:18 of
+msgid ""
+"Axis or tuple of axes along which to count non-zeros. Default is None, "
+"meaning that non-zeros will be counted along a flattened version of "
+"``a``."
+msgstr ""
+
+#: mars.tensor.count_nonzero:27 of
+msgid "count"
+msgstr ""
+
+#: mars.tensor.count_nonzero:26 of
+msgid "int or tensor of int"
+msgstr ""
+
+#: mars.tensor.count_nonzero:25 of
+msgid ""
+"Number of non-zero values in the array along a given axis. Otherwise, the"
+" total number of non-zero values in the tensor is returned."
+msgstr ""
+
+#: mars.tensor.count_nonzero:31 of
+msgid "nonzero : Return the coordinates of all the non-zero values."
+msgstr ""
+
+#~ msgid "The array for which to count non-zeros."
+#~ msgstr ""
+
