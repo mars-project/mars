@@ -81,6 +81,8 @@ def randn(random_state, *dn, **kw):
     array([[-4.49401501,  4.00950034, -1.81814867,  7.29718677],  #random
            [ 0.39924804,  4.68456316,  4.99394529,  4.84057254]]) #random
     """
+    if len(dn) == 1 and isinstance(dn[0], (tuple,  list)):
+        raise TypeError('this function cannot take tuple as argument')
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
     chunks = kw.pop('chunks', None)
