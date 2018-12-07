@@ -194,8 +194,12 @@ else:
         def total_seconds(self):
             return self.days * 86400.0 + self.seconds + self.microseconds * 1.0e-6
     else:
-        import unittest
-        import mock
+        try:
+            import unittest
+            import mock
+        except ImportError:
+            pass
+
         from collections import OrderedDict
 
         dictconfig = lambda config: logging.config.dictConfig(config)
