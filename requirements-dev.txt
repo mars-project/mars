@@ -1,0 +1,4 @@
+numpy>=1.8.0
+requests>=2.4.0
+pyarrow>=0.11.0
+cython>=0.29
