@@ -29,10 +29,12 @@ class SchedulerApplication(BaseApplication):
     def __init__(self):
         super(SchedulerApplication, self).__init__()
         self._cluster_info_ref = None
+        self._chunk_meta_ref = None
+        self._kv_store_ref = None
         self._session_manager_ref = None
+        self._assigner_ref = None
         self._resource_ref = None
         self._size_data_ref = None
-        self._kv_store_ref = None
         self._node_info_ref = None
 
     def config_args(self, parser):
@@ -44,28 +46,39 @@ class SchedulerApplication(BaseApplication):
 
     def start_service(self):
         from .resource import ResourceActor
+        from .chunkmeta import ChunkMetaActor
         from .kvstore import KVStoreActor
         from ..cluster_info import ClusterInfoActor
         from .session import SessionManagerActor
+        from .assigner import AssignerActor
         from ..node_info import NodeInfoActor
 
         kv_store = kvstore.get(options.kv_store)
-        if isinstance(kv_store, kvstore.EtcdKVStore):
+        kv_store.write('/schedulers/%s' % self.endpoint, dir=True)
+
+        if not isinstance(kv_store, kvstore.LocalKVStore):
             # set etcd as service discover
+            logger.info('Mars scheduler started with kv store %s.', options.kv_store)
             service_discover_addr = options.kv_store
             schedulers = None
-            kv_store.write('/schedulers/%s' % self.endpoint, dir=True)
+            self._kv_store_ref = self.pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
         else:
             # single scheduler
+            logger.info('Mars scheduler started in standalone mode.')
             service_discover_addr = None
-            schedulers = [self.endpoint]
+            schedulers = {self.endpoint}
+            if self.args.schedulers:
+                schedulers.update(self.args.schedulers)
+            schedulers = list(schedulers)
 
         self._cluster_info_ref = self.pool.create_actor(
             ClusterInfoActor, schedulers, service_discover_addr, uid=ClusterInfoActor.default_name())
+        self._chunk_meta_ref = self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
         self._session_manager_ref = self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
+        self._assigner_ref = self.pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
         self._resource_ref = self.pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-        self._kv_store_ref = self.pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
         self._node_info_ref = self.pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_name())
+
         kv_store.write('/schedulers/%s/meta' % self.endpoint,
                        json.dumps(self._resource_ref.get_workers_meta()))
 

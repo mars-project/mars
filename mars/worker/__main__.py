@@ -16,7 +16,7 @@ import logging
 import os
 import time
 
-from .. import resource, kvstore
+from .. import resource
 from ..config import options
 from ..utils import parse_memory_limit, readable_size
 from ..compat import six
@@ -37,10 +37,12 @@ class WorkerApplication(BaseApplication):
         super(WorkerApplication, self).__init__()
         self._plasma_helper = None
         self._chunk_holder_ref = None
+        self._task_queue_ref = None
         self._mem_quota_ref = None
         self._dispatch_ref = None
         self._status_ref = None
         self._execution_ref = None
+        self._daemon_ref = None
 
         self._cluster_info_ref = None
         self._cpu_calc_actors = []
@@ -53,7 +55,8 @@ class WorkerApplication(BaseApplication):
     @staticmethod
     def _calc_size_limit(limit_str, total_size):
         """
-        Calculate limitation size when it is represented in percentage or prettified format
+        Calculate limitation size when it is represented in percentage
+        or prettified format
         :param limit_str: percentage or prettified format
         :param total_size: total size of the container
         :return: actual size in bytes
@@ -67,7 +70,6 @@ class WorkerApplication(BaseApplication):
             return int(mem_limit)
 
     def config_args(self, parser):
-        parser.add_argument('-s', '--schedulers', help='scheduler addresses')
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
         parser.add_argument('--io-procs', help='number of processes used for io')
         parser.add_argument('--phy-mem', help='physical memory size limit')
@@ -154,7 +156,7 @@ class WorkerApplication(BaseApplication):
 
         if self.args.schedulers:
             if isinstance(self.args.schedulers, six.string_types):
-                schedulers = [self.args.schedulers]
+                schedulers = self.args.schedulers.split(',')
             else:
                 schedulers = self.args.schedulers
             service_discover_addr = None
@@ -170,6 +172,9 @@ class WorkerApplication(BaseApplication):
         self._status_ref = self.pool.create_actor(StatusActor, options.worker.advertise_addr + ':' + port_str,
                                                   uid='StatusActor')
 
+        from .daemon import WorkerDaemonActor
+        self._daemon_ref = self.pool.create_actor(WorkerDaemonActor, uid='WorkerDaemonActor')
+
         from .quota import QuotaActor, MemQuotaActor
         if self.args.ignore_avail_mem:
             # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
@@ -184,6 +189,9 @@ class WorkerApplication(BaseApplication):
         from .chunkholder import ChunkHolderActor
         self._chunk_holder_ref = self.pool.create_actor(ChunkHolderActor, cache_mem_limit, uid='ChunkHolderActor')
 
+        from .taskqueue import TaskQueueActor
+        self._task_queue_ref = self.pool.create_actor(TaskQueueActor, uid='TaskQueueActor')
+
         from .dispatcher import DispatchActor
         self._dispatch_ref = self.pool.create_actor(DispatchActor, uid='DispatchActor')
 
@@ -193,24 +201,24 @@ class WorkerApplication(BaseApplication):
         from .calc import CpuCalcActor
         for cpu_id in range(options.worker.cpu_process_count):
             uid = 'w:%d:mars-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
-            actor = self.pool.create_actor(CpuCalcActor, uid=uid)
+            actor = self._daemon_ref.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
         from .transfer import ReceiverActor, SenderActor
         start_pid = 1 + options.worker.cpu_process_count
         for sender_id in range(options.worker.io_process_count):
             uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
-            actor = self.pool.create_actor(SenderActor, uid=uid)
+            actor = self._daemon_ref.create_actor(SenderActor, uid=uid)
             self._sender_actors.append(actor)
         for receiver_id in range(2 * options.worker.io_process_count):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
-            actor = self.pool.create_actor(ReceiverActor, uid=uid)
+            actor = self._daemon_ref.create_actor(ReceiverActor, uid=uid)
             self._receiver_actors.append(actor)
 
         from .prochelper import ProcessHelperActor
         for proc_id in range(self.n_process):
             uid = 'w:%d:mars-process-helper-%d-%d' % (proc_id, os.getpid(), proc_id)
-            actor = self.pool.create_actor(ProcessHelperActor, uid=uid)
+            actor = self._daemon_ref.create_actor(ProcessHelperActor, uid=uid)
             self._process_helper_actors.append(actor)
 
         from .transfer import ResultSenderActor
@@ -219,14 +227,16 @@ class WorkerApplication(BaseApplication):
         start_pid = 1 + options.worker.cpu_process_count + options.worker.io_process_count
         if options.worker.spill_directory:
             from .spill import SpillActor
-            for spill_id in range(len(options.worker.spill_directory) * 2):
+            for spill_id in range(len(options.worker.spill_directory)):
                 uid = 'w:%d:mars-spill-%d-%d' % (start_pid, os.getpid(), spill_id)
-                actor = self.pool.create_actor(SpillActor, uid=uid)
+                actor = self._daemon_ref.create_actor(SpillActor, uid=uid)
                 self._spill_actors.append(actor)
 
-        kv_store = kvstore.get(options.kv_store)
-        if isinstance(kv_store, kvstore.EtcdKVStore):
-            kv_store.write('/workers/meta_timestamp', str(int(time.time())))
+    def handle_process_down(self, proc_indices):
+        logger.debug('Process %r halt. Trying to recover.', proc_indices)
+        for pid in proc_indices:
+            self.pool.restart_process(pid)
+        self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     def stop_service(self):
         if self._result_sender_ref:

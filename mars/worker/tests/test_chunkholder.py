@@ -111,8 +111,6 @@ class CacheTestActor(WorkerActor):
 
 class Test(WorkerCase):
     def setUp(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
         options.worker.min_spill_size = 0
 
     def tearDown(self):

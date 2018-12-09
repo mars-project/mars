@@ -21,10 +21,12 @@ from collections import deque, defaultdict
 from datetime import datetime
 
 from .assigner import AssignerActor
+from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
 from ..compat import six, OrderedDict
+from ..errors import ExecutionInterrupted
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
@@ -38,6 +40,7 @@ class ResultReceiverActor(SchedulerActor):
         super(ResultReceiverActor, self).__init__()
         self._kv_store_ref = None
         self.chunks = dict()
+        self._chunk_meta_ref = None
 
     @classmethod
     def default_name(cls):
@@ -45,7 +48,7 @@ class ResultReceiverActor(SchedulerActor):
 
     def post_create(self):
         self.set_cluster_info_ref()
-        self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
+        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
     def fetch_tensor(self, session_id, graph_key, tensor_key):
         from ..tensor.expressions.datasource import TensorFetchChunk
@@ -59,10 +62,8 @@ class ResultReceiverActor(SchedulerActor):
             if isinstance(c.op, TensorFetchChunk):
                 if c.key in ctx:
                     continue
-                endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
-                                                    % (session_id, c.key))
-                worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-                sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
+                endpoints = self._chunk_meta_ref.get_workers(session_id, c.key)
+                sender_ref = self.ctx.actor_ref('ResultSenderActor', address=endpoints[-1])
                 future = sender_ref.fetch_data(session_id, c.key, _wait=False)
                 ctx[c.key] = future
             else:
@@ -73,13 +74,53 @@ class ResultReceiverActor(SchedulerActor):
         return dumps(concat_result[0])
 
 
+class GraphMetaActor(SchedulerActor):
+    @staticmethod
+    def gen_name(session_id, graph_key):
+        return 's:graph_meta$%s$%s' % (session_id, graph_key)
+
+    def __init__(self, session_id, graph_key):
+        super(GraphMetaActor, self).__init__()
+        self._session_id = session_id
+        self._graph_key = graph_key
+
+        self._kv_store_ref = None
+
+        self._state = None
+        self._final_state = None
+
+    def post_create(self):
+        super(GraphMetaActor, self).post_create()
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        if not self.ctx.has_actor(self._kv_store_ref):
+            self._kv_store_ref = None
+
+    def set_state(self, state):
+        self._state = state
+        if self._kv_store_ref is not None:
+            self._kv_store_ref.write(
+                '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key), state.name, _tell=True)
+
+    def get_state(self):
+        return self._state
+
+    def set_final_state(self, state):
+        self._final_state = state
+        if self._kv_store_ref is not None:
+            self._kv_store_ref.write(
+                '/sessions/%s/graph/%s/final_state' % (self._session_id, self._graph_key), state.name, _tell=True)
+
+    def get_final_state(self):
+        return self._final_state
+
+
 class GraphActor(SchedulerActor):
     """
     Actor handling execution and status of a Mars graph
     """
     @staticmethod
     def gen_name(session_id, graph_key):
-        return 'graph$%s$%s' % (session_id, graph_key)
+        return 's:graph$%s$%s' % (session_id, graph_key)
 
     def __init__(self, session_id, graph_key, serialized_tensor_graph,
                  target_tensors=None, serialized_chunk_graph=None,
@@ -100,13 +141,13 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = None
         self._resource_actor_ref = None
         self._kv_store_ref = None
+        self._chunk_meta_ref = None
+        self._graph_meta_ref = None
 
         self._tensor_graph_cache = None
         self._chunk_graph_cache = None
-        self._chunk_undigraph_cache = None
 
         self._op_key_to_chunk = defaultdict(list)
-        self._chunk_key_to_chunk = defaultdict(list)
 
         self._resource_actor = None
         self._tensor_to_tiled = defaultdict(list)
@@ -125,9 +166,18 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_name(self._session_id))
+        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
-        self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
+        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
+
+        uid = GraphMetaActor.gen_name(self._session_id, self._graph_key)
+        self._graph_meta_ref = self.ctx.create_actor(
+            GraphMetaActor, self._session_id, self._graph_key,
+            uid=uid, address=self.get_scheduler(uid))
+
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        if not self.ctx.has_actor(self._kv_store_ref):
+            self._kv_store_ref = None
 
     @property
     def state(self):
@@ -141,11 +191,14 @@ class GraphActor(SchedulerActor):
         if value != self._state:
             logger.debug('Graph %s state from %s to %s.', self._graph_key, self._state, value)
         self._state = value
-        self._kv_store_ref.write(
-            '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key), value.name)
+        self._graph_meta_ref.set_state(value, _tell=True)
 
-    def __setattr__(self, key, value):
-        object.__setattr__(self, key, value)
+    def reload_state(self):
+        result = self._graph_meta_ref.get_state()
+        if result is None:
+            return
+        state = self._state = result
+        return state
 
     @property
     def final_state(self):
@@ -154,26 +207,47 @@ class GraphActor(SchedulerActor):
     @final_state.setter
     def final_state(self, value):
         self._final_state = value
-        self._kv_store_ref.write(
-            '/sessions/%s/graph/%s/final_state' % (self._session_id, self._graph_key), value.name)
+        self._graph_meta_ref.set_final_state(value, _tell=True)
 
     def execute_graph(self):
         """
         Start graph execution
         """
+        def _detect_cancel(callback=None):
+            if self.reload_state() == GraphState.CANCELLING:
+                logger.info('Cancel detected, stopping')
+                if callback:
+                    callback()
+                else:
+                    self._end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self.state = GraphState.CANCELLED
+                raise ExecutionInterrupted
+
         self._start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.state = GraphState.PREPARING
 
-        self.prepare_graph()
-        self.scan_node()
-        self.place_initial_chunks()
-        self.create_operand_actors()
+        try:
+            self.prepare_graph()
+            _detect_cancel()
+
+            self.scan_node()
+            _detect_cancel()
+
+            self.place_initial_chunks()
+            _detect_cancel()
+
+            self.create_operand_actors()
+            _detect_cancel(self.stop_graph)
+        except ExecutionInterrupted:
+            pass
 
     def stop_graph(self):
         """
         Stop graph execution
         """
         from .operand import OperandActor
+        if self.state == GraphState.CANCELLED:
+            return
         self.state = GraphState.CANCELLING
 
         for chunk in self.get_chunk_graph():
@@ -189,29 +263,22 @@ class GraphActor(SchedulerActor):
         """
         Reload chunk graph from kv store
         """
-        chunk_graph_pb = self._kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
-                                                 % (self._session_id, self._graph_key)).value
-
-        self._chunk_graph_cache = DAG.from_pb(chunk_graph_pb)
-        self._chunk_undigraph_cache = self._chunk_graph_cache.build_undirected()
+        if self._kv_store_ref is not None:
+            chunk_graph_ser = self._kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
+                                                      % (self._session_id, self._graph_key)).value
+        else:
+            raise RuntimeError('No kv store configured, cannot recover')
+        self._chunk_graph_cache = deserialize_graph(chunk_graph_ser, graph_cls=DAG)
 
         op_key_to_chunk = defaultdict(list)
-        chunk_key_to_chunk = defaultdict(list)
         for n in self._chunk_graph_cache:
-            chunk_key_to_chunk[n.key].append(n)
             op_key_to_chunk[n.op.key].append(n)
         self._op_key_to_chunk = op_key_to_chunk
-        self._chunk_key_to_chunk = chunk_key_to_chunk
 
     def get_chunk_graph(self):
         if self._chunk_graph_cache is None:
             self.reload_chunk_graph()
         return self._chunk_graph_cache
-
-    def get_chunk_undigraph(self):
-        if self._chunk_undigraph_cache is None:
-            self.reload_chunk_graph()
-        return self._chunk_undigraph_cache
 
     def prepare_graph(self, compose=True):
         """
@@ -328,15 +395,15 @@ class GraphActor(SchedulerActor):
                 self._terminal_chunk_op_tensor[n.op.key].add(tk)
                 self._target_tensor_chunk_ops[tk].add(n.op.key)
 
-        # sync chunk graph to kvstore
-        graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
-        self._kv_store_ref.write('%s/chunk_graph' % graph_path, serialize_graph(chunk_graph))
+        # sync chunk graph to kv store
+        if self._kv_store_ref is not None:
+            graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
+            self._kv_store_ref.write('%s/chunk_graph' % graph_path,
+                                     serialize_graph(chunk_graph, compress=True), _tell=True, _wait=False)
 
         self._nodes_num = len(chunk_graph)
         self._chunk_graph_cache = chunk_graph
-        self._chunk_undigraph_cache = self._chunk_graph_cache.build_undirected()
         for n in self._chunk_graph_cache:
-            self._chunk_key_to_chunk[n.key].append(n)
             self._op_key_to_chunk[n.op.key].append(n)
 
     def scan_node(self):
@@ -374,7 +441,7 @@ class GraphActor(SchedulerActor):
 
         import numpy as np
         graph = self.get_chunk_graph()
-        undigraph = self.get_chunk_undigraph()
+        undigraph = graph.build_undirected()
         operand_infos = self._operand_infos
 
         metrics = self._resource_actor_ref.get_workers_meta()
@@ -427,7 +494,7 @@ class GraphActor(SchedulerActor):
                 cur = sorted_initials.pop()
             assigned = 0
             spread_range = 0
-            for v in undigraph.bfs(start=key_to_chunks[cur.op.key], visit_predicate=lambda *_: True,
+            for v in undigraph.bfs(start=key_to_chunks[cur.op.key], visit_predicate='all',
                                    successors=_successor_fun):
                 if v.op.key in full_assigns:
                     continue
@@ -442,7 +509,7 @@ class GraphActor(SchedulerActor):
             splited_initial_counts[slot_id] -= assigned
 
         # assign initial workers by seeds
-        for v in undigraph.bfs(start=zero_degrees, visit_predicate=lambda *_: True, successors=_successor_fun):
+        for v in undigraph.bfs(start=zero_degrees, visit_predicate='all', successors=_successor_fun):
             if v.op.key in full_assigns:
                 continue
             key_transfers = defaultdict(lambda: 0)
@@ -511,23 +578,24 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
-    def create_operand_actors(self):
+    def create_operand_actors(self, **kwargs):
         """
         Create operand actors for all operands
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
         from .operand import OperandActor
 
+        _clean_io_meta = kwargs.get('_clean_io_meta', True)
+
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
 
         op_refs = dict()
-        write_params = []
         initial_keys = []
         for op_key in self._op_key_to_chunk:
-            op_path = '/sessions/%s/operands/%s' % (self._session_id, op_key)
-
             op_name = type(self._op_key_to_chunk[op_key][0].op).__name__
+
+            op_info = operand_infos[op_key]
 
             # collect operand i/o information
             predecessor_keys = set()
@@ -537,11 +605,12 @@ class GraphActor(SchedulerActor):
             chunk_key_sizes = dict()
 
             for c in self._op_key_to_chunk[op_key]:
-                predecessor_keys.update(pn.op.key for pn in chunk_graph.iter_predecessors(c))
+                for pn in chunk_graph.iter_predecessors(c):
+                    predecessor_keys.add(pn.op.key)
+                    input_chunk_keys.add(pn.key)
+                    if chunk_graph.count_successors(pn) > 1:
+                        shared_input_chunk_keys.add(pn.key)
                 successor_keys.update(pn.op.key for pn in chunk_graph.iter_successors(c))
-                input_chunk_keys.update(pn.key for pn in chunk_graph.iter_predecessors(c))
-                shared_input_chunk_keys.update(pn.key for pn in chunk_graph.iter_predecessors(c)
-                                               if chunk_graph.count_successors(pn) > 1)
                 chunk_key_sizes.update((co.key, co.nbytes) for co in c.op.outputs)
 
             io_meta = dict(
@@ -551,41 +620,37 @@ class GraphActor(SchedulerActor):
                 shared_input_chunks=list(shared_input_chunk_keys),
                 chunks=list(chunk_key_sizes.keys()),
             )
-            operand_infos[op_key]['op_name'] = op_name
-            operand_infos[op_key]['io_meta'] = io_meta
+            op_info['op_name'] = op_name
+            op_info['io_meta'] = io_meta
             output_size = sum(chunk_key_sizes.values())
-            operand_infos[op_key]['output_size'] = int(output_size)
+            op_info['output_size'] = int(output_size)
 
             if predecessor_keys:
                 state = 'UNSCHEDULED'
             else:
                 initial_keys.append(op_key)
                 state = 'READY'
-
-            write_params.append(('%s/retries' % op_path, 0))
-            operand_infos[op_key]['retries'] = 0
-            write_params.append(('%s/state' % op_path, 0))
-            operand_infos[op_key]['state'] = state
+            op_info['retries'] = 0
+            op_info['state'] = state
 
             op_uid = OperandActor.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
-            future = self.ctx.create_actor(
-                OperandActor, self._session_id, self._graph_key, op_key, operand_infos[op_key],
+            op_refs[op_key] = self.ctx.create_actor(
+                OperandActor, self._session_id, self._graph_key, op_key, op_info,
                 is_terminal=op_key in self._terminal_chunk_op_tensor,
                 uid=op_uid, address=scheduler_addr,
                 wait=False
             )
-            op_refs[op_key] = future
-
-            operand_infos[op_key]['state'] = OperandState(state.lower())
-
-        write_future = self._kv_store_ref.write_batch(write_params, _wait=False)
-        [future.result() for future in itertools.chain(six.itervalues(op_refs), [write_future])]
+            op_info['state'] = getattr(OperandState, state.upper())
+            if _clean_io_meta:
+                del op_info['io_meta']
 
         self.state = GraphState.RUNNING
 
-        for op_key in initial_keys:
-            op_refs[op_key].result().start_operand(_tell=True)
+        op_refs = dict((k, v.result()) for k, v in op_refs.items())
+        start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
+                         for op_key in initial_keys]
+        [future.result() for future in start_futures]
 
     def mark_terminal_finished(self, op_key, final_state=None):
         """
@@ -691,10 +756,7 @@ class GraphActor(SchedulerActor):
         for chunk_key in [c.key for c in tiled_tensor.chunks]:
             if chunk_key in ctx:
                 continue
-            endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
-                                                % (self._session_id, chunk_key))
-            worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-            sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
+            endpoints = self._chunk_meta_ref.get_workers(self._session_id, chunk_key)
+            sender_ref = self.ctx.actor_ref('ResultSenderActor', address=endpoints[-1])
             ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
-

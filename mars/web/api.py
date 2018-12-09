@@ -24,7 +24,7 @@ from tornado import gen, concurrent, web, ioloop
 from .server import register_api_handler
 from ..compat import six, futures
 from ..lib.tblib import pickling_support
-from ..scheduler import SessionActor, GraphActor, KVStoreActor
+from ..scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor
 from ..scheduler.session import SessionManagerActor
 from ..actors import new_client
 from .. import resource
@@ -58,10 +58,6 @@ class ApiRequestHandler(web.RequestHandler):
         scheduler_address = self.cluster_info.get_scheduler(uid)
         self.session_manager_ref = _actor_client.actor_ref(uid, address=scheduler_address)
 
-        uid = KVStoreActor.default_name()
-        scheduler_address = self.cluster_info.get_scheduler(uid)
-        self.kv_store_ref = _actor_client.actor_ref(uid, address=scheduler_address)
-
     def get_session_ref(self, session_id):
         try:
             return self.sessions[session_id]
@@ -74,6 +70,18 @@ class ApiRequestHandler(web.RequestHandler):
 
     def get_graph_ref(self, session_id, graph_key):
         uid = GraphActor.gen_name(session_id, graph_key)
+        scheduler_ip = self.cluster_info.get_scheduler(uid)
+        actor_ref = _actor_client.actor_ref(uid, address=scheduler_ip)
+        return actor_ref
+
+    def get_resource_ref(self):
+        uid = ResourceActor.default_name()
+        scheduler_ip = self.cluster_info.get_scheduler(uid)
+        resource_ref = _actor_client.actor_ref(uid, address=scheduler_ip)
+        return resource_ref
+
+    def get_graph_meta_ref(self, session_id, graph_key):
+        uid = GraphMetaActor.gen_name(session_id, graph_key)
         scheduler_ip = self.cluster_info.get_scheduler(uid)
         actor_ref = _actor_client.actor_ref(uid, address=scheduler_ip)
         return actor_ref
@@ -134,8 +142,7 @@ class GraphApiHandler(ApiRequestHandler):
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
 
-        state_obj = self.kv_store_ref.read(
-            '/sessions/%s/graph/%s/state' % (session_id, graph_key), silent=True)
+        state_obj = self.get_graph_meta_ref(session_id, graph_key).get_state()
         state = state_obj.value if state_obj else 'preparing'
         state = GraphState(state.lower())
 
@@ -151,7 +158,9 @@ class GraphApiHandler(ApiRequestHandler):
             self.write(json.dumps(dict(state='preparing')))
 
     def delete(self, session_id, graph_key):
+        from ..scheduler.utils import GraphState
         graph_ref = self.get_graph_ref(session_id, graph_key)
+        self.get_graph_meta_ref(session_id, graph_key).set_state(GraphState.CANCELLING)
         graph_ref.stop_graph()
 
 
@@ -182,9 +191,8 @@ class GraphDataHandler(ApiRequestHandler):
 class WorkersApiHandler(ApiRequestHandler):
     def get(self):
         try:
-            worker_info = self.kv_store_ref.read('/workers/meta')
-            workers_num = len(worker_info.children)
-            self.write(json.dumps(workers_num))
+            worker_count = self.get_resource_ref().get_worker_count()
+            self.write(json.dumps(worker_count))
         except KeyError:
             self.write(json.dumps(0))
 

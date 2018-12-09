@@ -7,11 +7,17 @@ REM Command file for Sphinx documentation
 if "%SPHINXBUILD%" == "" (
 	set SPHINXBUILD=sphinx-build
 )
+if "%SPHINXINTL%" == "" (
+	set SPHINXINTL=sphinx-intl
+)
 set SOURCEDIR=source
 set BUILDDIR=build
 set SPHINXPROJ=mars
+set I18NSPHINXOPTS=%SPHINXOPTS% %SOURCEDIR%
+set I18NSPHINXLANGS=-l zh_CN
 
 if "%1" == "" goto help
+if "%1" == "gettext" goto gettext
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
@@ -27,6 +33,15 @@ if errorlevel 9009 (
 )
 
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS%
+goto end
+
+:gettext
+%SPHINXBUILD% -b gettext %I18NSPHINXOPTS% %BUILDDIR%/locale
+if errorlevel 1 exit /b 1
+%SPHINXINTL% update -p %BUILDDIR%/locale %I18NSPHINXLANGS%
+if errorlevel 1 exit /b 1
+echo.
+echo.Build finished. The message catalogs are in %BUILDDIR%/locale.
 goto end
 
 :help

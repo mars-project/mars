@@ -20,17 +20,13 @@ import subprocess
 import tempfile
 import time
 import unittest
-from contextlib import contextmanager
 from collections import Iterable
 from weakref import ReferenceType
 
 import numpy as np
-from tornado import gen
-from tornado.ioloop import IOLoop
 
 from mars import compat
 from mars.compat import zip_longest
-from mars.core import BaseWithKey
 from mars.compat import six
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
@@ -44,46 +40,6 @@ if compat.PY27:
 else:
     from unittest import mock
     _mock = mock
-
-
-@contextmanager
-def pristine_loop():
-    IOLoop.clear_instance()
-    IOLoop.clear_current()
-    loop = IOLoop()
-    loop.make_current()
-    try:
-        yield loop
-    finally:
-        loop.close(all_fds=True)
-        IOLoop.clear_instance()
-        IOLoop.clear_current()
-
-
-def gen_test(timeout=10):
-    """ Coroutine test
-
-    @gen_test(timeout=5)
-    def test_foo():
-        yield ...  # use tornado coroutines
-    """
-    def _(func):
-        def test_func(*args, **kwargs):
-            with pristine_loop() as loop:
-
-                def f():
-                    return func(*args, **kwargs)
-
-                cor = gen.coroutine(f)
-                try:
-                    loop.run_sync(cor, timeout=timeout)
-                finally:
-                    loop.stop()
-
-        test_func.__name__ = func.__name__
-        test_func.__doc__ = func.__doc__
-        return test_func
-    return _
 
 
 class TestCase(unittest.TestCase):

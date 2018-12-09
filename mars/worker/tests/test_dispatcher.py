@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import time
-import unittest
 from functools import partial
 
 import gevent
@@ -23,6 +22,7 @@ from mars.utils import get_next_port
 from mars.actors import create_actor_pool
 from mars.promise import PromiseActor
 from mars.worker import *
+from mars.worker.tests.base import WorkerCase
 
 
 class TaskActor(PromiseActor):
@@ -44,42 +44,7 @@ class TaskActor(PromiseActor):
             self._dispatch_ref.register_free_slot(self.uid, self._queue_name)
 
 
-class RunTaskTestActor(PromiseActor):
-    def __init__(self, call_records):
-        super(RunTaskTestActor, self).__init__()
-        self._dispatch_ref = None
-        self._finished = False
-        self._call_records = call_records
-
-    def post_create(self):
-        self._dispatch_ref = self.promise_ref('DispatchActor')
-
-    def get_finished(self):
-        return self._finished
-
-    def run_tasks(self, group_size):
-        from mars.promise import Promise
-        p = Promise()
-        p.step_next()
-
-        def _call_on_dispatched(uid, key=None):
-            if uid is None:
-                self._call_records[key] = 'NoneUID'
-            else:
-                self.promise_ref(uid).queued_call(key, 2, _tell=True)
-
-        for idx in range(group_size + 1):
-            p = p.then(lambda *_: self._dispatch_ref.get_free_slot('g1', _promise=True)) \
-                .then(partial(_call_on_dispatched, key='%d_1' % idx)) \
-                .then(lambda *_: self._dispatch_ref.get_free_slot('g2', _promise=True)) \
-                .then(partial(_call_on_dispatched, key='%d_2' % idx))
-
-        p.then(lambda *_: self._dispatch_ref.get_free_slot('g3', _promise=True)) \
-            .then(partial(_call_on_dispatched, key='N_1')) \
-            .then(lambda *_: setattr(self, '_finished', True))
-
-
-class Test(unittest.TestCase):
+class Test(WorkerCase):
     @mock.patch('mars.worker.utils.WorkerActor._init_chunk_store')
     def testDispatch(self, *_):
         call_records = dict()
@@ -103,15 +68,28 @@ class Test(unittest.TestCase):
             # tasks within [0, group_size - 1] will run almost simultaneously,
             # while the last one will be delayed due to lack of
 
-            def run_tasks():
-                test_ref = pool.create_actor(RunTaskTestActor, call_records)
-                test_ref.run_tasks(group_size)
-                while not test_ref.get_finished():
-                    gevent.sleep(1)
-                test_ref.destroy()
+            with self.run_actor_test(pool) as test_actor:
+                from mars.promise import Promise
+                p = Promise(done=True)
+                _dispatch_ref = test_actor.promise_ref('DispatchActor')
 
-            gl = gevent.spawn(run_tasks)
-            gl.join()
+                def _call_on_dispatched(uid, key=None):
+                    if uid is None:
+                        call_records[key] = 'NoneUID'
+                    else:
+                        test_actor.promise_ref(uid).queued_call(key, 2, _tell=True)
+
+                for idx in range(group_size + 1):
+                    p = p.then(lambda *_: _dispatch_ref.get_free_slot('g1', _promise=True)) \
+                        .then(partial(_call_on_dispatched, key='%d_1' % idx)) \
+                        .then(lambda *_: _dispatch_ref.get_free_slot('g2', _promise=True)) \
+                        .then(partial(_call_on_dispatched, key='%d_2' % idx))
+
+                p.then(lambda *_: _dispatch_ref.get_free_slot('g3', _promise=True)) \
+                    .then(partial(_call_on_dispatched, key='N_1')) \
+                    .then(lambda *_: test_actor.set_result(None))
+
+            self.get_result(20)
 
             self.assertEqual(call_records['N_1'], 'NoneUID')
             self.assertLess(sum(abs(call_records['%d_1' % idx] - call_records['0_1'])

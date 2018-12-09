@@ -16,68 +16,14 @@ import uuid
 import weakref
 
 import numpy as np
-import gevent
 from numpy.testing import assert_array_equal
 
 from mars.actors import create_actor_pool
-from mars.compat import six
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler.kvstore import KVStoreActor
+from mars.scheduler import ChunkMetaActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
-from mars.worker.utils import WorkerActor
-
-
-class ExecuteTestActor(WorkerActor):
-    def __init__(self):
-        super(ExecuteTestActor, self).__init__()
-        self._exc_info = None
-        self._finished = False
-
-    def run_test(self):
-        import mars.tensor as mt
-        from mars.tensor.expressions.datasource import TensorOnes, TensorFetchChunk
-        arr = mt.ones((10, 8), chunks=10)
-        arr_add = mt.ones((10, 8), chunks=10)
-        arr2 = arr + arr_add
-        graph = arr2.build_graph(compose=False, tiled=True)
-
-        for chunk in graph:
-            if isinstance(chunk.op, TensorOnes):
-                chunk._op = TensorFetchChunk(
-                    dtype=chunk.dtype, _outputs=[weakref.ref(o) for o in chunk.op.outputs],
-                    _key=chunk.op.key)
-
-        session_id = str(uuid.uuid4())
-        op_key = str(uuid.uuid4())
-
-        self._kv_store.write('/sessions/%s/operands/%s/execution_graph'
-                             % (session_id, op_key), serialize_graph(graph))
-        chunk_holder_ref = self.promise_ref('ChunkHolderActor')
-
-        refs = self._chunk_store.put(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16))
-        chunk_holder_ref.register_chunk(session_id, arr.chunks[0].key)
-        del refs
-
-        refs = self._chunk_store.put(session_id, arr_add.chunks[0].key, np.ones((10, 8), dtype=np.int16))
-        chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
-        del refs
-
-        executor_ref = self.promise_ref('ExecutionActor')
-
-        def _validate(_):
-            data = self._chunk_store.get(session_id, arr2.chunks[0].key)
-            assert_array_equal(data, 2 * np.ones((10, 8)))
-
-        executor_ref.execute_graph(session_id, str(id(graph)), serialize_graph(graph),
-                                   dict(chunks=[arr2.chunks[0].key]), None, _promise=True) \
-            .then(_validate) \
-            .catch(lambda *exc: setattr(self, '_exc_info', exc)) \
-            .then(lambda *_: setattr(self, '_finished', True))
-
-    def get_exc_info(self):
-        return self._finished, self._exc_info
 
 
 class Test(WorkerCase):
@@ -87,19 +33,58 @@ class Test(WorkerCase):
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
-            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+            pool.create_actor(TaskQueueActor, uid='TaskQueueActor')
             pool.create_actor(DispatchActor, uid='DispatchActor')
             pool.create_actor(QuotaActor, 1024 * 1024, uid='MemQuotaActor')
             pool.create_actor(CpuCalcActor)
             pool.create_actor(ExecutionActor, uid='ExecutionActor')
 
             try:
-                test_ref = pool.create_actor(ExecuteTestActor)
-                test_ref.run_test()
-                while not test_ref.get_exc_info()[0]:
-                    gevent.sleep(0.1)
-                exc_info = test_ref.get_exc_info()[1]
-                if exc_info:
-                    six.reraise(*exc_info)
+                with self.run_actor_test(pool) as test_actor:
+                    import mars.tensor as mt
+                    from mars.tensor.expressions.datasource import TensorOnes, TensorFetchChunk
+                    arr = mt.ones((10, 8), chunks=10)
+                    arr_add = mt.ones((10, 8), chunks=10)
+                    arr2 = arr + arr_add
+                    graph = arr2.build_graph(compose=False, tiled=True)
+
+                    for chunk in graph:
+                        if isinstance(chunk.op, TensorOnes):
+                            chunk._op = TensorFetchChunk(
+                                dtype=chunk.dtype, _outputs=[weakref.ref(o) for o in chunk.op.outputs],
+                                _key=chunk.op.key)
+
+                    session_id = str(uuid.uuid4())
+                    op_key = str(uuid.uuid4())
+
+                    self._kv_store.write('/sessions/%s/operands/%s/execution_graph'
+                                         % (session_id, op_key), serialize_graph(graph))
+                    chunk_holder_ref = test_actor.promise_ref('ChunkHolderActor')
+
+                    refs = test_actor._chunk_store.put(session_id, arr.chunks[0].key,
+                                                       np.ones((10, 8), dtype=np.int16))
+                    chunk_holder_ref.register_chunk(session_id, arr.chunks[0].key)
+                    del refs
+
+                    refs = test_actor._chunk_store.put(session_id, arr_add.chunks[0].key,
+                                                       np.ones((10, 8), dtype=np.int16))
+                    chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
+                    del refs
+
+                    executor_ref = test_actor.promise_ref('ExecutionActor')
+
+                    def _validate(_):
+                        data = test_actor._chunk_store.get(session_id, arr2.chunks[0].key)
+                        assert_array_equal(data, 2 * np.ones((10, 8)))
+
+                    executor_ref.enqueue_graph(session_id, str(id(graph)), serialize_graph(graph),
+                                               dict(chunks=[arr2.chunks[0].key]), None, _promise=True) \
+                        .then(lambda *_: executor_ref.start_execution(session_id, str(id(graph)), _promise=True)) \
+                        .then(_validate) \
+                        .then(lambda *_: test_actor.set_result(None)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, False))
+
+                self.get_result()
             finally:
                 pool.destroy_actor(cache_ref)

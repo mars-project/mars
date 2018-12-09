@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
 import math
-import contextlib
+import os
+from collections import OrderedDict
 
-from .. import kvstore
 from ..actors import ActorNotExist
 from ..config import options
 from ..promise import PromiseActor
@@ -31,33 +30,24 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
     """
     Base class of all worker actors, providing necessary utils
     """
-    def __init__(self):
-        super(WorkerActor, self).__init__()
-        self._callbacks = dict()
-
-        self._kv_store_ref = None
-        self._kv_store = None
-        if options.kv_store:
-            self._kv_store = kvstore.get(options.kv_store)
-
     def post_create(self):
-        from ..scheduler.kvstore import KVStoreActor
-
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         try:
             self.set_cluster_info_ref()
-            has_cluster_info = True
         except ActorNotExist:
-            has_cluster_info = False
-        if has_cluster_info:
-            self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
+            pass
         self._init_chunk_store()
 
     def _init_chunk_store(self):
         import pyarrow.plasma as plasma
         from .chunkstore import PlasmaChunkStore
         self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
-        self._chunk_store = PlasmaChunkStore(self._plasma_client, self._kv_store_ref)
+        self._chunk_store = PlasmaChunkStore(self._plasma_client)
+
+    def get_meta_ref(self, session_id, chunk_key):
+        from ..scheduler.chunkmeta import LocalChunkMetaActor
+        addr = self.get_scheduler((session_id, chunk_key))
+        return self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
 
 
 class ExpMeanHolder(object):
@@ -92,3 +82,15 @@ class ExpMeanHolder(object):
 
     def std(self):
         return math.sqrt(self.var())
+
+
+def concat_operand_keys(graph, sep=','):
+    from ..tensor.expressions.datasource import TensorFetchChunk
+    graph_op_dict = OrderedDict()
+    for c in graph:
+        if isinstance(c.op, TensorFetchChunk):
+            continue
+        graph_op_dict[c.op.key] = type(c.op).__name__
+    keys = sep.join(graph_op_dict.keys())
+    graph_ops = sep.join(graph_op_dict.values())
+    return keys, graph_ops

@@ -248,7 +248,7 @@ class PromiseRefWrapper(object):
                 return ref_fun(*args, **kwargs)
 
             p = Promise()
-            self._caller._promises[p.id] = p
+            self._caller.register_promise(p, self._ref)
 
             timeout = kwargs.pop('_timeout', 0)
 
@@ -307,7 +307,9 @@ class PromiseActor(FunctionActor):
         Wraps an existing ActorRef into a promise ref
         """
         if not hasattr(self, '_promises'):
-            self._promises = weakref.WeakValueDictionary()  # type: dict[object, Promise]
+            self._promises = dict()
+            self._promise_uids = dict()
+            self._uid_promises = dict()
 
         if not args and not kwargs:
             ref = self.ref()
@@ -316,6 +318,52 @@ class PromiseActor(FunctionActor):
         else:
             ref = self.ctx.actor_ref(*args, **kwargs)
         return PromiseRefWrapper(ref, self)
+
+    def register_promise(self, promise, ref):
+        """
+        :param Promise promise:
+        :param ActorRef ref:
+        """
+        promise_id = promise.id
+
+        def _weak_callback(*_):
+            self.delete_promise(promise_id)
+
+        self._promises[promise_id] = weakref.ref(promise, _weak_callback)
+        ref_key = (ref.uid, ref.address)
+        self._promise_uids[promise_id] = ref_key
+        if ref_key not in self._uid_promises:
+            self._uid_promises[ref_key] = set()
+        self._uid_promises[ref_key].add(promise_id)
+
+    def get_promise(self, promise_id):
+        obj = self._promises.get(promise_id)
+        if obj is None:
+            return None
+        return obj()
+
+    def delete_promise(self, promise_id):
+        if promise_id not in self._promises:
+            return
+        ref_key = self._promise_uids[promise_id]
+        self._uid_promises[ref_key].remove(promise_id)
+        del self._promises[promise_id]
+        del self._promise_uids[promise_id]
+
+    def reject_promise_ref(self, ref, *args, **kwargs):
+        """
+        Reject all promises related to given actor
+        :param ref:
+        """
+        kwargs['_accept'] = False
+        ref_key = (ref.uid, ref.address)
+        if ref_key not in self._uid_promises:
+            return
+        for promise_id in list(self._uid_promises[ref_key]):
+            p = self.get_promise(promise_id)
+            if p is None:
+                continue
+            p.step_next(*args, **kwargs)
 
     def tell_promise(self, callback, *args, **kwargs):
         """
@@ -331,28 +379,24 @@ class PromiseActor(FunctionActor):
         Callback entry for promise results
         :param promise_id: promise key
         """
-        try:
-            self._promises[promise_id].step_next(*args, **kwargs)
-            if promise_id in self._promises:
-                del self._promises[promise_id]
-        except KeyError:
+        p = self.get_promise(promise_id)
+        if p is None:
             logger.warning('Promise %r reentered in %s', promise_id, self.uid)
+            return
+        self.get_promise(promise_id).step_next(*args, **kwargs)
+        self.delete_promise(promise_id)
 
     def handle_promise_timeout(self, promise_id):
         """
         Callback entry for promise timeout
         :param promise_id: promise key
         """
-        p = self._promises.get(promise_id)
+        p = self.get_promise(promise_id)
         if not p or p._accepted is not None:
             # skip promises that are already finished
             return
 
-        try:
-            del self._promises[promise_id]
-        except KeyError:
-            pass
-
+        self.delete_promise(promise_id)
         try:
             raise PromiseTimeout
         except PromiseTimeout:

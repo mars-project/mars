@@ -477,12 +477,8 @@ class ReceiverActor(WorkerActor):
                 dest_dir = build_spill_file_name(chunk_key, writing=False)
                 os.rename(src_dir, dest_dir)
 
-            chunk_path = '/sessions/%s/chunks/%s' % (session_id, chunk_key)
-            futures = [
-                self._kv_store_ref.write(chunk_path + '/workers/%s' % self.address, '', _wait=False),
-                self._kv_store_ref.write(chunk_path + '/data_size', data_meta['chunk_size'], _wait=False),
-            ]
-            [f.result() for f in futures]
+            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                session_id, chunk_key, size=data_meta['chunk_size'], workers=(self.address,))
 
             self._data_writers[session_chunk_key].close()
             del self._data_writers[session_chunk_key]

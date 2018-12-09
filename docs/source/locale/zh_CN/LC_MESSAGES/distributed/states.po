@@ -1,0 +1,133 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2018-11-29 23:00+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.6.0\n"
+
+#: ../../source/distributed/states.rst:4
+msgid "Operand States"
+msgstr "Operand 状态"
+
+#: ../../source/distributed/states.rst:5
+msgid ""
+"Every operand in Mars is scheduled independently by an OperandActor. The "
+"execution is designed as a state transition process. We assign a state "
+"handling function for every state to control the execution procedure. "
+"Every operand is at ``UNSCHEDULED`` state when the actor is initially "
+"initialized. When certain conditions are met, the operand switches into "
+"another state and perform corresponding actions. If an operand is "
+"recovered from KV store, its state when scheduler crashes will be loaded "
+"and the state is resumed. The state transition graph can be shown below:"
+msgstr ""
+"Mars 中的每一个操作符都被一个 OperandActor 单独调度。执行的过程是一个状态"
+"转移的过程。在 OperandActor 中，我们为每一个状态的进入过程定义一个状态"
+"转移函数。起始 Operand 在初始化时位于 ``READY`` 状态，非起始 Operand 在"
+"初始化时则位于 ``UNSCHEDULED`` 状态。当给定的条件满足，Operand 将转移到另"
+"一个状态并执行相应的操作。状态转移的流程可以参考下图："
+
+#: ../../source/distributed/states.rst:16
+msgid ""
+"We illustrate the meaning of every state and actions Mars take when "
+"entering these states."
+msgstr "我们在下面描述每个状态的含义及 Mats 在这些状态下执行的操作。"
+
+#: ../../source/distributed/states.rst:19
+msgid ""
+"``UNSCHEDUED``: the operand is in this state when it is not ready to "
+"execute."
+msgstr "``UNSCHEDUED``：一个 Operand 位于此状态，当它的上游数据没有准备好。"
+
+#: ../../source/distributed/states.rst:20
+msgid ""
+"``READY``: the operand is in this state when all input chunks are ready. "
+"When this state is entered, the OperandActor submits the operand to all "
+"workers selected in AssignerActor. If the operand is about to run in one "
+"of the selected workers, it will respond to the scheduler and the "
+"scheduler suspends the operand on other workers and start executing the "
+"operand on the requesting worker."
+msgstr ""
+"``READY``：一个 Operand 位于此状态，当所有上游输入数据均已准备完毕。在"
+"进入这一状态时，OperandActor 向 AssignerActor 中选择的所有 Worker 提交"
+"作业。如果某一 Worker 准备运行作业，它将向 Scheduler 发送消息，Scheduler "
+"将向其他 Worker 发送停止运行的消息，此后向该 Worker 发送消息以启动作业"
+"执行。"
+
+#: ../../source/distributed/states.rst:26
+msgid ""
+"``RUNNING``: the operand is in this state when it is assigned to a worker"
+" or already started execution. When this state is entered, the "
+"OperandActor checks if it has been submitted to the worker. If not "
+"submitted, the operand is built into an \"executable dag\" containing "
+"FetchChunks. Then a callback is registered in the worker to handle "
+"execution finish."
+msgstr ""
+"``RUNNING``：一个 Operand 位于此状态，当它的执行已经启动。在进入此状态时"
+"，OperandActor 会检查作业是否已经提交。如果尚未提交，OperandActor 将构造"
+"一个由 FetchChunk Operand 和当前 Operand 组成的图，并将其提交到 Worker 中"
+"。此后，OperandActor 会在 Worker 中注册一个回调来获取作业执行完成的消息。"
+
+#: ../../source/distributed/states.rst:31
+msgid ""
+"``FINISHED``: the operand is in this state when the operand finishes "
+"execution. When this state is entered, a terminal operand will send a "
+"notification to its GraphActor to decide if the whole graph finishes "
+"execution. What's more, the OperandActor looks for precedent and "
+"successor chunks and notify them. When a predecessor receives the "
+"notification, it checks if all its successors finishes execution. If so, "
+"the data of that operand can be freed. When a successor receives the "
+"notification, it checks if all of its predecessors are finished. If so, "
+"the operand itself can move to ``READY``."
+msgstr ""
+"``FINISHED``：一个 Operand 位于此状态，当作业执行已完成。当 Operand 进入"
+"此状态，且 Operand 无后继，一个消息将被发送到 GraphActor 以决定是否整个 "
+"Graph 的执行都已结束。与此同时，OperandActor 向它的前驱和后继发送执行完成"
+"的消息。如果一个前驱收到此消息，它将检查是否所有的后继都已执行完成。如是"
+"，当前 Operand 上的数据可以被释放。如果一个后继收到此消息，它将检查是否"
+"所有的前驱已完成。如是，该后继的状态可以转移到 ``READY``。"
+
+#: ../../source/distributed/states.rst:40
+msgid ""
+"``FREED``: the operand is in this state when all data related to this "
+"operand is freed."
+msgstr "``FREED``：一个 Operand 位于此状态，当其上所有数据都已被释放。"
+
+#: ../../source/distributed/states.rst:42
+msgid ""
+"``FATAL``: the operand is in this state when itself or some predecessor "
+"failed to execute.  When this state is entered, the OperandActor try to "
+"pass this state down to its successors."
+msgstr ""
+"``CANCELLED``：一个 Operand 位于此状态，当所有重新执行的尝试均告失败。当 "
+"Operand 进入此状态，它将把相同状态传递到后继节点。"
+
+#: ../../source/distributed/states.rst:45
+msgid ""
+"``CANCELLING``: the operand is in this state when it is being cancelled. "
+"If the operand is previously running, a cancel request will be sent to "
+"the worker."
+msgstr ""
+"``CANCELLING``：一个 Operand 位于此状态，当它正在被取消执行。如果此前作业"
+"正在执行，一个取消执行的请求会被发送到 Worker 上。"
+
+#: ../../source/distributed/states.rst:48
+msgid ""
+"``CANCELLED``: the operand is in this state when it is cancelled and "
+"stops running. When this state is entered, the OperandActor tries to "
+"switch its descendants into ``CANCELLING``."
+msgstr ""
+"``CANCELLED``：一个 Operand 位于此状态，当执行已被取消并停止运行。如果"
+"执行进入这一状态，OperandActor 会尝试将书友的后继都转为 ``CANCELLING``。"
+

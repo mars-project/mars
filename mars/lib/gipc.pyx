@@ -95,7 +95,7 @@ if WINDOWS:
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
 # context of multiple processes might yield mixed messages in the output.
-log = logging.getLogger(__name__)
+log = logging.getLogger('gipc')
 
 
 class GIPCError(Exception):

@@ -22,11 +22,10 @@ import gevent
 from mars import promise
 from mars.actors import FunctionActor, create_actor_pool
 from mars.cluster_info import ClusterInfoActor
-from mars.compat import six
 from mars.config import options
 from mars.distributor import BaseDistributor
 from mars.errors import StoreFull
-from mars.scheduler.kvstore import KVStoreActor
+from mars.scheduler import ChunkMetaActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
 from mars.worker.chunkstore import PlasmaChunkStore
@@ -97,7 +96,7 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
             try:
                 pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                                   uid=ClusterInfoActor.default_name())
-                pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
                 pool.create_actor(DispatchActor, uid='DispatchActor')
                 pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid='MemQuotaActor')
                 holder_ref = pool.create_actor(HolderActor, uid='HolderActor')
@@ -130,68 +129,6 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
                 pool.destroy_actor(chunk_holder_ref)
     finally:
         plasma_helper.stop()
-
-
-class TransferTestActor(WorkerActor):
-    def __init__(self, local_pool_addr, remote_pool_addr, remote_plasma_socket, remote_spill_dir):
-        super(TransferTestActor, self).__init__()
-
-        self._local_pool_addr = local_pool_addr
-        self._remote_pool_addr = remote_pool_addr
-        self._remote_plasma_socket = remote_plasma_socket
-        self._remote_spill_dir = remote_spill_dir
-
-        self._remote_plasma_client = None
-
-        self._remote_store = None
-        self._finish_info = (None, None)
-
-    def post_create(self):
-        super(TransferTestActor, self).post_create()
-        self._remote_plasma_client = plasma.connect(self._remote_plasma_socket, '', 0)
-        self._remote_store = PlasmaChunkStore(
-            self._remote_plasma_client, self.ctx.actor_ref(KVStoreActor.default_name()))
-
-    def pre_destroy(self):
-        self._remote_plasma_client.disconnect()
-
-    def get_results(self):
-        return self._finish_info
-
-    def do_transfer_test(self, session_id, chunk_key):
-        from mars.worker.spill import build_spill_file_name
-        from mars.serialize import dataserializer
-        from numpy.testing import assert_array_equal
-
-        remote_dispatch_ref = self.promise_ref('DispatchActor', address=self._remote_pool_addr)
-
-        def _call_send_data(sender_uid):
-            sender_ref = self.promise_ref(sender_uid, address=self._remote_pool_addr)
-            return sender_ref.send_data(session_id, chunk_key, self._local_pool_addr, _promise=True)
-
-        def _test_data_exist(*_):
-            try:
-                local_data = self._chunk_store.get(session_id, chunk_key)
-            except KeyError:
-                with open(build_spill_file_name(chunk_key), 'rb') as spill_file:
-                    local_data = dataserializer.load(spill_file)
-
-            try:
-                remote_data = self._remote_store.get(session_id, chunk_key)
-            except KeyError:
-                with open(build_spill_file_name(chunk_key, self._remote_spill_dir), 'rb') as spill_file:
-                    remote_data = dataserializer.load(spill_file)
-            assert_array_equal(local_data, remote_data)
-
-            del local_data, remote_data
-
-        remote_dispatch_ref.get_free_slot('sender', _promise=True) \
-            .then(_call_send_data) \
-            .then(_test_data_exist) \
-            .then(
-            lambda *_: setattr(self, '_finish_info', (chunk_key, None)),
-            lambda *exc: setattr(self, '_finish_info', (chunk_key, exc)),
-        )
 
 
 class Test(WorkerCase):
@@ -230,11 +167,11 @@ class Test(WorkerCase):
                 proc.terminate()
             raise
 
-        with create_actor_pool(n_process=1, distributor=BaseDistributor(3),
+        with create_actor_pool(n_process=1, distributor=BaseDistributor(1),
                                backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
                               uid=ClusterInfoActor.default_name())
-            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(DispatchActor, uid='DispatchActor')
             pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid='MemQuotaActor')
             cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
@@ -252,24 +189,47 @@ class Test(WorkerCase):
                 pool.create_actor(ReceiverActor, uid='w:2:%s' % str(uuid.uuid4())),
             ]
 
-            test_ref = pool.create_actor(TransferTestActor, local_pool_addr, remote_pool_addr,
-                                         remote_plasma_socket, remote_spill_dir)
             try:
                 for data_id in (-1, 1):
                     chunk_key = remote_chunk_keys[data_id]
 
-                    test_ref.do_transfer_test(session_id, chunk_key)
+                    with self.run_actor_test(pool) as test_actor:
+                        from mars.worker.spill import build_spill_file_name
+                        from mars.serialize import dataserializer
+                        from numpy.testing import assert_array_equal
 
-                    check_time = time.time()
-                    while test_ref.get_results()[0] != chunk_key:
-                        gevent.sleep(0.5)
-                        if not proc.is_alive():
-                            raise SystemError('Transfer worker dead. exit code %s' % proc.exitcode)
-                        if time.time() - check_time > 60:
-                            raise SystemError('Wait result timeout')
-                    exc = test_ref.get_results()[1]
-                    if exc:
-                        six.reraise(*exc)
+                        remote_dispatch_ref = test_actor.promise_ref('DispatchActor', address=remote_pool_addr)
+                        remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
+                        remote_store = PlasmaChunkStore(remote_plasma_client)
+
+                        def _call_send_data(sender_uid):
+                            sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)
+                            return sender_ref.send_data(session_id, chunk_key, local_pool_addr, _promise=True)
+
+                        def _test_data_exist(*_):
+                            try:
+                                local_data = test_actor._chunk_store.get(session_id, chunk_key)
+                            except KeyError:
+                                with open(build_spill_file_name(chunk_key), 'rb') as spill_file:
+                                    local_data = dataserializer.load(spill_file)
+
+                            try:
+                                remote_data = remote_store.get(session_id, chunk_key)
+                            except KeyError:
+                                with open(build_spill_file_name(chunk_key, remote_spill_dir), 'rb') as spill_file:
+                                    remote_data = dataserializer.load(spill_file)
+                            assert_array_equal(local_data, remote_data)
+
+                            del local_data, remote_data
+
+                        remote_dispatch_ref.get_free_slot('sender', _promise=True) \
+                            .then(_call_send_data) \
+                            .then(_test_data_exist) \
+                            .then(
+                            lambda *_: test_actor.set_result(chunk_key),
+                            lambda *exc: test_actor.set_result(exc, False),
+                        )
+                    self.assertEqual(self.get_result(60), chunk_key)
 
                 remote_holder_ref = pool.actor_ref('HolderActor', address=remote_pool_addr)
                 remote_holder_ref.trigger()
@@ -279,7 +239,6 @@ class Test(WorkerCase):
                 for ref in receiver_refs:
                     pool.destroy_actor(ref)
                 pool.destroy_actor(cache_ref)
-                pool.destroy_actor(test_ref)
 
                 os.unlink(remote_plasma_socket)
                 if proc.is_alive():

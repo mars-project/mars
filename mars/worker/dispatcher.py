@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from collections import deque
+from collections import deque, OrderedDict
 
 from .utils import WorkerActor
 from ..utils import mod_hash, log_unhandled
@@ -30,9 +30,14 @@ class DispatchActor(WorkerActor):
         self._free_slots = dict()
         self._all_slots = dict()
         self._free_slot_requests = dict()
+        self._status_ref = None
 
     def post_create(self):
         super(DispatchActor, self).post_create()
+
+        self._status_ref = self.ctx.actor_ref('StatusActor')
+        if not self.ctx.has_actor(self._status_ref):
+            self._status_ref = None
 
     @log_unhandled
     def get_free_slot(self, queue_name, callback=None):
@@ -49,7 +54,11 @@ class DispatchActor(WorkerActor):
             self._free_slot_requests[queue_name].append(callback)
             logger.debug('No valid slots available. slot dump: %r', self._dump_free_slots())
             return
-        self.tell_promise(callback, self._free_slots[queue_name].pop())
+        self.tell_promise(callback, self._free_slots[queue_name].popitem()[0])
+
+        if self._status_ref is not None:
+            self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
+                                          _tell=True, _wait=False)
 
     @log_unhandled
     def get_hash_slot(self, queue_name, key):
@@ -58,7 +67,7 @@ class DispatchActor(WorkerActor):
         :param queue_name: queue name
         :param key: key to be hashed
         """
-        slots = self._all_slots[queue_name]
+        slots = list(self._all_slots[queue_name])
         uid = slots[mod_hash(key, len(slots))]
         return uid
 
@@ -70,7 +79,7 @@ class DispatchActor(WorkerActor):
         """
         if queue_name not in self._all_slots:
             return []
-        return list(self._all_slots[queue_name])
+        return list(self._all_slots[queue_name].keys())
 
     def _dump_free_slots(self):
         return dict((k, len(v)) for k, v in self._free_slots.items())
@@ -84,11 +93,15 @@ class DispatchActor(WorkerActor):
         """
         if queue_name not in self._free_slots:
             self._free_slot_requests[queue_name] = deque()
-            self._free_slots[queue_name] = []
-            self._all_slots[queue_name] = []
-        self._free_slots[queue_name].append(uid)
-        self._all_slots[queue_name].append(uid)
+            self._free_slots[queue_name] = OrderedDict()
+            self._all_slots[queue_name] = OrderedDict()
+        self._free_slots[queue_name][uid] = ''
+        self._all_slots[queue_name][uid] = ''
 
         if self._free_slot_requests[queue_name]:
             self.tell_promise(self._free_slot_requests[queue_name].popleft(),
-                              self._free_slots[queue_name].pop())
+                              self._free_slots[queue_name].popitem()[0])
+
+        if self._status_ref is not None:
+            self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
+                                          _tell=True, _wait=False)

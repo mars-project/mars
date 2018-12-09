@@ -21,55 +21,101 @@ from functools import partial
 from collections import defaultdict, OrderedDict
 
 from .. import promise
+from ..compat import six, Enum
 from ..config import options
-from ..compat import six
-from ..errors import *
+from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
+from ..tensor.expressions.datasource import TensorFetchChunk
 from ..utils import deserialize_graph, log_unhandled
 from .chunkholder import ensure_chunk
 from .spill import spill_exists
-from .utils import WorkerActor
+from .utils import WorkerActor, concat_operand_keys
 
 logger = logging.getLogger(__name__)
 
-_WORKER_RETRY_ERRORS = (PinChunkFailed, SpillExhausted, ObjectNotInPlasma)
+
+class ExecutionState(Enum):
+    ALLOCATING = 'allocating'
+    PREPARING_INPUTS = 'preparing_inputs'
+    CALCULATING = 'calculating'
+    STORING = 'storing'
+
+
+class GraphExecutionRecord(object):
+    __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'targets', 'calc_keys',
+                 'io_meta', 'priority_data', 'data_sizes', 'chunks_use_once', 'state_time',
+                 'mem_request', 'pin_request', 'est_finish_time', 'calc_actor_uid',
+                 'send_addresses', 'retry_delay', 'enqueue_callback', 'finish_callbacks',
+                 'stop_requested')
+
+    def __init__(self, graph_serialized, state, targets=None, io_meta=None, priority_data=None,
+                 data_sizes=None, calc_keys=None, chunks_use_once=None, mem_request=None,
+                 pin_request=None, est_finish_time=None, calc_actor_uid=None, send_addresses=None,
+                 retry_delay=None, enqueue_callback=None, finish_callbacks=None,
+                 stop_requested=False):
+        self.graph_serialized = graph_serialized
+        graph = self.graph = deserialize_graph(graph_serialized)
+
+        self._state = state
+        self.state_time = time.time()
+        self.targets = targets or []
+        self.calc_keys = calc_keys or set()
+        self.io_meta = io_meta or dict()
+        self.data_sizes = data_sizes or dict()
+        self.priority_data = priority_data or dict()
+        self.chunks_use_once = chunks_use_once or set()
+        self.mem_request = mem_request or dict()
+        self.pin_request = pin_request or set()
+        self.est_finish_time = est_finish_time or time.time()
+        self.calc_actor_uid = calc_actor_uid
+        self.send_addresses = send_addresses
+        self.retry_delay = retry_delay or 0
+        self.enqueue_callback = enqueue_callback
+        self.finish_callbacks = finish_callbacks or []
+        self.stop_requested = stop_requested or False
+
+        _, self.op_string = concat_operand_keys(graph)
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._state = value
+        self.state_time = time.time()
 
 
 class ExecutionActor(WorkerActor):
     """
     Actor for execution control
     """
-    _graph_stages = dict()
-    _mem_requests = dict()
-    _pin_requests = dict()
-    _est_finish_times = dict()
-    _retry_delays = defaultdict(lambda: 0)
     _last_dump_time = time.time()
-    _stop_requests = set()
 
     def __init__(self):
         super(ExecutionActor, self).__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
+        self._task_queue_ref = None
         self._mem_quota_ref = None
         self._status_ref = None
+        self._daemon_ref = None
 
-        self._scheduler_resource_ref = None
-
-        self._callbacks = defaultdict(list)
+        self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
         self._callback_cache = OrderedDict()
         self._size_cache = dict()
 
     def post_create(self):
         super(ExecutionActor, self).post_create()
         self._chunk_holder_ref = self.promise_ref('ChunkHolderActor')
-
         self._dispatch_ref = self.promise_ref('DispatchActor')
-        self._dispatch_ref.register_free_slot(self.uid, 'execution')
-
+        self._task_queue_ref = self.promise_ref('TaskQueueActor')
         self._mem_quota_ref = self.promise_ref('MemQuotaActor')
 
-        scheduler_addr = self.get_scheduler(self.uid)
-        self._scheduler_resource_ref = self.ctx.actor_ref('s:ResourceActor', address=scheduler_addr)
+        self._daemon_ref = self.ctx.actor_ref('WorkerDaemonActor')
+        if self.ctx.has_actor(self._daemon_ref):
+            self._daemon_ref.register_callback(self.ref(), self.handle_process_down.__name__, _tell=True)
+        else:
+            self._daemon_ref = None
 
         self._status_ref = self.ctx.actor_ref('StatusActor')
         if not self.ctx.has_actor(self._status_ref):
@@ -86,9 +132,108 @@ class ExecutionActor(WorkerActor):
         cls = type(self)
         if cls._last_dump_time < time.time() - 10:
             cls._last_dump_time = time.time()
-            if self._graph_stages:
-                self._dump_execution_stages()
+            if self._graph_records:
+                self._dump_execution_states()
         self.ref().periodical_dump(_tell=True, _delay=10)
+
+    @promise.reject_on_exception
+    @log_unhandled
+    def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
+                      priority_data=None, send_addresses=None, callback=None):
+        """
+        Submit graph to the worker and control the execution
+        :param session_id: session id
+        :param graph_key: graph key
+        :param graph_ser: serialized executable graph
+        :param io_meta: io meta of the chunk
+        :param data_sizes: data size of each input chunk, as a dict
+        :param priority_data: data priority
+        :param send_addresses: targets to send results after execution
+        :param callback: promise callback
+        """
+        priority_data = priority_data or dict()
+
+        graph_record = self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
+            graph_ser, ExecutionState.ALLOCATING,
+            io_meta=io_meta,
+            data_sizes=data_sizes,
+            enqueue_callback=callback,
+            priority_data=priority_data,
+            targets=io_meta['chunks'],
+            chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
+            send_addresses=send_addresses,
+        )
+        logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
+                     graph_record.op_string, graph_record.targets)
+
+        self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
+
+        self._task_queue_ref.enqueue_task(session_id, graph_key, priority_data, _promise=True) \
+            .then(lambda *_: self.tell_promise(callback))
+
+    @log_unhandled
+    def prepare_quota_request(self, session_id, graph_key):
+        try:
+            graph_record = self._graph_records[(session_id, graph_key)]
+        except KeyError:
+            return None
+
+        graph = graph_record.graph
+        alloc_mem_batch = dict()
+        alloc_cache_batch = dict()
+        input_chunk_keys = dict()
+
+        if self._status_ref:
+            self.estimate_graph_finish_time(session_id, graph_key, graph)
+
+        # collect potential allocation sizes
+        for chunk in graph:
+            if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in graph_record.targets:
+                # use estimated size as potential allocation size
+                graph_record.calc_keys.add(chunk.key)
+                alloc_mem_batch[chunk.key] = chunk.nbytes * 2
+                alloc_cache_batch[chunk.key] = chunk.nbytes
+            else:
+                # use actual size as potential allocation size
+                input_chunk_keys[chunk.key] = graph_record.data_sizes.get(chunk.key, chunk.nbytes)
+
+        keys_to_pin = list(input_chunk_keys.keys())
+        try:
+            graph_record.pin_request = set(self._chunk_holder_ref.pin_chunks(graph_key, keys_to_pin))
+        except PinChunkFailed:
+            # cannot pin input chunks: retry later
+            self.dequeue_graph(session_id, graph_key)
+
+            retry_delay = graph_record.retry_delay + 0.5 + random.random()
+            graph_record.retry_delay = min(1 + graph_record.retry_delay, 30)
+            self.ref().enqueue_graph(
+                session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
+                graph_record.data_sizes, priority_data=graph_record.priority_data,
+                send_addresses=graph_record.send_addresses, callback=graph_record.enqueue_callback,
+                _tell=True, _delay=retry_delay)
+            return None
+
+        load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
+                                if k not in graph_record.pin_request)
+        alloc_mem_batch.update((self._build_load_key(graph_key, k), v)
+                               for k, v in load_chunk_sizes.items() if k in graph_record.chunks_use_once)
+        self._chunk_holder_ref.spill_size(sum(alloc_cache_batch.values()), _tell=True)
+
+        if alloc_mem_batch:
+            graph_record.mem_request = alloc_mem_batch
+        return alloc_mem_batch
+
+    @log_unhandled
+    def dequeue_graph(self, session_id, graph_key):
+        self._cleanup_graph(session_id, graph_key)
+
+    @log_unhandled
+    def update_priority(self, session_id, graph_key, priority_data):
+        query_key = (session_id, graph_key)
+        if query_key not in self._graph_records:
+            return
+        self._graph_records[query_key].priority_data = priority_data
+        self._task_queue_ref.update_priority(session_id, graph_key, priority_data)
 
     @staticmethod
     def _build_load_key(graph_key, chunk_key):
@@ -116,6 +261,10 @@ class ExecutionActor(WorkerActor):
 
         @log_unhandled
         def _fetch_step(sender_uid):
+            if self._graph_records[(session_id, graph_key)].stop_requested:
+                self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                raise ExecutionInterrupted
+
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
             logger.debug('Request for chunk %s transferring from %s', chunk_key, remote_addr)
             return sender_ref.send_data(
@@ -125,14 +274,15 @@ class ExecutionActor(WorkerActor):
 
         return remote_disp_ref.get_free_slot('sender', _promise=True).then(_fetch_step)
 
-    def estimate_graph_finish_time(self, graph_key, graph, calc_fetch=True, base_time=None):
+    def estimate_graph_finish_time(self, session_id, graph_key, graph, calc_fetch=True, base_time=None):
         """
         Calc predictions for given chunk graph
         """
-        if graph_key not in self._graph_stages:
+        session_graph_key = (session_id, graph_key)
+        if session_graph_key not in self._graph_records:
             return
+        graph_record = self._graph_records[session_graph_key]
 
-        from ..tensor.expressions.datasource import TensorFetchChunk
         ops = set(type(c.op).__name__ for c in graph if not isinstance(c.op, TensorFetchChunk))
         op_calc_key = ('calc_speed.' + list(ops)[0]) if len(ops) == 1 else None
 
@@ -174,304 +324,261 @@ class ExecutionActor(WorkerActor):
 
         est_finish_time = base_time + input_size * 1.0 / stats[op_calc_key]['mean']
 
-        self._est_finish_times[graph_key] = est_finish_time
+        graph_record.est_finish_time = est_finish_time
         self._status_ref.update_stats(dict(
-            min_est_finish_time=min(self._est_finish_times.values()),
-            max_est_finish_time=max(self._est_finish_times.values()),
+            min_est_finish_time=min(rec.est_finish_time for rec in self._graph_records.values()),
+            max_est_finish_time=max(rec.est_finish_time for rec in self._graph_records.values()),
         ), _tell=True, _wait=False)
 
-        self.ref().estimate_graph_finish_time(graph_key, graph, _tell=True, _delay=1)
+        self.ref().estimate_graph_finish_time(session_id, graph_key, graph, _tell=True, _delay=1)
 
-    def _update_stage_info(self, session_id, key, ops, stage):
-        self._graph_stages[key] = (stage, time.time())
+    def _update_state(self, session_id, key, state):
+        logger.debug('Operand %s switched to %s', key, getattr(state, 'name'))
+        record = self._graph_records[(session_id, key)]
+        record.state = state
         if self._status_ref:
-            self._status_ref.update_progress(session_id, key, ops, stage, _tell=True, _wait=False)
+            self._status_ref.update_progress(session_id, key, record.op_string, state.name,
+                                             _tell=True, _wait=False)
 
     @promise.reject_on_exception
     @log_unhandled
-    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes, send_targets=None,
-                      callback=None):
+    def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
         :param graph_key: graph key
-        :param graph_ser: serialized executable graph
-        :param io_meta: io meta of the chunk
-        :param data_sizes: data size of each input chunk, as a dict
-        :param send_targets: targets to send results after execution
+        :param send_addresses: targets to send results after execution
         :param callback: promise callback
         """
-        from ..tensor.expressions.datasource import TensorFetchChunk
-        data_sizes = data_sizes or dict()
-        graph = deserialize_graph(graph_ser)
-        targets = io_meta['chunks']
-        chunks_use_once = set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', []))
-
-        graph_ops = ','.join(type(c.op).__name__ for c in graph if not isinstance(c.op, TensorFetchChunk))
-        logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key, graph_ops, targets)
-
-        self._update_stage_info(session_id, graph_key, graph_ops, 'allocate_resource')
+        graph_record = self._graph_records[(session_id, graph_key)]
+        if send_addresses:
+            graph_record.send_addresses = send_addresses
 
         # add callbacks to callback store
         if callback is None:
             callback = []
         elif not isinstance(callback, list):
             callback = [callback]
-        self._callbacks[graph_key].extend(callback)
+        graph_record.finish_callbacks.extend(callback)
         if graph_key in self._callback_cache:
             del self._callback_cache[graph_key]
 
-        unspill_keys = []
-        transfer_keys = []
-        calc_keys = set()
-
-        alloc_mem_batch = dict()
-        alloc_cache_batch = dict()
-        input_chunk_keys = dict()
-
-        if self._status_ref:
-            self.estimate_graph_finish_time(graph_key, graph)
-
-        # collect potential allocation sizes
-        for chunk in graph:
-            if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in targets:
-                # use estimated size as potential allocation size
-                calc_keys.add(chunk.key)
-                alloc_mem_batch[chunk.key] = chunk.nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.nbytes
-            else:
-                # use actual size as potential allocation size
-                input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
-
-        calc_keys = list(calc_keys)
-
-        keys_to_pin = list(input_chunk_keys.keys())
-        try:
-            self._pin_requests[graph_key] = set(self._chunk_holder_ref.pin_chunks(graph_key, keys_to_pin))
-        except PinChunkFailed:
-            # cannot pin input chunks: retry later
-            callback = self._callbacks[graph_key]
-            self._cleanup_graph(session_id, graph_key)
-
-            retry_delay = self._retry_delays[graph_key] + 0.5 + random.random()
-            self._retry_delays[graph_key] = min(1 + self._retry_delays[graph_key], 30)
-            self.ref().execute_graph(session_id, graph_key, graph_ser, io_meta, data_sizes, send_targets, callback,
-                                     _tell=True, _delay=retry_delay)
-            return
-
-        load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
-                                if k not in self._pin_requests[graph_key])
-        alloc_mem_batch.update((self._build_load_key(graph_key, k), v)
-                               for k, v in load_chunk_sizes.items() if k in chunks_use_once)
-        self._chunk_holder_ref.spill_size(sum(alloc_cache_batch.values()), _tell=True)
-
-        # build allocation promises
-        batch_alloc_promises = []
-        if alloc_mem_batch:
-            self._mem_requests[graph_key] = list(alloc_mem_batch.keys())
-            batch_alloc_promises.append(self._mem_quota_ref.request_batch_quota(alloc_mem_batch, _promise=True))
-
-        @log_unhandled
-        def _prepare_inputs(*_):
-            if graph_key in self._stop_requests:
-                raise ExecutionInterrupted
-
-            logger.debug('Start preparing input data for graph %s', graph_key)
-            self._update_stage_info(session_id, graph_key, graph_ops, 'prepare_inputs')
-            prepare_promises = []
-
-            handled_keys = set()
-            for chunk in graph:
-                if chunk.key in handled_keys:
-                    continue
-                if not isinstance(chunk.op, TensorFetchChunk):
-                    continue
-                handled_keys.add(chunk.key)
-
-                if self._chunk_holder_ref.is_stored(chunk.key):
-                    # data already in plasma: we just pin it
-                    pinned_keys = self._chunk_holder_ref.pin_chunks(graph_key, chunk.key)
-                    if chunk.key in pinned_keys:
-                        self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
-                        continue
-
-                if spill_exists(chunk.key):
-                    if chunk.key in chunks_use_once:
-                        # input only use in current operand, we only need to load it into process memory
-                        continue
-                    self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
-                    load_fun = partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
-                                       graph_key, chunk.key)
-                    unspill_keys.append(chunk.key)
-                    prepare_promises.append(ensure_chunk(self, session_id, chunk.key, move_to_end=True) \
-                                            .then(load_fun))
-                    continue
-
-                # load data from another worker
-                worker_results = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers' % (session_id, chunk.key))
-
-                worker_priorities = []
-                for w in worker_results.children:
-                    _, worker_ip = w.key.rsplit('/', 1)
-                    # todo sort workers by speed of network and other possible factors
-                    worker_priorities.append((worker_ip, (0, )))
-
-                transfer_keys.append(chunk.key)
-
-                # fetch data from other workers, if one fails, try another
-                sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-                p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
-                                            ensure_cached=chunk.key not in chunks_use_once)
-                for wp in sorted_workers[1:]:
-                    p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
-                                                  ensure_cached=chunk.key not in chunks_use_once))
-                prepare_promises.append(p)
-
-            logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
-                         graph_key, targets, unspill_keys, transfer_keys)
-            return promise.all_(prepare_promises)
-
         @log_unhandled
         def _wait_free_slot(*_):
-            logger.debug('Waiting for free CPU slot for graph %s', graph_key)
-            self._update_stage_info(session_id, graph_key, graph_ops, 'fetch_free_slot')
             return self._dispatch_ref.get_free_slot('cpu', _promise=True)
-
-        @log_unhandled
-        def _send_calc_request(calc_uid):
-            if graph_key in self._stop_requests:
-                raise ExecutionInterrupted
-
-            # get allocation for calc, in case that memory exhausts
-            target_allocs = dict()
-            for chunk in graph:
-                if isinstance(chunk.op, TensorFetchChunk):
-                    if not self._chunk_holder_ref.is_stored(chunk.key):
-                        alloc_key = self._build_load_key(graph_key, chunk.key)
-                        if alloc_key in alloc_mem_batch:
-                            target_allocs[alloc_key] = alloc_mem_batch[alloc_key]
-                elif chunk.key in targets:
-                    target_allocs[chunk.key] = alloc_mem_batch[chunk.key]
-
-            logger.debug('Start calculation for graph %s', graph_key)
-
-            self._update_stage_info(session_id, graph_key, graph_ops, 'calculate')
-            calc_ref = self.promise_ref(calc_uid)
-
-            self.estimate_graph_finish_time(graph_key, graph, calc_fetch=False)
-            # make sure that memory suffices before actually run execution
-            return self._mem_quota_ref.request_batch_quota(target_allocs, _promise=True) \
-                .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
-                .then(lambda *_: calc_ref.calc(session_id, graph_ser, targets, _promise=True))
-
-        @log_unhandled
-        def _dump_cache(inproc_uid, save_sizes):
-            # do some clean up
-            self._deallocate_scheduler_resource(session_id, graph_key)
-            inproc_ref = self.promise_ref(inproc_uid)
-
-            if graph_key in self._stop_requests:
-                inproc_ref.remove_cache(calc_keys, _tell=True)
-                raise ExecutionInterrupted
-
-            self._update_stage_info(session_id, graph_key, graph_ops, 'dump_cache')
-
-            logger.debug('Graph %s: Start putting %r into shared cache. Target actor uid %s.',
-                         graph_key, calc_keys, inproc_uid)
-
-            self._chunk_holder_ref.unpin_chunks(graph_key, list(set(c.key for c in graph)), _tell=True)
-            if logger.getEffectiveLevel() <= logging.DEBUG:
-                self._dump_execution_stages()
-                # self._cache_ref.dump_cache_status(_tell=True)
-
-            self._size_cache[graph_key] = save_sizes
-
-            if not send_targets:
-                # no endpoints to send, dump keys into shared memory and return
-                logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma...',
-                             graph_key, graph_ops, calc_keys)
-                return inproc_ref.dump_cache(calc_keys, _promise=True)
-            else:
-                # dump keys into shared memory and send
-                logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma '
-                             'while actively transferring %r...',
-                             graph_key, graph_ops, calc_keys, send_targets)
-
-                return inproc_ref.dump_cache(calc_keys, _promise=True) \
-                        .then(_do_active_transfer)
-
-        @log_unhandled
-        def _do_active_transfer(*_):
-            # transfer the result chunk to expected endpoints
-            @log_unhandled
-            def _send_chunk(sender_uid, chunk_key, target_addrs):
-                sender_ref = self.promise_ref(sender_uid)
-                logger.debug('Request for chunk %s sent to %s', chunk_key, target_addrs)
-                return sender_ref.send_data(session_id, chunk_key, target_addrs, ensure_cached=False,
-                                            timeout=options.worker.prepare_data_timeout, _promise=True)
-
-            if graph_key in self._mem_requests:
-                self._mem_quota_ref.release_quotas(self._mem_requests[graph_key], _tell=True)
-                del self._mem_requests[graph_key]
-
-            promises = []
-            for key, targets in send_targets.items():
-                promises.append(self._dispatch_ref.get_free_slot('sender', _promise=True) \
-                                .then(partial(_send_chunk, chunk_key=key, target_addrs=targets)) \
-                                .catch(lambda *_: None))
-            return promise.all_(promises)
 
         @log_unhandled
         def _handle_rejection(*exc):
             # some error occurred...
             logger.debug('Entering _handle_rejection() for graph %s', graph_key)
             if logger.getEffectiveLevel() <= logging.DEBUG:
-                self._dump_execution_stages()
-                # self._cache_ref.dump_cache_status(_tell=True)
+                self._dump_execution_states()
 
-            if graph_key in self._stop_requests:
-                self._stop_requests.remove(graph_key)
-
-            self._mem_quota_ref.cancel_requests(list(alloc_mem_batch.keys()), _tell=True)
-
-            if not issubclass(exc[0], _WORKER_RETRY_ERRORS):
-                # exception not retryable: call back to scheduler
-                if isinstance(exc[0], ExecutionInterrupted):
-                    logger.warning('Execution of graph %s interrupted.', graph_key)
-                else:
+            if graph_record.stop_requested:
+                graph_record.stop_requested = False
+                if not isinstance(exc[0], ExecutionInterrupted):
                     try:
-                        six.reraise(*exc)
-                    except:
-                        logger.exception('Unexpected error occurred in executing %s', graph_key)
-                self._invoke_finish_callbacks(session_id, graph_key, *exc, **dict(_accept=False))
-                return
+                        raise ExecutionInterrupted
+                    except ExecutionInterrupted:
+                        exc = sys.exc_info()
 
-            logger.debug('Graph %s rejected from execution because of %s', graph_key, exc[0].__name__)
-
-            cb = self._callbacks[graph_key]
-            self._cleanup_graph(session_id, graph_key)
-
-            if issubclass(exc[0], ObjectNotInPlasma):
-                retry_delay = 0
+            if isinstance(exc[0], ExecutionInterrupted):
+                logger.warning('Execution of graph %s interrupted.', graph_key)
             else:
-                retry_delay = self._retry_delays[graph_key] + 0.5 + random.random()
-                self._retry_delays[graph_key] = min(1 + self._retry_delays[graph_key], 30)
+                try:
+                    six.reraise(*exc)
+                except:
+                    logger.exception('Unexpected error occurred in executing %s', graph_key)
 
-            self.ref().execute_graph(session_id, graph_key, graph_ser, io_meta, data_sizes, send_targets, cb,
-                                     _tell=True, _delay=retry_delay)
+            self._invoke_finish_callbacks(session_id, graph_key, *exc, **dict(_accept=False))
 
-        promise.all_(batch_alloc_promises).then(_prepare_inputs) \
-            .then(_wait_free_slot).then(_send_calc_request) \
-            .then(_dump_cache).then(lambda *_: self._invoke_finish_callbacks(session_id, graph_key,
-                                                                             self._size_cache.get(graph_key))) \
+        self._prepare_graph_inputs(session_id, graph_key) \
+            .then(_wait_free_slot) \
+            .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
+            .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
+            .then(lambda *_: self._invoke_finish_callbacks(session_id, graph_key,
+                                                           self._size_cache.get(graph_key))) \
             .catch(_handle_rejection)
 
-    def _deallocate_scheduler_resource(self, session_id, graph_key, delay=0):
+    @log_unhandled
+    def _prepare_graph_inputs(self, session_id, graph_key):
+        graph_record = self._graph_records[(session_id, graph_key)]
+        if graph_record.stop_requested:
+            raise ExecutionInterrupted
+
+        unspill_keys = []
+        transfer_keys = []
+
+        logger.debug('Start preparing input data for graph %s', graph_key)
+        self._update_state(session_id, graph_key, ExecutionState.PREPARING_INPUTS)
+        prepare_promises = []
+        chunks_use_once = graph_record.chunks_use_once
+
+        handled_keys = set()
+        for chunk in graph_record.graph:
+            if not isinstance(chunk.op, TensorFetchChunk):
+                continue
+            if chunk.key in handled_keys:
+                continue
+            handled_keys.add(chunk.key)
+
+            if self._chunk_holder_ref.is_stored(chunk.key):
+                # data already in plasma: we just pin it
+                pinned_keys = self._chunk_holder_ref.pin_chunks(graph_key, chunk.key)
+                if chunk.key in pinned_keys:
+                    self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
+                    continue
+
+            if spill_exists(chunk.key):
+                if chunk.key in chunks_use_once:
+                    # input only use in current operand, we only need to load it into process memory
+                    continue
+                self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
+                load_fun = partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
+                                   graph_key, chunk.key)
+                unspill_keys.append(chunk.key)
+                prepare_promises.append(ensure_chunk(self, session_id, chunk.key, move_to_end=True) \
+                                        .then(load_fun))
+                continue
+
+            # load data from another worker
+            worker_results = self.get_meta_ref(session_id, chunk.key) \
+                .get_workers(session_id, chunk.key)
+            if worker_results is None:
+                raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
+
+            worker_priorities = []
+            for worker_ip in worker_results:
+                # todo sort workers by speed of network and other possible factors
+                worker_priorities.append((worker_ip, (0, )))
+
+            transfer_keys.append(chunk.key)
+
+            # fetch data from other workers, if one fails, try another
+            sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
+            p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
+                                        ensure_cached=chunk.key not in chunks_use_once)
+            for wp in sorted_workers[1:]:
+                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
+                                              ensure_cached=chunk.key not in chunks_use_once))
+            prepare_promises.append(p)
+
+        logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
+                     graph_key, graph_record.targets, unspill_keys, transfer_keys)
+        return promise.all_(prepare_promises)
+
+    @log_unhandled
+    def _send_calc_request(self, session_id, graph_key, calc_uid):
+        graph_record = self._graph_records[(session_id, graph_key)]
         try:
-            self._scheduler_resource_ref.deallocate_resource(
-                session_id, graph_key, self.address, _delay=delay, _tell=True, _wait=False)
+            if graph_record.stop_requested:
+                raise ExecutionInterrupted
+
+            graph_record.calc_actor_uid = calc_uid
+
+            # get allocation for calc, in case that memory exhausts
+            target_allocs = dict()
+            for chunk in graph_record.graph:
+                if isinstance(chunk.op, TensorFetchChunk):
+                    if not self._chunk_holder_ref.is_stored(chunk.key):
+                        alloc_key = self._build_load_key(graph_key, chunk.key)
+                        if alloc_key in graph_record.mem_request:
+                            target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
+                elif chunk.key in graph_record.targets:
+                    target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
+
+            logger.debug('Start calculation for graph %s in actor %s', graph_key, calc_uid)
+
+            self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
+            raw_calc_ref = self.ctx.actor_ref(calc_uid)
+            calc_ref = self.promise_ref(raw_calc_ref)
+
+            def _start_calc(*_):
+                if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref):
+                    return calc_ref.calc(session_id, graph_record.graph_serialized,
+                                         graph_record.targets, _promise=True)
+                else:
+                    raise WorkerProcessStopped
+
+            self.estimate_graph_finish_time(session_id, graph_key, graph_record.graph, calc_fetch=False)
         except:
-            pass
+            self._dispatch_ref.register_free_slot(calc_uid, 'cpu')
+            raise
+
+        # make sure that memory suffices before actually run execution
+        return self._mem_quota_ref.request_batch_quota(target_allocs, _promise=True) \
+            .then(_start_calc)
+
+    @log_unhandled
+    def _dump_cache(self, session_id, graph_key, inproc_uid, save_sizes):
+        graph_record = self._graph_records[session_id, graph_key]
+        calc_keys = graph_record.calc_keys
+        send_addresses = graph_record.send_addresses
+
+        @log_unhandled
+        def _do_active_transfer(*_):
+            # transfer the result chunk to expected endpoints
+            @log_unhandled
+            def _send_chunk(sender_uid, chunk_key, target_addrs):
+                if graph_record.stop_requested:
+                    self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                    raise ExecutionInterrupted
+
+                sender_ref = self.promise_ref(sender_uid)
+                logger.debug('Request for chunk %s sent to %s', chunk_key, target_addrs)
+                return sender_ref.send_data(session_id, chunk_key, target_addrs, ensure_cached=False,
+                                            timeout=options.worker.prepare_data_timeout, _promise=True)
+
+            if graph_record.mem_request:
+                self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
+                graph_record.mem_request = dict()
+
+            promises = []
+            for key, targets in send_addresses.items():
+                promises.append(self._dispatch_ref.get_free_slot('sender', _promise=True)
+                                .then(partial(_send_chunk, chunk_key=key, target_addrs=targets))
+                                .catch(lambda *_: None))
+            return promise.all_(promises)
+
+        logger.debug('Graph %s: Start putting %r into shared cache. Target actor uid %s.',
+                     graph_key, calc_keys, inproc_uid)
+        self._update_state(session_id, graph_key, ExecutionState.STORING)
+
+        raw_inproc_ref = self.ctx.actor_ref(inproc_uid)
+        inproc_ref = self.promise_ref(raw_inproc_ref)
+
+        if graph_record.stop_requested:
+            logger.debug('Graph %s already marked for stop, quit.', graph_key)
+            if (self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_inproc_ref)) \
+                    and self.ctx.has_actor(raw_inproc_ref):
+                logger.debug('Try remove keys for graph %s.', graph_key)
+                raw_inproc_ref.remove_cache(list(calc_keys), _tell=True)
+            logger.debug('Graph %s already marked for stop, quit.', graph_key)
+            raise ExecutionInterrupted
+
+        self._chunk_holder_ref.unpin_chunks(
+            graph_key, list(set(c.key for c in graph_record.graph)), _tell=True)
+        if logger.getEffectiveLevel() <= logging.DEBUG:
+            self._dump_execution_states()
+
+        self._size_cache[graph_key] = save_sizes
+
+        if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_inproc_ref):
+            raise WorkerProcessStopped
+
+        if not send_addresses:
+            # no endpoints to send, dump keys into shared memory and return
+            logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma...',
+                         graph_key, graph_record.op_string, calc_keys)
+            return inproc_ref.dump_cache(calc_keys, _promise=True)
+        else:
+            # dump keys into shared memory and send
+            logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma '
+                         'while actively transferring %r...',
+                         graph_key, graph_record.op_string, calc_keys, send_addresses)
+
+            return inproc_ref.dump_cache(calc_keys, _promise=True) \
+                .then(_do_active_transfer)
 
     def _cleanup_graph(self, session_id, graph_key):
         """
@@ -480,23 +587,22 @@ class ExecutionActor(WorkerActor):
         :param graph_key: graph key
         """
         logger.debug('Cleaning callbacks for graph %s', graph_key)
-        if graph_key in self._callbacks:
-            del self._callbacks[graph_key]
-        if graph_key in self._graph_stages:
-            del self._graph_stages[graph_key]
-        if graph_key in self._est_finish_times:
-            del self._est_finish_times[graph_key]
+        self._task_queue_ref.release_task(session_id, graph_key, _tell=True)
 
-        if graph_key in self._mem_requests:
-            self._mem_quota_ref.release_quotas(self._mem_requests[graph_key], _tell=True)
-            del self._mem_requests[graph_key]
+        try:
+            graph_record = self._graph_records[(session_id, graph_key)]
+        except KeyError:
+            return
 
-        if graph_key in self._pin_requests:
-            self._chunk_holder_ref.unpin_chunks(graph_key, self._pin_requests[graph_key], _tell=True)
-            del self._pin_requests[graph_key]
+        self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), _tell=True)
+        if graph_record.mem_request:
+            self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
+        if graph_record.pin_request:
+            self._chunk_holder_ref.unpin_chunks(graph_key, graph_record.pin_request, _tell=True)
 
         if self._status_ref:
             self._status_ref.remove_progress(session_id, graph_key, _tell=True, _wait=False)
+        del self._graph_records[(session_id, graph_key)]
 
     @promise.reject_on_exception
     @log_unhandled
@@ -508,28 +614,35 @@ class ExecutionActor(WorkerActor):
         :param callback: promise call
         """
         logger.debug('Adding callback %r for graph %s', callback, graph_key)
-        self._callbacks[graph_key].append(callback)
         if graph_key in self._callback_cache:
             _, args, kwargs = self._callback_cache[graph_key]
-            self._invoke_finish_callbacks(session_id, graph_key, *args, **kwargs)
+            self.tell_promise(callback, *args, **kwargs)
+        else:
+            self._graph_records[(session_id, graph_key)].finish_callbacks.append(callback)
 
     @log_unhandled
-    def stop_execution(self, graph_key):
+    def stop_execution(self, session_id, graph_key):
         """
         Mark graph for stopping
         :param graph_key: graph key
         """
         logger.debug('Receive stop for graph %s', graph_key)
-        if graph_key not in self._graph_stages:
+        try:
+            graph_record = self._graph_records[(session_id, graph_key)]
+        except KeyError:
             return
-        if self._graph_stages[graph_key][0] == 'allocate_resource':
+
+        graph_record.stop_requested = True
+        if graph_record.state == ExecutionState.ALLOCATING:
             try:
                 raise ExecutionInterrupted
             except:
                 exc_info = sys.exc_info()
-            if graph_key in self._mem_requests:
-                self._mem_quota_ref.cancel_requests(self._mem_requests[graph_key], exc_info, _tell=True)
-        self._stop_requests.add(graph_key)
+            if graph_record.mem_request:
+                self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), exc_info, _tell=True)
+        elif graph_record.state == ExecutionState.CALCULATING:
+            if self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
+                self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
 
     @log_unhandled
     def _invoke_finish_callbacks(self, session_id, graph_key, *args, **kwargs):
@@ -538,13 +651,11 @@ class ExecutionActor(WorkerActor):
         :param session_id: session id
         :param graph_key: graph key
         """
-        logger.debug('Send finish callback for graph %s into %d targets', graph_key,
-                     len(self._callbacks[graph_key]))
-        for cb in self._callbacks[graph_key]:
+        callbacks = self._graph_records[(session_id, graph_key)].finish_callbacks
+        logger.debug('Send finish callback for graph %s into %d targets', graph_key, len(callbacks))
+        for cb in callbacks:
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
-        if graph_key in self._retry_delays:
-            del self._retry_delays[graph_key]
 
         if graph_key not in self._callback_cache:
             # preserve callback result for several time to allow add_finish_callback()
@@ -563,8 +674,22 @@ class ExecutionActor(WorkerActor):
                 if k in self._size_cache:
                     del self._size_cache[k]
 
-    def _dump_execution_stages(self):
+    def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             cur_time = time.time()
-            stages = dict((k, (cur_time - v[-1], v[0])) for k, v in self._graph_stages.items())
-            logger.debug('Executing stages: %r', stages)
+            states = dict((k[1], (cur_time - v.state_time, v.state.name))
+                          for k, v in self._graph_records.items()
+                          if v.state != ExecutionState.ALLOCATING)
+            logger.debug('Executing states: %r', states)
+
+    def handle_process_down(self, halt_refs):
+        if logger.level <= logging.DEBUG:
+            affected_uids = [ref.uid for ref in halt_refs]
+            logger.debug('Process halt detected. Trying to reject affected promises %r.', affected_uids)
+        try:
+            raise WorkerProcessStopped
+        except WorkerProcessStopped:
+            exc_info = sys.exc_info()
+
+        for ref in halt_refs:
+            self.reject_promise_ref(ref, *exc_info)

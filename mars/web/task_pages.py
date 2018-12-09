@@ -14,7 +14,7 @@
 
 from .server import register_ui_handler, get_jinja_env
 from ..scheduler.utils import OperandState
-from ..scheduler import GraphActor, SessionManagerActor, KVStoreActor
+from ..scheduler import GraphActor, SessionManagerActor, GraphMetaActor
 from ..compat import six
 from ..utils import to_str
 from ..actors import new_client
@@ -33,9 +33,6 @@ def task_list(doc, cluster_info):
     uid = SessionManagerActor.default_name()
     sessions_ref = _actor_client.actor_ref(uid, address=cluster_info.get_scheduler(uid))
 
-    uid = KVStoreActor.default_name()
-    kv_store_ref = _actor_client.actor_ref(uid, address=cluster_info.get_scheduler(uid))
-
     sessions = dict()
     for session_id, session_ref in six.iteritems(sessions_ref.get_sessions()):
         sessions[session_id] = dict()
@@ -47,8 +44,10 @@ def task_list(doc, cluster_info):
         for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
             task_desc = dict()
 
-            state = kv_store_ref.read(
-                '/sessions/%s/graph/%s/state' % (session_id, graph_key)).value
+            graph_meta_uid = GraphMetaActor.gen_name(session_id, graph_key)
+            scheduler_address = cluster_info.get_scheduler(graph_meta_uid)
+            graph_meta_ref = _actor_client.actor_ref(graph_meta_uid, address=scheduler_address)
+            state = graph_meta_ref.get_state()
             if state == 'PREPARING':
                 task_desc['state'] = state.lower()
                 session_desc['tasks'][graph_key] = task_desc
@@ -73,9 +72,9 @@ def task_operand(doc, cluster_info, session_id, task_id):
     session_name = session_id
     states = list(OperandState.__members__.values())
 
-    scheduler_address = cluster_info.get_scheduler('%s$%s' % (session_id, task_id))
-    graph_ref = _actor_client.actor_ref(GraphActor.gen_name(session_id, task_id),
-                                        address=scheduler_address)
+    graph_uid = GraphActor.gen_name(session_id, task_id)
+    scheduler_address = cluster_info.get_scheduler(graph_uid)
+    graph_ref = _actor_client.actor_ref(graph_uid, address=scheduler_address)
     ops, stats, progress = graph_ref.calc_stats()
     source = ColumnDataSource(stats)
     cols = list(stats)[1:]
@@ -97,12 +96,6 @@ def task_operand(doc, cluster_info, session_id, task_id):
     p.outline_line_color = None
 
     doc.add_root(p)
-
-    # def update():
-    #     ops, result = calc_stats()
-    #     source.stream(result, 10000)
-    #
-    # doc.add_periodic_callback(update, 10000)
 
     doc.title = 'Mars UI'
     doc.template_variables['session_id'] = session_id

@@ -19,10 +19,12 @@ import sys
 
 from .actors import create_actor_pool
 from .config import options
-from .errors import StartArgumentError
-from .utils import get_next_port
 from .distributor import BaseDistributor
+from .errors import StartArgumentError
+from .lib.tblib import pickling_support
+from .utils import get_next_port
 
+pickling_support.install()
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +70,8 @@ class BaseApplication(object):
         parser.add_argument('-a', '--advertise', help='advertise ip')
         parser.add_argument('-k', '--kv-store', help='address of kv store service, for instance, etcd')
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
+        parser.add_argument('-s', '--schedulers', help='endpoint of scheduler, when single scheduler '
+                                                       'and etcd is not available')
         parser.add_argument('-H', '--host', help='host of the scheduler service, only available '
                                                  'when `endpoint` is absent')
         parser.add_argument('-p', '--port', help='port of the scheduler service, only available '
@@ -193,11 +197,12 @@ class BaseApplication(object):
                     self._running = True
                     while True:
                         self.pool.join(1)
-                        for proc in self.pool.processes:
+                        stopped = []
+                        for idx, proc in enumerate(self.pool.processes):
                             if not proc.is_alive():
-                                self.service_logger.fatal(
-                                    'Process %d exited unpredictably. exitcode=%d', proc.pid, proc.exitcode)
-                                raise KeyboardInterrupt
+                                stopped.append(idx)
+                        if stopped:
+                            self.handle_process_down(stopped)
                 except:
                     self._running = False
                     self.stop_service()
@@ -211,6 +216,13 @@ class BaseApplication(object):
                 p.sort_stats('time')
                 p.print_stats(40)
                 p.dump_stats(profile_file)
+
+    def handle_process_down(self, proc_indices):
+        for idx in proc_indices:
+            proc = self.pool.processes[idx]
+            self.service_logger.fatal(
+                'Process %d exited unpredictably. exitcode=%d', proc.pid, proc.exitcode)
+        raise KeyboardInterrupt
 
     def config_service(self):
         pass

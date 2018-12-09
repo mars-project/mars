@@ -18,7 +18,7 @@ import uuid
 from functools import partial
 
 from .spill import read_spill_file, write_spill_file, spill_exists
-from .utils import WorkerActor
+from .utils import WorkerActor, concat_operand_keys
 from .. import promise
 from ..config import options
 from ..errors import *
@@ -71,7 +71,9 @@ class InProcessCacheActor(WorkerActor):
                     self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
                     self._chunk_holder_ref.register_chunk(session_id, chunk_key)
-                    self._kv_store_ref.write('/sessions/%s/chunks/%s/workers/%s' % (session_id, chunk_key, self.address), '')
+                    data_size = self._chunk_store.get_actual_size(session_id, chunk_key)
+                    self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                        session_id, chunk_key, size=data_size, workers=(self.address,))
                 finally:
                     del ref
 
@@ -91,12 +93,8 @@ class InProcessCacheActor(WorkerActor):
             del _calc_result_cache[chunk_key]
             self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
-            chunk_path = '/sessions/%s/chunks/%s' % (session_id, chunk_key)
-            futures = [
-                self._kv_store_ref.write(chunk_path + '/data_size', data_size, _wait=False),
-                self._kv_store_ref.write(chunk_path + '/workers/%s' % self.address, '', _wait=False),
-            ]
-            [f.result() for f in futures]
+            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                session_id, chunk_key, size=data_size, workers=(self.address,))
 
         promises = []
         for k in keys:
@@ -136,9 +134,14 @@ class CpuCalcActor(WorkerActor):
             inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + str(uuid.uuid4())
         else:
             inproc_uid = None
-        self._inproc_cache_ref = self.promise_ref(self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid))
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
 
+        raw_ref = self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid)
+        self._inproc_cache_ref = self.promise_ref(raw_ref)
+        daemon_ref = self.ctx.actor_ref('WorkerDaemonActor')
+        if self.ctx.has_actor(daemon_ref):
+            daemon_ref.register_child_actor(raw_ref, _tell=True)
+
+        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
         self._dispatch_ref = self.promise_ref('DispatchActor')
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
@@ -167,10 +170,7 @@ class CpuCalcActor(WorkerActor):
         """
         from ..tensor.expressions.datasource import TensorFetchChunk
         graph = deserialize_graph(ser_graph)
-
-        ops = set(c.op for c in graph if not isinstance(c.op, TensorFetchChunk))
-        op_name = '_'.join(sorted([type(o).__name__ for o in ops]))
-        op_key = '_'.join(o.key for o in ops)
+        op_key, op_name = concat_operand_keys(graph, '_')
 
         try:
             context_dict = dict()

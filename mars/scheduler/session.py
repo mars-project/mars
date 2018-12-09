@@ -46,14 +46,7 @@ class SessionActor(SchedulerActor):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         self.set_cluster_info_ref()
 
-        from .assigner import AssignerActor
-        assigner_uid = AssignerActor.gen_name(self._session_id)
-        assigner_addr = self.get_scheduler(assigner_uid)
-        self._assigner_ref = self.ctx.create_actor(
-            AssignerActor, uid=assigner_uid, address=assigner_addr)
-
     def pre_destroy(self):
-        self.ctx.destroy_actor(self._assigner_ref)
         [self.ctx.destroy_actor(graph_ref) for graph_ref in six.itervalues(self._graph_refs)]
 
     def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None):
