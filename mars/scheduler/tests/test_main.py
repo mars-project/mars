@@ -56,12 +56,14 @@ class Test(unittest.TestCase):
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
                                         '--cpu-procs', '2',
+                                        '--level', 'debug',
                                         '--cache-mem', '16m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
                                         '--plasma-socket', self.worker_plasma_sock,
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '-H', '127.0.0.1',
+                                           '--level', 'debug',
                                            '-p', scheduler_port,
                                            '--format', '%(asctime)-15s %(message)s'])
 
@@ -69,9 +71,20 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        actor_client = new_client()
         time.sleep(2)
-        kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
+        actor_client = new_client()
+        check_time = time.time()
+        while True:
+            try:
+                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
+                if actor_client.has_actor(kv_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:
+                if time.time() - check_time > 10:
+                    raise
+                time.sleep(1)
 
         check_time = time.time()
         while True:

@@ -395,6 +395,13 @@ class Connections(object):
 
             return self._connect(conn, lock)
 
+    def __del__(self):
+        for c, _ in self.conn_locks.values():
+            try:
+                c.close()
+            except:
+                pass
+
 
 cdef class ActorRemoteHelper:
     """

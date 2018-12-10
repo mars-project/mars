@@ -21,7 +21,7 @@ import logging
 
 import requests
 
-from ..compat import six
+from ..compat import six, TimeoutError
 from ..serialize import dataserializer
 from ..errors import ExecutionInterrupted
 
@@ -111,6 +111,8 @@ class Session(object):
                     if resp.status_code >= 400:
                         raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                                           (resp.status_code, resp.reason, resp.text))
+            if time.time() - exec_start_time > timeout:
+                raise TimeoutError
             data_list = []
             for tk in targets:
                 resp = self._req_session.get(session_url + '/graph/' + graph_key + '/data/' + tk)
