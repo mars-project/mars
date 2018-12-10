@@ -300,7 +300,6 @@ class Test(unittest.TestCase):
                 promises[idx].step_next(v, _accept=success)
 
         def gen_promise(value, accept=True):
-            value_list.append(('gen_promise', value))
             p = promise.Promise()
             promises[p.id] = p
             req_queue.put((p.id, value + 1, accept))
@@ -322,9 +321,8 @@ class Test(unittest.TestCase):
 
             self.assertListEqual(
                 value_list,
-                [('gen_promise', 0), ('gen_promise', 1), ('gen_promise', 2), ('gen_promise', 3),
-                 ('thread_body', 1), ('thread_body', 2), ('thread_body', 3), ('thread_body', 4),
-                 ('all', 5)]
+                [('thread_body', 1), ('thread_body', 2), ('thread_body', 3),
+                 ('thread_body', 4), ('all', 5)]
             )
 
             value_list = []
@@ -335,8 +333,7 @@ class Test(unittest.TestCase):
             ).wait()
             del prior_promises
 
-            expected = [('gen_promise', 0), ('gen_promise', 1), ('gen_promise', 2), ('gen_promise', 3),
-                        ('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
+            expected = [('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
             self.assertListEqual(value_list[:len(expected)], expected)
             time.sleep(0.5)
 
@@ -346,15 +343,14 @@ class Test(unittest.TestCase):
 
             value_list = []
             gen_promise(0) \
+                .then(lambda *_: value_list.append(('pre_all', 0))) \
                 .then(_gen_all_promise) \
                 .then(lambda v: gen_promise(v)) \
                 .then(
                 lambda: value_list.append(('all', 5)),
                 lambda *_: value_list.append(('all_catch', 5)),
             ).wait()
-            expected = [('gen_promise', 0), ('thread_body', 1),
-                        ('gen_promise', 0), ('gen_promise', 1), ('gen_promise', 2), ('gen_promise', 3),
-                        ('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
+            expected = [('thread_body', 1), ('pre_all', 0), ('thread_body', 1), ('thread_body', 2), ('all_catch', 5)]
             self.assertListEqual(value_list[:len(expected)], expected)
             time.sleep(0.5)
         finally:
