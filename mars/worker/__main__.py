@@ -22,6 +22,7 @@ from ..utils import parse_memory_limit, readable_size
 from ..compat import six
 from ..base_app import BaseApplication
 from ..errors import StartArgumentError
+from .distributor import WorkerDistributor
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +122,7 @@ class WorkerApplication(BaseApplication):
 
         self.n_process = 1 + options.worker.cpu_process_count + options.worker.io_process_count + spill_dir_count
 
-        from ..distributor import BaseDistributor
-        kwargs['distributor'] = BaseDistributor(self.n_process)
+        kwargs['distributor'] = WorkerDistributor(self.n_process)
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
     @staticmethod

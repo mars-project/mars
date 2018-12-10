@@ -18,6 +18,7 @@ import logging
 from .. import kvstore, resource
 from ..config import options
 from ..base_app import BaseApplication
+from .distributor import SchedulerDistributor
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,6 @@ class SchedulerApplication(BaseApplication):
         self._cluster_info_ref = None
         self._session_manager_ref = None
         self._resource_ref = None
-        self._size_data_ref = None
         self._kv_store_ref = None
         self._node_info_ref = None
 
@@ -40,6 +40,7 @@ class SchedulerApplication(BaseApplication):
 
     def create_pool(self, *args, **kwargs):
         self.n_process = int(self.args.nproc or resource.cpu_count())
+        kwargs['distributor'] = SchedulerDistributor(self.n_process)
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
