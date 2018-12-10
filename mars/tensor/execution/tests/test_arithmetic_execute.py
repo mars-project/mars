@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 import scipy.sparse as sps
 
-from mars.compat import unittest, six
+from mars.compat import six
 from mars.tensor.execution.core import Executor
 from mars.tensor.expressions.datasource import ones, tensor, zeros
 from mars.tensor.expressions.arithmetic import add, truediv, frexp, \

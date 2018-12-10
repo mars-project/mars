@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 from mars import operands
-from mars.compat import unittest
 from mars.tensor.expressions.datasource import array, ones, tensor, empty
 from mars.tensor.expressions.datasource.core import TensorFetchChunk
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \

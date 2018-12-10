@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
-from mars.compat import unittest
 from mars.tensor.expressions.datasource import ones, tensor
 from mars.tensor.expressions.datasource.ones import TensorOnes
 from mars.tensor.expressions.indexing import choose, unravel_index, nonzero

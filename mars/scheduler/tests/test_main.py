@@ -19,6 +19,7 @@ import subprocess
 import uuid
 import json
 import signal
+import unittest
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -26,7 +27,6 @@ import gevent
 
 from mars.serialize.dataserializer import loads
 from mars.config import options
-from mars.compat import unittest
 from mars.tensor.expressions.datasource import ones
 from mars.utils import get_next_port
 from mars.actors.core import new_client

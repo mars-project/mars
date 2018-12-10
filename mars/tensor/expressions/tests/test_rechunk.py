@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-from mars.compat import unittest
 from mars.tensor.expressions.datasource import ones
 from mars.tensor.expressions.indexing.slice import TensorSlice
 from mars.tensor.expressions.rechunk.rechunk import compute_rechunk

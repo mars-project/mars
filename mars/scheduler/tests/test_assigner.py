@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 import uuid
+
 import gevent
 
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor, AssignerActor, KVStoreActor
 from mars.actors import FunctionActor, create_actor_pool
-from mars.compat import unittest
 
 
 class PromiseReplyTestActor(FunctionActor):

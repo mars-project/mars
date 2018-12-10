@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import time
+import unittest
 from functools import partial
 
 import gevent
 
-from mars.compat import unittest, mock
+from mars.tests.core import mock
 from mars.utils import get_next_port
 from mars.actors import create_actor_pool
 from mars.promise import PromiseActor
