@@ -52,6 +52,9 @@ class ResourceActor(SchedulerActor):
         timeout = options.scheduler.status_timeout
         for worker in list(self._meta_cache.keys()):
             worker_meta = self._meta_cache[worker]
+            if 'update_time' not in worker_meta:
+                continue
+
             last_time = datetime.strptime(worker_meta['update_time'], '%Y-%m-%d %H:%M:%S')
             time_delta = timedelta(seconds=timeout)
             if last_time + time_delta < datetime.now():

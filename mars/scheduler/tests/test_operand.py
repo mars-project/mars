@@ -134,8 +134,11 @@ class Test(unittest.TestCase):
                         final_keys.add(c.op.key)
 
                 graph_ref.create_operand_actors()
+                start_time = time.time()
                 while True:
                     gevent.sleep(0.1)
+                    if time.time() - start_time > 30:
+                        raise SystemError('Wait for execution finish timeout')
                     if kv_store_ref.read('/sessions/%s/graph/%s/state' % (session_id, graph_key)).value.lower() \
                             in ('succeeded', 'failed', 'cancelled'):
                         break
@@ -256,7 +259,9 @@ class Test(unittest.TestCase):
                     gevent.sleep(0.1)
                     if not cancel_called and time.time() > start_time + 0.8:
                         cancel_called = True
-                        graph_ref.stop_graph()
+                        graph_ref.stop_graph(_tell=True)
+                    if time.time() - start_time > 30:
+                        raise SystemError('Wait for execution finish timeout')
                     if kv_store_ref.read('/sessions/%s/graph/%s/state' % (session_id, graph_key)).value.lower() \
                             in ('succeeded', 'failed', 'cancelled'):
                         break

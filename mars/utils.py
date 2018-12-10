@@ -399,7 +399,7 @@ def deserialize_graph(graph_b64):
     from .serialize.protos.graph_pb2 import GraphDef
     from .graph import DirectedGraph
     try:
-        json_obj = json.loads(graph_b64)
+        json_obj = json.loads(to_str(graph_b64))
         return DirectedGraph.from_json(json_obj)
     except (SyntaxError, ValueError):
         g = GraphDef()

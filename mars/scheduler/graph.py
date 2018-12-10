@@ -52,7 +52,7 @@ class ResultReceiverActor(SchedulerActor):
 
         ctx = dict()
         for chunk_key in [c.key for c in tiled_tensor.chunks]:
-            if not chunk_key in ctx:
+            if chunk_key not in ctx:
                 endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
                                                     % (session_id, chunk_key))
                 worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
@@ -126,6 +126,8 @@ class GraphActor(SchedulerActor):
 
     @state.setter
     def state(self, value):
+        if value != self._state:
+            logger.debug('Graph %s state from %s to %s.', self._graph_key, self._state, value)
         self._state = value
         self._kv_store_ref.write(
             '/sessions/%s/graph/%s/state' % (self._session_id, self._graph_key), value.name)
@@ -169,7 +171,7 @@ class GraphActor(SchedulerActor):
                 op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
                 scheduler_addr = self.get_scheduler(op_uid)
                 ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
-                ref.stop_operand()
+                ref.stop_operand(_tell=True)
 
     def reload_chunk_graph(self):
         """

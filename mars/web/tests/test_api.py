@@ -53,6 +53,7 @@ class Test(unittest.TestCase):
         scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
+                                        '--level', 'debug',
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
@@ -60,6 +61,7 @@ class Test(unittest.TestCase):
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '--nproc', '1',
+                                           '--level', 'debug',
                                            '-H', '127.0.0.1',
                                            '-p', scheduler_port,
                                            '--format', '%(asctime)-15s %(message)s'])
@@ -70,7 +72,18 @@ class Test(unittest.TestCase):
 
         actor_client = new_client()
         time.sleep(2)
-        kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
+        check_time = time.time()
+        while True:
+            try:
+                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
+                if actor_client.has_actor(kv_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:
+                if time.time() - check_time > 10:
+                    raise
+                time.sleep(1)
 
         check_time = time.time()
         while True:
@@ -91,6 +104,7 @@ class Test(unittest.TestCase):
         self.web_port = web_port
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
+                                     '--level', 'debug',
                                      '--ui-port', web_port,
                                      '-s', '127.0.0.1:' + self.scheduler_port])
         self.proc_web = proc_web
@@ -139,6 +153,6 @@ class Test(unittest.TestCase):
             a = ones((100, 100), chunks=30)
             b = ones((100, 100), chunks=30)
             c = a.dot(b)
-            value = sess.run(c, timeout=30)
+            value = sess.run(c, timeout=120)
             assert_array_equal(value[0], np.ones((100, 100)) * 100)
 

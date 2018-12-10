@@ -1,0 +1,45 @@
+language: python
+python:
+  - "2.7"
+  - "3.5"
+  - "3.6"
+
+matrix:
+  include:
+    - os: linux
+      python: "3.7"
+      dist: xenial
+      sudo: true
+    - os: osx
+      language: generic
+      env: PYTHON=2.7.12
+    - os: osx
+      language: generic
+      env: PYTHON=3.5.3
+    - os: osx
+      language: generic
+      env: PYTHON=3.6.1
+    - os: osx
+      language: generic
+      env: PYTHON=3.7.0
+
+before_install:
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source ./bin/travis-prepare-osx.sh; fi
+  - pip install --upgrade pip setuptools wheel
+
+# command to install dependencies
+install:
+  - pip install -r requirements-dev.txt
+  - pip install -r requirements-extra.txt
+  - pip install coveralls
+  - python setup.py build_ext -i
+
+# command to run tests
+script:
+  pytest --timeout=1500 --forked --cov-config .coveragerc --cov=mars mars
+
+after_success:
+  - coveralls
+  - ./bin/travis-upload.sh
+# Add env var to detect it during build
+env: TRAVIS=True
