@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import logging
 
-from .. import kvstore, resource
-from ..config import options
+from .. import resource
 from ..base_app import BaseApplication
 from .distributor import SchedulerDistributor
+from .service import start_service
 
 logger = logging.getLogger(__name__)
 
@@ -44,31 +43,7 @@ class SchedulerApplication(BaseApplication):
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
-        from .resource import ResourceActor
-        from .kvstore import KVStoreActor
-        from ..cluster_info import ClusterInfoActor
-        from .session import SessionManagerActor
-        from ..node_info import NodeInfoActor
-
-        kv_store = kvstore.get(options.kv_store)
-        if isinstance(kv_store, kvstore.EtcdKVStore):
-            # set etcd as service discover
-            service_discover_addr = options.kv_store
-            schedulers = None
-            kv_store.write('/schedulers/%s' % self.endpoint, dir=True)
-        else:
-            # single scheduler
-            service_discover_addr = None
-            schedulers = [self.endpoint]
-
-        self._cluster_info_ref = self.pool.create_actor(
-            ClusterInfoActor, schedulers, service_discover_addr, uid=ClusterInfoActor.default_name())
-        self._session_manager_ref = self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
-        self._resource_ref = self.pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-        self._kv_store_ref = self.pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-        self._node_info_ref = self.pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_name())
-        kv_store.write('/schedulers/%s/meta' % self.endpoint,
-                       json.dumps(self._resource_ref.get_workers_meta()))
+        start_service(self.endpoint, self.pool, self)
 
     def stop_service(self):
         self.pool.destroy_actor(self._resource_ref)
