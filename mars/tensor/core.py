@@ -123,8 +123,8 @@ class Chunk(Entity):
     __slots__ = ()
     _allow_data_type_ = (ChunkData,)
 
-
     def update_key(self):
+        """Make chunks of different indices share a same key"""
         object.__setattr__(self, '_key', tokenize(
             type(self), *(getattr(self, k, None) for k in self.__slots__ if k != '_index')))
 

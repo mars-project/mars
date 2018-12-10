@@ -41,6 +41,9 @@ class ExecutionState(Enum):
 
 
 class GraphExecutionRecord(object):
+    """
+    Execution records of the graph
+    """
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'targets', 'calc_keys',
                  'io_meta', 'priority_data', 'data_sizes', 'chunks_use_once', 'state_time',
                  'mem_request', 'pin_request', 'est_finish_time', 'calc_actor_uid',
@@ -173,6 +176,12 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def prepare_quota_request(self, session_id, graph_key):
+        """
+        Calculate quota request for an execution graph
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        :return: allocation dict
+        """
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
         except KeyError:
@@ -225,10 +234,21 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def dequeue_graph(self, session_id, graph_key):
+        """
+        Remove execution graph task from queue
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        """
         self._cleanup_graph(session_id, graph_key)
 
     @log_unhandled
     def update_priority(self, session_id, graph_key, priority_data):
+        """
+        Update priority data for given execution graph
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        :param priority_data: priority data
+        """
         query_key = (session_id, graph_key)
         if query_key not in self._graph_records:
             return
@@ -346,7 +366,7 @@ class ExecutionActor(WorkerActor):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
-        :param graph_key: graph key
+        :param graph_key: key of the execution graph
         :param send_addresses: targets to send results after execution
         :param callback: promise callback
         """
@@ -402,6 +422,11 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def _prepare_graph_inputs(self, session_id, graph_key):
+        """
+        Load input data from spilled storage and other workers
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        """
         graph_record = self._graph_records[(session_id, graph_key)]
         if graph_record.stop_requested:
             raise ExecutionInterrupted
@@ -469,6 +494,12 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def _send_calc_request(self, session_id, graph_key, calc_uid):
+        """
+        Start actual calculation in CpuCalcActor
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        :param calc_uid: uid of the allocated CpuCalcActor
+        """
         graph_record = self._graph_records[(session_id, graph_key)]
         try:
             if graph_record.stop_requested:
@@ -511,6 +542,13 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def _dump_cache(self, session_id, graph_key, inproc_uid, save_sizes):
+        """
+        Dump calc results into shared cache or spill
+        :param session_id: session id
+        :param graph_key: key of the execution graph
+        :param inproc_uid: uid of the InProcessCacheActor
+        :param save_sizes: sizes of data
+        """
         graph_record = self._graph_records[session_id, graph_key]
         calc_keys = graph_record.calc_keys
         send_addresses = graph_record.send_addresses
@@ -683,6 +721,10 @@ class ExecutionActor(WorkerActor):
             logger.debug('Executing states: %r', states)
 
     def handle_process_down(self, halt_refs):
+        """
+        Handle process down event
+        :param halt_refs: actor refs in halt processes
+        """
         if logger.level <= logging.DEBUG:
             affected_uids = [ref.uid for ref in halt_refs]
             logger.debug('Process halt detected. Trying to reject affected promises %r.', affected_uids)

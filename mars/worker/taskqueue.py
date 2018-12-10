@@ -24,10 +24,11 @@ _ALLOCATE_PERIOD = 0.5
 
 
 class ChunkPriorityItem(object):
-    __slots__ = '_op_key', '_session_id', '_priority', '_callback'
     """
     Class providing an order for operands for assignment
     """
+    __slots__ = '_op_key', '_session_id', '_priority', '_callback'
+
     def __init__(self, session_id, op_key, priority_data, callback):
         self._op_key = op_key
         self._session_id = session_id
@@ -37,6 +38,11 @@ class ChunkPriorityItem(object):
         self.update_priority(priority_data)
 
     def update_priority(self, priority_data, copy=False):
+        """
+        Update priority data in the item
+        :param priority_data: priority data
+        :param copy: if True, the function will return a new item, otherwise the update will be applied locally
+        """
         if copy:
             return ChunkPriorityItem(self._session_id, self._op_key, priority_data,
                                      self._callback)
@@ -70,6 +76,9 @@ class ChunkPriorityItem(object):
 
 
 class TaskQueueActor(WorkerActor):
+    """
+    Actor accepting requests and holding the queue
+    """
     def __init__(self, parallel_num=None):
         super(WorkerActor, self).__init__()
         self._requests = dict()
@@ -86,6 +95,13 @@ class TaskQueueActor(WorkerActor):
             uid=TaskQueueAllocatorActor.__name__)
 
     def enqueue_task(self, session_id, op_key, priority_data, callback):
+        """
+        Put a task in queue for allocation
+        :param session_id: session id
+        :param op_key: operand key
+        :param priority_data: priority data
+        :param callback: callback to invoke when the resources are allocated
+        """
         logger.debug('Operand task %s enqueued.', op_key)
         item = ChunkPriorityItem(session_id, op_key, priority_data, callback)
         self._requests[(session_id, op_key)] = item
@@ -94,6 +110,12 @@ class TaskQueueActor(WorkerActor):
         self._allocator_ref.allocate_tasks(_tell=True)
 
     def update_priority(self, session_id, op_key, priority_data):
+        """
+        Update priority data for the specified operand
+        :param session_id: session id
+        :param op_key: operand key
+        :param priority_data: new priority data
+        """
         logger.debug('Priority data for operand task %s updated.', op_key)
         query_key = (session_id, op_key)
         if query_key not in self._requests:
@@ -104,9 +126,21 @@ class TaskQueueActor(WorkerActor):
         heapq.heappush(self._req_heap, item)
 
     def mark_allocate_pending(self, session_id, op_key):
+        """
+        Mark an operand as being allocated, i.e., it has been submitted to the MemQuotaActor.
+        :param session_id: session id
+        :param op_key: operand key
+        """
         self._allocate_pendings.add((session_id, op_key))
 
     def handle_allocated(self, session_id, op_key, callback, *args, **kwargs):
+        """
+        When MemQuotaActor allocates resource for an operand, put the operand into
+        allocated and then invoke the callback
+        :param session_id: session id
+        :param op_key: operand key
+        :param callback: callback to invoke
+        """
         logger.debug('Operand task %s allocated.', op_key)
         query_key = (session_id, op_key)
         self.tell_promise(callback, *args, **kwargs)
@@ -117,6 +151,11 @@ class TaskQueueActor(WorkerActor):
         self._allocated.add(query_key)
 
     def release_task(self, session_id, op_key):
+        """
+        Remove an operand task from queue
+        :param session_id: session id
+        :param op_key: operand key
+        """
         logger.debug('Operand task %s released.', op_key)
         query_key = (session_id, op_key)
         try:
@@ -131,17 +170,27 @@ class TaskQueueActor(WorkerActor):
             self._allocate_pendings.remove(query_key)
         except KeyError:
             pass
+
+        # as one task has been released, we can perform allocation again
         self._allocator_ref.enable_quota(_tell=True)
         self._allocator_ref.allocate_tasks(_tell=True)
 
-    def get_allocate_count(self):
+    def get_allocated_count(self):
+        """
+        Get total number of operands allocated to run and already running
+        """
         return len(self._allocated) + len(self._allocate_pendings)
 
     def pop_next_request(self):
+        """
+        Get next unscheduled item from queue. If nothing found, None will
+        be returned
+        """
         item = None
         while self._req_heap:
             item = heapq.heappop(self._req_heap)
             query_key = (item.session_id, item.op_key)
+            # if item is already scheduled or removed, we find next
             if (item.session_id, item.op_key) in self._requests:
                 del self._requests[query_key]
                 break
@@ -149,6 +198,9 @@ class TaskQueueActor(WorkerActor):
 
 
 class TaskQueueAllocatorActor(WorkerActor):
+    """
+    Actor performing periodical assignment
+    """
     def __init__(self, queue_ref, parallel_num):
         super(TaskQueueAllocatorActor, self).__init__()
         self._parallel_num = parallel_num
@@ -172,6 +224,7 @@ class TaskQueueAllocatorActor(WorkerActor):
         self._has_quota = True
 
     def allocate_tasks(self, periodical=False):
+        # make sure the allocation period is not too dense
         if periodical and self._last_allocate_time > time.time() - _ALLOCATE_PERIOD:
             return
         cur_mem_available = resource.virtual_memory().available
@@ -182,7 +235,7 @@ class TaskQueueAllocatorActor(WorkerActor):
 
         num_cpu = resource.cpu_count()
         while self._has_quota:
-            allocated_count = self._queue_ref.get_allocate_count()
+            allocated_count = self._queue_ref.get_allocated_count()
             if allocated_count >= self._parallel_num:
                 break
             if allocated_count >= num_cpu / 4 and num_cpu * 100 - 50 < resource.cpu_percent():
@@ -191,18 +244,22 @@ class TaskQueueAllocatorActor(WorkerActor):
             if item is None:
                 break
 
+            # obtain quota sizes for operands
             quota_request = self._execution_ref.prepare_quota_request(item.session_id, item.op_key)
             if quota_request:
                 local_cb = ((self._queue_ref.uid, self._queue_ref.address),
                             TaskQueueActor.handle_allocated.__name__,
                             item.session_id, item.op_key, item.callback)
-                self._has_quota = self._mem_quota_ref.request_batch_quota(quota_request, local_cb)
                 self._queue_ref.mark_allocate_pending(item.session_id, item.op_key)
+                self._has_quota = self._mem_quota_ref.request_batch_quota(quota_request, local_cb)
             elif quota_request is None:
+                # already processed, we skip to the next
                 self.ctx.sleep(0.001)
                 continue
             else:
+                # allocate directly when no quota needed
                 self._queue_ref.handle_allocated(item.session_id, item.op_key, item.callback)
             self.ctx.sleep(0.001)
+
         self._last_allocate_time = time.time()
         self.ref().allocate_tasks(periodical=True, _delay=_ALLOCATE_PERIOD, _tell=True)

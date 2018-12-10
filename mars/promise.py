@@ -321,8 +321,10 @@ class PromiseActor(FunctionActor):
 
     def register_promise(self, promise, ref):
         """
-        :param Promise promise:
-        :param ActorRef ref:
+        Register a promise into the actor with referrer info
+
+        :param Promise promise: promise object to register
+        :param ActorRef ref: ref
         """
         promise_id = promise.id
 
@@ -337,6 +339,9 @@ class PromiseActor(FunctionActor):
         self._uid_promises[ref_key].add(promise_id)
 
     def get_promise(self, promise_id):
+        """
+        Get promise object from weakref.
+        """
         obj = self._promises.get(promise_id)
         if obj is None:
             return None
@@ -352,8 +357,8 @@ class PromiseActor(FunctionActor):
 
     def reject_promise_ref(self, ref, *args, **kwargs):
         """
-        Reject all promises related to given actor
-        :param ref:
+        Reject all promises related to given actor ref
+        :param ref: actor ref to reject
         """
         kwargs['_accept'] = False
         ref_key = (ref.uid, ref.address)

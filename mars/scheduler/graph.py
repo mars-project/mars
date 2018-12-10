@@ -75,6 +75,9 @@ class ResultReceiverActor(SchedulerActor):
 
 
 class GraphMetaActor(SchedulerActor):
+    """
+    Actor storing metadata of a graph
+    """
     @staticmethod
     def gen_name(session_id, graph_key):
         return 's:graph_meta$%s$%s' % (session_id, graph_key)

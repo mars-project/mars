@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class KVStoreActor(SchedulerActor):
     """
-    Internally hold by KVStoreActor, sync the write option
+    Actor handling reading and writing to an external KV store.
     """
     @classmethod
     def default_name(cls):

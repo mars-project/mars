@@ -79,6 +79,9 @@ class WorkerDaemonActor(WorkerActor):
             pass
 
     def is_actor_process_alive(self, actor_ref):
+        """
+        Check if the process holding the actor is still alive
+        """
         proc_idx = self.ctx.distributor.distribute(actor_ref.uid)
         pid = self._proc_pids[proc_idx]
         if pid in self._killed_pids:

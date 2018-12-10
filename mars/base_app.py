@@ -218,6 +218,13 @@ class BaseApplication(object):
                 p.dump_stats(profile_file)
 
     def handle_process_down(self, proc_indices):
+        """
+        Handle process down event, the default action is to quit
+        the whole application. Applications can inherit this method
+        to do customized process-level failover.
+
+        :param proc_indices: indices of processes (not pids)
+        """
         for idx in proc_indices:
             proc = self.pool.processes[idx]
             self.service_logger.fatal(
