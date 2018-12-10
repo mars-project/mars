@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.compat import unittest
+import unittest
+
 from mars.tensor.expressions.lib import nd_grid
 
 

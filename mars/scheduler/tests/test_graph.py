@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import uuid
+import unittest
+
 import gevent
 
 import mars.tensor as mt
@@ -20,7 +22,6 @@ from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import GraphActor, ResourceActor, KVStoreActor, AssignerActor
 from mars.utils import serialize_graph, deserialize_graph
 from mars.actors import create_actor_pool
-from mars.compat import unittest
 
 
 class Test(unittest.TestCase):

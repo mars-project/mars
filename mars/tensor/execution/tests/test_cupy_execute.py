@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-from mars.compat import unittest
 from mars.tensor.execution.core import Executor
 from mars.tensor.execution.cp import _evaluate
 from mars.tensor.expressions.datasource import ones

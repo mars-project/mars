@@ -31,13 +31,7 @@ from unicodedata import east_asian_width
 
 from ..lib import six
 
-PY26 = six.PY2 and sys.version_info[1] == 6
 PY27 = six.PY2 and sys.version_info[1] == 7
-LESS_PY26 = sys.version_info[:2] < (2, 6)
-LESS_PY32 = sys.version_info[:2] < (3, 2)
-LESS_PY33 = sys.version_info[:2] < (3, 3)
-LESS_PY34 = sys.version_info[:2] < (3, 4)
-LESS_PY35 = sys.version_info[:2] < (3, 5)
 PYPY = platform.python_implementation().lower() == 'pypy'
 
 SEEK_SET = 0
@@ -71,23 +65,21 @@ if six.PY3:
     StringIO = io.StringIO
     BytesIO = io.BytesIO
 
-    if LESS_PY34:
+    if PY27:
         from ..lib import enum
     else:
         import enum
 
-    if LESS_PY33:
+    if PY27:
         try:
             import cdecimal as decimal
 
             DECIMAL_TYPES.append(decimal.Decimal)
-        except:
+        except ImportError:
             import decimal
     else:
         import decimal
 
-    import unittest
-    import unittest.mock as mock
     from collections import OrderedDict
 
     OrderedDict3 = OrderedDict
@@ -176,36 +168,12 @@ else:
         else:
             return len(data)
 
-    if PY26:
-        warnings.warn('Python 2.6 is no longer supported by the Python core team. A future version of Mars ' +
-                      'will drop support for this version.')
+    from collections import OrderedDict
 
-        try:
-            import unittest2 as unittest
-            import unittest2.mock as mock
-        except ImportError:
-            pass
+    dictconfig = lambda config: logging.config.dictConfig(config)
 
-        try:
-            from ordereddict import OrderedDict
-        except ImportError:
-            raise
-
-        def total_seconds(self):
-            return self.days * 86400.0 + self.seconds + self.microseconds * 1.0e-6
-    else:
-        try:
-            import unittest
-            import mock
-        except ImportError:
-            pass
-
-        from collections import OrderedDict
-
-        dictconfig = lambda config: logging.config.dictConfig(config)
-
-        from datetime import timedelta
-        total_seconds = timedelta.total_seconds
+    from datetime import timedelta
+    total_seconds = timedelta.total_seconds
 
     import __builtin__ as builtins  # don't remove
     from ..lib import futures  # don't remove
@@ -243,18 +211,6 @@ else:
         for element in it:
             total = func(total, element)
             yield total
-
-if PY26:
-    try:
-        import simplejson as json
-    except ImportError:
-        pass
-if PY26 or LESS_PY32:
-    try:
-        from .tests.dictconfig import dictConfig
-        dictconfig = lambda config: dictConfig(config)
-    except ImportError:
-        pass
 
 if six.PY3:
     from contextlib import suppress
@@ -482,7 +438,7 @@ except ImportError:
                     gc.enable()
 
 
-__all__ = ['sys', 'builtins', 'logging.config', 'unittest', 'mock', 'OrderedDict', 'dictconfig', 'suppress',
+__all__ = ['sys', 'builtins', 'logging.config', 'OrderedDict', 'dictconfig', 'suppress',
            'reduce', 'reload_module', 'Queue', 'PriorityQueue', 'Empty', 'ElementTree', 'ElementTreeParseError',
            'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote', 'quote', 'quote_plus', 'parse_qsl',
            'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES', 'FixedOffset', 'utc', 'finalize',

@@ -14,10 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import itertools
 import numpy as np
 
-from mars.compat import unittest
 from mars.tensor.execution.core import Executor
 from mars.tensor.expressions.datasource import tensor
 

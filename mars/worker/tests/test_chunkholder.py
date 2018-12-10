@@ -19,13 +19,14 @@ from functools import partial
 import gevent
 
 from mars.actors import create_actor_pool
-from mars.compat import six, mock
+from mars.compat import six
 from mars.config import options
 from mars.utils import get_next_port, calc_data_size
 from mars import promise
 from mars.errors import StoreFull, SpillExhausted
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
+from mars.tests.core import mock
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.utils import WorkerActor
