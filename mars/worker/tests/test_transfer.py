@@ -24,11 +24,11 @@ from mars.actors import FunctionActor, create_actor_pool
 from mars.cluster_info import ClusterInfoActor
 from mars.compat import six
 from mars.config import options
-from mars.distributor import BaseDistributor
 from mars.errors import StoreFull
 from mars.scheduler.kvstore import KVStoreActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
+from mars.worker.distributor import WorkerDistributor
 from mars.worker.chunkstore import PlasmaChunkStore
 from mars.worker.tests.base import WorkerCase
 from mars.worker.utils import WorkerActor
@@ -92,7 +92,7 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
     try:
         plasma_helper.run()
 
-        with create_actor_pool(n_process=2, backend='gevent', distributor=BaseDistributor(2),
+        with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
                                address=pool_address) as pool:
             try:
                 pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
@@ -104,11 +104,11 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
                 chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_helper._size, uid='ChunkHolderActor')
                 pool.create_actor(SpillActor)
 
-                pool.create_actor(SenderActor, uid='w:%s' % str(uuid.uuid4()))
-                pool.create_actor(SenderActor, uid='w:%s' % str(uuid.uuid4()))
+                pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
 
-                pool.create_actor(ReceiverActor, uid='w:%s' % str(uuid.uuid4()))
-                pool.create_actor(ReceiverActor, uid='w:%s' % str(uuid.uuid4()))
+                pool.create_actor(ReceiverActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(ReceiverActor, uid='%s' % str(uuid.uuid4()))
 
                 register_actor = pool.create_actor(WorkerRegistrationTestActor)
                 register_actor.register(session_id, chunk_keys)
@@ -230,7 +230,7 @@ class Test(WorkerCase):
                 proc.terminate()
             raise
 
-        with create_actor_pool(n_process=1, distributor=BaseDistributor(3),
+        with create_actor_pool(n_process=1, distributor=WorkerDistributor(3),
                                backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
                               uid=ClusterInfoActor.default_name())
