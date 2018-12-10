@@ -19,6 +19,7 @@ import numpy as np
 
 from mars.compat import unittest
 import mars.tensor as mt
+from mars.graph import DirectedGraph
 
 
 class Test(unittest.TestCase):
@@ -61,6 +62,19 @@ class Test(unittest.TestCase):
         self.assertEqual(len(U.chunks), 3)
         self.assertEqual(len(s.chunks), 1)
         self.assertEqual(len(V.chunks), 1)
+
+        a = mt.random.rand(9, 6, chunks=(3, 6))
+        U, s, V = mt.linalg.svd(a)
+
+        # test tensor graph
+        graph = DirectedGraph()
+        U.build_graph(tiled=False, graph=graph)
+        s.build_graph(tiled=False, graph=graph)
+        new_graph = DirectedGraph.from_json(graph.to_json())
+        self.assertEqual((len(new_graph)), 4)
+        new_outputs=  [n for n in new_graph if new_graph.count_predecessors(n) == 1]
+        self.assertEqual(len(new_outputs), 3)
+        self.assertEqual(len(set([o.op for o in new_outputs])), 1)
 
     def testLU(self):
         a = mt.random.randint(1, 10, (6, 6), chunks=3)

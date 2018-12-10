@@ -290,7 +290,7 @@ class TensorData(SerializableWithKey, Tilesable):
             nodes = list(c.data for c in self.chunks)
             keys = list(c.key for c in self.chunks)
         else:
-            nodes = [self]
+            nodes = list(self.op.outputs)
         visited = set()
         while len(nodes) > 0:
             chunk = nodes.pop()
