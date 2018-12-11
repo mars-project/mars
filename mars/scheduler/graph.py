@@ -51,7 +51,7 @@ class ResultReceiverActor(SchedulerActor):
         from ..tensor.expressions.datasource import TensorFetchChunk
         from ..tensor.execution.core import Executor
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
-        fetch_graph = deserialize_graph(graph_actor.get_tensor_merge_graph(tensor_key))
+        fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
 
         ctx = dict()
         target_keys = set()
@@ -660,7 +660,7 @@ class GraphActor(SchedulerActor):
             op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
             op_ref.free_data(_tell=True)
 
-    def get_tensor_merge_graph(self, tensor_key):
+    def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
         from ..tensor.expressions.datasource import TensorFetchChunk
 
