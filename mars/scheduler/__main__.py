@@ -17,22 +17,14 @@ import logging
 from .. import resource
 from ..base_app import BaseApplication
 from .distributor import SchedulerDistributor
-from .service import start_service
+from .service import SchedulerService
 
 logger = logging.getLogger(__name__)
 
 
-class SchedulerApplication(BaseApplication):
+class SchedulerApplication(BaseApplication, SchedulerService):
     service_description = 'Mars Scheduler'
     service_logger = logger
-
-    def __init__(self):
-        super(SchedulerApplication, self).__init__()
-        self._cluster_info_ref = None
-        self._session_manager_ref = None
-        self._resource_ref = None
-        self._kv_store_ref = None
-        self._node_info_ref = None
 
     def config_args(self, parser):
         parser.add_argument('--nproc', help='number of processes')
@@ -43,10 +35,10 @@ class SchedulerApplication(BaseApplication):
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
-        start_service(self.endpoint, self.pool, self)
+        super(SchedulerApplication, self).start(self.endpoint, self.pool)
 
     def stop_service(self):
-        self.pool.destroy_actor(self._resource_ref)
+        super(SchedulerApplication, self).stop(self.pool)
 
 
 main = SchedulerApplication()

@@ -27,21 +27,15 @@ class WorkerCase(unittest.TestCase):
         import tempfile
         return os.path.join(tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(cls)))
 
-    @classproperty
-    def plasma_socket(cls):
-        return '/tmp/plasma_%d_%d' % (os.getpid(), id(cls))
-
     @classmethod
     def setUpClass(cls):
         import pyarrow.plasma as plasma
         from mars import kvstore
-        from mars.utils import PlasmaProcessHelper
 
-        cls._plasma_helper = PlasmaProcessHelper(size=cls.plasma_storage_size, socket=cls.plasma_socket)
-        cls._plasma_helper.run()
+        cls._plasma_store = plasma.start_plasma_store(cls.plasma_storage_size)
+        cls.plasma_socket = options.worker.plasma_socket = cls._plasma_store.__enter__()[0]
 
         options.worker.spill_directory = cls.spill_dir
-        options.worker.plasma_socket = cls.plasma_socket
 
         cls._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         cls._kv_store = kvstore.get(options.kv_store)
@@ -50,10 +44,11 @@ class WorkerCase(unittest.TestCase):
     def tearDownClass(cls):
         import shutil
         cls._plasma_client.disconnect()
-        cls._plasma_helper.stop()
+        cls._plasma_store.__exit__(None, None, None)
         if not isinstance(options.worker.spill_directory, list):
             options.worker.spill_directory = options.worker.spill_directory.split(os.path.pathsep)
         for p in options.worker.spill_directory:
             if os.path.exists(p):
                 shutil.rmtree(p)
-        os.unlink(cls.plasma_socket)
+        if os.path.exists(cls.plasma_socket):
+            os.unlink(cls.plasma_socket)
