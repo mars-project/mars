@@ -167,7 +167,7 @@ class GraphDataHandler(ApiRequestHandler):
         def _fetch_fun():
             client = new_client()
             merge_ref = client.create_actor(ResultReceiverActor, address=scheduler_ip)
-            return merge_ref.merge_chunks(session_id, graph_key, tensor_key)
+            return merge_ref.fetch_tensor(session_id, graph_key, tensor_key)
 
         data = yield self._executor.submit(_fetch_fun)
         self.write(data)
