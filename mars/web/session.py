@@ -99,11 +99,14 @@ class Session(object):
                         raise ExecutionInterrupted
                     elif resp_json['state'] == 'failed':
                         # TODO add traceback
-                        traceback = resp_json['traceback']
-                        if isinstance(traceback, list):
-                            traceback = ''.join(str(s) for s in traceback)
-                        raise SystemError('Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
-                                          (resp_json['msg'], traceback))
+                        if 'traceback' in resp_json:
+                            traceback = resp_json['traceback']
+                            if isinstance(traceback, list):
+                                traceback = ''.join(str(s) for s in traceback)
+                            raise SystemError('Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
+                                              (resp_json['msg'], traceback))
+                        else:
+                            raise SystemError('Graph execution failed with unknown reason.')
                     else:
                         raise SystemError('Unknown graph execution state %s' % resp_json['state'])
                 except KeyboardInterrupt:
