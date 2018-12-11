@@ -26,7 +26,7 @@ import gevent
 import requests
 
 from mars.config import options
-from mars.tensor.expressions.datasource import ones
+from mars import tensor as mt
 from mars.web import MarsApiClient
 from mars.utils import get_next_port
 from mars.actors.core import new_client
@@ -150,9 +150,16 @@ class Test(unittest.TestCase):
         client = MarsApiClient(service_ep)
         self.assertEqual(client.count_workers(), 1)
         with client.create_session() as sess:
-            a = ones((100, 100), chunks=30)
-            b = ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunks=30)
+            b = mt.ones((100, 100), chunks=30)
             c = a.dot(b)
-            value = sess.run(c, timeout=120)
+            value = sess.run(c)
             assert_array_equal(value[0], np.ones((100, 100)) * 100)
 
+            va = np.random.randint(0, 10000, (100, 100))
+            vb = np.random.randint(0, 10000, (100, 100))
+            a = mt.array(va, chunks=30)
+            b = mt.array(vb, chunks=30)
+            c = a.dot(b)
+            value = sess.run(c, timeout=120)
+            assert_array_equal(value[0], va.dot(vb))
