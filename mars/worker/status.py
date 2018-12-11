@@ -157,7 +157,6 @@ class StatusActor(WorkerActor):
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)
-        pass
 
     def get_stats(self, items=None):
         if not items:

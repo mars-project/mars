@@ -39,7 +39,7 @@ class Test(WorkerCase):
             pool.create_actor(TaskQueueActor, 4, uid=TaskQueueActor.__name__)
 
             session_id = str(uuid.uuid4())
-            chunk_keys = [str(uuid.uuid4()).replace('-', '') for _ in range(5)]
+            chunk_keys = [str(uuid.uuid4()).replace('-', '') for _ in range(6)]
 
             with self.run_actor_test(pool) as test_actor:
                 queue_ref = test_actor.promise_ref(TaskQueueActor.__name__)
@@ -54,15 +54,17 @@ class Test(WorkerCase):
                         .then(functools.partial(callback_fun, k))
 
                 gevent.sleep(1)
-                self.assertEqual(queue_ref.get_allocated_count(), 3)
+                self.assertEqual(queue_ref.get_allocated_count(), 4)
 
                 queue_ref.update_priority(
                     session_id, chunk_keys[-1], dict(depth=len(chunk_keys)))
                 quota_ref.release_quota(chunk_keys[0])
                 queue_ref.release_task(session_id, chunk_keys[0])
+                quota_ref.release_quota(chunk_keys[1])
+                queue_ref.release_task(session_id, chunk_keys[1])
                 gevent.sleep(0.5)
 
                 self.assertIn(chunk_keys[-1], res_times)
                 for k in chunk_keys[:3]:
-                    self.assertLessEqual(res_times[k], res_times[-1] - 1)
+                    self.assertLessEqual(res_times[k], res_times[chunk_keys[-1]] - 0.5)
                     self.assertIn(k, res_times)

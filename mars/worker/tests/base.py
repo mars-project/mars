@@ -104,6 +104,7 @@ class WorkerCase(unittest.TestCase):
         except:
             self._result_store = (sys.exc_info(), False)
             self._result_event.set()
+            raise
         finally:
             gen.send(None)
 

@@ -29,7 +29,7 @@ class Test(WorkerCase):
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address], uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
-            pool.create_actor(StatusActor, '127.0.0.1:1234', uid='StatusActor')
+            status_ref = pool.create_actor(StatusActor, '127.0.0.1:1234', uid='StatusActor')
 
             def delay_read():
                 gevent.sleep(2)
@@ -38,4 +38,6 @@ class Test(WorkerCase):
             gl = gevent.spawn(delay_read)
             gl.join()
             v = gl.value
-            print(v)
+            self.assertIsNotNone(v)
+
+            pool.destroy_actor(status_ref)

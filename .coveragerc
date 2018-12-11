@@ -1,6 +1,8 @@
 [run]
 branch = True
+cover_pylib = False
 concurrency = multiprocessing,gevent
+parallel = True
 include =
     mars/*
 omit =

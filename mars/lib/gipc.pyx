@@ -71,6 +71,11 @@ try:
 except ImportError:
     import pickle
 
+try:
+    from pytest_cov.embed import cleanup_on_sigterm
+except ImportError:
+    cleanup_on_sigterm = lambda: None
+
 cdef:
     bint WINDOWS, PY2
 
@@ -1121,6 +1126,7 @@ def _reset_signal_handlers():
         # in the signal module.
         if s < signal.NSIG:
             signal.signal(s, signal.SIG_DFL)
+    cleanup_on_sigterm()
 
 
 PY3 = sys.version_info[0] == 3
