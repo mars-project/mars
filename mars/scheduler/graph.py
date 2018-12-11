@@ -63,9 +63,11 @@ class ResultReceiverActor(SchedulerActor):
                                                     % (session_id, c.key))
                 worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
                 sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
-                ctx[c.key] = loads(sender_ref.fetch_data(session_id, c.key))
+                future = sender_ref.fetch_data(session_id, c.key, _wait=False)
+                ctx[c.key] = future
             else:
                 target_keys.add(c.key)
+        ctx = dict((k, loads(future.result())) for k, future in six.iteritems(ctx))
         executor = Executor(storage=ctx)
         concat_result = executor.execute_graph(fetch_graph, keys=target_keys)
         return dumps(concat_result[0])
