@@ -111,7 +111,7 @@ class Session(object):
                     if resp.status_code >= 400:
                         raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                                           (resp.status_code, resp.reason, resp.text))
-            if time.time() - exec_start_time > timeout:
+            if 0 < timeout < time.time() - exec_start_time:
                 raise TimeoutError
             data_list = []
             for tk in targets:
