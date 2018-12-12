@@ -18,9 +18,9 @@
 import hashlib
 import logging
 
-from mars.compat import six, functools32
-from mars.utils import to_binary
-from mars.actors import Distributor
+from ..compat import six, functools32
+from ..utils import to_binary
+from ..actors import Distributor
 
 logger = logging.getLogger(__name__)
 

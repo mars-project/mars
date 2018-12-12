@@ -22,7 +22,7 @@ from pyarrow import plasma
 
 from ..config import options
 from .. import resource, kvstore
-from ..utils import readable_size
+from ..utils import parse_memory_limit, readable_size
 from ..compat import six
 from ..cluster_info import ClusterInfoActor
 from .status import StatusActor
@@ -86,7 +86,7 @@ class WorkerService(object):
         cls.service_logger.info('Setting soft limit to %s.', readable_size(quota_soft_limit))
         return quota_soft_limit
 
-    def start(self, endpoint, schedulers, pool, ignore_avail_mem=False, create_cluster_info=True):
+    def start(self, endpoint, schedulers, pool, ignore_avail_mem=False):
         if schedulers:
             if isinstance(schedulers, six.string_types):
                 schedulers = [schedulers]
@@ -160,6 +160,93 @@ class WorkerService(object):
         kv_store = kvstore.get(options.kv_store)
         if isinstance(kv_store, kvstore.EtcdKVStore):
             kv_store.write('/workers/meta_timestamp', str(int(time.time())))
+
+    @staticmethod
+    def _calc_size_limit(limit_str, total_size):
+        """
+        Calculate limitation size when it is represented in percentage or prettified format
+        :param limit_str: percentage or prettified format
+        :param total_size: total size of the container
+        :return: actual size in bytes
+        """
+        if isinstance(limit_str, int):
+            return limit_str
+        mem_limit, is_percent = parse_memory_limit(limit_str)
+        if is_percent:
+            return int(total_size * mem_limit)
+        else:
+            return int(mem_limit)
+
+    @staticmethod
+    def cache_memory_limit():
+        mem_stats = resource.virtual_memory()
+
+        return WorkerService._calc_size_limit(
+            options.worker.cache_memory_limit, mem_stats.total
+        )
+
+    def start_local(self, endpoint, pool, process_start_index, ignore_avail_mem=True, spill_dir=None):
+        mem_stats = resource.virtual_memory()
+
+        options.worker.physical_memory_limit_hard = self._calc_size_limit(
+            options.worker.physical_memory_limit_hard, mem_stats.total
+        )
+        options.worker.physical_memory_limit_soft = self._calc_size_limit(
+            options.worker.physical_memory_limit_soft, mem_stats.total
+        )
+        options.worker.cache_memory_limit = self._calc_size_limit(
+            options.worker.cache_memory_limit, mem_stats.total
+        )
+        if spill_dir:
+            from .spill import parse_spill_dirs
+            spill_directory = parse_spill_dirs(spill_dir)
+        else:
+            spill_directory = None
+
+        # create StatusActor
+        self._status_ref = pool.create_actor(
+            StatusActor, endpoint, uid=StatusActor.default_name())
+
+        if ignore_avail_mem:
+            # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
+            # for debug purpose only, DON'T USE IN PRODUCTION
+            self._mem_quota_ref = pool.create_actor(
+                QuotaActor, options.worker.physical_memory_limit_soft, uid=MemQuotaActor.default_name())
+        else:
+            self._mem_quota_ref = pool.create_actor(
+                MemQuotaActor, self._calc_soft_memory_limit(),
+                options.worker.physical_memory_limit_hard, uid=MemQuotaActor.default_name())
+
+        # create ChunkHolderActor
+        self._chunk_holder_ref = pool.create_actor(
+            ChunkHolderActor, options.worker.cache_memory_limit, uid=ChunkHolderActor.default_name())
+        # create DispatchActor
+        self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+        # create ExecutionActor
+        self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
+
+        # create CpuCalcActor
+        for cpu_id in range(pool.cluster_info.n_process - 1 - process_start_index):
+            uid = 'w:%d:mars-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            actor = pool.create_actor(CpuCalcActor, uid=uid)
+            self._cpu_calc_actors.append(actor)
+
+        # create ProcessHelperActor
+        for proc_id in range(pool.cluster_info.n_process - process_start_index):
+            uid = 'w:%d:mars-process-helper-%d-%d' % (proc_id, os.getpid(), proc_id)
+            actor = pool.create_actor(ProcessHelperActor, uid=uid)
+            self._process_helper_actors.append(actor)
+
+        # create ResultSenderActor
+        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid=ResultSenderActor.default_name())
+
+        # create SpillActor, put it into the last process
+        start_pid = pool.cluster_info.n_process - 1
+        if spill_directory:
+            for spill_id in range(len(spill_directory) * 2):
+                uid = 'w:%d:mars-spill-%d-%d' % (start_pid, os.getpid(), spill_id)
+                actor = pool.create_actor(SpillActor, uid=uid)
+                self._spill_actors.append(actor)
 
     def stop(self):
         if self._result_sender_ref:

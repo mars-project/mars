@@ -49,7 +49,6 @@ class Test(unittest.TestCase):
             shutil.rmtree(options.worker.spill_directory)
 
     def setUp(self):
-        self.worker_plasma_sock = '/tmp/plasma_%d_%d.sock' % (os.getpid(), id(Test))
         scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
@@ -57,7 +56,6 @@ class Test(unittest.TestCase):
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
-                                        '--plasma-socket', self.worker_plasma_sock,
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '--nproc', '1',
@@ -142,7 +140,6 @@ class Test(unittest.TestCase):
             if p.poll() is None:
                 p.kill()
 
-        os.unlink(self.worker_plasma_sock)
         gevent.hub.Hub.NOT_ERROR = self.exceptions
 
     def testApi(self):

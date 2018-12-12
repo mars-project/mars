@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import logging
-import os
-import time
 
-from .. import resource, kvstore
+from .. import resource
 from ..config import options
-from ..utils import parse_memory_limit, readable_size
-from ..compat import six
 from ..base_app import BaseApplication
 from ..errors import StartArgumentError
 from .distributor import WorkerDistributor
@@ -38,22 +34,6 @@ class WorkerApplication(BaseApplication, WorkerService):
     def __init__(self):
         super(BaseApplication, self).__init__()
         super(WorkerService, self).__init__()
-
-    @staticmethod
-    def _calc_size_limit(limit_str, total_size):
-        """
-        Calculate limitation size when it is represented in percentage or prettified format
-        :param limit_str: percentage or prettified format
-        :param total_size: total size of the container
-        :return: actual size in bytes
-        """
-        if isinstance(limit_str, int):
-            return limit_str
-        mem_limit, is_percent = parse_memory_limit(limit_str)
-        if is_percent:
-            return int(total_size * mem_limit)
-        else:
-            return int(mem_limit)
 
     def config_args(self, parser):
         parser.add_argument('-s', '--schedulers', help='scheduler addresses')
