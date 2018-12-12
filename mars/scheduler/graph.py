@@ -243,6 +243,11 @@ class GraphActor(SchedulerActor):
             _detect_cancel(self.stop_graph)
         except ExecutionInterrupted:
             pass
+        except:
+            logger.exception('Failed to start graph execution.')
+            self.stop_graph()
+            self.state = GraphState.FAILED
+            raise
 
     def stop_graph(self):
         """
