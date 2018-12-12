@@ -17,12 +17,12 @@ import sys
 import signal
 import subprocess
 import time
+import unittest
 import uuid
 
 import gevent
 
 from mars.actors import FunctionActor, create_actor_pool
-from mars.compat import unittest
 from mars.config import options
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor

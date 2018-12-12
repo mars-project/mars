@@ -19,6 +19,7 @@ import subprocess
 import uuid
 import json
 import signal
+import unittest
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -26,7 +27,6 @@ import gevent
 
 from mars.serialize.dataserializer import loads
 from mars.config import options
-from mars.compat import unittest
 from mars.tensor.expressions.datasource import ones
 from mars.utils import get_next_port
 from mars.actors.core import new_client
@@ -121,6 +121,16 @@ class Test(unittest.TestCase):
         if self.proc_worker.poll() is not None:
             raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
 
+    def wait_for_termination(self, session_ref, graph_key):
+        check_time = time.time()
+        while True:
+            time.sleep(1)
+            self.check_process_statuses()
+            if time.time() - check_time > 60:
+                raise SystemError('Check graph status timeout')
+            if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
+                return session_ref.graph_state(graph_key)
+
     def testMain(self):
         session_id = uuid.uuid1()
         scheduler_address = '127.0.0.1:' + self.scheduler_port
@@ -138,19 +148,20 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        check_time = time.time()
-        while True:
-            time.sleep(1)
-            self.check_process_statuses()
-            if time.time() - check_time > 60:
-                raise SystemError('Check graph status timeout')
-            if session_ref.graph_state(graph_key) == GraphState.SUCCEEDED:
-                result = session_ref.fetch_result(graph_key, c.key)
-                break
+        state = self.wait_for_termination(session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
 
+        result = session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-
         assert_array_equal(loads(result), expected.sum())
+
+        graph_key = uuid.uuid1()
+        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
+                                        graph_key, target_tensors=targets)
+
+        # todo this behavior may change when eager mode is introduced
+        state = self.wait_for_termination(session_ref, graph_key)
+        self.assertEqual(state, GraphState.FAILED)
 
         a = ones((100, 50), chunks=30) * 2 + 1
         b = ones((50, 200), chunks=30) * 2 + 1
@@ -161,14 +172,7 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        check_time = time.time()
-        while True:
-            time.sleep(1)
-            self.check_process_statuses()
-            if time.time() - check_time > 60:
-                raise SystemError('Check graph status timeout')
-            if session_ref.graph_state(graph_key) == GraphState.SUCCEEDED:
-                result = session_ref.fetch_result(graph_key, c.key)
-                break
-
+        state = self.wait_for_termination(session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+        result = session_ref.fetch_result(graph_key, c.key)
         assert_array_equal(loads(result), np.ones((100, 200)) * 450)

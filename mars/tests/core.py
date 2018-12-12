@@ -19,6 +19,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import unittest
 from contextlib import contextmanager
 from collections import Iterable
 from weakref import ReferenceType
@@ -33,6 +34,16 @@ from mars.core import BaseWithKey
 from mars.compat import six
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
+
+
+if compat.PY27:
+    try:
+        import mock
+    except ImportError:
+        mock = None
+else:
+    from unittest import mock
+    _mock = mock
 
 
 @contextmanager
@@ -75,7 +86,7 @@ def gen_test(timeout=10):
     return _
 
 
-class TestCase(compat.unittest.TestCase):
+class TestCase(unittest.TestCase):
     pass
 
 
@@ -87,7 +98,7 @@ class MultiGetDict(dict):
         return super(MultiGetDict, self).__getitem__(item)
 
 
-class TestBase(compat.unittest.TestCase):
+class TestBase(unittest.TestCase):
     def setUp(self):
         self.pb_serialize = lambda *args, **kw: \
             serializes(ProtobufSerializeProvider(), *args, **kw)

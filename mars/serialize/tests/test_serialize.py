@@ -17,6 +17,7 @@
 import json
 import os
 import tempfile
+import unittest
 
 import numpy as np
 
@@ -25,7 +26,7 @@ try:
 except ImportError:
     pyarrow = None
 
-from mars.compat import unittest, six, OrderedDict, BytesIO
+from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
 from mars.serialize.core import Serializable, IdentityField, StringField, Int32Field, BytesField, \
     KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, \

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
+import unittest
 
 from mars.config import options
-from mars.compat import unittest
 from mars.utils import classproperty
 
 
