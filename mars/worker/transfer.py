@@ -50,10 +50,13 @@ class SenderActor(WorkerActor):
         self._serialize_pool = None
 
     def post_create(self):
+        from .dispatcher import DispatchActor
+        from .quota import MemQuotaActor
+
         super(SenderActor, self).post_create()
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
 
         self._serialize_pool = self.ctx.threadpool(1)
 
@@ -93,6 +96,8 @@ class SenderActor(WorkerActor):
         :param timeout: timeout of data sending
         :param callback: promise callback
         """
+        from .dispatcher import DispatchActor
+
         remote_receiver_refs = []
         already_started = set()
         finish_promises = []
@@ -103,7 +108,7 @@ class SenderActor(WorkerActor):
             logger.debug('Begin sending data %s into endpoints %s', chunk_key, target_endpoints)
             # collect receiver actors and quota actors in remote workers
             for ep in target_endpoints:
-                dispatch_ref = self.promise_ref('DispatchActor', address=ep)
+                dispatch_ref = self.promise_ref(DispatchActor.default_name(), address=ep)
                 uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
 
                 receiver_ref = self.promise_ref(uid, address=ep)
@@ -247,15 +252,20 @@ class ReceiverActor(WorkerActor):
         self._serialize_pool = None
 
     def post_create(self):
-        super(ReceiverActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref('ChunkHolderActor')
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        from .chunkholder import ChunkHolderActor
+        from .quota import MemQuotaActor
+        from .status import StatusActor
+        from .dispatcher import DispatchActor
 
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        super(ReceiverActor, self).post_create()
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
 
         self._serialize_pool = self.ctx.threadpool(1)

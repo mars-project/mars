@@ -78,6 +78,10 @@ class SchedulerActor(HasClusterInfoActor, PromiseActor):
         if 'balancer' in kwargs:
             self._balancer_ref = kwargs['balancer']
 
+    @classmethod
+    def default_name(cls):
+        return 's:{0}'.format(cls.__name__)
+
 
 def remove_shuffle_chunks(chunks):
     return list(n for n in chunks if not getattr(n.op, '_shuffle_source', False))

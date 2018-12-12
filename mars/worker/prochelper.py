@@ -28,8 +28,10 @@ class ProcessHelperActor(WorkerActor):
         self._dispatch_ref = None
 
     def post_create(self):
+        from .dispatcher import DispatchActor
+
         super(ProcessHelperActor, self).post_create()
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
 
     def free_mkl_buffers(self):

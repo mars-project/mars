@@ -86,7 +86,7 @@ class WorkerService(object):
         cls.service_logger.info('Setting soft limit to %s.', readable_size(quota_soft_limit))
         return quota_soft_limit
 
-    def start(self, endpoint, schedulers, pool, ignore_avail_mem=False):
+    def start(self, endpoint, schedulers, pool, ignore_avail_mem=False, create_cluster_info=True):
         if schedulers:
             if isinstance(schedulers, six.string_types):
                 schedulers = [schedulers]
@@ -103,25 +103,25 @@ class WorkerService(object):
         port_str = endpoint.rsplit(':', 1)[-1]
         self._status_ref = pool.create_actor(
             StatusActor, options.worker.advertise_addr + ':' + port_str,
-            uid='StatusActor')
+            uid=StatusActor.default_name())
 
         if ignore_avail_mem:
             # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
             # for debug purpose only, DON'T USE IN PRODUCTION
             self._mem_quota_ref = pool.create_actor(
-                QuotaActor, options.worker.physical_memory_limit_soft, uid='MemQuotaActor')
+                QuotaActor, options.worker.physical_memory_limit_soft, uid=MemQuotaActor.default_name())
         else:
             self._mem_quota_ref = pool.create_actor(
                 MemQuotaActor, self._calc_soft_memory_limit(),
-                options.worker.physical_memory_limit_hard, uid='MemQuotaActor')
+                options.worker.physical_memory_limit_hard, uid=MemQuotaActor.default_name())
 
         # create ChunkHolderActor
         self._chunk_holder_ref = pool.create_actor(
-            ChunkHolderActor, options.worker.cache_memory_limit, uid='ChunkHolderActor')
+            ChunkHolderActor, options.worker.cache_memory_limit, uid=ChunkHolderActor.default_name())
         # create DispatchActor
-        self._dispatch_ref = pool.create_actor(DispatchActor, uid='DispatchActor')
+        self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
         # create ExecutionActor
-        self._execution_ref = pool.create_actor(ExecutionActor, uid='ExecutionActor')
+        self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
 
         # create CpuCalcActor
         for cpu_id in range(options.worker.cpu_process_count):
@@ -147,7 +147,7 @@ class WorkerService(object):
             self._process_helper_actors.append(actor)
 
         # create ResultSenderActor
-        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid='ResultSenderActor')
+        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid=ResultSenderActor.default_name())
 
         # create SpillActor
         start_pid = 1 + options.worker.cpu_process_count + options.worker.io_process_count

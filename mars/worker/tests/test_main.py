@@ -28,6 +28,7 @@ from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor
 from mars.scheduler.kvstore import KVStoreActor
+from mars.worker.execution import ExecutionActor
 
 
 class PromiseReplyTestActor(FunctionActor):
@@ -105,7 +106,7 @@ class Test(unittest.TestCase):
                 reply_ref = pool.create_actor(PromiseReplyTestActor)
                 reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
 
-                executor_ref = pool.actor_ref('ExecutionActor', address=worker_ips[0])
+                executor_ref = pool.actor_ref(ExecutionActor.default_name(), address=worker_ips[0])
                 io_meta = dict(chunks=[c.key for c in result.chunks])
                 executor_ref.execute_graph(session_id, str(id(graph)), serialize_graph(graph),
                                            io_meta, None, callback=reply_callback)

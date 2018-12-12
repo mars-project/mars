@@ -28,8 +28,8 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address], uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid='KVStoreActor')
-            pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
-            pool.create_actor(StatusActor, '127.0.0.1:1234', uid='StatusActor')
+            pool.create_actor(ChunkHolderActor, self.plasma_storage_size, uid=ChunkHolderActor.default_name())
+            pool.create_actor(StatusActor, '127.0.0.1:1234', uid=StatusActor.default_name())
 
             def delay_read():
                 gevent.sleep(2)

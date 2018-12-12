@@ -29,7 +29,7 @@ class WorkerDistributor(Distributor):
         if not isinstance(uid, six.string_types):
             return 0
         id_parts = uid.split(':')
-        if id_parts[0] == 'w':
+        if id_parts[0] == 'w' and len(id_parts) == 3:
             # to tell distributor the exact process id
             return int(id_parts[1])
         else:

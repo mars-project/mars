@@ -40,6 +40,10 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         if options.kv_store:
             self._kv_store = kvstore.get(options.kv_store)
 
+    @classmethod
+    def default_name(cls):
+        return 'w:{0}'.format(cls.__name__)
+
     def post_create(self):
         from ..scheduler.kvstore import KVStoreActor
 

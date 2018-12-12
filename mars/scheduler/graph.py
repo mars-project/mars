@@ -47,6 +47,8 @@ class ResultReceiverActor(SchedulerActor):
         self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
 
     def merge_chunks(self, session_id, graph_key, tensor_key):
+        from ..worker.transfer import ResultSenderActor
+
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
         tiled_tensor = graph_actor.get_tiled_tensor(tensor_key)
 
@@ -56,7 +58,7 @@ class ResultReceiverActor(SchedulerActor):
                 endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
                                                     % (session_id, chunk_key))
                 worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-                sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
+                sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
                 ctx[chunk_key] = loads(sender_ref.fetch_data(session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
 
@@ -655,6 +657,8 @@ class GraphActor(SchedulerActor):
             op_ref.free_data(_tell=True)
 
     def fetch_tensor_result(self, tensor_key):
+        from ..worker.transfer import ResultSenderActor
+
         # TODO for test
         tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
         if tensor_key not in self._terminated_tensors:
@@ -667,7 +671,7 @@ class GraphActor(SchedulerActor):
             endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
                                                 % (self._session_id, chunk_key))
             worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-            sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
+            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
             ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
 
