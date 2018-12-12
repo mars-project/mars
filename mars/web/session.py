@@ -162,6 +162,19 @@ class Session(object):
         if resp.status_code >= 400:
             raise SystemError('Failed to close mars session.')
 
+    def check_service_ready(self, timeout=1):
+        try:
+            resp = self._req_session.get(self._endpoint + '/api', timeout=timeout)
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        if resp.status_code >= 400:
+            return False
+        return True
+
+    def count_workers(self):
+        resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
+        return json.loads(resp.text)
+
     def __enter__(self):
         return self
 

@@ -27,10 +27,10 @@ import requests
 
 from mars.config import options
 from mars import tensor as mt
-from mars.web import MarsApiClient
 from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.scheduler import KVStoreActor
+from mars.session import new_session
 
 
 class Test(unittest.TestCase):
@@ -147,14 +147,13 @@ class Test(unittest.TestCase):
 
     def testApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
-        client = MarsApiClient(service_ep)
-        self.assertEqual(client.count_workers(), 1)
-        with client.create_session() as sess:
+        with new_session(service_ep) as sess:
+            self.assertEqual(sess.count_workers(), 1)
             a = mt.ones((100, 100), chunks=30)
             b = mt.ones((100, 100), chunks=30)
             c = a.dot(b)
             value = sess.run(c)
-            assert_array_equal(value[0], np.ones((100, 100)) * 100)
+            assert_array_equal(value, np.ones((100, 100)) * 100)
 
             # todo this behavior may change when eager mode is introduced
             with self.assertRaises(SystemError):
@@ -166,4 +165,4 @@ class Test(unittest.TestCase):
             b = mt.array(vb, chunks=30)
             c = a.dot(b)
             value = sess.run(c, timeout=120)
-            assert_array_equal(value[0], va.dot(vb))
+            assert_array_equal(value, va.dot(vb))
