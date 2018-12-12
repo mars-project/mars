@@ -156,6 +156,10 @@ class Test(unittest.TestCase):
             value = sess.run(c)
             assert_array_equal(value[0], np.ones((100, 100)) * 100)
 
+            # todo this behavior may change when eager mode is introduced
+            with self.assertRaises(SystemError):
+                sess.run(c)
+
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))
             a = mt.array(va, chunks=30)

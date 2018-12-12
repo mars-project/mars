@@ -164,10 +164,16 @@ class GraphActor(SchedulerActor):
         self._start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.state = GraphState.PREPARING
 
-        self.prepare_graph()
-        self.scan_node()
-        self.place_initial_chunks()
-        self.create_operand_actors()
+        try:
+            self.prepare_graph()
+            self.scan_node()
+            self.place_initial_chunks()
+            self.create_operand_actors()
+        except:
+            logger.exception('Failed to start graph execution.')
+            self.stop_graph()
+            self.state = GraphState.FAILED
+            raise
 
     def stop_graph(self):
         """
