@@ -28,9 +28,7 @@ from .. import kvstore
 from ..compat import six
 from ..utils import get_next_port
 from ..config import options
-from ..actors import new_client
 from ..scheduler import GraphActor, ResourceActor
-from ..cluster_info import ClusterInfoActor
 from ..api import MarsAPI, actor_client
 
 logger = logging.getLogger(__name__)

@@ -127,7 +127,7 @@ class GraphDataHandler(ApiRequestHandler):
 
 class WorkersApiHandler(ApiRequestHandler):
     def get(self):
-        workers_num = self.web_api.list_workers()
+        workers_num = self.web_api.count_workers()
         self.write(json.dumps(workers_num))
 
 

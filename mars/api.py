@@ -46,7 +46,7 @@ class MarsAPI(object):
             infos.append(info_ref.get_info())
         return infos
 
-    def list_workers(self):
+    def count_workers(self):
         try:
             worker_info = self.kv_store.read('/workers/meta')
             workers_num = len(worker_info.children)
