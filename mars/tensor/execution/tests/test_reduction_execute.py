@@ -54,15 +54,15 @@ class Test(unittest.TestCase):
         self.assertEqual([raw.max()], self.executor.execute_tensor(arr.max()))
         self.assertEqual([raw.min()], self.executor.execute_tensor(arr.min()))
 
-        self.assertTrue(np.array_equal(raw.max(axis=0),
-                        self.executor.execute_tensor(arr.max(axis=0), concat=True)[0]))
-        self.assertTrue(np.array_equal(raw.min(axis=0),
-                        self.executor.execute_tensor(arr.min(axis=0), concat=True)[0]))
+        np.testing.assert_array_equal(
+            raw.max(axis=0), self.executor.execute_tensor(arr.max(axis=0), concat=True)[0])
+        np.testing.assert_array_equal(
+            raw.min(axis=0), self.executor.execute_tensor(arr.min(axis=0), concat=True)[0])
 
-        self.assertTrue(np.array_equal(raw.max(axis=(1, 2)),
-                        self.executor.execute_tensor(arr.max(axis=(1, 2)), concat=True)[0]))
-        self.assertTrue(np.array_equal((raw.min(axis=(1, 2))),
-                        self.executor.execute_tensor(arr.min(axis=(1, 2)), concat=True)[0]))
+        np.testing.assert_array_equal(
+            raw.max(axis=(1, 2)), self.executor.execute_tensor(arr.max(axis=(1, 2)), concat=True)[0])
+        np.testing.assert_array_equal(
+            raw.min(axis=(1, 2)), self.executor.execute_tensor(arr.min(axis=(1, 2)), concat=True)[0])
 
         raw = sps.random(10, 10, density=.5)
 
@@ -85,10 +85,10 @@ class Test(unittest.TestCase):
         self.assertTrue(self.executor.execute_tensor(arr2.all())[0])
         self.assertFalse(self.executor.execute_tensor(arr1.any())[0])
         self.assertTrue(self.executor.execute_tensor(arr1.any()))
-        self.assertTrue(np.array_equal(raw3.all(axis=1),
-                                       self.executor.execute_tensor(arr3.all(axis=1))[0]))
-        self.assertTrue(np.array_equal(raw3.any(axis=0),
-                                       self.executor.execute_tensor(arr3.any(axis=0))[0]))
+        np.testing.assert_array_equal(raw3.all(axis=1),
+                                      self.executor.execute_tensor(arr3.all(axis=1))[0])
+        np.testing.assert_array_equal(raw3.any(axis=0),
+                                      self.executor.execute_tensor(arr3.any(axis=0))[0])
 
         raw = sps.random(10, 10, density=.5) > .5
 
@@ -262,13 +262,19 @@ class Test(unittest.TestCase):
         self.assertEqual(raw.argmin(),
                          self.executor.execute_tensor(arr.argmin())[0])
 
-        self.assertTrue(np.array_equal(raw.argmax(axis=0),
-                        self.executor.execute_tensor(arr.argmax(axis=0), concat=True)[0]))
-        self.assertTrue(np.array_equal(raw.argmin(axis=0),
-                        self.executor.execute_tensor(arr.argmin(axis=0), concat=True)[0]))
+        np.testing.assert_array_equal(
+            raw.argmax(axis=0), self.executor.execute_tensor(arr.argmax(axis=0), concat=True)[0])
+        np.testing.assert_array_equal(
+            raw.argmin(axis=0), self.executor.execute_tensor(arr.argmin(axis=0), concat=True)[0])
 
-        raw = sps.random(20, 20, density=.1)
+        raw_format = sps.random(20, 20, density=.1, format='lil')
 
+        random_min = np.random.randint(0, 200)
+        random_max = np.random.randint(200, 400)
+        raw[np.unravel_index(random_min, raw.shape)] = -1
+        raw[np.unravel_index(random_max, raw.shape)] = 2
+
+        raw = raw_format.tocoo()
         arr = tensor(raw, chunks=3)
 
         self.assertEqual(raw.argmax(),
@@ -346,8 +352,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(arr.cumprod(axis=1), concat=True)
         expected1 = raw.cumsum(axis=1)
         expected2 = raw.cumprod(axis=1)
-        self.assertTrue(np.array_equal(res1[0], expected1))
-        self.assertTrue(np.array_equal(res2[0], expected2))
+        np.testing.assert_array_equal(res1[0], expected1)
+        np.testing.assert_array_equal(res2[0], expected2)
 
         raw = sps.random(8, 8, density=.1)
 
@@ -357,8 +363,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(arr.cumprod(axis=1), concat=True)
         expected1 = raw.A.cumsum(axis=1)
         expected2 = raw.A.cumprod(axis=1)
-        self.assertTrue(np.array_equal(res1[0], expected1))
-        self.assertTrue(np.array_equal(res2[0], expected2))
+        self.assertTrue(np.allclose(res1[0], expected1))
+        self.assertTrue(np.allclose(res2[0], expected2))
 
     def testNanCumReduction(self):
         raw = np.random.randint(5, size=(8, 8, 8))
@@ -370,8 +376,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(nancumprod(arr, axis=1), concat=True)
         expected1 = np.nancumsum(raw, axis=1)
         expected2 = np.nancumprod(raw, axis=1)
-        self.assertTrue(np.array_equal(res1[0], expected1))
-        self.assertTrue(np.array_equal(res2[0], expected2))
+        np.testing.assert_array_equal(res1[0], expected1)
+        np.testing.assert_array_equal(res2[0], expected2)
 
         raw = sps.random(8, 8, density=.1, format='lil')
         raw[:2, 2:4] = np.nan
@@ -382,8 +388,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(nancumprod(arr, axis=1), concat=True)[0]
         expected1 = np.nancumsum(raw.A, axis=1)
         expected2 = np.nancumprod(raw.A, axis=1)
-        np.testing.assert_equal(res1, expected1)
-        np.testing.assert_equal(res2, expected2)
+        self.assertTrue(np.allclose(res1, expected1))
+        self.assertTrue(np.allclose(res2, expected2))
 
     def testOutReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
@@ -395,7 +401,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr2, concat=True)[0]
         expected = raw.sum(axis=1)
 
-        self.assertTrue(np.array_equal(res, expected))
+        np.testing.assert_array_equal(res, expected)
 
     def testOutCumReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
@@ -406,7 +412,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr, concat=True)[0]
         expected = raw.cumsum(axis=0)
 
-        self.assertTrue(np.array_equal(res, expected))
+        np.testing.assert_array_equal(res, expected)
 
     def testCountNonzeroExecution(self):
         raw = [[0, 1, 7, 0, 0], [3, 0, 0, 2, 19]]
