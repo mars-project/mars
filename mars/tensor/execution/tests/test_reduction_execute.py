@@ -267,12 +267,14 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(raw.argmin(axis=0),
                         self.executor.execute_tensor(arr.argmin(axis=0), concat=True)[0]))
 
-        row = np.array([0, 1, 4, 9, 13, 19])
-        col = np.array([0, 1, 4, 9, 13, 19])
-        data = np.array([0, 1, 2, 3, 4, 5])
-        np.random.shuffle(data)
+        raw_format = sps.random(20, 20, density=.1, format='lil')
 
-        raw = sps.coo_matrix((data, (row, col)), shape=(20, 20))
+        random_min = np.random.randint(0, 200)
+        random_max = np.random.randint(200, 400)
+        raw[np.unravel_index(random_min, raw.shape)] = -1
+        raw[np.unravel_index(random_max, raw.shape)] = 2
+
+        raw = raw_format.A
         arr = tensor(raw, chunks=3)
 
         self.assertEqual(raw.argmax(),
