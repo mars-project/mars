@@ -29,7 +29,7 @@ from ..compat import six
 from ..utils import get_next_port
 from ..config import options
 from ..scheduler import GraphActor, ResourceActor
-from ..api import MarsAPI, actor_client
+from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class MarsWebAPI(MarsAPI):
             session_desc['id'] = session_id
             session_desc['name'] = session_id
             session_desc['tasks'] = dict()
-            session_ref = actor_client.actor_ref(session_ref)
+            session_ref = self.actor_client.actor_ref(session_ref)
             for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
                 task_desc = dict()
 
@@ -91,7 +91,7 @@ class MarsWebAPI(MarsAPI):
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
-                graph_ref = actor_client.actor_ref(graph_ref)
+                graph_ref = self.actor_client.actor_ref(graph_ref)
                 task_desc['id'] = graph_key
                 task_desc['state'] = graph_ref.get_state().value
                 start_time, end_time, graph_size = graph_ref.get_graph_info()

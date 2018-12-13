@@ -25,7 +25,6 @@ from .server import register_api_handler
 from ..compat import six, futures
 from ..lib.tblib import pickling_support
 from ..actors import new_client
-from .. import resource
 
 pickling_support.install()
 _actor_client = new_client()
@@ -109,15 +108,14 @@ class GraphApiHandler(ApiRequestHandler):
             self.write(json.dumps(dict(state='preparing')))
 
     def delete(self, session_id, graph_key):
-        self.web_api.delete_graph(session_id, graph_key)
+        self.web_api.stop_graph(session_id, graph_key)
 
 
 class GraphDataHandler(ApiRequestHandler):
-    _executor = futures.ThreadPoolExecutor(resource.cpu_count())
-
     @gen.coroutine
     def get(self, session_id, graph_key, tensor_key):
-        data = yield self._executor.submit(
+        executor = futures.ThreadPoolExecutor(1)
+        data = yield executor.submit(
             self.web_api.fetch_data, session_id, graph_key, tensor_key)
         self.write(data)
 

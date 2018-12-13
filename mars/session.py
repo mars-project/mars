@@ -14,7 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import uuid
+import json
+import time
 import numpy as np
+
+from .api import MarsAPI
+from .scheduler.graph import GraphState
+from .serialize import dataserializer
 
 
 class LocalSession(object):
@@ -38,14 +45,71 @@ class LocalSession(object):
         self._executor = None
 
 
+class LocalClusterSession(object):
+    def __init__(self, endpoint):
+        self._session_id = uuid.uuid4()
+        self._endpoint = endpoint
+        self._tensor_to_graph = dict()
+
+        self._api = MarsAPI(self._endpoint)
+
+    @property
+    def session_id(self):
+        return self._session_id
+
+    def run(self, tensors, compose=True, timeout=-1):
+        from .graph import DirectedGraph
+
+        graph = DirectedGraph()
+        graph_key = uuid.uuid4()
+        for t in tensors:
+            graph = t.build_graph(graph=graph, tiled=False, compose=compose)
+            self._tensor_to_graph[t.key] = graph_key
+        targets = [t.key for t in tensors]
+
+        self._api.submit_graph(self.session_id, json.dumps(graph.to_json()),
+                               graph_key, targets)
+        exec_start_time = time.time()
+        while timeout <= 0 or time.time() - exec_start_time <= timeout:
+            time.sleep(1)
+            graph_state = self._api.get_graph_state(self.session_id, graph_key)
+            if graph_state == GraphState.SUCCEEDED:
+                break
+        if 0 < timeout < time.time() - exec_start_time:
+            raise TimeoutError
+
+        data_list = []
+        for tk in targets:
+            resp = self._api.fetch_data(self.session_id, graph_key, tk)
+            data_list.append(dataserializer.loads(resp.content))
+        return data_list
+
+    def decref(self, *keys):
+        for k in keys:
+            if k not in self._tensor_to_graph:
+                continue
+            graph_key = self._tensor_to_graph[k]
+            self._api.delete_data(self.session_id, graph_key, k)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self._executor = None
+
+
 class Session(object):
     _default_session = None
 
     def __init__(self, endpoint=None):
         if endpoint is not None:
-            from .web.session import Session
-
-            self._sess = Session(endpoint)
+            if endpoint.startswith('http'):
+                # create web session
+                from .web.session import Session
+                self._sess = Session(endpoint)
+            else:
+                # create local cluster session
+                self._sess = LocalClusterSession(endpoint)
         else:
             self._sess = LocalSession()
 
