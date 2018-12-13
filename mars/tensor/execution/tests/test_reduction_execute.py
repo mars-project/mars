@@ -267,8 +267,12 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(raw.argmin(axis=0),
                         self.executor.execute_tensor(arr.argmin(axis=0), concat=True)[0]))
 
-        raw = sps.random(20, 20, density=.1)
+        row = np.array([0, 1, 4, 9, 13, 19])
+        col = np.array([0, 1, 4, 9, 13, 19])
+        data = np.array([0, 1, 2, 3, 4, 5])
+        np.random.shuffle(data)
 
+        raw = sps.coo_matrix((data, (row, col)), shape=(20, 20))
         arr = tensor(raw, chunks=3)
 
         self.assertEqual(raw.argmax(),
@@ -357,8 +361,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(arr.cumprod(axis=1), concat=True)
         expected1 = raw.A.cumsum(axis=1)
         expected2 = raw.A.cumprod(axis=1)
-        self.assertTrue(np.array_equal(res1[0], expected1))
-        self.assertTrue(np.array_equal(res2[0], expected2))
+        self.assertTrue(np.allclose(res1[0], expected1))
+        self.assertTrue(np.allclose(res2[0], expected2))
 
     def testNanCumReduction(self):
         raw = np.random.randint(5, size=(8, 8, 8))
@@ -382,8 +386,8 @@ class Test(unittest.TestCase):
         res2 = self.executor.execute_tensor(nancumprod(arr, axis=1), concat=True)[0]
         expected1 = np.nancumsum(raw.A, axis=1)
         expected2 = np.nancumprod(raw.A, axis=1)
-        np.testing.assert_equal(res1, expected1)
-        np.testing.assert_equal(res2, expected2)
+        self.assertTrue(np.allclose(res1, expected1))
+        self.assertTrue(np.allclose(res2, expected2))
 
     def testOutReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
