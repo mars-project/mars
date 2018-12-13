@@ -37,7 +37,6 @@ class ResultReceiverActor(SchedulerActor):
     def __init__(self):
         super(ResultReceiverActor, self).__init__()
         self._kv_store_ref = None
-        self.chunks = dict()
 
     @classmethod
     def default_name(cls):

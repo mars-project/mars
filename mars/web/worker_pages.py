@@ -50,11 +50,8 @@ def worker_detail(doc, workers_meta, endpoint):
     doc.template = _jinja_env.get_template('worker_detail.html')
 
 
-def _route(cluster_info, doc):
-    actor_client = new_client()
-    uid = ResourceActor.default_name()
-    resource_ref = actor_client.actor_ref(uid, address=cluster_info.get_scheduler(uid))
-    workers_meta = resource_ref.get_workers_meta()
+def _route(web_api, doc):
+    workers_meta = web_api.get_workers_meta()
 
     endpoint = doc.session_context.request.arguments.get('endpoint')
     if not endpoint:
