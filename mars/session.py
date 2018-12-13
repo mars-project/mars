@@ -14,7 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import uuid
+import json
+import time
 import numpy as np
+
+from .api import MarsAPI
+from .scheduler.graph import GraphState
+from .serialize import dataserializer
 
 
 class LocalSession(object):
@@ -43,10 +50,9 @@ class Session(object):
 
     def __init__(self, endpoint=None):
         if endpoint is not None:
-            from .web import get_client
+            from .web.session import Session
 
-            client = get_client(endpoint)
-            self._sess = client.create_session()
+            self._sess = Session(endpoint)
         else:
             self._sess = LocalSession()
 

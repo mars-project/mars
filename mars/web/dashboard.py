@@ -13,20 +13,12 @@
 # limitations under the License.
 
 from .server import register_ui_handler, get_jinja_env
-from ..node_info import NodeInfoActor
-from ..actors import new_client
 
 
-def dashboard(cluster_ref, doc):
+def dashboard(web_api, doc):
     doc.title = 'Mars UI'
 
-    actor_client = new_client()
-    schedulers = cluster_ref.get_schedulers()
-    infos = []
-    for scheduler in schedulers:
-        info_ref = actor_client.actor_ref(NodeInfoActor.default_name(),
-                                          address=scheduler)
-        infos.append(info_ref.get_info())
+    infos = web_api.get_schedulers_info()
     doc.template_variables['infos'] = infos
     jinja_env = get_jinja_env()
     doc.template = jinja_env.get_template('dashboard.html')
