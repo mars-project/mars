@@ -16,6 +16,9 @@
 
 import unittest
 
+import numpy as np
+
+from mars import tensor as mt
 from mars.deploy.local import new_cluster
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.session import SessionManagerActor
@@ -30,3 +33,13 @@ class Test(unittest.TestCase):
             self.assertTrue(pool.has_actor(pool.actor_ref(ClusterInfoActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_name())))
+
+            with cluster.session as session:
+                api = session._api
+
+                t = mt.ones((3, 3), chunks=2)
+                result = session.run(t)
+
+                np.testing.assert_array_equal(result, np.ones((3, 3)))
+
+            self.assertNotIn(session._session_id, api.session_manager.get_sessions())

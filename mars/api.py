@@ -57,9 +57,7 @@ class MarsAPI(object):
         self.session_manager.create_session(session_id, **kw)
 
     def delete_session(self, session_id):
-        session_uid = SessionActor.gen_name(session_id)
-        session_ref = self.get_actor_ref(session_uid)
-        session_ref.destroy()
+        self.session_manager.delete_session(session_id)
 
     def submit_graph(self, session_id, serialized_graph, graph_key, target):
         session_uid = SessionActor.gen_name(session_id)

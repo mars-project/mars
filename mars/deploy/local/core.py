@@ -21,6 +21,7 @@ from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...worker.service import WorkerService
 from ...actors import create_actor_pool
+from ...session import new_session
 from .distributor import gen_distributor
 
 
@@ -44,6 +45,9 @@ class LocalDistributedCluster(object):
         self._scheduler_service = SchedulerService()
         self._worker_service = WorkerService()
 
+        # session
+        self._session = None
+
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,
                                                   scheduler_n_process,
@@ -52,6 +56,10 @@ class LocalDistributedCluster(object):
     @property
     def pool(self):
         return self._pool
+
+    @property
+    def session(self):
+        return self._session
 
     @classmethod
     def _calc_scheduler_worker_n_process(cls, n_process, scheduler_n_process, worker_n_process):
@@ -103,6 +111,9 @@ class LocalDistributedCluster(object):
 
         # start worker next
         self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)
+
+        # create a session and make it as default
+        self._session = new_session(self._endpoint).as_default()
 
     def stop_service(self):
         if self._stopped.is_set():
