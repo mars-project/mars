@@ -51,5 +51,3 @@ class Test(TestBase):
         expected = np.split(data, 3, axis=1)[0]
 
         np.testing.assert_array_equal(result, expected)
-
-# TODO add local cluster session test
