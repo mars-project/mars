@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from bokeh.models import ColumnDataSource
+from bokeh.plotting import figure
+
 from .server import register_ui_handler, get_jinja_env
 from ..scheduler.utils import OperandState
 from ..utils import to_str
 from ..actors import new_client
+from .server import MarsWebAPI
 
-from bokeh.models import ColumnDataSource
-from bokeh.plotting import figure
 
 _actor_client = new_client()
 _jinja_env = get_jinja_env()
@@ -69,7 +71,8 @@ def task_operand(doc, cluster_info, session_id, task_id):
     doc.template = _jinja_env.get_template('task_operands.html')
 
 
-def _route(web_api, doc):
+def _route(scheduler_ip, doc):
+    web_api = MarsWebAPI(scheduler_ip)
     session_id = doc.session_context.request.arguments.get('session_id')
     task_id = doc.session_context.request.arguments.get('task_id')
     if session_id and task_id:
