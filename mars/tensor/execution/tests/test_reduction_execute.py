@@ -271,8 +271,8 @@ class Test(unittest.TestCase):
 
         random_min = np.random.randint(0, 200)
         random_max = np.random.randint(200, 400)
-        raw[np.unravel_index(random_min, raw.shape)] = -1
-        raw[np.unravel_index(random_max, raw.shape)] = 2
+        raw_format[np.unravel_index(random_min, raw_format.shape)] = -1
+        raw_format[np.unravel_index(random_max, raw_format.shape)] = 2
 
         raw = raw_format.tocoo()
         arr = tensor(raw, chunks=3)
