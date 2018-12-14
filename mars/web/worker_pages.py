@@ -15,9 +15,8 @@
 from collections import defaultdict
 
 from .server import register_ui_handler, get_jinja_env
-from ..scheduler import ResourceActor
 from ..utils import to_str
-from ..actors import new_client
+from .server import MarsWebAPI
 
 _jinja_env = get_jinja_env()
 
@@ -50,7 +49,8 @@ def worker_detail(doc, workers_meta, endpoint):
     doc.template = _jinja_env.get_template('worker_detail.html')
 
 
-def _route(web_api, doc):
+def _route(scheduele_ip, doc):
+    web_api = MarsWebAPI(scheduele_ip)
     workers_meta = web_api.get_workers_meta()
 
     endpoint = doc.session_context.request.arguments.get('endpoint')
