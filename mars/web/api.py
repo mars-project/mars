@@ -114,8 +114,6 @@ class GraphApiHandler(ApiRequestHandler):
 
 
 class GraphDataHandler(ApiRequestHandler):
-    _executor = futures.ThreadPoolExecutor(resource.cpu_count())
-
     @gen.coroutine
     def get(self, session_id, graph_key, tensor_key):
         executor = futures.ThreadPoolExecutor(1)
