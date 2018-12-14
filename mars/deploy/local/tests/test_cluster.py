@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import unittest
 
 import numpy as np
 
 from mars import tensor as mt
+from mars.session import new_session
 from mars.deploy.local import new_cluster
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.session import SessionManagerActor
@@ -43,3 +45,14 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
             self.assertNotIn(session._session_id, api.session_manager.get_sessions())
+
+    def testLocalClusterWithWeb(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=3, web=True) as cluster:
+            # time.sleep(5)  # wait for web
+
+            session = new_session('http://' + cluster._web_endpoint)
+
+            t = mt.ones((3, 3), chunks=2)
+            result = session.run(t)
+
+            np.testing.assert_array_equal(result, np.ones((3, 3)))

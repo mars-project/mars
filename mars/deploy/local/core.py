@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import threading
-
 from ...utils import get_next_port
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...worker.service import WorkerService
 from ...actors import create_actor_pool
 from ...session import new_session
+from ...compat import six
+from ...lib import gipc
 from .distributor import gen_distributor
 
 
@@ -39,11 +39,21 @@ class LocalDistributedCluster(object):
             # if no port provided, will try to generate one
             self._endpoint = self._gen_endpoint(address)
 
-        self._stopped = threading.Event()
+        self._web_endpoint = None
+        if web is True:
+            self._web_endpoint = self._gen_endpoint('0.0.0.0')
+        elif isinstance(web, six.string_types):
+            if ':' in web:
+                self._web_endpoint = web
+            else:
+                self._web_endpoint = self._gen_endpoint(web)
+
+        self._stopped = False
 
         self._pool = None
         self._scheduler_service = SchedulerService()
         self._worker_service = WorkerService()
+        self._web_process = None
 
         # session
         self._session = None
@@ -112,25 +122,44 @@ class LocalDistributedCluster(object):
         # start worker next
         self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)
 
+        # start web
+        if self._web_endpoint:
+            ui_port = int(self._web_endpoint.rsplit(':', 1)[1])
+            self._web_process = gipc.start_process(_start_web, args=(self._endpoint, ui_port))
+
         # create a session and make it as default
         self._session = new_session(self._endpoint).as_default()
 
     def stop_service(self):
-        if self._stopped.is_set():
+        if self._stopped:
             return
 
-        self._stopped.set()
+        self._stopped = True
         try:
             self._scheduler_service.stop(self._pool)
             self._worker_service.stop()
         finally:
             self._pool.stop()
 
+        # stop web
+        if self._web_endpoint:
+            self._web_process.terminate()
+
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
         self.stop_service()
+
+
+def _start_web(scheduler_address, ui_port):
+    import gevent.monkey
+    gevent.monkey.patch_all(thread=False)
+
+    from ...web import MarsWeb
+
+    web = MarsWeb(ui_port, scheduler_address)
+    web.start()
 
 
 def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):

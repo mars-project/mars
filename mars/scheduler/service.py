@@ -57,7 +57,7 @@ class SchedulerService(object):
             ClusterInfoActor, schedulers, service_discover_addr, uid=ClusterInfoActor.default_name())
         # create SessionManagerActor
         self._session_manager_ref = pool.create_actor(SessionManagerActor,
-                                                uid=SessionManagerActor.default_name())
+            uid=SessionManagerActor.default_name())
         # create ResourceActor
         self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
         # create KVStoreActor
