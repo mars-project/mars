@@ -149,18 +149,16 @@ class MarsWeb(object):
             except KeyError:
                 raise KeyError('No scheduler is available')
 
-        web_api = MarsWebAPI(self._scheduler_ip)
-
         static_path = os.path.join(os.path.dirname(__file__), 'static')
 
         handlers = dict()
         for p, h in _ui_handlers.items():
-            handlers[p] = Application(FunctionHandler(functools.partial(h, web_api)))
+            handlers[p] = Application(FunctionHandler(functools.partial(h, self._scheduler_ip)))
         extra_patterns = [
             ('/static/(.*)', BokehStaticFileHandler, {'path': static_path})
         ]
         for p, h in _api_handlers.items():
-            extra_patterns.append((p, h, {'web_api': web_api}))
+            extra_patterns.append((p, h, {'scheduler_ip': self._scheduler_ip}))
 
         retrial = 5
         while retrial:
