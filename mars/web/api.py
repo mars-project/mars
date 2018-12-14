@@ -45,7 +45,7 @@ def _patch_futures():
 
 if six.PY2:
     _patch_futures()
-#
+
 
 class ApiRequestHandler(web.RequestHandler):
     def initialize(self, scheduler_ip):
