@@ -166,3 +166,14 @@ class Test(unittest.TestCase):
             c = a.dot(b)
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
+
+            # check web UI requests
+            res = requests.get(service_ep)
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get(service_ep + '/task')
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get(service_ep + '/worker')
+            self.assertEqual(res.status_code, 200)
+
