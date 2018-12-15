@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .server import register_ui_handler, get_jinja_env
-from ..scheduler.utils import OperandState
-from ..scheduler import GraphActor, SessionManagerActor, GraphMetaActor
-from ..compat import six
-from ..utils import to_str
-from ..actors import new_client
-
 from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
+
+from .server import register_ui_handler, get_jinja_env
+from ..scheduler.utils import OperandState
+from ..utils import to_str
+from ..actors import new_client
+from .server import MarsWebAPI
+
 
 _actor_client = new_client()
 _jinja_env = get_jinja_env()
@@ -29,39 +29,8 @@ _base_palette = ['#e0f9ff', '#81d4dd', '#ff9e3b', '#399e34', '#2679b2', '#b3de8e
                  '#e01f27', '#b3b3cc', '#f0f0f5']
 
 
-def task_list(doc, cluster_info):
-    uid = SessionManagerActor.default_name()
-    sessions_ref = _actor_client.actor_ref(uid, address=cluster_info.get_scheduler(uid))
-
-    sessions = dict()
-    for session_id, session_ref in six.iteritems(sessions_ref.get_sessions()):
-        sessions[session_id] = dict()
-        session_desc = sessions[session_id]
-        session_desc['id'] = session_id
-        session_desc['name'] = session_id
-        session_desc['tasks'] = dict()
-        session_ref = _actor_client.actor_ref(session_ref)
-        for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
-            task_desc = dict()
-
-            graph_meta_uid = GraphMetaActor.gen_name(session_id, graph_key)
-            scheduler_address = cluster_info.get_scheduler(graph_meta_uid)
-            graph_meta_ref = _actor_client.actor_ref(graph_meta_uid, address=scheduler_address)
-            state = graph_meta_ref.get_state()
-            if state == 'PREPARING':
-                task_desc['state'] = state.lower()
-                session_desc['tasks'][graph_key] = task_desc
-                continue
-
-            graph_ref = _actor_client.actor_ref(graph_ref)
-            task_desc['id'] = graph_key
-            task_desc['state'] = graph_ref.get_state().value
-            start_time, end_time, graph_size = graph_ref.get_graph_info()
-            task_desc['start_time'] = start_time
-            task_desc['end_time'] = end_time or 'N/A'
-            task_desc['graph_size'] = graph_size or 'N/A'
-
-            session_desc['tasks'][graph_key] = task_desc
+def task_list(doc, web_api):
+    sessions = web_api.get_tasks_info()
 
     doc.title = 'Mars UI'
     doc.template_variables['sessions'] = sessions
@@ -72,10 +41,7 @@ def task_operand(doc, cluster_info, session_id, task_id):
     session_name = session_id
     states = list(OperandState.__members__.values())
 
-    graph_uid = GraphActor.gen_name(session_id, task_id)
-    scheduler_address = cluster_info.get_scheduler(graph_uid)
-    graph_ref = _actor_client.actor_ref(graph_uid, address=scheduler_address)
-    ops, stats, progress = graph_ref.calc_stats()
+    ops, stats, progress = cluster_info.get_task_detail(session_id, task_id)
     source = ColumnDataSource(stats)
     cols = list(stats)[1:]
     p = figure(y_range=[''] + ops, plot_height=500, plot_width=800, x_range=(0, 100),
@@ -105,13 +71,14 @@ def task_operand(doc, cluster_info, session_id, task_id):
     doc.template = _jinja_env.get_template('task_operands.html')
 
 
-def _route(cluster_info, doc):
+def _route(scheduler_ip, doc):
+    web_api = MarsWebAPI(scheduler_ip)
     session_id = doc.session_context.request.arguments.get('session_id')
     task_id = doc.session_context.request.arguments.get('task_id')
     if session_id and task_id:
-        task_operand(doc, cluster_info, to_str(session_id[0]), to_str(task_id[0]))
+        task_operand(doc, web_api, to_str(session_id[0]), to_str(task_id[0]))
     else:
-        task_list(doc, cluster_info)
+        task_list(doc, web_api)
 
 
 register_ui_handler('/task', _route)

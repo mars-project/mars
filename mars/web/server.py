@@ -17,6 +17,7 @@ import logging
 import random
 import threading
 import os
+from collections import defaultdict
 
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
@@ -28,8 +29,8 @@ from .. import kvstore
 from ..compat import six
 from ..utils import get_next_port
 from ..config import options
-from ..actors import new_client
-from ..cluster_info import ClusterInfoActor
+from ..scheduler import GraphActor, ResourceActor
+from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,51 @@ class BokehStaticFileHandler(web.StaticFileHandler):
         return super(BokehStaticFileHandler, self).validate_absolute_path(root, absolute_path)
 
 
+class MarsWebAPI(MarsAPI):
+    def __init__(self, scheduler_ip):
+        super(MarsWebAPI, self).__init__(scheduler_ip)
+
+    def get_tasks_info(self):
+        from ..scheduler import GraphState
+
+        sessions = defaultdict(dict)
+        for session_id, session_ref in six.iteritems(self.session_manager.get_sessions()):
+            session_desc = sessions[session_id]
+            session_desc['id'] = session_id
+            session_desc['name'] = session_id
+            session_desc['tasks'] = dict()
+            session_ref = self.actor_client.actor_ref(session_ref)
+            for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
+                task_desc = dict()
+
+                state = self.get_graph_state(session_id, graph_key)
+                if state == GraphState.PREPARING:
+                    task_desc['state'] = state.lower()
+                    session_desc['tasks'][graph_key] = task_desc
+                    continue
+
+                graph_ref = self.actor_client.actor_ref(graph_ref)
+                task_desc['id'] = graph_key
+                task_desc['state'] = graph_ref.get_state().value
+                start_time, end_time, graph_size = graph_ref.get_graph_info()
+                task_desc['start_time'] = start_time
+                task_desc['end_time'] = end_time or 'N/A'
+                task_desc['graph_size'] = graph_size or 'N/A'
+
+                session_desc['tasks'][graph_key] = task_desc
+        return sessions
+
+    def get_task_detail(self, session_id, task_id):
+        graph_uid = GraphActor.gen_name(session_id, task_id)
+        graph_ref = self.get_actor_ref(graph_uid)
+        return graph_ref.calc_stats()
+
+    def get_workers_meta(self):
+        resource_uid = ResourceActor.default_name()
+        resource_ref = self.get_actor_ref(resource_uid)
+        return resource_ref.get_workers_meta()
+
+
 class MarsWeb(object):
     def __init__(self, port=None, scheduler_ip=None):
         self._port = port
@@ -104,21 +150,17 @@ class MarsWeb(object):
                 self._scheduler_ip = schedulers[random.randint(0, len(schedulers) - 1)]
             except KeyError:
                 raise KeyError('No scheduler is available')
-        actor_client = new_client()
-        cluster_ref = actor_client.actor_ref(ClusterInfoActor.default_name(),
-                                             address=self._scheduler_ip)
 
         static_path = os.path.join(os.path.dirname(__file__), 'static')
 
         handlers = dict()
-        sessions = dict()
         for p, h in _ui_handlers.items():
-            handlers[p] = Application(FunctionHandler(functools.partial(h, cluster_ref)))
+            handlers[p] = Application(FunctionHandler(functools.partial(h, self._scheduler_ip)))
         extra_patterns = [
             ('/static/(.*)', BokehStaticFileHandler, {'path': static_path})
         ]
         for p, h in _api_handlers.items():
-            extra_patterns.append((p, h, {'sessions': sessions, 'cluster_info': cluster_ref}))
+            extra_patterns.append((p, h, {'scheduler_ip': self._scheduler_ip}))
 
         retrial = 5
         while retrial:

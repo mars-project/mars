@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api_client import MarsApiClient, get_client
 from .session import Session
 
 try:

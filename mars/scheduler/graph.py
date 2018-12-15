@@ -38,8 +38,6 @@ logger = logging.getLogger(__name__)
 class ResultReceiverActor(SchedulerActor):
     def __init__(self):
         super(ResultReceiverActor, self).__init__()
-        self._kv_store_ref = None
-        self.chunks = dict()
         self._chunk_meta_ref = None
 
     @classmethod
