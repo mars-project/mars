@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .server import register_ui_handler, get_jinja_env
+from .server import register_ui_handler, get_jinja_env, MarsWebAPI
 
 
-def dashboard(web_api, doc):
+def dashboard(scheduler_ip, doc):
     doc.title = 'Mars UI'
 
+    web_api = MarsWebAPI(scheduler_ip)
     infos = web_api.get_schedulers_info()
     doc.template_variables['infos'] = infos
     jinja_env = get_jinja_env()
