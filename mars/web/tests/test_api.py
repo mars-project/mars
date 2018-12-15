@@ -25,8 +25,9 @@ from numpy.testing import assert_array_equal
 import gevent
 import requests
 
-from mars.config import options
 from mars import tensor as mt
+from mars.config import options
+from mars.errors import ExecutionFailed
 from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.session import new_session
@@ -156,7 +157,7 @@ class Test(unittest.TestCase):
             assert_array_equal(value, np.ones((100, 100)) * 100)
 
             # todo this behavior may change when eager mode is introduced
-            with self.assertRaises(SystemError):
+            with self.assertRaises(ExecutionFailed):
                 sess.run(c)
 
             va = np.random.randint(0, 10000, (100, 100))
