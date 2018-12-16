@@ -19,7 +19,6 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import OrderedDict3
 from ..config import options
 from ..utils import log_unhandled
 from .chunkmeta import ChunkMetaActor
@@ -59,8 +58,6 @@ class AssignerActor(SchedulerActor):
         self._sufficient_operands = set()
         self._operand_sufficient_time = dict()
 
-        self._meta_cache = OrderedDict3()
-
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
@@ -75,9 +72,7 @@ class AssignerActor(SchedulerActor):
         """
         Register resource request for an operand
         :param session_id: session id
-        :param op_key: operand key
         :param op_info: operand information, should be a dict
-        :param callback: promise callback, called when the resource is assigned
         """
         t = time.time()
         if self._worker_metrics is None or self._worker_metric_time + 1 < time.time():
@@ -110,27 +105,7 @@ class AssignerActor(SchedulerActor):
         return candidate_workers
 
     def _get_chunks_meta(self, session_id, keys):
-        ret_dict = dict()
-        req_keys = []
-        for k in keys:
-            query_key = (session_id, k)
-            if query_key in self._meta_cache:
-                cache_time, meta = self._meta_cache[query_key]
-                if cache_time < time.time() - 300:
-                    del self._meta_cache[query_key]
-                else:
-                    self._meta_cache.move_to_end(query_key)
-                    ret_dict[k] = meta
-            if k not in ret_dict:
-                req_keys.append(k)
-        while len(self._meta_cache) > META_CACHE_SIZE - len(req_keys):
-            self._meta_cache.popitem(False)
-        metas = dict(zip(req_keys, self._chunk_meta_ref.batch_get_chunk_meta(session_id, req_keys)))
-        update_time = time.time()
-        for k, v in metas.items():
-            self._meta_cache[(session_id, k)] = (update_time, v)
-        ret_dict.update(metas)
-        return ret_dict
+        return dict(zip(keys, self._chunk_meta_ref.batch_get_chunk_meta(session_id, keys)))
 
     def _get_op_metric_item(self, ep, op_name, item):
         return self._get_metric_item(ep, 'calc_speed.' + op_name, item)
