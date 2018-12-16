@@ -56,21 +56,22 @@ class LocalDistributedCluster(object):
         return self._pool
 
     @classmethod
-    def _calc_scheduler_worker_n_process(cls, n_process, scheduler_n_process, worker_n_process):
+    def _calc_scheduler_worker_n_process(cls, n_process, scheduler_n_process, worker_n_process,
+                                         calc_cpu_count=cpu_count):
         n_scheduler, n_worker = scheduler_n_process, worker_n_process
 
         if n_scheduler is None and n_worker is None:
-            n_process = n_process if n_process is not None else cpu_count()
-
             n_scheduler = cls.MIN_SCHEDULER_N_PROCESS
+            n_process = n_process if n_process is not None else calc_cpu_count() + n_scheduler
             n_worker = max(n_process - n_scheduler, cls.MIN_WORKER_N_PROCESS)
         elif n_scheduler is None or n_worker is None:
             # one of scheduler and worker n_process provided
-            n_process = n_process if n_process is not None else cpu_count()
             if n_scheduler is None:
+                n_process = n_process if n_process is not None else calc_cpu_count()
                 n_scheduler = max(n_process - n_worker, cls.MIN_SCHEDULER_N_PROCESS)
             else:
                 assert n_worker is None
+                n_process = n_process if n_process is not None else calc_cpu_count() + n_scheduler
                 n_worker = max(n_process - n_scheduler, cls.MIN_WORKER_N_PROCESS)
 
         return n_scheduler, n_worker

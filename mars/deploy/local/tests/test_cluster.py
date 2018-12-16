@@ -60,3 +60,24 @@ class Test(unittest.TestCase):
                 result = session.run(t)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
+
+    def testNSchedulersNWorkers(self):
+        calc_cpu_cnt = lambda: 4
+
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            None, None, None, calc_cpu_count=calc_cpu_cnt), (2, 4))
+        # scheduler and worker needs at least 2 processes
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            1, None, None, calc_cpu_count=calc_cpu_cnt), (2, 2))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            3, None, None, calc_cpu_count=calc_cpu_cnt), (2, 2))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            5, None, None, calc_cpu_count=calc_cpu_cnt), (2, 3))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            None, 1, None, calc_cpu_count=calc_cpu_cnt), (1, 4))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            None, 3, None, calc_cpu_count=calc_cpu_cnt), (3, 4))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            None, None, 3, calc_cpu_count=calc_cpu_cnt), (2, 3))
+        self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
+            5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
