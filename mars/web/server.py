@@ -124,7 +124,7 @@ class MarsWeb(object):
     def port(self):
         return self._port
 
-    def start(self):
+    def start(self, event=None, block=False):
         try:
             ioloop.IOLoop.current()
         except RuntimeError:
@@ -183,9 +183,18 @@ class MarsWeb(object):
                 if retrial == 0:
                     raise
 
-        self._server_thread = threading.Thread(target=self._server.io_loop.start)
-        self._server_thread.daemon = True
-        self._server_thread.start()
+        if not block:
+            self._server_thread = threading.Thread(target=self._server.io_loop.start)
+            self._server_thread.daemon = True
+            self._server_thread.start()
+
+            if event:
+                event.set()
+        else:
+            if event:
+                event.set()
+
+            self._server.io_loop.start()
 
     def stop(self):
         if self._server is not None:

@@ -21,7 +21,7 @@ import numpy as np
 
 from mars import tensor as mt
 from mars.session import new_session
-from mars.deploy.local import new_cluster
+from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.session import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
@@ -29,14 +29,15 @@ from mars.worker.dispatcher import DispatchActor
 
 class Test(unittest.TestCase):
     def testLocalCluster(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=3) as cluster:
+        endpoint = gen_endpoint('0.0.0.0')
+        with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3) as cluster:
             pool = cluster.pool
 
             self.assertTrue(pool.has_actor(pool.actor_ref(ClusterInfoActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_name())))
 
-            with cluster.session as session:
+            with new_session(endpoint) as session:
                 api = session._api
 
                 t = mt.ones((3, 3), chunks=2)
@@ -48,11 +49,14 @@ class Test(unittest.TestCase):
 
     def testLocalClusterWithWeb(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=3, web=True) as cluster:
-            # time.sleep(5)  # wait for web
+            with cluster.session as session:
+                t = mt.ones((3, 3), chunks=2)
+                result = session.run(t)
 
-            session = new_session('http://' + cluster._web_endpoint)
+                np.testing.assert_array_equal(result, np.ones((3, 3)))
 
-            t = mt.ones((3, 3), chunks=2)
-            result = session.run(t)
+            with new_session('http://' + cluster._web_endpoint) as session:
+                t = mt.ones((3, 3), chunks=2)
+                result = session.run(t)
 
-            np.testing.assert_array_equal(result, np.ones((3, 3)))
+                np.testing.assert_array_equal(result, np.ones((3, 3)))
