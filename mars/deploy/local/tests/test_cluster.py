@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 from mars import tensor as mt
-from mars.session import new_session
+from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.session import SessionManagerActor
@@ -81,3 +81,14 @@ class Test(unittest.TestCase):
             None, None, 3, calc_cpu_count=calc_cpu_cnt), (2, 3))
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
+
+    def testTensorExecute(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            self.assertIs(cluster.session, Session.default_or_local())
+
+            t = mt.random.rand(10)
+            r = t.sum()
+
+            res = r.execute()
+            self.assertTrue(np.isscalar(res))
+            self.assertLess(res, 10)
