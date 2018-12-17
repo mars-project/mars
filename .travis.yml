@@ -36,7 +36,13 @@ install:
 
 # command to run tests
 script:
-  pytest --timeout=1500 --forked --cov-config .coveragerc --cov=mars mars
+  mkdir -p build &&
+  pytest --cov-report= --cov-config .coveragerc-tensor --cov=mars --timeout=1500 mars/tensor &&
+  mv .coverage build/.coverage.tensor.file &&
+  pytest --cov-report= --cov-config .coveragerc --cov=mars --timeout=1500 --forked
+    $(find mars -maxdepth 1 -mindepth 1 -type d -not -path "mars/tensor" -not -path "*__pycache__*") &&
+  mv .coverage build/.coverage.main.file &&
+  coverage combine build/ && coverage report --fail-under=80
 
 after_success:
   - coveralls

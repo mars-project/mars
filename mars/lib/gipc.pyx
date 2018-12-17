@@ -71,6 +71,11 @@ try:
 except ImportError:
     import pickle
 
+try:
+    from pytest_cov.embed import cleanup_on_sigterm
+except ImportError:
+    cleanup_on_sigterm = lambda: None
+
 cdef:
     bint WINDOWS, PY2
 
@@ -95,7 +100,7 @@ if WINDOWS:
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
 # context of multiple processes might yield mixed messages in the output.
-log = logging.getLogger(__name__)
+log = logging.getLogger('gipc')
 
 
 class GIPCError(Exception):
@@ -1121,6 +1126,7 @@ def _reset_signal_handlers():
         # in the signal module.
         if s < signal.NSIG:
             signal.signal(s, signal.SIG_DFL)
+    cleanup_on_sigterm()
 
 
 PY3 = sys.version_info[0] == 3

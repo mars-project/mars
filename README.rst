@@ -1,6 +1,8 @@
 Mars
 ====
 
+|PyPI version| |Build| |Coverage| |Docs| |License| |Implementation|
+
 Mars is a tensor-based unified framework for large-scale data computation.
 
 Mars tensor
@@ -53,3 +55,15 @@ Easy to scale in and scale out
 Mars can scale in to a single machine, and scale out to a cluster with thousands of machines.
 Both the local and distributed version share the same piece of code,
 it's fairly simple to migrate from a single machine to a cluster due to the increase of data.
+
+.. |Build| image:: https://img.shields.io/travis/mars-project/mars.svg?style=flat-square
+   :target: https://travis-ci.org/mars-project/mars
+.. |Coverage| image:: https://img.shields.io/coveralls/github/mars-project/mars.svg?style=flat-square
+   :target: https://coveralls.io/github/mars-project/mars
+.. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg?style=flat-square
+   :target: https://pypi.python.org/pypi/pymars
+.. |Docs| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat-square
+   :target: http://mars-project.readthedocs.org/
+.. |License| image:: https://img.shields.io/pypi/l/pymars.svg?style=flat-square
+   :target: https://github.com/mars-project/mars/blob/master/LICENSE
+.. |Implementation| image:: https://img.shields.io/pypi/implementation/pymars.svg?style=flat-square

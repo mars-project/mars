@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import numpy as np
-from mars.lib.sparse.array import SparseNDArray
+from .array import SparseNDArray
 from .. import six
 
 
