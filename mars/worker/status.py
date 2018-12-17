@@ -41,7 +41,7 @@ class StatusReporterActor(WorkerActor):
         from ..scheduler import ResourceActor
 
         super(StatusReporterActor, self).post_create()
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
         self.ref().collect_status(_tell=True)
 

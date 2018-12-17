@@ -28,7 +28,7 @@ class QuotaTestActor(PromiseActor):
         self._end_time = None
 
     def mock_step(self, key):
-        ref = self.promise_ref('QuotaActor')
+        ref = self.promise_ref(QuotaActor.default_name())
 
         def actual_exec():
             gevent.sleep(1)
@@ -49,7 +49,7 @@ class BatchQuotaTestActor(PromiseActor):
         self._end_time = None
 
     def mock_step(self, keys):
-        ref = self.promise_ref('QuotaActor')
+        ref = self.promise_ref(QuotaActor.default_name())
 
         def actual_exec():
             gevent.sleep(1)
@@ -68,7 +68,7 @@ class BatchQuotaTestActor(PromiseActor):
 class Test(WorkerCase):
     def testQuota(self):
         with create_actor_pool() as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid='QuotaActor')
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
             test_refs = [pool.create_actor(QuotaTestActor, 100) for _ in range(4)]
 
             def test_method():
@@ -88,7 +88,7 @@ class Test(WorkerCase):
 
     def testBatchQuota(self):
         with create_actor_pool() as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid='QuotaActor')
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
             test_refs = [pool.create_actor(BatchQuotaTestActor, 100) for _ in range(2)]
 
             def test_method():

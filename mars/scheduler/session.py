@@ -97,3 +97,10 @@ class SessionManagerActor(SchedulerActor):
                                             session_id=session_id, **kwargs)
         self._sessions[session_id] = session_ref
         return session_ref
+
+    def delete_session(self, session_id):
+        uid = SessionActor.gen_name(session_id)
+        if session_id in self._sessions:
+            session_ref = self._sessions[session_id]
+            session_ref.destroy()
+            del self._sessions[session_id]

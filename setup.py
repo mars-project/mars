@@ -124,6 +124,6 @@ setup_options = dict(
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize(extensions),
-    extra_require={'distributed': extra_requirements}
+    extras_require={'distributed': extra_requirements}
 )
 setup(**setup_options)

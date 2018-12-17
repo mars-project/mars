@@ -21,7 +21,6 @@ from .actors import create_actor_pool
 from .config import options
 from .errors import StartArgumentError
 from .utils import get_next_port
-from .distributor import BaseDistributor
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +172,6 @@ class BaseApplication(object):
 
     def create_pool(self, *args, **kwargs):
         kwargs.update(dict(n_process=self.n_process, backend='gevent'))
-        kwargs['distributor'] = BaseDistributor(self.n_process)
         return create_actor_pool(*args, **kwargs)
 
     def main_loop(self):

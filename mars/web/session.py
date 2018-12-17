@@ -99,11 +99,14 @@ class Session(object):
                         raise ExecutionInterrupted
                     elif resp_json['state'] == 'failed':
                         # TODO add traceback
-                        traceback = resp_json['traceback']
-                        if isinstance(traceback, list):
-                            traceback = ''.join(str(s) for s in traceback)
-                        raise SystemError('Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
-                                          (resp_json['msg'], traceback))
+                        if 'traceback' in resp_json:
+                            traceback = resp_json['traceback']
+                            if isinstance(traceback, list):
+                                traceback = ''.join(str(s) for s in traceback)
+                            raise SystemError('Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
+                                              (resp_json['msg'], traceback))
+                        else:
+                            raise SystemError('Graph execution failed with unknown reason.')
                     else:
                         raise SystemError('Unknown graph execution state %s' % resp_json['state'])
                 except KeyboardInterrupt:
@@ -111,7 +114,7 @@ class Session(object):
                     if resp.status_code >= 400:
                         raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                                           (resp.status_code, resp.reason, resp.text))
-            if time.time() - exec_start_time > timeout:
+            if 0 < timeout < time.time() - exec_start_time:
                 raise TimeoutError
             data_list = []
             for tk in targets:
@@ -158,6 +161,19 @@ class Session(object):
         resp = self._req_session.delete(self._endpoint + '/api/session/' + self._session_id)
         if resp.status_code >= 400:
             raise SystemError('Failed to close mars session.')
+
+    def check_service_ready(self, timeout=1):
+        try:
+            resp = self._req_session.get(self._endpoint + '/api', timeout=timeout)
+        except (requests.ConnectionError, requests.Timeout):
+            return False
+        if resp.status_code >= 400:
+            return False
+        return True
+
+    def count_workers(self):
+        resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
+        return json.loads(resp.text)
 
     def __enter__(self):
         return self

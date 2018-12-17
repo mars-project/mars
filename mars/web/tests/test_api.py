@@ -26,11 +26,11 @@ import gevent
 import requests
 
 from mars.config import options
-from mars.tensor.expressions.datasource import ones
-from mars.web import MarsApiClient
+from mars import tensor as mt
 from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.scheduler import KVStoreActor
+from mars.session import new_session
 
 
 class Test(unittest.TestCase):
@@ -49,7 +49,6 @@ class Test(unittest.TestCase):
             shutil.rmtree(options.worker.spill_directory)
 
     def setUp(self):
-        self.worker_plasma_sock = '/tmp/plasma_%d_%d.sock' % (os.getpid(), id(Test))
         scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
@@ -57,7 +56,6 @@ class Test(unittest.TestCase):
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
-                                        '--plasma-socket', self.worker_plasma_sock,
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '--nproc', '1',
@@ -142,17 +140,37 @@ class Test(unittest.TestCase):
             if p.poll() is None:
                 p.kill()
 
-        os.unlink(self.worker_plasma_sock)
         gevent.hub.Hub.NOT_ERROR = self.exceptions
 
     def testApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
-        client = MarsApiClient(service_ep)
-        self.assertEqual(client.count_workers(), 1)
-        with client.create_session() as sess:
-            a = ones((100, 100), chunks=30)
-            b = ones((100, 100), chunks=30)
+        with new_session(service_ep) as sess:
+            self.assertEqual(sess.count_workers(), 1)
+            a = mt.ones((100, 100), chunks=30)
+            b = mt.ones((100, 100), chunks=30)
+            c = a.dot(b)
+            value = sess.run(c)
+            assert_array_equal(value, np.ones((100, 100)) * 100)
+
+            # todo this behavior may change when eager mode is introduced
+            with self.assertRaises(SystemError):
+                sess.run(c)
+
+            va = np.random.randint(0, 10000, (100, 100))
+            vb = np.random.randint(0, 10000, (100, 100))
+            a = mt.array(va, chunks=30)
+            b = mt.array(vb, chunks=30)
             c = a.dot(b)
             value = sess.run(c, timeout=120)
-            assert_array_equal(value[0], np.ones((100, 100)) * 100)
+            assert_array_equal(value, va.dot(vb))
+
+            # check web UI requests
+            res = requests.get(service_ep)
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get(service_ep + '/task')
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get(service_ep + '/worker')
+            self.assertEqual(res.status_code, 200)
 

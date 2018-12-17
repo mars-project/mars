@@ -19,10 +19,11 @@ import itertools
 import hashlib
 import uuid
 import time
+import unittest
 
 import gevent
 
-from mars.compat import unittest, six, BrokenPipeError
+from mars.compat import six, BrokenPipeError
 from mars.actors import create_actor_pool as new_actor_pool, Actor, ActorNotExist, Distributor, new_client
 from mars.actors.pool.gevent_pool import Dispatcher, Connections
 from mars.utils import to_binary

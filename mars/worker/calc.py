@@ -43,9 +43,12 @@ class InProcessCacheActor(WorkerActor):
         self._spill_dump_pool = None
 
     def post_create(self):
+        from .chunkholder import ChunkHolderActor
+        from .quota import MemQuotaActor
+
         super(InProcessCacheActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref('ChunkHolderActor')
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
         if options.worker.spill_directory:
             self._spill_dump_pool = self.ctx.threadpool(len(options.worker.spill_directory))
 
@@ -130,6 +133,10 @@ class CpuCalcActor(WorkerActor):
         self._spill_load_pool = None
 
     def post_create(self):
+        from .quota import MemQuotaActor
+        from .dispatcher import DispatchActor
+        from .status import StatusActor
+
         super(CpuCalcActor, self).post_create()
         if isinstance(self.uid, six.string_types) and ':' in self.uid:
             uid_parts = self.uid.split(':')
@@ -137,12 +144,12 @@ class CpuCalcActor(WorkerActor):
         else:
             inproc_uid = None
         self._inproc_cache_ref = self.promise_ref(self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid))
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
 
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 

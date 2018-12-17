@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import gc
 import functools
 import threading
 import time
+import unittest
 import weakref
 
 import gevent
 
 from mars.actors import create_actor_pool
-from mars.compat import unittest, Queue
+from mars.compat import Queue
 from mars import promise
 
 

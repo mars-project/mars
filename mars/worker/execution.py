@@ -60,18 +60,25 @@ class ExecutionActor(WorkerActor):
         self._size_cache = dict()
 
     def post_create(self):
-        super(ExecutionActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref('ChunkHolderActor')
+        from ..scheduler.resource import ResourceActor
+        from .chunkholder import ChunkHolderActor
+        from .dispatcher import DispatchActor
+        from .quota import MemQuotaActor
+        from .status import StatusActor
 
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        super(ExecutionActor, self).post_create()
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'execution')
 
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
 
         scheduler_addr = self.get_scheduler(self.uid)
-        self._scheduler_resource_ref = self.ctx.actor_ref('s:ResourceActor', address=scheduler_addr)
+        self._scheduler_resource_ref = self.ctx.actor_ref(ResourceActor.default_name(),
+                                                          address=scheduler_addr)
 
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
@@ -105,7 +112,10 @@ class ExecutionActor(WorkerActor):
         :param remote_addr: remote server containing provided chunk key
         :return: promise object
         """
-        remote_disp_ref = self.promise_ref(uid='DispatchActor', address=remote_addr)
+        from .dispatcher import DispatchActor
+
+        remote_disp_ref = self.promise_ref(uid=DispatchActor.default_name(),
+                                           address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
 
         @log_unhandled

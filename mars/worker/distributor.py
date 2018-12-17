@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,26 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
+
 import logging
 
-from mars.compat import six, functools32
-from mars.utils import to_binary
-from mars.actors import Distributor
+from ..compat import six, functools32
+from ..actors import Distributor
 
 logger = logging.getLogger(__name__)
 
 
-class BaseDistributor(Distributor):
+class WorkerDistributor(Distributor):
     @functools32.lru_cache(100)
     def distribute(self, uid):
         if not isinstance(uid, six.string_types):
             return 0
         id_parts = uid.split(':')
-        if len(id_parts) == 2:
-            allocate_id = int(hashlib.md5(to_binary(uid)).hexdigest(), 16) % (self.n_process - 1) + 1
-            return allocate_id
-        elif id_parts[0] == 'w':
+        if id_parts[0] == 'w' and len(id_parts) == 3:
+            # to tell distributor the exact process id
             return int(id_parts[1])
         else:
             return 0

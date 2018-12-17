@@ -24,11 +24,11 @@ from mars.actors import FunctionActor, create_actor_pool
 from mars.cluster_info import ClusterInfoActor
 from mars.compat import six
 from mars.config import options
-from mars.distributor import BaseDistributor
 from mars.errors import StoreFull
 from mars.scheduler.kvstore import KVStoreActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
+from mars.worker.distributor import WorkerDistributor
 from mars.worker.chunkstore import PlasmaChunkStore
 from mars.worker.tests.base import WorkerCase
 from mars.worker.utils import WorkerActor
@@ -58,7 +58,7 @@ class WorkerRegistrationTestActor(WorkerActor):
     def register(self, session_id, chunk_keys):
         import numpy as np
 
-        cache_ref = self.promise_ref('ChunkHolderActor')
+        cache_ref = self.promise_ref(ChunkHolderActor.default_name())
 
         left_keys = set(chunk_keys)
 
@@ -92,23 +92,24 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
     try:
         plasma_helper.run()
 
-        with create_actor_pool(n_process=2, backend='gevent', distributor=BaseDistributor(2),
+        with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
                                address=pool_address) as pool:
             try:
                 pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                                   uid=ClusterInfoActor.default_name())
                 pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-                pool.create_actor(DispatchActor, uid='DispatchActor')
-                pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid='MemQuotaActor')
+                pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+                pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
                 holder_ref = pool.create_actor(HolderActor, uid='HolderActor')
-                chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_helper._size, uid='ChunkHolderActor')
+                chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_helper._size,
+                                                     uid=ChunkHolderActor.default_name())
                 pool.create_actor(SpillActor)
 
-                pool.create_actor(SenderActor, uid='w:%s' % str(uuid.uuid4()))
-                pool.create_actor(SenderActor, uid='w:%s' % str(uuid.uuid4()))
+                pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
 
-                pool.create_actor(ReceiverActor, uid='w:%s' % str(uuid.uuid4()))
-                pool.create_actor(ReceiverActor, uid='w:%s' % str(uuid.uuid4()))
+                pool.create_actor(ReceiverActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(ReceiverActor, uid='%s' % str(uuid.uuid4()))
 
                 register_actor = pool.create_actor(WorkerRegistrationTestActor)
                 register_actor.register(session_id, chunk_keys)
@@ -163,7 +164,7 @@ class TransferTestActor(WorkerActor):
         from mars.serialize import dataserializer
         from numpy.testing import assert_array_equal
 
-        remote_dispatch_ref = self.promise_ref('DispatchActor', address=self._remote_pool_addr)
+        remote_dispatch_ref = self.promise_ref(DispatchActor.default_name(), address=self._remote_pool_addr)
 
         def _call_send_data(sender_uid):
             sender_ref = self.promise_ref(sender_uid, address=self._remote_pool_addr)
@@ -230,14 +231,15 @@ class Test(WorkerCase):
                 proc.terminate()
             raise
 
-        with create_actor_pool(n_process=1, distributor=BaseDistributor(3),
+        with create_actor_pool(n_process=1, distributor=WorkerDistributor(3),
                                backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-            pool.create_actor(DispatchActor, uid='DispatchActor')
-            pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid='MemQuotaActor')
-            cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
+            cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
+                                          uid=ChunkHolderActor.default_name())
             pool.create_actor(SpillActor)
 
             sender_refs = [

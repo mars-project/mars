@@ -14,6 +14,7 @@
 
 import sys
 import time
+import unittest
 import uuid
 from collections import defaultdict
 
@@ -26,7 +27,7 @@ from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, KVStoreActor
 from mars.utils import serialize_graph, deserialize_graph
 from mars.actors import create_actor_pool
-from mars.compat import unittest, mock
+from mars.tests.core import mock
 
 
 class FakeExecutionActor(promise.PromiseActor):

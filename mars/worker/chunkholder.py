@@ -27,8 +27,10 @@ logger = logging.getLogger(__name__)
 
 @log_unhandled
 def ensure_chunk(promise_actor, session_id, chunk_key, move_to_end=False):
-    chunk_holder_ref = promise_actor.promise_ref('ChunkHolderActor')
-    dispatch_ref = promise_actor.promise_ref('DispatchActor')
+    from .dispatcher import DispatchActor
+
+    chunk_holder_ref = promise_actor.promise_ref(ChunkHolderActor.default_name())
+    dispatch_ref = promise_actor.promise_ref(DispatchActor.default_name())
     if chunk_holder_ref.is_stored(chunk_key):
         logger.debug('No need to load key %s from spill.', chunk_key)
         if move_to_end:
@@ -74,8 +76,11 @@ class ChunkHolderActor(WorkerActor):
         self._status_ref = None
 
     def post_create(self):
+        from .dispatcher import DispatchActor
+        from .status import StatusActor
+
         super(ChunkHolderActor, self).post_create()
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
 
         self._plasma_limit = self._chunk_store.get_actual_capacity()
         logger.info('Detected actual plasma store size: %s', readable_size(self._plasma_limit))
@@ -85,7 +90,7 @@ class ChunkHolderActor(WorkerActor):
         parse_num, is_percent = parse_memory_limit(options.worker.max_spill_size)
         self._max_spill_size = int(self._plasma_limit * parse_num if is_percent else parse_num)
 
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if self.ctx.has_actor(self._status_ref):
             self._status_ref.set_cache_allocations(
                 dict(hold=self._total_hold, total=self._total_size), _tell=True, _wait=False)

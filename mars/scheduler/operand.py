@@ -249,7 +249,9 @@ class OperandActor(SchedulerActor):
         :param ep: worker endpoint
         :param chunk_key: chunk key
         """
-        worker_cache_ref = self.ctx.actor_ref(ep, 'ChunkHolderActor')
+        from ..worker.chunkholder import ChunkHolderActor
+
+        worker_cache_ref = self.ctx.actor_ref(ep, ChunkHolderActor.default_name())
         worker_cache_ref.unregister_chunk(self._session_id, chunk_key, _tell=True)
 
     def free_data(self, state=OperandState.FREED):
@@ -286,7 +288,9 @@ class OperandActor(SchedulerActor):
         """
         Get raw ref of ExecutionActor on assigned worker. This method can be patched on debug
         """
-        dispatch_ref = self.promise_ref('DispatchActor', address=self._worker_endpoint)
+        from ..worker.dispatcher import DispatchActor
+
+        dispatch_ref = self.promise_ref(DispatchActor.default_name(), address=self._worker_endpoint)
         exec_uid = dispatch_ref.get_hash_slot('execution', self._op_key)
         return self.ctx.actor_ref(exec_uid, address=self._worker_endpoint)
 

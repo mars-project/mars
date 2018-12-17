@@ -19,13 +19,14 @@ from functools import partial
 import gevent
 
 from mars.actors import create_actor_pool
-from mars.compat import six, mock
+from mars.compat import six
 from mars.config import options
 from mars.utils import get_next_port, calc_data_size
 from mars import promise
 from mars.errors import StoreFull, SpillExhausted
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
+from mars.tests.core import mock
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.utils import WorkerActor
@@ -40,7 +41,7 @@ class CacheTestActor(WorkerActor):
     def run_test_cache(self):
         session_id = str(uuid.uuid4())
 
-        chunk_holder_ref = self.promise_ref('ChunkHolderActor')
+        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
         chunk_store = self._chunk_store
 
         data_list = []
@@ -123,9 +124,10 @@ class Test(WorkerCase):
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-            pool.create_actor(DispatchActor, uid='DispatchActor')
-            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid='MemQuotaActor')
-            cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
+            cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
+                                          uid=ChunkHolderActor.default_name())
             pool.create_actor(SpillActor)
 
             try:
@@ -148,10 +150,11 @@ class Test(WorkerCase):
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid='KVStoreActor')
-            pool.create_actor(DispatchActor, uid='DispatchActor')
-            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid='MemQuotaActor')
-            pool.create_actor(SpillActor)
-            cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
+            pool.create_actor(SpillActor, uid=SpillActor.default_name())
+            cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
+                                          uid=ChunkHolderActor.default_name())
 
             try:
                 options.worker.prepare_data_timeout = 2

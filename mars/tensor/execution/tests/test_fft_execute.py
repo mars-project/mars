@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
 import numpy as np
 
-from mars.compat import unittest
 from mars.tensor.execution.core import Executor
 from mars.tensor.expressions.datasource import tensor
 from mars.tensor.expressions.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \

@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
 import numpy as np
 import scipy.sparse as sps
 
-from mars.compat import unittest
 from mars.tensor.execution.core import Executor
 from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
@@ -325,7 +325,7 @@ class Test(unittest.TestCase):
         inside = (norm(d, axis=1) < 0.5).sum().astype(float)
         t = inside / 500 * 4
         res = self.executor.execute_tensor(t)[0]
-        self.assertAlmostEqual(res, 3.14, delta=0.3)
+        self.assertAlmostEqual(res, 3.14, delta=1)
 
     def testTensordotExecution(self):
         a_data = np.arange(60).reshape(3, 4, 5)
@@ -392,31 +392,31 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(c, concat=True)[0]
         self.assertTrue(issparse(res))
-        np.testing.assert_array_equal(res.toarray(), a_data.dot(b_data).toarray())
+        np.testing.assert_allclose(res.toarray(), a_data.dot(b_data).toarray())
 
         c2 = dot(a, b, sparse=False)
 
         res = self.executor.execute_tensor(c2, concat=True)[0]
         self.assertFalse(issparse(res))
-        np.testing.assert_array_equal(res, a_data.dot(b_data).toarray())
+        np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
         c3 = tensordot(a, b.T, (-1, -1), sparse=False)
 
         res = self.executor.execute_tensor(c3, concat=True)[0]
         self.assertFalse(issparse(res))
-        np.testing.assert_array_equal(res, a_data.dot(b_data).toarray())
+        np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
         c = inner(a, b.T)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
         self.assertTrue(issparse(res))
-        np.testing.assert_array_equal(res.toarray(), a_data.dot(b_data).toarray())
+        np.testing.assert_allclose(res.toarray(), a_data.dot(b_data).toarray())
 
         c = inner(a, b.T, sparse=False)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
         self.assertFalse(issparse(res))
-        np.testing.assert_array_equal(res, a_data.dot(b_data).toarray())
+        np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
     def testVdotExecution(self):
         a_data = np.array([1 + 2j, 3 + 4j])

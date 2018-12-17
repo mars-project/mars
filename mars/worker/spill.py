@@ -122,15 +122,20 @@ class SpillActor(WorkerActor):
         self._output_pool = None
 
     def post_create(self):
-        super(SpillActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref('ChunkHolderActor')
-        self._mem_quota_ref = self.promise_ref('MemQuotaActor')
+        from .chunkholder import ChunkHolderActor
+        from .quota import MemQuotaActor
+        from .status import StatusActor
+        from .dispatcher import DispatchActor
 
-        self._status_ref = self.ctx.actor_ref('StatusActor')
+        super(SpillActor, self).post_create()
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'spill')
 
         self._input_pool = self.ctx.threadpool(1)
