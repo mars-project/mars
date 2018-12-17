@@ -64,6 +64,8 @@ class Test(unittest.TestCase):
         self.assertEqual(len(V.chunks), 1)
 
         a = mt.random.rand(9, 6, chunks=(3, 6))
+        print(mt.random.rand)
+        print(a.op.size)
         U, s, V = mt.linalg.svd(a)
 
         # test tensor graph
@@ -72,7 +74,7 @@ class Test(unittest.TestCase):
         s.build_graph(tiled=False, graph=graph)
         new_graph = DirectedGraph.from_json(graph.to_json())
         self.assertEqual((len(new_graph)), 4)
-        new_outputs=  [n for n in new_graph if new_graph.count_predecessors(n) == 1]
+        new_outputs = [n for n in new_graph if new_graph.count_predecessors(n) == 1]
         self.assertEqual(len(new_outputs), 3)
         self.assertEqual(len(set([o.op for o in new_outputs])), 1)
 
