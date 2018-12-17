@@ -86,7 +86,7 @@ class Session(object):
             if r is None:
                 ret.append(r)
                 continue
-            if t.isscalar():
+            if t.isscalar() and hasattr(r, 'item'):
                 ret.append(np.asscalar(r))
             else:
                 ret.append(r)

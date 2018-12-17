@@ -92,3 +92,9 @@ class Test(unittest.TestCase):
             res = r.execute()
             self.assertTrue(np.isscalar(res))
             self.assertLess(res, 10)
+
+            t = mt.random.rand(10)
+            r = t.sum() * 4 - 1
+
+            res = r.execute()
+            self.assertLess(res, 39)
