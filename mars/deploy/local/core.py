@@ -17,6 +17,7 @@
 import multiprocessing
 import signal
 import os
+import time
 
 from ...utils import get_next_port
 from ...resource import cpu_count
@@ -76,6 +77,15 @@ class LocalDistributedCluster(object):
 
         return n_scheduler, n_worker
 
+    def _make_sure_scheduler_ready(self):
+        while True:
+            workers_meta = self._scheduler_service._resource_ref.get_workers_meta()
+            if not workers_meta:
+                # wait for worker to report status
+                time.sleep(.5)
+            else:
+                break
+
     def start_service(self):
         if self._started:
             return
@@ -94,6 +104,9 @@ class LocalDistributedCluster(object):
 
         # start worker next
         self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)
+
+        # make sure scheduler is ready
+        self._make_sure_scheduler_ready()
 
     def stop_service(self):
         if self._stopped:
@@ -140,7 +153,10 @@ def _start_cluster(endpoint, event, n_process=None, **kw):
     cluster = LocalDistributedCluster(endpoint, n_process=n_process, **kw)
     cluster.start_service()
     event.set()
-    cluster.serve_forever()
+    try:
+        cluster.serve_forever()
+    finally:
+        cluster.stop_service()
 
 
 def _start_web(scheduler_address, ui_port, event):
@@ -150,7 +166,10 @@ def _start_web(scheduler_address, ui_port, event):
     from ...web import MarsWeb
 
     web = MarsWeb(ui_port, scheduler_address)
-    web.start(event=event, block=True)
+    try:
+        web.start(event=event, block=True)
+    finally:
+        web.stop()
 
 
 class LocalDistributedClusterClient(object):
@@ -182,10 +201,14 @@ class LocalDistributedClusterClient(object):
     def stop(self):
         if self._cluster_process.is_alive():
             os.kill(self._cluster_process.pid, signal.SIGINT)
-            self._cluster_process.terminate()
+            self._cluster_process.join(3)
+            if self._cluster_process.is_alive():
+                self._cluster_process.terminate()
         if self._web_process is not None and self._web_process.is_alive():
             os.kill(self._web_process.pid, signal.SIGINT)
-            self._web_process.terminate()
+            self._web_process.join(3)
+            if self._web_process.is_alive():
+                self._web_process.terminate()
 
 
 def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):
@@ -205,6 +228,9 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):
 
     while True:
         event.wait(5)
+        if not event.is_set():
+            # service not started yet
+            continue
         if not process.is_alive():
             raise SystemError('New local cluster failed')
         else:
@@ -218,6 +244,9 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):
 
         while True:
             web_event.wait(5)
+            if not web_event.is_set():
+                # web not started yet
+                continue
             if not web_process.is_alive():
                 raise SystemError('New web interface failed')
             else:
