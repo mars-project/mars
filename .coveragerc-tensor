@@ -1,7 +1,10 @@
+# this configuration is for mars.tensor module as
+# coverage.py currently doesn't support measuring
+# gevent with threading.
+
 [run]
 branch = True
 cover_pylib = False
-concurrency = multiprocessing,gevent
 parallel = True
 include =
     mars/*
