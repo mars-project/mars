@@ -182,6 +182,8 @@ class GraphActor(SchedulerActor):
         self.state = GraphState.CANCELLING
 
         for chunk in self.get_chunk_graph():
+            if chunk.op.key not in self._operand_infos:
+                continue
             if self._operand_infos[chunk.op.key]['state'] in \
                     (OperandState.READY, OperandState.RUNNING, OperandState.FINISHED):
                 # we only need to stop on ready, running and finished operands

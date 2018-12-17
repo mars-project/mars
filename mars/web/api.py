@@ -106,6 +106,8 @@ class GraphApiHandler(ApiRequestHandler):
             self.write(json.dumps(dict(state='failed')))
         elif state == GraphState.CANCELLED:
             self.write(json.dumps(dict(state='cancelled')))
+        elif state == GraphState.CANCELLING:
+            self.write(json.dumps(dict(state='cancelling')))
         elif state == GraphState.PREPARING:
             self.write(json.dumps(dict(state='preparing')))
 
