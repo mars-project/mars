@@ -54,7 +54,7 @@ class ExecuteTestActor(WorkerActor):
 
         self._kv_store.write('/sessions/%s/operands/%s/execution_graph'
                              % (session_id, op_key), serialize_graph(graph))
-        chunk_holder_ref = self.promise_ref('ChunkHolderActor')
+        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
 
         refs = self._chunk_store.put(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16))
         chunk_holder_ref.register_chunk(session_id, arr.chunks[0].key)
@@ -64,7 +64,7 @@ class ExecuteTestActor(WorkerActor):
         chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
         del refs
 
-        executor_ref = self.promise_ref('ExecutionActor')
+        executor_ref = self.promise_ref(ExecutionActor.default_name())
 
         def _validate(_):
             data = self._chunk_store.get(session_id, arr2.chunks[0].key)
@@ -86,12 +86,13 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
-            cache_ref = pool.create_actor(ChunkHolderActor, self._plasma_helper._size, uid='ChunkHolderActor')
+            cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
+                                          uid=ChunkHolderActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-            pool.create_actor(DispatchActor, uid='DispatchActor')
-            pool.create_actor(QuotaActor, 1024 * 1024, uid='MemQuotaActor')
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            pool.create_actor(QuotaActor, 1024 * 1024, uid=MemQuotaActor.default_name())
             pool.create_actor(CpuCalcActor)
-            pool.create_actor(ExecutionActor, uid='ExecutionActor')
+            pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
 
             try:
                 test_ref = pool.create_actor(ExecuteTestActor)

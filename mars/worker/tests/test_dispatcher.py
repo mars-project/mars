@@ -33,7 +33,7 @@ class TaskActor(PromiseActor):
         self._dispatch_ref = None
 
     def post_create(self):
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, self._queue_name)
 
     def queued_call(self, key, delay):
@@ -52,7 +52,7 @@ class RunTaskTestActor(PromiseActor):
         self._call_records = call_records
 
     def post_create(self):
-        self._dispatch_ref = self.promise_ref('DispatchActor')
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
 
     def get_finished(self):
         return self._finished
@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent',
                                address=mock_scheduler_addr) as pool:
-            dispatch_ref = pool.create_actor(DispatchActor, uid='DispatchActor')
+            dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             # actors of g1
             [pool.create_actor(TaskActor, 'g1', call_records) for _ in range(group_size)]
             [pool.create_actor(TaskActor, 'g2', call_records) for _ in range(group_size)]

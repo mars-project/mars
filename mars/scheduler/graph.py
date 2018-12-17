@@ -49,27 +49,38 @@ class ResultReceiverActor(SchedulerActor):
     def fetch_tensor(self, session_id, graph_key, tensor_key):
         from ..tensor.expressions.datasource import TensorFetchChunk
         from ..tensor.execution.core import Executor
+        from ..worker.transfer import ResultSenderActor
+
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
         fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
 
-        ctx = dict()
-        target_keys = set()
-        for c in fetch_graph:
-            if isinstance(c.op, TensorFetchChunk):
-                if c.key in ctx:
-                    continue
-                endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
-                                                    % (session_id, c.key))
-                worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-                sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
-                future = sender_ref.fetch_data(session_id, c.key, _wait=False)
-                ctx[c.key] = future
-            else:
-                target_keys.add(c.key)
-        ctx = dict((k, loads(future.result())) for k, future in six.iteritems(ctx))
-        executor = Executor(storage=ctx)
-        concat_result = executor.execute_graph(fetch_graph, keys=target_keys)
-        return dumps(concat_result[0])
+        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetchChunk):
+            c = next(fetch_graph.iter_nodes())
+            endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
+                                                % (session_id, c.key))
+            worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
+            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
+            future = sender_ref.fetch_data(session_id, c.key, _wait=False)
+            return future.result()
+        else:
+            ctx = dict()
+            target_keys = set()
+            for c in fetch_graph:
+                if isinstance(c.op, TensorFetchChunk):
+                    if c.key in ctx:
+                        continue
+                    endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
+                                                        % (session_id, c.key))
+                    worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
+                    sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
+                    future = sender_ref.fetch_data(session_id, c.key, _wait=False)
+                    ctx[c.key] = future
+                else:
+                    target_keys.add(c.key)
+            ctx = dict((k, loads(future.result())) for k, future in six.iteritems(ctx))
+            executor = Executor(storage=ctx)
+            concat_result = executor.execute_graph(fetch_graph, keys=target_keys)
+            return dumps(concat_result[0])
 
 
 class GraphActor(SchedulerActor):
@@ -675,20 +686,29 @@ class GraphActor(SchedulerActor):
 
         tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
         graph = DAG()
-        fetch_chunks = []
-        for c in tiled_tensor.chunks:
+        if len(tiled_tensor.chunks) == 1:
+            # only one chunk, just trigger fetch
+            c = tiled_tensor.chunks[0]
             op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
             fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
             graph.add_node(fetch_chunk)
-            fetch_chunks.append(fetch_chunk)
-        chunk = TensorConcatenate(dtype=tiled_tensor.op.dtype).new_chunk(
-            fetch_chunks, tiled_tensor.shape).data
-        graph.add_node(chunk)
-        [graph.add_edge(fetch_chunk, chunk) for fetch_chunk in fetch_chunks]
+        else:
+            fetch_chunks = []
+            for c in tiled_tensor.chunks:
+                op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+                fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
+                graph.add_node(fetch_chunk)
+                fetch_chunks.append(fetch_chunk)
+            chunk = TensorConcatenate(dtype=tiled_tensor.op.dtype).new_chunk(
+                fetch_chunks, tiled_tensor.shape).data
+            graph.add_node(chunk)
+            [graph.add_edge(fetch_chunk, chunk) for fetch_chunk in fetch_chunks]
 
         return serialize_graph(graph)
 
     def fetch_tensor_result(self, tensor_key):
+        from ..worker.transfer import ResultSenderActor
+
         # TODO for test
         tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
         if tensor_key not in self._terminated_tensors:
@@ -701,7 +721,7 @@ class GraphActor(SchedulerActor):
             endpoints = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers'
                                                 % (self._session_id, chunk_key))
             worker_ip = endpoints.children[0].key.rsplit('/', 1)[-1]
-            sender_ref = self.ctx.actor_ref('ResultSenderActor', address=worker_ip)
+            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
             ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
 

@@ -28,6 +28,7 @@ from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor
 from mars.scheduler.kvstore import KVStoreActor
+from mars.worker.execution import ExecutionActor
 
 
 class PromiseReplyTestActor(FunctionActor):
@@ -60,7 +61,6 @@ class Test(unittest.TestCase):
     def testExecuteWorker(self):
         import mars.tensor as mt
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
-        worker_plasma_sock = '/tmp/plasma_%d_%d.sock' % (os.getpid(), id(PromiseReplyTestActor))
         try:
 
             session_id = str(uuid.uuid4())
@@ -76,7 +76,6 @@ class Test(unittest.TestCase):
                                          '--schedulers', mock_scheduler_addr,
                                          '--cpu-procs', '1',
                                          '--cache-mem', '10m',
-                                         '--plasma-socket', worker_plasma_sock,
                                          '--ignore-avail-mem'])
                 worker_ips = []
 
@@ -107,7 +106,7 @@ class Test(unittest.TestCase):
                 reply_ref = pool.create_actor(PromiseReplyTestActor)
                 reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
 
-                executor_ref = pool.actor_ref('ExecutionActor', address=worker_ips[0])
+                executor_ref = pool.actor_ref(ExecutionActor.default_name(), address=worker_ips[0])
                 io_meta = dict(chunks=[c.key for c in result.chunks])
                 executor_ref.execute_graph(session_id, str(id(graph)), serialize_graph(graph),
                                            io_meta, None, callback=reply_callback)
@@ -127,5 +126,5 @@ class Test(unittest.TestCase):
                         break
                 if proc.poll() is None:
                     proc.kill()
-            if os.path.exists(worker_plasma_sock):
-                os.unlink(worker_plasma_sock)
+            if os.path.exists(options.worker.plasma_socket):
+                os.unlink(options.worker.plasma_socket)

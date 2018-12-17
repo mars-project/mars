@@ -50,9 +50,16 @@ class Session(object):
 
     def __init__(self, endpoint=None):
         if endpoint is not None:
-            from .web.session import Session
+            if 'http' in endpoint:
+                # connect to web
+                from .web.session import Session as WebSession
 
-            self._sess = Session(endpoint)
+                self._sess = WebSession(endpoint)
+            else:
+                # connect to local cluster
+                from .deploy.local.session import LocalClusterSession
+
+                self._sess = LocalClusterSession(endpoint)
         else:
             self._sess = LocalSession()
 
@@ -79,7 +86,7 @@ class Session(object):
             if r is None:
                 ret.append(r)
                 continue
-            if t.isscalar():
+            if t.isscalar() and hasattr(r, 'item'):
                 ret.append(np.asscalar(r))
             else:
                 ret.append(r)
