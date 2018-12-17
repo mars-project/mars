@@ -607,6 +607,8 @@ class GraphActor(SchedulerActor):
         logger.debug('Creating operand actors for graph %s', self._graph_key)
         from .operand import OperandActor
 
+        _clean_io_meta = kwargs.get('_clean_io_meta', True)
+
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
 
