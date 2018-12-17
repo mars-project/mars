@@ -95,7 +95,7 @@ class Session(object):
                         continue
                     elif resp_json['state'] == 'success':
                         break
-                    elif resp_json['state'] == 'cancelled':
+                    elif resp_json['state'] == ('cancelled', 'cancelling'):
                         raise ExecutionInterrupted
                     elif resp_json['state'] == 'failed':
                         # TODO add traceback
