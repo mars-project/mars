@@ -17,7 +17,6 @@
 import multiprocessing
 import signal
 import os
-import time
 
 from ...utils import get_next_port
 from ...resource import cpu_count
@@ -82,7 +81,7 @@ class LocalDistributedCluster(object):
             workers_meta = self._scheduler_service._resource_ref.get_workers_meta()
             if not workers_meta:
                 # wait for worker to report status
-                time.sleep(.5)
+                self._pool.sleep(.5)
             else:
                 break
 
