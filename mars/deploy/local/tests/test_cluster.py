@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 
 from mars import tensor as mt
+from mars.config import options
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.cluster_info import ClusterInfoActor
@@ -28,6 +29,13 @@ from mars.worker.dispatcher import DispatchActor
 
 
 class Test(unittest.TestCase):
+    def setUp(self):
+        self._old_cache_memory_limit = options.worker.cache_memory_limit
+        options.worker.cache_memory_limit = '20M'
+
+    def tearDown(self):
+        options.worker.cache_memory_limit = self._old_cache_memory_limit
+
     def testLocalCluster(self):
         endpoint = gen_endpoint('0.0.0.0')
         with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3) as cluster:
