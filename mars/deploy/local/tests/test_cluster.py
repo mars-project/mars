@@ -90,7 +90,7 @@ class Test(unittest.TestCase):
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
-    def testTensorExecute(self):
+    def testSingleOutputTensorExecute(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
 
@@ -106,3 +106,36 @@ class Test(unittest.TestCase):
 
             res = r.execute()
             self.assertLess(res, 39)
+
+    def testMultipleOutputTensorExecute(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            t = mt.random.rand(20, 5, chunks=5)
+            r = mt.linalg.svd(t)
+
+            res = session.run((t,) + r)
+
+            U, s, V = res[1:]
+            np.testing.assert_allclose(res[0], U.dot(np.diag(s).dot(V)))
+
+            raw = np.random.rand(20, 5)
+
+            # to test the fuse, the graph should be fused
+            t = mt.array(raw)
+            U, s, V = mt.linalg.svd(t)
+            r = U.dot(mt.diag(s).dot(V))
+
+            res = r.execute()
+            np.testing.assert_allclose(raw, res)
+
+            # test submit part of svd outputs
+            t = mt.array(raw)
+            U, s, V = mt.linalg.svd(t)
+
+            with new_session(cluster.endpoint) as session2:
+                U_result, s_result = session2.run(U, s)
+                U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
+
+                np.testing.assert_allclose(U_result, U_expected)
+                np.testing.assert_allclose(s_result, s_expectd)
