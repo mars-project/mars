@@ -26,8 +26,7 @@ from mars.actors import FunctionActor, create_actor_pool
 from mars.config import options
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import ResourceActor
-from mars.scheduler.kvstore import KVStoreActor
+from mars.scheduler import ResourceActor, ChunkMetaActor
 from mars.worker.execution import ExecutionActor
 
 
@@ -68,8 +67,8 @@ class Test(unittest.TestCase):
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(ClusterInfoActor, schedulers=[mock_scheduler_addr],
                                   uid=ClusterInfoActor.default_name())
-                kv_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-                pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
 
                 proc = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                          '-a', '127.0.0.1',
@@ -82,7 +81,7 @@ class Test(unittest.TestCase):
                 def waiter():
                     check_time = time.time()
                     while True:
-                        if kv_ref.read('/workers/meta_timestamp', silent=True) is None:
+                        if not resource_ref.get_workers_meta():
                             gevent.sleep(0.5)
                             if proc.poll() is not None:
                                 raise SystemError('Worker dead. exit code %s' % proc.poll())
@@ -91,8 +90,8 @@ class Test(unittest.TestCase):
                             continue
                         else:
                             break
-                    val = kv_ref.read('/workers/meta')
-                    worker_ips.extend([c.key.rsplit('/', 1)[-1] for c in val.children])
+                    val = resource_ref.get_workers_meta()
+                    worker_ips.extend(val.keys())
 
                 gl = gevent.spawn(waiter)
                 gl.join()

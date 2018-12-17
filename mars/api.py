@@ -17,7 +17,7 @@ import logging
 from .actors import new_client
 from .cluster_info import ClusterInfoActor
 from .node_info import NodeInfoActor
-from .scheduler import SessionActor, GraphActor, KVStoreActor
+from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor
 from .scheduler.session import SessionManagerActor
 from .scheduler.graph import ResultReceiverActor
 
@@ -29,7 +29,6 @@ class MarsAPI(object):
         self.actor_client = new_client()
         self.cluster_info = self.actor_client.actor_ref(
             ClusterInfoActor.default_name(), address=scheduler_ip)
-        self.kv_store = self.get_actor_ref(KVStoreActor.default_name())
         self.session_manager = self.get_actor_ref(SessionManagerActor.default_name())
 
     def get_actor_ref(self, uid):
@@ -47,9 +46,8 @@ class MarsAPI(object):
 
     def count_workers(self):
         try:
-            worker_info = self.kv_store.read('/workers/meta')
-            workers_num = len(worker_info.children)
-            return workers_num
+            uid = ResourceActor.default_name()
+            return self.get_actor_ref(uid).get_worker_count()
         except KeyError:
             return 0
 
@@ -70,15 +68,19 @@ class MarsAPI(object):
         graph_ref.destroy()
 
     def stop_graph(self, session_id, graph_key):
+        from .scheduler import GraphState
+        graph_meta_uid = GraphMetaActor.gen_name(session_id, graph_key)
+        self.get_actor_ref(graph_meta_uid).set_state(GraphState.CANCELLING)
+
         graph_uid = GraphActor.gen_name(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
         graph_ref.stop_graph()
 
     def get_graph_state(self, session_id, graph_key):
-        from .scheduler.utils import GraphState
+        from .scheduler import GraphState
 
-        state_obj = self.kv_store.read(
-            '/sessions/%s/graph/%s/state' % (session_id, graph_key), silent=True)
+        graph_meta_uid = GraphMetaActor.gen_name(session_id, graph_key)
+        state_obj = self.get_actor_ref(graph_meta_uid).get_state()
         state = state_obj.value if state_obj else 'preparing'
         state = GraphState(state.lower())
         return state

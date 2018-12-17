@@ -132,9 +132,6 @@ class StatusReporterActor(WorkerActor):
             meta_dict['details'] = gather_node_info()
 
             self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
-            self._kv_store_ref.write('/workers/meta/%s' % self._endpoint,
-                                     json.dumps(meta_dict))
-            self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())))
         except Exception as ex:
             logger.error('Failed to save status: %s. repr(meta_dict)=%r', str(ex), meta_dict)
         finally:

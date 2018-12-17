@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import copy
+import json
 import time
 import logging
 import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+from .kvstore import KVStoreActor
 from .utils import SchedulerActor
 from ..config import options
 
@@ -33,6 +35,7 @@ class ResourceActor(SchedulerActor):
     def __init__(self):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
+        self._kv_store_ref = None
         self._worker_allocations = dict()
 
     def post_create(self):
@@ -40,6 +43,10 @@ class ResourceActor(SchedulerActor):
 
         super(ResourceActor, self).post_create()
         self.ref().clean_worker()
+
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        if not self.ctx.has_actor(self._kv_store_ref):
+            self._kv_store_ref = None
 
     @classmethod
     def default_name(cls):
@@ -62,11 +69,19 @@ class ResourceActor(SchedulerActor):
 
         self.ref().clean_worker(_tell=True, _delay=1)
 
+    def get_worker_count(self):
+        return len(self._meta_cache)
+
     def get_workers_meta(self):
         return copy.deepcopy(self._meta_cache)
 
     def set_worker_meta(self, worker, worker_meta):
         self._meta_cache[worker] = worker_meta
+        if self._kv_store_ref is not None:
+            self._kv_store_ref.write('/workers/meta/%s' % worker, json.dumps(worker_meta),
+                                     _tell=True, _wait=False)
+            self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())),
+                                     _tell=True, _wait=False)
 
     def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
         """

@@ -15,16 +15,16 @@
 import copy
 import heapq
 import logging
+import os
 import random
 import time
-import os
 from collections import defaultdict
 
 from .. import promise
 from ..config import options
 from ..utils import log_unhandled
+from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
-from .kvstore import KVStoreActor
 from .utils import SchedulerActor
 
 logger = logging.getLogger(__name__)
@@ -205,7 +205,7 @@ class AssignEvaluationActor(SchedulerActor):
         self._cluster_info_ref = None
         self._assigner_ref = assigner_ref
         self._resource_actor_ref = None
-        self._kv_store_ref = None
+        self._chunk_meta_ref = None
 
         self._sufficient_operands = set()
         self._operand_sufficient_time = dict()
@@ -216,7 +216,7 @@ class AssignEvaluationActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(self._assigner_ref)
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
-        self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
+        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
         self.periodical_allocate()
 
@@ -282,16 +282,15 @@ class AssignEvaluationActor(SchedulerActor):
 
         reject_workers = reject_workers or set()
 
-        op_path = '/sessions/%s/operands/%s' % (session_id, op_key)
-
         op_io_meta = op_info['io_meta']
         input_chunk_keys = op_io_meta['input_chunks']
-        input_sizes = dict(zip(input_chunk_keys, self._get_multiple_chunk_size(session_id, input_chunk_keys)))
+        metas = self._get_chunks_meta(session_id, input_chunk_keys)
+        input_sizes = dict((k, meta.chunk_size) for k, meta in metas.items())
         output_size = op_info['output_size']
 
         if target_worker is None:
             op_name = op_info['op_name']
-            who_has = dict(zip(input_chunk_keys, self._get_multiple_who_has(session_id, input_chunk_keys)))
+            who_has = dict((k, meta.workers) for k, meta in metas.items())
 
             candidate_workers = self._get_eps_by_worker_locality(input_chunk_keys, who_has, input_sizes)
             locality_workers = set(candidate_workers)
@@ -319,31 +318,13 @@ class AssignEvaluationActor(SchedulerActor):
                     logger.debug('Operand %s(%s) allocated to run in %s given collected statistics',
                                  op_key, op_info['op_name'], worker_ep)
 
-                self._kv_store_ref.write('%s/worker' % op_path, worker_ep)
                 self.tell_promise(callback, worker_ep)
                 return worker_ep, rejects
             rejects.append(worker_ep)
         return None, rejects
 
-    def _get_who_has(self, session_id, chunk_key):
-        return [ch.key.rsplit('/', 1)[-1] for ch in self._kv_store_ref.read(
-            '/sessions/%s/chunks/%s/workers' % (session_id, chunk_key)).children]
-
-    def _get_multiple_who_has(self, session_id, chunk_keys):
-        keys = ['/sessions/%s/chunks/%s/workers' % (session_id, chunk_key) for chunk_key in chunk_keys]
-        for result in self._kv_store_ref.read_batch(keys):
-            yield [ch.key.rsplit('/', 1)[-1] for ch in result.children]
-
-    def _get_chunk_size(self, session_id, chunk_key):
-        return self._kv_store_ref.read(
-            '/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key)).value
-
-    def _get_multiple_chunk_size(self, session_id, chunk_keys):
-        if not chunk_keys:
-            return tuple()
-        keys = ['/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key)
-                for chunk_key in chunk_keys]
-        return (res.value for res in self._kv_store_ref.read_batch(keys))
+    def _get_chunks_meta(self, session_id, keys):
+        return dict(zip(keys, self._chunk_meta_ref.batch_get_chunk_meta(session_id, keys)))
 
     def _get_op_metric_item(self, ep, op_name, item):
         return self._get_metric_item(ep, 'calc_speed.' + op_name, item)
@@ -388,11 +369,11 @@ class AssignEvaluationActor(SchedulerActor):
         self._sufficient_operands.add(op_name)
         return True
 
-    def _get_eps_by_worker_locality(self, input_keys, who_has, input_sizes):
+    def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):
         locality_data = defaultdict(lambda: 0)
         for k in input_keys:
-            if k in who_has:
-                for ep in who_has[k]:
+            if k in chunk_workers:
+                for ep in chunk_workers[k]:
                     locality_data[ep] += input_sizes[k]
         workers = list(self._worker_metrics.keys())
         random.shuffle(workers)
@@ -406,7 +387,7 @@ class AssignEvaluationActor(SchedulerActor):
                 max_eps.append(ep)
         return max_eps
 
-    def _get_ep_by_worker_stats(self, input_keys, who_has, input_sizes, output_size, op_name):
+    def _get_ep_by_worker_stats(self, input_keys, chunk_workers, input_sizes, output_size, op_name):
         ep_net_speeds = dict()
         if any(self._get_metric_item(ep, 'net_transfer_speed', 'count') <= options.optimize.min_stats_count
                for ep in self._worker_metrics):
@@ -428,7 +409,7 @@ class AssignEvaluationActor(SchedulerActor):
         ep_calc_time = defaultdict(lambda: 0)
         locality_data = defaultdict(lambda: 0)
         for key in input_keys:
-            contain_eps = who_has.get(key, set())
+            contain_eps = chunk_workers.get(key, set())
             for ep in self._worker_metrics:
                 if ep not in contain_eps:
                     ep_transmit_times[ep].append(input_sizes[key] * 1.0 / ep_net_speeds[ep])

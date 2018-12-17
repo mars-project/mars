@@ -104,7 +104,7 @@ class LocalDistributedCluster(object):
         self._pool = create_actor_pool(self._endpoint, n_process, distributor=distributor)
 
         # start scheduler first
-        self._scheduler_service.start(self._endpoint, self._pool)
+        self._scheduler_service.start(self._endpoint, None, self._pool)
 
         # start worker next
         self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)

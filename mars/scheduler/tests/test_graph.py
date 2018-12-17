@@ -19,8 +19,8 @@ import gevent
 
 import mars.tensor as mt
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import GraphActor, ResourceActor, KVStoreActor, AssignerActor
-from mars.utils import serialize_graph, deserialize_graph
+from mars.scheduler import GraphActor, ResourceActor, ChunkMetaActor, AssignerActor
+from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
 
 
@@ -38,20 +38,19 @@ class Test(unittest.TestCase):
         serialized_graph = serialize_graph(graph)
         chunked_graph = arr2.build_graph(compose=False, tiled=True)
 
-        with create_actor_pool(n_process=1, backend='gevent') as pool:
+        addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
             graph_ref.prepare_graph(compose=False)
-            graph_data = kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
-                                           % (session_id, graph_key)).value
-            self.assertIsNotNone(graph_data)
-            fetched_graph = deserialize_graph(graph_data)
+            fetched_graph = graph_ref.get_chunk_graph()
+            self.assertIsNotNone(fetched_graph)
             self.assertEqual(len(chunked_graph), len(fetched_graph))
 
             graph_ref.scan_node()
@@ -80,7 +79,7 @@ class Test(unittest.TestCase):
                 target_worker = op_infos[n.op.key]['target_worker']
                 self.assertIsNotNone(target_worker)
 
-            graph_ref.create_operand_actors()
+            graph_ref.create_operand_actors(_clean_io_meta=False)
             op_infos = graph_ref.get_operand_info()
 
             for n in fetched_graph:
@@ -112,20 +111,19 @@ class Test(unittest.TestCase):
         serialized_graph = serialize_graph(graph)
         chunked_graph = arr_sum.build_graph(compose=False, tiled=True)
 
-        with create_actor_pool(n_process=1, backend='gevent') as pool:
+        addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
             graph_ref.prepare_graph(compose=False)
-            graph_data = kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
-                                           % (session_id, graph_key)).value
-            self.assertIsNotNone(graph_data)
-            fetched_graph = deserialize_graph(graph_data)
+            fetched_graph = graph_ref.get_chunk_graph()
+            self.assertIsNotNone(fetched_graph)
             self.assertEqual(len(chunked_graph), len(fetched_graph))
 
             graph_ref.scan_node()
@@ -154,7 +152,7 @@ class Test(unittest.TestCase):
                 target_worker = op_infos[n.op.key]['target_worker']
                 self.assertIsNotNone(target_worker)
 
-            graph_ref.create_operand_actors()
+            graph_ref.create_operand_actors(_clean_io_meta=False)
             op_infos = graph_ref.get_operand_info()
 
             for n in fetched_graph:
@@ -185,20 +183,19 @@ class Test(unittest.TestCase):
         serialized_graph = serialize_graph(graph)
         chunked_graph = arr2.build_graph(compose=False, tiled=True)
 
-        with create_actor_pool(n_process=1, backend='gevent') as pool:
+        addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
             graph_ref.prepare_graph(compose=False)
-            graph_data = kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
-                                           % (session_id, graph_key)).value
-            self.assertIsNotNone(graph_data)
-            fetched_graph = deserialize_graph(graph_data)
+            fetched_graph = graph_ref.get_chunk_graph()
+            self.assertIsNotNone(fetched_graph)
             self.assertEqual(len(chunked_graph), len(fetched_graph))
 
             graph_ref.scan_node()
@@ -227,7 +224,7 @@ class Test(unittest.TestCase):
                 target_worker = op_infos[n.op.key]['target_worker']
                 self.assertIsNotNone(target_worker)
 
-            graph_ref.create_operand_actors()
+            graph_ref.create_operand_actors(_clean_io_meta=False)
             op_infos = graph_ref.get_operand_info()
 
             for n in fetched_graph:
