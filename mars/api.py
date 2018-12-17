@@ -80,8 +80,12 @@ class MarsAPI(object):
         from .scheduler import GraphState
 
         graph_meta_uid = GraphMetaActor.gen_name(session_id, graph_key)
-        state_obj = self.get_actor_ref(graph_meta_uid).get_state()
-        state = state_obj.value if state_obj else 'preparing'
+        graph_meta_ref = self.get_actor_ref(graph_meta_uid)
+        if self.actor_client.has_actor(graph_meta_ref):
+            state_obj = graph_meta_ref.get_state()
+            state = state_obj.value if state_obj else 'preparing'
+        else:
+            state = 'preparing'
         state = GraphState(state.lower())
         return state
 
