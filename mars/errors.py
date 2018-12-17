@@ -71,6 +71,22 @@ class ExecutionInterrupted(MarsError):
     pass
 
 
+class ExecutionFailed(MarsError):
+    pass
+
+
+class ExecutionNotStopped(MarsError):
+    pass
+
+
+class ExecutionStateUnknown(MarsError):
+    pass
+
+
+class ResponseMalformed(MarsError):
+    pass
+
+
 class SpillNotConfigured(MarsError):
     pass
 
@@ -88,4 +104,8 @@ class PinChunkFailed(MarsError):
 
 
 class ObjectNotInPlasma(MarsError):
+    pass
+
+
+class WorkerProcessStopped(MarsError):
     pass

@@ -578,3 +578,19 @@ class ExecutionActor(WorkerActor):
             cur_time = time.time()
             stages = dict((k, (cur_time - v[-1], v[0])) for k, v in self._graph_stages.items())
             logger.debug('Executing stages: %r', stages)
+
+    def handle_process_down(self, halt_refs):
+        """
+        Handle process down event
+        :param halt_refs: actor refs in halt processes
+        """
+        if logger.level <= logging.DEBUG:
+            affected_uids = [ref.uid for ref in halt_refs]
+            logger.debug('Process halt detected. Trying to reject affected promises %r.', affected_uids)
+        try:
+            raise WorkerProcessStopped
+        except WorkerProcessStopped:
+            exc_info = sys.exc_info()
+
+        for ref in halt_refs:
+            self.reject_promise_ref(ref, *exc_info)

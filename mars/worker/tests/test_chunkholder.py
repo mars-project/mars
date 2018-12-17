@@ -111,8 +111,6 @@ class CacheTestActor(WorkerActor):
 
 class Test(WorkerCase):
     def setUp(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
         options.worker.min_spill_size = 0
 
     def tearDown(self):
@@ -149,7 +147,7 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
-            pool.create_actor(KVStoreActor, uid='KVStoreActor')
+            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
             pool.create_actor(SpillActor, uid=SpillActor.default_name())

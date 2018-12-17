@@ -306,7 +306,7 @@ default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_
 default_options.register_option('scheduler.heartbeat_timeout', 1200, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.status_timeout', 60, validator=is_integer, serialize=True)
-default_options.register_option('scheduler.retry_num', 3, validator=is_integer, serialize=True)
+default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_delay', 60, validator=is_integer, serialize=True)
 

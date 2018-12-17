@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import threading
-import logging
 import functools
+import logging
+import random
+import threading
+import os
 from collections import defaultdict
 
 from bokeh.application import Application
@@ -145,7 +146,7 @@ class MarsWeb(object):
             kv_store = kvstore.get(options.kv_store)
             try:
                 schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
-                self._scheduler_ip = schedulers[0]
+                self._scheduler_ip = schedulers[random.randint(0, len(schedulers) - 1)]
             except KeyError:
                 raise KeyError('No scheduler is available')
 

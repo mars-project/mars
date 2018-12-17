@@ -14,6 +14,7 @@
 
 from .calc import CpuCalcActor
 from .chunkholder import ChunkHolderActor, ensure_chunk
+from .daemon import WorkerDaemonActor
 from .execution import ExecutionActor
 from .status import StatusActor
 from .spill import SpillActor

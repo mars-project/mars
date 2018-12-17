@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +21,7 @@ import requests
 
 from ..compat import six, TimeoutError
 from ..serialize import dataserializer
-from ..errors import ExecutionInterrupted
+from ..errors import *
 from ..graph import DirectedGraph
 
 logger = logging.getLogger(__name__)
@@ -91,9 +89,13 @@ class Session(object):
                         logging.debug('Gateway Time-out, try again')
                         continue
                     if resp.status_code >= 400:
-                        raise SystemError('Failed to read task status. Code: %d, Reason: %s, Content:\n%s' %
+                        raise SystemError('Failed to obtain execution status. Code: %d, Reason: %s, Content:\n%s' %
                                           (resp.status_code, resp.reason, resp.text))
-                    resp_json = json.loads(resp.text)
+                    try:
+                        resp_json = json.loads(resp.text)
+                    except ValueError:
+                        raise ResponseMalformed('Response malformed. Code: %d, Content:\n%s' %
+                                                (resp.status_code, resp.text))
                     if resp_json['state'] in ('running', 'preparing'):
                         continue
                     elif resp_json['state'] == 'success':
@@ -106,17 +108,20 @@ class Session(object):
                             traceback = resp_json['traceback']
                             if isinstance(traceback, list):
                                 traceback = ''.join(str(s) for s in traceback)
-                            raise SystemError('Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
-                                              (resp_json['msg'], traceback))
+                            raise ExecutionFailed(
+                                'Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
+                                (resp_json['msg'], traceback))
                         else:
-                            raise SystemError('Graph execution failed with unknown reason.')
+                            raise ExecutionFailed('Graph execution failed with unknown reason.')
                     else:
-                        raise SystemError('Unknown graph execution state %s' % resp_json['state'])
+                        raise ExecutionStateUnknown(
+                            'Unknown graph execution state %s' % resp_json['state'])
                 except KeyboardInterrupt:
                     resp = self._req_session.delete(graph_url)
                     if resp.status_code >= 400:
-                        raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
-                                          (resp.status_code, resp.reason, resp.text))
+                        raise ExecutionNotStopped(
+                            'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
+                            (resp.status_code, resp.reason, resp.text))
             if 0 < timeout < time.time() - exec_start_time:
                 raise TimeoutError
             data_list = []

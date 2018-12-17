@@ -36,7 +36,6 @@ class WorkerApplication(BaseApplication, WorkerService):
         super(WorkerService, self).__init__()
 
     def config_args(self, parser):
-        parser.add_argument('-s', '--schedulers', help='scheduler addresses')
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
         parser.add_argument('--io-procs', help='number of processes used for io')
         parser.add_argument('--phy-mem', help='physical memory size limit')
@@ -91,6 +90,12 @@ class WorkerApplication(BaseApplication, WorkerService):
     def start_service(self):
         super(WorkerApplication, self).start(self.endpoint, self.args.schedulers,
                                              self.pool, ignore_avail_mem=self.args.ignore_avail_mem)
+
+    def handle_process_down(self, proc_indices):
+        logger.debug('Process %r halt. Trying to recover.', proc_indices)
+        for pid in proc_indices:
+            self.pool.restart_process(pid)
+        self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     def stop_service(self):
         super(WorkerApplication, self).stop()

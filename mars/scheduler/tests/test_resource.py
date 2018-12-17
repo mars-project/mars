@@ -25,7 +25,7 @@ class Test(unittest.TestCase):
     def testResourceActor(self):
         session_id = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            resource_ref = pool.create_actor(ResourceActor, uid='s:ResourceActor')
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             mock_resource = dict(hardware=dict(cpu=4, memory=512))
 
             ep1 = 'localhost:12345'
