@@ -24,6 +24,7 @@ import requests
 from ..compat import six, TimeoutError
 from ..serialize import dataserializer
 from ..errors import ExecutionInterrupted
+from ..graph import DirectedGraph
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +52,14 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
-    def run(self, tensors, compose=True, wait=True, timeout=-1):
-        from ..graph import DirectedGraph
-        graph = DirectedGraph()
+    def run(self, *tensors, **kw):
+        timeout = kw.pop('timeout', -1)
+        compose = kw.pop('compose', True)
+        wait = kw.pop('wait', True)
+        if kw:
+            raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
-        if not isinstance(tensors, (list, tuple, set)):
-            tensors = [tensors]
+        graph = DirectedGraph()
         for t in tensors:
             graph = t.build_graph(graph=graph, tiled=False, compose=compose)
         targets = [t.key for t in tensors]
@@ -95,7 +98,7 @@ class Session(object):
                         continue
                     elif resp_json['state'] == 'success':
                         break
-                    elif resp_json['state'] == 'cancelled':
+                    elif resp_json['state'] == ('cancelled', 'cancelling'):
                         raise ExecutionInterrupted
                     elif resp_json['state'] == 'failed':
                         # TODO add traceback

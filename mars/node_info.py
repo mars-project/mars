@@ -20,8 +20,11 @@ import os
 
 logger = logging.getLogger(__name__)
 
-from mars.utils import git_info, readable_size
-from mars.actors import FunctionActor
+from . import resource
+from .utils import git_info, readable_size
+from .actors import FunctionActor
+from .compat import six
+
 
 try:
     import numpy as np
@@ -35,9 +38,6 @@ try:
     import cupy as cp
 except ImportError:
     cp = None
-
-from mars import resource
-from mars.compat import six
 
 _collectors = dict()
 

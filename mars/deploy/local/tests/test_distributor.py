@@ -28,8 +28,7 @@ class Test(unittest.TestCase):
         distributor = gen_distributor(2, 4)
 
         idx = distributor.distribute(SessionActor.default_name())
-        self.assertLess(idx, 2)
-        self.assertGreaterEqual(idx, 1)
+        self.assertEqual(idx, 1)
 
         idx = distributor.distribute(GraphActor.gen_name('fake_session_id', 'fake_graph_key'))
         self.assertEqual(idx, 0)
