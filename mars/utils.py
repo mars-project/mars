@@ -24,6 +24,7 @@ import numbers
 import os
 import random
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -319,12 +320,14 @@ def get_next_port(typ=None):
                     break
         p.stdout.close()
 
-    idx = random.randint(0, HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied))
+    randn = struct.unpack('<Q', os.urandom(8))[0]
+    idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
     for i in irange(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
+        if i in occupied:
+            continue
         if idx == 0:
             return i
-        elif i not in occupied:
-            idx -= 1
+        idx -= 1
     raise SystemError('No ports available.')
 
 
