@@ -63,9 +63,8 @@ class Test(unittest.TestCase):
         self.assertEqual(len(s.chunks), 1)
         self.assertEqual(len(V.chunks), 1)
 
-        a = mt.random.rand(9, 6, chunks=(3, 6))
-        print(mt.random.rand)
-        print(a.op.size)
+        rs = mt.random.RandomState(1)
+        a = rs.rand(9, 6, chunks=(3, 6))
         U, s, V = mt.linalg.svd(a)
 
         # test tensor graph
