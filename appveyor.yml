@@ -39,7 +39,6 @@ install:
 build_script:
   - "python setup.py build_ext -i"
   # Build tar zip only once
-  - "python setup.py bdist_wheel"
 
 
 test_script:
@@ -56,15 +55,19 @@ after_test:
   - echo username=pyodps                             >> %USERPROFILE%\\.pypirc
   - echo password=%SECUREPSD%                        >> %USERPROFILE%\\.pypirc
 
-  # Workaround required to ensure setup.py finds the .pypirc under Windows
-  #- set HOME=%USERPROFILE%
-
-artifacts:
-  # Archive the generated packages in the ci.appveyor.com build report.
-  - path: dist\*
-
 on_success:
   - echo %APPVEYOR_REPO_TAG%
   - echo %APPVEYOR_REPO_TAG_NAME%
   - echo %APPVEYOR_REPO_BRANCH%
-  - ps: If ($env:APPVEYOR_REPO_TAG -eq "true") { Invoke-Expression "twine upload -r pypi --skip-existing dist/*" } Else { write-output "Not on a tag commit, won't deploy to pypi"}
+  - ps: >-
+      If ($env:APPVEYOR_REPO_TAG -eq "true"){
+          Invoke-Expression "python setup.py bdist_wheel"
+          if ($env:PYTHON_VERSION -eq "3.6.x" -and $env:PYTHON_ARCH -eq "64")
+          {
+              Invoke-Expression "python setup.py sdist --formats=gztar"
+          }
+
+          Invoke-Expression "twine upload --skip-existing dist/*"
+      }Else {
+          write-output "Not on a tag commit, won't deploy to pypi"
+      }

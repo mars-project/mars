@@ -9,17 +9,16 @@ if [ "$TRAVIS_TAG" ]; then
   echo "username=pyodps"                             >> ~/.pypirc
   echo "password=$PASSWD"                            >> ~/.pypirc
 
-  python -m pip install twine
+  python -m pip install twine auditwheel
 
-  python setup.py sdist --formats=gztar
   python setup.py bdist_wheel
 
   for whl in dist/*.whl; do
-	auditwheel repair $whl -w dist/
+	python -m auditwheel repair $whl -w dist/
   done
   rm dist/*-linux*.whl
 
-  python -m twine upload -r pypi --skip-existing dist/*.tar.gz;
+  python -m twine upload -r pypi --skip-existing dist/*.whl;
 else
   echo "Not on a tag, won't deploy to pypi";
 fi
