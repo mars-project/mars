@@ -18,6 +18,7 @@ import threading
 import time
 import unittest
 import weakref
+import sys
 
 import gevent
 
@@ -87,6 +88,7 @@ def _raise_exception(exc):
     raise exc
 
 
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
     def testPromise(self):
         promises = weakref.WeakValueDictionary()

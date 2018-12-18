@@ -34,6 +34,7 @@ from mars.scheduler import SessionActor, KVStoreActor
 from mars.scheduler.graph import GraphState
 
 
+@unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
 class Test(unittest.TestCase):
 
     @classmethod

@@ -18,7 +18,10 @@ import os
 import logging
 import time
 
-from pyarrow import plasma
+try:
+    from pyarrow import plasma
+except ImportError:
+    plasma = None
 
 from ..config import options
 from .. import resource, kvstore
