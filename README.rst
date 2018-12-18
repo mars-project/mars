@@ -20,6 +20,8 @@ The distributed version can be installed by
 
     pip install 'pymars[distributed]'
 
+For now, distributed version is only available on Linux and Mac OS.
+
 
 Mars tensor
 -----------
@@ -75,12 +77,12 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
 Running on a single machine including thread-based scheduling,
 local cluster scheduling which bundles the whole distributed components.
 Mars is also easy to scale out to a cluster by starting different components of
-Mars distributed runtime on different machines in the cluster.
+mars distributed runtime on different machines in the cluster.
 
 Threaded
 ````````
 
-`execute` method will by default run on the thread-based scheduler.
+``execute`` method will by default run on the thread-based scheduler on a single machine.
 
 .. code-block:: python
 
@@ -148,7 +150,7 @@ Workers can be started with the following command:
 
     mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>
 
-After all Mars processes are started, we can run
+After all mars processes are started, users can run
 
 .. code-block:: python
 
@@ -179,3 +181,6 @@ Thank you in advance for your contributions!
 .. |License| image:: https://img.shields.io/pypi/l/pymars.svg?style=flat-square
    :target: https://github.com/mars-project/mars/blob/master/LICENSE
 .. |Implementation| image:: https://img.shields.io/pypi/implementation/pymars.svg?style=flat-square
+.. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev
+.. _`GitHub issue`: https://github.com/mars-project/mars/issues
+.. _`pull requests`: https://github.com/mars-project/mars/pulls
