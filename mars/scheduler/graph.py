@@ -192,7 +192,13 @@ class GraphActor(SchedulerActor):
         from .operand import OperandActor
         self.state = GraphState.CANCELLING
 
-        for chunk in self.get_chunk_graph():
+        try:
+            chunk_graph = self.get_chunk_graph()
+        except KeyError:
+            self.state = GraphState.CANCELLED
+            return
+
+        for chunk in chunk_graph:
             if chunk.op.key not in self._operand_infos:
                 continue
             if self._operand_infos[chunk.op.key]['state'] in \
