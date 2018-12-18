@@ -175,7 +175,7 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_name(self._session_id))
+        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
@@ -606,8 +606,6 @@ class GraphActor(SchedulerActor):
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
         from .operand import OperandActor
-
-        _clean_io_meta = kwargs.get('_clean_io_meta', True)
 
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos

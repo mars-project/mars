@@ -20,6 +20,7 @@ import logging
 from .. import kvstore
 from ..config import options
 from ..cluster_info import ClusterInfoActor
+from .assigner import AssignerActor
 from .session import SessionManagerActor
 from .resource import ResourceActor
 from .chunkmeta import ChunkMetaActor
@@ -33,6 +34,7 @@ class SchedulerService(object):
     def __init__(self):
         self._cluster_info_ref = None
         self._session_manager_ref = None
+        self._assigner_ref = None
         self._resource_ref = None
         self._chunk_meta_ref = None
         self._kv_store_ref = None
@@ -73,6 +75,8 @@ class SchedulerService(object):
         # create SessionManagerActor
         self._session_manager_ref = pool.create_actor(
             SessionManagerActor, uid=SessionManagerActor.default_name())
+        # create AssignerActor
+        self._assigner_ref = pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
         # create ResourceActor
         self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
         # create NodeInfoActor

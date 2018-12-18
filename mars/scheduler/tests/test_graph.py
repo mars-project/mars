@@ -44,7 +44,7 @@ class Test(unittest.TestCase):
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
@@ -117,7 +117,7 @@ class Test(unittest.TestCase):
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
@@ -189,7 +189,7 @@ class Test(unittest.TestCase):
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 

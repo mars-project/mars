@@ -22,21 +22,39 @@ import uuid
 
 import gevent
 
-from mars.actors import FunctionActor, create_actor_pool
+from mars.actors import create_actor_pool
 from mars.config import options
+from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor, ChunkMetaActor
-from mars.worker.execution import ExecutionActor
 
 
-class PromiseReplyTestActor(FunctionActor):
+class WorkerProcessTestActor(PromiseActor):
     def __init__(self):
-        super(PromiseReplyTestActor, self).__init__()
+        super(WorkerProcessTestActor, self).__init__()
         self._replied = False
 
-    def reply(self, _):
-        self._replied = True
+    def run_test(self, worker):
+        import mars.tensor as mt
+        from mars.worker import ExecutionActor
+
+        session_id = str(uuid.uuid4())
+
+        a = mt.ones((100, 50), chunk_size=30)
+        b = mt.ones((50, 200), chunk_size=30)
+        result = a.dot(b)
+
+        graph = result.build_graph(tiled=True)
+
+        executor_ref = self.promise_ref(ExecutionActor.default_name(), address=worker)
+        io_meta = dict(chunks=[c.key for c in result.chunks])
+
+        graph_key = str(id(graph))
+        executor_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                   io_meta, None, _promise=True) \
+            .then(lambda *_: executor_ref.start_execution(session_id, graph_key, _promise=True)) \
+            .then(lambda *_: setattr(self, '_replied', True))
 
     def get_reply(self):
         return self._replied
@@ -58,11 +76,8 @@ class Test(unittest.TestCase):
             shutil.rmtree(options.worker.spill_directory)
 
     def testExecuteWorker(self):
-        import mars.tensor as mt
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         try:
-
-            session_id = str(uuid.uuid4())
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(ClusterInfoActor, schedulers=[mock_scheduler_addr],
@@ -96,22 +111,11 @@ class Test(unittest.TestCase):
                 gl = gevent.spawn(waiter)
                 gl.join()
 
-                a = mt.ones((100, 50), chunk_size=30)
-                b = mt.ones((50, 200), chunk_size=30)
-                result = a.dot(b)
-
-                graph = result.build_graph(tiled=True)
-
-                reply_ref = pool.create_actor(PromiseReplyTestActor)
-                reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
-
-                executor_ref = pool.actor_ref(ExecutionActor.default_name(), address=worker_ips[0])
-                io_meta = dict(chunks=[c.key for c in result.chunks])
-                executor_ref.execute_graph(session_id, str(id(graph)), serialize_graph(graph),
-                                           io_meta, None, callback=reply_callback)
+                test_ref = pool.create_actor(WorkerProcessTestActor)
+                test_ref.run_test(worker_ips[0], _tell=True)
 
                 check_time = time.time()
-                while not reply_ref.get_reply():
+                while not test_ref.get_reply():
                     gevent.sleep(0.1)
                     if time.time() - check_time > 20:
                         raise SystemError('Check reply timeout')
