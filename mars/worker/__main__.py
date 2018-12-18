@@ -64,7 +64,7 @@ class WorkerApplication(BaseApplication, WorkerService):
             self.args.phy_mem or options.worker.physical_memory_limit_hard, mem_stats.total
         )
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
-            self.args.phy_mem or options.worker.physical_memory_limit_soft, mem_stats.total
+            self.args.phy_mem or options.worker.physical_memory_limit_soft or '48%', mem_stats.total
         )
         options.worker.cache_memory_limit = self._calc_size_limit(
             self.args.cache_mem or options.worker.cache_memory_limit, mem_stats.total

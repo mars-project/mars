@@ -26,6 +26,7 @@ from ...actors import create_actor_pool
 from ...session import new_session
 from ...compat import six
 from ...lib import gipc
+from ...config import options
 from .distributor import gen_distributor
 
 
@@ -36,11 +37,15 @@ class LocalDistributedCluster(object):
     MIN_WORKER_N_PROCESS = 2
 
     def __init__(self, endpoint, n_process=None,
-                 scheduler_n_process=None, worker_n_process=None):
+                 scheduler_n_process=None, worker_n_process=None,
+                 shared_memory=None):
         self._endpoint = endpoint
 
         self._started = False
         self._stopped = False
+
+        if shared_memory is not None:
+            options.worker.cache_memory_limit = shared_memory
 
         self._pool = None
         self._scheduler_service = SchedulerService()
@@ -148,8 +153,9 @@ def gen_endpoint(address):
     return '{0}:{1}'.format(address, port)
 
 
-def _start_cluster(endpoint, event, n_process=None, **kw):
-    cluster = LocalDistributedCluster(endpoint, n_process=n_process, **kw)
+def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
+    cluster = LocalDistributedCluster(endpoint, n_process=n_process,
+                                      shared_memory=shared_memory, **kw)
     cluster.start_service()
     event.set()
     try:
@@ -210,7 +216,7 @@ class LocalDistributedClusterClient(object):
                 self._web_process.terminate()
 
 
-def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):
+def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None, **kw):
     endpoint = gen_endpoint(address)
     web_endpoint = None
     if web is True:
@@ -223,6 +229,7 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, **kw):
 
     event = multiprocessing.Event()
     kw['n_process'] = n_process
+    kw['shared_memory'] = shared_memory or options.worker.cache_memory_limit or '20%'
     process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
 
     while True:
