@@ -160,4 +160,5 @@ class Test(unittest.TestCase):
         tensor = op.new_tensor(None, (3, 3))
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
-            cluster.session.run(tensor)
+            with self.assertRaises(SystemError):
+                cluster.session.run(tensor)
