@@ -297,7 +297,8 @@ class TensorData(SerializableWithKey, Tilesable):
             visited.add(chunk)
             if not graph.contains(chunk):
                 graph.add_node(chunk)
-            children = list(itertools.chain(*[inp.op.outputs for inp in chunk.inputs])) or []
+            children = list(itertools.chain(*[inp.op.outputs for inp in chunk.inputs])) \
+                if chunk.inputs else []
             for c in children:
                 if not graph.contains(c):
                     graph.add_node(c)
