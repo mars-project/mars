@@ -19,7 +19,7 @@ from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.errors import WorkerProcessStopped
 from mars.utils import get_next_port
-from mars.worker import WorkerDaemonActor
+from mars.worker import WorkerDaemonActor, DispatchActor, ProcessHelperActor
 from mars.worker.distributor import WorkerDistributor
 from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
@@ -76,15 +76,23 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
                                address=mock_scheduler_addr) as pool:
             daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             sleeper_ref = daemon_ref.create_actor(DaemonSleeperActor,
                                                   uid='w:1:DaemonSleeperActor')
+            daemon_ref.create_actor(ProcessHelperActor, uid='w:1:ProcHelper')
             test_actor = pool.create_actor(DaemonTestActor)
             daemon_ref.register_callback(test_actor, 'handle_process_down')
+
             test_actor.run_test_sleep(sleeper_ref, 10, _tell=True)
+            self.assertTrue(daemon_ref.is_actor_process_alive(sleeper_ref))
 
             pool.sleep(0.5)
 
             daemon_ref.kill_actor_process(sleeper_ref)
+            # repeated kill shall not produce errors
+            daemon_ref.kill_actor_process(sleeper_ref)
+            self.assertFalse(daemon_ref.is_actor_process_alive(sleeper_ref))
+
             pool.restart_process(1)
             daemon_ref.handle_process_down([1])
             pool.sleep(1)

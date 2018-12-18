@@ -26,6 +26,12 @@ from .utils import get_next_port
 pickling_support.install()
 logger = logging.getLogger(__name__)
 
+try:
+    from pytest_cov.embed import cleanup_on_sigterm
+    cleanup_on_sigterm()
+except ImportError:
+    pass
+
 
 class BaseApplication(object):
     """

@@ -6,6 +6,7 @@ parallel = True
 include =
     mars/*
 omit =
+    mars/compat/*
     mars/lib/functools32/*
     mars/lib/futures/*
     mars/lib/enum.py
