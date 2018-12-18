@@ -27,7 +27,8 @@ from ..utils import tokenize
 
 
 class RandomOperand(Operand):
-    _state = TupleField('state')
+    _state = TupleField('state', on_serialize=lambda x: tuple(x) if x is not None else x,
+                        on_deserialize=lambda x: State(x) if x is not None else x)
 
     @property
     def state(self):
