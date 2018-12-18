@@ -31,13 +31,13 @@ from mars.worker.dispatcher import DispatchActor
 
 
 def _on_deserialize_fail(x):
-    raise ValueError('intend to throw error on' + str(x))
+    raise TypeError('intend to throw error on' + str(x))
 
 
 class SerializeMustFailOperand(Operand, TensorElementWise):
-    _op_id_ = 356789
+    _op_type_ = 356789
 
-    _f = Int64Field('f')
+    _f = Int64Field('f', on_deserialize=_on_deserialize_fail)
 
     def __init__(self, f=None, **kw):
         super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
