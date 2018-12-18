@@ -297,14 +297,14 @@ class TensorData(SerializableWithKey, Tilesable):
             visited.add(chunk)
             if not graph.contains(chunk):
                 graph.add_node(chunk)
-            children = list(itertools.chain(*[inp.op.outputs for inp in chunk.inputs])) \
-                if chunk.inputs else []
+            children = chunk.inputs or []
             for c in children:
                 if not graph.contains(c):
                     graph.add_node(c)
                 if not graph.has_successor(c, chunk):
                     graph.add_edge(c, chunk)
-            nodes.extend([c for c in children if c not in visited])
+            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in chunk.inputs])
+                          if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
         return graph
