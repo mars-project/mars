@@ -303,7 +303,8 @@ class TensorData(SerializableWithKey, Tilesable):
                     graph.add_node(c)
                 if not graph.has_successor(c, chunk):
                     graph.add_edge(c, chunk)
-            nodes.extend([c for c in children if c not in visited])
+            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in chunk.inputs or []])
+                          if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
         return graph

@@ -155,6 +155,13 @@ class Test(unittest.TestCase):
                 np.testing.assert_allclose(U_result, U_expected)
                 np.testing.assert_allclose(s_result, s_expectd)
 
+            with new_session(cluster.endpoint) as session2:
+                U_result, s_result = session2.run(U + 1, s + 1)
+                U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
+
+                np.testing.assert_allclose(U_result, U_expected + 1)
+                np.testing.assert_allclose(s_result, s_expectd + 1)
+
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
