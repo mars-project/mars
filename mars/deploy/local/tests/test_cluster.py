@@ -14,18 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import unittest
 
 import numpy as np
 
 from mars import tensor as mt
+from mars.operands import Operand
+from mars.tensor.expressions.arithmetic.core import TensorElementWise
+from mars.serialize import Int64Field
 from mars.config import options
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.session import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
+
+
+def _on_deserialize_fail(x):
+    raise TypeError('intend to throw error on' + str(x))
+
+
+class SerializeMustFailOperand(Operand, TensorElementWise):
+    _op_type_ = 356789
+
+    _f = Int64Field('f', on_deserialize=_on_deserialize_fail)
+
+    def __init__(self, f=None, **kw):
+        super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
 
 
 class Test(unittest.TestCase):
@@ -146,3 +161,11 @@ class Test(unittest.TestCase):
 
                 np.testing.assert_allclose(U_result, U_expected + 1)
                 np.testing.assert_allclose(s_result, s_expectd + 1)
+
+    def testGraphFail(self):
+        op = SerializeMustFailOperand(f=3)
+        tensor = op.new_tensor(None, (3, 3))
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            with self.assertRaises(SystemError):
+                cluster.session.run(tensor)
