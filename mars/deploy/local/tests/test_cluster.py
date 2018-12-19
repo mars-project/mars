@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import unittest
+import sys
 
 import numpy as np
 
@@ -43,6 +44,7 @@ class SerializeMustFailOperand(Operand, TensorElementWise):
         super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
 
 
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
     def setUp(self):
         self._old_cache_memory_limit = options.worker.cache_memory_limit

@@ -41,7 +41,7 @@ class PromiseReplyTestActor(FunctionActor):
 class Test(unittest.TestCase):
 
     def testAssignerActor(self):
-        with create_actor_pool(backend='gevent') as pool:
+        with create_actor_pool(n_process=1, backend='gevent') as pool:
             pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
