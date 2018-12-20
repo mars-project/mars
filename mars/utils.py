@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import base64
-import collections
 import functools
 import inspect
 import json
@@ -25,54 +24,25 @@ import os
 import random
 import socket
 import struct
-import subprocess
 import sys
 import time
 import zlib
-from collections import deque
 from hashlib import md5
-from datetime import date, datetime, timedelta
 
 import numpy as np
 
-from .compat import six, irange, functools32, getargspec
-from .utils_c import *
+from .compat import irange, functools32, getargspec
+from .utils_c import to_binary, to_str, to_text, tokenize
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
 
 
-if 'to_binary' not in globals():
-    def to_binary(text, encoding='utf-8'):
-        if text is None:
-            return text
-        if isinstance(text, six.text_type):
-            return text.encode(encoding)
-        elif isinstance(text, (six.binary_type, bytearray)):
-            return bytes(text)
-        else:
-            return str(text).encode(encoding) if six.PY3 else str(text)
-
-
-if 'to_text' not in globals():
-    def to_text(binary, encoding='utf-8'):
-        if binary is None:
-            return binary
-        if isinstance(binary, (six.binary_type, bytearray)):
-            return binary.decode(encoding)
-        elif isinstance(binary, six.text_type):
-            return binary
-        else:
-            return str(binary) if six.PY3 else str(binary).decode(encoding)
-
-
-if 'to_str' not in globals():
-    def to_str(text, encoding='utf-8'):
-        return to_text(text, encoding=encoding) if six.PY3 else to_binary(text, encoding=encoding)
+tokenize = tokenize
 
 
 # fix encoding conversion problem under windows
-if sys.platform == 'win32':
+if sys.platform == 'win32':  # pragma: no cover
     def _replace_default_encoding(func):
         def _fun(s, encoding=None):
             encoding = encoding or getattr(sys.stdout, 'encoding', None) or 'mbcs'
@@ -87,105 +57,6 @@ if sys.platform == 'win32':
     to_str = _replace_default_encoding(to_str)
 
 
-if 'tokenize' not in globals():
-    def tokenize(*args, **kwargs):
-        try:
-            import numpy as np
-
-            def h_numpy(ob):
-                if not ob.shape:
-                    return str(ob), ob.dtype
-                if hasattr(ob, 'mode') and getattr(ob, 'filename', None):
-                    if hasattr(ob.base, 'ctypes'):
-                        offset = (ob.ctypes.get_as_parameter().value -
-                                  ob.base.ctypes.get_as_parameter().value)
-                    else:
-                        offset = 0  # root memmap's have mmap object as base
-                    return (ob.filename, os.path.getmtime(ob.filename), ob.dtype,
-                            ob.shape, ob.strides, offset)
-                if ob.dtype.hasobject:
-                    try:
-                        data = md5('-'.join(ob.flat).encode('utf-8')).hexdigest()
-                    except TypeError:
-                        data = md5(b'-'.join([six.text_type(item).encode('utf-8') for item in
-                                              ob.flat])).hexdigest()
-                else:
-                    try:
-                        data = md5(ob.ravel().view('i1').data).hexdigest()
-                    except (BufferError, AttributeError, ValueError):
-                        data = md5(ob.copy().ravel().view('i1').data).hexdigest()
-                return data, ob.dtype, ob.shape, ob.strides
-        except ImportError:
-            np = None
-            h_numpy = None
-
-        def h(ob):
-            try:
-                return h_non_iterative(ob)
-            except TypeError:
-                if isinstance(ob, dict):
-                    return list, h_iterative(sorted(list(ob.items()), key=str))
-                if isinstance(ob, set):
-                    return list, h_iterative(sorted(ob, key=str))
-                if isinstance(ob, (tuple, list)):
-                    return type(ob), h_iterative(ob)
-                raise TypeError('Cannot generate token for %s, type: %s' % (ob, type(ob)))
-
-        def h_iterative(ob):
-            nested = deque(ob)
-            h_list = []
-            dq = deque()
-            while nested or dq:
-                x = dq.pop() if dq else nested.popleft()
-                if isinstance(x, (list, tuple)):
-                    dq.extend(reversed(x))
-                else:
-                    h_list.append(h_non_iterative(x))
-            return h_list
-
-        def h_non_iterative(ob):
-            if isinstance(ob, (int, float, str, six.text_type, bytes,
-                               type(None), type, slice, date, datetime, timedelta)):
-                return ob
-            if isinstance(ob, six.integer_types+(complex,)):
-                return ob
-            if hasattr(ob, 'key'):
-                return ob.key
-            # numpy relative
-            if h_numpy and isinstance(ob, np.ndarray):
-                return h_numpy(ob)
-            if np and isinstance(ob, (np.dtype, np.generic)):
-                return repr(ob)
-
-            raise TypeError
-
-        def h_old(ob):
-            if isinstance(ob, (int, float, str, six.text_type, bytes,
-                               type(None), type, slice, date, datetime, timedelta)):
-                return ob
-            if isinstance(ob, six.integer_types+(complex,)):
-                return ob
-            if isinstance(ob, dict):
-                return h_old(sorted(list(ob.items()), key=str))
-            if isinstance(ob, (tuple, list)):
-                return type(ob), list(h_old(it) for it in ob)
-            if isinstance(ob, set):
-                return h_old(sorted(ob, key=str))
-            if hasattr(ob, 'key'):
-                return ob.key
-            # numpy relative
-            if h_numpy and isinstance(ob, np.ndarray):
-                return h_numpy(ob)
-            if np and isinstance(ob, (np.dtype, np.generic)):
-                return repr(ob)
-
-            raise TypeError('Cannot generate token for %s, type: %s' % (ob, type(ob)))
-
-        if kwargs:
-            args = args + (kwargs,)
-        return md5(str([h_old(arg) for arg in args]).encode('utf-8')).hexdigest()
-
-
 class AttributeDict(dict):
     def __getattr__(self, item):
         try:
@@ -193,25 +64,6 @@ class AttributeDict(dict):
         except KeyError:
             raise AttributeError(
                 "'AttributeDict' object has no attribute {0}".format(item))
-
-
-def hashable(obj):
-    if isinstance(obj, six.string_types):
-        items = obj
-    elif isinstance(obj, slice):
-        items = (obj.start, obj.stop, obj.step)
-    elif isinstance(obj, collections.Mapping):
-        items = type(obj)((k, hashable(v)) for k, v in six.iteritems(obj))
-    elif isinstance(obj, collections.Iterable):
-        items = tuple(hashable(item) for item in obj)
-    elif isinstance(obj, collections.Hashable):
-        items = obj
-    elif hasattr(obj, 'key'):
-        items = obj.key
-    else:
-        raise TypeError(type(obj))
-
-    return items
 
 
 def on_serialize_shape(shape):
@@ -338,56 +190,6 @@ class classproperty(object):
 
     def __get__(self, obj, owner):
         return self.f(owner)
-
-
-class PlasmaProcessHelper(object):
-    def __init__(self, base_directory=None, proc_name=None, size=1024 ** 3,
-                 socket='/tmp/plasma', one_mapped_file=False, mount_point=None, huge_pages=False):
-        import pyarrow
-
-        self._proc_name = proc_name
-        self._size = size
-        self._socket = socket
-        self._mount_point = mount_point
-        self._enable_huge_pages = huge_pages
-        self._one_mapped_file = one_mapped_file
-
-        if not base_directory:
-            base_directory = pyarrow.__path__[0]
-        self._base_dir = base_directory
-
-        if proc_name is None:
-            for pname in ('plasma_store', 'plasma_store_server'):
-                if sys.platform == 'win32':
-                    pname += '.exe'
-                if os.path.exists(os.path.join(self._base_dir, pname)):
-                    self._proc_name = pname
-                    break
-
-        self._process = None
-
-    def run(self, proc_args=None):
-        proc_args = proc_args or []
-        if self._proc_name is None:
-            raise RuntimeError('Plasma store not found.')
-        args = [os.path.join(self._base_dir, self._proc_name), '-m', str(self._size),
-                '-s', self._socket]
-        if self._mount_point:
-            args.extend(['-d', self._mount_point])
-        if self._enable_huge_pages:
-            args.append('-h')
-        if self._one_mapped_file:
-            args.append('-f')
-        args.extend(proc_args)
-
-        daemon = subprocess.Popen(args)
-        logger.debug('Started %d' % daemon.pid)
-        logger.debug('Params: %s' % args)
-        time.sleep(2)
-        self._process = daemon
-
-    def stop(self):
-        self._process.kill()
 
 
 def serialize_graph(graph, compress=False):

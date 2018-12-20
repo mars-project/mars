@@ -14,6 +14,7 @@
 
 import multiprocessing
 import os
+import signal
 import time
 import uuid
 from functools import partial
@@ -79,17 +80,15 @@ class WorkerRegistrationTestActor(WorkerActor):
         promise.all_(promises).then(lambda *_: setattr(self, '_finished', True))
 
 
-def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
-                        spill_dir, msg_queue):
+def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_queue):
     from mars.config import options
-    from mars.utils import PlasmaProcessHelper
 
-    options.worker.plasma_socket = plasma_socket
     options.worker.spill_directory = spill_dir
+    plasma_size = 1024 * 1024 * 10
 
-    plasma_helper = PlasmaProcessHelper(size=1024 * 1024 * 10, socket=options.worker.plasma_socket)
-    try:
-        plasma_helper.run()
+    # don't use multiple with-statement as we need the options be forked
+    with plasma.start_plasma_store(plasma_size) as store_args:
+        options.worker.plasma_socket = plasma_socket = store_args[0]
 
         with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
                                address=pool_address) as pool:
@@ -100,7 +99,7 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
                 pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
                 pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
                 holder_ref = pool.create_actor(HolderActor, uid='HolderActor')
-                chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_helper._size,
+                chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_size,
                                                      uid=ChunkHolderActor.default_name())
                 pool.create_actor(SpillActor)
 
@@ -120,7 +119,7 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
                         raise SystemError('Wait result timeout')
                 register_actor.destroy()
 
-                msg_queue.put(1)
+                msg_queue.put(plasma_socket)
                 check_time = time.time()
                 while not holder_ref.obtain():
                     gevent.sleep(1)
@@ -128,8 +127,6 @@ def run_transfer_worker(pool_address, session_id, plasma_socket, chunk_keys,
                         raise SystemError('Wait result timeout')
             finally:
                 pool.destroy_actor(chunk_holder_ref)
-    finally:
-        plasma_helper.stop()
 
 
 class Test(WorkerCase):
@@ -151,18 +148,16 @@ class Test(WorkerCase):
         remote_chunk_keys = [str(uuid.uuid4()) for _ in range(9)]
         msg_queue = multiprocessing.Queue()
 
-        remote_plasma_socket = '/tmp/plasma_%d_%d.sock' % (os.getpid(), id(run_transfer_worker))
         remote_spill_dir = os.path.join(tempfile.gettempdir(),
                                         'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
 
         proc = multiprocessing.Process(
             target=run_transfer_worker,
-            args=(remote_pool_addr, session_id, remote_plasma_socket,
-                  remote_chunk_keys, remote_spill_dir, msg_queue)
+            args=(remote_pool_addr, session_id, remote_chunk_keys, remote_spill_dir, msg_queue)
         )
         proc.start()
         try:
-            msg_queue.get(30)
+            remote_plasma_socket = msg_queue.get(30)
         except:
             if proc.is_alive():
                 proc.terminate()
@@ -244,5 +239,10 @@ class Test(WorkerCase):
                 pool.destroy_actor(cache_ref)
 
                 os.unlink(remote_plasma_socket)
+
+                os.kill(proc.pid, signal.SIGINT)
+                t = time.time()
+                while proc.is_alive() and time.time() < t + 5:
+                    time.sleep(1)
                 if proc.is_alive():
                     proc.terminate()
