@@ -29,7 +29,7 @@ from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
-from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks
+from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 
 logger = logging.getLogger(__name__)
 
@@ -704,6 +704,16 @@ class GraphActor(SchedulerActor):
 
     def get_operand_info(self):
         return self._operand_infos
+
+    @log_unhandled
+    def set_operand_worker(self, op_key, worker):
+        if worker:
+            self._operand_infos[op_key]['worker'] = worker
+        else:
+            try:
+                del self._operand_infos[op_key]['worker']
+            except KeyError:
+                pass
 
     def calc_stats(self):
         states = list(OperandState.__members__.values())

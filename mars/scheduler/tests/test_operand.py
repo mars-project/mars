@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import sys
 import time
 import unittest
@@ -28,29 +29,35 @@ from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActo
     ChunkMetaActor, GraphMetaActor
 from mars.scheduler.utils import GraphState
 from mars.worker.execution import GraphExecutionRecord
-from mars.utils import serialize_graph, deserialize_graph
+from mars.utils import serialize_graph, log_unhandled
 from mars.actors import create_actor_pool
 from mars.tests.core import mock
 
+logger = logging.getLogger(__name__)
+
 
 class FakeExecutionActor(promise.PromiseActor):
-    def __init__(self, sleep=0, fail_count=0):
+    _retries = defaultdict(lambda: 0)
+
+    def __init__(self, sleep=0.1, fail_count=0):
         super(FakeExecutionActor, self).__init__()
 
         self._chunk_meta_ref = None
         self._fail_count = fail_count
         self._sleep = sleep
 
+        self._results = dict()
         self._cancels = set()
-        self._retries = defaultdict(lambda: fail_count)
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
 
     def post_create(self):
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
+    @log_unhandled
     def actual_exec(self, session_id, graph_key):
-        if graph_key not in self._retries:
-            self._retries[graph_key] = self._fail_count
+        if graph_key in self._results:
+            del self._results[graph_key]
+
         rec = self._graph_records[(session_id, graph_key)]
         if graph_key in self._cancels:
             try:
@@ -58,16 +65,20 @@ class FakeExecutionActor(promise.PromiseActor):
             except:
                 exc = sys.exc_info()
 
-            del self._graph_records[(session_id, graph_key)]
+            self._results[graph_key] = (exc, dict(_accept=False))
             for cb in rec.finish_callbacks:
                 self.tell_promise(cb, *exc, **dict(_accept=False))
+            rec.finish_callbacks = []
             return
-        elif self._fail_count and self._retries.get(graph_key):
-            self._retries[graph_key] -= 1
+        elif self._fail_count and self._retries[graph_key] < self._fail_count:
+            logger.debug('Key %r: %r', graph_key, self._retries.get(graph_key))
+            self._retries[graph_key] += 1
 
             del self._graph_records[(session_id, graph_key)]
+            self._results[graph_key] = ((), dict(_accept=False))
             for cb in rec.finish_callbacks:
                 self.tell_promise(cb, _accept=False)
+            rec.finish_callbacks = []
             return
 
         chunk_graph = rec.graph
@@ -79,15 +90,18 @@ class FakeExecutionActor(promise.PromiseActor):
         for tk in rec.targets:
             for n in key_to_chunks[tk]:
                 self._chunk_meta_ref.add_worker(session_id, n.key, 'localhost:12345')
-        del self._graph_records[(session_id, graph_key)]
+        self._results[graph_key] = ((dict(),), dict())
         for cb in rec.finish_callbacks:
             self.tell_promise(cb, {})
+        rec.finish_callbacks = []
 
+    @log_unhandled
     def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
         rec = self._graph_records[(session_id, graph_key)]
         rec.finish_callbacks.append(callback)
         self.ref().actual_exec(session_id, graph_key, _tell=True, _delay=self._sleep)
 
+    @log_unhandled
     def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
                       priority_data=None, send_addresses=None, callback=None):
         assert (session_id, graph_key) not in self._graph_records
@@ -99,8 +113,11 @@ class FakeExecutionActor(promise.PromiseActor):
         )
         self.tell_promise(callback)
 
+    @log_unhandled
     def dequeue_graph(self, session_id, graph_key):
         try:
+            if graph_key in self._results:
+                del self._results[graph_key]
             del self._graph_records[(session_id, graph_key)]
         except KeyError:
             pass
@@ -108,10 +125,19 @@ class FakeExecutionActor(promise.PromiseActor):
     def update_priority(self, session_id, graph_key, priority_data):
         pass
 
+    @log_unhandled
     def add_finish_callback(self, session_id, graph_key, callback):
-        self._graph_records[(session_id, graph_key)].finish_callbacks.append(callback)
+        query_key = (session_id, graph_key)
+        rec = self._graph_records[query_key]
+        rec.finish_callbacks.append(callback)
+        if query_key in self._results:
+            args, kwargs = self._results[graph_key]
+            for cb in rec.finish_callbacks:
+                self.tell_promise(cb, *args, **kwargs)
+            rec.finish_callbacks = []
 
-    def stop_execution(self, graph_key):
+    @log_unhandled
+    def stop_execution(self, _, graph_key):
         self._cancels.add(graph_key)
 
 
