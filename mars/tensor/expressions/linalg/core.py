@@ -116,10 +116,12 @@ class TSQR(TensorOperandMixin):
             s_shape = (stage2_r_chunk.shape[1],)
             v_shape = (stage2_r_chunk.shape[1],) * 2
             stage2_usv_chunks = svd_op.new_chunks([stage2_r_chunk], [u_shape, s_shape, v_shape],
-                                                  index=stage2_r_chunk.index,
-                                                  kws=[{'side': 'U', 'dtype': U_dtype},
-                                                       {'side': 's', 'dtype': s_dtype},
-                                                       {'side': 'V', 'dtype': V_dtype}])
+                                                  kws=[{'side': 'U', 'dtype': U_dtype,
+                                                        'index': stage2_r_chunk.index},
+                                                       {'side': 's', 'dtype': s_dtype,
+                                                        'index': stage2_r_chunk.index[1:]},
+                                                       {'side': 'V', 'dtype': V_dtype,
+                                                        'index': stage2_r_chunk.index}])
             stage2_u_chunk, stage2_s_chunk, stage2_v_chunk = stage2_usv_chunks
 
             # stage 4, U = Q @ u
