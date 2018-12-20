@@ -96,7 +96,7 @@ extensions = [
 
 
 setup_options = dict(
-    name='mars',
+    name='pymars',
     version=version_ns['__version__'],
     description='MARS: a tensor-based unified framework for large-scale data computation.',
     long_description=long_description,

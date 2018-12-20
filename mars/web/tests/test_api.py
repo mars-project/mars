@@ -14,26 +14,35 @@
 # limitations under the License.
 
 import time
+import requests
+import json
+import unittest
+import mock
 import os
 import sys
 import signal
 import subprocess
-import unittest
 
+import gevent
 import numpy as np
 from numpy.testing import assert_array_equal
-import gevent
-import requests
 
 from mars import tensor as mt
 from mars.config import options
 from mars.errors import ExecutionFailed
+from mars.tensor.execution.core import Executor
+from mars.actors import create_actor_pool, new_client
 from mars.utils import get_next_port
-from mars.actors.core import new_client
+from mars.cluster_info import ClusterInfoActor
+from mars.scheduler import SessionManagerActor, ResourceActor
+from mars.scheduler.graph import GraphActor
+from mars.web import MarsWeb
 from mars.session import new_session
 from mars.scheduler import KVStoreActor
+from mars.serialize.dataserializer import dumps, loads
 
 
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -180,3 +189,67 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
 
+
+class TestWithMockServer(unittest.TestCase):
+    def setUp(self):
+        self._executor = Executor('numpy')
+
+        # create scheduler pool with needed actor
+        scheduler_address = '127.0.0.1:' + str(get_next_port())
+        pool = create_actor_pool(address=scheduler_address, n_process=1, backend='gevent')
+        pool.create_actor(ClusterInfoActor, [scheduler_address], uid=ClusterInfoActor.default_name())
+        pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+        pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
+        self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+        self._pool = pool
+
+        self.start_web(scheduler_address)
+
+        check_time = time.time()
+        while True:
+            if time.time() - check_time > 30:
+                raise SystemError('Wait for service start timeout')
+            try:
+                resp = requests.get(self._service_ep + '/api', timeout=1)
+            except (requests.ConnectionError, requests.Timeout):
+                time.sleep(1)
+                continue
+            if resp.status_code >= 400:
+                time.sleep(1)
+                continue
+            break
+
+    def tearDown(self):
+        self._web.stop()
+        self._pool.stop()
+
+    def start_web(self, scheduler_address):
+        import gevent.monkey
+        gevent.monkey.patch_all()
+
+        web_port = str(get_next_port())
+        mars_web = MarsWeb(port=int(web_port), scheduler_ip=scheduler_address)
+        mars_web.start()
+        service_ep = 'http://127.0.0.1:' + web_port
+        self._web = mars_web
+        self._service_ep = service_ep
+
+    @mock.patch(GraphActor.__module__ + '.GraphActor.execute_graph')
+    @mock.patch(GraphActor.__module__ + '.ResultReceiverActor.fetch_tensor')
+    def testApi(self, mock_fetch_tensor, _):
+        with new_session(self._service_ep) as sess:
+            self._kv_store_ref.write('/workers/meta/%s' % 'mock_endpoint', 'mock_meta')
+            self.assertEqual(sess.count_workers(), 1)
+
+            a = mt.ones((100, 100), chunks=30)
+            b = mt.ones((100, 100), chunks=30)
+            c = a.dot(b)
+            graph_key = sess.run(c, timeout=120, wait=False)
+            self._kv_store_ref.write('/sessions/%s/graph/%s/state' % (sess.session_id, graph_key), 'SUCCEEDED')
+            graph_url = '%s/api/session/%s/graph/%s' % (self._service_ep, sess.session_id, graph_key)
+            graph_state = json.loads(requests.get(graph_url).text)
+            self.assertEqual(graph_state['state'], 'success')
+            mock_fetch_tensor.return_value = dumps(self._executor.execute_tensor(c, concat=True)[0])
+            data_url = graph_url + '/data/' + c.key
+            data = loads(requests.get(data_url).content)
+            assert_array_equal(data, np.ones((100, 100)) * 100)

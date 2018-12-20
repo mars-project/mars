@@ -1,15 +1,32 @@
 language: python
-python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
 
 matrix:
   include:
-    - os: linux
+    - sudo: required
+      os: linux
+      python: "2.7"
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu
+    - sudo: required
+      os: linux
+      python: "3.5"
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m
+    - sudo: required
+      os: linux
+      python: "3.6"
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp36-cp36m
+    - sudo: required
+      os: linux
       python: "3.7"
       dist: xenial
-      sudo: true
+      services:
+        - docker
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp37-cp37m
     - os: osx
       language: generic
       env: PYTHON=2.7.12

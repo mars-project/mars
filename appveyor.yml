@@ -1,0 +1,73 @@
+environment:
+  SECUREPSD:
+    secure: W32PjuuRBQGf05cN6X5EXg8t3/2UsFwvefBlSbioclY=
+
+  matrix:
+
+    - PYTHON: "C:\\Python35-x64"
+      PYTHON_VERSION: "3.5.x"
+      PYTHON_ARCH: "64"
+
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.0"
+      PYTHON_ARCH: "64"
+
+install:
+  # Prepend newly installed Python to the PATH of this build (this cannot be
+  # done from inside the powershell script as it would require to restart
+  # the parent CMD process).
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+
+  # Check that we have the expected version and architecture for Python
+  - "python --version"
+  - "python -c \"import struct; print(struct.calcsize('P') * 8)\""
+
+  # Upgrade to the latest version of pip to avoid it displaying warnings
+  # about it being out of date.
+  - "python -m pip install --disable-pip-version-check --user --upgrade pip"
+
+  # Install the build dependencies of the project.
+  - "pip install --upgrade wheel twine setuptools coveralls"
+  - "pip install -r requirements-dev.txt"
+  - "pip install -r requirements-extra.txt"
+
+
+build_script:
+  - "python setup.py build_ext -i"
+  # Build tar zip only once
+
+
+test_script:
+  - "python -m pytest -p no:warnings --ignore=mars/worker --timeout=1500"
+
+after_test:
+
+  # Specify account details for PyPI
+  - echo [distutils]                                  > %USERPROFILE%\\.pypirc
+  - echo index-servers =                             >> %USERPROFILE%\\.pypirc
+  - echo     pypi                                    >> %USERPROFILE%\\.pypirc
+  - echo [pypi]                                      >> %USERPROFILE%\\.pypirc
+  - echo repository=https://upload.pypi.org/legacy/  >> %USERPROFILE%\\.pypirc
+  - echo username=pyodps                             >> %USERPROFILE%\\.pypirc
+  - echo password=%SECUREPSD%                        >> %USERPROFILE%\\.pypirc
+
+on_success:
+  - echo %APPVEYOR_REPO_TAG%
+  - echo %APPVEYOR_REPO_TAG_NAME%
+  - echo %APPVEYOR_REPO_BRANCH%
+  - ps: >-
+      If ($env:APPVEYOR_REPO_TAG -eq "true"){
+          Invoke-Expression "python setup.py bdist_wheel"
+          if ($env:PYTHON_VERSION -eq "3.6.x" -and $env:PYTHON_ARCH -eq "64")
+          {
+              Invoke-Expression "python setup.py sdist --formats=gztar"
+          }
+
+          Invoke-Expression "twine upload --skip-existing dist/*"
+      }Else {
+          write-output "Not on a tag commit, won't deploy to pypi"
+      }

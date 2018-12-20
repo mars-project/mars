@@ -54,7 +54,7 @@ class Test(TestBase):
 
         res = self.executor.execute_tensor(t3)
         self.assertIsInstance(res[0], SparseNDArray)
-        self.assertEqual(res[0].dtype, np.int64)
+        self.assertEqual(res[0].dtype, np.int_)
         np.testing.assert_array_equal(res[0].toarray(), mat[..., :2].toarray())
         np.testing.assert_array_equal(res[1].toarray(), mat[..., 2:].toarray())
 
@@ -80,7 +80,7 @@ class Test(TestBase):
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertEqual(res[0].shape, (20, 30))
-        self.assertTrue(res[0].dtype, np.int64)
+        self.assertEqual(res[0].dtype, np.int64)
         self.assertFalse(np.array_equal(res, np.zeros((20, 30))))
 
         t = empty((20, 30), chunks=5)
@@ -91,7 +91,7 @@ class Test(TestBase):
         t2 = empty_like(t)
         res = self.executor.execute_tensor(t2, concat=True)
         self.assertEqual(res[0].shape, (20, 30))
-        self.assertTrue(res[0].dtype, np.int64)
+        self.assertEqual(res[0].dtype, np.float64)
 
     def testFullExecution(self):
         t = full((2, 2), 1, dtype='f4', chunks=1)
@@ -328,7 +328,7 @@ class Test(TestBase):
         t = eye(2, dtype=int)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
-        self.assertEqual(res.dtype, np.int64)
+        self.assertEqual(res.dtype, np.int_)
 
         # test sparse
         t = eye(5, sparse=True, chunks=2)
@@ -410,7 +410,7 @@ class Test(TestBase):
         a = linspace(2.0, 9.0, num=11, chunks=3, dtype=int)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
-        self.assertEqual(res.dtype, np.int64)
+        self.assertEqual(res.dtype, np.int_)
 
     def testMeshgridExecution(self):
         a = arange(5, chunks=2)

@@ -462,6 +462,8 @@ cdef class DirectedGraph:
                 continue
             if self.count_successors(v) != 1:
                 continue
+            if len(v.op.outputs) != 1:
+                continue
             selected = [v]
             # add successors
             cur_node = self.successors(v)[0]

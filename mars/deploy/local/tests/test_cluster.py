@@ -14,12 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import unittest
+import sys
 
 import numpy as np
 
 from mars import tensor as mt
+from mars.operands import Operand
+from mars.tensor.expressions.arithmetic.core import TensorElementWise
+from mars.serialize import Int64Field
 from mars.config import options
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
@@ -28,6 +31,20 @@ from mars.scheduler.session import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
 
 
+def _on_deserialize_fail(x):
+    raise TypeError('intend to throw error on' + str(x))
+
+
+class SerializeMustFailOperand(Operand, TensorElementWise):
+    _op_type_ = 356789
+
+    _f = Int64Field('f', on_deserialize=_on_deserialize_fail)
+
+    def __init__(self, f=None, **kw):
+        super(SerializeMustFailOperand, self).__init__(_f=f, **kw)
+
+
+@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
     def setUp(self):
         self._old_cache_memory_limit = options.worker.cache_memory_limit
@@ -90,7 +107,7 @@ class Test(unittest.TestCase):
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
-    def testTensorExecute(self):
+    def testSingleOutputTensorExecute(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
 
@@ -106,3 +123,51 @@ class Test(unittest.TestCase):
 
             res = r.execute()
             self.assertLess(res, 39)
+
+    def testMultipleOutputTensorExecute(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            t = mt.random.rand(20, 5, chunks=5)
+            r = mt.linalg.svd(t)
+
+            res = session.run((t,) + r)
+
+            U, s, V = res[1:]
+            np.testing.assert_allclose(res[0], U.dot(np.diag(s).dot(V)))
+
+            raw = np.random.rand(20, 5)
+
+            # to test the fuse, the graph should be fused
+            t = mt.array(raw)
+            U, s, V = mt.linalg.svd(t)
+            r = U.dot(mt.diag(s).dot(V))
+
+            res = r.execute()
+            np.testing.assert_allclose(raw, res)
+
+            # test submit part of svd outputs
+            t = mt.array(raw)
+            U, s, V = mt.linalg.svd(t)
+
+            with new_session(cluster.endpoint) as session2:
+                U_result, s_result = session2.run(U, s)
+                U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
+
+                np.testing.assert_allclose(U_result, U_expected)
+                np.testing.assert_allclose(s_result, s_expectd)
+
+            with new_session(cluster.endpoint) as session2:
+                U_result, s_result = session2.run(U + 1, s + 1)
+                U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
+
+                np.testing.assert_allclose(U_result, U_expected + 1)
+                np.testing.assert_allclose(s_result, s_expectd + 1)
+
+    def testGraphFail(self):
+        op = SerializeMustFailOperand(f=3)
+        tensor = op.new_tensor(None, (3, 3))
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            with self.assertRaises(SystemError):
+                cluster.session.run(tensor)

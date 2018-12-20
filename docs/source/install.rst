@@ -1,5 +1,9 @@
-Standalone install
-==================
+Standalone mode
+===============
+
+Threaded
+--------
+
 You can install Mars via pip:
 
 .. code-block:: bash
@@ -12,10 +16,51 @@ After installation, you can simply open a Python console and run
 
     import mars.tensor as mt
     from mars.session import new_session
-    sess = new_session()
+
     a = mt.ones((5, 5), chunks=3)
     b = a * 4
-    sess.run(b)
+    # if there isn't a local session,
+    # execute will create a default one first
+    b.execute()
+
+    # or create a session explicitly
+    sess = new_session()
+    sess.run(b)  # run b
+
+
+Local cluster
+-------------
+
+Users can start the distributed runtime of Mars on a single machine.
+First, install Mars distributed by run
+
+.. code-block:: bash
+
+    pip install 'pymars[distributed]'
+
+For now, local cluster mode can only run on Linux and Mac OS.
+
+Then start a local cluster by run
+
+.. code-block:: python
+
+    from mars.deploy.local import new_cluster
+
+    cluster = new_cluster()
+
+    # new cluster will start a session and set it as default one
+    # execute will then run in the local cluster
+    a = mt.random.rand(10, 10)
+    a.dot(a.T).execute()
+
+    # cluster.session is the session created
+    cluster.session.run(a + 1)
+
+    # users can also create a session explicitly
+    # cluster.endpoint needs to be passed to new_session
+    session2 = new_session(cluster.endpoint)
+    session2.run(a * 2)
+
 
 Run on Clusters
 ===============
