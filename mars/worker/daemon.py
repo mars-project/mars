@@ -33,9 +33,6 @@ class WorkerDaemonActor(WorkerActor):
         self._killed_pids = set()
         self._callbacks = []
 
-    def post_create(self):
-        pass
-
     def create_actor(self, *args, **kwargs):
         """
         Create an actor and record its creation args for recovery

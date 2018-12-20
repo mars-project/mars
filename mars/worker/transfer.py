@@ -17,7 +17,7 @@ import os
 import sys
 import time
 import zlib
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 from .. import promise
 from ..compat import six, Enum
@@ -26,7 +26,7 @@ from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled
 from .spill import build_spill_file_name
-from .utils import WorkerActor
+from .utils import WorkerActor, ExpiringCache
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +247,7 @@ class ReceiverActor(WorkerActor):
 
         self._finish_callbacks = defaultdict(list)
         self._data_writers = dict()
-        self._data_meta_cache = OrderedDict()
+        self._data_meta_cache = ExpiringCache()
 
         self._serialize_pool = None
 
@@ -353,7 +353,7 @@ class ReceiverActor(WorkerActor):
             else:
                 del self._data_meta_cache[session_chunk_key]
 
-        self._data_meta_cache[session_chunk_key] = dict(
+        data_meta = self._data_meta_cache[session_chunk_key] = dict(
             transfer_start_time=time.time(),
             chunk_size=data_size,
             write_shared=True,
@@ -377,7 +377,7 @@ class ReceiverActor(WorkerActor):
             try:
                 # attempt to create data chunk on shared store
                 buf = self._chunk_store.create(session_id, chunk_key, data_size)
-                self._data_meta_cache[session_chunk_key]['transfer_start_time'] = time.time()
+                data_meta['transfer_start_time'] = time.time()
                 logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
                              data_size, chunk_key)
                 # create a writer for the chunk
@@ -402,12 +402,12 @@ class ReceiverActor(WorkerActor):
                 else:
                     # create a writer for spill
                     logger.debug('Writing data %s directly into spill.', chunk_key)
-                    self._data_meta_cache[session_chunk_key]['write_shared'] = False
+                    data_meta['write_shared'] = False
                     self._chunk_holder_ref.spill_size(data_size, _tell=True)
                     spill_file_name = build_spill_file_name(chunk_key, writing=True)
                     try:
                         spill_file = open(spill_file_name, 'wb')
-                        self._data_meta_cache[session_chunk_key]['transfer_start_time'] = time.time()
+                        data_meta['transfer_start_time'] = time.time()
                         self._data_writers[session_chunk_key] = spill_file
                     except (KeyError, IOError):
                         if self.check_status(session_id, chunk_key) == ReceiveStatus.RECEIVED:
@@ -546,7 +546,7 @@ class ReceiverActor(WorkerActor):
             if os.path.exists(src_dir):
                 os.unlink(src_dir)
 
-        self._data_meta_cache['status'] = ReceiveStatus.ERROR
+        data_meta['status'] = ReceiveStatus.ERROR
         self._invoke_finish_callbacks(session_id, chunk_key, *exc, **dict(_accept=False))
 
     def _invoke_finish_callbacks(self, session_id, chunk_key, *args, **kwargs):
@@ -560,17 +560,6 @@ class ReceiverActor(WorkerActor):
             self.tell_promise(cb, *args, **kwargs)
         if session_chunk_key in self._finish_callbacks:
             del self._finish_callbacks[session_chunk_key]
-
-        # remove outdated metadata
-        clean_keys = []
-        last_finish_time = time.time() - options.worker.callback_preserve_time
-        for k in self._data_meta_cache:
-            if self._data_meta_cache[k]['transfer_start_time'] < last_finish_time:
-                clean_keys.append(k)
-            else:
-                break
-        for k in clean_keys:
-            del self._data_meta_cache[k]
 
 
 class ResultSenderActor(WorkerActor):

@@ -339,6 +339,10 @@ class ChunkMetaActor(SchedulerActor):
         self._local_meta_store_ref = self.ctx.create_actor(
             LocalChunkMetaActor, uid=LocalChunkMetaActor.default_name())
 
+    def pre_destroy(self):
+        super(ChunkMetaActor, self).pre_destroy()
+        self._local_meta_store_ref.destroy()
+
     def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
         """
         Update metadata broadcast destinations for chunks. After configuration,

@@ -18,7 +18,7 @@ import random
 import sys
 import time
 from functools import partial
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 from .. import promise
 from ..compat import six, Enum
@@ -28,7 +28,7 @@ from ..tensor.expressions.datasource import TensorFetchChunk
 from ..utils import deserialize_graph, log_unhandled
 from .chunkholder import ensure_chunk
 from .spill import spill_exists
-from .utils import WorkerActor, concat_operand_keys
+from .utils import WorkerActor, ExpiringCache, concat_operand_keys
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class ExecutionActor(WorkerActor):
         self._daemon_ref = None
 
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
-        self._callback_cache = OrderedDict()
+        self._callback_cache = ExpiringCache()
         self._size_cache = dict()
 
     def post_create(self):
@@ -179,7 +179,7 @@ class ExecutionActor(WorkerActor):
         self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
 
         self._task_queue_ref.enqueue_task(session_id, graph_key, priority_data, _promise=True) \
-            .then(lambda *_: self.tell_promise(callback))
+            .then(lambda *_: self.tell_promise(callback) if callback else None)
 
     @log_unhandled
     def prepare_quota_request(self, session_id, graph_key):
@@ -200,7 +200,7 @@ class ExecutionActor(WorkerActor):
         input_chunk_keys = dict()
 
         if self._status_ref:
-            self.estimate_graph_finish_time(session_id, graph_key, graph)
+            self.estimate_graph_finish_time(session_id, graph_key)
 
         # collect potential allocation sizes
         for chunk in graph:
@@ -266,7 +266,6 @@ class ExecutionActor(WorkerActor):
     def _build_load_key(graph_key, chunk_key):
         return '%s_load_memory_%s' % (graph_key, chunk_key)
 
-    @promise.reject_on_exception
     @log_unhandled
     def _fetch_remote_data(self, session_id, graph_key, chunk_key, remote_addr, *_, **kwargs):
         """
@@ -302,9 +301,11 @@ class ExecutionActor(WorkerActor):
                 timeout=options.worker.prepare_data_timeout, _promise=True
             ).then(_finish_fetch)
 
-        return remote_disp_ref.get_free_slot('sender', _promise=True).then(_fetch_step)
+        return promise.Promise(done=True) \
+            .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True)) \
+            .then(_fetch_step)
 
-    def estimate_graph_finish_time(self, session_id, graph_key, graph, calc_fetch=True, base_time=None):
+    def estimate_graph_finish_time(self, session_id, graph_key, calc_fetch=True, base_time=None):
         """
         Calc predictions for given chunk graph
         """
@@ -312,6 +313,7 @@ class ExecutionActor(WorkerActor):
         if session_graph_key not in self._graph_records:
             return
         graph_record = self._graph_records[session_graph_key]
+        graph = graph_record.graph
 
         ops = set(type(c.op).__name__ for c in graph if not isinstance(c.op, TensorFetchChunk))
         op_calc_key = ('calc_speed.' + list(ops)[0]) if len(ops) == 1 else None
@@ -360,7 +362,7 @@ class ExecutionActor(WorkerActor):
             max_est_finish_time=max(rec.est_finish_time for rec in self._graph_records.values()),
         ), _tell=True, _wait=False)
 
-        self.ref().estimate_graph_finish_time(session_id, graph_key, graph, _tell=True, _delay=1)
+        self.ref().estimate_graph_finish_time(session_id, graph_key, _tell=True, _delay=1)
 
     def _update_state(self, session_id, key, state):
         logger.debug('Operand %s switched to %s', key, getattr(state, 'name'))
@@ -401,18 +403,17 @@ class ExecutionActor(WorkerActor):
         def _handle_rejection(*exc):
             # some error occurred...
             logger.debug('Entering _handle_rejection() for graph %s', graph_key)
-            if logger.getEffectiveLevel() <= logging.DEBUG:
-                self._dump_execution_states()
+            self._dump_execution_states()
 
             if graph_record.stop_requested:
                 graph_record.stop_requested = False
-                if not isinstance(exc[0], ExecutionInterrupted):
+                if not isinstance(exc[1], ExecutionInterrupted):
                     try:
                         raise ExecutionInterrupted
                     except ExecutionInterrupted:
                         exc = sys.exc_info()
 
-            if isinstance(exc[0], ExecutionInterrupted):
+            if isinstance(exc[1], ExecutionInterrupted):
                 logger.warning('Execution of graph %s interrupted.', graph_key)
             else:
                 try:
@@ -477,10 +478,11 @@ class ExecutionActor(WorkerActor):
                 continue
 
             # load data from another worker
-            worker_results = self.get_meta_ref(session_id, chunk.key) \
-                .get_workers(session_id, chunk.key)
-            if worker_results is None:
+            worker_meta = self.get_meta_ref(session_id, chunk.key) \
+                .get_chunk_meta(session_id, chunk.key)
+            if worker_meta is None:
                 raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
+            worker_results = worker_meta.workers
 
             worker_priorities = []
             for worker_ip in worker_results:
@@ -541,7 +543,7 @@ class ExecutionActor(WorkerActor):
                 else:
                     raise WorkerProcessStopped
 
-            self.estimate_graph_finish_time(session_id, graph_key, graph_record.graph, calc_fetch=False)
+            self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
         except:
             self._dispatch_ref.register_free_slot(calc_uid, 'cpu')
             raise
@@ -606,8 +608,7 @@ class ExecutionActor(WorkerActor):
 
         self._chunk_holder_ref.unpin_chunks(
             graph_key, list(set(c.key for c in graph_record.graph)), _tell=True)
-        if logger.getEffectiveLevel() <= logging.DEBUG:
-            self._dump_execution_states()
+        self._dump_execution_states()
 
         self._size_cache[graph_key] = save_sizes
 
@@ -663,7 +664,7 @@ class ExecutionActor(WorkerActor):
         """
         logger.debug('Adding callback %r for graph %s', callback, graph_key)
         if graph_key in self._callback_cache:
-            _, args, kwargs = self._callback_cache[graph_key]
+            args, kwargs = self._callback_cache[graph_key]
             self.tell_promise(callback, *args, **kwargs)
         else:
             self._graph_records[(session_id, graph_key)].finish_callbacks.append(callback)
@@ -704,23 +705,7 @@ class ExecutionActor(WorkerActor):
         for cb in callbacks:
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
-
-        if graph_key not in self._callback_cache:
-            # preserve callback result for several time to allow add_finish_callback()
-            # after execution done
-            clean_keys = []
-            cur_time = time.time()
-            last_finish_time = cur_time - options.worker.callback_preserve_time
-            self._callback_cache[graph_key] = (cur_time, args, kwargs)
-            for k, tp in self._callback_cache.items():
-                if tp[0] < last_finish_time:
-                    clean_keys.append(k)
-                else:
-                    break
-            for k in clean_keys:
-                del self._callback_cache[k]
-                if k in self._size_cache:
-                    del self._size_cache[k]
+        self._callback_cache[graph_key] = (args, kwargs)
 
     def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:
