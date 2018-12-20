@@ -8,8 +8,6 @@ import threading
 import itertools
 import time
 
-from ..lib_utils import raise_exc
-
 __author__ = 'Brian Quinlan (brian@sweetapp.com)'
 
 FIRST_COMPLETED = 'FIRST_COMPLETED'
@@ -357,8 +355,9 @@ class Future(object):
             return self._state in [CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED]
 
     def __get_result(self):
+        from ...compat import six
         if self._exception:
-            raise_exc(type(self._exception), self._exception, self._traceback)
+            six.reraise(type(self._exception), self._exception, self._traceback)
         else:
             return self._result
 

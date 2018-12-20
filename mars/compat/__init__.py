@@ -251,7 +251,7 @@ else:
     def queue_get(q):
         return q.get()
 
-from ..lib.lib_utils import isvalidattr, dir2, raise_exc, getargspec, getfullargspec
+from ..lib.lib_utils import isvalidattr, dir2, getargspec, getfullargspec
 
 from ..lib.six.moves import reduce, zip_longest
 from ..lib.six.moves import reload_module
