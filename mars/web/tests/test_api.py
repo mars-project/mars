@@ -195,6 +195,7 @@ class TestWithMockServer(unittest.TestCase):
 
         # create scheduler pool with needed actor
         scheduler_address = '127.0.0.1:' + str(get_next_port())
+        self._scheduler_address = scheduler_address
         pool = create_actor_pool(address=scheduler_address, n_process=1, backend='gevent')
         pool.create_actor(ClusterInfoActor, [scheduler_address], uid=ClusterInfoActor.default_name())
         pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
@@ -203,6 +204,21 @@ class TestWithMockServer(unittest.TestCase):
         self._pool = pool
 
         self.start_web(scheduler_address)
+
+    def tearDown(self):
+        self._web.stop()
+        self._pool.stop()
+
+    def start_web(self, scheduler_address):
+        import gevent.monkey
+        gevent.monkey.patch_all(thread=False)
+
+        web_port = str(get_next_port())
+        mars_web = MarsWeb(port=int(web_port), scheduler_ip=scheduler_address)
+        mars_web.start()
+        service_ep = 'http://127.0.0.1:' + web_port
+        self._service_ep = service_ep
+        self._web = mars_web
 
         check_time = time.time()
         while True:
@@ -217,21 +233,6 @@ class TestWithMockServer(unittest.TestCase):
                 time.sleep(1)
                 continue
             break
-
-    def tearDown(self):
-        self._web.stop()
-        self._pool.stop()
-
-    def start_web(self, scheduler_address):
-        import gevent.monkey
-        gevent.monkey.patch_all()
-
-        web_port = str(get_next_port())
-        mars_web = MarsWeb(port=int(web_port), scheduler_ip=scheduler_address)
-        mars_web.start()
-        service_ep = 'http://127.0.0.1:' + web_port
-        self._web = mars_web
-        self._service_ep = service_ep
 
     @mock.patch(GraphActor.__module__ + '.GraphActor.execute_graph')
     @mock.patch(GraphActor.__module__ + '.ResultReceiverActor.fetch_tensor')
@@ -249,6 +250,15 @@ class TestWithMockServer(unittest.TestCase):
             graph_state = json.loads(requests.get(graph_url).text)
             self.assertEqual(graph_state['state'], 'success')
             mock_fetch_tensor.return_value = dumps(self._executor.execute_tensor(c, concat=True)[0])
+            data_url = graph_url + '/data/' + c.key
+            data = loads(requests.get(data_url).content)
+            assert_array_equal(data, np.ones((100, 100)) * 100)
+
+            # test web session endpoint setter
+            self._web.stop()
+            self.start_web(self._scheduler_address)
+            sess.endpoint = self._service_ep
+            graph_url = '%s/api/session/%s/graph/%s' % (self._service_ep, sess.session_id, graph_key)
             data_url = graph_url + '/data/' + c.key
             data = loads(requests.get(data_url).content)
             assert_array_equal(data, np.ones((100, 100)) * 100)
