@@ -115,6 +115,7 @@ if six.PY3:
 
     BrokenPipeError = BrokenPipeError
     ConnectionResetError = ConnectionResetError
+    ConnectionRefusedError = ConnectionRefusedError
     TimeoutError = TimeoutError
 
     from itertools import accumulate
@@ -185,17 +186,10 @@ else:
         import numpy as np
         return np.getbuffer(n)
 
-
-    class TimeoutError(Exception):
-        pass
-
-
-    class BrokenPipeError(Exception):
-        pass
-
-
-    class ConnectionResetError(Exception):
-        pass
+    TimeoutError = type('TimeoutError', (Exception, ), {})
+    BrokenPipeError = type('BrokenPipeError', (Exception, ), {})
+    ConnectionRefusedError = type('ConnectionRefusedError', (Exception, ), {})
+    ConnectionResetError = type('ConnectionResetError', (Exception,), {})
 
 
     def accumulate(iterable, func=lambda a, b: a + b):
@@ -439,8 +433,9 @@ except ImportError:
 
 
 __all__ = ['PY27', 'sys', 'builtins', 'logging.config', 'OrderedDict', 'dictconfig', 'suppress',
-           'reduce', 'reload_module', 'Queue', 'PriorityQueue', 'Empty', 'ElementTree', 'ElementTreeParseError',
-           'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote', 'quote', 'quote_plus', 'parse_qsl',
-           'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES', 'FixedOffset', 'utc', 'finalize',
-           'functools32', 'zip_longest', 'OrderedDict3', 'BrokenPipeError', 'TimeoutError', 'ConnectionResetError',
-           'izip', 'accumulate']
+           'reduce', 'reload_module', 'Queue', 'PriorityQueue', 'Empty', 'ElementTree',
+           'ElementTreeParseError', 'urlretrieve', 'pickle', 'urlencode', 'urlparse',
+           'unquote', 'quote', 'quote_plus', 'parse_qsl', 'Enum', 'ConfigParser', 'decimal',
+           'Decimal', 'DECIMAL_TYPES', 'FixedOffset', 'utc', 'finalize', 'functools32',
+           'zip_longest', 'OrderedDict3', 'BrokenPipeError', 'TimeoutError', 'ConnectionResetError',
+           'ConnectionRefusedError', 'izip', 'accumulate']
