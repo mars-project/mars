@@ -22,6 +22,7 @@ import os
 import sys
 import signal
 import subprocess
+import uuid
 
 import gevent
 import numpy as np
@@ -29,13 +30,9 @@ from numpy.testing import assert_array_equal
 
 
 from mars import tensor as mt
-from mars.tensor.execution.core import Executor
-from mars.actors import create_actor_pool, new_client
+from mars.actors import new_client
 from mars.utils import get_next_port
-from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import SessionManagerActor, KVStoreActor, ResourceActor
-from mars.scheduler.graph import GraphActor
-from mars.web import MarsWeb
+from mars.scheduler import KVStoreActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps, loads
 from mars.config import options
@@ -189,76 +186,77 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
 
 
+class MockResponse:
+    def __init__(self, status_code, json_text=None, data=None):
+        self._json_text = json_text
+        self._content = data
+        self._status_code = status_code
+
+    @property
+    def text(self):
+        return json.dumps(self._json_text)
+
+    @property
+    def content(self):
+        return self._content
+
+    @property
+    def status_code(self):
+        return self._status_code
+
+
+class MockedServer(object):
+    def __init__(self):
+        self._data = None
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
+
+    @staticmethod
+    def mocked_requests_get(*arg, **_):
+        url = arg[0]
+        if url.endswith('worker'):
+            return MockResponse(200, json_text=1)
+        if url.split('/')[-2] == 'graph':
+            return MockResponse(200, json_text={"state": 'success'})
+        elif url.split('/')[-2] == 'data':
+            data = dumps(np.ones((100, 100)) * 100)
+            return MockResponse(200, data=data)
+
+    @staticmethod
+    def mocked_requests_post(*arg, **_):
+        url = arg[0]
+        if url.endswith('session'):
+            return MockResponse(200, json_text={"session_id": str(uuid.uuid4())})
+        elif url.endswith('graph'):
+            return MockResponse(200, json_text={"graph_key": str(uuid.uuid4())})
+        else:
+            return MockResponse(404)
+
+    @staticmethod
+    def mocked_requests_delete(*_):
+        return MockResponse(200)
+
+
 class TestWithMockServer(unittest.TestCase):
     def setUp(self):
-        self._executor = Executor('numpy')
+        self._service_ep = 'http://mock.com'
 
-        # create scheduler pool with needed actor
-        scheduler_address = '127.0.0.1:' + str(get_next_port())
-        self._scheduler_address = scheduler_address
-        pool = create_actor_pool(address=scheduler_address, n_process=1, backend='gevent')
-        pool.create_actor(ClusterInfoActor, [scheduler_address], uid=ClusterInfoActor.default_name())
-        pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-        pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
-        self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-        self._pool = pool
-
-        self.start_web(scheduler_address)
-
-    def tearDown(self):
-        self._web.stop()
-        self._pool.stop()
-
-    def start_web(self, scheduler_address):
-        import gevent.monkey
-        gevent.monkey.patch_all(thread=False)
-
-        web_port = str(get_next_port())
-        mars_web = MarsWeb(port=int(web_port), scheduler_ip=scheduler_address)
-        mars_web.start()
-        service_ep = 'http://127.0.0.1:' + web_port
-        self._service_ep = service_ep
-        self._web = mars_web
-
-        check_time = time.time()
-        while True:
-            if time.time() - check_time > 30:
-                raise SystemError('Wait for service start timeout')
-            try:
-                resp = requests.get(self._service_ep + '/api', timeout=1)
-            except (requests.ConnectionError, requests.Timeout):
-                time.sleep(1)
-                continue
-            if resp.status_code >= 400:
-                time.sleep(1)
-                continue
-            break
-
-    @mock.patch(GraphActor.__module__ + '.GraphActor.execute_graph')
-    @mock.patch(GraphActor.__module__ + '.ResultReceiverActor.fetch_tensor')
-    def testApi(self, mock_fetch_tensor, _):
+    @mock.patch('requests.Session.get', side_effect=MockedServer.mocked_requests_get)
+    @mock.patch('requests.Session.post', side_effect=MockedServer.mocked_requests_post)
+    @mock.patch('requests.Session.delete', side_effect=MockedServer.mocked_requests_delete)
+    def testApi(self, *_):
         with new_session(self._service_ep) as sess:
-            self._kv_store_ref.write('/workers/meta/%s' % 'mock_endpoint', 'mock_meta')
             self.assertEqual(sess.count_workers(), 1)
 
             a = mt.ones((100, 100), chunks=30)
             b = mt.ones((100, 100), chunks=30)
             c = a.dot(b)
-            graph_key = sess.run(c, timeout=120, wait=False)
-            self._kv_store_ref.write('/sessions/%s/graph/%s/state' % (sess.session_id, graph_key), 'SUCCEEDED')
-            graph_url = '%s/api/session/%s/graph/%s' % (self._service_ep, sess.session_id, graph_key)
-            graph_state = json.loads(requests.get(graph_url).text)
-            self.assertEqual(graph_state['state'], 'success')
-            mock_fetch_tensor.return_value = dumps(self._executor.execute_tensor(c, concat=True)[0])
-            data_url = graph_url + '/data/' + c.key
-            data = loads(requests.get(data_url).content)
-            assert_array_equal(data, np.ones((100, 100)) * 100)
 
-            # test web session endpoint setter
-            self._web.stop()
-            self.start_web(self._scheduler_address)
-            sess.endpoint = self._service_ep
-            graph_url = '%s/api/session/%s/graph/%s' % (self._service_ep, sess.session_id, graph_key)
-            data_url = graph_url + '/data/' + c.key
-            data = loads(requests.get(data_url).content)
-            assert_array_equal(data, np.ones((100, 100)) * 100)
+            result = sess.run(c, timeout=120)
+            assert_array_equal(result, np.ones((100, 100)) * 100)
