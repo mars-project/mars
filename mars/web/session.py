@@ -45,6 +45,14 @@ class Session(object):
     def session_id(self):
         return self._session_id
 
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, url):
+        self._endpoint = url
+
     def _main(self):
         resp = self._req_session.post(self._endpoint + '/api/session', self._args)
         if resp.status_code >= 400:
