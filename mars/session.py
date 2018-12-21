@@ -98,10 +98,12 @@ class Session(object):
             return ret
         return ret[0]
 
+    @property
     def endpoint(self):
         return self._sess.endpoint
 
-    def set_endpoint(self, endpoint):
+    @endpoint.setter
+    def endpoint(self, endpoint):
         self._sess.endpoint = endpoint
 
     def decref(self, *keys):
