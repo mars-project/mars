@@ -34,7 +34,7 @@ class TensorWeibull(operands.Weibull, TensorRandomOperandMixin):
 
 
 def weibull(random_state, a, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Weibull distribution.
 
     Draw samples from a 1-parameter Weibull distribution with the given

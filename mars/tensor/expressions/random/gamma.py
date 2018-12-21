@@ -34,7 +34,7 @@ class TensorGamma(operands.Gamma, TensorRandomOperandMixin):
 
 
 def gamma(random_state, shape, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Gamma distribution.
 
     Samples are drawn from a Gamma distribution with specified parameters,

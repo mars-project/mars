@@ -18,7 +18,6 @@ import logging
 from collections import deque
 
 from .compat import six, Enum
-from .operands import Fuse
 from .serialize import Serializable, ValueType, ProviderType, \
     OneOfField, ListField, Int8Field
 
@@ -418,106 +417,15 @@ cdef class DirectedGraph:
     def from_json(cls, json_obj):
         return cls.deserialize(SerialiableGraph.from_json(json_obj))
 
-    def _compose_graph(self, composes):
-        cdef:
-            list composed_nodes = []
-
-        from .tensor.expressions.fuse.core import TensorFuseChunk
-        composed_nodes = []
-
-        for c in composes:
-            head_node = c[0]
-            tail_node = c[-1]
-            fuse_op = TensorFuseChunk(dtype=tail_node.dtype, _key=tail_node.op.key)
-            fuse_chunk = fuse_op.new_chunk(head_node.inputs, tail_node.shape,
-                                           index=tail_node.index, _key=tail_node.key,
-                                           _composed=c)
-            self.add_node(fuse_chunk)
-            for node in self.iter_successors(tail_node):
-                self.add_edge(fuse_chunk, node)
-                # change inputs
-                node.inputs = [i if i is not tail_node else fuse_chunk for i in node.inputs]
-            for node in self.iter_predecessors(head_node):
-                self.add_edge(node, fuse_chunk)
-            # TODO:judge compose is independent?
-            for node in c:
-                self.remove_node(node)
-            composed_nodes.append(fuse_chunk)
-
-        return composed_nodes
-
     def compose(self, list keys=None):
-        def _visit_predicate(n, visited):
-            cond = any if getattr(n.op, '_loose_require', False) else all
-            preds = self.predecessors(n)
-            return not preds or cond(pred in visited for pred in preds)
+        from .fuse import Fusion
 
-        composes = []
-        explored = set()
-        # for those chunk in result sets, we should not do any fuse
-        keys_set = set(keys or [])
-
-        for v in self.bfs(visit_predicate=_visit_predicate):
-            if v in explored or v.key in keys_set:
-                continue
-            if self.count_successors(v) != 1:
-                continue
-            if len(v.op.outputs) != 1:
-                continue
-            selected = [v]
-            # add successors
-            cur_node = self.successors(v)[0]
-            while self.count_predecessors(cur_node) == 1:
-                selected.append(cur_node)
-                if self.count_successors(cur_node) != 1:
-                    break
-                else:
-                    cur_node = self.successors(cur_node)[0]
-            if len(selected) > 1:
-                explored.update(selected)
-                composes.append(list(selected))
-        return self._compose_graph(composes)
-
-    def _decompose_node(self, node):
-        def get_node(n):
-            if n.composed:
-                return n.composed[-1]
-            return n
-
-        observed = set()
-
-        composed_nodes = node.composed
-        nodes_set = set(composed_nodes)
-        tail_node = composed_nodes[-1]
-        self.add_node(tail_node)
-        observed.add(tail_node)
-        q = deque()
-        q.append(tail_node)
-        while len(q) > 0:
-            cur_node = q.pop()
-            if not cur_node.inputs:
-                continue
-            for pre in cur_node.inputs:
-                pre = get_node(pre)
-                if pre in nodes_set:
-                    self.add_node(pre)
-                if pre in self:
-                    self.add_edge(pre, cur_node)
-                if pre in nodes_set:
-                    q.appendleft(pre)
-                    observed.add(pre)
-        if len(observed) != len(nodes_set):
-            raise InvalidComposedNodeError("Invalid composed node data")
-        for n in self.iter_successors(node):
-            self.add_edge(composed_nodes[-1], n)
-        self.remove_node(node)
+        return Fusion(self).compose(keys=keys)
 
     def decompose(self, nodes=None):
-        if nodes is None:
-            nodes = list(self.traverse())
-        for v in nodes:
-            if isinstance(v.op, Fuse):
-                self._decompose_node(v)
+        from .fuse import Fusion
+
+        Fusion(self).decompose(nodes=nodes)
 
     def view(self, filename='default', graph_attrs=None, node_attrs=None):
         from graphviz import Source
@@ -527,10 +435,6 @@ cdef class DirectedGraph:
 
 
 class GraphContainsCycleError(Exception):
-    pass
-
-
-class InvalidComposedNodeError(Exception):
     pass
 
 

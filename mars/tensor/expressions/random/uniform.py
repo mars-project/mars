@@ -34,7 +34,7 @@ class TensorUniform(operands.Uniform, TensorRandomOperandMixin):
 
 
 def uniform(random_state, low=0.0, high=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a uniform distribution.
 
     Samples are uniformly distributed over the half-open interval

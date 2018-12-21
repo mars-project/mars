@@ -34,7 +34,7 @@ class TensorNoncentralChisquare(operands.NoncentralChisquare, TensorRandomOperan
 
 
 def noncentral_chisquare(random_state, df, nonc, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a noncentral chi-square distribution.
 
     The noncentral :math:`\chi^2` distribution is a generalisation of

@@ -34,7 +34,7 @@ class TensorStandardGamma(operands.StandardGamma, TensorRandomOperandMixin):
 
 
 def standard_gamma(random_state, shape, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a standard Gamma distribution.
 
     Samples are drawn from a Gamma distribution with specified parameters,

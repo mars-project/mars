@@ -34,7 +34,7 @@ class TensorAbsolute(operands.Absolute, TensorUnaryOp):
 
 @infer_dtype(np.absolute)
 def absolute(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Calculate the absolute value element-wise.
 
     Parameters

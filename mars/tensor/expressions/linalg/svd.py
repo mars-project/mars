@@ -68,11 +68,13 @@ class TensorSVD(operands.SVD, TSQR):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
             svd_chunks = chunk_op.new_chunks([in_chunk], (U_shape, s_shape, V_shape),
-                                             index=in_chunk.index,
                                              kws=[
-                                                 {'side': 'U', 'dtype': U_dtype},
-                                                 {'side': 's', 'dtype': s_dtype},
-                                                 {'side': 'V', 'dtype': V_dtype}
+                                                 {'side': 'U', 'dtype': U_dtype,
+                                                  'index': in_chunk.index},
+                                                 {'side': 's', 'dtype': s_dtype,
+                                                  'index': in_chunk.index[1:]},
+                                                 {'side': 'V', 'dtype': V_dtype,
+                                                  'index': in_chunk.index}
                                              ])
             U_chunk, s_chunk, V_chunk = svd_chunks
 

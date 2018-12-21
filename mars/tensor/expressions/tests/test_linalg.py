@@ -63,6 +63,24 @@ class Test(unittest.TestCase):
         self.assertEqual(len(s.chunks), 1)
         self.assertEqual(len(V.chunks), 1)
 
+        self.assertEqual(s.ndim, 1)
+        self.assertEqual(len(s.chunks[0].index), 1)
+
+        a = mt.random.rand(9, 6, chunks=(9, 6))
+        U, s, V = mt.linalg.svd(a)
+
+        self.assertEqual(U.shape, (9, 6))
+        self.assertEqual(s.shape, (6,))
+        self.assertEqual(V.shape, (6, 6))
+
+        U.tiles()
+        self.assertEqual(len(U.chunks), 1)
+        self.assertEqual(len(s.chunks), 1)
+        self.assertEqual(len(V.chunks), 1)
+
+        self.assertEqual(s.ndim, 1)
+        self.assertEqual(len(s.chunks[0].index), 1)
+
         rs = mt.random.RandomState(1)
         a = rs.rand(9, 6, chunks=(3, 6))
         U, s, V = mt.linalg.svd(a)

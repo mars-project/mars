@@ -34,7 +34,7 @@ class TensorPareto(operands.Pareto, TensorRandomOperandMixin):
 
 
 def pareto(random_state, a, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Pareto II or Lomax distribution with
     specified shape.
 

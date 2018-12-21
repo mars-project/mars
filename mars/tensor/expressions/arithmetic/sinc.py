@@ -34,7 +34,7 @@ class TensorSinc(operands.Sinc, TensorUnaryOp):
 
 @infer_dtype(np.sinc)
 def sinc(x, **kwargs):
-    """
+    r"""
     Return the sinc function.
 
     The sinc function is :math:`\\sin(\\pi x)/(\\pi x)`.

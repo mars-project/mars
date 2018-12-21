@@ -34,7 +34,7 @@ class TensorNegativeBinomial(operands.NegativeBinomial, TensorRandomOperandMixin
 
 
 def negative_binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a negative binomial distribution.
 
     Samples are drawn from a negative binomial distribution with specified

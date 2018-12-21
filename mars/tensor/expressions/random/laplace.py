@@ -34,7 +34,7 @@ class TensorLaplace(operands.Laplace, TensorRandomOperandMixin):
 
 
 def laplace(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from the Laplace or double exponential distribution with
     specified location (or mean) and scale (decay).
 

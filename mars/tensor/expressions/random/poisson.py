@@ -34,7 +34,7 @@ class TensorPoisson(operands.Poisson, TensorRandomOperandMixin):
 
 
 def poisson(random_state, lam=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Poisson distribution.
 
     The Poisson distribution is the limit of the binomial distribution

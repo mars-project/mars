@@ -34,7 +34,7 @@ class TensorRayleigh(operands.Rayleigh, TensorRandomOperandMixin):
 
 
 def rayleigh(random_state, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Rayleigh distribution.
 
     The :math:`\chi` and Weibull distributions are generalizations of the

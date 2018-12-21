@@ -18,14 +18,14 @@ from .cov import cov
 
 
 def corrcoef(x, y=None, rowvar=True):
-    """
+    r"""
     Return Pearson product-moment correlation coefficients.
 
     Please refer to the documentation for `cov` for more detail.  The
     relationship between the correlation coefficient matrix, `R`, and the
     covariance matrix, `C`, is
 
-    .. math:: R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }
+    .. math:: R_{ij} = \frac{ C_{ij} } { \sqrt{ C_{ii} * C_{jj} } }
 
     The values of `R` are between -1 and 1, inclusive.
 

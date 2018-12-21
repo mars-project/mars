@@ -34,7 +34,7 @@ class TensorBeta(operands.Beta, TensorRandomOperandMixin):
 
 
 def beta(random_state, a, b, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Beta distribution.
 
     The Beta distribution is a special case of the Dirichlet distribution,

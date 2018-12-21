@@ -34,7 +34,7 @@ class TensorLogistic(operands.Logistic, TensorRandomOperandMixin):
 
 
 def logistic(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a logistic distribution.
 
     Samples are drawn from a logistic distribution with specified
