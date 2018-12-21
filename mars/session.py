@@ -29,6 +29,15 @@ class LocalSession(object):
         from .tensor.execution.core import Executor
 
         self._executor = Executor()
+        self._endpoint = None
+
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, endpoint):
+        self._endpoint = endpoint
 
     def run(self, *tensors, **kw):
         if self._executor is None:
@@ -107,10 +116,7 @@ class Session(object):
 
     def __setattr__(self, key, value):
         if key == 'endpoint':
-            try:
-                return setattr(self._sess, key, value)
-            except AttributeError:
-                raise
+            return setattr(self._sess, key, value)
         else:
             object.__setattr__(self, key, value)
 

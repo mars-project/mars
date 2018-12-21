@@ -34,6 +34,15 @@ class LocalClusterSession(object):
         # create session on the cluster side
         self._api.create_session(self._session_id)
 
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, endpoint):
+        self._endpoint = endpoint
+        self._api = MarsAPI(self._endpoint)
+
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
         if kw:
