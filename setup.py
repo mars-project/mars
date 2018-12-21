@@ -81,6 +81,7 @@ else:
 extension_kw['include_dirs'] = [np.get_include()]
 extensions = [
     Extension('mars.graph', ['mars/graph.pyx'], **extension_kw),
+    Extension('mars.fuse', ['mars/fuse.pyx'], **extension_kw),
     Extension('mars.utils_c', ['mars/utils_c.pyx'], **extension_kw),
     Extension('mars.lib.gipc', ['mars/lib/gipc.pyx'], **extension_kw),
     Extension('mars.actors.core', ['mars/actors/core.pyx'], **extension_kw),
