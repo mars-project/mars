@@ -34,7 +34,7 @@ class TensorNormal(operands.Normal, TensorRandomOperandMixin):
 
 
 def normal(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw random samples from a normal (Gaussian) distribution.
 
     The probability density function of the normal distribution, first

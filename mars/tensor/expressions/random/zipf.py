@@ -34,7 +34,7 @@ class TensorZipf(operands.Zipf, TensorRandomOperandMixin):
 
 
 def zipf(random_state, a, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Zipf distribution.
 
     Samples are drawn from a Zipf distribution with specified parameter

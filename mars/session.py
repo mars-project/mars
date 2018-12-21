@@ -14,14 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import uuid
-import json
-import time
 import numpy as np
-
-from .api import MarsAPI
-from .scheduler.graph import GraphState
-from .serialize import dataserializer
 
 
 class LocalSession(object):

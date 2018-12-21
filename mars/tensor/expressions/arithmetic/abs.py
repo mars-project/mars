@@ -34,7 +34,7 @@ class TensorAbs(operands.Abs, TensorUnaryOp):
 
 @infer_dtype(np.abs)
 def abs(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Calculate the absolute value element-wise.
 
     Parameters

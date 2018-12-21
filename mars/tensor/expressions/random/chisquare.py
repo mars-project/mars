@@ -34,7 +34,7 @@ class TensorChisquare(operands.Chisquare, TensorRandomOperandMixin):
 
 
 def chisquare(random_state, df, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a chi-square distribution.
 
     When `df` independent random variables, each with standard normal

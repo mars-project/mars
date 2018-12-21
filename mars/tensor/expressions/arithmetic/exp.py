@@ -34,7 +34,7 @@ class TensorExp(operands.Exp, TensorUnaryOp):
 
 @infer_dtype(np.exp)
 def exp(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Calculate the exponential of all elements in the input tensor.
 
     Parameters

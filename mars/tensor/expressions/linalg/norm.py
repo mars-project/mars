@@ -133,7 +133,7 @@ class TensorNorm(operands.Norm, TensorOperandMixin):
 
 
 def norm(x, ord=None, axis=None, keepdims=False):
-    """
+    r"""
     Matrix or vector norm.
 
     This function is able to return one of eight different matrix norms,

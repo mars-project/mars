@@ -34,7 +34,7 @@ class TensorLognormal(operands.Lognormal, TensorRandomOperandMixin):
 
 
 def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a log-normal distribution.
 
     Draw samples from a log-normal distribution with specified mean,

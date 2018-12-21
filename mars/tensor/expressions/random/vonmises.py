@@ -34,7 +34,7 @@ class TensorVonmises(operands.Vonmises, TensorRandomOperandMixin):
 
 
 def vonmises(random_state, mu, kappa, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a von Mises distribution.
 
     Samples are drawn from a von Mises distribution with specified mode

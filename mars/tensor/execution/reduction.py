@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -213,8 +213,9 @@ def _handle_arg_combine(arg_op):
                 if xp != np:
                     inds = [xp.asarray(it) for it in inds]
                 inds.insert(axis, local_args)
-                vals = vals[inds]
-                arg = arg[inds]
+                inds_tuple = tuple(inds)
+                vals = vals[inds_tuple]
+                arg = arg[inds_tuple]
                 if keepdims:
                     vals = xp.expand_dims(vals, axis)
                     arg = xp.expand_dims(arg, axis)
@@ -241,7 +242,7 @@ def _handle_arg(arg_op):
                 if xp != np:
                     inds = [xp.asarray(it) for it in inds]
                 inds.insert(axis, local_args)
-                arg = arg[inds]
+                arg = arg[tuple(inds)]
                 if keepdims:
                     arg = xp.expand_dims(arg, axis)
             ctx[chunk.key] = arg
@@ -310,7 +311,7 @@ def _count_nonzero(ctx, chunk):
             slcs = [slice(None)] * chunk.inputs[0].ndim
             for ax in chunk.op.axis:
                 slcs[ax] = np.newaxis
-            nz = xp.asarray(nz)[slcs]
+            nz = xp.asarray(nz)[tuple(slcs)]
 
         ctx[chunk.key] = nz
 

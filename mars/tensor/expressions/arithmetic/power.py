@@ -51,7 +51,7 @@ class TensorPowConstant(operands.PowConstant, TensorConstant):
 
 @infer_dtype(np.power)
 def power(x1, x2, out=None, where=None, **kwargs):
-    """
+    r"""
     First tensor elements raised to powers from second tensor, element-wise.
 
     Raise each base in `x1` to the positionally-corresponding power in
