@@ -72,7 +72,7 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
 
 
 def dirichlet(random_state, alpha, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from the Dirichlet distribution.
 
     Draw `size` samples of dimension k from a Dirichlet distribution. A

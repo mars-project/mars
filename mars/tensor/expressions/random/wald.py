@@ -34,7 +34,7 @@ class TensorWald(operands.Wald, TensorRandomOperandMixin):
 
 
 def wald(random_state, mean, scale, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Wald, or inverse Gaussian, distribution.
 
     As the scale approaches infinity, the distribution becomes more like a

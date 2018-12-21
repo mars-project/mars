@@ -33,7 +33,7 @@ class Test(unittest.TestCase):
         test compose in build graph and optimize
         """
 
-        """
+        r"""
         graph(@: node, #: composed_node):
 
         @ --> @ --> @   ========>    #     
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         composed_nodes = graph.compose(keys=[chunks[1].key])
         self.assertEqual(len(composed_nodes), 0)
 
-        """
+        r"""
         graph(@: node, #: composed_node):
 
         @             @              @       @
@@ -97,7 +97,7 @@ class Test(unittest.TestCase):
 
         # test optimizer compose
 
-        """
+        r"""
         graph(@: node, S: Slice Chunk, #: composed_node):
 
         @                   @              @             @
@@ -123,7 +123,7 @@ class Test(unittest.TestCase):
         composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[2:4])
 
-        """
+        r"""
             graph(@: node, S: Slice Chunk, #: composed_node):
 
             @ --> @ --> S --> @  ========>  # --> S --> @
@@ -142,7 +142,7 @@ class Test(unittest.TestCase):
         self.assertTrue(composed_nodes[0].composed == chunks[:2])
         self.assertTrue(len(composed_nodes) == 1)
 
-        """
+        r"""
             graph(@: node, S: Slice Chunk, #: composed_node):
 
             @ --> @ --> S --> @ --> @   ========>  # --> S --> #

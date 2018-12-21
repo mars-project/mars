@@ -34,7 +34,7 @@ class TensorLogseries(operands.Logseries, TensorRandomOperandMixin):
 
 
 def logseries(random_state, p, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a logarithmic series distribution.
 
     Samples are drawn from a log series distribution with specified

@@ -34,7 +34,7 @@ class TensorStandardT(operands.StandardT, TensorRandomOperandMixin):
 
 
 def standard_t(random_state, df, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a standard Student's t distribution with `df` degrees
     of freedom.
 

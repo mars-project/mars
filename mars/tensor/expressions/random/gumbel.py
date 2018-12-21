@@ -34,7 +34,7 @@ class TensorGumbel(operands.Gumbel, TensorRandomOperandMixin):
 
 
 def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Gumbel distribution.
 
     Draw samples from a Gumbel distribution with specified location and

@@ -31,7 +31,7 @@ class TensorRandn(operands.Randn, TensorRandomOperandMixin):
 
 
 def randn(random_state, *dn, **kw):
-    """
+    r"""
     Return a sample (or samples) from the "standard normal" distribution.
 
     If positive, int_like or int-convertible arguments are provided,

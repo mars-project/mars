@@ -34,7 +34,7 @@ class TensorSign(operands.Sign, TensorUnaryOp):
 
 @infer_dtype(np.sign)
 def sign(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Returns an element-wise indication of the sign of a number.
 
     The `sign` function returns ``-1 if x < 0, 0 if x==0, 1 if x > 0``.  nan

@@ -33,7 +33,7 @@ class TensorStandardCauchy(operands.StandardCauchy, TensorRandomOperandMixin):
 
 
 def standard_cauchy(random_state, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a standard Cauchy distribution with mode = 0.
 
     Also known as the Lorentz distribution.

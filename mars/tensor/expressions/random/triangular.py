@@ -34,7 +34,7 @@ class TensorTriangular(operands.Triangular, TensorRandomOperandMixin):
 
 
 def triangular(random_state, left, mode, right, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from the triangular distribution over the
     interval ``[left, right]``.
 

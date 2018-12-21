@@ -34,7 +34,7 @@ class TensorBinomial(operands.Binomial, TensorRandomOperandMixin):
 
 
 def binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a binomial distribution.
 
     Samples are drawn from a binomial distribution with specified

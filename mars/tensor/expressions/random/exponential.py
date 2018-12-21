@@ -34,7 +34,7 @@ class TensorExponential(operands.Exponential, TensorRandomOperandMixin):
 
 
 def exponential(random_state, scale=1.0, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from an exponential distribution.
 
     Its probability density function is

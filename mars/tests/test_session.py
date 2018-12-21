@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 
 import mars.tensor as mt
-from mars.tests.core import TestBase
 
 
-class Test(TestBase):
+class Test(unittest.TestCase):
     def testSessionExecute(self):
         a = mt.random.rand(10, 20)
         res = a.sum().execute()

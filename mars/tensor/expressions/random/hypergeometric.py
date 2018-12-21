@@ -34,7 +34,7 @@ class TensorHypergeometric(operands.Hypergeometric, TensorRandomOperandMixin):
 
 
 def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunks=None, gpu=None, **kw):
-    """
+    r"""
     Draw samples from a Hypergeometric distribution.
 
     Samples are drawn from a hypergeometric distribution with specified
