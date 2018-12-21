@@ -105,6 +105,15 @@ class Session(object):
         except AttributeError:
             raise
 
+    def __setattr__(self, key, value):
+        if key == 'endpoint':
+            try:
+                return setattr(self._sess, key, value)
+            except AttributeError:
+                raise
+        else:
+            object.__setattr__(self, key, value)
+
     def __enter__(self):
         self._sess.__enter__()
         return self

@@ -193,10 +193,6 @@ class LocalDistributedClusterClient(object):
     def web_endpoint(self):
         return self._web_endpoint
 
-    @web_endpoint.setter
-    def web_endpoint(self, web_endpoint):
-        self._web_endpoint = web_endpoint
-
     @property
     def session(self):
         return self._session
