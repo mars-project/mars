@@ -14,14 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import uuid
-import json
-import time
 import numpy as np
-
-from .api import MarsAPI
-from .scheduler.graph import GraphState
-from .serialize import dataserializer
 
 
 class LocalSession(object):
@@ -37,6 +30,8 @@ class LocalSession(object):
 
     @endpoint.setter
     def endpoint(self, endpoint):
+        if endpoint is not None:
+            raise ValueError('Local session cannot set endpoint')
         self._endpoint = endpoint
 
     def run(self, *tensors, **kw):
@@ -103,6 +98,12 @@ class Session(object):
             return ret
         return ret[0]
 
+    def endpoint(self):
+        return self._sess.endpoint
+
+    def set_endpoint(self, endpoint):
+        self._sess.endpoint = endpoint
+
     def decref(self, *keys):
         if hasattr(self._sess, 'decref'):
             self._sess.decref(*keys)
@@ -113,12 +114,6 @@ class Session(object):
             return obj
         except AttributeError:
             raise
-
-    def __setattr__(self, key, value):
-        if key == 'endpoint':
-            return setattr(self._sess, key, value)
-        else:
-            object.__setattr__(self, key, value)
 
     def __enter__(self):
         self._sess.__enter__()
