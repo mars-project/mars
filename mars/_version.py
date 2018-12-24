@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version_info = (0, 1, 0, 'a1')
+version_info = (0, 1, 0, 'a2')
 _num_index = max(idx if isinstance(v, int) else 0
                  for idx, v in enumerate(version_info))
 __version__ = '.'.join(map(str, version_info[:_num_index + 1])) + \

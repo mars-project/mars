@@ -88,7 +88,7 @@ Threaded
 
     import mars.tensor as mt
 
-    a = mt.ones(10, 10)
+    a = mt.ones((10, 10))
     a.execute()
 
 Users can create a session explicitly.
