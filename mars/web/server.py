@@ -89,7 +89,7 @@ class MarsWebAPI(MarsAPI):
 
                 state = self.get_graph_state(session_id, graph_key)
                 if state == GraphState.PREPARING:
-                    task_desc['state'] = state.lower()
+                    task_desc['state'] = state.name.lower()
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
