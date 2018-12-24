@@ -91,6 +91,10 @@ class SpillNotConfigured(MarsError):
     pass
 
 
+class GraphNotExists(MarsError):
+    pass
+
+
 class PromiseTimeout(MarsError):
     pass
 

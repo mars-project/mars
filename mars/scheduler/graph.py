@@ -26,7 +26,7 @@ from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
 from ..compat import six, OrderedDict
-from ..errors import ExecutionInterrupted
+from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
@@ -267,7 +267,7 @@ class GraphActor(SchedulerActor):
 
         try:
             chunk_graph = self.get_chunk_graph()
-        except KeyError:
+        except (KeyError, GraphNotExists):
             self.state = GraphState.CANCELLED
             return
 
@@ -290,7 +290,7 @@ class GraphActor(SchedulerActor):
             chunk_graph_ser = self._kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
                                                       % (self._session_id, self._graph_key)).value
         else:
-            raise RuntimeError('No kv store configured, cannot recover')
+            raise GraphNotExists
         self._chunk_graph_cache = deserialize_graph(chunk_graph_ser, graph_cls=DAG)
 
         op_key_to_chunk = defaultdict(list)
