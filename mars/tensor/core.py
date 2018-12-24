@@ -24,7 +24,7 @@ import threading
 import numpy as np
 
 from ..core import Entity
-from ..compat import builtins, reduce
+from ..compat import builtins, reduce, functools32
 from ..graph import DAG
 from ..tiles import Tilesable, handler
 from ..serialize import SerializableWithKey, ValueType, ProviderType, \

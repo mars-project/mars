@@ -225,7 +225,10 @@ cdef class DirectedGraph:
 
     def bfs(self, start=None, visit_predicate=None, successors=None, reverse=False):
         cdef:
+            object queue
+            object node
             set visited = set()
+            bint visit_all = False
 
         if reverse:
             pred_fun, succ_fun = self.successors, self.predecessors
@@ -244,6 +247,7 @@ cdef class DirectedGraph:
             return not preds or all(pred in visited for pred in preds)
 
         successors = successors or succ_fun
+        visit_all = (visit_predicate == 'all')
         visit_predicate = visit_predicate or _default_visit_predicate
 
         while queue:
@@ -251,7 +255,7 @@ cdef class DirectedGraph:
             if node in visited:
                 continue
             preds = pred_fun(node)
-            if visit_predicate(node, visited):
+            if visit_all or visit_predicate(node, visited):
                 yield node
                 visited.add(node)
                 queue.extend(n for n in successors(node) if n not in visited)

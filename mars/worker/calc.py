@@ -136,6 +136,7 @@ class CpuCalcActor(WorkerActor):
         from .quota import MemQuotaActor
         from .dispatcher import DispatchActor
         from .status import StatusActor
+        from .daemon import WorkerDaemonActor
 
         super(CpuCalcActor, self).post_create()
         if isinstance(self.uid, six.string_types) and ':' in self.uid:
@@ -143,9 +144,14 @@ class CpuCalcActor(WorkerActor):
             inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + str(uuid.uuid4())
         else:
             inproc_uid = None
-        self._inproc_cache_ref = self.promise_ref(self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid))
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
 
+        raw_ref = self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid)
+        self._inproc_cache_ref = self.promise_ref(raw_ref)
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        if self.ctx.has_actor(daemon_ref):
+            daemon_ref.register_child_actor(raw_ref, _tell=True)
+
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 

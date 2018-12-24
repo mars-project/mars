@@ -26,6 +26,7 @@ import socket
 import struct
 import sys
 import time
+import zlib
 from hashlib import md5
 
 import numpy as np
@@ -191,20 +192,29 @@ class classproperty(object):
         return self.f(owner)
 
 
-def serialize_graph(graph):
-    return base64.b64encode(graph.to_pb().SerializeToString())
+def serialize_graph(graph, compress=False):
+    ser_graph = graph.to_pb().SerializeToString()
+    if compress:
+        ser_graph = zlib.compress(ser_graph)
+    return base64.b64encode(ser_graph)
 
 
-def deserialize_graph(graph_b64):
+def deserialize_graph(graph_b64, graph_cls=None):
     from .serialize.protos.graph_pb2 import GraphDef
     from .graph import DirectedGraph
+    graph_cls = graph_cls or DirectedGraph
     try:
         json_obj = json.loads(to_str(graph_b64))
-        return DirectedGraph.from_json(json_obj)
+        return graph_cls.from_json(json_obj)
     except (SyntaxError, ValueError):
         g = GraphDef()
-        g.ParseFromString(base64.b64decode(graph_b64))
-        return DirectedGraph.from_pb(g)
+        ser_graph = base64.b64decode(graph_b64)
+        try:
+            ser_graph = zlib.decompress(ser_graph)
+        except zlib.error:
+            pass
+        g.ParseFromString(ser_graph)
+        return graph_cls.from_pb(g)
 
 
 def merge_tensor_chunks(input_tensor, ctx):
@@ -265,6 +275,11 @@ def log_unhandled(func):
         except:
             kwcopy = kwargs.copy()
             kwcopy.update(zip(func_args.args, args))
+            if getattr(func, '__closure__', None) is not None:
+                kwargs.update(zip(
+                    func.__code__.co_freevars + getattr(func.__code__, 'co_cellvars', ()),
+                    [getattr(c, 'cell_contents', None) for c in func.__closure__],
+                ))
 
             messages = []
             for k, v in kwcopy.items():

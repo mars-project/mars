@@ -14,9 +14,11 @@
 
 from .calc import CpuCalcActor
 from .chunkholder import ChunkHolderActor, ensure_chunk
-from .execution import ExecutionActor
-from .status import StatusActor
-from .spill import SpillActor
+from .daemon import WorkerDaemonActor
 from .dispatcher import DispatchActor
+from .execution import ExecutionActor
+from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
+from .spill import SpillActor
+from .status import StatusActor
 from .transfer import SenderActor, ReceiverActor

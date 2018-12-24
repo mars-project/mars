@@ -222,11 +222,11 @@ class EtcdKVStore(object):
         return r
 
     def watch(self, item, timeout=None, recursive=None):
-        from etcd_gevent import EtcdKeyError, EtcdKeyNotFound, EtcdWatchTimedOut
+        from etcd_gevent import EtcdKeyError, EtcdWatchTimedOut
         item = _normalize_path(self._base_path + item)
         try:
             val = self._etcd_client.watch(item, timeout=timeout, recursive=recursive)
-        except (EtcdKeyError, EtcdKeyNotFound):
+        except EtcdKeyError:
             raise KeyError(item)
         except EtcdWatchTimedOut:
             raise TimeoutError
@@ -247,19 +247,21 @@ class EtcdKVStore(object):
         return Lock(self._etcd_client, lock_name)
 
     def write(self, key, value=None, ttl=None, dir=False):
-        from etcd_gevent import EtcdNotDir
+        from etcd_gevent import EtcdKeyError, EtcdNotFile
         key = _normalize_path(self._base_path + key)
         try:
             self._etcd_client.write(key, value, ttl=ttl, dir=dir)
-        except EtcdNotDir:
+        except EtcdKeyError as ex:
+            if dir and isinstance(ex, EtcdNotFile):
+                return
             raise KeyError('%s not dir' % key)
 
     def delete(self, key, dir=False, recursive=False):
-        from etcd_gevent import EtcdNotDir, EtcdNotFile, EtcdDirNotEmpty
+        from etcd_gevent import EtcdKeyError, EtcdDirNotEmpty
         key = _normalize_path(self._base_path + key)
         try:
             self._etcd_client.delete(key, dir=dir, recursive=recursive)
-        except (EtcdNotFile, EtcdNotDir):
+        except EtcdKeyError:
             raise KeyError(key)
         except EtcdDirNotEmpty:
             raise KeyError('Dir %s not empty', key)
@@ -271,7 +273,8 @@ def get(addr):
     parsed = urlparse(addr)
     if parsed.scheme == 'etcd':
         from etcd_gevent.client import Client as EtcdClient
-        client = EtcdClient(parsed.hostname, parsed.port)
+        hosts = tuple((h.strip(), parsed.port) for h in parsed.hostname.split(','))
+        client = EtcdClient(host=hosts, allow_reconnect=True)
         return EtcdKVStore(client, parsed.path)
     else:
         raise ValueError('Scheme %s not supported.' % parsed.scheme)

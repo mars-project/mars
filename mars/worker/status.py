@@ -118,10 +118,15 @@ class StatusReporterActor(WorkerActor):
             meta_dict['hardware'] = metrics
             meta_dict['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             meta_dict['stats'] = dict()
+            meta_dict['slots'] = dict()
 
             status_data = self._status_ref.get_stats()
             for k, v in six.iteritems(status_data):
                 meta_dict['stats'][k] = v
+
+            slots_data = self._status_ref.get_slots()
+            for k, v in six.iteritems(slots_data):
+                meta_dict['slots'][k] = v
 
             meta_dict['progress'] = self._status_ref.get_progress()
             meta_dict['details'] = gather_node_info()
@@ -143,6 +148,7 @@ class StatusActor(WorkerActor):
         self._endpoint = endpoint
         self._reporter_ref = None
         self._stats = dict()
+        self._slots = dict()
         self._progress = dict()
 
         self._mem_quota_allocations = {}
@@ -154,7 +160,6 @@ class StatusActor(WorkerActor):
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)
-        pass
 
     def get_stats(self, items=None):
         if not items:
@@ -164,6 +169,12 @@ class StatusActor(WorkerActor):
 
     def update_stats(self, update_dict):
         self._stats.update(update_dict)
+
+    def get_slots(self):
+        return copy.deepcopy(self._slots)
+
+    def update_slots(self, slots_dict):
+        self._slots.update(slots_dict)
 
     def get_progress(self):
         return copy.deepcopy(self._progress)

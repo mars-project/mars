@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 
 from .utils import WorkerActor
 
@@ -26,13 +27,21 @@ class ProcessHelperActor(WorkerActor):
     def __init__(self):
         super(ProcessHelperActor, self).__init__()
         self._dispatch_ref = None
+        self._daemon_ref = None
 
     def post_create(self):
         from .dispatcher import DispatchActor
+        from .daemon import WorkerDaemonActor
 
         super(ProcessHelperActor, self).post_create()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
+
+        self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        if self.ctx.has_actor(self._daemon_ref):
+            self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
+        else:
+            self._daemon_ref = None
 
     def free_mkl_buffers(self):
         """

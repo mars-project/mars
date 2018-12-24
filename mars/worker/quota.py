@@ -179,14 +179,20 @@ class QuotaActor(WorkerActor):
         :param keys: request keys
         :param reject_exc: the exception to pass to the original callbacks
         """
+        # normalize key as sorted tuple
         if isinstance(keys, six.string_types):
-            keys = [keys]
+            keys = (keys,)
+        else:
+            keys = tuple(sorted(keys))
+        # clean up requests from request_batch_quota() whose key is a tuple
+        keys = keys + (keys,)
         for k in keys:
             if k in self._requests:
                 if reject_exc:
-                    for cb in self._requests[keys][-1]:
+                    for cb in self._requests[k][-1]:
                         self.tell_promise(cb, *reject_exc, **dict(_accept=False))
                 del self._requests[k]
+                logger.debug('Quota request %s cancelled', k)
 
     @log_unhandled
     def process_quota(self, key):

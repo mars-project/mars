@@ -395,6 +395,17 @@ class Test(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ref1.send(('create_async', (DummyActor, -2)))
 
+    def testProcessRestart(self):
+        with create_actor_pool(n_process=2, distributor=DummyDistributor(2),
+                               backend='gevent') as pool:
+            ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
+            ref2 = pool.create_actor(DummyActor, 2, uid='user-2')
+            self.assertEqual(ref1.send(('send', ref2, 'add', 3)), 5)
+            pool.processes[1].terminate()
+            pool.restart_process(1)
+            ref2 = pool.create_actor(DummyActor, 2, uid='user-2')
+            self.assertEqual(ref1.send(('send', ref2, 'add', 5)), 7)
+
     def testProcessSend(self):
         with create_actor_pool(n_process=2, distributor=DummyDistributor(2),
                                backend='gevent') as pool:

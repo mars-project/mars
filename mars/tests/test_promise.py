@@ -14,6 +14,7 @@
 
 import gc
 import functools
+import sys
 import threading
 import time
 import unittest
@@ -82,6 +83,22 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref.serve(0, delay=1, _timeout=2, _promise=True) \
             .catch(_rejecter)
+
+    def test_ref_reject(self):
+        from mars.errors import WorkerProcessStopped
+        try:
+            raise WorkerProcessStopped
+        except WorkerProcessStopped:
+            exc_info = sys.exc_info()
+
+        ref = self.promise_ref('ServeActor')
+
+        def _rejecter(*exc):
+            ref.serve(exc[0].__name__)
+
+        ref.serve(0, delay=2, _promise=True) \
+            .catch(_rejecter)
+        self.reject_promise_ref(ref, *exc_info)
 
 
 def _raise_exception(exc):
@@ -408,6 +425,23 @@ class Test(unittest.TestCase):
                     gevent.sleep(3)
                     # print(serve_ref.get_result())
                     self.assertListEqual(serve_ref.get_result(), [0])
+
+                gl = gevent.spawn(run_proc_test)
+                gl.join()
+        finally:
+            self.assertDictEqual(promise._promise_pool, {})
+
+    def testRefReject(self):
+        try:
+            with create_actor_pool() as pool:
+                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = pool.create_actor(PromiseTestActor)
+
+                def run_proc_test():
+                    test_ref.test_ref_reject()
+                    gc.collect()
+                    gevent.sleep(3)
+                    self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
 
                 gl = gevent.spawn(run_proc_test)
                 gl.join()

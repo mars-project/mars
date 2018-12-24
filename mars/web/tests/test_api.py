@@ -28,14 +28,14 @@ import gevent
 import numpy as np
 from numpy.testing import assert_array_equal
 
-
 from mars import tensor as mt
 from mars.actors import new_client
 from mars.utils import get_next_port
 from mars.scheduler import KVStoreActor
 from mars.session import new_session
-from mars.serialize.dataserializer import dumps, loads
+from mars.serialize.dataserializer import dumps
 from mars.config import options
+from mars.errors import ExecutionFailed
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -159,7 +159,7 @@ class Test(unittest.TestCase):
             assert_array_equal(value, np.ones((100, 100)) * 100)
 
             # todo this behavior may change when eager mode is introduced
-            with self.assertRaises(SystemError):
+            with self.assertRaises(ExecutionFailed):
                 sess.run(c)
 
             va = np.random.randint(0, 10000, (100, 100))

@@ -63,7 +63,11 @@ def build_spill_file_name(chunk_key, dirs=None, writing=False):
     if writing:
         spill_dir = os.path.join(spill_dir, 'writing')
     if not os.path.exists(spill_dir):
-        os.makedirs(spill_dir)
+        try:
+            os.makedirs(spill_dir)
+        except OSError:
+            if not os.path.exists(spill_dir):
+                raise
     return os.path.join(spill_dir, chunk_key)
 
 
@@ -77,7 +81,8 @@ def read_spill_file(chunk_key):
     if not file_name:
         raise SpillNotConfigured('Spill not configured')
     with open(file_name, 'rb') as file_obj:
-        return dataserializer.load(file_obj)
+        data = dataserializer.load(file_obj)
+        return data
 
 
 def write_spill_file(chunk_key, data):
@@ -217,10 +222,9 @@ class SpillActor(WorkerActor):
                 start_time = time.time()
                 logger.debug('Creating data writer for chunk %s in plasma', chunk_key)
                 buf = self._chunk_store.create(session_id, chunk_key, data_size)
-                logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
 
-                with open(file_name, 'rb') as inpf,\
-                        dataserializer.DecompressBufferWriter(buf) as writer:
+                with open(file_name, 'rb') as inpf, dataserializer.DecompressBufferWriter(buf) as writer:
+                    logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
                     block_size = options.worker.transfer_block_size
                     compress_future = None
                     while True:
@@ -230,6 +234,7 @@ class SpillActor(WorkerActor):
                         if not read_future.result():
                             break
                         compress_future = self._compress_pool.submit(writer.write, read_future.value)
+                    logger.debug('Data stream for chunk %s exhausted', chunk_key)
 
                 self._chunk_store.seal(session_id, chunk_key)
                 sealed = True
