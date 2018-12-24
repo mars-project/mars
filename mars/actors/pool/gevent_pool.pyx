@@ -598,11 +598,11 @@ cdef class Communicator(AsyncHandler):
     """
 
     cdef public int index
+    cdef public Distributor distributor
 
     cdef object pool
     cdef ClusterInfo cluster_info
     cdef object pipe
-    cdef public Distributor distributor
     cdef object remote_handler
     cdef object running
     cdef dict _handlers

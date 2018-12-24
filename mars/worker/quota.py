@@ -179,11 +179,12 @@ class QuotaActor(WorkerActor):
         :param keys: request keys
         :param reject_exc: the exception to pass to the original callbacks
         """
+        # normalize key as sorted tuple
         if isinstance(keys, six.string_types):
             keys = (keys,)
         else:
             keys = tuple(sorted(keys))
-
+        # clean up requests from request_batch_quota() whose key is a tuple
         keys = keys + (keys,)
         for k in keys:
             if k in self._requests:

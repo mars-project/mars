@@ -584,9 +584,8 @@ class ExecutionActor(WorkerActor):
         Handle process down event
         :param halt_refs: actor refs in halt processes
         """
-        if logger.level <= logging.DEBUG:
-            affected_uids = [ref.uid for ref in halt_refs]
-            logger.debug('Process halt detected. Trying to reject affected promises %r.', affected_uids)
+        logger.debug('Process halt detected. Trying to reject affected promises %r.',
+                     [ref.uid for ref in halt_refs])
         try:
             raise WorkerProcessStopped
         except WorkerProcessStopped:
