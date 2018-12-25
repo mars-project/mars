@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExecutionState(Enum):
+    PRE_PUSHED = 'pre_pushed'
     ALLOCATING = 'allocating'
     PREPARING_INPUTS = 'preparing_inputs'
     CALCULATING = 'calculating'
@@ -48,7 +49,7 @@ class GraphExecutionRecord(object):
                  'priority_data', 'data_sizes', 'chunks_use_once', 'state_time',
                  'mem_request', 'pin_request', 'est_finish_time', 'calc_actor_uid',
                  'send_addresses', 'retry_delay', 'enqueue_callback', 'finish_callbacks',
-                 'stop_requested')
+                 'stop_requested', 'succ_keys', 'undone_pred_keys')
 
     def __init__(self, graph_serialized, state, targets=None, io_meta=None, priority_data=None,
                  data_sizes=None, chunks_use_once=None, mem_request=None, pin_request=None,
@@ -74,6 +75,9 @@ class GraphExecutionRecord(object):
         self.enqueue_callback = enqueue_callback
         self.finish_callbacks = finish_callbacks or []
         self.stop_requested = stop_requested or False
+
+        self.succ_keys = set()
+        self.undone_pred_keys = set()
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -167,7 +171,7 @@ class ExecutionActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
-                      priority_data=None, send_addresses=None, callback=None):
+                      priority_data=None, send_addresses=None, undone_pred_keys=None, callback=None):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
@@ -177,6 +181,7 @@ class ExecutionActor(WorkerActor):
         :param data_sizes: data size of each input chunk, as a dict
         :param priority_data: data priority
         :param send_addresses: targets to send results after execution
+        :param undone_pred_keys: predecessor keys, available when the submitted graph require predecessors to finish
         :param callback: promise callback
         """
         priority_data = priority_data or dict()
@@ -191,13 +196,64 @@ class ExecutionActor(WorkerActor):
             chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
         )
-        logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
-                     graph_record.op_string, graph_record.targets)
 
-        self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
+        if undone_pred_keys:
+            for k in undone_pred_keys:
+                try:
+                    self._graph_records[(session_id, k)].succ_keys.add(graph_key)
+                except KeyError:
+                    pass
+                if (session_id, k) not in self._result_cache or \
+                        not self._result_cache[(session_id, k)].accept:
+                    graph_record.undone_pred_keys.add(k)
 
-        self._task_queue_ref.enqueue_task(session_id, graph_key, priority_data, _promise=True) \
-            .then(lambda *_: self.tell_promise(callback) if callback else None)
+        if not graph_record.undone_pred_keys:
+            logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
+                         graph_record.op_string, graph_record.targets)
+            self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
+            self._task_queue_ref.enqueue_task(session_id, graph_key, priority_data, _promise=True) \
+                .then(lambda *_: self.tell_promise(callback) if callback else None)
+        else:
+            logger.debug('Worker graph %s(%s) targeting at %r pre-pushed.', graph_key,
+                         graph_record.op_string, graph_record.targets)
+            self._update_state(session_id, graph_key, ExecutionState.PRE_PUSHED)
+            logger.debug('Worker graph %s(%s) now has unfinished predecessors %r.',
+                         graph_key, graph_record.op_string, graph_record.undone_pred_keys)
+
+    def _notify_successors(self, session_id, graph_key):
+        graph_rec = self._graph_records[(session_id, graph_key)]
+        for succ_key in graph_rec.succ_keys:
+            succ_query_key = (session_id, succ_key)
+            try:
+                succ_rec = self._graph_records[succ_query_key]
+            except KeyError:
+                continue
+
+            try:
+                succ_rec.data_sizes.update(self._result_cache[succ_query_key].data_sizes)
+            except (KeyError, AttributeError):
+                pass
+            succ_rec.undone_pred_keys.difference_update((graph_key,))
+            if succ_rec.undone_pred_keys:
+                logger.debug('Worker graph %s(%s) now has unfinished predecessors %r.',
+                             succ_key, succ_rec.op_string, succ_rec.undone_pred_keys)
+                continue
+
+            missing_keys = [c.key for c in succ_rec.graph if c.key not in succ_rec.data_sizes
+                            and isinstance(c.op, TensorFetchChunk)]
+            if missing_keys:
+                sizes = self.get_meta_ref(session_id, graph_key, local=False) \
+                    .batch_get_chunk_size(session_id, missing_keys)
+                succ_rec.data_sizes.update(zip(missing_keys, sizes))
+            logger.debug('Worker graph %s(%s) targeting at %r from PRE_PUSHED into ALLOCATING.',
+                         succ_key, succ_rec.op_string, succ_rec.targets)
+            self._update_state(session_id, succ_key, ExecutionState.ALLOCATING)
+
+            enqueue_callback = succ_rec.enqueue_callback
+            p = self._task_queue_ref.enqueue_task(
+                session_id, succ_key, succ_rec.priority_data, _promise=True)
+            if enqueue_callback:
+                p.then(partial(self.tell_promise, enqueue_callback))
 
     @log_unhandled
     def prepare_quota_request(self, session_id, graph_key):
@@ -419,6 +475,11 @@ class ExecutionActor(WorkerActor):
             return self._dispatch_ref.get_free_slot('cpu', _promise=True)
 
         @log_unhandled
+        def _handle_success(*_):
+            self._notify_successors(session_id, graph_key)
+            self._invoke_finish_callbacks(session_id, graph_key)
+
+        @log_unhandled
         def _handle_rejection(*exc):
             # some error occurred...
             logger.debug('Entering _handle_rejection() for graph %s', graph_key)
@@ -444,8 +505,7 @@ class ExecutionActor(WorkerActor):
             .then(_wait_free_slot) \
             .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
             .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
-            .then(lambda *_: self._invoke_finish_callbacks(session_id, graph_key)) \
-            .catch(_handle_rejection)
+            .then(_handle_success, _handle_rejection)
 
     @log_unhandled
     def _prepare_graph_inputs(self, session_id, graph_key):
@@ -544,7 +604,10 @@ class ExecutionActor(WorkerActor):
                         if alloc_key in graph_record.mem_request:
                             target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
                 elif chunk.key in graph_record.targets:
-                    target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
+                    try:
+                        target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
+                    except KeyError:
+                        raise
 
             logger.debug('Start calculation for graph %s in actor %s', graph_key, calc_uid)
 
@@ -732,7 +795,7 @@ class ExecutionActor(WorkerActor):
             cur_time = time.time()
             states = dict((k[1], (cur_time - v.state_time, v.state.name))
                           for k, v in self._graph_records.items()
-                          if v.state != ExecutionState.ALLOCATING)
+                          if v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
             logger.debug('Executing states: %r', states)
 
     def handle_process_down(self, halt_refs):

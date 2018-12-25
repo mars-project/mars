@@ -103,7 +103,10 @@ class FakeExecutionActor(promise.PromiseActor):
 
     @log_unhandled
     def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
-                      priority_data=None, send_addresses=None, callback=None):
+                      priority_data=None, send_addresses=None, undone_pred_keys=None,
+                      callback=None):
+        if undone_pred_keys:
+            return
         assert (session_id, graph_key) not in self._graph_records
         self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
             graph_ser, None,
