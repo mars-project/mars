@@ -31,7 +31,7 @@ class TensorZeros(TensorNoInput):
         super(TensorZeros, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
 
-def zeros(shape, dtype=None, chunks=None, gpu=False, sparse=False):
+def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False):
     """
     Return a new tensor of given shape and type, filled with zeros.
 
@@ -42,7 +42,7 @@ def zeros(shape, dtype=None, chunks=None, gpu=False, sparse=False):
     dtype : data-type, optional
         The desired data-type for the array, e.g., `mt.int8`.  Default is
         `mt.float64`.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -87,7 +87,7 @@ def zeros(shape, dtype=None, chunks=None, gpu=False, sparse=False):
 
     """
     op = TensorZeros(dtype=dtype, gpu=gpu, sparse=sparse)
-    return op(shape, chunks=chunks)
+    return op(shape, chunk_size=chunk_size)
 
 
 class TensorZerosLike(TensorLike):

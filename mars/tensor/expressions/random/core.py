@@ -24,7 +24,7 @@ from ....config import options
 from ....compat import irange, izip
 from ....operands.random import State
 from ...core import TENSOR_TYPE, CHUNK_TYPE
-from ..utils import decide_chunks, random_state_data, broadcast_shape
+from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
@@ -92,7 +92,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunks(tensor.shape, chunks, tensor.dtype.itemsize)
+        nsplits = decide_chunk_sizes(tensor.shape, chunks, tensor.dtype.itemsize)
         fields = getattr(op, '_input_fields_', [])
         to_one_chunk_fields = set(getattr(op, '_into_one_chunk_fields_', list()))
 

@@ -27,9 +27,9 @@ class TensorFFTFreq(fftop.FFTFreq, TensorFFTMixin):
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
         super(TensorFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
+    def __call__(self, chunk_size=None):
         shape = (self.n,)
-        return self.new_tensor(None, shape, raw_chunks=chunks)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
@@ -62,7 +62,7 @@ class TensorFFTFreqChunk(fftop.FFTFreqChunk, TensorOperandMixin):
         raise NotSupportTile('FFTFreqChunk is a chunk operand which does not support tile')
 
 
-def fftfreq(n, d=1.0, gpu=False, chunks=None):
+def fftfreq(n, d=1.0, gpu=False, chunk_size=None):
     """
     Return the Discrete Fourier Transform sample frequencies.
 
@@ -83,7 +83,7 @@ def fftfreq(n, d=1.0, gpu=False, chunks=None):
         Sample spacing (inverse of the sampling rate). Defaults to 1.
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -106,4 +106,4 @@ def fftfreq(n, d=1.0, gpu=False, chunks=None):
     """
     n, d = int(n), float(d)
     op = TensorFFTFreq(n=n, d=d, dtype=np.dtype(float), gpu=gpu)
-    return op(chunks)
+    return op(chunk_size)

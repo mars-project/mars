@@ -23,7 +23,7 @@ from .... import operands
 from ....config import options
 from ....operands.random import State
 from ....compat import irange, izip
-from ..utils import decide_chunks, random_state_data
+from ..utils import decide_chunk_sizes, random_state_data
 from .core import TensorRandomOperandMixin
 
 
@@ -46,7 +46,7 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunks(tensor.shape[:-1], chunks, tensor.dtype.itemsize)
+        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunks, tensor.dtype.itemsize)
         nsplits += ((len(op.alpha),),)
 
         idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))

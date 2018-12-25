@@ -22,7 +22,7 @@ from .... import operands
 from ....config import options
 from ....compat import irange, izip
 from ....operands.random import State
-from ..utils import decide_chunks, random_state_data
+from ..utils import decide_chunk_sizes, random_state_data
 from .core import TensorRandomOperandMixin
 
 
@@ -52,7 +52,7 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
     def tile(cls, op):
         tensor = op.outputs[0]
         chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunks(tensor.shape[:-1], chunks, tensor.dtype.itemsize) + ((tensor.shape[-1],),)
+        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunks, tensor.dtype.itemsize) + ((tensor.shape[-1],),)
 
         mean_chunk = op.mean.chunks[0] if hasattr(op.mean, 'chunks') else op.mean
         cov_chunk = op.cov.chunks[0] if hasattr(op.cov, 'chunks') else op.cov

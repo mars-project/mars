@@ -20,7 +20,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import AnyField
 from ....config import options
-from ..utils import decide_chunks
+from ..utils import decide_chunk_sizes
 from .core import TensorNoInput
 
 
@@ -64,7 +64,7 @@ class TensorArange(TensorNoInput):
         tensor = op.outputs[0]
 
         chunk_length = tensor.params.raw_chunks or options.tensor.chunks
-        chunk_length = decide_chunks(tensor.shape, chunk_length, tensor.dtype.itemsize)
+        chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
 
         start, stop, step = tensor.op.start, tensor.op.stop, tensor.op.step
 

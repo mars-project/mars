@@ -24,7 +24,7 @@ import numpy as np
 from ....config import options
 from ....compat import six, izip, lzip, reduce
 from ....operands import Rechunk
-from ..utils import decide_chunks, calc_sliced_size
+from ..utils import decide_chunk_sizes, calc_sliced_size
 from ..core import TensorOperandMixin
 
 
@@ -75,7 +75,7 @@ def _get_nsplits(tensor, new_chunks):
     else:
         chunks = new_chunks
 
-    return decide_chunks(tensor.shape, chunks, tensor.dtype.itemsize)
+    return decide_chunk_sizes(tensor.shape, chunks, tensor.dtype.itemsize)
 
 
 def _largest_chunk_size(nsplits):

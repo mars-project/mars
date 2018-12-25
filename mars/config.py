@@ -290,8 +290,8 @@ default_options.register_option('grpc.channel_options', {
 })
 
 # Tensor
-default_options.register_option('tensor.chunks', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.chunk_size_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))
+default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
+default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 default_options.register_option('tensor.combine_size', 4, validator=is_integer, serialize=True)

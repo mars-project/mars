@@ -19,19 +19,19 @@ from numbers import Integral
 
 import numpy as np
 
-from mars.tensor.expressions.utils import normalize_chunks, broadcast_shape, \
+from mars.tensor.expressions.utils import normalize_chunk_sizes, broadcast_shape, \
     replace_ellipsis, calc_sliced_size, slice_split, decide_unify_split, unify_chunks, \
-    split_index_into_chunks, decide_chunks
+    split_index_into_chunks, decide_chunk_sizes
 from mars.tensor.expressions.datasource import ones
 from mars.config import option_context
 
 
 class Test(unittest.TestCase):
     def testNormalizeChunks(self):
-        self.assertEqual(((2, 2, 1), (2, 2, 2)), normalize_chunks((5, 6), (2, 2)))
+        self.assertEqual(((2, 2, 1), (2, 2, 2)), normalize_chunk_sizes((5, 6), (2, 2)))
         with self.assertRaises(ValueError):
-            normalize_chunks((4, 6), ((2, 2, 1), (2, 2, 2)))
-        self.assertEqual(((10, 10, 10), (5,)), normalize_chunks((30, 5), 10))
+            normalize_chunk_sizes((4, 6), ((2, 2, 1), (2, 2, 2)))
+        self.assertEqual(((10, 10, 10), (5,)), normalize_chunk_sizes((30, 5), 10))
 
     def testBroadcastShape(self):
         self.assertEqual((4, 3), broadcast_shape((4, 3), (3,)))
@@ -212,32 +212,32 @@ class Test(unittest.TestCase):
 
     def testDecideChunks(self):
         with option_context() as options:
-            options.tensor.chunk_size_limit = 64
+            options.tensor.chunk_store_limit = 64
 
             itemsize = 1
             shape = (10, 20, 30)
-            nsplit = decide_chunks(shape, None, itemsize)
+            nsplit = decide_chunk_sizes(shape, None, itemsize)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
-            self.assertGreaterEqual(options.tensor.chunk_size_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
+            self.assertGreaterEqual(options.tensor.chunk_store_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
 
             itemsize = 2
             shape = (20, 30, 40)
-            nsplit = decide_chunks(shape, {1: 4}, itemsize)
+            nsplit = decide_chunk_sizes(shape, {1: 4}, itemsize)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
-            self.assertGreaterEqual(options.tensor.chunk_size_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
+            self.assertGreaterEqual(options.tensor.chunk_store_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
 
             itemsize = 2
             shape = (20, 30, 40)
-            nsplit = decide_chunks(shape, [2, 3], itemsize)
+            nsplit = decide_chunk_sizes(shape, [2, 3], itemsize)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
-            self.assertGreaterEqual(options.tensor.chunk_size_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
+            self.assertGreaterEqual(options.tensor.chunk_store_limit, itemsize * np.prod([np.max(a) for a in nsplit]))
 
             itemsize = 2
             shape = (20, 30, 40)
-            nsplit = decide_chunks(shape, [20, 3], itemsize)
+            nsplit = decide_chunk_sizes(shape, [20, 3], itemsize)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
             self.assertEqual(120, itemsize * np.prod([np.max(a) for a in nsplit]))  # 20 * 3 * 1 * 2 exceeds limitation

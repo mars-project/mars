@@ -19,7 +19,7 @@ from .array import tensor as astensor
 from .diag import diag
 
 
-def diagflat(v, k=0, sparse=None, gpu=None, chunks=None):
+def diagflat(v, k=0, sparse=None, gpu=None, chunk_size=None):
     """
     Create a two-dimensional tensor with the flattened input as a diagonal.
 
@@ -36,7 +36,7 @@ def diagflat(v, k=0, sparse=None, gpu=None, chunks=None):
         Create sparse tensor if True, False as default
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -68,4 +68,4 @@ def diagflat(v, k=0, sparse=None, gpu=None, chunks=None):
     """
     if not isinstance(v, Tensor):
         v = astensor(v).op.data
-    return diag(v.flatten(), k=k, sparse=sparse, gpu=gpu, chunks=chunks)
+    return diag(v.flatten(), k=k, sparse=sparse, gpu=gpu, chunk_size=chunk_size)
