@@ -460,12 +460,12 @@ class TensorData(SerializableWithKey, Tilesable):
 
 
 class ExecutableTuple(tuple):
-    def execute(self, session=None, n_parallel=None):
+    def execute(self, session=None, **kw):
         from ..session import Session
 
         if session is None:
             session = Session.default_or_local()
-        return session.run(*self, n_parallel=n_parallel)
+        return session.run(*self, **kw)
 
 
 class ChunksIndexer(object):
