@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import copy
-import time
 import logging
 import os
+import time
 from collections import defaultdict
-from datetime import datetime, timedelta
 
 from .utils import SchedulerActor
 from ..config import options
@@ -49,15 +48,12 @@ class ResourceActor(SchedulerActor):
         """
         Remove worker when it does not update its status for a long time
         """
-        timeout = options.scheduler.status_timeout
         for worker in list(self._meta_cache.keys()):
             worker_meta = self._meta_cache[worker]
             if 'update_time' not in worker_meta:
                 continue
 
-            last_time = datetime.strptime(worker_meta['update_time'], '%Y-%m-%d %H:%M:%S')
-            time_delta = timedelta(seconds=timeout)
-            if last_time + time_delta < datetime.now():
+            if time.time() - worker_meta['update_time'] > options.scheduler.status_timeout:
                 del self._meta_cache[worker]
 
         self.ref().clean_worker(_tell=True, _delay=1)

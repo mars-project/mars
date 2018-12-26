@@ -18,7 +18,6 @@ import random
 import time
 import os
 from collections import deque, defaultdict
-from datetime import datetime
 
 from .assigner import AssignerActor
 from .resource import ResourceActor
@@ -171,7 +170,7 @@ class GraphActor(SchedulerActor):
         """
         Start graph execution
         """
-        self._start_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self._start_time = time.time()
         self.state = GraphState.PREPARING
 
         try:
@@ -630,7 +629,7 @@ class GraphActor(SchedulerActor):
                 self._terminated_tensors.add(tensor_key)
                 if len(self._terminated_tensors) == len(self._target_tensor_chunk_ops):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
-                    self._end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    self._end_time = time.time()
 
     def get_state(self):
         return self.state
