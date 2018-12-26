@@ -17,7 +17,6 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
 from collections import defaultdict
 
 from .utils import WorkerActor, ExpMeanHolder
@@ -116,7 +115,7 @@ class StatusReporterActor(WorkerActor):
 
             meta_dict = dict()
             meta_dict['hardware'] = metrics
-            meta_dict['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            meta_dict['update_time'] = time.time()
             meta_dict['stats'] = dict()
 
             status_data = self._status_ref.get_stats()

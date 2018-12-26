@@ -96,8 +96,8 @@ class MarsWebAPI(MarsAPI):
                 task_desc['state'] = graph_ref.get_state().value
                 start_time, end_time, graph_size = graph_ref.get_graph_info()
                 task_desc['start_time'] = start_time
-                task_desc['end_time'] = end_time or 'N/A'
-                task_desc['graph_size'] = graph_size or 'N/A'
+                task_desc['end_time'] = end_time
+                task_desc['graph_size'] = graph_size
 
                 session_desc['tasks'][graph_key] = task_desc
         return sessions
