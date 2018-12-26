@@ -36,7 +36,7 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
                                                        _check_valid=check_valid, _tol=tol,
                                                        _state=state, _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
+    def __call__(self, chunk_size=None):
         N = self._mean.size
         if self._size is None:
             shape = (N,)
@@ -46,13 +46,13 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
             except TypeError:
                 shape = (self._size, N)
 
-        return self.new_tensor(None, shape, raw_chunks=chunks)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunks, tensor.dtype.itemsize) + ((tensor.shape[-1],),)
+        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize) + ((tensor.shape[-1],),)
 
         mean_chunk = op.mean.chunks[0] if hasattr(op.mean, 'chunks') else op.mean
         cov_chunk = op.cov.chunks[0] if hasattr(op.cov, 'chunks') else op.cov
@@ -76,7 +76,7 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
 
 
 def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, tol=None,
-                        chunks=None, gpu=None, **kw):
+                        chunk_size=None, gpu=None, **kw):
     """
     Draw random samples from a multivariate normal distribution.
 
@@ -103,7 +103,7 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
         Behavior when the covariance matrix is not positive semidefinite.
     tol : float, optional
         Tolerance when checking the singular values in covariance matrix.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -199,4 +199,4 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
     size = random_state._handle_size(size)
     op = TensorMultivariateNormal(mean=mean, cov=cov, size=size, check_valid=check_valid,
                                   tol=tol, state=random_state._state, gpu=gpu, **kw)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)

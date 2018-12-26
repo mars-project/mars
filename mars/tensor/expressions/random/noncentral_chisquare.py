@@ -29,11 +29,11 @@ class TensorNoncentralChisquare(operands.NoncentralChisquare, TensorRandomOperan
         super(TensorNoncentralChisquare, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                         _gpu=gpu, **kw)
 
-    def __call__(self, df, nonc, chunks=None):
-        return self.new_tensor([df, nonc], None, raw_chunks=chunks)
+    def __call__(self, df, nonc, chunk_size=None):
+        return self.new_tensor([df, nonc], None, raw_chunk_size=chunk_size)
 
 
-def noncentral_chisquare(random_state, df, nonc, size=None, chunks=None, gpu=None, **kw):
+def noncentral_chisquare(random_state, df, nonc, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a noncentral chi-square distribution.
 
@@ -51,7 +51,7 @@ def noncentral_chisquare(random_state, df, nonc, size=None, chunks=None, gpu=Non
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``df`` and ``nonc`` are both scalars.
         Otherwise, ``mt.broadcast(df, nonc).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -119,4 +119,4 @@ def noncentral_chisquare(random_state, df, nonc, size=None, chunks=None, gpu=Non
             handle_array(df), handle_array(nonc), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorNoncentralChisquare(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(df, nonc, chunks=chunks)
+    return op(df, nonc, chunk_size=chunk_size)

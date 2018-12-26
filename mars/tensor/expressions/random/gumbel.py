@@ -29,11 +29,11 @@ class TensorGumbel(operands.Gumbel, TensorRandomOperandMixin):
         super(TensorGumbel, self).__init__(_state=state, _size=size, _dtype=dtype,
                                            _gpu=gpu, **kw)
 
-    def __call__(self, loc, scale, chunks=None):
-        return self.new_tensor([loc, scale], None, raw_chunks=chunks)
+    def __call__(self, loc, scale, chunk_size=None):
+        return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
+def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a Gumbel distribution.
 
@@ -52,7 +52,7 @@ def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, *
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``loc`` and ``scale`` are both scalars.
         Otherwise, ``np.broadcast(loc, scale).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -154,4 +154,4 @@ def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, *
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorGumbel(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(loc, scale, chunks=chunks)
+    return op(loc, scale, chunk_size=chunk_size)

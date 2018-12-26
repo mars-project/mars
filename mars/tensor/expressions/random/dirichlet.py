@@ -39,14 +39,14 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
         shape = super(TensorDirichlet, self)._get_shape(inputs)
         return shape + (len(self._alpha),)
 
-    def __call__(self, chunks=None):
-        return self.new_tensor(None, None, raw_chunks=chunks)
+    def __call__(self, chunk_size=None):
+        return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunks, tensor.dtype.itemsize)
+        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize)
         nsplits += ((len(op.alpha),),)
 
         idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
@@ -71,7 +71,7 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
                                   chunks=out_chunks, nsplits=nsplits)
 
 
-def dirichlet(random_state, alpha, size=None, chunks=None, gpu=None, **kw):
+def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from the Dirichlet distribution.
 
@@ -89,7 +89,7 @@ def dirichlet(random_state, alpha, size=None, chunks=None, gpu=None, **kw):
         Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
         ``m * n * k`` samples are drawn.  Default is None, in which case a
         single value is returned.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -149,4 +149,4 @@ def dirichlet(random_state, alpha, size=None, chunks=None, gpu=None, **kw):
         kw['dtype'] = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorDirichlet(state=random_state._state, alpha=alpha, size=size, gpu=gpu, **kw)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)
