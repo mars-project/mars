@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import sys
 import unittest
 import uuid
 
@@ -93,6 +94,7 @@ class Test(unittest.TestCase):
         self.assertIn('c1', dup_cache)
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
+    @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
     @mock.patch(ChunkMetaActor.__module__ + '.ChunkMetaActor.get_scheduler')
     def testChunkMetaActors(self, *_):
         proc_count = 2
@@ -167,6 +169,7 @@ class Test(unittest.TestCase):
                 self.assertIsNone(ref1.batch_get_chunk_size(session1, [key1, key2])[1])
                 self.assertIsNone(ref1.batch_get_workers(session1, [key1, key2])[1])
 
+    @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
     @mock.patch(ChunkMetaActor.__module__ + '.ChunkMetaActor.get_scheduler')
     def testChunkBroadcast(self, *_):
         proc_count = 2
