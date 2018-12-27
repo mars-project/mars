@@ -265,6 +265,9 @@ class LocalChunkMetaActor(SchedulerActor):
         query_key = (session_id, chunk_key)
         try:
             del self._meta_store[query_key]
+            if self._kv_store_ref is not None:
+                self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
+                                          recursive=True, _tell=True, _wait=False)
         except KeyError:
             pass
         try:
@@ -273,15 +276,10 @@ class LocalChunkMetaActor(SchedulerActor):
             pass
 
         # broadcast deletion into pre-determined destinations
-        futures = []
         if query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
-                futures.append(self.ctx.actor_ref(self.default_name(), address=dest) \
-                               .delete_meta(session_id, chunk_key, _wait=False, _tell=True))
-        if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
-                                                     recursive=True, _tell=True, _wait=False))
-        [f.result() for f in futures]
+                self.ctx.actor_ref(self.default_name(), address=dest) \
+                    .delete_meta(session_id, chunk_key, _wait=False, _tell=True)
 
     def batch_delete_meta(self, session_id, chunk_keys):
         """
