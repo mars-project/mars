@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import copy
-import time
+import json
 import logging
 import os
+import time
 from collections import defaultdict
-from datetime import datetime, timedelta
 
+from .kvstore import KVStoreActor
 from .utils import SchedulerActor
 from ..config import options
 
@@ -33,6 +34,7 @@ class ResourceActor(SchedulerActor):
     def __init__(self):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
+        self._kv_store_ref = None
         self._worker_allocations = dict()
 
     def post_create(self):
@@ -40,6 +42,10 @@ class ResourceActor(SchedulerActor):
 
         super(ResourceActor, self).post_create()
         self.ref().clean_worker()
+
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        if not self.ctx.has_actor(self._kv_store_ref):
+            self._kv_store_ref = None
 
     @classmethod
     def default_name(cls):
@@ -49,24 +55,29 @@ class ResourceActor(SchedulerActor):
         """
         Remove worker when it does not update its status for a long time
         """
-        timeout = options.scheduler.status_timeout
         for worker in list(self._meta_cache.keys()):
             worker_meta = self._meta_cache[worker]
             if 'update_time' not in worker_meta:
                 continue
 
-            last_time = datetime.strptime(worker_meta['update_time'], '%Y-%m-%d %H:%M:%S')
-            time_delta = timedelta(seconds=timeout)
-            if last_time + time_delta < datetime.now():
+            if time.time() - worker_meta['update_time'] > options.scheduler.status_timeout:
                 del self._meta_cache[worker]
 
         self.ref().clean_worker(_tell=True, _delay=1)
+
+    def get_worker_count(self):
+        return len(self._meta_cache)
 
     def get_workers_meta(self):
         return copy.deepcopy(self._meta_cache)
 
     def set_worker_meta(self, worker, worker_meta):
         self._meta_cache[worker] = worker_meta
+        if self._kv_store_ref is not None:
+            self._kv_store_ref.write('/workers/meta/%s' % worker, json.dumps(worker_meta),
+                                     _tell=True, _wait=False)
+            self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())),
+                                     _tell=True, _wait=False)
 
     def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
         """

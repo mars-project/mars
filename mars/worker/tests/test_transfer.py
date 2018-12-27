@@ -25,7 +25,7 @@ from mars.actors import FunctionActor, create_actor_pool
 from mars.cluster_info import ClusterInfoActor
 from mars.config import options
 from mars.errors import StoreFull
-from mars.scheduler.kvstore import KVStoreActor
+from mars.scheduler import ChunkMetaActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
 from mars.worker.distributor import WorkerDistributor
@@ -95,7 +95,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
             try:
                 pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                                   uid=ClusterInfoActor.default_name())
-                pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
                 pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
                 pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
                 holder_ref = pool.create_actor(HolderActor, uid='HolderActor')
@@ -167,7 +167,7 @@ class Test(WorkerCase):
                                backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
                               uid=ClusterInfoActor.default_name())
-            kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
@@ -198,7 +198,7 @@ class Test(WorkerCase):
                         remote_dispatch_ref = test_actor.promise_ref(
                             DispatchActor.default_name(), address=remote_pool_addr)
                         remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
-                        remote_store = PlasmaChunkStore(remote_plasma_client, kv_store_ref)
+                        remote_store = PlasmaChunkStore(remote_plasma_client)
 
                         def _call_send_data(sender_uid):
                             sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)

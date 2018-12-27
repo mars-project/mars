@@ -164,10 +164,6 @@ class WorkerService(object):
                 actor = daemon_ref.create_actor(SpillActor, uid=uid)
                 self._spill_actors.append(actor)
 
-        kv_store = kvstore.get(options.kv_store)
-        if isinstance(kv_store, kvstore.EtcdKVStore):
-            kv_store.write('/workers/meta_timestamp', str(int(time.time())))
-
     @staticmethod
     def _calc_size_limit(limit_str, total_size):
         """

@@ -438,7 +438,7 @@ except ImportError:
                     gc.enable()
 
 
-__all__ = ['sys', 'builtins', 'logging.config', 'OrderedDict', 'dictconfig', 'suppress',
+__all__ = ['PY27', 'sys', 'builtins', 'logging.config', 'OrderedDict', 'dictconfig', 'suppress',
            'reduce', 'reload_module', 'Queue', 'PriorityQueue', 'Empty', 'ElementTree', 'ElementTreeParseError',
            'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote', 'quote', 'quote_plus', 'parse_qsl',
            'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES', 'FixedOffset', 'utc', 'finalize',

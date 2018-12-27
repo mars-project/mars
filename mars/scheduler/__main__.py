@@ -35,7 +35,7 @@ class SchedulerApplication(BaseApplication, SchedulerService):
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
-        super(SchedulerApplication, self).start(self.endpoint, self.pool)
+        super(SchedulerApplication, self).start(self.endpoint, self.args.schedulers, self.pool)
 
     def stop_service(self):
         super(SchedulerApplication, self).stop(self.pool)

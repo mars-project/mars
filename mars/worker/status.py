@@ -17,7 +17,6 @@ import os
 import json
 import time
 import logging
-from datetime import datetime
 from collections import defaultdict
 
 from .utils import WorkerActor, ExpMeanHolder
@@ -116,7 +115,7 @@ class StatusReporterActor(WorkerActor):
 
             meta_dict = dict()
             meta_dict['hardware'] = metrics
-            meta_dict['update_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            meta_dict['update_time'] = time.time()
             meta_dict['stats'] = dict()
             meta_dict['slots'] = dict()
 
@@ -132,9 +131,6 @@ class StatusReporterActor(WorkerActor):
             meta_dict['details'] = gather_node_info()
 
             self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
-            self._kv_store_ref.write('/workers/meta/%s' % self._endpoint,
-                                     json.dumps(meta_dict))
-            self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())))
         except Exception as ex:
             logger.error('Failed to save status: %s. repr(meta_dict)=%r', str(ex), meta_dict)
         finally:

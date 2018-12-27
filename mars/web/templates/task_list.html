@@ -25,8 +25,16 @@
                         {% else %}
                             <td><a href="/task?session_id={{ session_id }}&task_id={{ task_id }}">{{ task_id }}</a></td>
                         {% endif %}
-                        <td>{{ task_desc['start_time']  if 'start_time' in task_desc else 'N/A' }}</td>
-                        <td>{{ task_desc['end_time'] if 'end_time' in task_desc else 'N/A' }}</td>
+                        {% if task_desc['start_time'] is defined %}
+                            <td>{{ task_desc['start_time'] | format_ts }}</td>
+                        {% else %}
+                            <td>N/A</td>
+                        {% endif %}
+                        {% if task_desc['end_time'] is defined %}
+                            <td>{{ task_desc['end_time'] | format_ts }}</td>
+                        {% else %}
+                            <td>N/A</td>
+                        {% endif %}
                         <td>{{ task_desc['graph_size'] if 'graph_size' in task_desc else 'N/A' }}</td>
                         <td>{{ task_desc['state'] if 'state' in task_desc else 'N/A'}}</td>
                     </tr>

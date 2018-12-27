@@ -75,6 +75,8 @@ class MarsWebAPI(MarsAPI):
         super(MarsWebAPI, self).__init__(scheduler_ip)
 
     def get_tasks_info(self):
+        from ..scheduler import GraphState
+
         sessions = defaultdict(dict)
         for session_id, session_ref in six.iteritems(self.session_manager.get_sessions()):
             session_desc = sessions[session_id]
@@ -85,10 +87,9 @@ class MarsWebAPI(MarsAPI):
             for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
                 task_desc = dict()
 
-                state = self.kv_store.read(
-                    '/sessions/%s/graph/%s/state' % (session_id, graph_key)).value
-                if state == 'PREPARING':
-                    task_desc['state'] = state.lower()
+                state = self.get_graph_state(session_id, graph_key)
+                if state == GraphState.PREPARING:
+                    task_desc['state'] = state.name.lower()
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
@@ -97,8 +98,8 @@ class MarsWebAPI(MarsAPI):
                 task_desc['state'] = graph_ref.get_state().value
                 start_time, end_time, graph_size = graph_ref.get_graph_info()
                 task_desc['start_time'] = start_time
-                task_desc['end_time'] = end_time or 'N/A'
-                task_desc['graph_size'] = graph_size or 'N/A'
+                task_desc['end_time'] = end_time
+                task_desc['graph_size'] = graph_size
 
                 session_desc['tasks'][graph_key] = task_desc
         return sessions

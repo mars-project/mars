@@ -31,7 +31,7 @@ from numpy.testing import assert_array_equal
 from mars import tensor as mt
 from mars.actors import new_client
 from mars.utils import get_next_port
-from mars.scheduler import KVStoreActor
+from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
 from mars.config import options
@@ -79,8 +79,9 @@ class Test(unittest.TestCase):
         check_time = time.time()
         while True:
             try:
-                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
-                if actor_client.has_actor(kv_ref):
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_name(), address='127.0.0.1:' + scheduler_port)
+                if actor_client.has_actor(resource_ref):
                     break
                 else:
                     raise SystemError('Check meta_timestamp timeout')
@@ -91,7 +92,6 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while True:
-            content = kv_ref.read('/workers/meta_timestamp', silent=True)
             if self.proc_scheduler.poll() is not None:
                 raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
             if self.proc_worker.poll() is not None:
@@ -99,7 +99,7 @@ class Test(unittest.TestCase):
             if time.time() - check_time > 20:
                 raise SystemError('Check meta_timestamp timeout')
 
-            if not content:
+            if not resource_ref.get_worker_count():
                 time.sleep(0.5)
             else:
                 break
@@ -184,6 +184,12 @@ class Test(unittest.TestCase):
 
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
+
+        # test default session run with multiple inputs
+        with new_session(service_ep).as_default() as sess:
+            a = mt.ones((20, 10), chunks=10)
+            u, s, v = (mt.linalg.svd(a)).execute()
+            np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
 
 class MockResponse:
