@@ -30,9 +30,16 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
-    @classmethod
-    def _handle_inputs(cls, inputs):
-        tensor, indexes, value = inputs
+    def _handle_inputs(self, inputs):
+        if len(inputs) == 1:
+            # get indexes and value from existed IndexOp
+            tensor = inputs[0]
+            indexes = self._indexes
+            value = self._value
+        else:
+            tensor, indexes, value = inputs
+            self._indexes = indexes
+            self._value = value
         indexes_inputs = [ind for ind in indexes if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE)]
         inputs = [tensor] + indexes_inputs
         if isinstance(value, TENSOR_TYPE + CHUNK_TYPE):
@@ -41,7 +48,6 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
 
     def _set_inputs(self, inputs):
         super(TensorIndexSetValue, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
         indexes_iter = iter(self._inputs[1:])
         new_indexes = [next(indexes_iter) if isinstance(index, (BaseWithKey, Entity)) else index
                        for index in self._indexes]
@@ -50,16 +56,10 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
             self._value = self._value.data
 
     def new_tensors(self, inputs, shape, **kw):
-        tensor, indexes, value = inputs
-        self._indexes = indexes
-        self._value = value
         inputs = self._handle_inputs(inputs)
         return super(TensorIndexSetValue, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
-        chunk, indexes, value = inputs
-        self._indexes = indexes
-        self._value = value
         inputs = self._handle_inputs(inputs)
         return super(TensorIndexSetValue, self).new_chunks(inputs, shape, **kw)
 

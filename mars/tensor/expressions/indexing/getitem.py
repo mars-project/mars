@@ -34,29 +34,29 @@ class TensorIndex(Index, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
-    @classmethod
-    def _handle_inputs(cls, inputs):
-        tensor, indexes = inputs
-        indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
-        return [tensor] + indexes_inputs
+    def _handle_inputs(self, inputs):
+        if len(inputs) == 1:
+            # get indexes from existed op
+            indexes_inputs = [ind for ind in self._indexes if isinstance(ind, (BaseWithKey, Entity))]
+            return inputs + indexes_inputs
+        else:
+            tensor, indexes = inputs
+            indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
+            self._indexes = indexes
+            return [tensor] + indexes_inputs
 
     def _set_inputs(self, inputs):
         super(TensorIndex, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
         indexes_iter = iter(self._inputs[1:])
         new_indexes = [next(indexes_iter) if isinstance(index, (BaseWithKey, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
 
     def new_tensors(self, inputs, shape, **kw):
-        tensor, indexes = inputs
-        self._indexes = indexes
         inputs = self._handle_inputs(inputs)
         return super(TensorIndex, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
-        chunk, indexes = inputs
-        self._indexes = indexes
         inputs = self._handle_inputs(inputs)
         return super(TensorIndex, self).new_chunks(inputs, shape, **kw)
 

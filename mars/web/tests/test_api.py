@@ -185,6 +185,16 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
 
+        # test those tensors whose inputs has non-tensor parameters
+        with new_session(service_ep) as sess:
+            a = mt.random.rand(10, 5)
+            idx = slice(0, 5), slice(0, 5)
+            a[idx] = 2
+            a_splits = mt.split(a, 2)
+            r1, r2 = sess.run(a_splits[0], a[idx])
+            np.testing.assert_array_equal(r1, r2)
+            np.testing.assert_array_equal(r1, np.ones((5, 5)) * 2)
+
         # test default session run with multiple inputs
         with new_session(service_ep).as_default() as sess:
             a = mt.ones((20, 10), chunks=10)
