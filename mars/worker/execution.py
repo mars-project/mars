@@ -629,16 +629,18 @@ class ExecutionActor(WorkerActor):
             graph_key, list(set(c.key for c in graph_record.graph)), _tell=True)
         self._dump_execution_states()
 
-        self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
-
         if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_inproc_ref):
             raise WorkerProcessStopped
+
+        def _cache_result(*_):
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if not send_addresses:
             # no endpoints to send, dump keys into shared memory and return
             logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma...',
                          graph_key, graph_record.op_string, calc_keys)
-            return inproc_ref.dump_cache(calc_keys, _promise=True)
+            return inproc_ref.dump_cache(calc_keys, _promise=True) \
+                .then(_cache_result)
         else:
             # dump keys into shared memory and send
             logger.debug('Worker graph %s(%s) finished execution. Dumping %r into plasma '
@@ -646,7 +648,8 @@ class ExecutionActor(WorkerActor):
                          graph_key, graph_record.op_string, calc_keys, send_addresses)
 
             return inproc_ref.dump_cache(calc_keys, _promise=True) \
-                .then(_do_active_transfer)
+                .then(_do_active_transfer) \
+                .then(_cache_result)
 
     def _cleanup_graph(self, session_id, graph_key):
         """
