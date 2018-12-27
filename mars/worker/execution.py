@@ -44,15 +44,15 @@ class GraphExecutionRecord(object):
     """
     Execution records of the graph
     """
-    __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'targets', 'calc_keys',
-                 'io_meta', 'priority_data', 'data_sizes', 'chunks_use_once', 'state_time',
+    __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'targets', 'io_meta',
+                 'priority_data', 'data_sizes', 'chunks_use_once', 'state_time',
                  'mem_request', 'pin_request', 'est_finish_time', 'calc_actor_uid',
                  'send_addresses', 'retry_delay', 'enqueue_callback', 'finish_callbacks',
                  'stop_requested')
 
     def __init__(self, graph_serialized, state, targets=None, io_meta=None, priority_data=None,
-                 data_sizes=None, calc_keys=None, chunks_use_once=None, mem_request=None,
-                 pin_request=None, est_finish_time=None, calc_actor_uid=None, send_addresses=None,
+                 data_sizes=None, chunks_use_once=None, mem_request=None, pin_request=None,
+                 est_finish_time=None, calc_actor_uid=None, send_addresses=None,
                  retry_delay=None, enqueue_callback=None, finish_callbacks=None,
                  stop_requested=False):
         self.graph_serialized = graph_serialized
@@ -61,7 +61,6 @@ class GraphExecutionRecord(object):
         self._state = state
         self.state_time = time.time()
         self.targets = targets or []
-        self.calc_keys = calc_keys or set()
         self.io_meta = io_meta or dict()
         self.data_sizes = data_sizes or dict()
         self.priority_data = priority_data or dict()
@@ -88,6 +87,26 @@ class GraphExecutionRecord(object):
         self.state_time = time.time()
 
 
+class GraphResultRecord(object):
+    """
+    Execution result of a graph
+    """
+    __slots__ = 'data_sizes', 'exc', 'accept'
+
+    def __init__(self, *args, **kwargs):
+        accept = self.accept = kwargs.pop('_accept', True)
+        if accept:
+            self.data_sizes = args[0]
+        else:
+            self.exc = args
+
+    def build_args(self):
+        if self.accept:
+            return (self.data_sizes,), {}
+        else:
+            return self.exc, dict(_accept=False)
+
+
 class ExecutionActor(WorkerActor):
     """
     Actor for execution control
@@ -104,8 +123,7 @@ class ExecutionActor(WorkerActor):
         self._daemon_ref = None
 
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
-        self._callback_cache = ExpiringCache()
-        self._size_cache = dict()
+        self._result_cache = ExpiringCache()  # type: dict[tuple, GraphResultRecord]
 
     def post_create(self):
         from .chunkholder import ChunkHolderActor
@@ -206,7 +224,6 @@ class ExecutionActor(WorkerActor):
         for chunk in graph:
             if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in graph_record.targets:
                 # use estimated size as potential allocation size
-                graph_record.calc_keys.add(chunk.key)
                 alloc_mem_batch[chunk.key] = chunk.nbytes * 2
                 alloc_cache_batch[chunk.key] = chunk.nbytes
             else:
@@ -392,8 +409,10 @@ class ExecutionActor(WorkerActor):
         elif not isinstance(callback, list):
             callback = [callback]
         graph_record.finish_callbacks.extend(callback)
-        if graph_key in self._callback_cache:
-            del self._callback_cache[graph_key]
+        try:
+            del self._result_cache[(session_id, graph_key)]
+        except KeyError:
+            pass
 
         @log_unhandled
         def _wait_free_slot(*_):
@@ -421,14 +440,14 @@ class ExecutionActor(WorkerActor):
                 except:
                     logger.exception('Unexpected error occurred in executing %s', graph_key)
 
-            self._invoke_finish_callbacks(session_id, graph_key, *exc, **dict(_accept=False))
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(_accept=False))
+            self._invoke_finish_callbacks(session_id, graph_key)
 
         self._prepare_graph_inputs(session_id, graph_key) \
             .then(_wait_free_slot) \
             .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
             .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
-            .then(lambda *_: self._invoke_finish_callbacks(session_id, graph_key,
-                                                           self._size_cache.get(graph_key))) \
+            .then(lambda *_: self._invoke_finish_callbacks(session_id, graph_key)) \
             .catch(_handle_rejection)
 
     @log_unhandled
@@ -562,7 +581,7 @@ class ExecutionActor(WorkerActor):
         :param save_sizes: sizes of data
         """
         graph_record = self._graph_records[session_id, graph_key]
-        calc_keys = graph_record.calc_keys
+        calc_keys = graph_record.targets
         send_addresses = graph_record.send_addresses
 
         @log_unhandled
@@ -610,7 +629,7 @@ class ExecutionActor(WorkerActor):
             graph_key, list(set(c.key for c in graph_record.graph)), _tell=True)
         self._dump_execution_states()
 
-        self._size_cache[graph_key] = save_sizes
+        self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_inproc_ref):
             raise WorkerProcessStopped
@@ -663,10 +682,10 @@ class ExecutionActor(WorkerActor):
         :param callback: promise call
         """
         logger.debug('Adding callback %r for graph %s', callback, graph_key)
-        if graph_key in self._callback_cache:
-            args, kwargs = self._callback_cache[graph_key]
+        try:
+            args, kwargs = self._result_cache[(session_id, graph_key)].build_args()
             self.tell_promise(callback, *args, **kwargs)
-        else:
+        except KeyError:
             self._graph_records[(session_id, graph_key)].finish_callbacks.append(callback)
 
     @log_unhandled
@@ -694,18 +713,19 @@ class ExecutionActor(WorkerActor):
                 self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
 
     @log_unhandled
-    def _invoke_finish_callbacks(self, session_id, graph_key, *args, **kwargs):
+    def _invoke_finish_callbacks(self, session_id, graph_key):
         """
         Call finish callback when execution is done
         :param session_id: session id
         :param graph_key: graph key
         """
-        callbacks = self._graph_records[(session_id, graph_key)].finish_callbacks
+        query_key = (session_id, graph_key)
+        callbacks = self._graph_records[query_key].finish_callbacks
+        args, kwargs = self._result_cache[query_key].build_args()
         logger.debug('Send finish callback for graph %s into %d targets', graph_key, len(callbacks))
         for cb in callbacks:
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
-        self._callback_cache[graph_key] = (args, kwargs)
 
     def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:
