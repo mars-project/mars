@@ -90,9 +90,9 @@ class ChunkMetaStore(object):
     def get(self, chunk_key, default=None):
         return self._chunk_metas.get(chunk_key, default)
 
-    def get_worker_chunks(self, worker, default=None):
+    def get_worker_chunk_keys(self, worker, default=None):
         """
-        Get chunks held in a worker
+        Get chunk keys held in a worker
         :param worker: worker endpoint
         :param default: default value
         """

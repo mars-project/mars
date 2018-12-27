@@ -34,11 +34,11 @@ class Test(unittest.TestCase):
         self.assertEqual(store['c0'], WorkerMeta(0, ('w0',)))
         self.assertEqual(store.get('c0'), WorkerMeta(0, ('w0',)))
         self.assertIsNone(store.get('c1'))
-        self.assertSetEqual(store.get_worker_chunks('w0'), {'c0'})
+        self.assertSetEqual(store.get_worker_chunk_keys('w0'), {'c0'})
 
         store['c0'] = WorkerMeta(0, ('w1',))
-        self.assertEqual(store.get_worker_chunks('w0'), set())
-        self.assertSetEqual(store.get_worker_chunks('w1'), {'c0'})
+        self.assertEqual(store.get_worker_chunk_keys('w0'), set())
+        self.assertSetEqual(store.get_worker_chunk_keys('w1'), {'c0'})
 
         del store['c0']
         self.assertNotIn('c0', store)
@@ -51,16 +51,16 @@ class Test(unittest.TestCase):
         self.assertListEqual(affected, ['c3'])
         self.assertEqual(store.get('c1'), WorkerMeta(1, ('w1',)))
         self.assertEqual(store.get('c2'), WorkerMeta(2, ('w1',)))
-        self.assertSetEqual(store.get_worker_chunks('w0'), {'c4'})
-        self.assertSetEqual(store.get_worker_chunks('w1'), {'c1', 'c2'})
+        self.assertSetEqual(store.get_worker_chunk_keys('w0'), {'c4'})
+        self.assertSetEqual(store.get_worker_chunk_keys('w1'), {'c1', 'c2'})
         self.assertNotIn('c3', store)
         self.assertIn('c4', store)
 
         affected = store.remove_worker_keys('w0')
         self.assertListEqual(affected, ['c4'])
         self.assertNotIn('c4', store)
-        self.assertIsNone(store.get_worker_chunks('w0'))
-        self.assertSetEqual(store.get_worker_chunks('w1'), {'c1', 'c2'})
+        self.assertIsNone(store.get_worker_chunk_keys('w0'))
+        self.assertSetEqual(store.get_worker_chunk_keys('w1'), {'c1', 'c2'})
 
     def testChunkMetaCache(self):
         cache = ChunkMetaCache(9)
@@ -69,7 +69,7 @@ class Test(unittest.TestCase):
             cache['c%d' % idx] = WorkerMeta(idx, ('w0',))
         self.assertNotIn('c0', cache)
         self.assertTrue(all('c%d' % idx in cache for idx in range(1, 10)))
-        self.assertListEqual(sorted(cache.get_worker_chunks('w0')),
+        self.assertListEqual(sorted(cache.get_worker_chunk_keys('w0')),
                              ['c%d' % idx for idx in range(1, 10)])
 
         dup_cache = copy.deepcopy(cache)
