@@ -18,8 +18,9 @@ import uuid
 import gevent
 
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import ResourceActor, AssignerActor, KVStoreActor
+from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaActor
 from mars.actors import FunctionActor, create_actor_pool
+from mars.utils import get_next_port
 
 
 class PromiseReplyTestActor(FunctionActor):
@@ -41,11 +42,12 @@ class PromiseReplyTestActor(FunctionActor):
 class Test(unittest.TestCase):
 
     def testAssignerActor(self):
-        with create_actor_pool(n_process=1, backend='gevent') as pool:
+        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=mock_scheduler_addr) as pool:
             pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
                               uid=ClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
             endpoint1 = 'localhost:12345'
             endpoint2 = 'localhost:23456'
@@ -79,16 +81,9 @@ class Test(unittest.TestCase):
                 }
             }
 
-            kv_store_ref.write('/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key1), 512)
-            kv_store_ref.write('/sessions/%s/chunks/%s/workers/%s' % (session_id, chunk_key1, endpoint1), '')
-
-            kv_store_ref.write('/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key2), 512)
-            kv_store_ref.write('/sessions/%s/chunks/%s/workers/%s'
-                               % (session_id, chunk_key2, endpoint1), '')
-
-            kv_store_ref.write('/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key3), 512)
-            kv_store_ref.write('/sessions/%s/chunks/%s/workers/%s'
-                               % (session_id, chunk_key3, endpoint2), '')
+            chunk_meta_ref.set_chunk_meta(session_id, chunk_key1, size=512, workers=(endpoint1,))
+            chunk_meta_ref.set_chunk_meta(session_id, chunk_key2, size=512, workers=(endpoint1,))
+            chunk_meta_ref.set_chunk_meta(session_id, chunk_key3, size=512, workers=(endpoint2,))
 
             reply_ref = pool.create_actor(PromiseReplyTestActor)
             reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
