@@ -29,8 +29,8 @@ from ..core import TensorOperandMixin
 
 
 class TensorRechunk(Rechunk, TensorOperandMixin):
-    def __init__(self, chunks=None, threshold=None, chunk_size_limit=None, dtype=None, **kw):
-        super(TensorRechunk, self).__init__(_chunks=chunks, _threshold=threshold,
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, **kw):
+        super(TensorRechunk, self).__init__(_chunk_size=chunk_size, _threshold=threshold,
                                             _chunk_size_limit=chunk_size_limit, _dtype=dtype, **kw)
 
     def _set_inputs(self, inputs):
@@ -42,8 +42,8 @@ class TensorRechunk(Rechunk, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        new_chunks = op.chunks
-        steps = plan_rechunks(op.inputs[0], new_chunks,
+        new_chunk_size = op.chunk_size
+        steps = plan_rechunks(op.inputs[0], new_chunk_size,
                               threshold=op.threshold,
                               chunk_size_limit=op.chunk_size_limit)
         tensor = op.outputs[0]
@@ -53,12 +53,12 @@ class TensorRechunk(Rechunk, TensorOperandMixin):
         return [tensor]
 
 
-def rechunk(tensor, chunks, threshold=None, chunk_size_limit=None):
-    chunks = _get_nsplits(tensor, chunks)
-    if chunks == tensor.nsplits:
+def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None):
+    chunk_size = _get_nsplits(tensor, chunk_size)
+    if chunk_size == tensor.nsplits:
         return tensor
 
-    op = TensorRechunk(chunks, threshold, chunk_size_limit, dtype=tensor.dtype)
+    op = TensorRechunk(chunk_size, threshold, chunk_size_limit, dtype=tensor.dtype)
     return op(tensor)
 
 
@@ -67,15 +67,15 @@ def rechunk(tensor, chunks, threshold=None, chunk_size_limit=None):
 # -----------------------------------------------------------------------------------
 
 
-def _get_nsplits(tensor, new_chunks):
-    if isinstance(new_chunks, dict):
-        chunks = list(tensor.nsplits)
-        for idx, c in six.iteritems(new_chunks):
-            chunks[idx] = c
+def _get_nsplits(tensor, new_chunk_size):
+    if isinstance(new_chunk_size, dict):
+        chunk_size = list(tensor.nsplits)
+        for idx, c in six.iteritems(new_chunk_size):
+            chunk_size[idx] = c
     else:
-        chunks = new_chunks
+        chunk_size = new_chunk_size
 
-    return decide_chunk_sizes(tensor.shape, chunks, tensor.dtype.itemsize)
+    return decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
 
 
 def _largest_chunk_size(nsplits):
@@ -86,62 +86,62 @@ def _chunk_number(nsplits):
     return reduce(operator.mul, map(len, nsplits))
 
 
-def _estimate_graph_size(old_chunks, new_chunks):
+def _estimate_graph_size(old_chunk_size, new_chunk_size):
     return reduce(operator.mul,
-                  (len(oc) + len(nc) for oc, nc in zip(old_chunks, new_chunks)))
+                  (len(oc) + len(nc) for oc, nc in zip(old_chunk_size, new_chunk_size)))
 
 
-def plan_rechunks(tensor, new_chunks, threshold=None, chunk_size_limit=None):
+def plan_rechunks(tensor, new_chunk_size, threshold=None, chunk_size_limit=None):
     threshold = threshold or options.tensor.rechunk.threshold
     chunk_size_limit = chunk_size_limit or options.tensor.rechunk.chunk_size_limit
 
-    if len(new_chunks) != tensor.ndim:
+    if len(new_chunk_size) != tensor.ndim:
         raise ValueError('Provided chunks should have %d dimensions, got %d' % (
-            tensor.ndim, len(new_chunks)))
+            tensor.ndim, len(new_chunk_size)))
 
     steps = []
 
     chunk_size_limit /= tensor.dtype.itemsize
     chunk_size_limit = max([int(chunk_size_limit),
                             _largest_chunk_size(tensor.nsplits),
-                            _largest_chunk_size(new_chunks)])
+                            _largest_chunk_size(new_chunk_size)])
 
-    graph_size_threshold = threshold * (_chunk_number(tensor.nsplits) + _chunk_number(new_chunks))
+    graph_size_threshold = threshold * (_chunk_number(tensor.nsplits) + _chunk_number(new_chunk_size))
 
-    chunks = curr_chunks = tensor.nsplits
+    chunk_size = curr_chunk_size = tensor.nsplits
     first_run = True
     while True:
-        graph_size = _estimate_graph_size(chunks, new_chunks)
+        graph_size = _estimate_graph_size(chunk_size, new_chunk_size)
         if graph_size < graph_size_threshold:
             break
         if not first_run:
-            chunks = _find_split_rechunk(curr_chunks, new_chunks, graph_size * threshold)
-        chunks, memory_limit_hit = _find_merge_rechunk(chunks, new_chunks, chunk_size_limit)
-        if chunks == curr_chunks or chunks == new_chunks:
+            chunk_size = _find_split_rechunk(curr_chunk_size, new_chunk_size, graph_size * threshold)
+        chunks_size, memory_limit_hit = _find_merge_rechunk(chunk_size, new_chunk_size, chunk_size_limit)
+        if chunk_size == curr_chunk_size or chunk_size == new_chunk_size:
             break
-        steps.append(chunks)
-        curr_chunks = chunks
+        steps.append(chunk_size)
+        curr_chunk_size = chunk_size
         if not memory_limit_hit:
             break
         first_run = False
 
-    return steps + [new_chunks]
+    return steps + [new_chunk_size]
 
 
-def _find_split_rechunk(old_chunks, new_chunks, graph_size_limit):
+def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
     """
         Find an intermediate rechunk that would merge some adjacent blocks
-        together in order to get us nearer the *new_chunks* target, without
+        together in order to get us nearer the *new_chunk_size* target, without
         violating the *graph_size_limit* (in number of elements).
         """
-    ndim = len(old_chunks)
+    ndim = len(old_chunk_size)
 
-    old_largest_width = [max(c) for c in old_chunks]
-    new_largest_width = [max(c) for c in new_chunks]
+    old_largest_width = [max(c) for c in old_chunk_size]
+    new_largest_width = [max(c) for c in new_chunk_size]
 
     graph_size_effect = {
         dim: len(nc) / len(oc)
-        for dim, (oc, nc) in enumerate(zip(old_chunks, new_chunks))
+        for dim, (oc, nc) in enumerate(zip(old_chunk_size, new_chunk_size))
     }
 
     block_size_effect = {
@@ -172,7 +172,7 @@ def _find_split_rechunk(old_chunks, new_chunks, graph_size_limit):
 
     largest_block_size = reduce(operator.mul, old_largest_width)
 
-    chunks = list(old_chunks)
+    chunk_size = list(old_chunk_size)
     memory_limit_hit = False
 
     for dim in sorted_candidates:
@@ -181,38 +181,38 @@ def _find_split_rechunk(old_chunks, new_chunks, graph_size_limit):
             largest_block_size * new_largest_width[dim] // old_largest_width[dim])
         if new_largest_block_size <= graph_size_limit:
             # Full replacement by new chunks is possible
-            chunks[dim] = new_chunks[dim]
+            chunk_size[dim] = new_chunk_size[dim]
             largest_block_size = new_largest_block_size
         else:
             # Try a partial rechunk, dividing the new chunks into
             # smaller pieces
             largest_width = old_largest_width[dim]
             chunk_limit = int(graph_size_limit * largest_width / largest_block_size)
-            c = _divide_to_width(new_chunks[dim], chunk_limit)
-            if len(c) <= len(old_chunks[dim]):
+            c = _divide_to_width(new_chunk_size[dim], chunk_limit)
+            if len(c) <= len(old_chunk_size[dim]):
                 # We manage to reduce the number of blocks, so do it
-                chunks[dim] = c
+                chunk_size[dim] = c
                 largest_block_size = largest_block_size * max(c) // largest_width
 
             memory_limit_hit = True
 
-    assert largest_block_size == _largest_chunk_size(chunks)
+    assert largest_block_size == _largest_chunk_size(chunk_size)
     assert largest_block_size <= graph_size_limit
-    return tuple(chunks), memory_limit_hit
+    return tuple(chunk_size), memory_limit_hit
 
 
-def _merge_to_number(desired_chunks, max_number):
+def _merge_to_number(desired_chunk_size, max_number):
     """ Minimally merge the given chunks so as to drop the number of
         chunks below *max_number*, while minimizing the largest width.
         """
-    if len(desired_chunks) <= max_number:
-        return desired_chunks
+    if len(desired_chunk_size) <= max_number:
+        return desired_chunk_size
 
-    distinct = set(desired_chunks)
+    distinct = set(desired_chunk_size)
     if len(distinct) == 1:
         # Fast path for homogeneous target, also ensuring a regular result
         w = distinct.pop()
-        n = len(desired_chunks)
+        n = len(desired_chunk_size)
         total = n * w
 
         desired_width = total // max_number
@@ -221,66 +221,66 @@ def _merge_to_number(desired_chunks, max_number):
 
         return (width + w,) * adjust + (width,) * (max_number - adjust)
 
-    nmerges = len(desired_chunks) - max_number
+    nmerges = len(desired_chunk_size) - max_number
 
-    heap = [(desired_chunks[i] + desired_chunks[i + 1], i, i + 1)
-            for i in range(len(desired_chunks) - 1)]
+    heap = [(desired_chunk_size[i] + desired_chunk_size[i + 1], i, i + 1)
+            for i in range(len(desired_chunk_size) - 1)]
     heapq.heapify(heap)
 
-    chunks = list(desired_chunks)
+    chunk_size = list(desired_chunk_size)
 
     while nmerges > 0:
         # Find smallest interval to merge
         width, i, j = heapq.heappop(heap)
         # If interval was made invalid by another merge, recompute
         # it, re-insert it and retry.
-        if chunks[j] == 0:
+        if chunk_size[j] == 0:
             j += 1
-            while chunks[j] == 0:
+            while chunk_size[j] == 0:
                 j += 1
-            heapq.heappush(heap, (chunks[i] + chunks[j], i, j))
+            heapq.heappush(heap, (chunk_size[i] + chunk_size[j], i, j))
             continue
-        elif chunks[i] + chunks[j] != width:
-            heapq.heappush(heap, (chunks[i] + chunks[j], i, j))
+        elif chunk_size[i] + chunk_size[j] != width:
+            heapq.heappush(heap, (chunk_size[i] + chunk_size[j], i, j))
             continue
         # Merge
-        assert chunks[i] != 0
-        chunks[i] = 0  # mark deleted
-        chunks[j] = width
+        assert chunk_size[i] != 0
+        chunk_size[i] = 0  # mark deleted
+        chunk_size[j] = width
         nmerges -= 1
 
-    return tuple(filter(None, chunks))
+    return tuple(filter(None, chunk_size))
 
 
-def _divide_to_width(desired_chunks, max_width):
+def _divide_to_width(desired_chunk_size, max_width):
     """ Minimally divide the given chunks so as to make the largest chunk
     width less or equal than *max_width*.
     """
-    chunks = []
-    for c in desired_chunks:
+    chunk_size = []
+    for c in desired_chunk_size:
         nb_divides = int(np.ceil(c / max_width))
         for i in range(nb_divides):
             n = c // (nb_divides - i)
-            chunks.append(n)
+            chunk_size.append(n)
             c -= n
         assert c == 0
-    return tuple(chunks)
+    return tuple(chunk_size)
 
 
-def _find_merge_rechunk(old_chunks, new_chunks, chunk_size_limit):
+def _find_merge_rechunk(old_chunk_size, new_chunk_size, chunk_size_limit):
     """
         Find an intermediate rechunk that would merge some adjacent blocks
         together in order to get us nearer the *new_chunks* target, without
         violating the *chunk_size_limit* (in number of elements).
         """
-    ndim = len(old_chunks)
+    ndim = len(old_chunk_size)
 
-    old_largest_width = [max(c) for c in old_chunks]
-    new_largest_width = [max(c) for c in new_chunks]
+    old_largest_width = [max(c) for c in old_chunk_size]
+    new_largest_width = [max(c) for c in new_chunk_size]
 
     graph_size_effect = {
         dim: len(nc) / len(oc)
-        for dim, (oc, nc) in enumerate(zip(old_chunks, new_chunks))
+        for dim, (oc, nc) in enumerate(zip(old_chunk_size, new_chunk_size))
     }
 
     block_size_effect = {
@@ -311,7 +311,7 @@ def _find_merge_rechunk(old_chunks, new_chunks, chunk_size_limit):
 
     largest_block_size = reduce(operator.mul, old_largest_width)
 
-    chunks = list(old_chunks)
+    chunk_size = list(old_chunk_size)
     memory_limit_hit = False
 
     for dim in sorted_candidates:
@@ -320,60 +320,60 @@ def _find_merge_rechunk(old_chunks, new_chunks, chunk_size_limit):
             largest_block_size * new_largest_width[dim] // old_largest_width[dim])
         if new_largest_block_size <= chunk_size_limit:
             # Full replacement by new chunks is possible
-            chunks[dim] = new_chunks[dim]
+            chunk_size[dim] = new_chunk_size[dim]
             largest_block_size = new_largest_block_size
         else:
             # Try a partial rechunk, dividing the new chunks into
             # smaller pieces
             largest_width = old_largest_width[dim]
             chunk_limit = int(chunk_size_limit * largest_width / largest_block_size)
-            c = _divide_to_width(new_chunks[dim], chunk_limit)
-            if len(c) <= len(old_chunks[dim]):
+            c = _divide_to_width(new_chunk_size[dim], chunk_limit)
+            if len(c) <= len(old_chunk_size[dim]):
                 # We manage to reduce the number of blocks, so do it
-                chunks[dim] = c
+                chunk_size[dim] = c
                 largest_block_size = largest_block_size * max(c) // largest_width
 
             memory_limit_hit = True
 
-    assert largest_block_size == _largest_chunk_size(chunks)
+    assert largest_block_size == _largest_chunk_size(chunk_size)
     assert largest_block_size <= chunk_size_limit
-    return tuple(chunks), memory_limit_hit
+    return tuple(chunk_size), memory_limit_hit
 
 
-def compute_rechunk(tensor, chunks):
+def compute_rechunk(tensor, chunk_size):
     from ..indexing.slice import TensorSlice
     from ..merge.concatenate import TensorConcatenate
 
     nsplits = tensor.nsplits
     truncated = [[0, None] for _ in range(tensor.ndim)]
     result_slices = []
-    for dim, old_chunks, new_chunks in izip(itertools.count(0), nsplits, chunks):
+    for dim, old_chunk_size, new_chunk_size in izip(itertools.count(0), nsplits, chunk_size):
         slices = []
-        for rest in new_chunks:
+        for rest in new_chunk_size:
             dim_slices = []
             while rest > 0:
                 old_idx, old_start = truncated[dim]
-                old_size = old_chunks[old_idx] - (old_start or 0)
+                old_size = old_chunk_size[old_idx] - (old_start or 0)
                 if old_size < rest:
                     dim_slices.append((old_idx, slice(old_start, None, None)))
                     rest -= old_size
                     truncated[dim] = old_idx + 1, None
                 else:
                     end = rest if old_start is None else rest + old_start
-                    if end >= old_chunks[old_idx]:
+                    if end >= old_chunk_size[old_idx]:
                         truncated[dim] = old_idx + 1, None
                     else:
                         truncated[dim] = old_idx, end
-                    end = None if end == old_chunks[old_idx] else end
+                    end = None if end == old_chunk_size[old_idx] else end
                     dim_slices.append((old_idx, slice(old_start, end)))
                     rest -= old_size
             slices.append(dim_slices)
         result_slices.append(slices)
 
     result_chunks = []
-    idxes = itertools.product(*[range(len(c)) for c in chunks])
+    idxes = itertools.product(*[range(len(c)) for c in chunk_size])
     chunk_slices = itertools.product(*result_slices)
-    chunk_shapes = itertools.product(*chunks)
+    chunk_shapes = itertools.product(*chunk_size)
     for idx, chunk_slice, chunk_shape in izip(idxes, chunk_slices, chunk_shapes):
         to_merge = []
         merge_idxes = itertools.product(*[range(len(i)) for i in chunk_slice])
@@ -393,6 +393,6 @@ def compute_rechunk(tensor, chunks):
             out_chunk = chunk_op.new_chunk(to_merge, chunk_shape, index=idx)
             result_chunks.append(out_chunk)
 
-    op = TensorRechunk(chunks)
+    op = TensorRechunk(chunk_size)
     return op.new_tensor([tensor], tensor.shape, dtype=tensor.dtype,
-                         nsplits=chunks, chunks=result_chunks)
+                         nsplits=chunk_size, chunks=result_chunks)

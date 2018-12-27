@@ -29,11 +29,11 @@ class TensorTriangular(operands.Triangular, TensorRandomOperandMixin):
         super(TensorTriangular, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                _gpu=gpu, **kw)
 
-    def __call__(self, left, mode, right, chunks=None):
-        return self.new_tensor([left, mode, right], None, raw_chunks=chunks)
+    def __call__(self, left, mode, right, chunk_size=None):
+        return self.new_tensor([left, mode, right], None, raw_chunk_size=chunk_size)
 
 
-def triangular(random_state, left, mode, right, size=None, chunks=None, gpu=None, **kw):
+def triangular(random_state, left, mode, right, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from the triangular distribution over the
     interval ``[left, right]``.
@@ -58,7 +58,7 @@ def triangular(random_state, left, mode, right, size=None, chunks=None, gpu=None
         a single value is returned if ``left``, ``mode``, and ``right``
         are all scalars.  Otherwise, ``mt.broadcast(left, mode, right).size``
         samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -103,4 +103,4 @@ def triangular(random_state, left, mode, right, size=None, chunks=None, gpu=None
             handle_array(left), handle_array(mode), handle_array(right), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorTriangular(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(left, mode, right, chunks=chunks)
+    return op(left, mode, right, chunk_size=chunk_size)

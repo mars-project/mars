@@ -143,8 +143,8 @@ class Test(unittest.TestCase):
         self.assertEqual(decide_unify_split((1, 5, 1, 2), (2, 4, 3), (9,)), (1, 1, 4, 1, 2))
 
     def testUnifyChunks(self):
-        t1 = ones((10, 8), chunks=3).tiles()
-        t2 = ones((10, 8), chunks=2).tiles()
+        t1 = ones((10, 8), chunk_size=3).tiles()
+        t2 = ones((10, 8), chunk_size=2).tiles()
 
         new_t1, new_t2 = unify_chunks(t1, t2)
         self.assertEqual(new_t1.nsplits, ((2, 1, 1, 2, 2, 1, 1), (2, 1, 1, 2, 2)))
@@ -152,38 +152,38 @@ class Test(unittest.TestCase):
         self.assertEqual(new_t2.nsplits, ((2, 1, 1, 2, 2, 1, 1), (2, 1, 1, 2, 2)))
         self.assertIs(new_t2.inputs[0], t2.data)
 
-        t1 = ones((10, 8), chunks=4).tiles()
-        t2 = ones((10, 8), chunks=2).tiles()
+        t1 = ones((10, 8), chunk_size=4).tiles()
+        t2 = ones((10, 8), chunk_size=2).tiles()
 
         new_t1, new_t2 = unify_chunks(t1, t2)
         self.assertEqual(new_t1.nsplits, ((2, 2, 2, 2, 2), (2, 2, 2, 2)))
         self.assertIs(new_t1.inputs[0], t1.data)
         self.assertIs(new_t2, t2)
 
-        t1 = ones((10, 8), chunks=[4, 3]).tiles()
-        t2 = ones((10, 8), chunks=2).tiles()
+        t1 = ones((10, 8), chunk_size=[4, 3]).tiles()
+        t2 = ones((10, 8), chunk_size=2).tiles()
 
         new_t1, new_t2 = unify_chunks((t1, (0,)), (t2, (0,)))
         self.assertEqual(new_t1.nsplits, ((2, 2, 2, 2, 2), (3, 3, 2)))
         self.assertIs(new_t1.inputs[0], t1.data)
         self.assertIs(new_t2, t2)
 
-        t1 = ones((10, 8), chunks=[4, 2]).tiles()
-        t2 = ones((10, 8), chunks=[4, 4]).tiles()
+        t1 = ones((10, 8), chunk_size=[4, 2]).tiles()
+        t2 = ones((10, 8), chunk_size=[4, 4]).tiles()
 
         new_t1, new_t2 = unify_chunks((t1, (1, 0)), (t2, (1, 0)))
         self.assertIs(t1, new_t1)
         self.assertEqual(new_t2.nsplits, ((4, 4, 2), (2, 2, 2, 2)))
 
-        t1 = ones((10, 8), chunks=2).tiles()
-        t2 = ones(1, chunks=1).tiles()
+        t1 = ones((10, 8), chunk_size=2).tiles()
+        t2 = ones(1, chunk_size=1).tiles()
 
         new_t1, new_t2 = unify_chunks((t1, (1, 0)), t2)
         self.assertIs(new_t1, t1)
         self.assertIs(new_t2, t2)
 
-        t1 = ones((10, 8), chunks=2).tiles()
-        t2 = ones(8, chunks=3).tiles()
+        t1 = ones((10, 8), chunk_size=2).tiles()
+        t2 = ones(8, chunk_size=3).tiles()
 
         new_t1, new_t2 = unify_chunks((t1, (1, 0)), t2)
         self.assertEqual(new_t1.nsplits, ((2, 2, 2, 2, 2), (2, 1, 1, 2, 2)))

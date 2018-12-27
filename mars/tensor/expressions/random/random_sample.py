@@ -29,11 +29,11 @@ class TensorRandomSample(operands.RandomSample, TensorRandomOperandMixin):
         super(TensorRandomSample, self).__init__(_state=state, _size=size,
                                                  _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks):
-        return self.new_tensor(None, None, raw_chunks=chunks)
+    def __call__(self, chunk_size):
+        return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def random_sample(random_state, size=None, chunks=None, gpu=None, **kw):
+def random_sample(random_state, size=None, chunk_size=None, gpu=None, **kw):
     """
     Return random floats in the half-open interval [0.0, 1.0).
 
@@ -49,7 +49,7 @@ def random_sample(random_state, size=None, chunks=None, gpu=None, **kw):
         Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
         ``m * n * k`` samples are drawn.  Default is None, in which case a
         single value is returned.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -82,4 +82,4 @@ def random_sample(random_state, size=None, chunks=None, gpu=None, **kw):
         kw['dtype'] = np.dtype('f8')
     size = random_state._handle_size(size)
     op = TensorRandomSample(state=random_state._state, size=size, **kw)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)

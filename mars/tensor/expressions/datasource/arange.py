@@ -63,7 +63,7 @@ class TensorArange(TensorNoInput):
     def tile(cls, op):
         tensor = op.outputs[0]
 
-        chunk_length = tensor.params.raw_chunks or options.tensor.chunks
+        chunk_length = tensor.params.raw_chunk_size or options.tensor.chunk_size
         chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
 
         start, stop, step = tensor.op.start, tensor.op.stop, tensor.op.step
@@ -197,4 +197,4 @@ def arange(*args, **kwargs):
 
     op = TensorArange(start, stop, step, dtype=dtype, gpu=kwargs.get('gpu', False))
     shape = (size,)
-    return op(shape, chunks=kwargs.pop('chunks', None))
+    return op(shape, chunk_size=kwargs.pop('chunk_size', None))
