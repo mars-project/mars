@@ -23,7 +23,7 @@ from mars.tensor.expressions.rechunk.rechunk import compute_rechunk
 
 class Test(unittest.TestCase):
     def testComputeRechunk(self):
-        tensor = ones((12, 8), chunks=((4, 4, 3, 1), (3, 3, 2)))
+        tensor = ones((12, 8), chunk_size=((4, 4, 3, 1), (3, 3, 2)))
         tensor.tiles()
         new_tensor = compute_rechunk(tensor, ((9, 2, 1), (2, 1, 4, 1)))
 
@@ -44,7 +44,7 @@ class Test(unittest.TestCase):
                          (slice(None, None, None), slice(1, None, None)))
 
     def testRechunk(self):
-        tensor = ones((12, 9), chunks=4)
+        tensor = ones((12, 9), chunk_size=4)
         new_tensor = tensor.rechunk(3)
         new_tensor.tiles()
 

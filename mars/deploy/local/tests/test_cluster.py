@@ -65,7 +65,7 @@ class Test(unittest.TestCase):
             with new_session(endpoint) as session:
                 api = session._api
 
-                t = mt.ones((3, 3), chunks=2)
+                t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
@@ -75,13 +75,13 @@ class Test(unittest.TestCase):
     def testLocalClusterWithWeb(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=3, web=True) as cluster:
             with cluster.session as session:
-                t = mt.ones((3, 3), chunks=2)
+                t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
             with new_session('http://' + cluster._web_endpoint) as session:
-                t = mt.ones((3, 3), chunks=2)
+                t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
@@ -128,7 +128,7 @@ class Test(unittest.TestCase):
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
             session = cluster.session
 
-            t = mt.random.rand(20, 5, chunks=5)
+            t = mt.random.rand(20, 5, chunk_size=5)
             r = mt.linalg.svd(t)
 
             res = session.run((t,) + r)

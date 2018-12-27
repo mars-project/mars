@@ -17,7 +17,7 @@
 import numpy as np
 
 from ....compat import izip
-from ..utils import decide_chunks
+from ..utils import decide_chunk_sizes
 from ..core import TensorOperandMixin
 
 
@@ -49,8 +49,8 @@ class TSQR(TensorOperandMixin):
         q_dtype, r_dtype = tinyq.dtype, tinyr.dtype
 
         if a.chunk_shape[1] != 1:
-            new_chunks = decide_chunks(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
-            a = a.rechunk(new_chunks).single_tiles()
+            new_chunk_size = decide_chunk_sizes(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
+            a = a.rechunk(new_chunk_size).single_tiles()
 
         # stage 1, map phase
         stage1_q_chunks, stage1_r_chunks = stage1_chunks = [[], []]  # Q and R chunks

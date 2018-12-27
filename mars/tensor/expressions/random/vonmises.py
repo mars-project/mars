@@ -29,11 +29,11 @@ class TensorVonmises(operands.Vonmises, TensorRandomOperandMixin):
         super(TensorVonmises, self).__init__(_size=size, _state=state, _dtype=dtype,
                                              _gpu=gpu, **kw)
 
-    def __call__(self, mu, kappa, chunks=None):
-        return self.new_tensor([mu, kappa], None, raw_chunks=chunks)
+    def __call__(self, mu, kappa, chunk_size=None):
+        return self.new_tensor([mu, kappa], None, raw_chunk_size=chunk_size)
 
 
-def vonmises(random_state, mu, kappa, size=None, chunks=None, gpu=None, **kw):
+def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a von Mises distribution.
 
@@ -56,7 +56,7 @@ def vonmises(random_state, mu, kappa, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``mu`` and ``kappa`` are both scalars.
         Otherwise, ``np.broadcast(mu, kappa).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -120,4 +120,4 @@ def vonmises(random_state, mu, kappa, size=None, chunks=None, gpu=None, **kw):
 
     size = random_state._handle_size(size)
     op = TensorVonmises(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(mu, kappa, chunks=chunks)
+    return op(mu, kappa, chunk_size=chunk_size)

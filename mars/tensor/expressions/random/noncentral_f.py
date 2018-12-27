@@ -29,11 +29,11 @@ class TensorNoncentralF(operands.NoncentralF, TensorRandomOperandMixin):
         super(TensorNoncentralF, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                 _gpu=gpu, **kw)
 
-    def __call__(self, dfnum, dfden, nonc, chunks=None):
-        return self.new_tensor([dfnum, dfden, nonc], None, raw_chunks=chunks)
+    def __call__(self, dfnum, dfden, nonc, chunk_size=None):
+        return self.new_tensor([dfnum, dfden, nonc], None, raw_chunk_size=chunk_size)
 
 
-def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunks=None, gpu=None, **kw):
+def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunk_size=None, gpu=None, **kw):
     """
     Draw samples from the noncentral F distribution.
 
@@ -57,7 +57,7 @@ def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunks=None, gpu=N
         a single value is returned if ``dfnum``, ``dfden``, and ``nonc``
         are all scalars.  Otherwise, ``np.broadcast(dfnum, dfden, nonc).size``
         samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -110,4 +110,4 @@ def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunks=None, gpu=N
             handle_array(dfnum), handle_array(dfden), handle_array(nonc), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorNoncentralF(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(dfnum, dfden, nonc, chunks=chunks)
+    return op(dfnum, dfden, nonc, chunk_size=chunk_size)

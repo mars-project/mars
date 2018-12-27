@@ -30,7 +30,7 @@ More than one mars tensors can be passed to ``session.run``, and calculate the r
 
 .. code-block:: python
 
-   >>> a = mt.ones((5, 5), chunks=3)
+   >>> a = mt.ones((5, 5), chunk_size=3)
    >>> b = a + 1
    >>> c = a * 4
    >>> sess.run(b, c)

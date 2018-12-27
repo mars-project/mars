@@ -39,7 +39,7 @@ class TensorIndices(TensorNoInput):
         return self._dimensions
 
 
-def indices(dimensions, dtype=int, chunks=None):
+def indices(dimensions, dtype=int, chunk_size=None):
     """
     Return a tensor representing the indices of a grid.
 
@@ -52,7 +52,7 @@ def indices(dimensions, dtype=int, chunks=None):
         The shape of the grid.
     dtype : dtype, optional
         Data type of the result.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -105,15 +105,15 @@ def indices(dimensions, dtype=int, chunks=None):
 
     dimensions = tuple(dimensions)
     dtype = np.dtype(dtype)
-    raw_chunks = chunks
-    if chunks is not None and isinstance(chunks, Iterable):
-        chunks = tuple(chunks)
+    raw_chunk_size = chunk_size
+    if chunk_size is not None and isinstance(chunk_size, Iterable):
+        chunk_size = tuple(chunk_size)
     else:
-        chunks = (chunks,) * len(dimensions)
+        chunk_size = (chunk_size,) * len(dimensions)
 
     xi = []
-    for ch, dim in zip(chunks, dimensions):
-        xi.append(arange(dim, dtype=dtype, chunks=ch))
+    for ch, dim in zip(chunk_size, dimensions):
+        xi.append(arange(dim, dtype=dtype, chunk_size=ch))
 
     grid = None
     if np.prod(dimensions):
@@ -122,10 +122,10 @@ def indices(dimensions, dtype=int, chunks=None):
     if grid:
         grid = stack(grid)
     else:
-        if raw_chunks is None:
-            empty_chunks = None
+        if raw_chunk_size is None:
+            empty_chunk_size = None
         else:
-            empty_chunks = (1,) + chunks
-        grid = empty((len(dimensions),) + dimensions, dtype=dtype, chunks=empty_chunks)
+            empty_chunk_size = (1,) + chunk_size
+        grid = empty((len(dimensions),) + dimensions, dtype=dtype, chunk_size=empty_chunk_size)
 
     return grid

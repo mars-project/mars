@@ -77,7 +77,7 @@ class Test(unittest.TestCase):
         self.assertEqual(e, 'shape mismatch: indexing arrays could not be broadcast '
                             'together with shapes (2,) (3,)')
 
-        t = ones((100, 200, 300), chunks=10)
+        t = ones((100, 200, 300), chunk_size=10)
         t4 = t[:10, -10:, [13, 244, 151, 242, 34]].tiles()
         self.assertEqual(t4.shape, (10, 10, 5))
         self.assertEqual(t4.chunk_shape, (1, 1, 1))
@@ -98,7 +98,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t2.shape[1:], (200, 3))
 
     def testBoolIndexingTiles(self):
-        t = ones((100, 200, 300), chunks=30)
+        t = ones((100, 200, 300), chunk_size=30)
         indexed = t[t < 2]
         indexed.tiles()
 
@@ -108,7 +108,7 @@ class Test(unittest.TestCase):
         self.assertIs(indexed.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertIs(indexed.chunks[20].inputs[1], indexed.op.indexes[0].cix[0, 2, 0].data)
 
-        t2 = ones((100, 200), chunks=30)
+        t2 = ones((100, 200), chunk_size=30)
         indexed2 = t[t2 < 2]
         indexed2.tiles()
 
@@ -120,7 +120,7 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed2.chunks[20].inputs[1], indexed2.op.indexes[0].cix[0, 2].data)
 
     def testSliceTiles(self):
-        t = ones((100, 200, 300), chunks=30)
+        t = ones((100, 200, 300), chunk_size=30)
         t2 = t[10: 40, 199:, -30: 303]
         t2.tiles()
 
@@ -133,7 +133,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t2.chunks[1].index, (1, 0, 0))
 
     def testIndicesIndexingTiles(self):
-        t = ones((10, 20, 30), chunks=(2, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(2, 20, 30))
         t2 = t[3]
         t2.tiles()
 
@@ -149,9 +149,9 @@ class Test(unittest.TestCase):
         self.assertEqual(t3.chunks[0].op.indexes[0], 0)
 
     def testMixedIndexingTiles(self):
-        t = ones((100, 200, 300, 400), chunks=24)
+        t = ones((100, 200, 300, 400), chunk_size=24)
 
-        cmp = ones(400, chunks=24) < 2
+        cmp = ones(400, chunk_size=24) < 2
         t2 = t[10:90:3, 5, ..., None, cmp]
         t2.tiles()
 
@@ -162,7 +162,7 @@ class Test(unittest.TestCase):
 
     def testSetItem(self):
         shape = (10, 20, 30, 40)
-        t = ones(shape, chunks=5, dtype='i4')
+        t = ones(shape, chunk_size=5, dtype='i4')
         t[5:20:3, 5, ..., :-5] = 2.2
 
         self.assertIsInstance(t.op, TensorIndexSetValue)
@@ -174,9 +174,9 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertEqual(t.cix[1, 1, 0, 0].op.value, 2)
 
-        t2 = ones(shape, chunks=5, dtype='i4')
+        t2 = ones(shape, chunk_size=5, dtype='i4')
         shape = t2[5:20:3, 5, ..., :-5].shape
-        t2[5:20:3, 5, ..., :-5] = ones(shape, chunks=4, dtype='i4') * 2
+        t2[5:20:3, 5, ..., :-5] = ones(shape, chunk_size=4, dtype='i4') * 2
 
         t2.tiles()
         self.assertIsInstance(t2.chunks[0].op, TensorOnes)
@@ -184,11 +184,11 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op.value.op, TensorConcatenate)
 
         with self.assertRaises(ValueError):
-            t[0, 0, 0, 0] = ones(2, chunks=10)
+            t[0, 0, 0, 0] = ones(2, chunk_size=10)
 
     def testChoose(self):
         with option_context() as options:
-            options.tensor.chunks = 2
+            options.tensor.chunk_size = 2
 
             choices = [[0, 1, 2, 3], [10, 11, 12, 13],
                        [20, 21, 22, 23], [30, 31, 32, 33]]
@@ -200,7 +200,7 @@ class Test(unittest.TestCase):
             self.assertEqual(len(a.chunks[0].inputs), 5)
 
     def testUnravelIndex(self):
-        indices = tensor([22, 41, 37], chunks=1)
+        indices = tensor([22, 41, 37], chunk_size=1)
         t = unravel_index(indices, (7, 6))
 
         self.assertEqual(len(t), 2)
@@ -211,7 +211,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t[1].chunks), 3)
 
     def testNonzero(self):
-        x = tensor([[1, 0, 0], [0, 2, 0], [1, 1, 0]], chunks=2)
+        x = tensor([[1, 0, 0], [0, 2, 0], [1, 1, 0]], chunk_size=2)
         y = nonzero(x)
 
         self.assertEqual(len(y), 2)

@@ -24,32 +24,32 @@ from mars.tensor.expressions.merge import concatenate, stack
 
 class Test(unittest.TestCase):
     def testConcatenate(self):
-        a = ones((10, 20, 30), chunks=10)
-        b = ones((20, 20, 30), chunks=20)
+        a = ones((10, 20, 30), chunk_size=10)
+        b = ones((20, 20, 30), chunk_size=20)
 
         c = concatenate([a, b])
         self.assertEqual(c.shape, (30, 20, 30))
 
-        a = ones((10, 20, 30), chunks=10)
-        b = ones((10, 20, 40), chunks=20)
+        a = ones((10, 20, 30), chunk_size=10)
+        b = ones((10, 20, 40), chunk_size=20)
 
         c = concatenate([a, b], axis=-1)
         self.assertEqual(c.shape, (10, 20, 70))
 
         with self.assertRaises(ValueError):
-            a = ones((10, 20, 30), chunks=10)
-            b = ones((20, 30, 30), chunks=20)
+            a = ones((10, 20, 30), chunk_size=10)
+            b = ones((20, 30, 30), chunk_size=20)
 
             concatenate([a, b])
 
         with self.assertRaises(ValueError):
-            a = ones((10, 20, 30), chunks=10)
-            b = ones((20, 20), chunks=20)
+            a = ones((10, 20, 30), chunk_size=10)
+            b = ones((20, 20), chunk_size=20)
 
             concatenate([a, b])
 
-        a = ones((10, 20, 30), chunks=5)
-        b = ones((20, 20, 30), chunks=10)
+        a = ones((10, 20, 30), chunk_size=5)
+        b = ones((20, 20, 30), chunk_size=10)
 
         c = concatenate([a, b]).tiles()
         self.assertEqual(c.chunk_shape[0], 4)
@@ -60,7 +60,7 @@ class Test(unittest.TestCase):
         self.assertEqual(c.cix[1, 0, 0].key, a.cix[1, 0, 0].key)
 
     def testStack(self):
-        raw_arrs = [ones((3, 4), chunks=2) for _ in range(10)]
+        raw_arrs = [ones((3, 4), chunk_size=2) for _ in range(10)]
         arr2 = stack(raw_arrs, axis=0)
 
         self.assertEqual(arr2.shape, (10, 3, 4))
@@ -83,7 +83,7 @@ class Test(unittest.TestCase):
         self.assertEqual(arr4.nsplits, ((2, 1), (2, 2), (1,) * 10))
 
         with self.assertRaises(ValueError):
-            raw_arrs2 = [ones((3, 4), chunks=2), ones((4, 3), chunks=2)]
+            raw_arrs2 = [ones((3, 4), chunk_size=2), ones((4, 3), chunk_size=2)]
             stack(raw_arrs2)
 
         with self.assertRaises(np.AxisError):

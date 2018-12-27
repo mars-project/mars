@@ -21,21 +21,21 @@ from mars.tensor.expressions.datasource import ones
 
 class Test(unittest.TestCase):
     def testReshape(self):
-        a = ones((10, 20, 30), chunks=5)
+        a = ones((10, 20, 30), chunk_size=5)
         b = a.reshape(10, 600)
 
         b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 600))
 
-        a = ones((10, 600), chunks=5)
+        a = ones((10, 600), chunk_size=5)
         b = a.reshape(10, 30, 20)
 
         b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 30, 20))
 
-        a = ones((10, 600), chunks=5)
+        a = ones((10, 600), chunk_size=5)
         a.shape = [10, 30, 20]
 
         a.tiles()

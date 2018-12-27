@@ -60,8 +60,8 @@ class Test(unittest.TestCase):
         self.executor = Executor('numpy', storage=MockStorage(), prefetch=True)
 
     def testPrefetch(self):
-        t1 = ones((10, 8), chunks=10)
-        t2 = ones((1, 8), chunks=10)
+        t1 = ones((10, 8), chunk_size=10)
+        t2 = ones((1, 8), chunk_size=10)
         t3 = t1 + t2
 
         self.executor.execute_tensor(t3)

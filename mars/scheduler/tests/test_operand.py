@@ -151,8 +151,8 @@ class Test(unittest.TestCase):
     @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
     @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
     def testOperandActor(self, *_):
-        arr = mt.random.randint(10, size=(10, 8), chunks=4)
-        arr_add = mt.random.randint(10, size=(10, 8), chunks=4)
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
 
         session_id = str(uuid.uuid4())
@@ -163,7 +163,7 @@ class Test(unittest.TestCase):
     @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
     @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
     def testOperandActorWithSameKey(self, *_):
-        arr = mt.ones((5, 5), chunks=3)
+        arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
 
         session_id = str(uuid.uuid4())
@@ -174,8 +174,8 @@ class Test(unittest.TestCase):
     @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
     @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
     def testOperandActorWithRetry(self, *_):
-        arr = mt.random.randint(10, size=(10, 8), chunks=4)
-        arr_add = mt.random.randint(10, size=(10, 8), chunks=4)
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
 
         session_id = str(uuid.uuid4())
@@ -190,8 +190,8 @@ class Test(unittest.TestCase):
     @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
     @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
     def testOperandActorWithRetryAndFail(self, *_):
-        arr = mt.random.randint(10, size=(10, 8), chunks=4)
-        arr_add = mt.random.randint(10, size=(10, 8), chunks=4)
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
 
         session_id = str(uuid.uuid4())
@@ -209,8 +209,8 @@ class Test(unittest.TestCase):
         import logging
         logging.basicConfig(level=logging.DEBUG)
 
-        arr = mt.random.randint(10, size=(10, 8), chunks=4)
-        arr_add = mt.random.randint(10, size=(10, 8), chunks=4)
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
 
         session_id = str(uuid.uuid4())

@@ -29,11 +29,11 @@ class TensorUniform(operands.Uniform, TensorRandomOperandMixin):
         super(TensorUniform, self).__init__(_size=size, _state=state, _dtype=dtype,
                                             _gpu=gpu, **kw)
 
-    def __call__(self, low, high, chunks=None):
-        return self.new_tensor([low, high], None, raw_chunks=chunks)
+    def __call__(self, low, high, chunk_size=None):
+        return self.new_tensor([low, high], None, raw_chunk_size=chunk_size)
 
 
-def uniform(random_state, low=0.0, high=1.0, size=None, chunks=None, gpu=None, **kw):
+def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a uniform distribution.
 
@@ -55,7 +55,7 @@ def uniform(random_state, low=0.0, high=1.0, size=None, chunks=None, gpu=None, *
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``low`` and ``high`` are both scalars.
         Otherwise, ``mt.broadcast(low, high).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -118,4 +118,4 @@ def uniform(random_state, low=0.0, high=1.0, size=None, chunks=None, gpu=None, *
             handle_array(low), handle_array(high), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorUniform(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(low, high, chunks=chunks)
+    return op(low, high, chunk_size=chunk_size)

@@ -29,11 +29,11 @@ class TensorNegativeBinomial(operands.NegativeBinomial, TensorRandomOperandMixin
         super(TensorNegativeBinomial, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                      _gpu=gpu, **kw)
 
-    def __call__(self, n, p, chunks=None):
-        return self.new_tensor([n, p], None, raw_chunks=chunks)
+    def __call__(self, n, p, chunk_size=None):
+        return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)
 
 
-def negative_binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
+def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a negative binomial distribution.
 
@@ -53,7 +53,7 @@ def negative_binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``n`` and ``p`` are both scalars.
         Otherwise, ``np.broadcast(n, p).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -112,4 +112,4 @@ def negative_binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorNegativeBinomial(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(n, p, chunks=chunks)
+    return op(n, p, chunk_size=chunk_size)

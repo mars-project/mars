@@ -34,21 +34,21 @@ class Test(unittest.TestCase):
     def testQRExecution(self):
         data = np.random.randn(18, 6)
 
-        a = tensor(data, chunks=(3, 6))
+        a = tensor(data, chunk_size=(3, 6))
         q, r = qr(a)
         t = q.dot(r)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
-        a = tensor(data, chunks=(9, 6))
+        a = tensor(data, chunk_size=(9, 6))
         q, r = qr(a)
         t = q.dot(r)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
-        a = tensor(data, chunks=3)
+        a = tensor(data, chunk_size=3)
         q, r = qr(a)
         t = q.dot(r)
 
@@ -58,21 +58,21 @@ class Test(unittest.TestCase):
     def testSVDExecution(self):
         data = np.random.randn(18, 6) + 1j * np.random.randn(18, 6)
 
-        a = tensor(data, chunks=(9, 6))
+        a = tensor(data, chunk_size=(9, 6))
         U, s, V = svd(a)
         t = U.dot(diag(s).dot(V))
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
-        a = tensor(data, chunks=(18, 6))
+        a = tensor(data, chunk_size=(18, 6))
         U, s, V = svd(a)
         t = U.dot(diag(s).dot(V))
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
-        a = tensor(data, chunks=(2, 6))
+        a = tensor(data, chunk_size=(2, 6))
         U, s, V = svd(a)
         t = U.dot(diag(s).dot(V))
 
@@ -82,7 +82,7 @@ class Test(unittest.TestCase):
     def testCholeskyExecution(self):
         data = np.array([[1, -2j], [2j, 5]])
 
-        a = tensor(data, chunks=1)
+        a = tensor(data, chunk_size=1)
 
         L = cholesky(a, lower=True)
         t = L.dot(L.T.conj())
@@ -97,7 +97,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
-        a = tensor(data, chunks=2)
+        a = tensor(data, chunk_size=2)
 
         L = cholesky(a, lower=True)
         U = cholesky(a)
@@ -106,7 +106,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunks=(1, 2))
+        a = tensor(data, chunk_size=(1, 2))
 
         L = cholesky(a, lower=True)
         U = cholesky(a)
@@ -119,7 +119,7 @@ class Test(unittest.TestCase):
         np.random.seed(1)
 
         data = np.random.randint(1, 10, (6, 6))
-        a = tensor(data, chunks=2)
+        a = tensor(data, chunk_size=2)
 
         P, L, U = lu(a)
         t = P.dot(L).dot(U)
@@ -127,7 +127,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunks=1)
+        a = tensor(data, chunk_size=1)
 
         P, L, U = lu(a)
         t = P.dot(L).dot(U)
@@ -135,7 +135,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunks=(1, 2))
+        a = tensor(data, chunk_size=(1, 2))
 
         P, L, U = lu(a)
         t = P.dot(L).dot(U)
@@ -143,7 +143,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunks=3)
+        a = tensor(data, chunk_size=3)
         P, L, U = lu(a)
         t = P.dot(L).dot(U)
 
@@ -157,8 +157,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(1, 10, (20, 20))
         data2 = np.random.randint(1, 10, (20, ))
 
-        A = tensor(data1, chunks=20)
-        b = tensor(data2, chunks=20)
+        A = tensor(data1, chunk_size=20)
+        b = tensor(data2, chunk_size=20)
 
         x = solve_triangular(A, b)
         t = triu(A).dot(x)
@@ -172,8 +172,8 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
-        A = tensor(data1, chunks=10)
-        b = tensor(data2, chunks=10)
+        A = tensor(data1, chunk_size=10)
+        b = tensor(data2, chunk_size=10)
 
         x = solve_triangular(A, b)
         t = triu(A).dot(x)
@@ -190,8 +190,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(1, 10, (10, 10))
         data2 = np.random.randint(1, 10, (10, 5))
 
-        A = tensor(data1, chunks=10)
-        b = tensor(data2, chunks=10)
+        A = tensor(data1, chunk_size=10)
+        b = tensor(data2, chunk_size=10)
 
         x = solve_triangular(A, b)
         t = triu(A).dot(x)
@@ -205,8 +205,8 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
-        A = tensor(data1, chunks=3)
-        b = tensor(data2, chunks=3)
+        A = tensor(data1, chunk_size=3)
+        b = tensor(data2, chunk_size=3)
 
         x = solve_triangular(A, b)
         t = triu(A).dot(x)
@@ -227,8 +227,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(1, 10, (20, 20))
         data2 = np.random.randint(1, 10, (20, ))
 
-        A = tensor(data1, chunks=5)
-        b = tensor(data2, chunks=5)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve(A, b)
 
@@ -239,8 +239,8 @@ class Test(unittest.TestCase):
 
         data2 = np.random.randint(1, 10, (20, 5))
 
-        A = tensor(data1, chunks=5)
-        b = tensor(data2, chunks=5)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve(A, b)
 
@@ -251,8 +251,8 @@ class Test(unittest.TestCase):
 
         data2 = np.random.randint(1, 10, (20, 20))
 
-        A = tensor(data1, chunks=5)
-        b = tensor(data2, chunks=5)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve(A, b)
 
@@ -270,8 +270,8 @@ class Test(unittest.TestCase):
         data1 = data_l.dot(data_l.T)
         data2 = np.random.randint(1, 10, (20, ))
 
-        A = tensor(data1, chunks=5)
-        b = tensor(data2, chunks=5)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve(A, b, sym_pos=True)
 
@@ -286,7 +286,7 @@ class Test(unittest.TestCase):
 
         data = np.random.randint(1, 10, (20, 20))
 
-        A = tensor(data, chunks=5)
+        A = tensor(data, chunk_size=5)
         inv_A = inv(A)
 
         res = self.executor.execute_tensor(inv_A, concat=True)[0]
@@ -298,8 +298,8 @@ class Test(unittest.TestCase):
         d = np.arange(9) - 4
         d2 = d.reshape(3, 3)
 
-        ma = [tensor(d, chunks=2), tensor(d, chunks=9),
-              tensor(d2, chunks=(2, 3)), tensor(d2, chunks=3)]
+        ma = [tensor(d, chunk_size=2), tensor(d, chunk_size=9),
+              tensor(d2, chunk_size=(2, 3)), tensor(d2, chunk_size=3)]
 
         for i, a in enumerate(ma):
             data = d if i < 2 else d2
@@ -321,7 +321,7 @@ class Test(unittest.TestCase):
         res = np.linalg.norm(d)
         self.assertEqual(expected, res)
 
-        d = uniform(-0.5, 0.5, size=(500, 2), chunks=50)
+        d = uniform(-0.5, 0.5, size=(500, 2), chunk_size=50)
         inside = (norm(d, axis=1) < 0.5).sum().astype(float)
         t = inside / 500 * 4
         res = self.executor.execute_tensor(t)[0]
@@ -329,9 +329,9 @@ class Test(unittest.TestCase):
 
     def testTensordotExecution(self):
         a_data = np.arange(60).reshape(3, 4, 5)
-        a = tensor(a_data, chunks=2)
+        a = tensor(a_data, chunk_size=2)
         b_data = np.arange(24).reshape(4, 3, 2)
-        b = tensor(b_data, chunks=2)
+        b = tensor(b_data, chunk_size=2)
 
         axes = ([1, 0], [0, 1])
         c = tensordot(a, b, axes=axes)
@@ -341,8 +341,8 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[1], expected[2:4, :]))
         self.assertTrue(np.array_equal(res[2], expected[4:, :]))
 
-        a = ones((1000, 2000), chunks=500)
-        b = ones((2000, 100), chunks=500)
+        a = ones((1000, 2000), chunk_size=500)
+        b = ones((2000, 100), chunk_size=500)
         c = dot(a, b)
         res = self.executor.execute_tensor(c)
         expected = np.dot(np.ones((1000, 2000)), np.ones((2000, 100)))
@@ -350,31 +350,31 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[0], expected[:500, :]))
         self.assertTrue(np.array_equal(res[1], expected[500:, :]))
 
-        a = ones((10, 8), chunks=2)
-        b = ones((8, 10), chunks=2)
+        a = ones((10, 8), chunk_size=2)
+        b = ones((8, 10), chunk_size=2)
         c = a.dot(b)
         res = self.executor.execute_tensor(c)
         self.assertEqual(len(res), 25)
         for r in res:
             self.assertTrue(np.array_equal(r, np.tile([8], [2, 2])))
 
-        a = ones((500, 500), chunks=500)
-        b = ones((500, 100), chunks=500)
+        a = ones((500, 500), chunk_size=500)
+        b = ones((500, 100), chunk_size=500)
         c = a.dot(b)
         res = self.executor.execute_tensor(c)
         self.assertTrue(np.array_equal(res[0], np.tile([500], [500, 100])))
 
         raw_a = np.random.random((100, 200, 50))
         raw_b = np.random.random((200, 10, 100))
-        a = tensor(raw_a, chunks=50)
-        b = tensor(raw_b, chunks=33)
+        a = tensor(raw_a, chunk_size=50)
+        b = tensor(raw_b, chunk_size=33)
         c = tensordot(a, b, axes=((0, 1), (2, 0)))
         res = self.executor.execute_tensor(c, concat=True)
         expected = np.tensordot(raw_a, raw_b, axes=(c.op.a_axes, c.op.b_axes))
         self.assertTrue(np.allclose(res[0], expected))
 
-        a = ones((1000, 2000), chunks=500)
-        b = ones((100, 2000), chunks=500)
+        a = ones((1000, 2000), chunk_size=500)
+        b = ones((100, 2000), chunk_size=500)
         c = inner(a, b)
         res = self.executor.execute_tensor(c)
         expected = np.inner(np.ones((1000, 2000)), np.ones((100, 2000)))
@@ -385,8 +385,8 @@ class Test(unittest.TestCase):
     def testSparseDotExecution(self):
         a_data = sps.random(5, 9, density=.1)
         b_data = sps.random(9, 10, density=.2)
-        a = tensor(a_data, chunks=2)
-        b = tensor(b_data, chunks=3)
+        a = tensor(a_data, chunk_size=2)
+        b = tensor(b_data, chunk_size=3)
 
         c = dot(a, b)
 
@@ -421,8 +421,8 @@ class Test(unittest.TestCase):
     def testVdotExecution(self):
         a_data = np.array([1 + 2j, 3 + 4j])
         b_data = np.array([5 + 6j, 7 + 8j])
-        a = tensor(a_data, chunks=1)
-        b = tensor(b_data, chunks=1)
+        a = tensor(a_data, chunk_size=1)
+        b = tensor(b_data, chunk_size=1)
 
         t = vdot(a, b)
 
@@ -432,8 +432,8 @@ class Test(unittest.TestCase):
 
         a_data = np.array([[1, 4], [5, 6]])
         b_data = np.array([[4, 1], [2, 2]])
-        a = tensor(a_data, chunks=1)
-        b = tensor(b_data, chunks=1)
+        a = tensor(a_data, chunk_size=1)
+        b = tensor(b_data, chunk_size=1)
 
         t = vdot(a, b)
 
@@ -445,8 +445,8 @@ class Test(unittest.TestCase):
         data_a = np.random.randn(10, 20)
         data_b = np.random.randn(20)
 
-        a = tensor(data_a, chunks=2)
-        b = tensor(data_b, chunks=3)
+        a = tensor(data_a, chunk_size=2)
+        b = tensor(data_b, chunk_size=3)
         c = matmul(a, b)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -456,8 +456,8 @@ class Test(unittest.TestCase):
         data_a = np.random.randn(10, 20)
         data_b = np.random.randn(10)
 
-        a = tensor(data_a, chunks=2)
-        b = tensor(data_b, chunks=3)
+        a = tensor(data_a, chunk_size=2)
+        b = tensor(data_b, chunk_size=3)
         c = matmul(b, a)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -467,16 +467,16 @@ class Test(unittest.TestCase):
         data_a = np.random.randn(15, 1, 20, 30)
         data_b = np.random.randn(1, 11, 30, 20)
 
-        a = tensor(data_a, chunks=12)
-        b = tensor(data_b, chunks=13)
+        a = tensor(data_a, chunk_size=12)
+        b = tensor(data_b, chunk_size=13)
         c = matmul(a, b)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
         expected = np.matmul(data_a, data_b)
         np.testing.assert_allclose(res, expected, atol=.0001)
 
-        a = arange(2 * 2 * 4, chunks=1).reshape((2, 2, 4))
-        b = arange(2 * 2 * 4, chunks=1).reshape((2, 4, 2))
+        a = arange(2 * 2 * 4, chunk_size=1).reshape((2, 2, 4))
+        b = arange(2 * 2 * 4, chunk_size=1).reshape((2, 4, 2))
         c = matmul(a, b)
 
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -487,8 +487,8 @@ class Test(unittest.TestCase):
         data_a = sps.random(10, 20)
         data_b = sps.random(20, 5)
 
-        a = tensor(data_a, chunks=2)
-        b = tensor(data_b, chunks=3)
+        a = tensor(data_a, chunk_size=2)
+        b = tensor(data_b, chunk_size=3)
         c = matmul(a, b)
 
         res = self.executor.execute_tensor(c, concat=True)[0]

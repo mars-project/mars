@@ -38,8 +38,8 @@ class ExecuteTestActor(WorkerActor):
     def run_test(self):
         import mars.tensor as mt
         from mars.tensor.expressions.datasource import TensorOnes, TensorFetchChunk
-        arr = mt.ones((10, 8), chunks=10)
-        arr_add = mt.ones((10, 8), chunks=10)
+        arr = mt.ones((10, 8), chunk_size=10)
+        arr_add = mt.ones((10, 8), chunk_size=10)
         arr2 = arr + arr_add
         graph = arr2.build_graph(compose=False, tiled=True)
 

@@ -106,7 +106,7 @@ class CSRMatrixDataSource(TensorNoInput):
         return self._shape
 
 
-def _from_spmatrix(spmatrix, dtype=None, chunks=None, gpu=None):
+def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
     if gpu is None and cp is not None and get_array_module(spmatrix) is cp:
         gpu = True
     if dtype and spmatrix.dtype != dtype:
@@ -115,10 +115,10 @@ def _from_spmatrix(spmatrix, dtype=None, chunks=None, gpu=None):
     op = CSRMatrixDataSource(indices=spmatrix.indices, indptr=spmatrix.indptr,
                              data=spmatrix.data, shape=spmatrix.shape,
                              dtype=spmatrix.dtype, gpu=gpu)
-    return op(spmatrix.shape, chunks=chunks)
+    return op(spmatrix.shape, chunk_size=chunk_size)
 
 
-def tensor(data, dtype=None, chunks=None, gpu=None, sparse=False):
+def tensor(data, dtype=None, chunk_size=None, gpu=None, sparse=False):
     if isinstance(data, TENSOR_TYPE):
         if dtype is not None and data.dtype != dtype:
             return data.astype(dtype)
@@ -133,7 +133,7 @@ def tensor(data, dtype=None, chunks=None, gpu=None, sparse=False):
     elif np.isscalar(data):
         return scalar(data, dtype=dtype)
     elif issparse(data):
-        return _from_spmatrix(data, dtype=dtype, chunks=chunks, gpu=gpu)
+        return _from_spmatrix(data, dtype=dtype, chunk_size=chunk_size, gpu=gpu)
     else:
         m = get_array_module(data)
         data = m.asarray(data, dtype=dtype)
@@ -144,7 +144,7 @@ def tensor(data, dtype=None, chunks=None, gpu=None, sparse=False):
         if data.ndim == 0:
             return scalar(data.item(), dtype=dtype)
         op = ArrayDataSource(data, dtype=dtype, gpu=gpu)
-        t = op(data.shape, chunks=chunks)
+        t = op(data.shape, chunk_size=chunk_size)
         if sparse and not t.issparse():
             return t.tosparse()
         return t
@@ -152,7 +152,7 @@ def tensor(data, dtype=None, chunks=None, gpu=None, sparse=False):
         raise ValueError('Cannot create tensor by given data: {0}'.format(data))
 
 
-def array(x, dtype=None, copy=True, ndmin=None, chunks=None):
+def array(x, dtype=None, copy=True, ndmin=None, chunk_size=None):
     """
     Create a tensor.
 
@@ -175,7 +175,7 @@ def array(x, dtype=None, copy=True, ndmin=None, chunks=None):
         Specifies the minimum number of dimensions that the resulting
         array should have.  Ones will be pre-pended to the shape as
         needed to meet this requirement.
-    chunks: int, tuple, optional
+    chunk_size: int, tuple, optional
         Specifies chunk size for each dimension.
 
     Returns
@@ -217,7 +217,7 @@ def array(x, dtype=None, copy=True, ndmin=None, chunks=None):
 
     """
     raw_x = x
-    x = tensor(x, chunks=chunks)
+    x = tensor(x, chunk_size=chunk_size)
     if copy and x is raw_x:
         x = Tensor(x.data)
     while ndmin is not None and x.ndim < ndmin:

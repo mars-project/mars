@@ -96,8 +96,8 @@ class Test(unittest.TestCase):
                 gl = gevent.spawn(waiter)
                 gl.join()
 
-                a = mt.ones((100, 50), chunks=30)
-                b = mt.ones((50, 200), chunks=30)
+                a = mt.ones((100, 50), chunk_size=30)
+                b = mt.ones((50, 200), chunk_size=30)
                 result = a.dot(b)
 
                 graph = result.build_graph(tiled=True)

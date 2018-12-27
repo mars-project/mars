@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
 
     def testFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = fft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 4))
+        t = tensor(raw, chunk_size=(4, 4, 4))
 
         r = fft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -67,7 +67,7 @@ class Test(unittest.TestCase):
 
     def testIFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = ifft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -85,7 +85,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 5))
+        t = tensor(raw, chunk_size=(4, 4, 5))
 
         r = ifft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -104,7 +104,7 @@ class Test(unittest.TestCase):
 
     def testFFT2Execution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 20, 30))
+        t = tensor(raw, chunk_size=(4, 20, 30))
 
         r = fft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -127,7 +127,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 5, 6))
+        t = tensor(raw, chunk_size=(4, 5, 6))
 
         r = fft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -151,7 +151,7 @@ class Test(unittest.TestCase):
 
     def testIFFT2Execution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 20, 30))
+        t = tensor(raw, chunk_size=(4, 20, 30))
 
         r = ifft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -174,7 +174,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 3, 5))
+        t = tensor(raw, chunk_size=(4, 3, 5))
 
         r = ifft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -198,7 +198,7 @@ class Test(unittest.TestCase):
 
     def testFFTNExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(10, 20, 30))
+        t = tensor(raw, chunk_size=(10, 20, 30))
 
         r = fftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -221,7 +221,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(3, 3, 4))
+        t = tensor(raw, chunk_size=(3, 3, 4))
 
         r = fftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -245,7 +245,7 @@ class Test(unittest.TestCase):
 
     def testIFFTNExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(10, 20, 30))
+        t = tensor(raw, chunk_size=(10, 20, 30))
 
         r = ifftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -268,7 +268,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(3, 4, 7))
+        t = tensor(raw, chunk_size=(3, 4, 7))
 
         r = ifftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -292,7 +292,7 @@ class Test(unittest.TestCase):
 
     def testRFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = rfft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -311,7 +311,7 @@ class Test(unittest.TestCase):
 
     def testIRFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = irfft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -330,7 +330,7 @@ class Test(unittest.TestCase):
 
     def testRFFT2Execution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 20, 30))
+        t = tensor(raw, chunk_size=(4, 20, 30))
 
         r = rfft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -354,7 +354,7 @@ class Test(unittest.TestCase):
 
     def testIRFFT2Execution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 20, 30))
+        t = tensor(raw, chunk_size=(4, 20, 30))
 
         r = irfft2(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -378,7 +378,7 @@ class Test(unittest.TestCase):
 
     def testRFFTNExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(10, 20, 30))
+        t = tensor(raw, chunk_size=(10, 20, 30))
 
         r = rfftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -402,7 +402,7 @@ class Test(unittest.TestCase):
 
     def testIRFFTNExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(10, 20, 30))
+        t = tensor(raw, chunk_size=(10, 20, 30))
 
         r = irfftn(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -426,7 +426,7 @@ class Test(unittest.TestCase):
 
     def testHFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = hfft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -445,7 +445,7 @@ class Test(unittest.TestCase):
 
     def testIHFFTExecution(self):
         raw = np.random.rand(10, 20, 30)
-        t = tensor(raw, chunks=(4, 4, 30))
+        t = tensor(raw, chunk_size=(4, 4, 30))
 
         r = ihfft(t)
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -468,35 +468,35 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
     def testFFTFreqExecution(self):
-        t = fftfreq(10, .1, chunks=3)
+        t = fftfreq(10, .1, chunk_size=3)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, np.fft.fftfreq(10, .1)))
 
-        t = fftfreq(11, .01, chunks=3)
+        t = fftfreq(11, .01, chunk_size=3)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, np.fft.fftfreq(11, .01)))
 
     def testRFFTFreqExecution(self):
-        t = rfftfreq(20, .1, chunks=3)
+        t = rfftfreq(20, .1, chunk_size=3)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, np.fft.rfftfreq(20, .1)))
 
-        t = rfftfreq(21, .01, chunks=3)
+        t = rfftfreq(21, .01, chunk_size=3)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, np.fft.rfftfreq(21, .01)))
 
     def testFFTShiftExecution(self):
-        t = fftfreq(10, .1, chunks=3)
+        t = fftfreq(10, .1, chunk_size=3)
         r = fftshift(t)
 
         res = self.executor.execute_tensor(r, concat=True)[0]
         self.assertTrue(np.allclose(res, np.fft.fftshift(np.fft.fftfreq(10, .1))))
 
-        freqs = fftfreq(9, d=1./9, chunks=2).reshape(3, 3)
+        freqs = fftfreq(9, d=1./9, chunk_size=2).reshape(3, 3)
         r = fftshift(freqs, axes=(1,))
 
         res = self.executor.execute_tensor(r, concat=True)[0]
@@ -504,7 +504,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, expected))
 
     def testIFFTShiftExecution(self):
-        t = fftfreq(9, d=1./9, chunks=2).reshape(3, 3)
+        t = fftfreq(9, d=1./9, chunk_size=2).reshape(3, 3)
         r = ifftshift(t)
 
         res = self.executor.execute_tensor(r, concat=True)[0]

@@ -24,7 +24,7 @@ from ....config import options
 from ....compat import irange, izip
 from ....operands.random import State
 from ...core import TENSOR_TYPE, CHUNK_TYPE
-from ..utils import decide_chunks, random_state_data, broadcast_shape
+from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
@@ -91,8 +91,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunks = tensor.params.raw_chunks or options.tensor.chunks
-        nsplits = decide_chunks(tensor.shape, chunks, tensor.dtype.itemsize)
+        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        nsplits = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
         fields = getattr(op, '_input_fields_', [])
         to_one_chunk_fields = set(getattr(op, '_into_one_chunk_fields_', list()))
 
@@ -159,14 +159,14 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         return broadcast_shape(*shapes)
 
     @classmethod
-    def _handle_arg(cls, arg, chunks):
+    def _handle_arg(cls, arg, chunk_size):
         if isinstance(arg, (list, np.ndarray)):
-            arg = astensor(arg, chunks=chunks)
+            arg = astensor(arg, chunk_size=chunk_size)
 
         return arg
 
     @contextmanager
-    def _get_inputs_shape_by_given_fields(self, inputs, shape, raw_chunks=None, tensor=True):
+    def _get_inputs_shape_by_given_fields(self, inputs, shape, raw_chunk_size=None, tensor=True):
         fields = getattr(self, '_input_fields_', [])
         to_one_chunk_fields = set(getattr(self, '_into_one_chunk_fields_', list()))
 
@@ -180,7 +180,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                         if isinstance(val, list):
                             val = np.asarray(val)
                         if tensor:
-                            val = self._handle_arg(val, raw_chunks)
+                            val = self._handle_arg(val, raw_chunk_size)
                     if isinstance(val, TENSOR_TYPE + CHUNK_TYPE):
                         field_to_obj[field] = val
                         if field not in to_one_chunk_fields:
@@ -208,8 +208,8 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 setattr(self, field, next(inputs_iter))
 
     def new_tensors(self, inputs, shape, **kw):
-        raw_chunks = kw.get('chunks', None)
-        with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunks, True) as (inputs, shape):
+        raw_chunk_size = kw.get('chunk_size', None)
+        with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunk_size, True) as (inputs, shape):
             return super(TensorRandomOperandMixin, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):

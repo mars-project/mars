@@ -32,8 +32,8 @@ class Test(unittest.TestCase):
 
         raw1 = np.random.randint(10, size=(10, 10, 10))
         raw2 = np.random.randint(10, size=(10, 10, 10))
-        arr1 = tensor(raw1, chunks=3)
-        arr2 = tensor(raw2, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
+        arr2 = tensor(raw2, chunk_size=3)
 
         arr3 = arr1 + arr2 + 10
         arr4 = 10 + arr1 + arr2
@@ -57,7 +57,7 @@ class Test(unittest.TestCase):
 
         for i, j in itertools.permutations(range(len(_new_unary_ufunc)), 2):
             raw = np.random.random((8, 8, 8))
-            arr1 = tensor(raw, chunks=4)
+            arr1 = tensor(raw, chunk_size=4)
 
             func1 = _new_unary_ufunc[i]
             func2 = _new_unary_ufunc[j]
@@ -67,7 +67,7 @@ class Test(unittest.TestCase):
             np.testing.assert_allclose(res[0], res_cmp[0])
 
         raw = np.random.randint(100, size=(8, 8, 8))
-        arr1 = tensor(raw, chunks=4)
+        arr1 = tensor(raw, chunk_size=4)
         arr2 = arccosh(1 + abs(invert(arr1)))
         res = executor_numexpr.execute_tensor(arr2, concat=True)
         res_cmp = self.executor.execute_tensor(arr2, concat=True)
@@ -83,7 +83,7 @@ class Test(unittest.TestCase):
 
         for i, j in itertools.permutations(range(len(_new_bin_ufunc)), 2):
             raw = np.random.random((9, 9, 9))
-            arr1 = tensor(raw, chunks=5)
+            arr1 = tensor(raw, chunk_size=5)
 
             func1 = _new_bin_ufunc[i]
             func2 = _new_bin_ufunc[j]
@@ -94,7 +94,7 @@ class Test(unittest.TestCase):
 
         for i, j in itertools.permutations(range(len(_sp_bin_ufunc)), 2):
             raw = np.random.randint(1, 100, size=(10, 10, 10))
-            arr1 = tensor(raw, chunks=3)
+            arr1 = tensor(raw, chunk_size=3)
 
             func1 = _sp_bin_ufunc[i]
             func2 = _sp_bin_ufunc[j]
@@ -106,8 +106,8 @@ class Test(unittest.TestCase):
     def testReductionExecution(self):
         raw1 = np.random.randint(5, size=(8, 8, 8))
         raw2 = np.random.randint(5, size=(8, 8, 8))
-        arr1 = tensor(raw1, chunks=3)
-        arr2 = tensor(raw2, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
+        arr2 = tensor(raw2, chunk_size=3)
 
         res1 = self.executor.execute_tensor((arr1 + 1).sum(keepdims=True))
         res2 = self.executor.execute_tensor((arr1 + 1).prod(keepdims=True))
@@ -137,7 +137,7 @@ class Test(unittest.TestCase):
 
     def testBoolReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
-        arr = tensor(raw, chunks=2)
+        arr = tensor(raw, chunk_size=2)
 
         res = self.executor.execute_tensor((arr > 3).sum(axis=1), concat=True)
         np.testing.assert_array_equal(res[0], (raw > 3).sum(axis=1))

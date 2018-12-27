@@ -155,7 +155,7 @@ After all mars processes are started, users can run
 .. code-block:: python
 
     sess = new_session('http://<web_ip>:<ui_port>')
-    a = mt.ones((2000, 2000), chunks=200)
+    a = mt.ones((2000, 2000), chunk_size=200)
     b = mt.inner(a, a)
     sess.run(b)
 

@@ -24,7 +24,7 @@ from ....operands import DataSource
 from ....compat import izip
 from ....config import options
 from ....tiles import NotSupportTile
-from ..utils import normalize_shape, decide_chunks
+from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
 
 
@@ -46,8 +46,8 @@ class TensorDataSource(DataSource, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
 
-        chunk_size = tensor.params.raw_chunks or options.tensor.chunks
-        chunk_size = decide_chunks(tensor.shape, chunk_size, tensor.dtype.itemsize)
+        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
@@ -71,9 +71,9 @@ class TensorNoInput(TensorDataSource):
         if inputs and len(inputs) > 0:
             raise ValueError("Tensor data source has no inputs")
 
-    def __call__(self, shape, chunks=None):
+    def __call__(self, shape, chunk_size=None):
         shape = normalize_shape(shape)
-        return self.new_tensor(None, shape, raw_chunks=chunks)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 
 class TensorHasInput(TensorDataSource):

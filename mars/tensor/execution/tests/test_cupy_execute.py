@@ -27,8 +27,8 @@ class Test(unittest.TestCase):
         self.executor = Executor('cupy')
 
     def testElementwise(self):
-        t1 = ones((10000, 5000), chunks=500, gpu=True)
-        t2 = ones(5000, chunks=500, gpu=True)
+        t1 = ones((10000, 5000), chunk_size=500, gpu=True)
+        t2 = ones(5000, chunk_size=500, gpu=True)
         t = (t1 - t2) / sqrt(t2 * (1 - t2) * len(t2))
 
         g = t.build_graph(tiled=True)

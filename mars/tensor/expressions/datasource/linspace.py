@@ -19,7 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import Int64Field, BoolField
 from ....config import options
-from ..utils import decide_chunks
+from ..utils import decide_chunk_sizes
 from .core import TensorNoInput
 
 
@@ -49,8 +49,8 @@ class TensorLinspace(TensorNoInput):
     def tile(cls, op):
         tensor = op.outputs[0]
 
-        chunk_length = tensor.params.raw_chunks or options.tensor.chunks
-        chunk_length = decide_chunks(tensor.shape, chunk_length, tensor.dtype.itemsize)
+        chunk_length = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
 
         start, stop, num, endpoint = \
             tensor.op.start, tensor.op.stop, tensor.op.num, tensor.op.endpoint
@@ -94,7 +94,7 @@ class TensorLinspace(TensorNoInput):
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False,
-             dtype=None, gpu=False, chunks=None):
+             dtype=None, gpu=False, chunk_size=None):
     """
     Return evenly spaced numbers over a specified interval.
 
@@ -125,7 +125,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
         type from the other input arguments.
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -180,7 +180,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False,
 
     op = TensorLinspace(start, stop, num, endpoint, dtype=dtype, gpu=gpu)
     shape = (num,)
-    ret = op(shape, chunks=chunks)
+    ret = op(shape, chunk_size=chunk_size)
 
     if not retstep:
         return ret
