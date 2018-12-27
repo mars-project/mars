@@ -185,6 +185,12 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
 
+        # test default session run with multiple inputs
+        with new_session(service_ep).as_default() as sess:
+            a = mt.ones((20, 10), chunks=10)
+            u, s, v = (mt.linalg.svd(a)).execute()
+            np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
+
 
 class MockResponse:
     def __init__(self, status_code, json_text=None, data=None):
