@@ -152,8 +152,8 @@ class Test(unittest.TestCase):
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
             value = sess.run(c)
             assert_array_equal(value, np.ones((100, 100)) * 100)
@@ -164,8 +164,8 @@ class Test(unittest.TestCase):
 
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))
-            a = mt.array(va, chunks=30)
-            b = mt.array(vb, chunks=30)
+            a = mt.array(va, chunk_size=30)
+            b = mt.array(vb, chunk_size=30)
             c = a.dot(b)
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
@@ -187,7 +187,7 @@ class Test(unittest.TestCase):
 
         # test default session run with multiple inputs
         with new_session(service_ep).as_default() as sess:
-            a = mt.ones((20, 10), chunks=10)
+            a = mt.ones((20, 10), chunk_size=10)
             u, s, v = (mt.linalg.svd(a)).execute()
             np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
@@ -260,8 +260,8 @@ class TestWithMockServer(unittest.TestCase):
         with new_session(self._service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
 
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
 
             result = sess.run(c, timeout=120)
