@@ -33,7 +33,7 @@ class TensorLogistic(operands.Logistic, TensorRandomOperandMixin):
         return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def logistic(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
+def logistic(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a logistic distribution.
 

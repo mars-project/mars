@@ -140,8 +140,8 @@ class Test(unittest.TestCase):
                                                 uid=SessionActor.gen_name(session_id),
                                                 address=scheduler_address,
                                                 session_id=session_id)
-        a = ones((100, 100), chunks=30) * 2 * 1 + 1
-        b = ones((100, 100), chunks=30) * 2 * 1 + 1
+        a = ones((100, 100), chunk_size=30) * 2 * 1 + 1
+        b = ones((100, 100), chunk_size=30) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
         graph = c.build_graph()
         targets = [c.key]
@@ -164,8 +164,8 @@ class Test(unittest.TestCase):
         state = self.wait_for_termination(session_ref, graph_key)
         self.assertEqual(state, GraphState.FAILED)
 
-        a = ones((100, 50), chunks=30) * 2 + 1
-        b = ones((50, 200), chunks=30) * 2 + 1
+        a = ones((100, 50), chunk_size=30) * 2 + 1
+        b = ones((50, 200), chunk_size=30) * 2 + 1
         c = a.dot(b)
         graph = c.build_graph()
         targets = [c.key]

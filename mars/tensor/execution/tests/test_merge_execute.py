@@ -33,9 +33,9 @@ class Test(unittest.TestCase):
         b_data = np.random.rand(10, 20, 40)
         c_data = np.random.rand(10, 20, 50)
 
-        a = tensor(a_data, chunks=5)
-        b = tensor(b_data, chunks=6)
-        c = tensor(c_data, chunks=7)
+        a = tensor(a_data, chunk_size=5)
+        b = tensor(b_data, chunk_size=6)
+        c = tensor(c_data, chunk_size=7)
 
         d = concatenate([a, b, c], axis=-1)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -46,9 +46,9 @@ class Test(unittest.TestCase):
         b_data = sps.rand(10, 40)
         c_data = sps.rand(10, 50)
 
-        a = tensor(a_data, chunks=5)
-        b = tensor(b_data, chunks=6)
-        c = tensor(c_data, chunks=7)
+        a = tensor(a_data, chunk_size=5)
+        b = tensor(b_data, chunk_size=6)
+        c = tensor(c_data, chunk_size=7)
 
         d = concatenate([a, b, c], axis=-1)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -57,7 +57,7 @@ class Test(unittest.TestCase):
 
     def testStackExecution(self):
         raw = [np.random.randn(3, 4) for _ in range(10)]
-        arrs = [tensor(a, chunks=3) for a in raw]
+        arrs = [tensor(a, chunk_size=3) for a in raw]
 
         arr2 = stack(arrs)
         res = self.executor.execute_tensor(arr2, concat=True)
@@ -75,8 +75,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10)
         b_data = np.random.rand(20)
 
-        a = tensor(a_data, chunks=4)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=4)
+        b = tensor(b_data, chunk_size=4)
 
         c = hstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -86,8 +86,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10, 20)
         b_data = np.random.rand(10, 5)
 
-        a = tensor(a_data, chunks=3)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=3)
+        b = tensor(b_data, chunk_size=4)
 
         c = hstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -98,8 +98,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10)
         b_data = np.random.rand(10)
 
-        a = tensor(a_data, chunks=4)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=4)
+        b = tensor(b_data, chunk_size=4)
 
         c = vstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -109,8 +109,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10, 20)
         b_data = np.random.rand(5, 20)
 
-        a = tensor(a_data, chunks=3)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=3)
+        b = tensor(b_data, chunk_size=4)
 
         c = vstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -121,8 +121,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10)
         b_data = np.random.rand(10)
 
-        a = tensor(a_data, chunks=4)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=4)
+        b = tensor(b_data, chunk_size=4)
 
         c = dstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -132,8 +132,8 @@ class Test(unittest.TestCase):
         a_data = np.random.rand(10, 20)
         b_data = np.random.rand(10, 20)
 
-        a = tensor(a_data, chunks=3)
-        b = tensor(b_data, chunks=4)
+        a = tensor(a_data, chunk_size=3)
+        b = tensor(b_data, chunk_size=4)
 
         c = dstack([a, b])
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -143,8 +143,8 @@ class Test(unittest.TestCase):
     def testColumnStackExecution(self):
         a_data = np.array((1, 2, 3))
         b_data = np.array((2, 3, 4))
-        a = tensor(a_data, chunks=1)
-        b = tensor(b_data, chunks=2)
+        a = tensor(a_data, chunk_size=1)
+        b = tensor(b_data, chunk_size=2)
 
         c = column_stack((a, b))
         res = self.executor.execute_tensor(c, concat=True)[0]
@@ -153,8 +153,8 @@ class Test(unittest.TestCase):
 
         a_data = np.random.rand(4, 2, 3)
         b_data = np.random.rand(4, 2, 3)
-        a = tensor(a_data, chunks=1)
-        b = tensor(b_data, chunks=2)
+        a = tensor(a_data, chunk_size=1)
+        b = tensor(b_data, chunk_size=2)
 
         c = column_stack((a, b))
         res = self.executor.execute_tensor(c, concat=True)[0]

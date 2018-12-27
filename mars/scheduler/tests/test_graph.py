@@ -30,8 +30,8 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        arr = mt.random.randint(10, size=(10, 8), chunks=4)
-        arr_add = mt.random.randint(10, size=(10, 8), chunks=4)
+        arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
+        arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
 
         graph = arr2.build_graph(compose=False)
@@ -104,7 +104,7 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        arr = mt.ones(12, chunks=4)
+        arr = mt.ones(12, chunk_size=4)
         arr_split = mt.split(arr, 2)
         arr_sum = arr_split[0] + arr_split[1]
 
@@ -178,7 +178,7 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        arr = mt.ones((5, 5), chunks=3)
+        arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
 
         graph = arr2.build_graph(compose=False)
