@@ -192,6 +192,7 @@ class Test(unittest.TestCase):
 
                 client = new_client()
                 ref1 = client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[0])
+                local_ref1 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[0])
                 local_ref2 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[1])
 
                 key1 = str(uuid.uuid4())
@@ -200,5 +201,13 @@ class Test(unittest.TestCase):
 
                 ref1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
                 ref1.set_chunk_size(session_id, key1, 512)
+                pool2.sleep(0.1)
 
+                self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_size, 512)
                 self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_size, 512)
+
+                ref1.delete_meta(session_id, key1)
+                pool2.sleep(0.1)
+
+                self.assertIsNone(local_ref1.get_chunk_meta(session_id, key1))
+                self.assertIsNone(local_ref2.get_chunk_meta(session_id, key1))

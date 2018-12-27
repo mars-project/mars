@@ -56,39 +56,39 @@ class ChunkMetaStore(object):
     Storage of chunk meta, holding worker -> chunk relation as well
     """
     def __init__(self):
-        self._store = dict()
-        self._worker_chunks = defaultdict(set)
+        self._chunk_metas = dict()
+        self._worker_to_chunk_keys = defaultdict(set)
 
-    def __contains__(self, item):
-        return item in self._store
+    def __contains__(self, chunk_key):
+        return chunk_key in self._chunk_metas
 
-    def __getitem__(self, item):
-        return self._store[item]
+    def __getitem__(self, chunk_key):
+        return self._chunk_metas[chunk_key]
 
-    def __setitem__(self, key, value):
-        if key in self._store:
-            self._del_worker_in_metas(key, self._store[key].workers)
+    def __setitem__(self, chunk_key, worker_meta):
+        if chunk_key in self._chunk_metas:
+            self._del_chunk_key_from_workers(chunk_key, self._chunk_metas[chunk_key].workers)
 
-        self._store[key] = value
+        self._chunk_metas[chunk_key] = worker_meta
 
-        worker_chunks = self._worker_chunks
-        for w in value.workers:
-            worker_chunks[w].add(key)
+        worker_chunks = self._worker_to_chunk_keys
+        for w in worker_meta.workers:
+            worker_chunks[w].add(chunk_key)
 
-    def __delitem__(self, key):
-        self._del_worker_in_metas(key, self._store[key].workers)
-        del self._store[key]
+    def __delitem__(self, chunk_key):
+        self._del_chunk_key_from_workers(chunk_key, self._chunk_metas[chunk_key].workers)
+        del self._chunk_metas[chunk_key]
 
-    def _del_worker_in_metas(self, key, workers):
+    def _del_chunk_key_from_workers(self, chunk_key, workers):
         """
-        Delete worker from meta
+        Delete chunk keys from worker
         """
-        worker_chunks = self._worker_chunks
+        worker_to_chunks = self._worker_to_chunk_keys
         for w in workers:
-            worker_chunks[w].remove(key)
+            worker_to_chunks[w].remove(chunk_key)
 
-    def get(self, key, default=None):
-        return self._store.get(key, default)
+    def get(self, chunk_key, default=None):
+        return self._chunk_metas.get(chunk_key, default)
 
     def get_worker_chunks(self, worker, default=None):
         """
@@ -96,7 +96,7 @@ class ChunkMetaStore(object):
         :param worker: worker endpoint
         :param default: default value
         """
-        return self._worker_chunks.get(worker, default)
+        return self._worker_to_chunk_keys.get(worker, default)
 
     def remove_worker_keys(self, worker, filter_fun=None):
         """
@@ -105,24 +105,24 @@ class ChunkMetaStore(object):
         :param filter_fun: key filter
         :return: keys of lost chunks
         """
-        if worker not in self._worker_chunks:
+        if worker not in self._worker_to_chunk_keys:
             return []
 
         filter_fun = filter_fun or (lambda k: True)
-        store = self._store
+        store = self._chunk_metas
         affected = []
-        for ckey in tuple(self._worker_chunks[worker]):
+        for ckey in tuple(self._worker_to_chunk_keys[worker]):
             if not filter_fun(ckey):
                 continue
-            self._del_worker_in_metas(ckey, (worker,))
+            self._del_chunk_key_from_workers(ckey, (worker,))
             meta = store[ckey]
             new_workers = meta.workers = tuple(w for w in meta.workers if w != worker)
             if not new_workers:
                 affected.append(ckey)
         for ckey in affected:
             del self[ckey]
-        if not self._worker_chunks[worker]:
-            del self._worker_chunks[worker]
+        if not self._worker_to_chunk_keys[worker]:
+            del self._worker_to_chunk_keys[worker]
         return affected
 
 
@@ -132,23 +132,23 @@ class ChunkMetaCache(ChunkMetaStore):
     """
     def __init__(self, limit=_META_CACHE_SIZE):
         super(ChunkMetaCache, self).__init__()
-        self._store = OrderedDict3()
+        self._chunk_metas = OrderedDict3()
         self._limit = limit
 
     def __getitem__(self, item):
-        self._store.move_to_end(item)
+        self._chunk_metas.move_to_end(item)
         return super(ChunkMetaCache, self).__getitem__(item)
 
     def get(self, key, default=None):
         try:
-            self._store.move_to_end(key)
+            self._chunk_metas.move_to_end(key)
         except KeyError:
             pass
         return super(ChunkMetaCache, self).get(key, default)
 
     def __setitem__(self, key, value):
         limit = self._limit
-        store = self._store
+        store = self._chunk_metas
         if key in store:
             super(ChunkMetaCache, self).__setitem__(key, value)
             store.move_to_end(key)
@@ -156,7 +156,7 @@ class ChunkMetaCache(ChunkMetaStore):
             super(ChunkMetaCache, self).__setitem__(key, value)
             while len(store) > limit:
                 dkey, ditem = store.popitem(False)
-                self._del_worker_in_metas(dkey, ditem.workers)
+                self._del_chunk_key_from_workers(dkey, ditem.workers)
 
 
 class LocalChunkMetaActor(SchedulerActor):
@@ -186,12 +186,15 @@ class LocalChunkMetaActor(SchedulerActor):
 
     def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
         """
-        Configure broadcast destination addresses.
+        Configure broadcast destination addresses. After configuration,
+        when the meta of the chunk updates, the update will be broadcast
+        into the configured destinations to reduce RPC cost in future.
         :param session_id: session id
         :param chunk_key: chunk key
         :param broadcast_dests: addresses of broadcast destinations, in tuple
         """
-        self._meta_broadcasts[(session_id, chunk_key)] = broadcast_dests
+        self._meta_broadcasts[(session_id, chunk_key)] = \
+            [d for d in broadcast_dests if d != self.address]
 
     def set_chunk_meta(self, session_id, chunk_key, size=None, workers=None):
         """
@@ -224,8 +227,6 @@ class LocalChunkMetaActor(SchedulerActor):
         futures = []
         if query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
-                if dest == self.address:
-                    continue
                 futures.append(self.ctx.actor_ref(self.default_name(), address=dest) \
                     .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True))
             [f.result() for f in futures]
@@ -270,9 +271,17 @@ class LocalChunkMetaActor(SchedulerActor):
             del self._meta_cache[query_key]
         except KeyError:
             pass
+
+        # broadcast deletion into pre-determined destinations
+        futures = []
+        if query_key in self._meta_broadcasts:
+            for dest in self._meta_broadcasts[query_key]:
+                futures.append(self.ctx.actor_ref(self.default_name(), address=dest) \
+                               .delete_meta(session_id, chunk_key, _wait=False, _tell=True))
         if self._kv_store_ref is not None:
-            self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
-                                      recursive=True, _tell=True, _wait=False)
+            futures.append(self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
+                                                     recursive=True, _tell=True, _wait=False))
+        [f.result() for f in futures]
 
     def batch_delete_meta(self, session_id, chunk_keys):
         """
@@ -318,7 +327,9 @@ class ChunkMetaActor(SchedulerActor):
 
     def set_chunk_broadcasts(self, session_id, chunk_key, broadcast_dests):
         """
-        Update metadata broadcast destinations for chunks
+        Update metadata broadcast destinations for chunks. After configuration,
+        when the meta of the chunk updates, the update will be broadcast
+        into the configured destinations to reduce RPC cost in future.
         :param session_id: session id
         :param chunk_key: chunk key
         :param broadcast_dests: destination addresses for broadcast

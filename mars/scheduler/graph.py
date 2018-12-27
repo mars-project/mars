@@ -601,14 +601,12 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
-    def create_operand_actors(self, **kwargs):
+    def create_operand_actors(self, _clean_io_meta=True):
         """
         Create operand actors for all operands
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
         from .operand import OperandActor
-
-        _clean_io_meta = kwargs.get('_clean_io_meta', True)
 
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
