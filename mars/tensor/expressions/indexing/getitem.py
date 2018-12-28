@@ -49,7 +49,6 @@ class TensorIndex(Index, TensorOperandMixin):
         new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        return inputs
 
     def new_tensors(self, inputs, shape, **kw):
         indexes = kw.pop('indexes', None)
