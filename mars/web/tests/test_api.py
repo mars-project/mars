@@ -170,11 +170,6 @@ class Test(unittest.TestCase):
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
 
-            # test test multiple outputs
-            a = mt.random.rand(10, 10)
-            U, s, V, raw = sess.run(list(mt.linalg.svd(a)) + [a])
-            np.testing.assert_allclose(U.dot(np.diag(s).dot(V)), raw)
-
             # check web UI requests
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
@@ -184,12 +179,6 @@ class Test(unittest.TestCase):
 
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
-
-        # test default session run with multiple inputs
-        with new_session(service_ep).as_default() as sess:
-            a = mt.ones((20, 10), chunk_size=10)
-            u, s, v = (mt.linalg.svd(a)).execute()
-            np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
 
 class MockResponse:

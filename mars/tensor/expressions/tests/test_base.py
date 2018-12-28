@@ -338,7 +338,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(mask.op.test_elements.chunks), 1)
         self.assertIs(mask.chunks[0].inputs[0], element.chunks[0].data)
 
-        element = 2 * arange(4, chunks=1).reshape(2, 2)
+        element = 2 * arange(4, chunk_size=1).reshape(2, 2)
         test_elements = tensor([1, 2, 4, 8], chunk_size=2)
 
         mask = isin(element, test_elements, invert=True)
