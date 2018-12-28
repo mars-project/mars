@@ -51,8 +51,8 @@ class TensorQR(operands.QR, TSQR):
     @classmethod
     def tile(cls, op):
         q, r = op.outputs
-        q_dtype, r_dtype = cls._get_obj_attr(q, 'dtype'), cls._get_obj_attr(r, 'dtype')
-        q_shape, r_shape = cls._get_obj_attr(q, 'shape'), cls._get_obj_attr(r, 'shape')
+        q_dtype, r_dtype = q.dtype, r.dtype
+        q_shape, r_shape = q.shape, r.shape
         in_tensor = op.input
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]

@@ -54,6 +54,34 @@ class Test(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
+    def wait_scheduler_worker_start(self):
+        actor_client = new_client()
+        time.sleep(2)
+        check_time = time.time()
+        while True:
+            try:
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_name(), address='127.0.0.1:' + self.scheduler_port)
+                if actor_client.has_actor(resource_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:  # noqa: E722
+                if time.time() - check_time > 10:
+                    raise
+                time.sleep(1)
+
+        check_time = time.time()
+        while not resource_ref.get_worker_count():
+            if self.proc_scheduler.poll() is not None:
+                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+            if self.proc_worker.poll() is not None:
+                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+            if time.time() - check_time > 20:
+                raise SystemError('Check meta_timestamp timeout')
+
+            time.sleep(0.5)
+
     def setUp(self):
         scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
@@ -74,35 +102,7 @@ class Test(unittest.TestCase):
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        actor_client = new_client()
-        time.sleep(2)
-        check_time = time.time()
-        while True:
-            try:
-                resource_ref = actor_client.actor_ref(
-                    ResourceActor.default_name(), address='127.0.0.1:' + scheduler_port)
-                if actor_client.has_actor(resource_ref):
-                    break
-                else:
-                    raise SystemError('Check meta_timestamp timeout')
-            except:
-                if time.time() - check_time > 10:
-                    raise
-                time.sleep(1)
-
-        check_time = time.time()
-        while True:
-            if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
-            if self.proc_worker.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
-            if time.time() - check_time > 20:
-                raise SystemError('Check meta_timestamp timeout')
-
-            if not resource_ref.get_worker_count():
-                time.sleep(0.5)
-            else:
-                break
+        self.wait_scheduler_worker_start()
 
         web_port = str(get_next_port())
         self.web_port = web_port

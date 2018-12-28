@@ -58,6 +58,46 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
+    def _check_response_finished(self, graph_url):
+        try:
+            resp = self._req_session.get(graph_url)
+        except requests.ConnectionError as ex:
+            err_msg = str(ex)
+            if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
+                return False
+            raise
+
+        if resp.status_code == 504:
+            logging.debug('Gateway Time-out, try again')
+            return False
+        if resp.status_code >= 400:
+            raise SystemError('Failed to obtain execution status. Code: %d, Reason: %s, Content:\n%s' %
+                              (resp.status_code, resp.reason, resp.text))
+        try:
+            resp_json = json.loads(resp.text)
+        except ValueError:
+            raise ResponseMalformed('Response malformed. Code: %d, Content:\n%s' %
+                                    (resp.status_code, resp.text))
+        if resp_json['state'] == 'success':
+            return True
+        elif resp_json['state'] in ('running', 'preparing'):
+            return False
+        elif resp_json['state'] in ('cancelled', 'cancelling'):
+            raise ExecutionInterrupted
+        elif resp_json['state'] == 'failed':
+            # TODO add traceback
+            if 'traceback' in resp_json:
+                traceback = resp_json['traceback']
+                traceback = ''.join(str(s) for s in traceback) \
+                    if isinstance(traceback, list) else traceback
+                raise ExecutionFailed(
+                    'Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
+                    (resp_json['msg'], traceback))
+            else:
+                raise ExecutionFailed('Graph execution failed with unknown reason.')
+        raise ExecutionStateUnknown(
+            'Unknown graph execution state %s' % resp_json['state'])
+
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
         compose = kw.pop('compose', True)
@@ -81,66 +121,30 @@ class Session(object):
         for t in tensors:
             self._tensor_to_graph[t.key] = graph_key
 
-        if wait:
-            exec_start_time = time.time()
-            while timeout <= 0 or time.time() - exec_start_time <= timeout:
-                try:
-                    time.sleep(1)
-                    try:
-                        resp = self._req_session.get(graph_url)
-                    except requests.ConnectionError as ex:
-                        err_msg = str(ex)
-                        if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
-                            continue
-                        raise
-                    if resp.status_code == 504:
-                        logging.debug('Gateway Time-out, try again')
-                        continue
-                    if resp.status_code >= 400:
-                        raise SystemError('Failed to obtain execution status. Code: %d, Reason: %s, Content:\n%s' %
-                                          (resp.status_code, resp.reason, resp.text))
-                    try:
-                        resp_json = json.loads(resp.text)
-                    except ValueError:
-                        raise ResponseMalformed('Response malformed. Code: %d, Content:\n%s' %
-                                                (resp.status_code, resp.text))
-                    if resp_json['state'] in ('running', 'preparing'):
-                        continue
-                    elif resp_json['state'] == 'success':
-                        break
-                    elif resp_json['state'] == ('cancelled', 'cancelling'):
-                        raise ExecutionInterrupted
-                    elif resp_json['state'] == 'failed':
-                        # TODO add traceback
-                        if 'traceback' in resp_json:
-                            traceback = resp_json['traceback']
-                            if isinstance(traceback, list):
-                                traceback = ''.join(str(s) for s in traceback)
-                            raise ExecutionFailed(
-                                'Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
-                                (resp_json['msg'], traceback))
-                        else:
-                            raise ExecutionFailed('Graph execution failed with unknown reason.')
-                    else:
-                        raise ExecutionStateUnknown(
-                            'Unknown graph execution state %s' % resp_json['state'])
-                except KeyboardInterrupt:
-                    resp = self._req_session.delete(graph_url)
-                    if resp.status_code >= 400:
-                        raise ExecutionNotStopped(
-                            'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
-                            (resp.status_code, resp.reason, resp.text))
-            if 0 < timeout < time.time() - exec_start_time:
-                raise TimeoutError
-            data_list = []
-            for tk in targets:
-                resp = self._req_session.get(session_url + '/graph/' + graph_key + '/data/' + tk)
-                if resp.status_code >= 400:
-                    continue
-                data_list.append(dataserializer.loads(resp.content))
-            return data_list
-        else:
+        if not wait:
             return graph_key
+
+        exec_start_time = time.time()
+        while timeout <= 0 or time.time() - exec_start_time <= timeout:
+            try:
+                time.sleep(1)
+                if self._check_response_finished(graph_url):
+                    break
+            except KeyboardInterrupt:
+                resp = self._req_session.delete(graph_url)
+                if resp.status_code >= 400:
+                    raise ExecutionNotStopped(
+                        'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
+                        (resp.status_code, resp.reason, resp.text))
+        if 0 < timeout < time.time() - exec_start_time:
+            raise TimeoutError
+        data_list = []
+        for tk in targets:
+            resp = self._req_session.get(session_url + '/graph/' + graph_key + '/data/' + tk)
+            if resp.status_code >= 400:
+                continue
+            data_list.append(dataserializer.loads(resp.content))
+        return data_list
 
     def fetch(self, key):
         session_url = self._endpoint + '/api/session/' + self._session_id

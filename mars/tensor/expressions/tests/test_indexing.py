@@ -41,14 +41,14 @@ class Test(unittest.TestCase):
 
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
-            _ = t[t3 < 2]
+            _ = t[t3 < 2]  # noqa: F841
         e = str(cm.exception)
         self.assertIn('along dimension 0', str(e))
         self.assertIn('dimension is 100 but corresponding boolean dimension is 101', str(e))
 
         t4 = ones((100, 201))
         with self.assertRaises(IndexError) as cm:
-            _ = t[t4 < 2]
+            _ = t[t4 < 2]  # noqa: F841
         e = str(cm.exception)
         self.assertIn('along dimension 1', str(e))
         self.assertIn('dimension is 200 but corresponding boolean dimension is 201', str(e))
@@ -72,7 +72,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t3.shape, (2, 2, 300))
 
         with self.assertRaises(IndexError) as cm:
-            _ = t[[1, 2], [3, 4, 5]]
+            _ = t[[1, 2], [3, 4, 5]]  # noqa: F841
         e = str(cm.exception)
         self.assertEqual(e, 'shape mismatch: indexing arrays could not be broadcast '
                             'together with shapes (2,) (3,)')
@@ -90,7 +90,7 @@ class Test(unittest.TestCase):
         t = ones((100, 200, 300, 400))
 
         with self.assertRaises(IndexError):
-            _ = t[ones((100, 200), dtype=float)]
+            _ = t[ones((100, 200), dtype=float)]  # noqa: F841
 
         t2 = t[ones(100) < 2, ..., 20::101, 2]
         self.assertEqual(len(t2.shape), 3)

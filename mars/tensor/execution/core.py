@@ -164,6 +164,11 @@ def execute_chunk(chunk, executor=None,
             with lock:
                 for output in chunk.op.outputs:
                     finishes[output.key] = True
+                    if output.key in ref_counts and ref_counts[output.key] == 0 and \
+                            output.key in chunk_result:
+                        # some op have more than 1 outputs,
+                        # and some of the outputs are not in the result ones
+                        del chunk_result[output.key]
 
         for pred_key in preds[chunk.key]:
             with lock:
@@ -318,7 +323,7 @@ from .linalg import register_linalg_handler
 
 NUMEXPR_INSTALLED = False
 try:
-    import numexpr
+    import numexpr  # noqa: F401
     NUMEXPR_INSTALLED = True
     from .ne import register_numexpr_handler
     register_numexpr_handler()
@@ -327,7 +332,7 @@ except ImportError:
 
 CP_INSTALLED = False
 try:
-    import cupy
+    import cupy  # noqa: F401
     CP_INSTALLED = True
     from .cp import register_cp_handler
     register_cp_handler()

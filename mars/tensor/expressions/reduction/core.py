@@ -64,10 +64,10 @@ class TensorReduction(TensorOperandMixin):
         check_out_param(out, t, 'same_kind')
         out_shape, out_dtype = out.shape, out.dtype
         # if `out` is specified, use out's dtype and shape
-        if out.shape != t.shape:
+        if out_shape != t.shape:
             if out.ndim > t.ndim:
                 raise ValueError('output has too many dimensions')
-            raise ValueError('output shape should be {0}, got {1}'.format(t.shape, out.shape))
+            raise ValueError('output shape should be {0}, got {1}'.format(t.shape, out_shape))
 
         setattr(self, '_dtype', out_dtype)
 

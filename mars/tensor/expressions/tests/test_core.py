@@ -315,7 +315,7 @@ class Test(TestBase):
         self.assertIsInstance(x, Tensor)
 
         y = np.sum(t, axis=1)
-        self.assertIsInstance(x, Tensor)
+        self.assertIsInstance(y, Tensor)
 
     def testArange(self):
         t = arange(10, chunk_size=3)

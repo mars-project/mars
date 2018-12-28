@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         all = lambda x, *args, **kwargs: x.all(*args, **kwargs).tiles()
         any = lambda x, *args, **kwargs: x.any(*args, **kwargs).tiles()
 
-        for f in [sum, max, min, all, any]:
+        for f in [sum, prod, max, min, all, any]:
             res = f(ones((8, 8), chunk_size=8))
             self.assertEqual(res.shape, ())
 

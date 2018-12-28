@@ -134,16 +134,18 @@ class Promise(object):
                 break
         return p
 
+    @staticmethod
+    def _log_unexpected_error(args):
+        if args and len(args) == 3 and issubclass(args[0], Exception):
+            try:
+                six.reraise(*args)
+            except:
+                logger.exception('Unhandled exception in promise')
+
     def step_next(self, *args, **kwargs):
         """
         Step into next promise with given args and kwargs
         """
-        def _log_unexpected_error():
-            if args and len(args) == 3 and issubclass(args[0], Exception):
-                try:
-                    six.reraise(*args)
-                except:
-                    logger.exception('Unhandled exception in promise')
 
         accept = kwargs.pop('_accept', True)
         target_promise = self
@@ -162,7 +164,7 @@ class Promise(object):
             target_promise = target_promise._next_item
             if not target_promise:
                 if not accept:
-                    _log_unexpected_error()
+                    self._log_unexpected_error(args)
                 return
 
             if accept:
@@ -174,7 +176,7 @@ class Promise(object):
                 if rejecter and rejecter._reject_handler:
                     rejecter._reject_handler(*args, **kwargs)
                 else:
-                    _log_unexpected_error()
+                    self._log_unexpected_error(args)
         finally:
             if target_promise and target_promise.id in _promise_pool:
                 del _promise_pool[target_promise.id]

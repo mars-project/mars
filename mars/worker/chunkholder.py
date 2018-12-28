@@ -220,7 +220,7 @@ class ChunkHolderActor(WorkerActor):
 
     @log_unhandled
     def unregister_chunk(self, session_id, chunk_key):
-        _ = session_id
+        _ = session_id  # noqa: F841
 
         spill_ref = self._get_spill_actor_ref(chunk_key)
         if spill_ref:
