@@ -39,6 +39,9 @@ class LocalSession(object):
             raise RuntimeError('Session has closed')
         return self._executor.execute_tensors(tensors, **kw)
 
+    def fetch(self, key):
+        raise ValueError('Local session cannot fetch data')
+
     def decref(self, *keys):
         self._executor.decref(*keys)
 
@@ -80,9 +83,24 @@ class Session(object):
             ret_list = True
 
         tensors = tuple(mt.tensor(t) for t in tensors)
-        result = self._sess.run(*tensors, **kw)
-        self._executed_keys.update(t.key for t in tensors)
+        run_tensors = []
+        fetch_results = dict()
+
         for t in tensors:
+            if t.key in self._executed_keys:
+                try:
+                    fetch_results[t.key] = self.fetch(t.key)
+                except ValueError:
+                    run_tensors.append(t)
+            else:
+                run_tensors.append(t)
+        if all([t.key in fetch_results for t in tensors]):
+            results = [fetch_results[t.key] for t in tensors]
+            return results if ret_list else results[0]
+
+        result = self._sess.run(*run_tensors, **kw)
+        self._executed_keys.update(t.key for t in run_tensors)
+        for t in run_tensors:
             t._execute_session = self
 
         ret = []
@@ -94,9 +112,20 @@ class Session(object):
                 ret.append(np.asscalar(r))
             else:
                 ret.append(r)
+
+        results = []
+        result_iter = iter(ret)
+        for k in [t.key for t in tensors]:
+            if k in fetch_results:
+                results.append(fetch_results[k])
+            else:
+                results.append(next(result_iter))
         if ret_list:
-            return ret
-        return ret[0]
+            return results
+        return results[0]
+
+    def fetch(self, tensor_key):
+        return self._sess.fetch(tensor_key)
 
     @property
     def endpoint(self):

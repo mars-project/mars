@@ -52,3 +52,13 @@ class Test(unittest.TestCase):
         expected = np.split(data, 3, axis=1)[0]
 
         np.testing.assert_array_equal(result, expected)
+
+        # test run the same tensor
+        arr4 = mt.tensor(data.copy(), chunk_size=3) + 1
+        result1 = arr4.execute()
+        expected = data + 1
+
+        np.testing.assert_array_equal(result1, expected)
+
+        result2 = arr4.execute()
+        np.testing.assert_array_equal(result1, result2)
