@@ -37,6 +37,12 @@ class TensorIndex(Index, TensorOperandMixin):
 
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes):
+        """
+        Index operator is special, it has additional parameter `indexes` which may also be tensor type,
+        normally, this indexes is provided when called by `tile` or `TensorIndex.__call__`, however, calls
+        in `GraphActor.get_executable_operand_dag` only provide inputs, in such situation, we need get `indexes`
+        from operand itself and replace tensor-liked indexes by new one in `inputs`.
+        """
         if indexes is not None:
             indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
             inputs = inputs + indexes_inputs
