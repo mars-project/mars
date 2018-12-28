@@ -18,3 +18,10 @@ omit =
     mars/lib/uhashring/*
     mars/serialize/protos/*
     */tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
