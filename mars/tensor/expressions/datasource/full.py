@@ -41,7 +41,7 @@ class TensorFull(TensorNoInput):
         return self._fill_value
 
 
-def full(shape, fill_value, dtype=None, chunks=None, gpu=False):
+def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False):
     """
     Return a new tensor of given shape and type, filled with `fill_value`.
 
@@ -54,7 +54,7 @@ def full(shape, fill_value, dtype=None, chunks=None, gpu=False):
     dtype : data-type, optional
         The desired data-type for the tensor  The default, `None`, means
          `np.array(fill_value).dtype`.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -89,7 +89,7 @@ def full(shape, fill_value, dtype=None, chunks=None, gpu=False):
     v = np.asarray(fill_value)
     if len(v.shape) > 0:
         from ..base import broadcast_to
-        return broadcast_to(tensor(v, dtype=dtype, chunks=chunks, gpu=gpu), shape)
+        return broadcast_to(tensor(v, dtype=dtype, chunk_size=chunk_size, gpu=gpu), shape)
 
     op = TensorFull(fill_value, dtype=dtype, gpu=gpu)
-    return op(shape, chunks=chunks)
+    return op(shape, chunk_size=chunk_size)

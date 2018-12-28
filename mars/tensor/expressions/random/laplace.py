@@ -29,11 +29,11 @@ class TensorLaplace(operands.Laplace, TensorRandomOperandMixin):
         super(TensorLaplace, self).__init__(_state=state, _size=size,
                                             _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, loc, scale, chunks=None):
-        return self.new_tensor([loc, scale], None, raw_chunks=chunks)
+    def __call__(self, loc, scale, chunk_size=None):
+        return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def laplace(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
+def laplace(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from the Laplace or double exponential distribution with
     specified location (or mean) and scale (decay).
@@ -120,4 +120,4 @@ def laplace(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, 
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorLaplace(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(loc, scale, chunks=chunks)
+    return op(loc, scale, chunk_size=chunk_size)

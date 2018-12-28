@@ -39,7 +39,7 @@ class Test(unittest.TestCase):
         return True
 
     def testBaseExecution(self):
-        arr = ones((10, 8), chunks=2)
+        arr = ones((10, 8), chunk_size=2)
         arr2 = arr + 1
 
         res = self.executor.execute_tensor(arr2)
@@ -47,7 +47,7 @@ class Test(unittest.TestCase):
         self.assertTrue((res[0] == np.ones((2, 2)) + 1).all())
 
         data = np.random.random((10, 8, 3))
-        arr = tensor(data, chunks=2)
+        arr = tensor(data, chunk_size=2)
         arr2 = arr + 1
 
         res = self.executor.execute_tensor(arr2)
@@ -71,8 +71,8 @@ class Test(unittest.TestCase):
         data1 = np.random.random((5, 9, 4))
         data2 = np.random.random((5, 9, 4))
         rand = np.random.random()
-        arr1 = tensor(data1, chunks=3)
-        arr2 = tensor(data2, chunks=3)
+        arr1 = tensor(data1, chunk_size=3)
+        arr2 = tensor(data2, chunk_size=3)
 
         _new_unary_ufunc = UNARY_UFUNC - _sp_unary_ufunc
         for func in _new_unary_ufunc:
@@ -102,8 +102,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(2, 10, size=(10, 10, 10))
         data2 = np.random.randint(2, 10, size=(10, 10, 10))
         rand = np.random.randint(1, 10)
-        arr1 = tensor(data1, chunks=3)
-        arr2 = tensor(data2, chunks=3)
+        arr1 = tensor(data1, chunk_size=3)
+        arr2 = tensor(data2, chunk_size=3)
 
         for func in _sp_unary_ufunc:
             res_tensor = func(arr1)
@@ -164,8 +164,8 @@ class Test(unittest.TestCase):
         data1 = sps.random(5, 9, density=.1)
         data2 = sps.random(5, 9, density=.2)
         rand = np.random.random()
-        arr1 = tensor(data1, chunks=3)
-        arr2 = tensor(data2, chunks=3)
+        arr1 = tensor(data1, chunk_size=3)
+        arr2 = tensor(data2, chunk_size=3)
 
         _new_unary_ufunc = UNARY_UFUNC - _sp_unary_ufunc
         for func in _new_unary_ufunc:
@@ -195,8 +195,8 @@ class Test(unittest.TestCase):
         data1 = np.random.randint(2, 10, size=(10, 10))
         data2 = np.random.randint(2, 10, size=(10, 10))
         rand = np.random.randint(1, 10)
-        arr1 = tensor(data1, chunks=3).tosparse()
-        arr2 = tensor(data2, chunks=3).tosparse()
+        arr1 = tensor(data1, chunk_size=3).tosparse()
+        arr2 = tensor(data2, chunk_size=3).tosparse()
 
         for func in _sp_unary_ufunc:
             res_tensor = func(arr1)
@@ -225,22 +225,22 @@ class Test(unittest.TestCase):
         data1 = np.random.random((5, 9, 4))
         data2 = np.random.random((9, 4))
 
-        arr1 = tensor(data1.copy(), chunks=3)
-        arr2 = tensor(data2.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
+        arr2 = tensor(data2.copy(), chunk_size=3)
 
         add(arr1, arr2, out=arr1)
         res = self.executor.execute_tensor(arr1, concat=True)[0]
         self.assertTrue(np.array_equal(res, data1 + data2))
 
-        arr1 = tensor(data1.copy(), chunks=3)
-        arr2 = tensor(data2.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
+        arr2 = tensor(data2.copy(), chunk_size=3)
 
         arr3 = add(arr1, arr2, out=arr1.astype('i4'), casting='unsafe')
         res = self.executor.execute_tensor(arr3, concat=True)[0]
         np.testing.assert_array_equal(res, (data1 + data2).astype('i4'))
 
-        arr1 = tensor(data1.copy(), chunks=3)
-        arr2 = tensor(data2.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
+        arr2 = tensor(data2.copy(), chunk_size=3)
 
         arr3 = truediv(arr1, arr2, out=arr1, where=arr2 > .5)
         res = self.executor.execute_tensor(arr3, concat=True)[0]
@@ -250,7 +250,7 @@ class Test(unittest.TestCase):
     def testFrexpExecution(self):
         data1 = np.random.random((5, 9, 4))
 
-        arr1 = tensor(data1.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
 
         o1, o2 = frexp(arr1)
         o = o1 + o2
@@ -259,9 +259,9 @@ class Test(unittest.TestCase):
         expected = sum(np.frexp(data1))
         self.assertTrue(np.allclose(res, expected))
 
-        arr1 = tensor(data1.copy(), chunks=3)
-        o1 = zeros(data1.shape, chunks=3)
-        o2 = zeros(data1.shape, dtype='i8', chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
+        o1 = zeros(data1.shape, chunk_size=3)
+        o2 = zeros(data1.shape, dtype='i8', chunk_size=3)
         frexp(arr1, o1, o2)
         o = o1 + o2
 
@@ -271,7 +271,7 @@ class Test(unittest.TestCase):
 
         data1 = sps.random(5, 9, density=.1)
 
-        arr1 = tensor(data1.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
 
         o1, o2 = frexp(arr1)
         o = o1 + o2
@@ -283,7 +283,7 @@ class Test(unittest.TestCase):
     def testModfExecution(self):
         data1 = np.random.random((5, 9))
 
-        arr1 = tensor(data1.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
 
         o1, o2 = modf(arr1)
         o = o1 + o2
@@ -292,9 +292,9 @@ class Test(unittest.TestCase):
         expected = sum(np.modf(data1))
         self.assertTrue(np.allclose(res, expected))
 
-        arr1 = tensor(data1.copy(), chunks=3)
-        o1 = zeros(data1.shape, chunks=3)
-        o2 = zeros(data1.shape, chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
+        o1 = zeros(data1.shape, chunk_size=3)
+        o2 = zeros(data1.shape, chunk_size=3)
         modf(arr1, o1, o2)
         o = o1 + o2
 
@@ -304,7 +304,7 @@ class Test(unittest.TestCase):
 
         data1 = sps.random(5, 9, density=.1)
 
-        arr1 = tensor(data1.copy(), chunks=3)
+        arr1 = tensor(data1.copy(), chunk_size=3)
 
         o1, o2 = modf(arr1)
         o = o1 + o2
@@ -316,7 +316,7 @@ class Test(unittest.TestCase):
     def testClipExecution(self):
         a_data = np.arange(10)
 
-        a = tensor(a_data.copy(), chunks=3)
+        a = tensor(a_data.copy(), chunk_size=3)
 
         b = clip(a, 1, 8)
 
@@ -324,7 +324,7 @@ class Test(unittest.TestCase):
         expected = np.clip(a_data, 1, 8)
         self.assertTrue(np.array_equal(res, expected))
 
-        a = tensor(a_data.copy(), chunks=3)
+        a = tensor(a_data.copy(), chunk_size=3)
         clip(a, 3, 6, out=a)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
@@ -332,9 +332,9 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res, expected))
 
         with option_context() as options:
-            options.tensor.chunks = 3
+            options.tensor.chunk_size = 3
 
-            a = tensor(a_data.copy(), chunks=3)
+            a = tensor(a_data.copy(), chunk_size=3)
             b = clip(a, [3, 4, 1, 1, 1, 4, 4, 4, 4, 4], 8)
 
             res = self.executor.execute_tensor(b, concat=True)[0]
@@ -343,7 +343,7 @@ class Test(unittest.TestCase):
 
             # test sparse clip
             a_data = sps.csr_matrix([[0, 2, 8], [0, 0, -1]])
-            a = tensor(a_data, chunks=3)
+            a = tensor(a_data, chunk_size=3)
             b_data = sps.csr_matrix([[0, 3, 0], [1, 0, -2]])
 
             c = clip(a, b_data, 4)
@@ -354,7 +354,7 @@ class Test(unittest.TestCase):
 
     def testAroundExecution(self):
         data = np.random.randn(10, 20)
-        x = tensor(data, chunks=3)
+        x = tensor(data, chunk_size=3)
 
         t = x.round(2)
 
@@ -364,7 +364,7 @@ class Test(unittest.TestCase):
         np.testing.assert_allclose(res, expected)
 
         data = sps.random(10, 20, density=.2)
-        x = tensor(data, chunks=3)
+        x = tensor(data, chunk_size=3)
 
         t = x.round(2)
 
@@ -377,8 +377,8 @@ class Test(unittest.TestCase):
         data = np.array([1.05, 1.0, 1.01, np.nan])
         data2 = np.array([1.04, 1.0, 1.03, np.nan])
 
-        x = tensor(data, chunks=2)
-        y = tensor(data2, chunks=3)
+        x = tensor(data, chunk_size=2)
+        y = tensor(data2, chunk_size=3)
 
         z = isclose(x, y, atol=.01)
 
@@ -399,8 +399,8 @@ class Test(unittest.TestCase):
         data = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
         data2 = sps.csr_matrix(np.array([0, 1.0, 1.03, np.nan]))
 
-        x = tensor(data, chunks=2)
-        y = tensor(data2, chunks=3)
+        x = tensor(data, chunk_size=2)
+        y = tensor(data2, chunk_size=3)
 
         z = isclose(x, y, atol=.01)
 
@@ -417,7 +417,7 @@ class Test(unittest.TestCase):
         np.testing.assert_equal(res, expected)
 
     def testDtypeExecution(self):
-        a = ones((10, 20), dtype='f4', chunks=5)
+        a = ones((10, 20), dtype='f4', chunk_size=5)
 
         c = truediv(a, 2, dtype='f8')
 
@@ -435,7 +435,7 @@ class Test(unittest.TestCase):
 
     def testSetGetRealExecution(self):
         a_data = np.array([1+2j, 3+4j, 5+6j])
-        a = tensor(a_data, chunks=2)
+        a = tensor(a_data, chunk_size=2)
 
         res = self.executor.execute_tensor(a.real, concat=True)[0]
         expected = a_data.real
@@ -485,7 +485,7 @@ class Test(unittest.TestCase):
 
     def testSetGetImagExecution(self):
         a_data = np.array([1+2j, 3+4j, 5+6j])
-        a = tensor(a_data, chunks=2)
+        a = tensor(a_data, chunk_size=2)
 
         res = self.executor.execute_tensor(a.imag, concat=True)[0]
         expected = a_data.imag

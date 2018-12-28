@@ -31,7 +31,7 @@ from numpy.testing import assert_array_equal
 from mars import tensor as mt
 from mars.actors import new_client
 from mars.utils import get_next_port
-from mars.scheduler import KVStoreActor
+from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
 from mars.config import options
@@ -79,8 +79,9 @@ class Test(unittest.TestCase):
         check_time = time.time()
         while True:
             try:
-                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
-                if actor_client.has_actor(kv_ref):
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_name(), address='127.0.0.1:' + scheduler_port)
+                if actor_client.has_actor(resource_ref):
                     break
                 else:
                     raise SystemError('Check meta_timestamp timeout')
@@ -91,7 +92,6 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while True:
-            content = kv_ref.read('/workers/meta_timestamp', silent=True)
             if self.proc_scheduler.poll() is not None:
                 raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
             if self.proc_worker.poll() is not None:
@@ -99,7 +99,7 @@ class Test(unittest.TestCase):
             if time.time() - check_time > 20:
                 raise SystemError('Check meta_timestamp timeout')
 
-            if not content:
+            if not resource_ref.get_worker_count():
                 time.sleep(0.5)
             else:
                 break
@@ -152,8 +152,8 @@ class Test(unittest.TestCase):
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
             value = sess.run(c)
             assert_array_equal(value, np.ones((100, 100)) * 100)
@@ -164,8 +164,8 @@ class Test(unittest.TestCase):
 
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))
-            a = mt.array(va, chunks=30)
-            b = mt.array(vb, chunks=30)
+            a = mt.array(va, chunk_size=30)
+            b = mt.array(vb, chunk_size=30)
             c = a.dot(b)
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
@@ -249,8 +249,8 @@ class TestWithMockServer(unittest.TestCase):
         with new_session(self._service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
 
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
 
             result = sess.run(c, timeout=120)

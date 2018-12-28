@@ -129,8 +129,8 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], chunk_shape, index=chunk_idx)
 
-    def __call__(self, v, shape, chunks=None):
-        return self.new_tensor([v], shape, raw_chunks=chunks)
+    def __call__(self, v, shape, chunk_size=None):
+        return self.new_tensor([v], shape, raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
@@ -178,7 +178,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         return getattr(self, '_k', 0)
 
 
-def diag(v, k=0, sparse=None, gpu=False, chunks=None):
+def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
     """
     Extract a diagonal or construct a diagonal tensor.
 
@@ -199,7 +199,7 @@ def diag(v, k=0, sparse=None, gpu=False, chunks=None):
         Create sparse tensor if True, False as default
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -242,7 +242,7 @@ def diag(v, k=0, sparse=None, gpu=False, chunks=None):
         v = tensor(v).op.data
         diag_v = get_array_module(v).diag(v, k=k)
         sparse = sparse if sparse is not None else issparse(v)
-        return tensor(diag_v, gpu=gpu, sparse=sparse, chunks=chunks)
+        return tensor(diag_v, gpu=gpu, sparse=sparse, chunk_size=chunk_size)
 
     sparse = sparse if sparse is not None else v.issparse()
 

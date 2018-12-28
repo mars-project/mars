@@ -19,7 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import Int32Field
 from ....config import options
-from ..utils import decide_chunks
+from ..utils import decide_chunk_sizes
 from .diag import TensorDiagBase
 from .core import TensorNoInput
 
@@ -40,8 +40,8 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     @classmethod
     def _get_nsplits(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.params.raw_chunks or options.tensor.chunks
-        return decide_chunks(tensor.shape, chunk_size, tensor.dtype.itemsize)
+        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        return decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
 
     @classmethod
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
@@ -53,7 +53,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
         return TensorDiagBase.tile(op)
 
 
-def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunks=None):
+def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None):
     """
     Return a 2-D tensor with ones on the diagonal and zeros elsewhere.
 
@@ -73,7 +73,7 @@ def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunks=None):
         Create sparse tensor if True, False as default
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -105,4 +105,4 @@ def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunks=None):
 
     shape = (N, M)
     op = TensorEye(k, dtype=dtype, gpu=gpu, sparse=sparse)
-    return op(shape, chunks=chunks)
+    return op(shape, chunk_size=chunk_size)

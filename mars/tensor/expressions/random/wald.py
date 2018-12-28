@@ -29,11 +29,11 @@ class TensorWald(operands.Wald, TensorRandomOperandMixin):
         super(TensorWald, self).__init__(_size=size, _state=state, _dtype=dtype,
                                          _gpu=gpu, **kw)
 
-    def __call__(self, mean, scale, chunks=None):
-        return self.new_tensor([mean, scale], None, raw_chunks=chunks)
+    def __call__(self, mean, scale, chunk_size=None):
+        return self.new_tensor([mean, scale], None, raw_chunk_size=chunk_size)
 
 
-def wald(random_state, mean, scale, size=None, chunks=None, gpu=None, **kw):
+def wald(random_state, mean, scale, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a Wald, or inverse Gaussian, distribution.
 
@@ -57,7 +57,7 @@ def wald(random_state, mean, scale, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``mean`` and ``scale`` are both scalars.
         Otherwise, ``np.broadcast(mean, scale).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -103,4 +103,4 @@ def wald(random_state, mean, scale, size=None, chunks=None, gpu=None, **kw):
             handle_array(mean), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorWald(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(mean, scale, chunks=chunks)
+    return op(mean, scale, chunk_size=chunk_size)

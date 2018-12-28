@@ -29,11 +29,11 @@ class TensorWeibull(operands.Weibull, TensorRandomOperandMixin):
         super(TensorWeibull, self).__init__(_size=size, _state=state, _dtype=dtype,
                                             _gpu=gpu, **kw)
 
-    def __call__(self, a, chunks=None):
-        return self.new_tensor([a], None, raw_chunks=chunks)
+    def __call__(self, a, chunk_size=None):
+        return self.new_tensor([a], None, raw_chunk_size=chunk_size)
 
 
-def weibull(random_state, a, size=None, chunks=None, gpu=None, **kw):
+def weibull(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a Weibull distribution.
 
@@ -56,7 +56,7 @@ def weibull(random_state, a, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``a`` is a scalar.  Otherwise,
         ``mt.array(a).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -134,4 +134,4 @@ def weibull(random_state, a, size=None, chunks=None, gpu=None, **kw):
             handle_array(a), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorWeibull(size=size, state=random_state._state, gpu=gpu, **kw)
-    return op(a, chunks=chunks)
+    return op(a, chunk_size=chunk_size)

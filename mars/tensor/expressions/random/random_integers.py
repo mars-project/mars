@@ -30,11 +30,11 @@ class TensorRandomIntegers(operands.RandomIntegers, TensorRandomOperandMixin):
                                                    _dtype=dtype, _low=low, _high=high,
                                                    _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
-        return self.new_tensor(None, None, raw_chunks=chunks)
+    def __call__(self, chunk_size=None):
+        return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def random_integers(random_state, low, high=None, size=None, chunks=None, gpu=None, **kw):
+def random_integers(random_state, low, high=None, size=None, chunk_size=None, gpu=None, **kw):
     """
     Random integers of type mt.int between `low` and `high`, inclusive.
 
@@ -59,7 +59,7 @@ def random_integers(random_state, low, high=None, size=None, chunks=None, gpu=No
         Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
         ``m * n * k`` samples are drawn.  Default is None, in which case a
         single value is returned.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -118,4 +118,4 @@ def random_integers(random_state, low, high=None, size=None, chunks=None, gpu=No
     size = random_state._handle_size(size)
     op = TensorRandomIntegers(state=random_state._state, size=size, dtype=np.dtype(int),
                               low=low, high=high, gpu=gpu, **kw)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)

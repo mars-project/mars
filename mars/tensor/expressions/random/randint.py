@@ -31,12 +31,12 @@ class TensorRandint(operands.Randint, TensorRandomOperandMixin):
                                             _sparse=sparse, _density=density,
                                             _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
-        return self.new_tensor(None, None, raw_chunks=chunks)
+    def __call__(self, chunk_size=None):
+        return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
 def randint(random_state, low, high=None, size=None, dtype='l', density=None,
-            chunks=None, gpu=None, **kw):
+            chunk_size=None, gpu=None, **kw):
     """
     Return random integers from `low` (inclusive) to `high` (exclusive).
 
@@ -64,7 +64,7 @@ def randint(random_state, low, high=None, size=None, dtype='l', density=None,
         on the platform. The default value is 'np.int'.
     density: float, optional
         if density specified, a sparse tensor will be created
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -101,4 +101,4 @@ def randint(random_state, low, high=None, size=None, dtype='l', density=None,
     size = random_state._handle_size(size)
     op = TensorRandint(state=random_state._state, low=low, high=high, size=size, dtype=dtype,
                        gpu=gpu, sparse=sparse, density=density, **kw)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)

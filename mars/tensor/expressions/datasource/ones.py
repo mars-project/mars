@@ -30,7 +30,7 @@ class TensorOnes(TensorNoInput):
         super(TensorOnes, self).__init__(_dtype=dtype, _gpu=gpu, **kw)
 
 
-def ones(shape, dtype=None, chunks=None, gpu=False):
+def ones(shape, dtype=None, chunk_size=None, gpu=False):
     """
     Return a new tensor of given shape and type, filled with ones.
 
@@ -41,7 +41,7 @@ def ones(shape, dtype=None, chunks=None, gpu=False):
     dtype : data-type, optional
         The desired data-type for the tensor, e.g., `mt.int8`.  Default is
         `mt.float64`.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -76,7 +76,7 @@ def ones(shape, dtype=None, chunks=None, gpu=False):
 
     """
     op = TensorOnes(dtype=dtype, gpu=gpu)
-    return op(shape, chunks=chunks)
+    return op(shape, chunk_size=chunk_size)
 
 
 class TensorOnesLike(TensorLike):

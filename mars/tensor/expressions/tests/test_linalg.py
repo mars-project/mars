@@ -24,7 +24,7 @@ from mars.graph import DirectedGraph
 
 class Test(unittest.TestCase):
     def testQR(self):
-        a = mt.random.rand(9, 6, chunks=(3, 6))
+        a = mt.random.rand(9, 6, chunk_size=(3, 6))
         q, r = mt.linalg.qr(a)
 
         self.assertEqual(q.shape, (9, 6))
@@ -38,7 +38,7 @@ class Test(unittest.TestCase):
     def testNorm(self):
         data = np.random.rand(9, 6)
 
-        a = mt.tensor(data, chunks=(2, 6))
+        a = mt.tensor(data, chunk_size=(2, 6))
 
         for ord in (None, 'nuc', np.inf, -np.inf, 0, 1, -1, 2, -2):
             for axis in (0, 1, (0, 1)):
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
                         continue
 
     def testSVD(self):
-        a = mt.random.rand(9, 6, chunks=(3, 6))
+        a = mt.random.rand(9, 6, chunk_size=(3, 6))
         U, s, V = mt.linalg.svd(a)
 
         self.assertEqual(U.shape, (9, 6))
@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
         self.assertEqual(s.ndim, 1)
         self.assertEqual(len(s.chunks[0].index), 1)
 
-        a = mt.random.rand(9, 6, chunks=(9, 6))
+        a = mt.random.rand(9, 6, chunk_size=(9, 6))
         U, s, V = mt.linalg.svd(a)
 
         self.assertEqual(U.shape, (9, 6))
@@ -82,7 +82,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(s.chunks[0].index), 1)
 
         rs = mt.random.RandomState(1)
-        a = rs.rand(9, 6, chunks=(3, 6))
+        a = rs.rand(9, 6, chunk_size=(3, 6))
         U, s, V = mt.linalg.svd(a)
 
         # test tensor graph
@@ -106,7 +106,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(set([o.op for o in new_outputs])), 3)
 
     def testLU(self):
-        a = mt.random.randint(1, 10, (6, 6), chunks=3)
+        a = mt.random.randint(1, 10, (6, 6), chunk_size=3)
         p, l, u = mt.linalg.lu(a)
         l.tiles()
 
@@ -121,14 +121,14 @@ class Test(unittest.TestCase):
 
         self.assertEqual(x.shape, (20, ))
 
-        a = mt.random.randint(1, 10, (20, 20), chunks=5)
-        b = mt.random.randint(1, 10, (20, 3), chunks=5)
+        a = mt.random.randint(1, 10, (20, 20), chunk_size=5)
+        b = mt.random.randint(1, 10, (20, 3), chunk_size=5)
         x = mt.linalg.solve(a, b).tiles()
 
         self.assertEqual(x.shape, (20, 3))
 
     def testInv(self):
-        a = mt.random.randint(1, 10, (20, 20), chunks=4)
+        a = mt.random.randint(1, 10, (20, 20), chunk_size=4)
         a_inv = mt.linalg.inv(a).tiles()
 
         self.assertEqual(a_inv.shape, (20, 20))

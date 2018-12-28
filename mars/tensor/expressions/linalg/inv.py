@@ -57,4 +57,4 @@ def inv(a):
     from ..datasource import eye
 
     a = astensor(a)
-    return solve(a, eye(a.shape[0], chunks=a.params.raw_chunks))
+    return solve(a, eye(a.shape[0], chunk_size=a.params.raw_chunk_size))

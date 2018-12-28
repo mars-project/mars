@@ -24,42 +24,42 @@ from mars.tensor import fft
 
 class Test(unittest.TestCase):
     def testStandardFFT(self):
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.fft(t)
         self.assertEqual(t1.shape, (10, 20, 30))
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.ifft(t)
         self.assertEqual(t1.shape, (10, 20, 30))
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.fft2(t, s=(23, 21))
         self.assertEqual(t1.shape, (10, 23, 21))
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.ifft2(t, s=(11, 9), axes=(1, 2))
         self.assertEqual(t1.shape, (10, 11, 9))
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.fftn(t, s=(11, 9), axes=(1, 2))
         self.assertEqual(t1.shape, (10, 11, 9))
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.ifftn(t, s=(11, 9), axes=(1, 2))
         self.assertEqual(t1.shape, (10, 11, 9))
@@ -67,42 +67,42 @@ class Test(unittest.TestCase):
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
     def testRealFFT(self):
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.rfft(t)
         self.assertEqual(t1.shape, np.fft.rfft(np.ones(t.shape)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.irfft(t)
         self.assertEqual(t1.shape, np.fft.irfft(np.ones(t.shape)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.rfft2(t, s=(23, 21))
         self.assertEqual(t1.shape, np.fft.rfft2(np.ones(t.shape), s=(23, 21)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.irfft2(t, s=(11, 9), axes=(1, 2))
         self.assertEqual(t1.shape, np.fft.irfft2(np.ones(t.shape), s=(11, 9), axes=(1, 2)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.rfftn(t, s=(11, 30), axes=(1, 2))
         self.assertEqual(t1.shape, np.fft.rfftn(np.ones(t.shape), s=(11, 30), axes=(1, 2)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.irfftn(t, s=(11, 9), axes=(1, 2))
         self.assertEqual(t1.shape, np.fft.irfftn(np.ones(t.shape), s=(11, 9), axes=(1, 2)).shape)
@@ -110,28 +110,28 @@ class Test(unittest.TestCase):
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
     def testHermitianFFT(self):
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.hfft(t)
         self.assertEqual(t1.shape, np.fft.hfft(np.ones(t.shape)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.hfft(t, n=100)
         self.assertEqual(t1.shape, np.fft.hfft(np.ones(t.shape), n=100).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.ihfft(t)
         self.assertEqual(t1.shape, np.fft.ihfft(np.ones(t.shape)).shape)
         t1.tiles()
         self.assertEqual(t1.shape, tuple(sum(ns) for ns in t1.nsplits))
 
-        t = ones((10, 20, 30), chunks=(3, 20, 30))
+        t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 
         t1 = fft.ihfft(t, n=100)
         self.assertEqual(t1.shape, np.fft.ihfft(np.ones(t.shape), n=100).shape)

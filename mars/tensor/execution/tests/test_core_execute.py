@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
         self.session._sess = local_session
 
     def testDecref(self):
-        a = ones((10, 20), chunks=5)
+        a = ones((10, 20), chunk_size=5)
         b = a + 1
 
         b.execute(session=self.session)

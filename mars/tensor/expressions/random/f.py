@@ -29,11 +29,11 @@ class TensorF(operands.F, TensorRandomOperandMixin):
         super(TensorF, self).__init__(_state=state, _size=size, _dtype=dtype,
                                       _gpu=gpu, **kw)
 
-    def __call__(self, dfnum, dfden, chunks=None):
-        return self.new_tensor([dfnum, dfden], None, raw_chunks=chunks)
+    def __call__(self, dfnum, dfden, chunk_size=None):
+        return self.new_tensor([dfnum, dfden], None, raw_chunk_size=chunk_size)
 
 
-def f(random_state, dfnum, dfden, size=None, chunks=None, gpu=None, **kw):
+def f(random_state, dfnum, dfden, size=None, chunk_size=None, gpu=None, **kw):
     """
     Draw samples from an F distribution.
 
@@ -58,7 +58,7 @@ def f(random_state, dfnum, dfden, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``dfnum`` and ``dfden`` are both scalars.
         Otherwise, ``np.broadcast(dfnum, dfden).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -124,4 +124,4 @@ def f(random_state, dfnum, dfden, size=None, chunks=None, gpu=None, **kw):
             handle_array(dfnum), handle_array(dfden), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorF(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(dfnum, dfden, chunks=chunks)
+    return op(dfnum, dfden, chunk_size=chunk_size)

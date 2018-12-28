@@ -30,18 +30,18 @@ class Test(unittest.TestCase):
         self.executor = Executor('numpy')
 
     def testSumProdExecution(self):
-        arr = ones((10, 8), chunks=3)
+        arr = ones((10, 8), chunk_size=3)
         self.assertEqual([80], self.executor.execute_tensor(arr.sum()))
         self.assertEqual((10,) * 8,
                          tuple(np.concatenate(self.executor.execute_tensor(arr.sum(axis=0)))))
 
-        arr = ones((3, 3), chunks=2)
+        arr = ones((3, 3), chunk_size=2)
         self.assertEqual([512], self.executor.execute_tensor((arr * 2).prod()))
         self.assertEqual((8,) * 3,
                          tuple(np.concatenate(self.executor.execute_tensor((arr * 2).prod(axis=0)))))
 
         raw = sps.random(10, 20, density=.1)
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
         res = self.executor.execute_tensor(arr.sum())[0]
 
         self.assertAlmostEqual(res, raw.sum())
@@ -49,7 +49,7 @@ class Test(unittest.TestCase):
     def testMaxMinExecution(self):
         raw = np.random.randint(10000, size=(10, 10, 10))
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual([raw.max()], self.executor.execute_tensor(arr.max()))
         self.assertEqual([raw.min()], self.executor.execute_tensor(arr.min()))
@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
 
         raw = sps.random(10, 10, density=.5)
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual([raw.max()], self.executor.execute_tensor(arr.max()))
         self.assertEqual([raw.min()], self.executor.execute_tensor(arr.min()))
@@ -77,9 +77,9 @@ class Test(unittest.TestCase):
         raw3 = np.array([[True, False, True, False], [True, True, True, True],
                          [False, False, False, False], [False, True, False, True]])
 
-        arr1 = tensor(raw1, chunks=3)
-        arr2 = tensor(raw2, chunks=3)
-        arr3 = tensor(raw3, chunks=4)
+        arr1 = tensor(raw1, chunk_size=3)
+        arr2 = tensor(raw2, chunk_size=3)
+        arr3 = tensor(raw3, chunk_size=4)
 
         self.assertFalse(self.executor.execute_tensor(arr1.all())[0])
         self.assertTrue(self.executor.execute_tensor(arr2.all())[0])
@@ -92,7 +92,7 @@ class Test(unittest.TestCase):
 
         raw = sps.random(10, 10, density=.5) > .5
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual(raw.A.all(), self.executor.execute_tensor(arr.all())[0])
         self.assertEqual(raw.A.any(), self.executor.execute_tensor(arr.any())[0])
@@ -101,7 +101,7 @@ class Test(unittest.TestCase):
         raw1 = np.random.random((20, 25))
         raw2 = np.random.randint(10, size=(20, 25))
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.mean())
         expected1 = raw1.mean()
@@ -115,7 +115,7 @@ class Test(unittest.TestCase):
         expected3 = raw1.mean(axis=1, keepdims=True)
         self.assertTrue(np.allclose(np.concatenate(res3), expected3))
 
-        arr2 = tensor(raw2, chunks=3)
+        arr2 = tensor(raw2, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr2.mean())
         expected1 = raw2.mean()
@@ -131,13 +131,13 @@ class Test(unittest.TestCase):
 
         raw1 = sps.random(20, 25, density=.1)
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.mean())
         expected1 = raw1.mean()
         self.assertTrue(np.allclose(res1[0], expected1))
 
-        arr2 = tensor(raw1, chunks=30)
+        arr2 = tensor(raw1, chunk_size=30)
 
         res1 = self.executor.execute_tensor(arr2.mean())
         expected1 = raw1.mean()
@@ -150,7 +150,7 @@ class Test(unittest.TestCase):
         raw1 = np.random.random((20, 25))
         raw2 = np.random.randint(10, size=(20, 25))
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.var())
         expected1 = raw1.var()
@@ -164,7 +164,7 @@ class Test(unittest.TestCase):
         expected3 = raw1.var(axis=1, keepdims=True)
         self.assertTrue(np.allclose(np.concatenate(res3), expected3))
 
-        arr2 = tensor(raw2, chunks=3)
+        arr2 = tensor(raw2, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr2.var())
         expected1 = raw2.var()
@@ -184,13 +184,13 @@ class Test(unittest.TestCase):
 
         raw1 = sps.random(20, 25, density=.1)
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.var())
         expected1 = raw1.toarray().var()
         self.assertTrue(np.allclose(res1[0], expected1))
 
-        arr2 = tensor(raw1, chunks=30)
+        arr2 = tensor(raw1, chunk_size=30)
 
         res1 = self.executor.execute_tensor(arr2.var())
         expected1 = raw1.toarray().var()
@@ -203,7 +203,7 @@ class Test(unittest.TestCase):
         raw1 = np.random.random((20, 25))
         raw2 = np.random.randint(10, size=(20, 25))
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.std())
         expected1 = raw1.std()
@@ -217,7 +217,7 @@ class Test(unittest.TestCase):
         expected3 = raw1.std(axis=1, keepdims=True)
         self.assertTrue(np.allclose(np.concatenate(res3), expected3))
 
-        arr2 = tensor(raw2, chunks=3)
+        arr2 = tensor(raw2, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr2.std())
         expected1 = raw2.std()
@@ -237,13 +237,13 @@ class Test(unittest.TestCase):
 
         raw1 = sps.random(20, 25, density=.1)
 
-        arr1 = tensor(raw1, chunks=3)
+        arr1 = tensor(raw1, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr1.std())
         expected1 = raw1.toarray().std()
         self.assertTrue(np.allclose(res1[0], expected1))
 
-        arr2 = tensor(raw1, chunks=30)
+        arr2 = tensor(raw1, chunk_size=30)
 
         res1 = self.executor.execute_tensor(arr2.std())
         expected1 = raw1.toarray().std()
@@ -255,7 +255,7 @@ class Test(unittest.TestCase):
     def testArgReduction(self):
         raw = np.random.random((20, 20, 20))
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual(raw.argmax(),
                          self.executor.execute_tensor(arr.argmax())[0])
@@ -275,7 +275,7 @@ class Test(unittest.TestCase):
         raw_format[np.unravel_index(random_max, raw_format.shape)] = 2
 
         raw = raw_format.tocoo()
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual(raw.argmax(),
                          self.executor.execute_tensor(arr.argmax())[0])
@@ -285,7 +285,7 @@ class Test(unittest.TestCase):
     def testNanReduction(self):
         raw = np.random.choice(a=[0, 1, np.nan], size=(10, 10), p=[0.3, 0.4, 0.3])
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual(np.nansum(raw), self.executor.execute_tensor(nansum(arr))[0])
         self.assertEqual(np.nanprod(raw), self.executor.execute_tensor(nanprod(arr))[0])
@@ -297,7 +297,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(np.nanstd(raw), self.executor.execute_tensor(nanstd(arr))[0])
         self.assertAlmostEqual(np.nanstd(raw, ddof=1), self.executor.execute_tensor(nanstd(arr, ddof=1))[0])
 
-        arr = tensor(raw, chunks=10)
+        arr = tensor(raw, chunk_size=10)
 
         self.assertEqual(np.nansum(raw), self.executor.execute_tensor(nansum(arr))[0])
         self.assertEqual(np.nanprod(raw), self.executor.execute_tensor(nanprod(arr))[0])
@@ -311,12 +311,12 @@ class Test(unittest.TestCase):
 
         raw = np.random.random((10, 10))
         raw[:3, :3] = np.nan
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
         self.assertEqual(np.nanargmin(raw), self.executor.execute_tensor(nanargmin(arr))[0])
         self.assertEqual(np.nanargmax(raw), self.executor.execute_tensor(nanargmax(arr))[0])
 
         raw = np.full((10, 10), np.nan)
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertEqual(0, self.executor.execute_tensor(nansum(arr))[0])
         self.assertEqual(1, self.executor.execute_tensor(nanprod(arr))[0])
@@ -328,7 +328,7 @@ class Test(unittest.TestCase):
 
         raw = sps.random(10, 10, density=.1, format='csr')
         raw[:3, :3] = np.nan
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         self.assertAlmostEqual(np.nansum(raw.A), self.executor.execute_tensor(nansum(arr))[0])
         self.assertAlmostEqual(np.nanprod(raw.A), self.executor.execute_tensor(nanprod(arr))[0])
@@ -346,7 +346,7 @@ class Test(unittest.TestCase):
     def testCumReduction(self):
         raw = np.random.randint(5, size=(8, 8, 8))
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr.cumsum(axis=1), concat=True)
         res2 = self.executor.execute_tensor(arr.cumprod(axis=1), concat=True)
@@ -357,7 +357,7 @@ class Test(unittest.TestCase):
 
         raw = sps.random(8, 8, density=.1)
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         res1 = self.executor.execute_tensor(arr.cumsum(axis=1), concat=True)
         res2 = self.executor.execute_tensor(arr.cumprod(axis=1), concat=True)
@@ -370,7 +370,7 @@ class Test(unittest.TestCase):
         raw = np.random.randint(5, size=(8, 8, 8))
         raw[:2, 2:4, 4:6] = np.nan
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         res1 = self.executor.execute_tensor(nancumsum(arr, axis=1), concat=True)
         res2 = self.executor.execute_tensor(nancumprod(arr, axis=1), concat=True)
@@ -382,7 +382,7 @@ class Test(unittest.TestCase):
         raw = sps.random(8, 8, density=.1, format='lil')
         raw[:2, 2:4] = np.nan
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
 
         res1 = self.executor.execute_tensor(nancumsum(arr, axis=1), concat=True)[0]
         res2 = self.executor.execute_tensor(nancumprod(arr, axis=1), concat=True)[0]
@@ -394,8 +394,8 @@ class Test(unittest.TestCase):
     def testOutReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
 
-        arr = tensor(raw, chunks=3)
-        arr2 = ones((8, 8), dtype='i8', chunks=3)
+        arr = tensor(raw, chunk_size=3)
+        arr2 = ones((8, 8), dtype='i8', chunk_size=3)
         arr.sum(axis=1, out=arr2)
 
         res = self.executor.execute_tensor(arr2, concat=True)[0]
@@ -406,7 +406,7 @@ class Test(unittest.TestCase):
     def testOutCumReductionExecution(self):
         raw = np.random.randint(5, size=(8, 8, 8))
 
-        arr = tensor(raw, chunks=3)
+        arr = tensor(raw, chunk_size=3)
         arr.cumsum(axis=0, out=arr)
 
         res = self.executor.execute_tensor(arr, concat=True)[0]
@@ -417,7 +417,7 @@ class Test(unittest.TestCase):
     def testCountNonzeroExecution(self):
         raw = [[0, 1, 7, 0, 0], [3, 0, 0, 2, 19]]
 
-        arr = tensor(raw, chunks=2)
+        arr = tensor(raw, chunk_size=2)
         t = count_nonzero(arr)
 
         res = self.executor.execute_tensor(t)[0]
@@ -438,7 +438,7 @@ class Test(unittest.TestCase):
 
         raw = sps.csr_matrix(raw)
 
-        arr = tensor(raw, chunks=2)
+        arr = tensor(raw, chunk_size=2)
         t = count_nonzero(arr)
 
         res = self.executor.execute_tensor(t)[0]
@@ -458,32 +458,32 @@ class Test(unittest.TestCase):
         np.testing.assert_equal(res, expected)
 
     def testAllcloseExecution(self):
-        a = tensor([1e10, 1e-7], chunks=1)
-        b = tensor([1.00001e10, 1e-8], chunks=1)
+        a = tensor([1e10, 1e-7], chunk_size=1)
+        b = tensor([1.00001e10, 1e-8], chunk_size=1)
 
         t = allclose(a, b)
 
         res = self.executor.execute_tensor(t)[0]
         self.assertFalse(res)
 
-        a = tensor([1e10, 1e-8], chunks=1)
-        b = tensor([1.00001e10, 1e-9], chunks=1)
+        a = tensor([1e10, 1e-8], chunk_size=1)
+        b = tensor([1.00001e10, 1e-9], chunk_size=1)
 
         t = allclose(a, b)
 
         res = self.executor.execute_tensor(t)[0]
         self.assertTrue(res)
 
-        a = tensor([1.0, np.nan], chunks=1)
-        b = tensor([1.0, np.nan], chunks=1)
+        a = tensor([1.0, np.nan], chunk_size=1)
+        b = tensor([1.0, np.nan], chunk_size=1)
 
         t = allclose(a, b, equal_nan=True)
 
         res = self.executor.execute_tensor(t)[0]
         self.assertTrue(res)
 
-        a = tensor(sps.csr_matrix([[1e10, 1e-7], [0, 0]]), chunks=1)
-        b = tensor(sps.csr_matrix([[1.00001e10, 1e-8], [0, 0]]), chunks=1)
+        a = tensor(sps.csr_matrix([[1e10, 1e-7], [0, 0]]), chunk_size=1)
+        b = tensor(sps.csr_matrix([[1.00001e10, 1e-8], [0, 0]]), chunk_size=1)
 
         t = allclose(a, b)
 
@@ -491,8 +491,8 @@ class Test(unittest.TestCase):
         self.assertFalse(res)
 
     def testArrayEqual(self):
-        a = ones((10, 5), chunks=1)
-        b = ones((10, 5), chunks=2)
+        a = ones((10, 5), chunk_size=1)
+        b = ones((10, 5), chunk_size=2)
 
         c = array_equal(a, b)
 

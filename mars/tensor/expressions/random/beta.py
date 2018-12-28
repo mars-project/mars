@@ -29,11 +29,11 @@ class TensorBeta(operands.Beta, TensorRandomOperandMixin):
         super(TensorBeta, self).__init__(_state=state, _size=size,
                                          _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, a, b, chunks=None):
-        return self.new_tensor([a, b], None, raw_chunks=chunks)
+    def __call__(self, a, b, chunk_size=None):
+        return self.new_tensor([a, b], None, raw_chunk_size=chunk_size)
 
 
-def beta(random_state, a, b, size=None, chunks=None, gpu=None, **kw):
+def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, **kw):
     r"""
     Draw samples from a Beta distribution.
 
@@ -62,7 +62,7 @@ def beta(random_state, a, b, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``a`` and ``b`` are both scalars.
         Otherwise, ``mt.broadcast(a, b).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -77,4 +77,4 @@ def beta(random_state, a, b, size=None, chunks=None, gpu=None, **kw):
             handle_array(a), handle_array(b), size=(0,)).dtype
     size = random_state._handle_size(size)
     op = TensorBeta(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(a, b, chunks=chunks)
+    return op(a, b, chunk_size=chunk_size)

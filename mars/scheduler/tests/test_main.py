@@ -30,7 +30,7 @@ from mars.config import options
 from mars.tensor.expressions.datasource import ones
 from mars.utils import get_next_port
 from mars.actors.core import new_client
-from mars.scheduler import SessionActor, KVStoreActor
+from mars.scheduler import SessionActor, ResourceActor
 from mars.scheduler.graph import GraphState
 
 
@@ -75,8 +75,8 @@ class Test(unittest.TestCase):
         check_time = time.time()
         while True:
             try:
-                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
-                if actor_client.has_actor(kv_ref):
+                resource_ref = actor_client.actor_ref(ResourceActor.default_name(), address='127.0.0.1:' + scheduler_port)
+                if actor_client.has_actor(resource_ref):
                     break
                 else:
                     raise SystemError('Check meta_timestamp timeout')
@@ -87,8 +87,7 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while True:
-            content = kv_ref.read('/workers/meta_timestamp', silent=True)
-            if not content:
+            if not resource_ref.get_worker_count():
                 time.sleep(0.5)
                 self.check_process_statuses()
                 if time.time() - check_time > 20:
@@ -140,8 +139,8 @@ class Test(unittest.TestCase):
                                                 uid=SessionActor.gen_name(session_id),
                                                 address=scheduler_address,
                                                 session_id=session_id)
-        a = ones((100, 100), chunks=30) * 2 * 1 + 1
-        b = ones((100, 100), chunks=30) * 2 * 1 + 1
+        a = ones((100, 100), chunk_size=30) * 2 * 1 + 1
+        b = ones((100, 100), chunk_size=30) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
         graph = c.build_graph()
         targets = [c.key]
@@ -164,8 +163,8 @@ class Test(unittest.TestCase):
         state = self.wait_for_termination(session_ref, graph_key)
         self.assertEqual(state, GraphState.FAILED)
 
-        a = ones((100, 50), chunks=30) * 2 + 1
-        b = ones((50, 200), chunks=30) * 2 + 1
+        a = ones((100, 50), chunk_size=30) * 2 + 1
+        b = ones((50, 200), chunk_size=30) * 2 + 1
         c = a.dot(b)
         graph = c.build_graph()
         targets = [c.key]

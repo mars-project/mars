@@ -27,11 +27,10 @@ class PlasmaChunkStore(object):
     """
     Wrapper of plasma client for Mars objects
     """
-    def __init__(self, plasma_client, kv_store_ref):
+    def __init__(self, plasma_client):
         from ..serialize.dataserializer import mars_serialize_context
 
         self._plasma_client = plasma_client
-        self._kv_store_ref = kv_store_ref
         self._actual_size = None
         self._serialize_context = mars_serialize_context()
 
@@ -162,9 +161,6 @@ class PlasmaChunkStore(object):
                 [buffer] = self._plasma_client.get_buffers([obj_id])
             finally:
                 del serialized
-
-            self._kv_store_ref.write('/sessions/%s/chunks/%s/data_size' % (session_id, chunk_key),
-                                     data_size)
             return buffer
         except PlasmaStoreFull:
             logger.warning('Chunk %s(%d) failed to store to plasma due to StoreFullError',

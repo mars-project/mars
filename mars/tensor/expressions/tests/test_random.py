@@ -23,8 +23,8 @@ from mars.tensor.expressions.tests.test_core import TestBase
 
 class Test(TestBase):
     def testRandomSerialize(self):
-        arr = RandomState(0).beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunks=2),
-            chunks=1, size=(3, 2, 2)).tiles()
+        arr = RandomState(0).beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
+            chunk_size=1, size=(3, 2, 2)).tiles()
         chunk = arr.chunks[0]
 
         self.assertEqual(chunk.op.dtype, np.dtype('f8'))
@@ -41,35 +41,35 @@ class Test(TestBase):
 
         self.assertIsNotNone(arr.dtype)
 
-        arr = beta(1, 2, chunks=2).tiles()
+        arr = beta(1, 2, chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, ())
         self.assertEqual(len(arr.chunks), 1)
         self.assertEqual(arr.chunks[0].shape, ())
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
 
-        arr = beta([1, 2], [3, 4], chunks=2).tiles()
+        arr = beta([1, 2], [3, 4], chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, (2,))
         self.assertEqual(len(arr.chunks), 1)
         self.assertEqual(arr.chunks[0].shape, (2,))
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
 
-        arr = beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunks=2),
-                   chunks=1, size=(3, 2, 2)).tiles()
+        arr = beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
+                   chunk_size=1, size=(3, 2, 2)).tiles()
 
         self.assertEqual(arr.shape, (3, 2, 2))
         self.assertEqual(len(arr.chunks), 12)
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
 
     def testChoice(self):
-        t = choice(5, chunks=1)
+        t = choice(5, chunk_size=1)
         self.assertEqual(t.shape, ())
         t.tiles()
         self.assertEqual(t.nsplits, ())
         self.assertEqual(len(t.chunks), 1)
 
-        t = choice(5, 3, chunks=1)
+        t = choice(5, 3, chunk_size=1)
         self.assertEqual(t.shape, (3,))
         t.tiles()
         self.assertEqual(t.nsplits, ((1, 1, 1),))
@@ -81,7 +81,7 @@ class Test(TestBase):
         mean = [0, 0]
         cov = [[1, 0], [0, 100]]
 
-        t = multivariate_normal(mean, cov, 5000, chunks=500)
+        t = multivariate_normal(mean, cov, 5000, chunk_size=500)
         self.assertEqual(t.shape, (5000, 2))
         self.assertEqual(t.op.size, (5000,))
 
@@ -93,7 +93,7 @@ class Test(TestBase):
         self.assertEqual(c.op.size, (500,))
 
     def testRandint(self):
-        arr = randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunks=2).tiles()
+        arr = randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, (10, 9))
         self.assertEqual(len(arr.chunks), 25)

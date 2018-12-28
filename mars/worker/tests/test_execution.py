@@ -23,7 +23,7 @@ from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler.kvstore import KVStoreActor
+from mars.scheduler import ChunkMetaActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.utils import WorkerActor
@@ -38,8 +38,8 @@ class ExecuteTestActor(WorkerActor):
     def run_test(self):
         import mars.tensor as mt
         from mars.tensor.expressions.datasource import TensorOnes, TensorFetchChunk
-        arr = mt.ones((10, 8), chunks=10)
-        arr_add = mt.ones((10, 8), chunks=10)
+        arr = mt.ones((10, 8), chunk_size=10)
+        arr_add = mt.ones((10, 8), chunk_size=10)
         arr2 = arr + arr_add
         graph = arr2.build_graph(compose=False, tiled=True)
 
@@ -50,10 +50,7 @@ class ExecuteTestActor(WorkerActor):
                     _key=chunk.op.key)
 
         session_id = str(uuid.uuid4())
-        op_key = str(uuid.uuid4())
 
-        self._kv_store.write('/sessions/%s/operands/%s/execution_graph'
-                             % (session_id, op_key), serialize_graph(graph))
         chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
 
         refs = self._chunk_store.put(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16))
@@ -88,7 +85,7 @@ class Test(WorkerCase):
                               uid=ClusterInfoActor.default_name())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
                                           uid=ChunkHolderActor.default_name())
-            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024, uid=MemQuotaActor.default_name())
             pool.create_actor(CpuCalcActor)

@@ -25,15 +25,15 @@ class TensorRFFTFreq(fftop.RFFTFreq, TensorOperandMixin):
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
         super(TensorRFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
+    def __call__(self, chunk_size=None):
         shape = (self.n // 2 + 1,)
-        return self.new_tensor(None, shape, raw_chunks=chunks)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
         t = arange(tensor.shape[0], dtype=op.dtype, gpu=op.gpu,
-                   chunks=tensor.params.raw_chunks).single_tiles()
+                   chunk_size=tensor.params.raw_chunk_size).single_tiles()
         t = t / (op.n * op.d)
         t.single_tiles()
 
@@ -42,7 +42,7 @@ class TensorRFFTFreq(fftop.RFFTFreq, TensorOperandMixin):
                                   chunks=t.chunks, nsplits=t.nsplits, **tensor.params)
 
 
-def rfftfreq(n, d=1.0, gpu=False, chunks=None):
+def rfftfreq(n, d=1.0, gpu=False, chunk_size=None):
     """
     Return the Discrete Fourier Transform sample frequencies
     (for usage with rfft, irfft).
@@ -67,7 +67,7 @@ def rfftfreq(n, d=1.0, gpu=False, chunks=None):
         Sample spacing (inverse of the sampling rate). Defaults to 1.
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
 
     Returns
@@ -93,4 +93,4 @@ def rfftfreq(n, d=1.0, gpu=False, chunks=None):
     """
     n, d = int(n), float(d)
     op = TensorRFFTFreq(n=n, d=d, dtype=np.dtype(float), gpu=gpu)
-    return op(chunks=chunks)
+    return op(chunk_size=chunk_size)

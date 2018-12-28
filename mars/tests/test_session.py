@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         data = np.random.random((5, 9))
 
         # test multiple outputs
-        arr1 = mt.tensor(data.copy(), chunks=3)
+        arr1 = mt.tensor(data.copy(), chunk_size=3)
         result = mt.modf(arr1).execute()
         expected = np.modf(data)
 
@@ -39,14 +39,14 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(result[1], expected[1])
 
         # test 1 output
-        arr2 = mt.tensor(data.copy(), chunks=3)
+        arr2 = mt.tensor(data.copy(), chunk_size=3)
         result = ((arr2 + 1) * 2).execute()
         expected = (data + 1) * 2
 
         np.testing.assert_array_equal(result, expected)
 
         # test multiple outputs, but only execute 1
-        arr3 = mt.tensor(data.copy(), chunks=3)
+        arr3 = mt.tensor(data.copy(), chunk_size=3)
         arrs = mt.split(arr3, 3, axis=1)
         result = arrs[0].execute()
         expected = np.split(data, 3, axis=1)[0]

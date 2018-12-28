@@ -17,7 +17,7 @@ After installation, you can simply open a Python console and run
     import mars.tensor as mt
     from mars.session import new_session
 
-    a = mt.ones((5, 5), chunks=3)
+    a = mt.ones((5, 5), chunk_size=3)
     b = a * 4
     # if there isn't a local session,
     # execute will create a default one first
@@ -98,7 +98,7 @@ After all Mars processes are started, you can open a Python console and run
     import mars.tensor as mt
     from mars.session import new_session
     sess = new_session('http://<web_ip>:<ui_port>')
-    a = mt.ones((2000, 2000), chunks=200)
+    a = mt.ones((2000, 2000), chunk_size=200)
     b = mt.inner(a, a)
     sess.run(b)
 
