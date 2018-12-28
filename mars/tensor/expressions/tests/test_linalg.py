@@ -105,6 +105,10 @@ class Test(unittest.TestCase):
         self.assertEqual(len(new_outputs), 5)
         self.assertEqual(len(set([o.op for o in new_outputs])), 3)
 
+        a = rs.rand(20, 10, chunk_size=10)
+        _, s, _ = mt.linalg.svd(a)
+        s.build_graph(tiled=False)
+
     def testLU(self):
         a = mt.random.randint(1, 10, (6, 6), chunk_size=3)
         p, l, u = mt.linalg.lu(a)

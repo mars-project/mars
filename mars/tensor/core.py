@@ -493,7 +493,7 @@ class ChunksIndexer(object):
 
 
 class Tensor(Entity):
-    __slots__ = ()
+    __slots__ = '_siblings',
     _allow_data_type_ = (TensorData,)
 
     def __len__(self):
@@ -538,7 +538,7 @@ class Tensor(Entity):
 
 
 class SparseTensor(Tensor):
-    pass
+    __slots__ = ()
 
 
 TENSOR_TYPE = (Tensor, TensorData)

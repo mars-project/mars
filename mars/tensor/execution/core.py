@@ -164,6 +164,10 @@ def execute_chunk(chunk, executor=None,
             with lock:
                 for output in chunk.op.outputs:
                     finishes[output.key] = True
+                    if output.key in ref_counts and ref_counts[output.key] == 0:
+                        # some op have more than 1 outputs,
+                        # and some of the outputs are not in the result ones
+                        del chunk_result[output.key]
 
         for pred_key in preds[chunk.key]:
             with lock:
