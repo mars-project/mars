@@ -164,6 +164,36 @@ class Test(unittest.TestCase):
                 np.testing.assert_allclose(U_result, U_expected + 1)
                 np.testing.assert_allclose(s_result, s_expectd + 1)
 
+    def testIndexTensorExecute(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            a = mt.random.rand(10, 5)
+            idx = slice(0, 5), slice(0, 5)
+            a[idx] = 2
+            a_splits = mt.split(a, 2)
+            r1, r2 = session.run(a_splits[0], a[idx])
+
+            np.testing.assert_array_equal(r1, r2)
+            np.testing.assert_array_equal(r1, np.ones((5, 5)) * 2)
+
+            with new_session(cluster.endpoint) as session2:
+                a = mt.random.rand(10, 5)
+                idx = slice(0, 5), slice(0, 5)
+
+                a[idx] = mt.ones((5, 5)) * 2
+                r = session2.run(a[idx])
+
+                np.testing.assert_array_equal(r, np.ones((5, 5)) * 2)
+
+    def testExecutableTuple(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+            with new_session('http://' + cluster._web_endpoint).as_default() as _:
+                a = mt.ones((20, 10), chunks=10)
+                u, s, v = (mt.linalg.svd(a)).execute()
+                np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
+
+
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))

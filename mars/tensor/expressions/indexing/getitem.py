@@ -17,6 +17,7 @@
 from numbers import Integral
 import operator
 import itertools
+import contextlib
 
 import numpy as np
 
@@ -34,34 +35,34 @@ class TensorIndex(Index, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
-    def _handle_inputs(self, inputs):
-        if len(inputs) == 1:
-            # get indexes from existed op
-            indexes_inputs = [ind for ind in self._indexes if isinstance(ind, (BaseWithKey, Entity))]
-            return inputs + indexes_inputs
-        else:
-            tensor, indexes = inputs
+    @contextlib.contextmanager
+    def _handle_params(self, inputs, indexes):
+        if indexes is not None:
             indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
-            self._indexes = indexes
-            return [tensor] + indexes_inputs
+            inputs = inputs + indexes_inputs
+        yield inputs
 
-    def _set_inputs(self, inputs):
-        super(TensorIndex, self)._set_inputs(inputs)
-        indexes_iter = iter(self._inputs[1:])
-        new_indexes = [next(indexes_iter) if isinstance(index, (BaseWithKey, Entity)) else index
+        if indexes is not None:
+            self._indexes = indexes
+
+        inputs_iter = iter(self._inputs[1:])
+        new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
+        return inputs
 
     def new_tensors(self, inputs, shape, **kw):
-        inputs = self._handle_inputs(inputs)
-        return super(TensorIndex, self).new_tensors(inputs, shape, **kw)
+        indexes = kw.pop('indexes', None)
+        with self._handle_params(inputs, indexes) as mix_inputs:
+            return super(TensorIndex, self).new_tensors(mix_inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
-        inputs = self._handle_inputs(inputs)
-        return super(TensorIndex, self).new_chunks(inputs, shape, **kw)
+        indexes = kw.pop('indexes', None)
+        with self._handle_params(inputs, indexes) as mix_inputs:
+            return super(TensorIndex, self).new_chunks(mix_inputs, shape, **kw)
 
     def __call__(self, a, index, shape):
-        return self.new_tensor([a, index], shape)
+        return self.new_tensor([a], shape, indexes=index)
 
     @classmethod
     def tile(cls, op):
@@ -172,14 +173,14 @@ class TensorIndex(Index, TensorOperandMixin):
 
             chunk_input = in_tensor.cix[tuple(chunk_idx)]
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([chunk_input, chunk_index], tuple(chunk_shape), index=output_idx)
+            chunk = chunk_op.new_chunk([chunk_input], tuple(chunk_shape), indexes=chunk_index, index=output_idx)
             out_chunks.append(chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
                          if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                    for i in range(len(out_chunks[0].shape))]
         new_op = op.copy().reset_key()
-        tensor = new_op.new_tensor([op.input, op.indexes], tensor.shape, chunks=out_chunks, nsplits=nsplits)
+        tensor = new_op.new_tensor([op.input], tensor.shape, indexes=op.indexes, chunks=out_chunks, nsplits=nsplits)
 
         if len(to_concat_axis_index) > 1:
             raise NotImplementedError
@@ -204,11 +205,11 @@ class TensorIndex(Index, TensorOperandMixin):
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
                 concat_chunk = concat_chunk_op.new_chunk(chunks, tuple(s), index=new_idx)
                 out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk = out_chunk_op.new_chunk([concat_chunk, indexobj], tuple(s), index=new_idx)
+                out_chunk = out_chunk_op.new_chunk([concat_chunk], tuple(s), indexes=indexobj, index=new_idx)
                 output_chunks.append(out_chunk)
 
             new_op = tensor.op.copy()
-            tensor = new_op.new_tensor([op.input, op.indexes], tuple(output_shape),
+            tensor = new_op.new_tensor([op.input], tuple(output_shape), indexes=op.indexes,
                                        chunks=output_chunks, nsplits=output_nsplits)
 
         return [tensor]

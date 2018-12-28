@@ -110,6 +110,14 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[0], raw[-2::-3, b_raw < .5, ...]))
 
     def testSetItemExecution(self):
+        import mars.tensor as mt
+        a = mt.random.rand(10, 5)
+        idx = slice(0, 5), slice(0, 5)
+
+        a[idx] = mt.tensor(mt.ones((5, 5)))
+        r = self.executor.execute_tensor(a, concat=True)
+        pass
+
         raw = data = np.random.randint(0, 10, size=(11, 8, 12, 13))
         arr = tensor(raw.copy(), chunks=3)
         raw = raw.copy()
