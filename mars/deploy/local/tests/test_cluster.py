@@ -189,7 +189,7 @@ class Test(unittest.TestCase):
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default() as _:
-                a = mt.ones((20, 10), chunks=10)
+                a = mt.ones((20, 10), chunk_size=10)
                 u, s, v = (mt.linalg.svd(a)).execute()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
