@@ -125,7 +125,7 @@ class Chunk(Entity):
 
 
 class TensorData(SerializableWithKey, Tilesable):
-    __slots__ = '__weakref__',
+    __slots__ = '__weakref__', '_siblings'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -493,7 +493,7 @@ class ChunksIndexer(object):
 
 
 class Tensor(Entity):
-    __slots__ = '_siblings',
+    __slots__ = ()
     _allow_data_type_ = (TensorData,)
 
     def __len__(self):

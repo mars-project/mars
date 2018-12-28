@@ -103,7 +103,7 @@ class TensorOperandMixin(object):
             # for each output tensor, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for i, t in enumerate(tensors):
-                t._siblings = tensors[:i] + tensors[i+1:]
+                t.data._siblings = [tensor.data for tensor in tensors[:i] + tensors[i+1:]]
         return tensors
 
     def new_chunk(self, inputs, shape, index=None, **kw):
