@@ -69,57 +69,60 @@ def cpu_count():
 _last_cpu_measure = None
 
 
+def _take_process_cpu_snapshot():
+    num_cpus = cpu_count() or 1
+
+    def timer():
+        return _timer() * num_cpus
+
+    processes = [p for p in psutil.process_iter() if p.pid != _proc.pid]
+
+    pts = dict()
+    sts = dict()
+    for p in processes:
+        try:
+            pts[p.pid] = p.cpu_times()
+            sts[p.pid] = timer()
+        except psutil.NoSuchProcess:
+            pass
+
+    pts[_proc.pid] = _proc.cpu_times()
+    sts[_proc.pid] = timer()
+    return pts, sts
+
+
 def cpu_percent():
     global _last_cpu_measure
     if not _use_process_stat:
         return sum(psutil.cpu_percent(percpu=True))
-    else:
-        num_cpus = cpu_count() or 1
 
-        def timer():
-            return _timer() * num_cpus
+    num_cpus = cpu_count() or 1
+    pts, sts = _take_process_cpu_snapshot()
 
-        processes = [p for p in psutil.process_iter() if p.pid != _proc.pid]
-
-        pts = dict()
-        sts = dict()
-        for p in processes:
-            try:
-                pts[p.pid] = p.cpu_times()
-                sts[p.pid] = timer()
-            except psutil.NoSuchProcess:
-                pass
-
-        pt1 = _proc.cpu_times()
-        st1 = timer()
-
-        pts[_proc.pid] = pt1
-        sts[_proc.pid] = st1
-
-        if _last_cpu_measure is None:
-            _last_cpu_measure = (pts, sts)
-            return None
-
-        old_pts, old_sts = _last_cpu_measure
-
-        percents = []
-        for pid in pts:
-            if pid not in old_pts:
-                continue
-            pt1 = old_pts[pid]
-            pt2 = pts[pid]
-            delta_proc = (pt2.user - pt1.user) + (pt2.system - pt1.system)
-            delta_time = sts[pid] - old_sts[pid]
-
-            try:
-                overall_cpus_percent = (delta_proc / delta_time) * 100
-            except ZeroDivisionError:
-                percents.append(0.0)
-            else:
-                single_cpu_percent = overall_cpus_percent * num_cpus
-                percents.append(single_cpu_percent)
+    if _last_cpu_measure is None:
         _last_cpu_measure = (pts, sts)
-        return round(sum(percents), 1)
+        return None
+
+    old_pts, old_sts = _last_cpu_measure
+
+    percents = []
+    for pid in pts:
+        if pid not in old_pts:
+            continue
+        pt1 = old_pts[pid]
+        pt2 = pts[pid]
+        delta_proc = (pt2.user - pt1.user) + (pt2.system - pt1.system)
+        delta_time = sts[pid] - old_sts[pid]
+
+        try:
+            overall_cpus_percent = (delta_proc / delta_time) * 100
+        except ZeroDivisionError:
+            percents.append(0.0)
+        else:
+            single_cpu_percent = overall_cpus_percent * num_cpus
+            percents.append(single_cpu_percent)
+    _last_cpu_measure = (pts, sts)
+    return round(sum(percents), 1)
 
 
 def disk_usage(d):

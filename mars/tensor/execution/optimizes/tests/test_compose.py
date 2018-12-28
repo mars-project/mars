@@ -36,7 +36,7 @@ class Test(unittest.TestCase):
         r"""
         graph(@: node, #: composed_node):
 
-        @ --> @ --> @   ========>    #     
+        @ --> @ --> @   ========>    #
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(3)]
         graph = DirectedGraph()
@@ -57,7 +57,7 @@ class Test(unittest.TestCase):
         @             @              @       @
           \         /                  \   /
             @ --> @       ========>      #
-          /         \                  /   \ 
+          /         \                  /   \
         @             @              @       @
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
@@ -103,7 +103,7 @@ class Test(unittest.TestCase):
         @                   @              @             @
           \               /                  \         /
             @ --> @ --> S      ========>       # --> S
-          /               \                  /         \ 
+          /               \                  /         \
         @                   @              @             @
 
         compose stopped at S, because numexpr don't support Slice op
@@ -128,7 +128,7 @@ class Test(unittest.TestCase):
 
             @ --> @ --> S --> @  ========>  # --> S --> @
 
-        compose stopped at S, because numexpr don't support Slice op            
+        compose stopped at S, because numexpr don't support Slice op
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
         graph = DirectedGraph()
@@ -147,7 +147,7 @@ class Test(unittest.TestCase):
 
             @ --> @ --> S --> @ --> @   ========>  # --> S --> #
 
-        compose stopped at S, because numexpr don't support Slice op            
+        compose stopped at S, because numexpr don't support Slice op
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
         graph = DirectedGraph()

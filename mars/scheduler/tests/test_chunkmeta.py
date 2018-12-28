@@ -81,7 +81,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
         dup_cache = copy.deepcopy(cache)
-        _ = dup_cache['c1']
+        _ = dup_cache['c1']  # noqa: F841
         dup_cache['c10'] = WorkerMeta(10, ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)

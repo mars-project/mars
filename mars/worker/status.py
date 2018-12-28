@@ -14,7 +14,6 @@
 
 import copy
 import os
-import json
 import time
 import logging
 from collections import defaultdict

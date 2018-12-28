@@ -57,8 +57,8 @@ def _evaluate(chunk):
 
     body = '{0} = {1}'.format(output_name, body[chunk.composed[-1]])
     return input_arguments, output_argument, body, \
-           '{0}_{1}'.format(chunk.op.__class__.__name__.lower(),
-                            tokenize(input_arguments, output_argument, body))
+        '{0}_{1}'.format(chunk.op.__class__.__name__.lower(),
+                         tokenize(input_arguments, output_argument, body))
 
 
 def _execute_cp(ctx, chunk):

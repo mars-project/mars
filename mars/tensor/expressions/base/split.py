@@ -177,4 +177,3 @@ def split(ary, indices_or_sections, axis=0):
 
     """
     return _split(ary, indices_or_sections, axis=axis, is_split=True)
-

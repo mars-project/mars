@@ -235,8 +235,10 @@ class LocalChunkMetaActor(SchedulerActor):
         futures = []
         if query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
-                futures.append(self.ctx.actor_ref(self.default_name(), address=dest) \
-                    .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True))
+                futures.append(
+                    self.ctx.actor_ref(self.default_name(), address=dest)
+                        .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True)
+                )
             [f.result() for f in futures]
 
     def cache_chunk_meta(self, session_id, chunk_key, meta):
@@ -425,9 +427,10 @@ class ChunkMetaActor(SchedulerActor):
         # dispatch query
         futures = []
         for addr, keys in query_dict.items():
-            futures.append(self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
-                           .batch_get_chunk_meta(session_id, keys, _wait=False))
-
+            futures.append(
+                self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
+                    .batch_get_chunk_meta(session_id, keys, _wait=False)
+            )
         # accept results and merge
         for keys, future in zip(query_dict.values(), futures):
             results = future.result()
@@ -455,6 +458,8 @@ class ChunkMetaActor(SchedulerActor):
         # dispatch delete requests and wait
         futures = []
         for addr, keys in query_dict.items():
-            futures.append(self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
-                           .batch_delete_meta(session_id, list(keys), _wait=False, _tell=True))
+            futures.append(
+                self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
+                    .batch_delete_meta(session_id, list(keys), _wait=False, _tell=True)
+            )
         [f.result() for f in futures]

@@ -16,7 +16,6 @@
 
 import os
 import logging
-import time
 
 try:
     from pyarrow import plasma
@@ -24,7 +23,7 @@ except ImportError:
     plasma = None
 
 from ..config import options
-from .. import resource, kvstore
+from .. import resource
 from ..utils import parse_memory_limit, readable_size
 from ..compat import six
 from ..cluster_info import ClusterInfoActor

@@ -18,13 +18,10 @@ import platform
 import logging
 import os
 
-logger = logging.getLogger(__name__)
-
 from . import resource
 from .utils import git_info, readable_size
 from .actors import FunctionActor
 from .compat import six
-
 
 try:
     import numpy as np
@@ -39,6 +36,7 @@ try:
 except ImportError:
     cp = None
 
+logger = logging.getLogger(__name__)
 _collectors = dict()
 
 

@@ -17,16 +17,15 @@
 import os
 import sys
 
+from mars.serialize.protos.operand_pb2 import OperandDef
+
 dirpath = os.path.dirname
 parent_path = dirpath(dirpath(dirpath(__file__)))
 
 sys.path.insert(0, dirpath(parent_path))
-
-from mars.serialize.protos.operand_pb2 import OperandDef
 
 
 with open(os.path.join(parent_path, 'opcodes.py'), 'w') as f:
     f.write('# Generated automatically.  DO NOT EDIT!\n')
     for val, desc in OperandDef.OperandType.DESCRIPTOR.values_by_number.items():
         f.write('{0} = {1!r}\n'.format(desc.name, val))
-

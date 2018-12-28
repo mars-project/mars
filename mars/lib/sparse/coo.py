@@ -49,7 +49,7 @@ class COONDArray(SparseNDArray):
         try:
             self.dtype = data.dtype
         except AttributeError:
-            self.dtype=dtype
+            self.dtype = dtype
         self.indices = np.asarray(indices)
         self.data = np.asarray(data, dtype=self.dtype)
         self.shape = np.asarray(shape)
@@ -82,7 +82,10 @@ class COONDArray(SparseNDArray):
             return dense_arr
         dense_arr[tuple(self.indices.T)] = self.data
         # ( Written in plainer words:
-        # dense_arr[<split n-dim coords into n column vectors>, number of dims, split along axis 1] = transform_into_column_vectors(self.values)
+        # dense_arr[
+        #     <split n-dim coords into n column vectors>,
+        #     number of dims, split along axis 1
+        # ] = transform_into_column_vectors(self.values)
         # P.S. Each column vector contains coordinates of a dim. )
         return dense_arr
 
@@ -122,8 +125,7 @@ class COONDArray(SparseNDArray):
             matches, self_non_matches, other_non_matches = self.mask_matches(other)
 
             # calculate sums of values at matching coordinates
-            matching_vals = self.data[matches[0]] \
-                            + other.data[matches[1]]
+            matching_vals = self.data[matches[0]] + other.data[matches[1]]
             # document matching coordinates
             matching_indices = self.indices[matches[0]]
 
@@ -182,8 +184,7 @@ class COONDArray(SparseNDArray):
             matches, self_non_matches, other_non_matches = self.mask_matches(other)
 
             # calculate sums of values at matching coordinates
-            matching_vals = self.data[matches[0]] \
-                            - other.data[matches[1]]
+            matching_vals = self.data[matches[0]] - other.data[matches[1]]
             # document matching coordinates
             matching_indices = self.indices[matches[0]]
 
@@ -251,7 +252,7 @@ class COONDArray(SparseNDArray):
         # if isinstance(other, SparseNDArray) and self.shape == other.shape:
         if isinstance(other, SparseNDArray) and (self.shape == other.shape).all():
             mask = (self.indices[:, np.newaxis, :] == other.indices[np.newaxis, :, :]).all(axis=2)
-            matches = np.where(mask==True)
+            matches = np.where(mask == True)
             matches = np.asarray(matches)
 
             matching_vals = self.data[matches[0]] * other.data[matches[1]]

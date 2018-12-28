@@ -94,8 +94,7 @@ class BaseApplication(object):
         endpoint = args.endpoint
         host = args.host
         port = args.port
-        if args.kv_store:
-            options.kv_store = args.kv_store
+        options.kv_store = args.kv_store if args.kv_store else options.kv_store
 
         load_modules = []
         for mod in args.load_modules or ():

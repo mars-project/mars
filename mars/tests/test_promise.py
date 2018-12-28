@@ -19,7 +19,6 @@ import threading
 import time
 import unittest
 import weakref
-import sys
 
 import gevent
 

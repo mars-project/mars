@@ -348,7 +348,7 @@ class GraphActor(SchedulerActor):
             inputs = [tensor_to_tiled[it.key][-1] for it in tensor.inputs or ()]
 
             op = tensor.op.copy()
-            _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],
+            _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],  # noqa: F841
                                dtype=[o.dtype for o in tensor.op.outputs], **tensor.params)
 
             total_tiled = []
@@ -405,7 +405,7 @@ class GraphActor(SchedulerActor):
         # delete redundant chunk
         for n in list(chunk_graph.iter_nodes()):
             if n not in reserve_chunk:
-               chunk_graph.remove_node(n)
+                chunk_graph.remove_node(n)
 
         if compose:
             chunk_graph.compose(keys=result_chunk_keys)
