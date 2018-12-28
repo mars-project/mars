@@ -103,8 +103,7 @@ class MockSenderActor(WorkerActor):
         if self._mode == 'in':
             self._chunk_store.put(session_id, chunk_key, self._mock_data)
         else:
-            from numpy.testing import assert_array_equal
-            data = self._chunk_store.put(session_id, chunk_key)
+            data = self._chunk_store.get(session_id, chunk_key)
             assert_array_equal(self._mock_data, data)
         self.tell_promise(callback, self._mock_data.nbytes)
         self._dispatch_ref.register_free_slot(self.uid, 'sender')

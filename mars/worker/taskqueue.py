@@ -80,7 +80,7 @@ class TaskQueueActor(WorkerActor):
     Actor accepting requests and holding the queue
     """
     def __init__(self, parallel_num=None):
-        super(WorkerActor, self).__init__()
+        super(TaskQueueActor, self).__init__()
         self._requests = dict()
         self._allocated = set()
         self._allocate_pendings = set()
