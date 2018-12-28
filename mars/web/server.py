@@ -126,7 +126,8 @@ class MarsWeb(object):
     def port(self):
         return self._port
 
-    def start(self, event=None, block=False):
+    @staticmethod
+    def _configure_loop():
         try:
             ioloop.IOLoop.current()
         except RuntimeError:
@@ -136,21 +137,14 @@ class MarsWeb(object):
                 loop = None
                 try:
                     loop = ioloop.IOLoop.current()
-                except:
+                except:  # noqa: E722
                     pass
                 if loop is None:
                     raise
             else:
                 raise
 
-        if self._scheduler_ip is None:
-            kv_store = kvstore.get(options.kv_store)
-            try:
-                schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
-                self._scheduler_ip = random.choice(schedulers)
-            except KeyError:
-                raise KeyError('No scheduler is available')
-
+    def _try_start_web_server(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
 
         handlers = dict()
@@ -178,12 +172,25 @@ class MarsWeb(object):
                 self._port = use_port
                 logger.info('Mars UI started at 0.0.0.0:%d', self._port)
                 break
-            except:
+            except OSError:
                 if self._port is not None:
                     raise
                 retrial -= 1
                 if retrial == 0:
                     raise
+
+    def start(self, event=None, block=False):
+        self._configure_loop()
+
+        if self._scheduler_ip is None:
+            kv_store = kvstore.get(options.kv_store)
+            try:
+                schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
+                self._scheduler_ip = random.choice(schedulers)
+            except KeyError:
+                raise KeyError('No scheduler is available')
+
+        self._try_start_web_server()
 
         if not block:
             self._server_thread = threading.Thread(target=self._server.io_loop.start)

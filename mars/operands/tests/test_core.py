@@ -122,7 +122,7 @@ class Test(TestBase):
         self.assertEqual(idx.indexes[0], idx2.indexes[0])
         self.assertEqual(idx.indexes[1].data, idx2.indexes[1].data)
 
-    def testDeserialzeCls(self):
+    def testDeserializeCls(self):
         data = MockKeyObject(_data=10)
         op = MockLog(_input=data)
 

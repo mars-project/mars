@@ -192,7 +192,7 @@ class SpillActor(WorkerActor):
             # if already loaded, just register
             ref = None
             try:
-                ref = self._chunk_store.get(session_id, chunk_key)
+                ref = self._chunk_store.get(session_id, chunk_key)  # noqa: F841
                 self._chunk_holder_ref.register_chunk(session_id, chunk_key)
                 logger.debug('Chunk %s already loaded in plasma', chunk_key)
                 self.tell_promise(callback)

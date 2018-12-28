@@ -17,13 +17,13 @@
 import gevent.monkey
 gevent.monkey.patch_all(thread=False)
 
-import logging
-import random
-import time
+import logging  # noqa: E402
+import random   # noqa: E402
+import time     # noqa: E402
 
-from ..base_app import BaseApplication
-from ..compat import six
-from ..errors import StartArgumentError
+from ..base_app import BaseApplication   # noqa: E402
+from ..compat import six                 # noqa: E402
+from ..errors import StartArgumentError  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

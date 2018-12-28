@@ -49,8 +49,8 @@ if six.PY2:
 
 class ApiRequestHandler(web.RequestHandler):
     def initialize(self, scheduler_ip):
-         self._scheduler = scheduler_ip
-         self.web_api = MarsWebAPI(scheduler_ip)
+        self._scheduler = scheduler_ip
+        self.web_api = MarsWebAPI(scheduler_ip)
 
 
 class ApiEntryHandler(ApiRequestHandler):
@@ -84,7 +84,7 @@ class GraphsApiHandler(ApiRequestHandler):
             graph_key = str(uuid.uuid4())
             self.web_api.submit_graph(session_id, graph, graph_key, target)
             self.write(json.dumps(dict(graph_key=graph_key)))
-        except:
+        except:  # noqa: E722
             pickled_exc = pickle.dumps(sys.exc_info())
             self.write(json.dumps(dict(
                 exc_info=base64.b64encode(pickled_exc),

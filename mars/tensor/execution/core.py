@@ -318,7 +318,7 @@ from .linalg import register_linalg_handler
 
 NUMEXPR_INSTALLED = False
 try:
-    import numexpr
+    import numexpr  # noqa: F401
     NUMEXPR_INSTALLED = True
     from .ne import register_numexpr_handler
     register_numexpr_handler()
@@ -327,7 +327,7 @@ except ImportError:
 
 CP_INSTALLED = False
 try:
-    import cupy
+    import cupy  # noqa: F401
     CP_INSTALLED = True
     from .cp import register_cp_handler
     register_cp_handler()

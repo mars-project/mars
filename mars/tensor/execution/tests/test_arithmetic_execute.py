@@ -431,7 +431,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(FloatingPointError):
             with np.errstate(divide='raise'):
                 c = truediv(a, 0, dtype='f8')
-                _ = self.executor.execute_tensor(c, concat=True)[0]
+                _ = self.executor.execute_tensor(c, concat=True)[0]  # noqa: F841
 
     def testSetGetRealExecution(self):
         a_data = np.array([1+2j, 3+4j, 5+6j])

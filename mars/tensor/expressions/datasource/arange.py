@@ -66,7 +66,7 @@ class TensorArange(TensorNoInput):
         chunk_length = tensor.params.raw_chunk_size or options.tensor.chunk_size
         chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
 
-        start, stop, step = tensor.op.start, tensor.op.stop, tensor.op.step
+        start, stop, step = tensor.op.start, tensor.op.stop, tensor.op.step  # noqa: F841
 
         out_chunks = []
         n_elem = 0

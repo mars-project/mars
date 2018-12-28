@@ -164,6 +164,27 @@ def _start_cluster(endpoint, event, n_process=None, shared_memory=None, **kw):
         cluster.stop_service()
 
 
+def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
+    event = multiprocessing.Event()
+
+    kw = kw.copy()
+    kw['n_process'] = n_process
+    kw['shared_memory'] = shared_memory or options.worker.cache_memory_limit or '20%'
+    process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
+
+    while True:
+        event.wait(5)
+        if not event.is_set():
+            # service not started yet
+            continue
+        if not process.is_alive():
+            raise SystemError('New local cluster failed')
+        else:
+            break
+
+    return process
+
+
 def _start_web(scheduler_address, ui_port, event):
     import gevent.monkey
     gevent.monkey.patch_all(thread=False)
@@ -175,6 +196,25 @@ def _start_web(scheduler_address, ui_port, event):
         web.start(event=event, block=True)
     finally:
         web.stop()
+
+
+def _start_web_process(scheduler_endpoint, web_endpoint):
+    web_event = multiprocessing.Event()
+    ui_port = int(web_endpoint.rsplit(':', 1)[1])
+    web_process = gipc.start_process(
+        _start_web, args=(scheduler_endpoint, ui_port, web_event), daemon=True)
+
+    while True:
+        web_event.wait(5)
+        if not web_event.is_set():
+            # web not started yet
+            continue
+        if not web_process.is_alive():
+            raise SystemError('New web interface failed')
+        else:
+            break
+
+    return web_process
 
 
 class LocalDistributedClusterClient(object):
@@ -227,35 +267,10 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
         else:
             web_endpoint = gen_endpoint(web)
 
-    event = multiprocessing.Event()
-    kw['n_process'] = n_process
-    kw['shared_memory'] = shared_memory or options.worker.cache_memory_limit or '20%'
-    process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
-
-    while True:
-        event.wait(5)
-        if not event.is_set():
-            # service not started yet
-            continue
-        if not process.is_alive():
-            raise SystemError('New local cluster failed')
-        else:
-            break
+    process = _start_cluster_process(endpoint, n_process, shared_memory, **kw)
 
     web_process = None
     if web_endpoint:
-        web_event = multiprocessing.Event()
-        ui_port = int(web_endpoint.rsplit(':', 1)[1])
-        web_process = gipc.start_process(_start_web, args=(endpoint, ui_port, web_event), daemon=True)
-
-        while True:
-            web_event.wait(5)
-            if not web_event.is_set():
-                # web not started yet
-                continue
-            if not web_process.is_alive():
-                raise SystemError('New web interface failed')
-            else:
-                break
+        web_process = _start_web_process(endpoint, web_endpoint)
 
     return LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)

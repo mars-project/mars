@@ -86,7 +86,7 @@ def _normalize(string, prefix='', width=76):
                     buf = []
                     size = 2
                     while chunks:
-                        l = _zh_len(escape(chunks[-1])) - 2 + prefixlen
+                        l = _zh_len(escape(chunks[-1])) - 2 + prefixlen  # noqa: E741
                         if size + l < width:
                             buf.append(chunks.pop())
                             size += l
@@ -114,7 +114,7 @@ def _normalize(string, prefix='', width=76):
 
 def main():
     try:
-        import jieba
+        import jieba  # noqa: F401
     except ImportError:
         return
 

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 import sys
 
@@ -87,7 +88,7 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
     def testNSchedulersNWorkers(self):
-        calc_cpu_cnt = lambda: 4
+        calc_cpu_cnt = functools.partial(lambda: 4)
 
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             None, None, None, calc_cpu_count=calc_cpu_cnt), (2, 4))

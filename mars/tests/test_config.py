@@ -49,7 +49,7 @@ class Test(TestBase):
             self.assertEqual(options.c.d.e, 'c')
 
             with self.assertRaises(AttributeError):
-                _ = options.a.b.c
+                _ = options.a.b.c  # noqa: F841
         finally:
             options.unregister_option('c.d.e')
 

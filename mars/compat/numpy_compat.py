@@ -48,7 +48,7 @@ except TypeError:
         return x
 
 # functions copied from numpy
-try:
+try:  # noqa: C901
     from numpy import broadcast_to, nanprod, nancumsum, nancumprod
 except ImportError:  # pragma: no cover
     # these functions should arrive in numpy v1.10 to v1.12.  Until then,

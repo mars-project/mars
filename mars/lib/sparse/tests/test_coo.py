@@ -70,6 +70,7 @@ class Test(TestBase):
         assert (mls.issparse(s))
         assert (s.issparse())
         # assert(mls.issparse(self.c2))
+
     # update to new numpy ndarray
     def testToArray(self):
         # if issparse(a):
@@ -175,7 +176,7 @@ class Test(TestBase):
 
         # CASE4: TypeError <- SPARSE + INCORRECT INPUT
         with self.assertRaises(TypeError):
-            cs = self.c1 - [1, 2, 3]
+            _ = self.c1 - [1, 2, 3]  # noqa: F841
 
     def testCooCopy(self):
         # coo 1 copy
@@ -348,7 +349,7 @@ class Test(TestBase):
             result = self.c1 / [1, 2, 3]
 
     ################################################
-    ########## supplement uncovered lines:##########
+    #          supplement uncovered lines:         #
     ################################################
 
     def testRaw(self):
