@@ -107,6 +107,7 @@ class Test(unittest.TestCase):
 
         a = rs.rand(20, 10, chunk_size=10)
         _, s, _ = mt.linalg.svd(a)
+        del _
         graph = s.build_graph(tiled=False)
         self.assertEqual(len(graph), 4)
 

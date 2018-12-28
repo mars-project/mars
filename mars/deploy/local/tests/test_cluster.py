@@ -168,9 +168,10 @@ class Test(unittest.TestCase):
             with new_session(cluster.endpoint) as session2:
                 t = mt.array(raw)
                 _, s, _ = mt.linalg.svd(t)
+                del _
 
                 s_result = session2.run(s)
-                _, s_expected, _ = np.linalg.svd(raw, full_matrices=False)
+                s_expected = np.linalg.svd(raw, full_matrices=False)[1]
                 np.testing.assert_allclose(s_result, s_expected)
 
     def testIndexTensorExecute(self):
