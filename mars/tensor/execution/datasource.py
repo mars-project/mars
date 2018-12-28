@@ -189,5 +189,3 @@ def register_data_source_handler():
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
     register(datasource.TensorFetchChunk, _tensor_fetch_chunk)
     register(datasource.Scalar, _scalar)
-
-

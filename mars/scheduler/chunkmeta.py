@@ -196,6 +196,14 @@ class LocalChunkMetaActor(SchedulerActor):
         self._meta_broadcasts[(session_id, chunk_key)] = \
             [d for d in broadcast_dests if d != self.address]
 
+    def get_chunk_broadcasts(self, session_id, chunk_key):
+        """
+        Get chunk broadcast addresses, for test only
+        :param session_id: session id
+        :param chunk_key: chunk key
+        """
+        return self._meta_broadcasts.get((session_id, chunk_key))
+
     def set_chunk_meta(self, session_id, chunk_key, size=None, workers=None):
         """
         Update chunk meta in current storage
@@ -227,8 +235,10 @@ class LocalChunkMetaActor(SchedulerActor):
         futures = []
         if query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
-                futures.append(self.ctx.actor_ref(self.default_name(), address=dest) \
-                    .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True))
+                futures.append(
+                    self.ctx.actor_ref(self.default_name(), address=dest)
+                        .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True)
+                )
             [f.result() for f in futures]
 
     def cache_chunk_meta(self, session_id, chunk_key, meta):
@@ -280,6 +290,7 @@ class LocalChunkMetaActor(SchedulerActor):
             for dest in self._meta_broadcasts[query_key]:
                 self.ctx.actor_ref(self.default_name(), address=dest) \
                     .delete_meta(session_id, chunk_key, _wait=False, _tell=True)
+            del self._meta_broadcasts[query_key]
 
     def batch_delete_meta(self, session_id, chunk_keys):
         """
@@ -296,11 +307,16 @@ class LocalChunkMetaActor(SchedulerActor):
         :return: keys of lost chunks
         """
         logger.debug('Removing workers %r from store', workers)
-        chunks = set()
+        removed_chunks = set()
         for w in workers:
             self._meta_cache.remove_worker_keys(w, lambda k: k[0] == session_id)
-            chunks.update(self._meta_store.remove_worker_keys(w, lambda k: k[0] == session_id))
-        return [k[1] for k in chunks]
+            removed_chunks.update(self._meta_store.remove_worker_keys(w, lambda k: k[0] == session_id))
+        for c in removed_chunks:
+            try:
+                del self._meta_broadcasts[c]
+            except KeyError:
+                pass
+        return [k[1] for k in removed_chunks]
 
 
 class ChunkMetaActor(SchedulerActor):
@@ -411,9 +427,10 @@ class ChunkMetaActor(SchedulerActor):
         # dispatch query
         futures = []
         for addr, keys in query_dict.items():
-            futures.append(self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
-                           .batch_get_chunk_meta(session_id, keys, _wait=False))
-
+            futures.append(
+                self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
+                    .batch_get_chunk_meta(session_id, keys, _wait=False)
+            )
         # accept results and merge
         for keys, future in zip(query_dict.values(), futures):
             results = future.result()
@@ -441,6 +458,8 @@ class ChunkMetaActor(SchedulerActor):
         # dispatch delete requests and wait
         futures = []
         for addr, keys in query_dict.items():
-            futures.append(self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
-                           .batch_delete_meta(session_id, list(keys), _wait=False, _tell=True))
+            futures.append(
+                self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
+                    .batch_delete_meta(session_id, list(keys), _wait=False, _tell=True)
+            )
         [f.result() for f in futures]

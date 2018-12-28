@@ -81,7 +81,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
         dup_cache = copy.deepcopy(cache)
-        _ = dup_cache['c1']
+        _ = dup_cache['c1']  # noqa: F841
         dup_cache['c10'] = WorkerMeta(10, ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
@@ -192,6 +192,7 @@ class Test(unittest.TestCase):
 
                 client = new_client()
                 ref1 = client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[0])
+                ref2 = client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[0])
                 local_ref1 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[0])
                 local_ref2 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[1])
 
@@ -201,13 +202,28 @@ class Test(unittest.TestCase):
 
                 ref1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
                 ref1.set_chunk_size(session_id, key1, 512)
+                ref1.add_worker(session_id, key1, 'abc')
+                ref2.set_chunk_broadcasts(session_id, key2, [endpoints[0]])
+                ref2.set_chunk_size(session_id, key2, 512)
+                ref2.add_worker(session_id, key2, 'def')
                 pool2.sleep(0.1)
 
                 self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_size, 512)
+                self.assertEqual(local_ref1.get_chunk_broadcasts(session_id, key1), [endpoints[1]])
                 self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_size, 512)
+                self.assertEqual(local_ref2.get_chunk_broadcasts(session_id, key2), [endpoints[0]])
 
                 ref1.delete_meta(session_id, key1)
                 pool2.sleep(0.1)
 
                 self.assertIsNone(local_ref1.get_chunk_meta(session_id, key1))
                 self.assertIsNone(local_ref2.get_chunk_meta(session_id, key1))
+                self.assertIsNone(local_ref1.get_chunk_broadcasts(session_id, key1))
+
+                local_ref1.remove_workers_in_session(session_id, ['def'])
+                local_ref2.remove_workers_in_session(session_id, ['def'])
+                pool2.sleep(0.1)
+
+                self.assertIsNone(local_ref1.get_chunk_meta(session_id, key2))
+                self.assertIsNone(local_ref2.get_chunk_meta(session_id, key2))
+                self.assertIsNone(local_ref2.get_chunk_broadcasts(session_id, key2))

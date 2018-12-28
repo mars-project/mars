@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from copy import deepcopy
 import contextlib
+import functools
+import operator
 import warnings
 import threading
+from copy import deepcopy
 
 from .compat import six
 
@@ -264,13 +266,19 @@ def all_validator(*validators):
     return validate
 
 
-is_null = lambda x: x is None
-is_bool = lambda x: isinstance(x, bool)
-is_integer = lambda x: isinstance(x, six.integer_types)
-is_float = lambda x: isinstance(x, float)
-is_string = lambda x: isinstance(x, six.string_types)
-is_dict = lambda x: isinstance(x, dict)
-is_list = lambda x: isinstance(x, list)
+def _instance_check(typ, v):
+    return isinstance(v, typ)
+
+
+is_null = functools.partial(operator.is_, None)
+is_bool = functools.partial(_instance_check, bool)
+is_integer = functools.partial(_instance_check, six.integer_types)
+is_float = functools.partial(_instance_check, float)
+is_string = functools.partial(_instance_check, six.string_types)
+is_dict = functools.partial(_instance_check, dict)
+is_list = functools.partial(_instance_check, list)
+
+
 def is_in(vals):
     def validate(x):
         return x in vals

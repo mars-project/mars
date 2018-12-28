@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import unittest
 import sys
 
@@ -87,7 +88,7 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
     def testNSchedulersNWorkers(self):
-        calc_cpu_cnt = lambda: 4
+        calc_cpu_cnt = functools.partial(lambda: 4)
 
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             None, None, None, calc_cpu_count=calc_cpu_cnt), (2, 4))
@@ -170,7 +171,36 @@ class Test(unittest.TestCase):
 
                 s_result = session2.run(s)
                 _, s_expected, _ = np.linalg.svd(raw, full_matrices=False)
-                np.testing.assert_allclose(s_result, s_expected + 1)
+                np.testing.assert_allclose(s_result, s_expected)
+
+    def testIndexTensorExecute(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            a = mt.random.rand(10, 5)
+            idx = slice(0, 5), slice(0, 5)
+            a[idx] = 2
+            a_splits = mt.split(a, 2)
+            r1, r2 = session.run(a_splits[0], a[idx])
+
+            np.testing.assert_array_equal(r1, r2)
+            np.testing.assert_array_equal(r1, np.ones((5, 5)) * 2)
+
+            with new_session(cluster.endpoint) as session2:
+                a = mt.random.rand(10, 5)
+                idx = slice(0, 5), slice(0, 5)
+
+                a[idx] = mt.ones((5, 5)) * 2
+                r = session2.run(a[idx])
+
+                np.testing.assert_array_equal(r, np.ones((5, 5)) * 2)
+
+    def testExecutableTuple(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+            with new_session('http://' + cluster._web_endpoint).as_default() as _:
+                a = mt.ones((20, 10), chunk_size=10)
+                u, s, v = (mt.linalg.svd(a)).execute()
+                np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)

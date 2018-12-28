@@ -69,9 +69,8 @@ def tril_sparse_matrix(m, k=0, gpu=False):
 
 
 def where(cond, x, y):
-    assparsematrix = lambda i: SparseMatrix(i) if issparse(i) else i
-
-    cond, x, y = [assparsematrix(i) for i in (cond, x, y)]
+    cond, x, y = [SparseMatrix(i) if issparse(i) else i
+                  for i in (cond, x, y)]
     return cond * x + (cond * (-y) + y)
 
 
@@ -1101,8 +1100,8 @@ class SparseMatrix(SparseNDArray):
             return get_array_module(self.spmatrix).count_nonzero(self.spmatrix.toarray(), axis=axis)
 
     def __getitem__(self, item):
-        get = lambda x: x.spmatrix if isinstance(x, SparseMatrix) else x
-        item = get(item)
+        if isinstance(item, SparseMatrix):
+            item = item.spmatrix
         if isinstance(item, list):
             item = tuple(item)
 

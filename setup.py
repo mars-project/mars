@@ -38,7 +38,7 @@ with open(os.path.join(repo_root, 'requirements.txt'), 'r') as f:
     requirements.extend(f.read().splitlines())
 
 
-extra_requirements=[]
+extra_requirements = []
 with open(os.path.join(repo_root, 'requirements-extra.txt'), 'r') as f:
     extra_requirements.extend(f.read().splitlines())
 

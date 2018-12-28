@@ -15,7 +15,6 @@
 import ast
 import keyword
 import inspect
-import sys
 from collections import namedtuple
 
 from . import six
@@ -39,19 +38,11 @@ else:
         except SyntaxError:
             return False
 
-        if not isinstance(root, ast.Module):
-            return False
-
-        if len(root.body) != 1:
-            return False
-
-        if not isinstance(root.body[0], ast.Expr):
-            return False
-
-        if not isinstance(root.body[0].value, ast.Name):
-            return False
-
-        if root.body[0].value.id != ident:
+        if not isinstance(root, ast.Module) \
+                or len(root.body) != 1 \
+                or not isinstance(root.body[0], ast.Expr) \
+                or not isinstance(root.body[0].value, ast.Name) \
+                or root.body[0].value.id != ident:
             return False
 
         return True
@@ -70,7 +61,6 @@ else:
             raise TypeError("%s.__dict__ is not a dictionary"
                             "" % obj.__name__)
         return obj.__dict__.keys()
-
 
     def dir2(obj):
         attrs = set()
@@ -92,69 +82,72 @@ else:
         return sorted(list(attrs))
 
 
-if hasattr(inspect, 'signature'):
-    FullArgSpec = namedtuple('FullArgSpec',
-                             'args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
+def _getargspec(func):
     ArgSpec = namedtuple('ArgSpec', 'args varargs keywords defaults')
 
+    args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
+        getfullargspec(func)
+    if kwonlyargs or ann:
+        raise ValueError("Function has keyword-only arguments or annotations"
+                         ", use getfullargspec() API which can support them")
+    return ArgSpec(args, varargs, varkw, defaults)
+
+
+def _getfullargspec(func):  # noqa: C901
     from inspect import Parameter
+    FullArgSpec = namedtuple('FullArgSpec',
+                             'args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
 
-    def getfullargspec(func):
-        sig = inspect.signature(func)
-        args = []
-        varargs = None
-        varkw = None
-        kwonlyargs = []
-        annotations = {}
-        defaults = ()
-        kwdefaults = {}
+    sig = inspect.signature(func)
+    args = []
+    varargs = None
+    varkw = None
+    kwonlyargs = []
+    annotations = {}
+    defaults = ()
+    kwdefaults = {}
 
-        if sig.return_annotation is not sig.empty:
-            annotations['return'] = sig.return_annotation
+    if sig.return_annotation is not sig.empty:
+        annotations['return'] = sig.return_annotation
 
-        for param in sig.parameters.values():
-            kind = param.kind
-            name = param.name
+    for param in sig.parameters.values():
+        kind = param.kind
+        name = param.name
 
-            if kind is Parameter.POSITIONAL_ONLY:
-                args.append(name)
-            elif kind is Parameter.POSITIONAL_OR_KEYWORD:
-                args.append(name)
-                if param.default is not param.empty:
-                    defaults += (param.default,)
-            elif kind is Parameter.VAR_POSITIONAL:
-                varargs = name
-            elif kind is Parameter.KEYWORD_ONLY:
-                kwonlyargs.append(name)
-                if param.default is not param.empty:
-                    kwdefaults[name] = param.default
-            elif kind is Parameter.VAR_KEYWORD:
-                varkw = name
+        if kind is Parameter.POSITIONAL_ONLY:
+            args.append(name)
+        elif kind is Parameter.POSITIONAL_OR_KEYWORD:
+            args.append(name)
+            if param.default is not param.empty:
+                defaults += (param.default,)
+        elif kind is Parameter.VAR_POSITIONAL:
+            varargs = name
+        elif kind is Parameter.KEYWORD_ONLY:
+            kwonlyargs.append(name)
+            if param.default is not param.empty:
+                kwdefaults[name] = param.default
+        elif kind is Parameter.VAR_KEYWORD:
+            varkw = name
 
-            if param.annotation is not param.empty:
-                annotations[name] = param.annotation
+        if param.annotation is not param.empty:
+            annotations[name] = param.annotation
 
-        if not kwdefaults:
-            # compatibility with 'func.__kwdefaults__'
-            kwdefaults = None
+    if not kwdefaults:
+        # compatibility with 'func.__kwdefaults__'
+        kwdefaults = None
 
-        if not defaults:
-            # compatibility with 'func.__defaults__'
-            defaults = None
+    if not defaults:
+        # compatibility with 'func.__defaults__'
+        defaults = None
 
-        return FullArgSpec(args, varargs, varkw, defaults,
-                           kwonlyargs, kwdefaults, annotations)
+    return FullArgSpec(args, varargs, varkw, defaults,
+                       kwonlyargs, kwdefaults, annotations)
 
-    def getargspec(func):
-        args, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, ann = \
-            getfullargspec(func)
-        if kwonlyargs or ann:
-            raise ValueError("Function has keyword-only arguments or annotations"
-                             ", use getfullargspec() API which can support them")
-        return ArgSpec(args, varargs, varkw, defaults)
 
+if hasattr(inspect, 'signature'):
+    getargspec, getfullargspec = _getargspec, _getfullargspec
 else:
-    from inspect import getargspec
+    from inspect import getargspec  # noqa: F401
     if hasattr(inspect, 'getfullargspec'):
         from inspect import getfullargspec
     else:
