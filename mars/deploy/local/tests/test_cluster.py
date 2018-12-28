@@ -165,6 +165,15 @@ class Test(unittest.TestCase):
                 np.testing.assert_allclose(U_result, U_expected + 1)
                 np.testing.assert_allclose(s_result, s_expectd + 1)
 
+            with new_session(cluster.endpoint) as session2:
+                t = mt.array(raw)
+                _, s, _ = mt.linalg.svd(t)
+                del _
+
+                s_result = session2.run(s)
+                s_expected = np.linalg.svd(raw, full_matrices=False)[1]
+                np.testing.assert_allclose(s_result, s_expected)
+
     def testIndexTensorExecute(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
             session = cluster.session
@@ -189,11 +198,10 @@ class Test(unittest.TestCase):
 
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
-            with new_session('http://' + cluster._web_endpoint).as_default() as _:
+            with new_session('http://' + cluster._web_endpoint).as_default():
                 a = mt.ones((20, 10), chunk_size=10)
                 u, s, v = (mt.linalg.svd(a)).execute()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
-
 
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)

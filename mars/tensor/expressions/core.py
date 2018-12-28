@@ -99,6 +99,11 @@ class TensorOperandMixin(object):
             tensors.append(tensor_cls(data))
 
         setattr(self, 'outputs', tensors)
+        if len(tensors) > 1:
+            # for each output tensor, hold the reference to the other outputs
+            # so that either no one or everyone are gc collected
+            for i, t in enumerate(tensors):
+                t.data._siblings = [tensor.data for tensor in tensors[:i] + tensors[i+1:]]
         return tensors
 
     def new_chunk(self, inputs, shape, index=None, **kw):

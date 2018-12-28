@@ -125,7 +125,7 @@ class Chunk(Entity):
 
 
 class TensorData(SerializableWithKey, Tilesable):
-    __slots__ = '__weakref__',
+    __slots__ = '__weakref__', '_siblings'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -538,7 +538,7 @@ class Tensor(Entity):
 
 
 class SparseTensor(Tensor):
-    pass
+    __slots__ = ()
 
 
 TENSOR_TYPE = (Tensor, TensorData)

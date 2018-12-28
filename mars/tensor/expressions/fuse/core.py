@@ -25,7 +25,7 @@ class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('FetchChunk is a chunk operand which does not support tile')
+        raise NotSupportTile('TensorFuseChunk is a chunk operand which does not support tile')
 
 
 class TensorFuseChunkMixin(TensorOperandMixin):
@@ -33,7 +33,7 @@ class TensorFuseChunkMixin(TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('FetchChunk is a chunk operand which does not support tile')
+        raise NotSupportTile('TensorFuseChunk is a chunk operand which does not support tile')
 
     def __call__(self, fuse_chunks):
         head_chunk = fuse_chunks[0]

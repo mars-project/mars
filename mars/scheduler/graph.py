@@ -398,7 +398,7 @@ class GraphActor(SchedulerActor):
                 dq_predecessors = deque([n])
                 while dq_predecessors:
                     current = dq_predecessors.popleft()
-                    reserve_chunk.add(n)
+                    reserve_chunk.update(n.op.outputs)
                     predecessors = chunk_graph.predecessors(current)
                     dq_predecessors.extend([p for p in predecessors if p not in reserve_chunk])
                     reserve_chunk.update(predecessors)
