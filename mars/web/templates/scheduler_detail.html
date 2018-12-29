@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block scheduler_submenu %}
+    <ul class="nav nav-second-level">
+        <li>
+            <a href="#">{{ endpoint }}</a>
+        </li>
+    </ul>
+{% endblock %}
+{% block body %}
+    <div class="row">
+        <div><h2>Scheduler Info</h2></div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Host</td>
+                <td><pre class="plain-pre">{{ scheduler_metrics['host_name'] }} ({{ endpoint }})</pre></td>
+            </tr>
+            {% if scheduler_metrics['k8s_pod_name'] is defined %}
+            <tr>
+                <td>Kubernetes Pod</td>
+                <td>{{ scheduler_metrics['k8s_pod_name'] }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td>Git Branch</td>
+                <td><pre class="plain-pre">{{ scheduler_metrics['git_info'] }}</pre></td>
+            </tr>
+            <tr>
+                <td>Platform</td>
+                <td><pre class="plain-pre">{{ scheduler_metrics['platform'] }}</pre></td>
+            </tr>
+            <tr>
+                <td>Command</td>
+                <td><pre class="plain-pre" style="white-space: inherit">{{ scheduler_metrics['command_line'] }}</pre></td>
+            </tr>
+            <tr>
+                <td>Python</td>
+                <td><pre class="plain-pre">{{ scheduler_metrics['sys_version'] }}</pre></td>
+            </tr>
+            </tbody>
+        </table>
+        <div><h2>Resources</h2></div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>CPU Info</td>
+                <td><pre class="plain-pre">Usage: {{ '%0.2f' % scheduler_metrics['cpu_used'] }}
+Total: {{ scheduler_metrics['cpu_total'] }}</pre></td>
+            </tr>
+            <tr>
+                <td>Memory Info</td>
+                <td><pre class="plain-pre">Usage: {{ scheduler_metrics['memory_used'] | readable_size }}
+Total: {{ scheduler_metrics['memory_total'] | readable_size }}</pre></td>
+            </tr>
+            {% if scheduler_metrics['disk_read'] is defined %}
+            <tr>
+                <td>Disk IO Info</td>
+                <td><pre class="plain-pre">Read Speed: {{ scheduler_metrics['disk_read'] | readable_size }}/s
+Write Speed: {{ scheduler_metrics['disk_write'] | readable_size }}/s</pre></td>
+            </tr>
+            {% endif %}
+            {% if scheduler_metrics['net_receive'] is defined %}
+            <tr>
+                <td>Network IO Info</td>
+                <td><pre class="plain-pre">Receive Speed: {{ scheduler_metrics['net_receive'] | readable_size }}/s
+Send Speed: {{ scheduler_metrics['net_send'] | readable_size }}/s</pre></td>
+            </tr>
+            {% endif %}
+            {% if scheduler_metrics['iowait'] is defined %}
+            <tr>
+                <td>IOWait</td>
+                    <td><pre class="plain-pre">Percent: {{ scheduler_metrics['iowait']}}%</pre></td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td>Update Time</td>
+                <td>{{ scheduler_metrics['update_time'] | format_ts }}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

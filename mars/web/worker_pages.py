@@ -49,8 +49,8 @@ def worker_detail(doc, workers_meta, endpoint):
     doc.template = _jinja_env.get_template('worker_detail.html')
 
 
-def _route(scheduele_ip, doc):
-    web_api = MarsWebAPI(scheduele_ip)
+def _route(scheduler_ip, doc):
+    web_api = MarsWebAPI(scheduler_ip)
     workers_meta = web_api.get_workers_meta()
 
     endpoint = doc.session_context.request.arguments.get('endpoint')

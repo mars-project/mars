@@ -177,6 +177,9 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep + '/task')
             self.assertEqual(res.status_code, 200)
 
+            res = requests.get(service_ep + '/scheduler')
+            self.assertEqual(res.status_code, 200)
+
             res = requests.get(service_ep + '/worker')
             self.assertEqual(res.status_code, 200)
 
