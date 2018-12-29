@@ -42,6 +42,9 @@ class LocalSession(object):
     def fetch(self, tensor):
         from .tensor.expressions.datasource import TensorFetchChunk
 
+        if self._executor is None:
+            raise RuntimeError('Session has closed')
+
         if len(tensor.chunks) == 1:
             return self._executor.chunk_result[tensor.chunks[0].key]
 
@@ -166,8 +169,8 @@ class Session(object):
         self._sess.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._sess.__exit__(exc_type, exc_val, exc_tb)
+    def __exit__(self, *_):
+        self._sess.__exit__(*_)
 
     close = __exit__
 
