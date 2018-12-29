@@ -37,11 +37,11 @@ class MarsAPI(object):
 
     def get_schedulers_info(self):
         schedulers = self.cluster_info.get_schedulers()
-        infos = []
+        infos = dict()
         for scheduler in schedulers:
             info_ref = self.actor_client.actor_ref(NodeInfoActor.default_name(),
                                                    address=scheduler)
-            infos.append(info_ref.get_info())
+            infos[scheduler] = info_ref.get_info()
         return infos
 
     def count_workers(self):

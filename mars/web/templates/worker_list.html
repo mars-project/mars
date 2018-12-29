@@ -28,7 +28,7 @@
             </thead>
             <tbody>
             {%- if worker_metrics %}
-                {%- for endpoint in worker_metrics%}
+                {%- for endpoint in worker_metrics %}
                     {% set metrics = worker_metrics[endpoint]['hardware'] %}
                     <tr>
                         <td><a href="/worker?endpoint={{ endpoint }}">{{ endpoint }}</a></td>

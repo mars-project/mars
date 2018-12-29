@@ -16,6 +16,11 @@
 
 import numpy as np
 
+try:
+    from .resource import cpu_count
+except ImportError:
+    from multiprocessing import cpu_count
+
 
 class LocalSession(object):
     def __init__(self):
@@ -37,6 +42,8 @@ class LocalSession(object):
     def run(self, *tensors, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
+        if 'n_parallel' not in kw:
+            kw['n_parallel'] = cpu_count()
         return self._executor.execute_tensors(tensors, **kw)
 
     def fetch(self, tensor):

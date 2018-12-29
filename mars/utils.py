@@ -139,6 +139,7 @@ def git_info():
 
 LOW_PORT_BOUND = 10000
 HIGH_PORT_BOUND = 65535
+_local_occupied_ports = set()
 
 
 def _get_ports_from_netstat():
@@ -173,12 +174,14 @@ def get_next_port(typ=None):
     except psutil.AccessDenied:
         occupied = _get_ports_from_netstat()
 
+    occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
     for i in irange(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
         if i in occupied:
             continue
         if idx == 0:
+            _local_occupied_ports.add(i)
             return i
         idx -= 1
     raise SystemError('No ports available.')
