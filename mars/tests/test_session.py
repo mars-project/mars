@@ -61,4 +61,15 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(result1, expected)
 
         result2 = arr4.execute()
+
+        np.testing.assert_array_equal(result1, result2)
+
+        # test run same key tensor
+        arr5 = mt.ones((10, 10), chunk_size=3)
+        result1 = arr5.execute()
+
+        del arr5
+        arr6 = mt.ones((10, 10), chunk_size=3)
+        result2 = arr6.execute()
+
         np.testing.assert_array_equal(result1, result2)

@@ -51,8 +51,8 @@ class LocalSession(object):
             chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
             chunks.append(chunk)
 
-        new_op = TensorFetchChunk(dtype=tensor.dtype, to_fetch_key=tensor.key)
-        tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
+        new_op = tensor.op.copy()
+        tensor = new_op.new_tensor([None], tensor.shape, chunks=chunks,
                                    nsplits=tensor.nsplits)
 
         return self._executor.execute_tensor(tensor, concat=True)[0]
@@ -101,6 +101,7 @@ class Session(object):
         run_tensors = []
         fetch_results = dict()
 
+        # those executed tensors should fetch data directly, submit the others
         for t in tensors:
             if t.key in self._executed_keys:
                 fetch_results[t.key] = self.fetch(t)
@@ -137,6 +138,8 @@ class Session(object):
         return results[0]
 
     def fetch(self, tensor):
+        if tensor.key not in self._executed_keys:
+            raise ValueError('Cannot fetch the unexecuted tensor')
         return self._sess.fetch(tensor)
 
     @property
