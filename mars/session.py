@@ -176,10 +176,11 @@ class Session(object):
         self._sess.__enter__()
         return self
 
-    def __exit__(self, *_):
-        self._sess.__exit__(*_)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._sess.__exit__(exc_type, exc_val, exc_tb)
 
-    close = __exit__
+    def close(self):
+        self.__exit__(None, None, None)
 
     def as_default(self):
         Session._default_session = self
