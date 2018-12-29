@@ -39,8 +39,23 @@ class LocalSession(object):
             raise RuntimeError('Session has closed')
         return self._executor.execute_tensors(tensors, **kw)
 
-    def fetch(self, key):
-        raise ValueError('Local session cannot fetch data')
+    def fetch(self, tensor):
+        from .tensor.expressions.datasource import TensorFetchChunk
+
+        if len(tensor.chunks) == 1:
+            return self._executor.chunk_result[tensor.chunks[0].key]
+
+        chunks = []
+        for c in tensor.chunks:
+            op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+            chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
+            chunks.append(chunk)
+
+        new_op = TensorFetchChunk(dtype=tensor.dtype, to_fetch_key=tensor.key)
+        tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
+                                   nsplits=tensor.nsplits)
+
+        return self._executor.execute_tensor(tensor, concat=True)[0]
 
     def decref(self, *keys):
         self._executor.decref(*keys)
@@ -88,10 +103,7 @@ class Session(object):
 
         for t in tensors:
             if t.key in self._executed_keys:
-                try:
-                    fetch_results[t.key] = self.fetch(t.key)
-                except ValueError:
-                    run_tensors.append(t)
+                fetch_results[t.key] = self.fetch(t)
             else:
                 run_tensors.append(t)
         if all([t.key in fetch_results for t in tensors]):
@@ -124,8 +136,8 @@ class Session(object):
             return results
         return results[0]
 
-    def fetch(self, tensor_key):
-        return self._sess.fetch(tensor_key)
+    def fetch(self, tensor):
+        return self._sess.fetch(tensor)
 
     @property
     def endpoint(self):
@@ -136,6 +148,7 @@ class Session(object):
         self._sess.endpoint = endpoint
 
     def decref(self, *keys):
+        self._executed_keys = self._executed_keys.difference(keys)
         if hasattr(self._sess, 'decref'):
             self._sess.decref(*keys)
 

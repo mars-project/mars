@@ -21,7 +21,8 @@ import requests
 
 from ..compat import six, TimeoutError
 from ..serialize import dataserializer
-from ..errors import *
+from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
+    ExecutionStateUnknown, ExecutionNotStopped
 from ..graph import DirectedGraph
 
 logger = logging.getLogger(__name__)
@@ -146,7 +147,8 @@ class Session(object):
             data_list.append(dataserializer.loads(resp.content))
         return data_list
 
-    def fetch(self, key):
+    def fetch(self, tensor):
+        key = tensor.key
         session_url = self._endpoint + '/api/session/' + self._session_id
         data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[key], key)
         resp = self._req_session.get(data_url)
