@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 
 import mars.tensor as mt
+from mars.session import new_session
 
 
 class Test(unittest.TestCase):
@@ -52,3 +53,50 @@ class Test(unittest.TestCase):
         expected = np.split(data, 3, axis=1)[0]
 
         np.testing.assert_array_equal(result, expected)
+
+        # test run the same tensor
+        arr4 = mt.tensor(data.copy(), chunk_size=3) + 1
+        result1 = arr4.execute()
+        expected = data + 1
+
+        np.testing.assert_array_equal(result1, expected)
+
+        result2 = arr4.execute()
+
+        np.testing.assert_array_equal(result1, result2)
+
+        # test run the same tensor with single chunk
+        arr4 = mt.tensor(data.copy())
+        result1 = arr4.execute()
+        expected = data
+
+        np.testing.assert_array_equal(result1, expected)
+
+        result2 = arr4.execute()
+
+        np.testing.assert_array_equal(result1, result2)
+
+        # test run same key tensor
+        arr5 = mt.ones((10, 10), chunk_size=3)
+        result1 = arr5.execute()
+
+        del arr5
+        arr6 = mt.ones((10, 10), chunk_size=3)
+        result2 = arr6.execute()
+
+        np.testing.assert_array_equal(result1, result2)
+
+    def testClosedSession(self):
+        session = new_session()
+        arr = mt.ones((10, 10))
+
+        result = session.run(arr)
+
+        np.testing.assert_array_equal(result, np.ones((10, 10)))
+
+        session.close()
+        with self.assertRaises(RuntimeError):
+            session.run(arr)
+
+        with self.assertRaises(RuntimeError):
+            session.run(arr + 1)

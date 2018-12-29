@@ -147,6 +147,16 @@ class Session(object):
             data_list.append(dataserializer.loads(resp.content))
         return data_list
 
+    def fetch(self, tensor):
+        key = tensor.key
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[key], key)
+        resp = self._req_session.get(data_url)
+        if resp.status_code >= 400:
+            raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
+                             (resp.status_code, resp.reason, resp.text))
+        return dataserializer.loads(resp.content)
+
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id
         for k in keys:
@@ -199,5 +209,5 @@ class Session(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *_):
         self.close()

@@ -81,6 +81,12 @@ class LocalClusterSession(object):
 
         return data_list
 
+    def fetch(self, tensor):
+        key = tensor.key
+        graph_key = self._tensor_to_graph[key]
+        resp = self._api.fetch_data(self._session_id, graph_key, key)
+        return dataserializer.loads(resp)
+
     def decref(self, *keys):
         for k in keys:
             if k not in self._tensor_to_graph:

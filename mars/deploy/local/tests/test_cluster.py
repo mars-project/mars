@@ -203,6 +203,24 @@ class Test(unittest.TestCase):
                 u, s, v = (mt.linalg.svd(a)).execute()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
+    def testRerunTensor(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            a = mt.ones((10, 10)) + 1
+            result1 = session.run(a)
+            np.testing.assert_array_equal(result1, np.ones((10, 10)) + 1)
+            result2 = session.run(a)
+            np.testing.assert_array_equal(result1, result2)
+
+            with new_session(cluster.endpoint) as session2:
+                a = mt.random.rand(10, 10)
+                a_result1 = session2.run(a)
+                b = mt.ones((10, 10))
+                a_result2, b_result = session2.run(a, b)
+                np.testing.assert_array_equal(a_result1, a_result2)
+                np.testing.assert_array_equal(b_result, np.ones((10, 10)))
+
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
