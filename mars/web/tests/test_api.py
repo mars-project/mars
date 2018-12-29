@@ -56,7 +56,7 @@ class Test(unittest.TestCase):
 
     def wait_scheduler_worker_start(self):
         actor_client = new_client()
-        time.sleep(2)
+        time.sleep(1)
         check_time = time.time()
         while True:
             try:
@@ -69,7 +69,7 @@ class Test(unittest.TestCase):
             except:  # noqa: E722
                 if time.time() - check_time > 10:
                     raise
-                time.sleep(1)
+                time.sleep(0.1)
 
         check_time = time.time()
         while not resource_ref.get_worker_count():
@@ -80,12 +80,14 @@ class Test(unittest.TestCase):
             if time.time() - check_time > 20:
                 raise SystemError('Check meta_timestamp timeout')
 
-            time.sleep(0.5)
+            time.sleep(0.1)
 
     def setUp(self):
-        scheduler_port = str(get_next_port())
+        worker_port = self.worker_port = str(get_next_port())
+        scheduler_port = self.scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
+                                        '-p', worker_port,
                                         '--level', 'debug',
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
@@ -98,14 +100,12 @@ class Test(unittest.TestCase):
                                            '-p', scheduler_port,
                                            '--format', '%(asctime)-15s %(message)s'])
 
-        self.scheduler_port = scheduler_port
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
         self.wait_scheduler_worker_start()
 
-        web_port = str(get_next_port())
-        self.web_port = web_port
+        web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
                                      '--level', 'debug',
@@ -121,10 +121,10 @@ class Test(unittest.TestCase):
             try:
                 resp = requests.get(service_ep + '/api', timeout=1)
             except (requests.ConnectionError, requests.Timeout):
-                time.sleep(1)
+                time.sleep(0.1)
                 continue
             if resp.status_code >= 400:
-                time.sleep(1)
+                time.sleep(0.1)
                 continue
             break
 
@@ -177,7 +177,14 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep + '/task')
             self.assertEqual(res.status_code, 200)
 
+            res = requests.get(service_ep + '/scheduler')
+            self.assertEqual(res.status_code, 200)
+            res = requests.get(service_ep + '/scheduler?endpoint=127.0.0.1:' + self.scheduler_port)
+            self.assertEqual(res.status_code, 200)
+
             res = requests.get(service_ep + '/worker')
+            self.assertEqual(res.status_code, 200)
+            res = requests.get(service_ep + '/worker?endpoint=127.0.0.1:' + self.worker_port)
             self.assertEqual(res.status_code, 200)
 
 

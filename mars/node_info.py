@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import socket
-import platform
 import logging
 import os
+import platform
+import socket
+import sys
+import time
 
 from . import resource
-from .utils import git_info, readable_size
 from .actors import FunctionActor
 from .compat import six
+from .utils import git_info
 
 try:
     import numpy as np
@@ -48,14 +49,17 @@ def gather_node_info():
     from .lib.mkl_interface import mkl_get_version
     mem_stats = resource.virtual_memory()
 
-    node_info = dict()
-    node_info['command_line'] = ' '.join(sys.argv)
-    node_info['platform'] = platform.platform()
-    node_info['host_name'] = socket.gethostname()
-    node_info['sys_version'] = sys.version
-    node_info['cpu_info'] = 'Used: %f\nTotal: %d' % (resource.cpu_percent() / 100.0, resource.cpu_count())
-    node_info['memory_info'] = 'Used: %s\nTotal: %s' % (readable_size(mem_stats.used),
-                                                        readable_size(mem_stats.total))
+    node_info = {
+        'command_line': ' '.join(sys.argv),
+        'platform': platform.platform(),
+        'host_name': socket.gethostname(),
+        'sys_version': sys.version,
+        'cpu_used': resource.cpu_percent() / 100.0,
+        'cpu_total': resource.cpu_count(),
+        'memory_used': mem_stats.used,
+        'memory_total': mem_stats.total,
+        'update_time': time.time(),
+    }
 
     for collector in _collectors.values():
         node_info.update(collector())
