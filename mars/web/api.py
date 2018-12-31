@@ -33,7 +33,7 @@ _actor_client = new_client()
 logger = logging.getLogger(__name__)
 
 
-def _patch_futures():
+def _patch_futures():  # pragma: no cover
     _FUTURES = concurrent.FUTURES + (futures.Future, )
 
     def _is_future(x):
@@ -43,7 +43,7 @@ def _patch_futures():
     ioloop.is_future = _is_future
 
 
-if six.PY2:
+if six.PY2:  # pragma: no cover
     _patch_futures()
 
 
@@ -51,6 +51,13 @@ class ApiRequestHandler(web.RequestHandler):
     def initialize(self, scheduler_ip):
         self._scheduler = scheduler_ip
         self.web_api = MarsWebAPI(scheduler_ip)
+
+    def _dump_exception(self, exc_info):
+        pickled_exc = pickle.dumps(exc_info)
+        self.write(json.dumps(dict(
+            exc_info=base64.b64encode(pickled_exc),
+        )))
+        raise web.HTTPError(500, 'Internal server error')
 
 
 class ApiEntryHandler(ApiRequestHandler):
@@ -72,6 +79,14 @@ class SessionApiHandler(ApiRequestHandler):
 
 
 class GraphsApiHandler(ApiRequestHandler):
+    def get(self, session_id):
+        try:
+            graph_states = self.web_api.get_tasks_info(session_id)
+            tasks_dict = graph_states[session_id]['tasks']
+            self.write(json.dumps(tasks_dict))
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info())
+
     def post(self, session_id):
         try:
             graph = self.get_argument('graph')
@@ -85,11 +100,7 @@ class GraphsApiHandler(ApiRequestHandler):
             self.web_api.submit_graph(session_id, graph, graph_key, target)
             self.write(json.dumps(dict(graph_key=graph_key)))
         except:  # noqa: E722
-            pickled_exc = pickle.dumps(sys.exc_info())
-            self.write(json.dumps(dict(
-                exc_info=base64.b64encode(pickled_exc),
-            )))
-            raise web.HTTPError(500, 'Internal server error')
+            self._dump_exception(sys.exc_info())
 
 
 class GraphApiHandler(ApiRequestHandler):
