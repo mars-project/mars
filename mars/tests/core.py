@@ -150,7 +150,8 @@ class TestBase(unittest.TestCase):
 
 
 class EtcdProcessHelper(object):
-
+    # from https://github.com/jplana/python-etcd/blob/master/src/etcd/tests/integration/helpers.py
+    # licensed under mit license
     def __init__(
             self,
             base_directory=None,
@@ -174,6 +175,18 @@ class EtcdProcessHelper(object):
         if tls:
             self.schema = 'https://'
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        dirs = list(tp[0] for tp in self.processes.values())
+        self.stop()
+        for temp_dir in dirs:
+            try:
+                shutil.rmtree(temp_dir)
+            except OSError:
+                pass
+
     def run(self, number=1, proc_args=None):
         proc_args = proc_args or []
         if number > 1:
@@ -193,6 +206,7 @@ class EtcdProcessHelper(object):
 
         for i in range(0, number):
             self.add_one(i, proc_args)
+        return self
 
     def stop(self):
         for key in [k for k in self.processes.keys()]:

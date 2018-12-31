@@ -46,7 +46,7 @@ def virtual_memory():
         for p in psutil.process_iter():
             try:
                 used += p.memory_info().rss
-            except psutil.NoSuchProcess:
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
         if _shm_path:
@@ -83,7 +83,7 @@ def _take_process_cpu_snapshot():
         try:
             pts[p.pid] = p.cpu_times()
             sts[p.pid] = timer()
-        except psutil.NoSuchProcess:
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
     pts[_proc.pid] = _proc.cpu_times()

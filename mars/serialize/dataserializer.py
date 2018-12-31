@@ -19,22 +19,22 @@ from ..compat import six, BytesIO
 
 try:
     import numpy as np
-except ImportError:
+except ImportError:  # pragma: no cover
     np = None
 try:
     import scipy.sparse as sps
-except ImportError:
+except ImportError:  # pragma: no cover
     sps = None
 try:
     import cupy as cp
-except ImportError:
+except ImportError:  # pragma: no cover
     cp = None
 
 from ..lib.sparse import SparseNDArray
 
 try:
     import pyarrow
-except ImportError:
+except ImportError:  # pragma: no cover
     pyarrow = None
 
 
@@ -42,14 +42,14 @@ BUFFER_SIZE = 256 * 1024
 
 
 class DummyCompress(object):
-    def __enter__(self):
-        pass
+    def __enter__(self):  # pragma: no cover
+        return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):  # pragma: no cover
         pass
 
     @staticmethod
-    def decompress(data):
+    def decompress(data):  # pragma: no cover
         return data
 
 
@@ -57,14 +57,14 @@ try:
     import lz4.frame
     try:
         lz4.frame._compression.BUFFER_SIZE = BUFFER_SIZE
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
         pass
     lz4_open = functools.partial(lz4.frame.open, block_size=lz4.frame.BLOCKSIZE_MAX1MB)
     lz4_compress = functools.partial(lz4.frame.compress, block_size=lz4.frame.BLOCKSIZE_MAX1MB)
     lz4_compressobj = lz4.frame.LZ4FrameCompressor
     lz4_decompress = lz4.frame.decompress
     lz4_decompressobj = lz4.frame.LZ4FrameDecompressor
-except ImportError:
+except ImportError:  # pragma: no cover
     lz4_open = None
     lz4_compress, lz4_compressobj = None, None
     lz4_decompress, lz4_decompressobj = None, None

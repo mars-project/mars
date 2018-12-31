@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 try:
     from pytest_cov.embed import cleanup_on_sigterm
     cleanup_on_sigterm()
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 
