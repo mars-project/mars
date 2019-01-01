@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import time
 import unittest
 
 from mars.compat import reload_module
@@ -32,17 +33,20 @@ class Test(unittest.TestCase):
         self.assertGreaterEqual(mem_stats.free, 0)
 
         cpu_usage = resource.cpu_percent()
+        time.sleep(0.1)
         self.assertGreaterEqual(cpu_usage, 0)
 
         resource.disk_io_usage()
+        time.sleep(0.1)
         recv_speed, send_speed = resource.disk_io_usage()
-        self.assertGreaterEqual(cpu_usage, recv_speed)
-        self.assertGreaterEqual(cpu_usage, send_speed)
+        self.assertGreaterEqual(recv_speed, 0)
+        self.assertGreaterEqual(send_speed, 0)
 
         resource.net_io_usage()
+        time.sleep(0.1)
         recv_speed, send_speed = resource.net_io_usage()
-        self.assertGreaterEqual(cpu_usage, recv_speed)
-        self.assertGreaterEqual(cpu_usage, send_speed)
+        self.assertGreaterEqual(recv_speed, 0)
+        self.assertGreaterEqual(send_speed, 0)
 
     def testUseProcessStats(self):
         from mars import resource

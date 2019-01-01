@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 from mars.actors import create_actor_pool
@@ -21,6 +22,7 @@ from mars.tests.core import EtcdProcessHelper
 
 
 class Test(unittest.TestCase):
+    @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     def testKVStoreActor(self):
         proc_helper = EtcdProcessHelper(port_range_start=54131)
         with proc_helper.run(), create_actor_pool(n_process=1, backend='gevent') as pool:

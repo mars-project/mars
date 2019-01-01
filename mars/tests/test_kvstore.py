@@ -14,13 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import unittest
+
 import gevent
 
-from mars.tests.core import TestBase, EtcdProcessHelper
+from mars.tests.core import EtcdProcessHelper
 from mars.kvstore import get, PathResult
 
 
-class Test(TestBase):
+class Test(unittest.TestCase):
     def testLocalPathStore(self):
         kvstore = get(':inproc:')
         kvstore.write('/node/subnode/v1', 'value1')
@@ -82,6 +85,7 @@ class Test(TestBase):
         ])
         self.assertEqual(repr(res), repr(expected))
 
+    @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     def testEtcdPathStore(self):
         with EtcdProcessHelper(port_range_start=51342).run():
             kvstore = get(u'etcd://localhost:51342')
@@ -191,6 +195,7 @@ class Test(TestBase):
 
         kvstore.delete('/node', dir=True, recursive=True)
 
+    @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     def testEtcdWatch(self):
         with EtcdProcessHelper(port_range_start=51342).run():
             kvstore = get('etcd://localhost:51342')
