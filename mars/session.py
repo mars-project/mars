@@ -18,7 +18,7 @@ import numpy as np
 
 try:
     from .resource import cpu_count
-except ImportError:
+except ImportError:  # pragma: no cover
     from multiprocessing import cpu_count
 
 

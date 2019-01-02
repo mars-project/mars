@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
@@ -42,6 +41,9 @@ class KVStoreActor(SchedulerActor):
 
     def read(self, item, recursive=False, sort=False):
         return self._store.read(item, recursive=recursive, sort=sort)
+
+    def read_batch(self, items, recursive=False, sort=False):
+        return [self._store.read(item, recursive=recursive, sort=sort) for item in items]
 
     def write(self, key, value):
         return self._store.write(key, value)

@@ -1,3 +1,17 @@
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from datetime import datetime, timedelta
 from gevent.event import Event
 
@@ -118,7 +132,7 @@ class LocalKVStore(object):
 
     def eternal_watch(self, key, recursive=False):
         while True:
-            response = self.watch(key, timeout=0, recursive=recursive)
+            response = self.watch(key, timeout=None, recursive=recursive)
             yield response
 
     def get_lock(self, lock_name):
@@ -177,6 +191,8 @@ class LocalKVStore(object):
                     self.delete(ch_key, dir=True, recursive=True)
             del self._children[key]
         dir_name, file_name = key.rsplit('/', 1)
+        if not dir_name:
+            dir_name = '/'
         self._children[dir_name].remove(file_name)
 
         if key in self._watch_event:
@@ -203,7 +219,7 @@ class EtcdKVStore(object):
         self._etcd_client = etcd_client
         self._base_path = _normalize_path(base_path)
 
-    def read(self, item, recursive=False):
+    def read(self, item, recursive=False, sort=False):
         from etcd_gevent import EtcdKeyError, EtcdKeyNotFound
         item = _normalize_path(self._base_path + item)
 
@@ -219,6 +235,8 @@ class EtcdKVStore(object):
             if ch.key == item:
                 continue
             r.children.append(PathResult(ch.key, value=ch.value, dir=ch.dir))
+        if sort:
+            r.children = sorted(r.children, key=lambda ch: ch.key)
         return r
 
     def watch(self, item, timeout=None, recursive=None):
@@ -276,5 +294,5 @@ def get(addr):
         hosts = tuple((h.strip(), parsed.port) for h in parsed.hostname.split(','))
         client = EtcdClient(host=hosts, allow_reconnect=True)
         return EtcdKVStore(client, parsed.path)
-    else:
+    else:  # pragma: no cover
         raise ValueError('Scheme %s not supported.' % parsed.scheme)

@@ -30,12 +30,12 @@ from numpy.testing import assert_array_equal
 
 from mars import tensor as mt
 from mars.actors import new_client
-from mars.utils import get_next_port
+from mars.config import options
+from mars.errors import ExecutionFailed
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
-from mars.config import options
-from mars.errors import ExecutionFailed
+from mars.utils import get_next_port
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -173,21 +173,29 @@ class Test(unittest.TestCase):
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
 
+            graphs = sess.get_graph_states()
+
             # check web UI requests
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get(service_ep + '/task')
+            res = requests.get('%s/task' % (service_ep,))
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get(service_ep + '/scheduler')
+            res = requests.get('%s/scheduler' % (service_ep,))
             self.assertEqual(res.status_code, 200)
-            res = requests.get(service_ep + '/scheduler?endpoint=127.0.0.1:' + self.scheduler_port)
+            res = requests.get('%s/scheduler?endpoint=127.0.0.1:%s' % (service_ep, self.scheduler_port))
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get(service_ep + '/worker')
+            res = requests.get('%s/worker' % (service_ep,))
             self.assertEqual(res.status_code, 200)
-            res = requests.get(service_ep + '/worker?endpoint=127.0.0.1:' + self.worker_port)
+            res = requests.get('%s/worker?endpoint=127.0.0.1:%s' % (service_ep, self.worker_port))
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get('%s/task' % (service_ep,))
+            self.assertEqual(res.status_code, 200)
+            task_id = next(iter(graphs.keys()))
+            res = requests.get('%s/task?session_id=%s&task_id=%s' % (service_ep, sess._session_id, task_id))
             self.assertEqual(res.status_code, 200)
 
 
