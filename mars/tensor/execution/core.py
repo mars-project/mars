@@ -24,7 +24,7 @@ import numpy as np
 
 from ...operands import Fetch
 from ...graph import DirectedGraph
-from ...compat import futures
+from ...compat import futures, OrderedDict
 from ..core import build_mode
 from ..expressions.merge.concatenate import TensorConcatenate
 
@@ -94,7 +94,7 @@ class Executor(object):
                                   show_progress=show_progress, mock=mock,
                                   sparse_mock_percent=sparse_mock_percent)
 
-    def execute_tensors(self, tensors, n_parallel=None, n_thread=None,
+    def execute_tensors(self, tensors, fetch=True, n_parallel=None, n_thread=None,
                         show_progress=False, mock=False, sparse_mock_percent=1.0):
         graph = DirectedGraph()
 
@@ -107,8 +107,11 @@ class Executor(object):
             self.tensor_key_to_chunk_keys[(tensor.key, tensor.id)] = chunk_keys
             result_keys.extend(chunk_keys)
 
-            if len(tensor.chunks) > 1:
-                # if chunks more than 1, we concatenate them into 1
+            if not fetch:
+                # no need to generate concat keys
+                pass
+            elif len(tensor.chunks) > 1:
+                # if need to fetch data and chunks more than 1, we concatenate them into 1
                 op = TensorConcatenate(dtype=tensor.op.dtype)
                 chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
                 result_keys.append(chunk.key)
@@ -129,10 +132,53 @@ class Executor(object):
 
         results = self._chunk_result
         try:
-            return [results[k] for k in concat_keys]
+            if fetch:
+                return [results[k] for k in concat_keys]
+            else:
+                return
         finally:
             for k in to_release_keys:
                 del results[k]
+
+    def fetch_tensors(self, tensors, **kw):
+        from ..expressions.datasource import TensorFetchChunk
+
+        results = []
+        to_concat_tensors = OrderedDict()
+
+        for i, tensor in enumerate(tensors):
+            if (tensor.key, tensor.id) not in self.tensor_key_to_chunk_keys:
+                # check if the tensor is executed before
+                raise ValueError(
+                    'Tensor to fetch must be executed before, got {0}'.format(tensor))
+
+            if len(tensor.chunks) == 1:
+                result = self._chunk_result[tensor.chunks[0].key]
+                results.append(result)
+                continue
+
+            # generate TensorFetchChunk op for each chunk
+            chunks = []
+            for c in tensor.chunks:
+                op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+                chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
+                chunks.append(chunk)
+
+            new_op = tensor.op.copy()
+            tensor = new_op.new_tensor([None], tensor.shape, chunks=chunks,
+                                       nsplits=tensor.nsplits)
+
+            # add this concat tensor into the list which shall be executed later
+            to_concat_tensors[i] = tensor
+            results.append(None)
+
+        # execute the concat tensors together
+        if to_concat_tensors:
+            concat_results = self.execute_tensors(list(to_concat_tensors.values()), **kw)
+            for j, concat_result in zip(to_concat_tensors, concat_results):
+                results[j] = concat_result
+
+        return results
 
     def decref(self, *keys):
         for key in keys:
