@@ -46,7 +46,8 @@ algorithm in practice that takes a balance between minimal network transfer and
 worker load balance. The algorithm is described below:
 
 1. Select the first worker who does not have any operands;
-2. Start breadth-first search on the undirected graph produced from the operand graph;
+2. Start breadth-first search on the undirected graph produced from the operand
+   graph;
 3. When an initial operand is visited, we assign it to the worker we selected
    in Step 1;
 4. Stop assignment when the number of operands visited is greater than the
