@@ -62,6 +62,11 @@ class MarsAPI(object):
         session_ref = self.get_actor_ref(session_uid)
         session_ref.submit_tensor_graph(serialized_graph, graph_key, target, _tell=True)
 
+    def get_graph_states(self, session_id):
+        session_uid = SessionActor.gen_name(session_id)
+        session_ref = self.get_actor_ref(session_uid)
+        return session_ref.get_tensor_graph_states()
+
     def delete_graph(self, session_id, graph_key):
         graph_uid = GraphActor.gen_name(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)

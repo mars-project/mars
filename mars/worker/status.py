@@ -151,7 +151,8 @@ class StatusActor(WorkerActor):
 
     def post_create(self):
         super(StatusActor, self).post_create()
-        self._reporter_ref = self.ctx.create_actor(StatusReporterActor, self._endpoint)
+        self._reporter_ref = self.ctx.create_actor(
+            StatusReporterActor, self._endpoint, uid=StatusReporterActor.default_name())
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)

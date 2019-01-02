@@ -26,15 +26,15 @@ from .utils import git_info
 
 try:
     import numpy as np
-except ImportError:
+except ImportError:  # pragma: no cover
     np = None
 try:
     import scipy
-except ImportError:
+except ImportError:  # pragma: no cover
     scipy = None
 try:
     import cupy as cp
-except ImportError:
+except ImportError:  # pragma: no cover
     cp = None
 
 logger = logging.getLogger(__name__)

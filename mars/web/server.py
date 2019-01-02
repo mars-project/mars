@@ -74,11 +74,13 @@ class MarsWebAPI(MarsAPI):
     def __init__(self, scheduler_ip):
         super(MarsWebAPI, self).__init__(scheduler_ip)
 
-    def get_tasks_info(self):
+    def get_tasks_info(self, select_session_id=None):
         from ..scheduler import GraphState
 
         sessions = defaultdict(dict)
         for session_id, session_ref in six.iteritems(self.session_manager.get_sessions()):
+            if select_session_id and session_id != select_session_id:
+                continue
             session_desc = sessions[session_id]
             session_desc['id'] = session_id
             session_desc['name'] = session_id

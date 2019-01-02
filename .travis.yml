@@ -45,16 +45,15 @@ install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls
-  - virtualenv venv
-  - source venv/bin/activate
+  - pip install virtualenv coveralls flake8
+  - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
-  - python setup.py build_ext -i
+  - python setup.py build_ext --force --inplace --define CYTHON_TRACE
+  - source bin/download-etcd.sh
 
 before_script:
-  - pip install flake8
   - flake8 mars --count --select=E111,E901,E999,F401,F821,F822,F823,F841 --show-source --statistics
   - flake8 mars --count --exit-zero --statistics
 

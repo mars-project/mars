@@ -186,6 +186,16 @@ class Session(object):
         resp_json = json.loads(resp.text)
         return resp_json
 
+    def get_graph_states(self):
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        resp = self._req_session.get(session_url + '/graph')
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = base64.b64decode(resp_json['exc_info'])
+            six.reraise(*exc_info)
+        resp_json = json.loads(resp.text)
+        return resp_json
+
     def close(self):
         self.decref(*list(self._tensor_to_graph.keys()))
 
