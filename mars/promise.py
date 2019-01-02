@@ -57,6 +57,7 @@ class Promise(object):
         # promise results
         self._accepted = None if not done else True
         self._args = ()
+        self._kwargs = {}
 
         self.post_create()
 
@@ -124,7 +125,7 @@ class Promise(object):
         :rtype: Promise
         """
         while getattr(p, handler_attr) is None:
-            p = p._get_bind_root()
+            p = p._get_bind_root()  # type: Promise
             if p and p._next_item is not None:
                 if p.id in _promise_pool:
                     # remove predecessor that will not be used later
@@ -151,17 +152,17 @@ class Promise(object):
         target_promise = self
 
         self._accepted = accept
-        if not self._accepted:
-            # we only preserve exceptions to avoid tracing huge objects
-            self._args = args
 
         try:
-            target_promise = self._get_bind_root()
+            root_promise = self._get_bind_root()
 
-            if target_promise and target_promise.id in _promise_pool:
-                del _promise_pool[target_promise.id]
+            if root_promise and root_promise.id in _promise_pool:
+                del _promise_pool[root_promise.id]
 
-            target_promise = target_promise._next_item
+            target_promise = root_promise._next_item
+            root_promise._accepted = self._accepted
+            root_promise._args = args
+            root_promise._kwargs = kwargs
             if not target_promise:
                 if not accept:
                     self._log_unexpected_error(args)
@@ -171,11 +172,18 @@ class Promise(object):
                 acceptor = self._get_handling_promise(target_promise, '_accept_handler')
                 if acceptor and acceptor._accept_handler:
                     acceptor._accept_handler(*args, **kwargs)
+                else:
+                    acceptor._accepted = accept
+                    acceptor._args = args
+                    acceptor._kwargs = kwargs
             else:
                 rejecter = self._get_handling_promise(target_promise, '_reject_handler')
                 if rejecter and rejecter._reject_handler:
                     rejecter._reject_handler(*args, **kwargs)
                 else:
+                    rejecter._accepted = accept
+                    rejecter._args = args
+                    rejecter._kwargs = kwargs
                     self._log_unexpected_error(args)
         finally:
             if target_promise and target_promise.id in _promise_pool:
@@ -185,7 +193,8 @@ class Promise(object):
         promise = Promise(on_fulfilled, on_rejected)
         self._next_item = promise
         if self._accepted is not None:
-            self.step_next(*self._args, **dict(_accept=self._accepted))
+            self._kwargs['_accept'] = self._accepted
+            self.step_next(*self._args, **self._kwargs)
         return promise
 
     def catch(self, on_rejected):
@@ -231,10 +240,6 @@ class PromiseRefWrapper(object):
     @property
     def uid(self):
         return self._ref.uid
-
-    @property
-    def ctx(self):
-        return self._ref.ctx
 
     @property
     def address(self):
@@ -432,6 +437,11 @@ def all_(promises):
     def _handle_reject(*args, **kw):
         if new_promise._accepted is not None:
             return
+        for p in promises:
+            try:
+                del _promise_pool[p.id]
+            except KeyError:
+                pass
         kw['_accept'] = False
         new_promise.step_next(*args, **kw)
 

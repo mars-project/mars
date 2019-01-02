@@ -38,11 +38,12 @@ class WorkerTestActor(WorkerActor):
         v = yield
         del v
 
-    def set_result(self, result, accept=True):
+    def set_result(self, result, accept=True, destroy=True):
         self.test_obj._result_store = (result, accept)
         self.test_obj._result_event.set()
         try:
-            self.ctx.destroy_actor(self.ref())
+            if destroy:
+                self.ctx.destroy_actor(self.ref())
         except:
             pass
 

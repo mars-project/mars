@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import sys
 import time
 import unittest
@@ -29,7 +30,9 @@ from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActo
 from mars.scheduler.utils import GraphState
 from mars.utils import serialize_graph, deserialize_graph
 from mars.actors import create_actor_pool
-from mars.tests.core import mock
+from mars.tests.core import patch_method
+
+logger = logging.getLogger(__name__)
 
 
 class FakeExecutionActor(promise.PromiseActor):
@@ -97,7 +100,6 @@ class FakeExecutionActor(promise.PromiseActor):
 class Test(unittest.TestCase):
     @staticmethod
     def _run_operand_case(session_id, graph_key, tensor, execution_creator):
-
         graph = tensor.build_graph(compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
@@ -148,8 +150,8 @@ class Test(unittest.TestCase):
             v = gevent.spawn(execute_case)
             v.get()
 
-    @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
-    @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_worker_data)
     def testOperandActor(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -160,8 +162,8 @@ class Test(unittest.TestCase):
         self._run_operand_case(session_id, graph_key, arr2,
                                lambda pool: pool.create_actor(FakeExecutionActor))
 
-    @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
-    @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_worker_data)
     def testOperandActorWithSameKey(self, *_):
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
@@ -171,8 +173,8 @@ class Test(unittest.TestCase):
         self._run_operand_case(session_id, graph_key, arr2,
                                lambda pool: pool.create_actor(FakeExecutionActor))
 
-    @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
-    @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_worker_data)
     def testOperandActorWithRetry(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -187,8 +189,8 @@ class Test(unittest.TestCase):
         finally:
             options.scheduler.retry_delay = 60
 
-    @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
-    @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_worker_data)
     def testOperandActorWithRetryAndFail(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -203,8 +205,8 @@ class Test(unittest.TestCase):
         finally:
             options.scheduler.retry_delay = 60
 
-    @mock.patch(OperandActor.__module__ + '.OperandActor._get_raw_execution_ref')
-    @mock.patch(OperandActor.__module__ + '.OperandActor._free_worker_data')
+    @patch_method(OperandActor._get_raw_execution_ref)
+    @patch_method(OperandActor._free_worker_data)
     def testOperandActorWithCancel(self, *_):
         import logging
         logging.basicConfig(level=logging.DEBUG)

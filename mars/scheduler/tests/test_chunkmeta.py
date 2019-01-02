@@ -21,7 +21,7 @@ from mars.actors import create_actor_pool, new_client
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.chunkmeta import WorkerMeta, ChunkMetaStore, ChunkMetaCache, \
     ChunkMetaActor, LocalChunkMetaActor
-from mars.tests.core import mock
+from mars.tests.core import patch_method
 from mars.utils import get_next_port
 
 
@@ -95,7 +95,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
-    @mock.patch(ChunkMetaActor.__module__ + '.ChunkMetaActor.get_scheduler')
+    @patch_method(ChunkMetaActor.get_scheduler)
     def testChunkMetaActors(self, *_):
         proc_count = 2
         endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
@@ -170,7 +170,7 @@ class Test(unittest.TestCase):
                 self.assertIsNone(ref1.batch_get_workers(session1, [key1, key2])[1])
 
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
-    @mock.patch(ChunkMetaActor.__module__ + '.ChunkMetaActor.get_scheduler')
+    @patch_method(ChunkMetaActor.get_scheduler)
     def testChunkBroadcast(self, *_):
         proc_count = 2
         endpoints = ['127.0.0.1:%d' % get_next_port() for _ in range(proc_count)]
