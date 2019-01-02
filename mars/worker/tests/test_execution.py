@@ -30,7 +30,7 @@ from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMi
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ChunkMetaActor
-from mars.tests.core import mock
+from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.distributor import WorkerDistributor
@@ -103,8 +103,7 @@ class MockSenderActor(WorkerActor):
         if self._mode == 'in':
             self._chunk_store.put(session_id, chunk_key, self._mock_data)
         else:
-            from numpy.testing import assert_array_equal
-            data = self._chunk_store.put(session_id, chunk_key)
+            data = self._chunk_store.get(session_id, chunk_key)
             assert_array_equal(self._mock_data, data)
         self.tell_promise(callback, self._mock_data.nbytes)
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
@@ -250,7 +249,7 @@ class Test(WorkerCase):
 
             self.get_result()
 
-    @mock.patch(ChunkHolderActor.__module__ + '.ChunkHolderActor.pin_chunks')
+    @patch_method(ChunkHolderActor.pin_chunks)
     def testPrepareQuota(self, *_):
         pinned = [True]
 

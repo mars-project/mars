@@ -18,6 +18,7 @@ import time
 
 from .utils import WorkerActor
 from .. import resource
+from ..utils import log_unhandled
 
 logger = logging.getLogger(__name__)
 _ALLOCATE_PERIOD = 0.5
@@ -191,7 +192,7 @@ class TaskQueueActor(WorkerActor):
             item = heapq.heappop(self._req_heap)
             query_key = (item.session_id, item.op_key)
             # if item is already scheduled or removed, we find next
-            if (item.session_id, item.op_key) in self._requests:
+            if query_key in self._requests:
                 del self._requests[query_key]
                 break
         return item
@@ -227,6 +228,7 @@ class TaskQueueAllocatorActor(WorkerActor):
     def enable_quota(self):
         self._has_quota = True
 
+    @log_unhandled
     def allocate_tasks(self, periodical=False):
         # make sure the allocation period is not too dense
         if periodical and self._last_allocate_time > time.time() - _ALLOCATE_PERIOD:
@@ -252,6 +254,7 @@ class TaskQueueAllocatorActor(WorkerActor):
 
             # obtain quota sizes for operands
             quota_request = self._execution_ref.prepare_quota_request(item.session_id, item.op_key)
+            logger.debug('Quota request for %s: %r', item.op_key, quota_request)
             if quota_request:
                 local_cb = ((self._queue_ref.uid, self._queue_ref.address),
                             TaskQueueActor.handle_allocated.__name__,
@@ -265,7 +268,7 @@ class TaskQueueAllocatorActor(WorkerActor):
                 continue
             else:
                 # allocate directly when no quota needed
-                self._queue_ref.handle_allocated(item.session_id, item.op_key, item.callback)
+                self._queue_ref.handle_allocated(item.session_id, item.op_key, item.callback, _tell=True)
                 batch_allocated += 1
             self.ctx.sleep(0.001)
 

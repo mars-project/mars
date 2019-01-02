@@ -60,7 +60,6 @@ class DaemonTestActor(WorkerActor):
             return val
 
     def handle_process_down(self, halt_refs):
-        from mars.errors import WorkerProcessStopped
         try:
             raise WorkerProcessStopped
         except WorkerProcessStopped:
