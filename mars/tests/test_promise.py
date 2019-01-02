@@ -21,7 +21,7 @@ import unittest
 import weakref
 
 from mars.actors import create_actor_pool
-from mars.compat import Queue
+from mars.compat import Queue, TimeoutError
 from mars import promise
 
 
@@ -47,7 +47,16 @@ class ServeActor(promise.PromiseActor):
 
 
 class PromiseTestActor(promise.PromiseActor):
+    def __init__(self):
+        super(PromiseTestActor, self).__init__()
+        self._finished = False
+
+    def get_finished(self):
+        return self._finished
+
     def test_normal(self):
+        self._finished = False
+
         assert self.promise_ref().uid == self.uid
 
         ref = self.promise_ref('ServeActor')
@@ -58,14 +67,20 @@ class PromiseTestActor(promise.PromiseActor):
         ref = self.promise_ref(self.ctx.actor_ref('ServeActor'))
         for _ in range(10):
             p = p.then(lambda v: ref.serve(v + 1, _promise=True))
+        p.then(lambda *_: setattr(self, '_finished', True))
 
     def test_error_raise(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
         ref.serve(0, raises=True, _promise=True) \
             .then(lambda v: ref.serve(v + 1, _promise=True)) \
-            .catch(lambda *_: ref.serve(-1, _promise=True))
+            .catch(lambda *_: ref.serve(-1, _promise=True)) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_all_promise(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
         promises = []
 
@@ -79,27 +94,36 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref.serve(-128, _promise=True) \
             .then(subsequent_all) \
-            .then(lambda *_: ref.serve(127, _promise=True))
+            .then(lambda *_: ref.serve(127, _promise=True)) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_timeout(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
 
         def _rejecter(*exc):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _timeout=1, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_no_timeout(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
 
         def _rejecter(*exc):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=1, _timeout=2, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_ref_reject(self):
+        self._finished = False
+
         from mars.errors import WorkerProcessStopped
         try:
             raise WorkerProcessStopped
@@ -112,12 +136,22 @@ class PromiseTestActor(promise.PromiseActor):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
         self.reject_promise_ref(ref, *exc_info)
 
 
 def _raise_exception(exc):
     raise exc
+
+
+def wait_test_actor_result(ref, timeout):
+    import gevent
+    t = time.time()
+    while not ref.get_finished():
+        gevent.sleep(0.1)
+        if time.time() > t + timeout:
+            raise TimeoutError
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -346,13 +380,13 @@ class Test(unittest.TestCase):
                 test_ref = pool.create_actor(PromiseTestActor)
 
                 test_ref.test_normal()
-                pool.sleep(1.5)
+                wait_test_actor_result(test_ref, 10)
                 self.assertListEqual(serve_ref.get_result(), list(range(11)))
 
                 serve_ref.clear_result()
 
                 test_ref.test_error_raise()
-                pool.sleep(0.5)
+                wait_test_actor_result(test_ref, 10)
                 self.assertListEqual(serve_ref.get_result(), [-1])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
@@ -439,7 +473,7 @@ class Test(unittest.TestCase):
 
                 test_ref.test_all_promise()
                 gc.collect()
-                pool.sleep(3)
+                wait_test_actor_result(test_ref, 30)
                 self.assertListEqual(
                     serve_ref.get_result(),
                     [-128] + list(range(0, 20, 2)) + list(range(1, 20, 2)) + [127]
@@ -455,7 +489,7 @@ class Test(unittest.TestCase):
 
                 test_ref.test_timeout()
                 gc.collect()
-                pool.sleep(3)
+                wait_test_actor_result(test_ref, 30)
                 self.assertListEqual(serve_ref.get_result(), [0, 'PromiseTimeout'])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
@@ -468,7 +502,7 @@ class Test(unittest.TestCase):
 
                 test_ref.test_no_timeout()
                 gc.collect()
-                pool.sleep(3)
+                wait_test_actor_result(test_ref, 30)
 
                 self.assertListEqual(serve_ref.get_result(), [0])
         finally:
@@ -482,7 +516,7 @@ class Test(unittest.TestCase):
 
                 test_ref.test_ref_reject()
                 gc.collect()
-                pool.sleep(3)
+                wait_test_actor_result(test_ref, 30)
                 self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
