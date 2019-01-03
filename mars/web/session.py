@@ -103,6 +103,7 @@ class Session(object):
         timeout = kw.pop('timeout', -1)
         compose = kw.pop('compose', True)
         wait = kw.pop('wait', True)
+        fetch = kw.pop('fetch', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -139,6 +140,8 @@ class Session(object):
                         (resp.status_code, resp.reason, resp.text))
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
+        if not fetch:
+            return
         data_list = []
         for tk in targets:
             resp = self._req_session.get(session_url + '/graph/' + graph_key + '/data/' + tk)
@@ -147,15 +150,22 @@ class Session(object):
             data_list.append(dataserializer.loads(resp.content))
         return data_list
 
-    def fetch(self, tensor):
-        key = tensor.key
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[key], key)
-        resp = self._req_session.get(data_url)
-        if resp.status_code >= 400:
-            raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
-                             (resp.status_code, resp.reason, resp.text))
-        return dataserializer.loads(resp.content)
+    def fetch(self, *tensors, **kw):
+        timeout = kw.pop('timeout', None)
+        if kw:
+            raise TypeError('fetch got unexpected key arguments {0}'.format(', '.join(kw.keys())))
+
+        results = list()
+        for tensor in tensors:
+            key = tensor.key
+            session_url = self._endpoint + '/api/session/' + self._session_id
+            data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[key], key)
+            resp = self._req_session.get(data_url, timeout=timeout)
+            if resp.status_code >= 400:
+                raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
+                                 (resp.status_code, resp.reason, resp.text))
+            results.append(dataserializer.loads(resp.content))
+        return results
 
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id

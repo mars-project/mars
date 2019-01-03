@@ -221,6 +221,14 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(a_result1, a_result2)
                 np.testing.assert_array_equal(b_result, np.ones((10, 10)))
 
+    def testRunWithoutFetch(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            session = cluster.session
+
+            a = mt.ones((10, 20)) + 1
+            self.assertIsNone(session.run(a, fetch=False))
+            np.testing.assert_array_equal(a.execute(session=session), np.ones((10, 20)) + 1)
+
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
