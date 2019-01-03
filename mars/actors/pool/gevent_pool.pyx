@@ -36,7 +36,7 @@ from gevent._tblib import _init as gevent_init_tblib
 from gevent.threadpool import ThreadPool as GThreadPool
 
 from ...lib import gipc
-from ...compat import six, OrderedDict, BrokenPipeError
+from ...compat import six, OrderedDict, BrokenPipeError, ConnectionRefusedError
 from ..errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from ..distributor cimport Distributor
 from ..core cimport ActorRef, Actor
@@ -376,7 +376,15 @@ class Connections(object):
                 # create a new connection
                 lock = gevent.lock.Semaphore()
                 lock.acquire()
-                conn = gevent.socket.create_connection(self.address)
+                try:
+                    conn = gevent.socket.create_connection(self.address)
+                except ConnectionRefusedError:
+                    raise
+                except socket.error as exc:
+                    if exc.errno == errno.ECONNREFUSED:
+                        raise ConnectionRefusedError
+                    else:
+                        raise
 
                 self.conn_locks[conn.fileno()] = (conn, lock)
                 return self._connect(conn, lock)
@@ -456,7 +464,9 @@ cdef class ActorRemoteHelper:
             except socket.error as exc:
                 if exc.errno == errno.EPIPE:
                     self._connections[address].got_broken_pipe(sock.fileno())
-                raise
+                    raise BrokenPipeError
+                else:
+                    raise
 
     def create_actor(self, str address, object uid, object actor_cls, *args, **kwargs):
         cdef bint wait

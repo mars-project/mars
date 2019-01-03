@@ -74,6 +74,7 @@ class PlasmaChunkStore(object):
 
         obj_id = self._calc_object_id(session_id, chunk_key)
         try:
+            self._plasma_client.evict(size)
             buffer = self._plasma_client.create(obj_id, size)
             return buffer
         except PlasmaStoreFull:
@@ -89,13 +90,19 @@ class PlasmaChunkStore(object):
         elif exc_type is PlasmaObjectExists:
             raise StoreKeyExists
 
+    def evict(self, size):
+        """
+        Evict some size form store
+        """
+        self._plasma_client.evict(size)
+
     def seal(self, session_id, chunk_key):
         from pyarrow.lib import PlasmaObjectNonexistent
         obj_id = self._calc_object_id(session_id, chunk_key)
         try:
             self._plasma_client.seal(obj_id)
         except PlasmaObjectNonexistent:
-            raise KeyError('(%r, %r)' % (session_id, chunk_key))
+            raise KeyError((session_id, chunk_key))
 
     def get(self, session_id, chunk_key):
         """
@@ -106,7 +113,7 @@ class PlasmaChunkStore(object):
         obj_id = self._calc_object_id(session_id, chunk_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
         if obj is ObjectNotAvailable:
-            raise KeyError('(%r, %r)' % (session_id, chunk_key))
+            raise KeyError((session_id, chunk_key))
         return obj
 
     def get_buffer(self, session_id, chunk_key):
@@ -116,7 +123,7 @@ class PlasmaChunkStore(object):
         obj_id = self._calc_object_id(session_id, chunk_key)
         [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
         if buf is None:
-            raise KeyError('(%r, %r)' % (session_id, chunk_key))
+            raise KeyError((session_id, chunk_key))
         return buf
 
     def get_actual_size(self, session_id, chunk_key):
@@ -127,6 +134,8 @@ class PlasmaChunkStore(object):
         try:
             obj_id = self._calc_object_id(session_id, chunk_key)
             [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
+            if buf is None:
+                raise KeyError((session_id, chunk_key))
             size = buf.size
         finally:
             del buf

@@ -17,7 +17,7 @@ from functools import partial
 
 import gevent
 
-from mars.tests.core import mock
+from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.actors import create_actor_pool
 from mars.promise import PromiseActor
@@ -45,7 +45,7 @@ class TaskActor(PromiseActor):
 
 
 class Test(WorkerCase):
-    @mock.patch('mars.worker.utils.WorkerActor._init_chunk_store')
+    @patch_method(DispatchActor._init_chunk_store)
     def testDispatch(self, *_):
         call_records = dict()
         group_size = 4

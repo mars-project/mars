@@ -20,10 +20,8 @@ import time
 import unittest
 import weakref
 
-import gevent
-
 from mars.actors import create_actor_pool
-from mars.compat import Queue
+from mars.compat import Queue, TimeoutError
 from mars import promise
 
 
@@ -32,8 +30,11 @@ class ServeActor(promise.PromiseActor):
         super(ServeActor, self).__init__()
         self._result_list = []
 
-    def serve(self, value, delay=None, accept=True, callback=None):
-        gevent.sleep(delay or 0.1)
+    @promise.reject_on_exception
+    def serve(self, value, delay=None, accept=True, raises=False, callback=None):
+        self.ctx.sleep(delay or 0.1)
+        if raises:
+            raise ValueError('User-induced error')
         self._result_list.append(value)
         if callback:
             self.tell_promise(callback, value, _accept=accept)
@@ -41,15 +42,45 @@ class ServeActor(promise.PromiseActor):
     def get_result(self):
         return self._result_list
 
+    def clear_result(self):
+        self._result_list = []
+
 
 class PromiseTestActor(promise.PromiseActor):
+    def __init__(self):
+        super(PromiseTestActor, self).__init__()
+        self._finished = False
+
+    def get_finished(self):
+        return self._finished
+
     def test_normal(self):
+        self._finished = False
+
+        assert self.promise_ref().uid == self.uid
+
         ref = self.promise_ref('ServeActor')
+        assert ref.__getattr__('_caller') is self
+
         p = ref.serve(0, _promise=True)
+
+        ref = self.promise_ref(self.ctx.actor_ref('ServeActor'))
         for _ in range(10):
             p = p.then(lambda v: ref.serve(v + 1, _promise=True))
+        p.then(lambda *_: setattr(self, '_finished', True))
+
+    def test_error_raise(self):
+        self._finished = False
+
+        ref = self.promise_ref('ServeActor')
+        ref.serve(0, raises=True, _promise=True) \
+            .then(lambda v: ref.serve(v + 1, _promise=True)) \
+            .catch(lambda *_: ref.serve(-1, _promise=True)) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_all_promise(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
         promises = []
 
@@ -63,27 +94,36 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref.serve(-128, _promise=True) \
             .then(subsequent_all) \
-            .then(lambda *_: ref.serve(127, _promise=True))
+            .then(lambda *_: ref.serve(127, _promise=True)) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_timeout(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
 
         def _rejecter(*exc):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _timeout=1, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_no_timeout(self):
+        self._finished = False
+
         ref = self.promise_ref('ServeActor')
 
         def _rejecter(*exc):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=1, _timeout=2, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
 
     def test_ref_reject(self):
+        self._finished = False
+
         from mars.errors import WorkerProcessStopped
         try:
             raise WorkerProcessStopped
@@ -96,12 +136,22 @@ class PromiseTestActor(promise.PromiseActor):
             ref.serve(exc[0].__name__)
 
         ref.serve(0, delay=2, _promise=True) \
-            .catch(_rejecter)
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
         self.reject_promise_ref(ref, *exc_info)
 
 
 def _raise_exception(exc):
     raise exc
+
+
+def wait_test_actor_result(ref, timeout):
+    import gevent
+    t = time.time()
+    while not ref.get_finished():
+        gevent.sleep(0.1)
+        if time.time() > t + timeout:
+            raise TimeoutError
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -134,16 +184,54 @@ class Test(unittest.TestCase):
                 req_queue.put((p.id, value + 1, accept))
                 return p
 
+            # simple promise call
             value_list = []
-            gen_promise(0) \
+            p = gen_promise(0) \
                 .then(lambda v: gen_promise(v)) \
-                .then(lambda v: gen_promise(v)) \
-                .wait()
+                .then(lambda v: gen_promise(v))
+            p.wait()
             self.assertListEqual(
                 value_list,
                 [('gen_promise', 0), ('thread_body', 1),
                  ('gen_promise', 1), ('thread_body', 2),
                  ('gen_promise', 2), ('thread_body', 3)]
+            )
+
+            # continue accepted call with then
+            value_list = []
+            p.then(lambda *_: gen_promise(0)) \
+                .then(lambda v: gen_promise(v)) \
+                .wait()
+            self.assertListEqual(
+                value_list,
+                [('gen_promise', 0), ('thread_body', 1),
+                 ('gen_promise', 1), ('thread_body', 2)]
+            )
+
+            # immediate error
+            value_list = []
+            p = promise.Promise(done=True) \
+                .then(lambda *_: 5 / 0)
+            p.catch(lambda *_: gen_promise(0)) \
+                .wait()
+            self.assertListEqual(
+                value_list,
+                [('gen_promise', 0), ('thread_body', 1)]
+            )
+
+            # continue error call
+            import gevent.event
+            value_list = []
+            p = gen_promise(0) \
+                .then(lambda *_: 5 / 0) \
+                .then(lambda *_: None)
+            gevent.sleep(0.5)
+            value_list = []
+            p.catch(lambda *_: gen_promise(0)) \
+                .wait()
+            self.assertListEqual(
+                value_list,
+                [('gen_promise', 0), ('thread_body', 1)]
             )
 
             value_list = []
@@ -287,17 +375,19 @@ class Test(unittest.TestCase):
 
     def testPromiseActor(self):
         try:
-            with create_actor_pool() as pool:
+            with create_actor_pool(n_process=1) as pool:
                 serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = pool.create_actor(PromiseTestActor)
 
-                def test_proc():
-                    test_ref.test_normal()
-                    gevent.sleep(2)
-                    self.assertListEqual(serve_ref.get_result(), list(range(11)))
+                test_ref.test_normal()
+                wait_test_actor_result(test_ref, 10)
+                self.assertListEqual(serve_ref.get_result(), list(range(11)))
 
-                gl = gevent.spawn(test_proc)
-                gl.join()
+                serve_ref.clear_result()
+
+                test_ref.test_error_raise()
+                wait_test_actor_result(test_ref, 10)
+                self.assertListEqual(serve_ref.get_result(), [-1])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
 
@@ -377,72 +467,56 @@ class Test(unittest.TestCase):
 
     def testAllActor(self):
         try:
-            with create_actor_pool() as pool:
+            with create_actor_pool(n_process=1) as pool:
                 serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = pool.create_actor(PromiseTestActor)
 
-                def run_proc_test():
-                    test_ref.test_all_promise()
-                    gc.collect()
-                    gevent.sleep(3)
-                    self.assertListEqual(
-                        serve_ref.get_result(),
-                        [-128] + list(range(0, 20, 2)) + list(range(1, 20, 2)) + [127]
-                    )
-
-                gl = gevent.spawn(run_proc_test)
-                gl.join()
+                test_ref.test_all_promise()
+                gc.collect()
+                wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(
+                    serve_ref.get_result(),
+                    [-128] + list(range(0, 20, 2)) + list(range(1, 20, 2)) + [127]
+                )
         finally:
             self.assertDictEqual(promise._promise_pool, {})
 
     def testTimeoutActor(self):
         try:
-            with create_actor_pool() as pool:
+            with create_actor_pool(n_process=1) as pool:
                 serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = pool.create_actor(PromiseTestActor)
 
-                def run_proc_test():
-                    test_ref.test_timeout()
-                    gc.collect()
-                    gevent.sleep(3)
-                    self.assertListEqual(serve_ref.get_result(), [0, 'PromiseTimeout'])
-
-                gl = gevent.spawn(run_proc_test)
-                gl.join()
+                test_ref.test_timeout()
+                gc.collect()
+                wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(serve_ref.get_result(), [0, 'PromiseTimeout'])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
 
     def testNoTimeoutActor(self):
         try:
-            with create_actor_pool() as pool:
+            with create_actor_pool(n_process=1) as pool:
                 serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = pool.create_actor(PromiseTestActor)
 
-                def run_proc_test():
-                    test_ref.test_no_timeout()
-                    gc.collect()
-                    gevent.sleep(3)
-                    # print(serve_ref.get_result())
-                    self.assertListEqual(serve_ref.get_result(), [0])
+                test_ref.test_no_timeout()
+                gc.collect()
+                wait_test_actor_result(test_ref, 30)
 
-                gl = gevent.spawn(run_proc_test)
-                gl.join()
+                self.assertListEqual(serve_ref.get_result(), [0])
         finally:
             self.assertDictEqual(promise._promise_pool, {})
 
     def testRefReject(self):
         try:
-            with create_actor_pool() as pool:
+            with create_actor_pool(n_process=1) as pool:
                 serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
                 test_ref = pool.create_actor(PromiseTestActor)
 
-                def run_proc_test():
-                    test_ref.test_ref_reject()
-                    gc.collect()
-                    gevent.sleep(3)
-                    self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
-
-                gl = gevent.spawn(run_proc_test)
-                gl.join()
+                test_ref.test_ref_reject()
+                gc.collect()
+                wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
         finally:
             self.assertDictEqual(promise._promise_pool, {})

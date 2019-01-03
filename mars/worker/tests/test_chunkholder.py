@@ -26,7 +26,7 @@ from mars import promise
 from mars.errors import StoreFull, SpillExhausted
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
-from mars.tests.core import mock
+from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.utils import WorkerActor
@@ -139,7 +139,7 @@ class Test(WorkerCase):
             finally:
                 pool.destroy_actor(cache_ref)
 
-    @mock.patch(SpillActor.__module__ + '.SpillActor.load')
+    @patch_method(SpillActor.load)
     def testEnsureTimeout(self, *_):
         from mars.errors import PromiseTimeout
 

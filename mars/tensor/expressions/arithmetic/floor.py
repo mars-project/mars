@@ -34,7 +34,7 @@ class TensorFloor(operands.Floor, TensorUnaryOp):
 
 @infer_dtype(np.floor)
 def floor(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Return the floor of the input, element-wise.
 
     The floor of the scalar `x` is the largest integer `i`, such that

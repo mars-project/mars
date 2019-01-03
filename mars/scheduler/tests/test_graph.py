@@ -15,8 +15,6 @@
 import uuid
 import unittest
 
-import gevent
-
 import mars.tensor as mt
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import GraphActor, ResourceActor, ChunkMetaActor, AssignerActor
@@ -63,12 +61,8 @@ class Test(unittest.TestCase):
                 descendant_size = op_infos[n.op.key]['optimize']['descendant_size']
                 self.assertIsNotNone(descendant_size)
 
-            def write_mock_meta():
-                resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
-                resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
-
-            v = gevent.spawn(write_mock_meta)
-            v.join()
+            resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
+            resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
 
             graph_ref.place_initial_chunks()
             op_infos = graph_ref.get_operand_info()
@@ -136,12 +130,8 @@ class Test(unittest.TestCase):
                 descendant_size = op_infos[n.op.key]['optimize']['descendant_size']
                 self.assertIsNotNone(descendant_size)
 
-            def write_mock_meta():
-                resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
-                resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
-
-            v = gevent.spawn(write_mock_meta)
-            v.join()
+            resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
+            resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
 
             graph_ref.place_initial_chunks()
             op_infos = graph_ref.get_operand_info()
@@ -208,12 +198,8 @@ class Test(unittest.TestCase):
                 descendant_size = op_infos[n.op.key]['optimize']['descendant_size']
                 self.assertIsNotNone(descendant_size)
 
-            def write_mock_meta():
-                resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
-                resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
-
-            v = gevent.spawn(write_mock_meta)
-            v.join()
+            resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
+            resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
 
             graph_ref.place_initial_chunks()
             op_infos = graph_ref.get_operand_info()
