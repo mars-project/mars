@@ -17,7 +17,6 @@ import json
 import logging
 import os
 import time
-from collections import defaultdict
 
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor
@@ -35,7 +34,6 @@ class ResourceActor(SchedulerActor):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
         self._kv_store_ref = None
-        self._worker_allocations = dict()
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -78,55 +76,3 @@ class ResourceActor(SchedulerActor):
                                      _tell=True, _wait=False)
             self._kv_store_ref.write('/workers/meta_timestamp', str(int(time.time())),
                                      _tell=True, _wait=False)
-
-    def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
-        """
-        Try allocate resource for operands
-        :param session_id: session id
-        :param op_key: operand key
-        :param endpoint: worker endpoint
-        :param alloc_dict: allocation dict, listing resources needed by the operand
-        :return: True if allocated successfully
-        """
-        worker_stats = self._meta_cache[endpoint]['hardware']
-        if endpoint not in self._worker_allocations:
-            self._worker_allocations[endpoint] = dict()
-        if session_id not in self._worker_allocations[endpoint]:
-            self._worker_allocations[endpoint][session_id] = dict()
-        worker_allocs = self._worker_allocations[endpoint][session_id]
-
-        res_used = defaultdict(lambda: 0)
-        free_alloc_keys = []
-        for alloc_op_key, alloc in worker_allocs.items():
-            d, t = alloc
-            for k, v in d.items():
-                res_used[k] += v
-        for k in free_alloc_keys:
-            self.deallocate_resource(session_id, k, endpoint)
-
-        for k, v in alloc_dict.items():
-            res_used[k] += v
-
-        sufficient = True
-        for k, v in res_used.items():
-            if res_used[k] > worker_stats.get(k, 0):
-                sufficient = False
-                break
-
-        if sufficient:
-            self._worker_allocations[endpoint][session_id][op_key] = (alloc_dict, time.time())
-            return True
-        else:
-            return False
-
-    def deallocate_resource(self, session_id, op_key, endpoint):
-        """
-        Deallocate resource
-        :param session_id: session id
-        :param op_key: operand key
-        :param endpoint: worker endpoint
-        """
-        try:
-            del self._worker_allocations[endpoint][session_id][op_key]
-        except KeyError:
-            pass
