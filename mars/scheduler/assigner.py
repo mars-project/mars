@@ -18,8 +18,8 @@ import random
 import time
 from collections import defaultdict
 
-from .. import promise
 from ..config import options
+from ..errors import DependencyMissing
 from ..utils import log_unhandled
 from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
@@ -44,10 +44,7 @@ class AssignerActor(SchedulerActor):
         self._worker_metrics = None
         # since worker metrics does not change frequently, we update it
         # only when it is out of date
-        self._worker_metric_time = time.time() - 2
-
-        self._worker_metrics = None
-        self._worker_metric_time = time.time() - 2
+        self._worker_metric_time = 0
 
         self._cluster_info_ref = None
         self._resource_actor_ref = None
@@ -64,7 +61,6 @@ class AssignerActor(SchedulerActor):
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
-    @promise.reject_on_exception
     @log_unhandled
     def get_worker_assignments(self, session_id, op_info):
         """
@@ -85,6 +81,9 @@ class AssignerActor(SchedulerActor):
         op_io_meta = op_info['io_meta']
         input_chunk_keys = op_io_meta['input_chunks']
         metas = self._get_chunks_meta(session_id, input_chunk_keys)
+        if any(meta is None for meta in metas.values()):
+            raise DependencyMissing
+
         input_sizes = dict((k, meta.chunk_size) for k, meta in metas.items())
         output_size = op_info['output_size']
 

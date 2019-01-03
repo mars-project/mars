@@ -40,7 +40,7 @@ class OperandActor(SchedulerActor):
     def gen_uid(session_id, op_key):
         return 's:operator$%s$%s' % (session_id, op_key)
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker_endpoint=None,
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
                  is_terminal=False):
         super(OperandActor, self).__init__()
         op_info = copy.deepcopy(op_info)
@@ -71,9 +71,9 @@ class OperandActor(SchedulerActor):
 
         # worker the operand expected to be executed on
         self._target_worker = op_info.get('target_worker')
-        self._assigned_workers = []
+        self._assigned_workers = set()
         # worker actually assigned
-        self._worker_endpoint = worker_endpoint
+        self._worker = worker
 
         # ref of ExecutionActor on worker
         self._execution_ref = None
@@ -88,13 +88,14 @@ class OperandActor(SchedulerActor):
         # handlers of states. will be called when the state of the operand switches
         # from one to another
         self._state_handlers = {
-            OperandState.READY: self._handle_ready,
-            OperandState.RUNNING: self._handle_running,
-            OperandState.FINISHED: self._handle_finished,
-            OperandState.FREED: self._handle_freed,
-            OperandState.FATAL: self._handle_fatal,
-            OperandState.CANCELLING: self._handle_cancelling,
-            OperandState.CANCELLED: self._handle_cancelled,
+            OperandState.UNSCHEDULED: self._on_unscheduled,
+            OperandState.READY: self._on_ready,
+            OperandState.RUNNING: self._on_running,
+            OperandState.FINISHED: self._on_finished,
+            OperandState.FREED: self._on_freed,
+            OperandState.FATAL: self._on_fatal,
+            OperandState.CANCELLING: self._on_cancelling,
+            OperandState.CANCELLED: self._on_cancelled,
         }
 
     def post_create(self):
@@ -108,14 +109,70 @@ class OperandActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._last_state = self._state
+        if value != self._last_state:
+            logger.debug('Operand %s(%s) state from %s to %s.', self._op_key, self._op_name,
+                         self._last_state, value)
+        self._state = value
+        self._info['state'] = value.name
+        futures = [
+            self._graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False),
+        ]
+        if self._kv_store_ref is not None:
+            futures.append(self._kv_store_ref.write('%s/state' % self._op_path, value.name, _tell=True, _wait=False))
+        [f.result() for f in futures]
+
+    @property
+    def worker(self):
+        return self._worker
+
+    @worker.setter
+    def worker(self, value):
+        futures = [
+            self._graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False)
+        ]
+        if self._kv_store_ref is not None:
+            if value:
+                futures.append(self._kv_store_ref.write('%s/worker' % self._op_path, value, _tell=True, _wait=False))
+            elif self._worker is not None:
+                futures.append(self._kv_store_ref.delete(
+                    '%s/worker' % self._op_path, silent=True, _tell=True, _wait=False))
+        [f.result() for f in futures]
+        self._worker = value
+
+    @property
+    def retries(self):
+        return self._retries
+
+    @retries.setter
+    def retries(self, value):
+        futures = []
+        self._retries = value
+        self._info['retries'] = value
+
+        if self._kv_store_ref is not None:
+            futures.append(self._kv_store_ref.write('%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
+
+        retry_timestamp = time.time()
+        self._info['retry_timestamp'] = retry_timestamp
+        if self._kv_store_ref is not None:
+            futures.append(self._kv_store_ref.write('%s/retry_timestamp' % self._op_path, str(value),
+                                                    _tell=True, _wait=False))
+        [f.result() for f in futures]
+
     def add_finished_predecessor(self, op_key):
         self._finish_preds.add(op_key)
         if all(k in self._finish_preds for k in self._pred_keys):
             if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
                 return True
             # all predecessors done, the operand can be executed now
-            self.state = OperandState.READY
-            self.start_operand()
+            self.start_operand(OperandState.READY)
             return True
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
         return False
@@ -151,11 +208,11 @@ class OperandActor(SchedulerActor):
         except KeyError:
             optimize_data = self._info['optimize'] = dict()
         optimize_data['demand_depths'] = tuple(demand_depths)
-        futures = []
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
                 '%s/optimize/demand_depths' % self._op_path,
                 base64.b64encode(array_to_bytes('I', demand_depths)), _tell=True, _wait=False)
+        futures = []
         if self.state == OperandState.READY:
             # if the operand is already submitted to AssignerActor, we need to update the priority
             for w in self._assigned_workers:
@@ -175,11 +232,11 @@ class OperandActor(SchedulerActor):
         :param worker_scores: score of every worker on input key
         :param depth: maximal propagate depth
         """
-        if self._worker_endpoint:
+        if self.worker:
             # worker already assigned, there should be no other possibilities
-            self._worker_scores = {self._worker_endpoint: 1.0}
+            self._worker_scores = {self.worker: 1.0}
         elif self._target_worker:
-            # worker already propsed, there should be no other possibilities
+            # worker already proposed, there should be no other possibilities
             self._worker_scores = {self._target_worker: 1.0}
         else:
             # aggregate the score from input to the score of current operand
@@ -211,55 +268,18 @@ class OperandActor(SchedulerActor):
                          self._op_key, self._op_name, max_worker, self._worker_scores)
             return self._input_chunks, max_worker
 
-    @property
-    def state(self):
-        return self._state
-
-    @state.setter
-    def state(self, value):
-        self._last_state = self._state
-        if value != self._last_state:
-            logger.debug('Operand %s(%s) state from %s to %s.', self._op_key, self._op_name,
-                         self._last_state, value)
-        self._state = value
-        self._info['state'] = value.name
-        futures = [
-            self._graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False),
-        ]
-        if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/state' % self._op_path, value.name, _tell=True, _wait=False))
-        [f.result() for f in futures]
-
-    @property
-    def retries(self):
-        return self._retries
-
-    @retries.setter
-    def retries(self, value):
-        futures = []
-        self._retries = value
-        self._info['retries'] = value
-
-        if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
-
-        retry_timestamp = time.time()
-        self._info['retry_timestamp'] = retry_timestamp
-        if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/retry_timestamp' % self._op_path, str(value),
-                                                    _tell=True, _wait=False))
-        [f.result() for f in futures]
-
     def get_op_info(self):
         info = dict()
         info['name'] = self._op_name
         info['state'] = self.state
         return info
 
-    def start_operand(self):
+    def start_operand(self, state=None):
         """
         Start handling operand given self.state
         """
+        if state:
+            self.state = state
         self._state_handlers[self.state]()
 
     def stop_operand(self):
@@ -268,8 +288,7 @@ class OperandActor(SchedulerActor):
         """
         if self.state == OperandState.CANCELLING or self.state == OperandState.CANCELLED:
             return
-        self.state = OperandState.CANCELLING
-        self.start_operand()
+        self.start_operand(OperandState.CANCELLING)
 
     def _free_worker_data(self, ep, chunk_key):
         """
@@ -300,8 +319,7 @@ class OperandActor(SchedulerActor):
         futures.append(self._chunk_meta_ref.batch_delete_meta(
             self._session_id, self._chunks, _tell=True, _wait=False))
         [f.result() for f in futures]
-        self.state = state
-        self.start_operand()
+        self.start_operand(state)
 
     def propagate_state(self, state):
         """
@@ -311,8 +329,7 @@ class OperandActor(SchedulerActor):
         if self.state == OperandState.CANCELLING or self.state == OperandState.CANCELLED:
             return
         if self.state != state:
-            self.state = state
-            self.start_operand()
+            self.start_operand(state)
 
     def _get_raw_execution_ref(self, uid, address):
         """
@@ -329,7 +346,7 @@ class OperandActor(SchedulerActor):
 
         if address is None and self._execution_ref is not None:
             return self._execution_ref
-        ref = self.promise_ref(self._get_raw_execution_ref(uid, address=address or self._worker_endpoint))
+        ref = self.promise_ref(self._get_raw_execution_ref(uid, address=address or self.worker))
         if address is None:
             self._execution_ref = ref
         return ref
@@ -341,113 +358,145 @@ class OperandActor(SchedulerActor):
         op_uid = self.gen_uid(self._session_id, key)
         return self.ctx.actor_ref(op_uid, address=self.get_scheduler(op_uid))
 
-    @log_unhandled
-    def _handle_ready(self):
-        serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
-
-        def _get_target_predicts(worker):
-            target_predicts = dict()
-            if options.scheduler.enable_active_push:
-                # if active push enabled, we calculate the most possible target
-                futures = []
-                for succ_key in self._succ_keys:
-                    futures.append(self._get_operand_actor(succ_key).propose_descendant_workers(
-                        self._op_key, {worker: 1.0}, _wait=False))
-                for succ_key, future in zip(self._succ_keys, futures):
-                    succ_worker_predict = future.result()
-                    if not succ_worker_predict:
-                        continue
-                    keys, target = succ_worker_predict
-                    if target == worker:
-                        continue
-                    for k in keys:
-                        if k not in self._chunks:
-                            continue
-                        if k not in target_predicts:
-                            target_predicts[k] = set()
-                        target_predicts[k].add(target)
-            if not target_predicts:
-                target_predicts = None
-            else:
-                logger.debug('Receive active pushing list for operand %s: %r',
-                             self._op_key, target_predicts)
-            return target_predicts
-
-        @log_unhandled
-        def _submit_job(worker):
-            if worker_endpoint_list:
-                if worker_endpoint_list[0] != worker:
-                    logger.debug('Cancelling running operand %s on %s', self._op_key, worker)
-                    self._get_execution_ref(address=worker).dequeue_graph(
-                        self._session_id, self._op_key)
-                return
-
-            # worker assigned, submit job
-            if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
-                self.start_operand()
-                return
-
-            if worker != self._worker_endpoint:
-                self._execution_ref = None
-            self._worker_endpoint = worker
-            worker_endpoint_list.append(worker)
-            cancel_futures = []
-            for w in assigned_workers:
-                if w != worker:
-                    logger.debug('Cancelling running operand %s on %s', self._op_key, w)
-                    cancel_futures.append(self._get_execution_ref(address=w).dequeue_graph(
-                        self._session_id, self._op_key, _wait=False))
-            [f.result() for f in cancel_futures]
-
-            target_predicts = _get_target_predicts(worker)
-
-            # prepare meta broadcasts
-            broadcast_eps = set()
+    def _get_target_predicts(self, worker):
+        target_predicts = dict()
+        if options.scheduler.enable_active_push:
+            # if active push enabled, we calculate the most possible target
+            futures = []
             for succ_key in self._succ_keys:
-                broadcast_eps.add(self.get_scheduler(self.gen_uid(self._session_id, succ_key)))
-            broadcast_eps.difference_update({self.address})
-            broadcast_eps = tuple(broadcast_eps)
+                futures.append(self._get_operand_actor(succ_key).propose_descendant_workers(
+                    self._op_key, {worker: 1.0}, _wait=False))
+            for succ_key, future in zip(self._succ_keys, futures):
+                succ_worker_predict = future.result()
+                if not succ_worker_predict:
+                    continue
+                keys, target = succ_worker_predict
+                if target == worker:
+                    continue
+                for k in keys:
+                    if k not in self._chunks:
+                        continue
+                    if k not in target_predicts:
+                        target_predicts[k] = set()
+                    target_predicts[k].add(target)
+        if not target_predicts:
+            target_predicts = None
+        else:
+            logger.debug('Receive active pushing list for operand %s: %r',
+                         self._op_key, target_predicts)
+        return target_predicts
 
-            for chunk_key in self._chunks:
-                self._chunk_meta_ref.set_chunk_broadcasts(
-                    self._session_id, chunk_key, broadcast_eps, _tell=True, _wait=False)
+    @log_unhandled
+    def _handle_worker_accept(self, worker):
+        if (self.worker and self.worker != worker) or \
+                (self._target_worker and worker != self._target_worker):
+            logger.debug('Cancelling running operand %s on %s, op_worker %s, op_target %s',
+                         self._op_key, worker, self.worker, self._target_worker)
+            self._get_execution_ref(address=worker).dequeue_graph(
+                self._session_id, self._op_key)
+            self._assigned_workers.difference_update((worker,))
+            return
+        elif self.worker is not None:
+            logger.debug('Worker for operand %s already assigned', self._op_key)
+            return
 
-            # submit job
-            logger.debug('Start running operand %s on %s', self._op_key, worker)
-            self._execution_ref = self._get_execution_ref()
+        # worker assigned, submit job
+        if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
+            self.ref().start_operand(_tell=True)
+            return
+
+        if worker != self.worker:
+            self._execution_ref = None
+        self.worker = worker
+        cancel_futures = []
+        for w in self._assigned_workers:
+            if w != worker:
+                logger.debug('Cancelling running operand %s on %s, when deciding to run on %s',
+                             self._op_key, w, worker)
+                cancel_futures.append(self._get_execution_ref(address=w).dequeue_graph(
+                    self._session_id, self._op_key, _wait=False))
+
+        [f.result() for f in cancel_futures]
+        self._assigned_workers = set()
+
+        target_predicts = self._get_target_predicts(worker)
+
+        # prepare meta broadcasts
+        broadcast_eps = set()
+        for succ_key in self._succ_keys:
+            broadcast_eps.add(self.get_scheduler(self.gen_uid(self._session_id, succ_key)))
+        broadcast_eps.difference_update({self.address})
+        broadcast_eps = tuple(broadcast_eps)
+
+        for chunk_key in self._chunks:
+            self._chunk_meta_ref.set_chunk_broadcasts(
+                self._session_id, chunk_key, broadcast_eps, _tell=True, _wait=False)
+
+        # submit job
+        logger.debug('Start running operand %s on %s', self._op_key, worker)
+        self._execution_ref = self._get_execution_ref()
+        try:
             self._execution_ref.start_execution(
                 self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
-            self.state = OperandState.RUNNING
-            self.start_operand()
+        except:
+            raise
+        self.ref().start_operand(OperandState.RUNNING, _tell=True)
+
+    @log_unhandled
+    def _on_ready(self):
+        self.worker = None
+        self._execution_ref = None
 
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0
         # Send resource application. Submit job when worker assigned
-        assigned_workers = self._assigned_workers = \
-            self._assigner_ref.get_worker_assignments(self._session_id, self._info)
-        worker_endpoint_list = []
-        logger.debug('Operand %s assigned to run on workers %r', self._op_key, assigned_workers)
+        try:
+            new_assignment = self._assigner_ref.get_worker_assignments(
+                self._session_id, self._info)
+        except DependencyMissing:
+            logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
+                           self._op_key)
+            self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
+            return
 
-        data_sizes = dict(zip(
-            self._input_chunks,
-            self._chunk_meta_ref.batch_get_chunk_size(self._session_id, self._input_chunks),
-        ))
+        chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, self._input_chunks)
+        if any(v is None for v in chunk_sizes):
+            logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
+                           self._op_key)
+            self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
+            return
 
-        for worker_ep in assigned_workers:
-            self._get_execution_ref(address=worker_ep).enqueue_graph(
-                self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                data_sizes, self._info['optimize'], _delay=delay, _promise=True) \
-                .then(functools.partial(_submit_job, worker_ep))
+        new_assignment = [a for a in new_assignment if a not in self._assigned_workers]
+        self._assigned_workers.update(new_assignment)
+        logger.debug('Operand %s assigned to run on workers %r, now it has %r',
+                     self._op_key, new_assignment, self._assigned_workers)
+
+        data_sizes = dict(zip(self._input_chunks, chunk_sizes))
+
+        dead_workers = set()
+        serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
+        for worker_ep in new_assignment:
+            try:
+                self._get_execution_ref(address=worker_ep).enqueue_graph(
+                    self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                    data_sizes, self._info['optimize'], _delay=delay, _promise=True) \
+                    .then(functools.partial(self._handle_worker_accept, worker_ep))
+            except:
+                self._assigned_workers.difference_update([worker_ep])
+                raise
+        if dead_workers:
+            self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
+            if not self._assigned_workers:
+                self.ref().start_operand(_tell=True)
 
     @log_unhandled
-    def _handle_running(self):
+    def _on_running(self):
         self._execution_ref = self._get_execution_ref()
 
         @log_unhandled
         def _acceptor(*_):
             # handling success of operand execution
-            self.state = OperandState.FINISHED
-            self.start_operand()
+            self.start_operand(OperandState.FINISHED)
 
         @log_unhandled
         def _rejecter(*exc):
@@ -469,8 +518,6 @@ class OperandActor(SchedulerActor):
                 logger.warning('Execution of operand %s interrupted.', self._op_key)
                 self.free_data(OperandState.CANCELLED)
             else:
-                self._resource_ref.deallocate_resource(
-                    self._session_id, self._op_key, self._worker_endpoint, _tell=True)
                 try:
                     if exc:
                         six.reraise(*exc)
@@ -478,7 +525,7 @@ class OperandActor(SchedulerActor):
                         raise SystemError('Worker throws rejection without details')
                 except:
                     logger.exception('Attempt %d: Unexpected error occurred in executing operand %s in %s',
-                                     self.retries + 1, self._op_key, self._worker_endpoint)
+                                     self.retries + 1, self._op_key, self.worker)
                 # increase retry times
                 self.retries += 1
                 if self.retries >= options.scheduler.retry_num:
@@ -486,18 +533,16 @@ class OperandActor(SchedulerActor):
                     self.state = OperandState.FATAL
                 else:
                     self.state = OperandState.READY
-                self.start_operand()
+                self.ref().start_operand(_tell=True)
 
         self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
             .then(_acceptor, _rejecter)
 
     @log_unhandled
-    def _handle_finished(self):
-        futures = [
-        ]
+    def _on_finished(self):
+        futures = []
         if self._last_state == OperandState.CANCELLING:
-            self.state = OperandState.CANCELLING
-            self.start_operand()
+            self.start_operand(OperandState.CANCELLING)
             [f.result() for f in futures]
             return
         # update pred & succ finish records to trigger further actions
@@ -516,7 +561,7 @@ class OperandActor(SchedulerActor):
         [f.result() for f in futures]
 
     @log_unhandled
-    def _handle_fatal(self):
+    def _on_fatal(self):
         if self._last_state == OperandState.FATAL:
             return
 
@@ -532,31 +577,36 @@ class OperandActor(SchedulerActor):
         [f.result() for f in futures]
 
     @log_unhandled
-    def _handle_cancelling(self):
+    def _on_cancelling(self):
         if self._last_state == OperandState.CANCELLING:
             return
-        if self._last_state == OperandState.CANCELLED:
+        elif self._last_state == OperandState.CANCELLED:
             self.state = OperandState.CANCELLED
-            return
-
-        if self._last_state == OperandState.RUNNING:
+        elif self._last_state == OperandState.RUNNING:
             # send stop to worker
             self._execution_ref = self._get_execution_ref()
-            logger.debug('Sending stop on operand %s to %s', self._op_key, self._worker_endpoint)
+            logger.debug('Sending stop on operand %s to %s', self._op_key, self.worker)
             self._execution_ref.stop_execution(self._session_id, self._op_key, _tell=True)
-            return
-        if self._last_state == OperandState.FINISHED:
+        elif self._last_state == OperandState.FINISHED:
             # delete data on cancelled
             self.ref().free_data(state=OperandState.CANCELLED, _tell=True)
-            return
-        if self._last_state == OperandState.READY:
-            # stop worker application
-            self._assigner_ref.remove_apply(self._op_key, _tell=True)
-        self.state = OperandState.CANCELLED
-        self.ref().start_operand(_tell=True)
+        elif self._last_state == OperandState.READY:
+            # stop application on workers
+            cancel_futures = []
+            for w in self._assigned_workers:
+                logger.debug('Cancelling running operand %s on %s', self._op_key, w)
+                cancel_futures.append(self._get_execution_ref(address=w).dequeue_graph(
+                    self._session_id, self._op_key, _wait=False))
+            [f.result() for f in cancel_futures]
+
+            self._assigned_workers = set()
+            self.state = OperandState.CANCELLED
+            self.ref().start_operand(OperandState.CANCELLED, _tell=True)
+        else:
+            self.ref().start_operand(OperandState.CANCELLED, _tell=True)
 
     @log_unhandled
-    def _handle_cancelled(self):
+    def _on_cancelled(self):
         futures = []
         if self._is_terminal:
             futures.append(self._graph_ref.mark_terminal_finished(
@@ -566,6 +616,7 @@ class OperandActor(SchedulerActor):
                 OperandState.CANCELLING, _tell=True, _wait=False))
         [f.result() for f in futures]
 
-    @log_unhandled
-    def _handle_freed(self):
-        pass
+    def _on_unscheduled(self):
+        self.worker = None
+
+    _on_freed = lambda self: None
