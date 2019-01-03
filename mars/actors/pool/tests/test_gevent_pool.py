@@ -1513,9 +1513,8 @@ class Test(unittest.TestCase):
             pool.join(0.2)
             self.assertGreaterEqual(time.time() - start, 0.2)
 
-            gevent.spawn_later(0.2, lambda: pool.stop())
-
             start = time.time()
+            gevent.spawn_later(0.2, lambda: pool.stop())
             pool.join()
             self.assertGreaterEqual(time.time() - start, 0.2)
 

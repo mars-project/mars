@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import Container, Iterable, Sequence
 from functools import wraps
 from math import factorial
+try:
+    from collections.abc import Container, Iterable, Sequence
+except ImportError:  # pragma: no cover
+    from collections import Container, Iterable, Sequence
 
 import numpy as np
 

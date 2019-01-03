@@ -34,7 +34,7 @@ class TensorRandomPower(operands.RandomPower, TensorRandomOperandMixin):
 
 
 def power(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
-    """
+    r"""
     Draws samples in [0, 1] from a power distribution with positive
     exponent a - 1.
 

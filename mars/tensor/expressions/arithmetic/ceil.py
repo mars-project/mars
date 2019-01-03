@@ -34,7 +34,7 @@ class TensorCeil(operands.Ceil, TensorUnaryOp):
 
 @infer_dtype(np.ceil)
 def ceil(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Return the ceiling of the input, element-wise.
 
     The ceil of the scalar `x` is the smallest integer `i`, such that

@@ -55,29 +55,19 @@ if os.path.exists(os.path.join(repo_root, '.git')):
         with open(os.path.join(repo_root, 'mars', '.git-branch'), 'w') as git_file:
             git_file.write('%s %s' % git_info)
 
-
+cythonize_kw = dict()
+extension_kw = dict()
 if 'CI_MODE' in os.environ:
-    for root, dirs, files in os.walk(repo_root):
-        for fn in files:
-            if not fn.endswith('.pyx'):
-                continue
-            path = os.path.join(root, fn)
-            with open(path, 'rb') as f:
-                src = f.read()
-            with open(path, 'wb') as f:
-                f.write(b'# cython: linetrace=True' + os.linesep.encode('utf-8') + src)
-
+    extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
+    cythonize_kw['compiler_directives'] = {'linetrace': True}
 
 if 'MSC' in sys.version:
     extra_compile_args = ['/Ot', '/I' + os.path.join(repo_root, 'misc')]
-    if 'CI_MODE' in os.environ:
-        extra_compile_args.extend(['/DCYTHON_TRACE_NOGIL=#1', '/DCYTHON_TRACE=#1'])
-    extension_kw = {'extra_compile_args': extra_compile_args}
+    extension_kw['extra_compile_args'] = extra_compile_args
 else:
     extra_compile_args = ['-O3']
-    if 'CI_MODE' in os.environ:
-        extra_compile_args.extend(['-DCYTHON_TRACE_NOGIL=1', '-DCYTHON_TRACE=1'])
-    extension_kw = {'extra_compile_args': extra_compile_args}
+    extension_kw['extra_compile_args'] = extra_compile_args
+
 extension_kw['include_dirs'] = [np.get_include()]
 extensions = [
     Extension('mars.graph', ['mars/graph.pyx'], **extension_kw),
@@ -124,7 +114,7 @@ setup_options = dict(
     scripts=['scripts/mars-scheduler', 'scripts/mars-worker', 'scripts/mars-web'],
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
-    ext_modules=cythonize(extensions),
+    ext_modules=cythonize(extensions, **cythonize_kw),
     extras_require={'distributed': extra_requirements}
 )
 setup(**setup_options)

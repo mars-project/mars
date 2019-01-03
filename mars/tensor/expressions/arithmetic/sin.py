@@ -34,7 +34,7 @@ class TensorSin(operands.Sin, TensorUnaryOp):
 
 @infer_dtype(np.sin)
 def sin(x, out=None, where=None, **kwargs):
-    """
+    r"""
     Trigonometric sine, element-wise.
 
     Parameters
