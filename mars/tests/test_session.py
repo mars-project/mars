@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import mars.tensor as mt
-from mars.session import new_session
+from mars.session import new_session, Session
 
 
 class Test(unittest.TestCase):
@@ -29,6 +29,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isscalar(res))
         self.assertLess(res, 200)
 
+    def testMultipleOutputExecute(self):
         data = np.random.random((5, 9))
 
         # test multiple outputs
@@ -54,6 +55,9 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(result, expected)
 
+    def testReExecuteSame(self):
+        data = np.random.random((5, 9))
+
         # test run the same tensor
         arr4 = mt.tensor(data.copy(), chunk_size=3) + 1
         result1 = arr4.execute()
@@ -73,8 +77,15 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(result1, expected)
 
         result2 = arr4.execute()
-
         np.testing.assert_array_equal(result1, result2)
+
+        # modify result
+        sess = Session.default_or_local()
+        executor = sess._sess._executor
+        executor.chunk_result[arr4.chunks[0].key] = data + 2
+
+        result3 = arr4.execute()
+        np.testing.assert_array_equal(result3, data + 2)
 
         # test run same key tensor
         arr5 = mt.ones((10, 10), chunk_size=3)
@@ -85,6 +96,43 @@ class Test(unittest.TestCase):
         result2 = arr6.execute()
 
         np.testing.assert_array_equal(result1, result2)
+
+    def testExecuteBothExecutedAndNot(self):
+        data = np.random.random((5, 9))
+
+        arr1 = mt.tensor(data, chunk_size=4) * 2
+        arr2 = mt.tensor(data) + 1
+
+        np.testing.assert_array_equal(arr2.execute(), data + 1)
+
+        # modify result
+        sess = Session.default_or_local()
+        executor = sess._sess._executor
+        executor.chunk_result[arr2.chunks[0].key] = data + 2
+
+        results = sess.run(arr1, arr2)
+        np.testing.assert_array_equal(results[0], data * 2)
+        np.testing.assert_array_equal(results[1], data + 2)
+
+    def testExecuteNotFetch(self):
+        data = np.random.random((5, 9))
+        sess = Session.default_or_local()
+
+        arr1 = mt.tensor(data, chunk_size=2) * 2
+
+        with self.assertRaises(ValueError):
+            sess.fetch(arr1)
+
+        self.assertIsNone(arr1.execute(fetch=False))
+
+        # modify result
+        executor = sess._sess._executor
+        executor.chunk_result[arr1.chunks[0].key] = data[:2, :2] * 3
+
+        expected = data * 2
+        expected[:2, :2] = data[:2, :2] * 3
+
+        np.testing.assert_array_equal(arr1.execute(), expected)
 
     def testClosedSession(self):
         session = new_session()
