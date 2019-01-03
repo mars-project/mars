@@ -94,11 +94,11 @@ class MarsAPI(object):
         state = GraphState(state.lower())
         return state
 
-    def fetch_data(self, session_id, graph_key, tensor_key):
+    def fetch_data(self, session_id, graph_key, tensor_key, wait=True):
         graph_uid = GraphActor.gen_name(session_id, graph_key)
         graph_address = self.cluster_info.get_scheduler(graph_uid)
         result_ref = self.actor_client.create_actor(ResultReceiverActor, address=graph_address)
-        return result_ref.fetch_tensor(session_id, graph_key, tensor_key)
+        return result_ref.fetch_tensor(session_id, graph_key, tensor_key, _wait=wait)
 
     def delete_data(self, session_id, graph_key, tensor_key):
         graph_uid = GraphActor.gen_name(session_id, graph_key)
