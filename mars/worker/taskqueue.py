@@ -238,11 +238,13 @@ class TaskQueueAllocatorActor(WorkerActor):
         self._last_memory_available = cur_mem_available
 
         num_cpu = resource.cpu_count()
+        cpu_rate = resource.cpu_percent()
+        batch_allocated = 0
         while self._has_quota:
             allocated_count = self._queue_ref.get_allocated_count()
             if allocated_count >= self._parallel_num:
                 break
-            if allocated_count >= num_cpu / 4 and num_cpu * 100 - 50 < resource.cpu_percent():
+            if allocated_count >= num_cpu / 4 and num_cpu * 100 - 50 < cpu_rate + batch_allocated:
                 break
             item = self._queue_ref.pop_next_request()
             if item is None:
@@ -256,6 +258,7 @@ class TaskQueueAllocatorActor(WorkerActor):
                             item.session_id, item.op_key, item.callback)
                 self._queue_ref.mark_allocate_pending(item.session_id, item.op_key)
                 self._has_quota = self._mem_quota_ref.request_batch_quota(quota_request, local_cb)
+                batch_allocated += 1
             elif quota_request is None:
                 # already processed, we skip to the next
                 self.ctx.sleep(0.001)
@@ -263,6 +266,7 @@ class TaskQueueAllocatorActor(WorkerActor):
             else:
                 # allocate directly when no quota needed
                 self._queue_ref.handle_allocated(item.session_id, item.op_key, item.callback)
+                batch_allocated += 1
             self.ctx.sleep(0.001)
 
         self._last_allocate_time = time.time()
