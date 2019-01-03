@@ -116,13 +116,16 @@ class Test(unittest.TestCase):
 
     def testExecuteNotFetch(self):
         data = np.random.random((5, 9))
+        sess = Session.default_or_local()
 
         arr1 = mt.tensor(data, chunk_size=2) * 2
+
+        with self.assertRaises(ValueError):
+            sess.fetch(arr1)
 
         self.assertIsNone(arr1.execute(fetch=False))
 
         # modify result
-        sess = Session.default_or_local()
         executor = sess._sess._executor
         executor.chunk_result[arr1.chunks[0].key] = data[:2, :2] * 3
 

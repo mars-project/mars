@@ -159,11 +159,8 @@ class Session(object):
             self._sess.decref(*keys)
 
     def __getattr__(self, attr):
-        try:
-            obj = self._sess.__getattribute__(attr)
-            return obj
-        except AttributeError:
-            raise
+        obj = self._sess.__getattribute__(attr)
+        return obj
 
     def __enter__(self):
         self._sess.__enter__()
