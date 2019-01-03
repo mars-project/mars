@@ -46,6 +46,7 @@ class LocalClusterSession(object):
 
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
+        fetch = kw.pop('fetch', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -74,18 +75,24 @@ class LocalClusterSession(object):
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
 
-        data_list = []
+        if not fetch:
+            return
+
+        futures = []
         for target in targets:
-            resp = self._api.fetch_data(self._session_id, graph_key, target)
-            data_list.append(dataserializer.loads(resp))
+            future = self._api.fetch_data(self._session_id, graph_key, target, wait=False)
+            futures.append(future)
 
-        return data_list
+        return [dataserializer.loads(f.result()) for f in futures]
 
-    def fetch(self, tensor):
-        key = tensor.key
-        graph_key = self._tensor_to_graph[key]
-        resp = self._api.fetch_data(self._session_id, graph_key, key)
-        return dataserializer.loads(resp)
+    def fetch(self, *tensors):
+        futures = []
+        for tensor in tensors:
+            key = tensor.key
+            graph_key = self._tensor_to_graph[key]
+            future = self._api.fetch_data(self._session_id, graph_key, key, wait=False)
+            futures.append(future)
+        return [dataserializer.loads(f.result()) for f in futures]
 
     def decref(self, *keys):
         for k in keys:

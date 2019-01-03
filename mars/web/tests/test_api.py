@@ -273,3 +273,7 @@ class TestWithMockServer(unittest.TestCase):
 
             result = sess.run(c, timeout=120)
             assert_array_equal(result, np.ones((100, 100)) * 100)
+
+            d = a * 100
+            self.assertIsNone(sess.run(d, fetch=False, timeout=120))
+            assert_array_equal(sess.run(d, timeout=120), np.ones((100, 100)) * 100)
