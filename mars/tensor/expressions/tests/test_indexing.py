@@ -215,3 +215,10 @@ class Test(unittest.TestCase):
         y = nonzero(x)
 
         self.assertEqual(len(y), 2)
+
+    def testOperandKey(self):
+        t = ones((10, 2), chunk_size=5)
+        t_slice1 = t[:5]
+        t_slice2 = t[5:]
+
+        self.assertNotEqual(t_slice1.op.key, t_slice2.op.key,)
