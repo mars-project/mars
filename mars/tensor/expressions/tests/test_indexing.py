@@ -221,4 +221,4 @@ class Test(unittest.TestCase):
         t_slice1 = t[:5]
         t_slice2 = t[5:]
 
-        self.assertNotEqual(t_slice1.op.key, t_slice2.op.key,)
+        self.assertNotEqual(t_slice1.op.key, t_slice2.op.key)

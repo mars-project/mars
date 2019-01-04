@@ -197,13 +197,14 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r, np.ones((5, 5)) * 2)
 
             with new_session(cluster.endpoint) as session3:
-                a = mt.ones((100, 5))
+                a = mt.random.rand(100, 5)
 
                 slice1 = a[:10]
                 slice2 = a[10:20]
-                r1, r2 = session3.run(slice1, slice2)
+                r1, r2, expected = session3.run(slice1, slice2, a)
 
-                np.testing.assert_array_equal(r1, r2)
+                np.testing.assert_array_equal(r1, expected[:10])
+                np.testing.assert_array_equal(r2, expected[10:20])
 
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
