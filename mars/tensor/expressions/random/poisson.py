@@ -33,7 +33,7 @@ class TensorPoisson(operands.Poisson, TensorRandomOperandMixin):
         return self.new_tensor([lam], None, raw_chunk_size=chunk_size)
 
 
-def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Poisson distribution.
 
@@ -54,7 +54,8 @@ def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -101,9 +102,9 @@ def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, **kw):
 
     >>> s = mt.random.poisson(lam=(100., 500.), size=(100, 2))
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().poisson(
+    if dtype is None:
+        dtype = np.random.RandomState().poisson(
             handle_array(lam), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorPoisson(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorPoisson(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(lam, chunk_size=chunk_size)

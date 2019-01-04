@@ -33,7 +33,7 @@ class TensorWeibull(operands.Weibull, TensorRandomOperandMixin):
         return self.new_tensor([a], None, raw_chunk_size=chunk_size)
 
 
-def weibull(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
+def weibull(random_state, a, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Weibull distribution.
 
@@ -60,6 +60,8 @@ def weibull(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -129,9 +131,9 @@ def weibull(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
     >>> plt.plot(x.execute(), (weib(x, 1., 5.)*scale).execute())
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().weibull(
+    if dtype is None:
+        dtype = np.random.RandomState().weibull(
             handle_array(a), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorWeibull(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorWeibull(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(a, chunk_size=chunk_size)

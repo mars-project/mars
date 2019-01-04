@@ -33,7 +33,7 @@ class TensorExponential(operands.Exponential, TensorRandomOperandMixin):
         return self.new_tensor([scale], self._size, raw_chunk_size=chunk_size)
 
 
-def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from an exponential distribution.
 
@@ -64,6 +64,8 @@ def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, *
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -79,9 +81,9 @@ def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, *
     .. [3] Wikipedia, "Exponential distribution",
            http://en.wikipedia.org/wiki/Exponential_distribution
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().exponential(
+    if dtype is None:
+        dtype = np.random.RandomState().exponential(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorExponential(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorExponential(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(scale, chunk_size=chunk_size)

@@ -76,7 +76,7 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
 
 
 def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, tol=None,
-                        chunk_size=None, gpu=None, **kw):
+                        chunk_size=None, gpu=None, dtype=None):
     """
     Draw random samples from a multivariate normal distribution.
 
@@ -107,6 +107,8 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -188,15 +190,15 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
     if len(set(mean.shape + cov.shape)) != 1:
         raise ValueError('mean and cov must have same length')
 
-    if 'dtype' not in kw:
+    if dtype is None:
         small_kw = {}
         if check_valid:
             small_kw['check_valid'] = check_valid
         if tol:
             small_kw['tol'] = tol
-        kw['dtype'] = np.random.multivariate_normal(mean, cov, size=(0,), **small_kw).dtype
+        dtype = np.random.multivariate_normal(mean, cov, size=(0,), **small_kw).dtype
 
     size = random_state._handle_size(size)
     op = TensorMultivariateNormal(mean=mean, cov=cov, size=size, check_valid=check_valid,
-                                  tol=tol, state=random_state._state, gpu=gpu, **kw)
+                                  tol=tol, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

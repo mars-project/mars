@@ -33,7 +33,7 @@ class TensorGamma(operands.Gamma, TensorRandomOperandMixin):
         return self.new_tensor([shape, scale], None, raw_chunk_size=chunk_size)
 
 
-def gamma(random_state, shape, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def gamma(random_state, shape, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Gamma distribution.
 
@@ -57,6 +57,8 @@ def gamma(random_state, shape, scale=1.0, size=None, chunk_size=None, gpu=None, 
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -110,9 +112,9 @@ def gamma(random_state, shape, scale=1.0, size=None, chunk_size=None, gpu=None, 
     >>> plt.plot(bins, y, linewidth=2, color='r')
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().gamma(
+    if dtype is None:
+        dtype = np.random.RandomState().gamma(
             handle_array(shape), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorGamma(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorGamma(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(shape, scale, chunk_size=chunk_size)

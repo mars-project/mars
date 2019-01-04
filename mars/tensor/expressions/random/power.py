@@ -33,7 +33,7 @@ class TensorRandomPower(operands.RandomPower, TensorRandomOperandMixin):
         return self.new_tensor([a], None, raw_chunk_size=chunk_size)
 
 
-def power(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
+def power(random_state, a, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Draws samples in [0, 1] from a power distribution with positive
     exponent a - 1.
@@ -53,6 +53,8 @@ def power(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -131,9 +133,9 @@ def power(random_state, a, size=None, chunk_size=None, gpu=None, **kw):
     >>> plt.plot(xx.execute(),powpdf,'r-')
     >>> plt.title('inverse of stats.pareto(5)')
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().power(
+    if dtype is None:
+        dtype = np.random.RandomState().power(
             handle_array(a), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorRandomPower(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorRandomPower(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(a, chunk_size=chunk_size)
