@@ -63,8 +63,6 @@ def random_integers(random_state, low, high=None, size=None, chunk_size=None, gp
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
-    dtype : data-type, optional
-      Data-type of the returned tensor.
 
     Returns
     -------
