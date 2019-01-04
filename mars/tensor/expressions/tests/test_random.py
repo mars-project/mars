@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from mars.tensor.expressions.random import RandomState, beta, rand, choice, multivariate_normal, randint
+from mars.tensor.expressions.random import RandomState, beta, rand, choice, multivariate_normal, randint, randn
 from mars.tensor.expressions.datasource import tensor as from_ndarray
 from mars.tensor.expressions.tests.test_core import TestBase
 
@@ -102,3 +102,10 @@ class Test(TestBase):
         self.assertEqual(arr.chunks[0].op.low, 1)
         self.assertEqual(arr.chunks[0].op.high, 2)
         self.assertEqual(arr.chunks[0].op.density, .01)
+
+    def testUnexpectedKey(self):
+        with self.assertRaises(ValueError):
+            rand(10, 10, chunks=5)
+
+        with self.assertRaises(ValueError):
+            randn(10, 10, chunks=5)

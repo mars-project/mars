@@ -33,7 +33,7 @@ class TensorLognormal(operands.Lognormal, TensorRandomOperandMixin):
         return self.new_tensor([mean, sigma], None, raw_chunk_size=chunk_size)
 
 
-def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a log-normal distribution.
 
@@ -58,6 +58,8 @@ def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -141,9 +143,9 @@ def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu
     >>> plt.plot(x.execute(), pdf.execute(), color='r', linewidth=2)
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().lognormal(
+    if dtype is None:
+        dtype = np.random.RandomState().lognormal(
             handle_array(mean), handle_array(sigma), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLognormal(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorLognormal(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(mean, sigma, chunk_size=chunk_size)

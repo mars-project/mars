@@ -32,7 +32,7 @@ class TensorStandardCauchy(operands.StandardCauchy, TensorRandomOperandMixin):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def standard_cauchy(random_state, size=None, chunk_size=None, gpu=None, **kw):
+def standard_cauchy(random_state, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a standard Cauchy distribution with mode = 0.
 
@@ -48,6 +48,8 @@ def standard_cauchy(random_state, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -97,8 +99,8 @@ def standard_cauchy(random_state, size=None, chunk_size=None, gpu=None, **kw):
     >>> plt.hist(s.execute(), bins=100)
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().standard_cauchy(size=(0,)).dtype
+    if dtype is None:
+        dtype = np.random.RandomState().standard_cauchy(size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorStandardCauchy(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorStandardCauchy(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

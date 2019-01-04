@@ -33,7 +33,7 @@ class TensorGeometric(operands.Geometric, TensorRandomOperandMixin):
         return self.new_tensor([p], None, raw_chunk_size=chunk_size)
 
 
-def geometric(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
+def geometric(random_state, p, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Draw samples from the geometric distribution.
 
@@ -62,6 +62,8 @@ def geometric(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -82,9 +84,9 @@ def geometric(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
     >>> ((z == 1).sum() / 10000.).execute()
     0.34889999999999999 #random
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().geometric(
+    if dtype is None:
+        dtype = np.random.RandomState().geometric(
             handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorGeometric(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorGeometric(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(p, chunk_size=chunk_size)

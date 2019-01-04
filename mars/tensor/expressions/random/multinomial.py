@@ -40,7 +40,7 @@ class TensorMultinomial(operands.Multinomial, TensorRandomOperandMixin):
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 
-def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, **kw):
+def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Draw samples from a multinomial distribution.
 
@@ -69,6 +69,8 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, **
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -120,9 +122,9 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, **
     """
     n = int(n)
     pvals = tuple(pvals)
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
+    if dtype is None:
+        dtype = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorMultinomial(n=n, pvals=pvals, state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorMultinomial(n=n, pvals=pvals, state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)
 
