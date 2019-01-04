@@ -86,6 +86,11 @@ def randn(random_state, *dn, **kw):
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
     chunk_size = kw.pop('chunk_size', None)
+
+    for key in kw:
+        if not key.startswith('_'):
+            raise ValueError('randn got unexpected key arguments {0}'.format(key))
+
     op = TensorRandn(state=random_state._state, size=dn, **kw)
     return op(chunk_size=chunk_size)
 

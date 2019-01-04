@@ -63,7 +63,7 @@ def rand(random_state, *dn, **kw):
     --------
     >>> import mars.tensor as mt
 
-    >>> mt.random.rand(3,2).execute()
+    >>> mt.random.rand(3, 2).execute()
     array([[ 0.14022471,  0.96360618],  #random
            [ 0.37601032,  0.25528411],  #random
            [ 0.49313049,  0.94909878]]) #random
@@ -73,5 +73,10 @@ def rand(random_state, *dn, **kw):
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
     chunk_size = kw.pop('chunk_size', None)
+
+    for key in kw:
+        if not key.startswith('_'):
+            raise ValueError('rand got unexpected key arguments {0}'.format(key))
+
     op = TensorRand(state=random_state._state, size=dn, **kw)
     return op(chunk_size=chunk_size)
