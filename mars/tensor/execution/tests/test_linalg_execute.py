@@ -55,6 +55,23 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
+        # test for Short-and-Fat QR
+        data = np.random.randn(6, 18)
+
+        a = tensor(data, chunk_size=(6, 9))
+        q, r = qr(a, method='sfqr')
+        t = q.dot(r)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        self.assertTrue(np.allclose(res, data))
+
+        a = tensor(data, chunk_size=(3, 3))
+        q, r = qr(a, method='sfqr')
+        t = q.dot(r)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        self.assertTrue(np.allclose(res, data))
+
     def testSVDExecution(self):
         data = np.random.randn(18, 6) + 1j * np.random.randn(18, 6)
 
@@ -73,6 +90,15 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, data))
 
         a = tensor(data, chunk_size=(2, 6))
+        U, s, V = svd(a)
+        t = U.dot(diag(s).dot(V))
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        self.assertTrue(np.allclose(res, data))
+
+        data = np.random.randn(6, 18) + 1j * np.random.randn(6, 18)
+
+        a = tensor(data)
         U, s, V = svd(a)
         t = U.dot(diag(s).dot(V))
 

@@ -21,7 +21,7 @@ from ..utils import decide_chunk_sizes
 from ..core import TensorOperandMixin
 
 
-class TSQR(TensorOperandMixin):
+class QRBase(TensorOperandMixin):
     __slots__ = ()
 
     @classmethod
@@ -30,6 +30,67 @@ class TSQR(TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        if op.method == 'tsqr':
+            return cls.tsqr_tile(op)
+        elif op.method == 'sfqr':
+            return cls.sfqr_tile(op)
+        else:
+            raise NotImplementedError('Only tsqr and sfqr method supported for now')
+
+    @classmethod
+    def sfqr_tile(cls, op):
+        """
+        Short-and-Fat QR
+
+        Q [R_1 R_2 ...] = [A_1 A_2 ...]
+        """
+        from .qr import TensorQR
+        from .dot import TensorDot
+        from ..base import TensorTranspose
+
+        a = op.input
+
+        tinyq, tinyr = np.linalg.qr(np.ones((1, 1), dtype=a.dtype))
+        q_dtype, r_dtype = tinyq.dtype, tinyr.dtype
+
+        if a.chunk_shape[0] != 1:
+            new_chunks = decide_chunk_sizes(a.shape, {1: a.shape[0]}, a.dtype.itemsize)
+            a = a.rechunk(new_chunks).single_tiles()
+
+        # A_1's QR decomposition
+        r_chunks = []
+        first_chunk = a.chunks[0]
+        x, y = first_chunk.shape
+        q_shape = first_chunk.shape if x > y else (x, x)
+        r_shape = first_chunk.shape if x < y else (y, y)
+        qr_op = TensorQR()
+        q_chunk, r_chunk = qr_op.new_chunks([first_chunk], (q_shape, r_shape),
+                                            index=(0, 0),
+                                            kws=[{'side': 'q', 'dtype': q_dtype},
+                                                 {'side': 'r', 'dtype': r_dtype}])
+        # q is an orthogonal matrix, so q.T and inverse of q is equal
+        trans_op = TensorTranspose()
+        q_transpose = trans_op.new_chunk([q_chunk], q_chunk.shape)
+        r_chunks.append(r_chunk)
+
+        r_rest = [TensorDot().new_chunk([q_transpose, c], (q_transpose.shape[0], c.shape[1]),
+                                        index=c.index) for c in a.chunks[1:]]
+        r_chunks.extend(r_rest)
+
+        q, r = op.outputs
+        new_op = op.copy()
+        q_nsplits = ((q_chunk.shape[0],), (q_chunk.shape[1],))
+        r_nsplits = ((1,), (c.shape[1] for c in r_chunks))
+        kws = [
+            # Q
+            {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype},
+            # R, calculate from stage2
+            {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype}
+        ]
+        return new_op.new_tensors(op.inputs, [q.shape, r.shape], kws=kws)
+
+    @classmethod
+    def tsqr_tile(cls, op):
         from ..merge.concatenate import TensorConcatenate
         from ..indexing.slice import TensorSlice
         from .dot import TensorDot
@@ -90,6 +151,7 @@ class TSQR(TensorOperandMixin):
         if not calc_svd:
             q, r = op.outputs
             new_op = op.copy()
+            # unify_nsplits will get nsplits by chunk shape if it was set to (1,)
             q_nsplits = ((c.shape[0] for c in stage3_q_chunks), (1,))
             r_nsplits = ((stage2_r_chunk.shape[0],), (stage2_r_chunk.shape[1],))
             kws = [
