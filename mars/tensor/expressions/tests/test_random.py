@@ -105,7 +105,7 @@ class Test(TestBase):
 
     def testUnexpectedKey(self):
         with self.assertRaises(ValueError):
-            arr = rand(10, 10, chunks=5)
+            rand(10, 10, chunks=5)
 
         with self.assertRaises(ValueError):
-            arr = randn(10, 10, chunks=5)
+            randn(10, 10, chunks=5)
