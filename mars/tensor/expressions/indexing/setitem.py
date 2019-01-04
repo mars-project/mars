@@ -38,12 +38,10 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         them may be tensor type. As explained in TensorIndex, when indexes and value are not provided, we should get
         from operand itself and replace tensor-liked objects by iterating over inputs.
         """
-        if indexes is not None:
+        if indexes is not None and value is not None:
             self._indexes = indexes
-        if value is not None:
             self._value = value
 
-        if indexes is not None and value is not None:
             indexes_inputs = [ind for ind in indexes if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE)]
             inputs += indexes_inputs
             if isinstance(value, TENSOR_TYPE + CHUNK_TYPE):

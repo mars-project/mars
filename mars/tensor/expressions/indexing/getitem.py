@@ -45,8 +45,6 @@ class TensorIndex(Index, TensorOperandMixin):
         """
         if indexes is not None:
             self._indexes = indexes
-
-        if indexes is not None:
             indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
             inputs = inputs + indexes_inputs
         yield inputs
