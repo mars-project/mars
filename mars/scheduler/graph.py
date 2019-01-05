@@ -160,7 +160,7 @@ class GraphActor(SchedulerActor):
 
         self._resource_actor = None
         self._tensor_key_opid_to_tiled = defaultdict(list)
-        self._tensor_key_opid = dict()
+        self._tensor_key_to_opid = dict()
         self._terminal_chunk_op_tensor = defaultdict(set)
         self._terminated_tensors = set()
         self._operand_infos = dict()
@@ -333,25 +333,25 @@ class GraphActor(SchedulerActor):
 
         key_to_chunk = {c.key: c for c in chunk_graph}
 
-        tensor_key_id_to_tiled = self._tensor_key_opid_to_tiled
+        tensor_key_opid_to_tiled = self._tensor_key_opid_to_tiled
 
         for t in tensor_graph:
-            self._tensor_key_opid[t.key] = t.op.id
-            if (t.key, t.op.id) not in tensor_key_id_to_tiled:
+            self._tensor_key_to_opid[t.key] = t.op.id
+            if (t.key, t.op.id) not in tensor_key_opid_to_tiled:
                 continue
-            t._chunks = [key_to_chunk[k] for k in [tensor_key_id_to_tiled[(t.key, t.op.id)][-1]]]
+            t._chunks = [key_to_chunk[k] for k in [tensor_key_opid_to_tiled[(t.key, t.op.id)][-1]]]
 
         tq = deque()
         for t in tensor_graph:
-            if t.inputs and not all((ti.key, ti.op.id) in tensor_key_id_to_tiled for ti in t.inputs):
+            if t.inputs and not all((ti.key, ti.op.id) in tensor_key_opid_to_tiled for ti in t.inputs):
                 continue
             tq.append(t)
 
         while tq:
             tensor = tq.popleft()
-            if not tensor.is_coarse() or (tensor.key, tensor.op.id) in tensor_key_id_to_tiled:
+            if not tensor.is_coarse() or (tensor.key, tensor.op.id) in tensor_key_opid_to_tiled:
                 continue
-            inputs = [tensor_key_id_to_tiled[(it.key, it.op.id)][-1] for it in tensor.inputs or ()]
+            inputs = [tensor_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tensor.inputs or ()]
 
             op = tensor.op.copy()
             _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],  # noqa: F841
@@ -372,7 +372,7 @@ class GraphActor(SchedulerActor):
                         total_tiled.append(td)
 
                 tiled = total_tiled[j]
-                tensor_key_id_to_tiled[(t.key, t.op.id)].append(tiled)
+                tensor_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
                 q = deque([tiled_c.data for tiled_c in tiled.chunks])
@@ -391,15 +391,15 @@ class GraphActor(SchedulerActor):
                         chunk_graph.add_edge(ic, c)
 
                 for succ in tensor_graph.successors(t):
-                    if any((t.key, t.op.id) not in tensor_key_id_to_tiled for t in succ.inputs):
+                    if any((t.key, t.op.id) not in tensor_key_opid_to_tiled for t in succ.inputs):
                         continue
                     tq.append(succ)
 
         # record the chunk nodes in graph
         reserve_chunk = set()
         result_chunk_keys = list()
-        for tk_topid in tensor_key_id_to_tiled:
-            for n in [c.data for t in tensor_key_id_to_tiled[tk_topid] for c in t.chunks]:
+        for tk_topid in tensor_key_opid_to_tiled:
+            for n in [c.data for t in tensor_key_opid_to_tiled[tk_topid] for c in t.chunks]:
                 result_chunk_keys.append(n.key)
                 dq_predecessors = deque([n])
                 while dq_predecessors:
@@ -416,10 +416,10 @@ class GraphActor(SchedulerActor):
         if compose:
             chunk_graph.compose(keys=result_chunk_keys)
 
-        for tk, topid in tensor_key_id_to_tiled:
+        for tk, topid in tensor_key_opid_to_tiled:
             if tk not in self._target_tensor_chunk_ops:
                 continue
-            for n in tensor_key_id_to_tiled[(tk, topid)][-1].chunks:
+            for n in tensor_key_opid_to_tiled[(tk, topid)][-1].chunks:
                 self._terminal_chunk_op_tensor[n.op.key].add(tk)
                 self._target_tensor_chunk_ops[tk].add(n.op.key)
 
@@ -745,7 +745,7 @@ class GraphActor(SchedulerActor):
         return ops, transposed, finished * 100.0 / total_count
 
     def _get_tensor_by_key(self, key):
-        tid = self._tensor_key_opid[key]
+        tid = self._tensor_key_to_opid[key]
         return self._tensor_key_opid_to_tiled[(key, tid)][-1]
 
     def free_tensor_data(self, tensor_key):
