@@ -398,8 +398,10 @@ class GraphActor(SchedulerActor):
         # record the chunk nodes in graph
         reserve_chunk = set()
         result_chunk_keys = list()
-        for tk_topid in tensor_key_opid_to_tiled:
-            for n in [c.data for t in tensor_key_opid_to_tiled[tk_topid] for c in t.chunks]:
+        for tk, topid in tensor_key_opid_to_tiled:
+            if tk not in self._target_tensor_chunk_ops:
+                continue
+            for n in [c.data for t in tensor_key_opid_to_tiled[(tk, topid)] for c in t.chunks]:
                 result_chunk_keys.append(n.key)
                 dq_predecessors = deque([n])
                 while dq_predecessors:
