@@ -25,13 +25,13 @@ from mars.actors import create_actor_pool
 
 
 class Test(unittest.TestCase):
-    def run_expr_suite(self, expr):
+    def run_expr_suite(self, expr, compose=False):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        graph = expr.build_graph(compose=False)
+        graph = expr.build_graph(compose=compose)
         serialized_graph = serialize_graph(graph)
-        chunked_graph = expr.build_graph(compose=False, tiled=True)
+        chunked_graph = expr.build_graph(compose=compose, tiled=True)
 
         addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
@@ -43,7 +43,7 @@ class Test(unittest.TestCase):
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
-            graph_ref.prepare_graph(compose=False)
+            graph_ref.prepare_graph(compose=compose)
             fetched_graph = graph_ref.get_chunk_graph()
             self.assertIsNotNone(fetched_graph)
             self.assertEqual(len(chunked_graph), len(fetched_graph))
@@ -103,6 +103,8 @@ class Test(unittest.TestCase):
 
                 self.assertEqual(op_infos[n.op.key]['output_size'], sum(ch.nbytes for ch in n.op.outputs))
 
+        return fetched_graph
+
     def testGraphActor(self):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -119,6 +121,13 @@ class Test(unittest.TestCase):
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
         self.run_expr_suite(arr2)
+
+    def testFuseExist(self):
+        from mars.tensor.expressions.fuse.core import TensorFuseChunk
+        arr = mt.ones((5, 5), chunk_size=3)
+        arr2 = (arr + 5) * 2
+        out_graph = self.run_expr_suite(arr2, compose=True)
+        self.assertTrue(all(isinstance(v.op, TensorFuseChunk) for v in out_graph))
 
     def testMultipleAdd(self):
         import numpy as np
