@@ -33,7 +33,7 @@ class TensorUniform(operands.Uniform, TensorRandomOperandMixin):
         return self.new_tensor([low, high], None, raw_chunk_size=chunk_size)
 
 
-def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a uniform distribution.
 
@@ -59,6 +59,8 @@ def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=Non
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -113,9 +115,9 @@ def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=Non
     >>> plt.plot(bins, mt.ones_like(bins).execute(), linewidth=2, color='r')
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().uniform(
+    if dtype is None:
+        dtype = np.random.RandomState().uniform(
             handle_array(low), handle_array(high), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorUniform(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorUniform(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(low, high, chunk_size=chunk_size)

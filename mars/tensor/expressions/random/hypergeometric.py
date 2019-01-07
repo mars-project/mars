@@ -33,7 +33,7 @@ class TensorHypergeometric(operands.Hypergeometric, TensorRandomOperandMixin):
         return self.new_tensor([ngood, nbad, nsample], None, raw_chunk_size=chunk_size)
 
 
-def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=None, gpu=None, **kw):
+def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Hypergeometric distribution.
 
@@ -61,6 +61,8 @@ def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=Non
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -124,9 +126,9 @@ def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=Non
     >>> (mt.sum(s>=12)/100000. + mt.sum(s<=3)/100000.).execute()
     #   answer = 0.003 ... pretty unlikely!
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().hypergeometric(
+    if dtype is None:
+        dtype = np.random.RandomState().hypergeometric(
             handle_array(ngood), handle_array(nbad), handle_array(nsample), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorHypergeometric(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorHypergeometric(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(ngood, nbad, nsample, chunk_size=chunk_size)

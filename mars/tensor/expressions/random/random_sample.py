@@ -33,7 +33,7 @@ class TensorRandomSample(operands.RandomSample, TensorRandomOperandMixin):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def random_sample(random_state, size=None, chunk_size=None, gpu=None, **kw):
+def random_sample(random_state, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Return random floats in the half-open interval [0.0, 1.0).
 
@@ -53,6 +53,8 @@ def random_sample(random_state, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -78,8 +80,8 @@ def random_sample(random_state, size=None, chunk_size=None, gpu=None, **kw):
            [-2.99091858, -0.79479508],
            [-1.23204345, -1.75224494]])
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.dtype('f8')
+    if dtype is None:
+        dtype = np.dtype('f8')
     size = random_state._handle_size(size)
-    op = TensorRandomSample(state=random_state._state, size=size, **kw)
+    op = TensorRandomSample(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)
