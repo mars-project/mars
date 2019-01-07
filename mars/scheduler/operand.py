@@ -175,9 +175,9 @@ class OperandActor(SchedulerActor):
 
     def add_running_predecessor(self, op_key, worker):
         self._pred_workers[op_key] = worker
+        if self.state != OperandState.UNSCHEDULED:
+            return
         if all(k in self._pred_workers for k in self._pred_keys):
-            if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
-                return
             if len(set(self._pred_workers.values())) == 1:
                 if worker in self._assigned_workers:
                     return
@@ -186,17 +186,18 @@ class OperandActor(SchedulerActor):
                 try:
                     self._get_execution_ref(address=worker).enqueue_graph(
                         self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                        dict(), self._info['optimize'], undone_pred_keys=self._pred_keys,
-                        _promise=True) \
+                        dict(), self._info['optimize'], succ_keys=self._succ_keys,
+                        pred_keys=self._pred_keys, _promise=True) \
                         .then(functools.partial(self._handle_worker_accept, worker))
                     self._assigned_workers.add(worker)
+                    logger.debug('Pre-push operand %s into worker %s.', self._op_key, worker)
                 except:
                     pass
 
     def add_finished_predecessor(self, op_key):
         self._finish_preds.add(op_key)
         if all(k in self._finish_preds for k in self._pred_keys):
-            if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
+            if self.state in (OperandState.RUNNING, OperandState.CANCELLING, OperandState.CANCELLED):
                 return True
             # all predecessors done, the operand can be executed now
             self.start_operand(OperandState.READY)
@@ -472,7 +473,9 @@ class OperandActor(SchedulerActor):
                 self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
         except:
             raise
-        self.ref().start_operand(OperandState.RUNNING, _tell=True)
+        # here we start running immediately to avoid accidental state change
+        # and potential submission
+        self.start_operand(OperandState.RUNNING)
 
     @log_unhandled
     def _on_ready(self):
@@ -510,7 +513,8 @@ class OperandActor(SchedulerActor):
             try:
                 self._get_execution_ref(address=worker_ep).enqueue_graph(
                     self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                    data_sizes, self._info['optimize'], _delay=delay, _promise=True) \
+                    data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
+                    _delay=delay, _promise=True) \
                     .then(functools.partial(self._handle_worker_accept, worker_ep))
             except:
                 self._assigned_workers.difference_update([worker_ep])
@@ -537,6 +541,7 @@ class OperandActor(SchedulerActor):
 
             if exc and issubclass(exc[0], ResourceInsufficient):
                 # resource insufficient: just set to READY and continue
+                self.worker = None
                 self.state = OperandState.READY
                 self.ref().start_operand(_tell=True)
             elif exc and issubclass(exc[0], ExecutionInterrupted):
@@ -557,6 +562,7 @@ class OperandActor(SchedulerActor):
                     self.state = OperandState.FATAL
                 else:
                     self.state = OperandState.READY
+                self.worker = None
                 self.ref().start_operand(_tell=True)
 
         self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \

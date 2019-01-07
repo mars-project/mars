@@ -136,7 +136,7 @@ class Test(unittest.TestCase):
         while True:
             time.sleep(0.1)
             self.check_process_statuses()
-            if time.time() - check_time > 6000:
+            if time.time() - check_time > 60:
                 raise SystemError('Check graph status timeout')
             if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
                 return session_ref.graph_state(graph_key)

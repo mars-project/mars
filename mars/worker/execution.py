@@ -55,7 +55,7 @@ class GraphExecutionRecord(object):
                  data_sizes=None, chunks_use_once=None, mem_request=None, pin_request=None,
                  est_finish_time=None, calc_actor_uid=None, send_addresses=None,
                  retry_delay=None, enqueue_callback=None, finish_callbacks=None,
-                 stop_requested=False):
+                 stop_requested=False, undone_pred_keys=None, succ_keys=None):
         self.graph_serialized = graph_serialized
         graph = self.graph = deserialize_graph(graph_serialized)
 
@@ -76,8 +76,8 @@ class GraphExecutionRecord(object):
         self.finish_callbacks = finish_callbacks or []
         self.stop_requested = stop_requested or False
 
-        self.succ_keys = set()
-        self.undone_pred_keys = set()
+        self.succ_keys = set(succ_keys or ())
+        self.undone_pred_keys = set(undone_pred_keys or ())
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -171,7 +171,8 @@ class ExecutionActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
-                      priority_data=None, send_addresses=None, undone_pred_keys=None, callback=None):
+                      priority_data=None, send_addresses=None, succ_keys=None,
+                      pred_keys=None, callback=None):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
@@ -181,7 +182,8 @@ class ExecutionActor(WorkerActor):
         :param data_sizes: data size of each input chunk, as a dict
         :param priority_data: data priority
         :param send_addresses: targets to send results after execution
-        :param undone_pred_keys: predecessor keys, available when the submitted graph require predecessors to finish
+        :param pred_keys: predecessor operand keys, available when the submitted graph require predecessors to finish
+        :param succ_keys: successor operand keys
         :param callback: promise callback
         """
         priority_data = priority_data or dict()
@@ -193,19 +195,20 @@ class ExecutionActor(WorkerActor):
             enqueue_callback=callback,
             priority_data=priority_data,
             targets=io_meta['chunks'],
+            succ_keys=succ_keys,
             chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
         )
 
-        if undone_pred_keys:
-            for k in undone_pred_keys:
-                try:
-                    self._graph_records[(session_id, k)].succ_keys.add(graph_key)
-                except KeyError:
-                    pass
-                if (session_id, k) not in self._result_cache or \
-                        not self._result_cache[(session_id, k)].accept:
+        for k in pred_keys or ():
+            try:
+                pred_result = self._result_cache[(session_id, k)]
+                if pred_result.accept:
+                    graph_record.data_sizes.update(pred_result.data_sizes)
+                else:
                     graph_record.undone_pred_keys.add(k)
+            except KeyError:
+                graph_record.undone_pred_keys.add(k)
 
         if not graph_record.undone_pred_keys:
             logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
@@ -221,16 +224,17 @@ class ExecutionActor(WorkerActor):
                          graph_key, graph_record.op_string, graph_record.undone_pred_keys)
 
     def _notify_successors(self, session_id, graph_key):
-        graph_rec = self._graph_records[(session_id, graph_key)]
+        query_key = (session_id, graph_key)
+        graph_rec = self._graph_records[query_key]
+        result_rec = self._result_cache[query_key]
         for succ_key in graph_rec.succ_keys:
-            succ_query_key = (session_id, succ_key)
             try:
-                succ_rec = self._graph_records[succ_query_key]
+                succ_rec = self._graph_records[(session_id, succ_key)]
             except KeyError:
                 continue
 
             try:
-                succ_rec.data_sizes.update(self._result_cache[succ_query_key].data_sizes)
+                succ_rec.data_sizes.update(result_rec.data_sizes)
             except (KeyError, AttributeError):
                 pass
             succ_rec.undone_pred_keys.difference_update((graph_key,))
@@ -298,8 +302,8 @@ class ExecutionActor(WorkerActor):
             self.ref().enqueue_graph(
                 session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
                 graph_record.data_sizes, priority_data=graph_record.priority_data,
-                send_addresses=graph_record.send_addresses, callback=graph_record.enqueue_callback,
-                _tell=True, _delay=retry_delay)
+                send_addresses=graph_record.send_addresses, succ_keys=graph_record.succ_keys,
+                callback=graph_record.enqueue_callback, _tell=True, _delay=retry_delay)
             return None
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
@@ -790,12 +794,12 @@ class ExecutionActor(WorkerActor):
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
 
-    def _dump_execution_states(self):
+    def _dump_execution_states(self, show_unrun=False):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             cur_time = time.time()
             states = dict((k[1], (cur_time - v.state_time, v.state.name))
                           for k, v in self._graph_records.items()
-                          if v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
+                          if show_unrun or v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
             logger.debug('Executing states: %r', states)
 
     def handle_process_down(self, halt_refs):

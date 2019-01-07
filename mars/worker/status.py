@@ -186,12 +186,15 @@ class StatusActor(WorkerActor):
         session_id = str(session_id)
         graph_key = str(graph_key)
 
-        if session_id not in self._progress:
-            self._progress[session_id] = dict()
-        if graph_key not in self._progress[session_id]:
-            self._progress[session_id][graph_key] = dict()
-        self._progress[session_id][graph_key]['operands'] = ops
-        self._progress[session_id][graph_key]['stage'] = stage
+        try:
+            session_dict = self._progress[session_id]
+        except KeyError:
+            session_dict = self._progress[session_id] = dict()
+        try:
+            graph_dict = session_dict[graph_key]
+        except KeyError:
+            graph_dict = session_dict[graph_key] = dict()
+        graph_dict.update(dict(operands=ops, stage=stage))
 
     def remove_progress(self, session_id, graph_key):
         try:

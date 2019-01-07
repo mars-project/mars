@@ -553,20 +553,6 @@ class GraphActor(SchedulerActor):
                     break
             splited_initial_counts[slot_id] -= assigned
 
-        # assign initial workers by seeds
-        for v in undigraph.bfs(start=zero_degrees, visit_predicate='all', successors=_successor_fun):
-            if v.op.key in full_assigns:
-                continue
-            key_transfers = defaultdict(lambda: 0)
-            for pred in undigraph.iter_predecessors(v):
-                if pred.op.key in full_assigns:
-                    key_transfers[full_assigns[pred.op.key]] += pred.rough_nbytes
-            if not key_transfers:
-                continue
-            max_transfer = max(key_transfers.values())
-            max_assigns = [assign for assign, nbytes in key_transfers.items() if nbytes == max_transfer]
-            full_assigns[v.op.key] = max_assigns[random.randint(0, len(max_assigns) - 1)]
-
         for v in zero_degrees:
             operand_infos[v.op.key]['target_worker'] = full_assigns[v.op.key]
 
