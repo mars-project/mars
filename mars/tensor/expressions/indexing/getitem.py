@@ -44,12 +44,10 @@ class TensorIndex(Index, TensorOperandMixin):
         from operand itself and replace tensor-liked indexes by new one in `inputs`.
         """
         if indexes is not None:
+            self._indexes = indexes
             indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
             inputs = inputs + indexes_inputs
         yield inputs
-
-        if indexes is not None:
-            self._indexes = indexes
 
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
