@@ -20,10 +20,11 @@ from numpy.linalg import LinAlgError
 from .... import operands
 from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
-from .core import TSQR
+from ..core import TensorOperandMixin
+from .core import SFQR, TSQR
 
 
-class TensorQR(operands.QR, TSQR):
+class TensorQR(operands.QR, TensorOperandMixin):
     def __init__(self, method=None, dtype=None, **kw):
         super(TensorQR, self).__init__(_method=method, _dtype=dtype, **kw)
 
@@ -68,8 +69,9 @@ class TensorQR(operands.QR, TSQR):
             ]
             return new_op.new_tensors(op.inputs, [q_shape, r_shape], kws=kws)
         elif op.method == 'tsqr':
-            return super(TensorQR, cls).tile(op)
-        # TODO(hks): support sfqr(short-and-fat qr)
+            return TSQR.tile(op)
+        elif op.method == 'sfqr':
+            return SFQR.tile(op)
         else:
             raise NotImplementedError('Only tsqr method supported for now')
 
@@ -85,7 +87,7 @@ def qr(a, method='tsqr'):
     ----------
     a : array_like, shape (M, N)
         Matrix to be factored.
-    method: {'tsqr'}, optional
+    method: {'tsqr', 'sfqr'}, optional
         method to calculate qr factorization, tsqr as default
 
         TSQR is presented in:
@@ -95,6 +97,10 @@ def qr(a, method='tsqr'):
             MapReduce architectures.
             IEEE International Conference on Big Data, 2013.
             http://arxiv.org/abs/1301.1071
+
+        FSQR is a QR decomposition for fat and short matrix:
+            A = [A1, A2, A3, ...], A1 may be decomposed as A1 = Q1 * R1,
+            for A = Q * R, Q = Q1, R = [R1, R2, R3, ...] where A2 = Q1 * R2, A3 = Q1 * R3, ...
 
     Returns
     -------
