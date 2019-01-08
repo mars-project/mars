@@ -36,6 +36,18 @@ class Test(unittest.TestCase):
         self.assertEqual(len(r.chunks), 1)
 
         # for Short-and-Fat QR
+        a = mt.random.rand(6, 18, chunk_size=(6, 6))
+        q, r = mt.linalg.qr(a, method='sfqr')
+
+        self.assertEqual(q.shape, (6, 6))
+        self.assertEqual(r.shape, (6, 18))
+
+        q.tiles()
+
+        self.assertEqual(len(q.chunks), 1)
+        self.assertEqual(len(r.chunks), 3)
+
+        # chunk width less than height
         a = mt.random.rand(6, 9, chunk_size=(6, 3))
         q, r = mt.linalg.qr(a, method='sfqr')
 
@@ -45,7 +57,18 @@ class Test(unittest.TestCase):
         q.tiles()
 
         self.assertEqual(len(q.chunks), 1)
-        self.assertEqual(len(r.chunks), 3)
+        self.assertEqual(len(r.chunks), 2)
+
+        a = mt.random.rand(9, 6, chunk_size=(9, 3))
+        q, r = mt.linalg.qr(a, method='sfqr')
+
+        self.assertEqual(q.shape, (9, 6))
+        self.assertEqual(r.shape, (6, 6))
+
+        q.tiles()
+
+        self.assertEqual(len(q.chunks), 1)
+        self.assertEqual(len(r.chunks), 1)
 
     def testNorm(self):
         data = np.random.rand(9, 6)

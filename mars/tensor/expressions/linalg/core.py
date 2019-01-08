@@ -43,6 +43,10 @@ class SFQR(object):
             new_chunks = decide_chunk_sizes(a.shape, {1: a.shape[0]}, a.dtype.itemsize)
             a = a.rechunk(new_chunks).single_tiles()
 
+        if len(a.chunks) > 1 and a.chunks[0].shape[0] > a.chunks[0].shape[1]:
+            new_chunks = decide_chunk_sizes(a.shape, {1: a.shape[0]}, a.dtype.itemsize)
+            a = a.rechunk(new_chunks).single_tiles()
+
         # A_1's QR decomposition
         r_chunks = []
         first_chunk = a.chunks[0]

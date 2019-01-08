@@ -72,6 +72,13 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
+        a = tensor(data, chunk_size=(6, 3))
+        q, r = qr(a, method='sfqr')
+        t = q.dot(r)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        self.assertTrue(np.allclose(res, data))
+
     def testSVDExecution(self):
         data = np.random.randn(18, 6) + 1j * np.random.randn(18, 6)
 
