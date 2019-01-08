@@ -39,17 +39,14 @@ class SFQR(object):
         tinyq, tinyr = np.linalg.qr(np.ones((1, 1), dtype=a.dtype))
         q_dtype, r_dtype = tinyq.dtype, tinyr.dtype
 
-        need_rechunk = False
         rechunk_size = dict()
         if a.chunk_shape[0] != 1:
-            need_rechunk = True
             rechunk_size[0] = a.shape[0]
 
         if len(a.chunks) > 1 and a.chunks[0].shape[0] > a.chunks[0].shape[1]:
-            need_rechunk = True
             rechunk_size[1] = a.shape[0]
 
-        if need_rechunk:
+        if rechunk_size:
             new_chunks = decide_chunk_sizes(a.shape, rechunk_size, a.dtype.itemsize)
             a = a.rechunk(new_chunks).single_tiles()
 
