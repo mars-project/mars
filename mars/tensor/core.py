@@ -23,11 +23,11 @@ import threading
 
 import numpy as np
 
-from ..core import Entity
+from ..core import Entity, SerializableWithKey
 from ..compat import builtins, reduce
 from ..graph import DAG
 from ..tiles import Tilesable, handler
-from ..serialize import SerializableWithKey, ValueType, ProviderType, \
+from ..serialize import ValueType, ProviderType, \
     ListField, TupleField, DictField, DataTypeField, KeyField, BoolField
 from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape, tokenize
 from .expressions.utils import get_chunk_slices

@@ -17,9 +17,9 @@
 import weakref
 
 from ..compat import six
-from ..serialize import SerializableMetaclass, AttributeAsDictKey, ValueType, ProviderType, \
+from ..serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DataTypeField, Int32Field, BoolField, DictField
-from ..core import Entity
+from ..core import Entity, AttributeAsDictKey
 from ..utils import AttributeDict
 
 

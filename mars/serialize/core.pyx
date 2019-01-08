@@ -19,7 +19,6 @@ import inspect
 from collections import Iterable
 
 from ..compat import six, OrderedDict
-from ..core import Base, BaseWithKey
 
 
 from cpython.version cimport PY_MAJOR_VERSION
@@ -487,8 +486,15 @@ class SerializableMetaclass(type):
         return cls
 
 
-class Serializable(six.with_metaclass(SerializableMetaclass, Base)):
+class Serializable(six.with_metaclass(SerializableMetaclass)):
     __slots__ = ()
+
+    def __init__(self, *args, **kwargs):
+        for slot, arg in zip(self.__slots__, args):
+            object.__setattr__(self, slot, arg)
+
+        for key, val in kwargs.items():
+            object.__setattr__(self, key, val)
 
     @classmethod
     def cls(cls, Provider provider):
@@ -537,11 +543,6 @@ class Serializable(six.with_metaclass(SerializableMetaclass, Base)):
         return cls.deserialize(provider, obj)
 
 
-class SerializableWithKey(Serializable, BaseWithKey):
-    _key = StringField('key')
-    _id = StringField('id')
-
-
 cdef class AttrWrapper:
     def __init__(self, obj):
         self._obj = obj
@@ -579,11 +580,6 @@ class AttributeAsDict(Serializable):
         if call_cb:
             [cb(key_to_instance) for cb in callbacks]
         return obj
-
-
-class AttributeAsDictKey(AttributeAsDict, BaseWithKey):
-    _key = StringField('key')
-    _id = StringField('id')
 
 
 cdef class KeyPlaceholder:
@@ -648,7 +644,7 @@ cdef class Provider:
         for name, field in model_instance._FIELDS.items():
             field.deserialize(self, model_instance, obj, callbacks, key_to_instance)
 
-        if isinstance(model_instance, BaseWithKey):
+        if hasattr(model_instance, 'key') and hasattr(model_instance, 'id'):
             key_to_instance[model_instance.key, model_instance.id] = model_instance
         return model_instance
 
