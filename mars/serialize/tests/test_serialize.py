@@ -63,7 +63,7 @@ class Node8(Node1):
     pass
 
 
-class Node2(Serializable, BaseWithKey):
+class Node2(BaseWithKey, Serializable):
     a = ListField('a', ValueType.list(ValueType.string))
     _key = StringField('key')
     _id = StringField('id')

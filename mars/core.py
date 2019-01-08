@@ -16,6 +16,7 @@
 
 from .compat import six, izip
 from .utils import tokenize
+from .serialize import Serializable, AttributeAsDict, StringField
 
 
 class Base(object):
@@ -132,3 +133,16 @@ class Entity(object):
             super(Entity, self).__setattr__(key, value)
         except AttributeError:
             return setattr(self._data, key, value)
+
+
+class SerializableWithKey(BaseWithKey, Serializable):
+    _key = StringField('key')
+    _id = StringField('id')
+
+
+class AttributeAsDictKey(BaseWithKey, AttributeAsDict):
+    _key = StringField('key')
+    _id = StringField('id')
+
+
+

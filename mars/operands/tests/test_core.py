@@ -18,7 +18,8 @@ import json
 
 from mars.compat import OrderedDict
 from mars.operands import AddConstant, MulConstant, Index, Log, Operand
-from mars.serialize import AttributeAsDictKey, serializes, deserializes, \
+from mars.core import AttributeAsDictKey
+from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider, Int64Field
 from mars.tests.core import TestBase
 
