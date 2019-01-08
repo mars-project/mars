@@ -16,7 +16,6 @@
 
 import os
 import logging
-import time
 
 try:
     from pyarrow import plasma
@@ -24,7 +23,7 @@ except ImportError:
     plasma = None
 
 from ..config import options
-from .. import resource, kvstore
+from .. import resource
 from ..utils import parse_memory_limit, readable_size
 from ..compat import six
 from ..cluster_info import ClusterInfoActor
@@ -54,6 +53,7 @@ class WorkerService(object):
         self._dispatch_ref = None
         self._status_ref = None
         self._execution_ref = None
+        self._daemon_ref = None
 
         self._cluster_info_ref = None
         self._cpu_calc_actors = []
@@ -108,6 +108,9 @@ class WorkerService(object):
             StatusActor, options.worker.advertise_addr + ':' + port_str,
             uid=StatusActor.default_name())
 
+        from .daemon import WorkerDaemonActor
+        daemon_ref = self._daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
+
         if ignore_avail_mem:
             # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
             # for debug purpose only, DON'T USE IN PRODUCTION
@@ -129,24 +132,24 @@ class WorkerService(object):
         # create CpuCalcActor
         for cpu_id in range(options.worker.cpu_process_count):
             uid = 'w:%d:mars-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
-            actor = pool.create_actor(CpuCalcActor, uid=uid)
+            actor = daemon_ref.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
         # create SenderActor and ReceiverActor
         start_pid = 1 + options.worker.cpu_process_count
         for sender_id in range(options.worker.io_process_count):
             uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
-            actor = pool.create_actor(SenderActor, uid=uid)
+            actor = daemon_ref.create_actor(SenderActor, uid=uid)
             self._sender_actors.append(actor)
         for receiver_id in range(2 * options.worker.io_process_count):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
-            actor = pool.create_actor(ReceiverActor, uid=uid)
+            actor = daemon_ref.create_actor(ReceiverActor, uid=uid)
             self._receiver_actors.append(actor)
 
         # create ProcessHelperActor
         for proc_id in range(pool.cluster_info.n_process):
             uid = 'w:%d:mars-process-helper-%d-%d' % (proc_id, os.getpid(), proc_id)
-            actor = pool.create_actor(ProcessHelperActor, uid=uid)
+            actor = daemon_ref.create_actor(ProcessHelperActor, uid=uid)
             self._process_helper_actors.append(actor)
 
         # create ResultSenderActor
@@ -157,12 +160,8 @@ class WorkerService(object):
         if options.worker.spill_directory:
             for spill_id in range(len(options.worker.spill_directory) * 2):
                 uid = 'w:%d:mars-spill-%d-%d' % (start_pid, os.getpid(), spill_id)
-                actor = pool.create_actor(SpillActor, uid=uid)
+                actor = daemon_ref.create_actor(SpillActor, uid=uid)
                 self._spill_actors.append(actor)
-
-        kv_store = kvstore.get(options.kv_store)
-        if isinstance(kv_store, kvstore.EtcdKVStore):
-            kv_store.write('/workers/meta_timestamp', str(int(time.time())))
 
     @staticmethod
     def _calc_size_limit(limit_str, total_size):

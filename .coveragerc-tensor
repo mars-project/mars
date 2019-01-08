@@ -9,6 +9,7 @@ parallel = True
 include =
     mars/*
 omit =
+    mars/compat/*
     mars/lib/functools32/*
     mars/lib/futures/*
     mars/lib/enum.py
@@ -17,3 +18,10 @@ omit =
     mars/lib/uhashring/*
     mars/serialize/protos/*
     */tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError

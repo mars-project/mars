@@ -3,7 +3,7 @@
 Graph Preparation
 =================
 When a tensor graph is submitted into Mars scheduler, a graph comprises of
-operands and chunks will be generated given ``chunks`` parameters passed in
+operands and chunks will be generated given ``chunk_size`` parameters passed in
 data sources.
 
 Graph Compose
@@ -16,8 +16,8 @@ without branches. For example, when executing code
 .. code-block:: python
 
     import mars.tensor as mt
-    a = mt.random.rand(100, chunks=100)
-    b = mt.random.rand(100, chunks=100)
+    a = mt.random.rand(100, chunk_size=100)
+    b = mt.random.rand(100, chunk_size=100)
     c = (a + b).sum()
 
 Mars will compose operand ADD and SUM into one FUSE node. RAND operands are

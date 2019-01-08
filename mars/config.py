@@ -14,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from copy import deepcopy
 import contextlib
+import functools
+import operator
 import warnings
 import threading
+from copy import deepcopy
 
 from .compat import six
 
@@ -264,13 +266,19 @@ def all_validator(*validators):
     return validate
 
 
-is_null = lambda x: x is None
-is_bool = lambda x: isinstance(x, bool)
-is_integer = lambda x: isinstance(x, six.integer_types)
-is_float = lambda x: isinstance(x, float)
-is_string = lambda x: isinstance(x, six.string_types)
-is_dict = lambda x: isinstance(x, dict)
-is_list = lambda x: isinstance(x, list)
+def _instance_check(typ, v):
+    return isinstance(v, typ)
+
+
+is_null = functools.partial(operator.is_, None)
+is_bool = functools.partial(_instance_check, bool)
+is_integer = functools.partial(_instance_check, six.integer_types)
+is_float = functools.partial(_instance_check, float)
+is_string = functools.partial(_instance_check, six.string_types)
+is_dict = functools.partial(_instance_check, dict)
+is_list = functools.partial(_instance_check, list)
+
+
 def is_in(vals):
     def validate(x):
         return x in vals
@@ -290,8 +298,8 @@ default_options.register_option('grpc.channel_options', {
 })
 
 # Tensor
-default_options.register_option('tensor.chunks', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.chunk_size_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))
+default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
+default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 default_options.register_option('tensor.combine_size', 4, validator=is_integer, serialize=True)
@@ -306,7 +314,7 @@ default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_
 default_options.register_option('scheduler.heartbeat_timeout', 1200, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.status_timeout', 60, validator=is_integer, serialize=True)
-default_options.register_option('scheduler.retry_num', 3, validator=is_integer, serialize=True)
+default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_delay', 60, validator=is_integer, serialize=True)
 

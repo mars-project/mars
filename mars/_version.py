@@ -12,35 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-version_info = (0, 1, 0, 'a2')
+import subprocess
+import os
+import sys
+
+version_info = (0, 1, 0, 'b1')
 _num_index = max(idx if isinstance(v, int) else 0
                  for idx, v in enumerate(version_info))
 __version__ = '.'.join(map(str, version_info[:_num_index + 1])) + \
               ''.join(version_info[_num_index + 1:])
 
 
-def get_git_info():
-    import subprocess
-    import os
-    import sys
+def _get_cmd_results(pkg_root, cmd):
+    proc = subprocess.Popen(cmd, cwd=pkg_root, stdout=subprocess.PIPE)
+    proc.wait()
+    if proc.returncode == 0:
+        s = proc.stdout.read()
+        if sys.version_info[0] >= 3:
+            s = s.decode()
+        return s
 
+
+def get_git_info():
     pkg_root = os.path.dirname(os.path.abspath(__file__))
     git_root = os.path.join(os.path.dirname(pkg_root), '.git')
 
-    def get_cmd_results(cmd):
-        proc = subprocess.Popen(cmd, cwd=pkg_root, stdout=subprocess.PIPE)
-        proc.wait()
-        if proc.returncode == 0:
-            s = proc.stdout.read()
-            if sys.version_info[0] >= 3:
-                s = s.decode()
-            return s
-
     if os.path.exists(git_root):
-        commit_hash = get_cmd_results(['git', 'rev-parse', 'HEAD']).strip()
+        commit_hash = _get_cmd_results(pkg_root, ['git', 'rev-parse', 'HEAD']).strip()
         if not commit_hash:
             return
-        branches = get_cmd_results(['git', 'branch']).splitlines(False)
+        branches = _get_cmd_results(pkg_root, ['git', 'branch']).splitlines(False)
         commit_ref = None
         for l in branches:
             if not l.startswith('*'):

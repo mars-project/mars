@@ -73,7 +73,7 @@ except ImportError:
 
 try:
     from pytest_cov.embed import cleanup_on_sigterm
-except ImportError:
+except ImportError:  # pragma: no cover
     cleanup_on_sigterm = lambda: None
 
 cdef:
@@ -478,7 +478,7 @@ class _GProcess(multiprocessing.Process):
         # os.waitpid(). Let libev do the job.
         try:
             from multiprocessing.forking import Popen as mp_Popen
-        except ImportError:
+        except ImportError:  # pragma: no cover
             # multiprocessing's internal structure has changed from 3.3 to 3.4.
             from multiprocessing.popen_fork import Popen as mp_Popen
         # Monkey-patch and forget about the name.

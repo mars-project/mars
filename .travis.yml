@@ -2,26 +2,22 @@ language: python
 
 matrix:
   include:
-    - sudo: required
-      os: linux
+    - os: linux
       python: "2.7"
       services:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu
-    - sudo: required
-      os: linux
+    - os: linux
       python: "3.5"
       services:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m
-    - sudo: required
-      os: linux
+    - os: linux
       python: "3.6"
       services:
         - docker
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp36-cp36m
-    - sudo: required
-      os: linux
+    - os: linux
       python: "3.7"
       dist: xenial
       services:
@@ -38,29 +34,34 @@ matrix:
       env: PYTHON=3.6.1
     - os: osx
       language: generic
-      env: PYTHON=3.7.0
+      env: PYTHON=3.7.1
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source ./bin/travis-prepare-osx.sh; fi
-  - pip install --upgrade pip setuptools wheel
+  - pip install --upgrade pip setuptools wheel coverage
 
 # command to install dependencies
 install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls
-  - virtualenv venv
-  - source venv/bin/activate
+  - pip install virtualenv coveralls flake8
+  - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
-  - python setup.py build_ext -i
+  - CI_MODE=1 python setup.py build_ext --force --inplace
+  - source bin/download-etcd.sh
+
+before_script:
+  - flake8 mars --count --select=E111,E901,E999,F401,F821,F822,F823,F841 --show-source --statistics
+  - flake8 mars --count --exit-zero --statistics
 
 # command to run tests
 script:
   mkdir -p build &&
-  pytest --cov-report= --cov-config .coveragerc-tensor --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning mars/tensor &&
+  pytest --cov-report= --cov-config .coveragerc-tensor --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning
+    mars/tensor mars/web &&
   mv .coverage build/.coverage.tensor.file &&
   pytest --cov-report= --cov-config .coveragerc --cov=mars --timeout=1500 --forked -W ignore::PendingDeprecationWarning
     $(find mars -maxdepth 1 -mindepth 1 -type d -not -path "mars/tensor" -not -path "*__pycache__*") &&

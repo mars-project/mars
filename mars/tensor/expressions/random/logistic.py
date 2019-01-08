@@ -29,11 +29,11 @@ class TensorLogistic(operands.Logistic, TensorRandomOperandMixin):
         super(TensorLogistic, self).__init__(_state=state, _size=size,
                                              _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, loc, scale, chunks=None):
-        return self.new_tensor([loc, scale], None, raw_chunks=chunks)
+    def __call__(self, loc, scale, chunk_size=None):
+        return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def logistic(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None, **kw):
+def logistic(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a logistic distribution.
 
@@ -52,10 +52,12 @@ def logistic(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None,
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``loc`` and ``scale`` are both scalars.
         Otherwise, ``np.broadcast(loc, scale).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -111,9 +113,9 @@ def logistic(random_state, loc=0.0, scale=1.0, size=None, chunks=None, gpu=None,
     ... logist(bins, loc, scale).max().execute())
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().logistic(
+    if dtype is None:
+        dtype = np.random.RandomState().logistic(
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLogistic(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(loc, scale, chunks=chunks)
+    op = TensorLogistic(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    return op(loc, scale, chunk_size=chunk_size)

@@ -29,7 +29,7 @@ class TensorMultinomial(operands.Multinomial, TensorRandomOperandMixin):
         super(TensorMultinomial, self).__init__(_n=n, _pvals=pvals, _state=state,
                                                 _size=size, _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
+    def __call__(self, chunk_size=None):
         if self._size is None:
             shape = (len(self._pvals),)
         else:
@@ -37,10 +37,10 @@ class TensorMultinomial(operands.Multinomial, TensorRandomOperandMixin):
                 shape = tuple(self._size) + (len(self._pvals),)
             except TypeError:
                 shape = (self._size, len(self._pvals))
-        return self.new_tensor(None, shape, raw_chunks=chunks)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
 
-def multinomial(random_state, n, pvals, size=None, chunks=None, gpu=None, **kw):
+def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Draw samples from a multinomial distribution.
 
@@ -65,10 +65,12 @@ def multinomial(random_state, n, pvals, size=None, chunks=None, gpu=None, **kw):
         Output shape.  If the given shape is, e.g., ``(m, n, k)``, then
         ``m * n * k`` samples are drawn.  Default is None, in which case a
         single value is returned.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -120,9 +122,9 @@ def multinomial(random_state, n, pvals, size=None, chunks=None, gpu=None, **kw):
     """
     n = int(n)
     pvals = tuple(pvals)
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
+    if dtype is None:
+        dtype = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorMultinomial(n=n, pvals=pvals, state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(chunks=chunks)
+    op = TensorMultinomial(n=n, pvals=pvals, state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    return op(chunk_size=chunk_size)
 

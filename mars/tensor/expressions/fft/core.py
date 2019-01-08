@@ -16,7 +16,7 @@
 
 from collections import Iterable
 
-from ..utils import validate_axis, decide_chunks, recursive_tile
+from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
 from ..core import TensorOperandMixin
 
 
@@ -35,7 +35,7 @@ class TensorFFTMixin(TensorOperandMixin):
         if in_tensor.chunk_shape[axis] != 1:
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
             chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis]}
-            new_chunks = decide_chunks(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
+            new_chunks = decide_chunk_sizes(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
             in_tensor = in_tensor.rechunk(new_chunks).single_tiles()
 
         out_chunks = []
@@ -72,7 +72,7 @@ class TensorFFTNMixin(TensorOperandMixin):
         axes = op.axes
 
         if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
-            new_chunks = decide_chunks(
+            new_chunks = decide_chunk_sizes(
                 in_tensor.shape, {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes},
                 in_tensor.dtype.itemsize)
             in_tensor = in_tensor.rechunk(new_chunks).single_tiles()

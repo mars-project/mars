@@ -327,6 +327,8 @@ cdef inline void _skip_index(bytes binary, size_t* pos):
 
 
 cdef inline void _pack_actor_ref(ActorRef actor_ref, bytearray buf):
+    # this line circumvents a bug in Cython which led to application crash
+    assert actor_ref is not None
     _pack_object(actor_ref.address, buf)
     _pack_object(actor_ref.uid, buf)
 

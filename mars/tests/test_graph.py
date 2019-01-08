@@ -21,7 +21,7 @@ from mars.graph import DAG, GraphContainsCycleError
 
 class Test(unittest.TestCase):
     def testDAG(self):
-        """
+        r"""
         1 --- 4
         2 --- 6
           \  /

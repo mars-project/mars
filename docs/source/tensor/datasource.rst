@@ -40,7 +40,7 @@ multi-dimensional tensor will be supported later soon.
 Chunks
 ------
 
-In mars tensor, we tile a tensor into small chunks. Argument ``chunks`` is not always required,
+In mars tensor, we tile a tensor into small chunks. Argument ``chunk_size`` is not always required,
 a chunk's bytes occupation will be 128M for the default setting.
 However, user can specify each chunk's size in a more flexible way which may be adaptive to the data scale.
 The fact is that chunk's size may effect heavily on the performance of execution.
@@ -48,8 +48,8 @@ The fact is that chunk's size may effect heavily on the performance of execution
 The options or arguments which will effect the chunk's size are listed below:
 
 - Change ``options.tensor.chunk_size_limit`` which is 128*1024*1024(128M) by default.
-- Specify ``chunks`` as integer, like ``5000``, means chunk's size is 5000 at most for all dimensions
-- Specify ``chunks`` as tuple, like ``(5000, 3000)``
+- Specify ``chunk_size`` as integer, like ``5000``, means chunk's size is 5000 at most for all dimensions
+- Specify ``chunk_size`` as tuple, like ``(5000, 3000)``
 - Explicitly define sizes of all chunks along all dimensions, like ``((5000, 5000, 2000), (2000, 1000))``
 
 Chunks Examples
@@ -68,9 +68,9 @@ Assume we have such a tensor with the data shown below.
     4 2 4 6 2 0
     6 8 2 6 5 4
 
-We will show how different ``chunks=`` arguments will tile the tensor.
+We will show how different ``chunk_size=`` arguments will tile the tensor.
 
-``chunks=3``:
+``chunk_size=3``:
 
 .. code-block:: python
 
@@ -85,7 +85,7 @@ We will show how different ``chunks=`` arguments will tile the tensor.
     4 2 4  6 2 0
     6 8 2  6 5 4
 
-``chunks=2``:
+``chunk_size=2``:
 
 .. code-block:: python
 
@@ -101,7 +101,7 @@ We will show how different ``chunks=`` arguments will tile the tensor.
     4 2  4 6  2 0
     6 8  2 6  5 4
 
-``chunks=(3, 2)``:
+``chunk_size=(3, 2)``:
 
 .. code-block:: python
 
@@ -116,7 +116,7 @@ We will show how different ``chunks=`` arguments will tile the tensor.
     4 2  4 6  2 0
     6 8  2 6  5 4
 
-``chunks=((3, 1, 2, 2), (3, 2, 1))``:
+``chunk_size=((3, 1, 2, 2), (3, 2, 1))``:
 
 .. code-block:: python
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-    <title>Mars</title>
+    <title>Mars UI</title>
     {{ bokeh_css }}
     {{ bokeh_js }}
     <script type="text/javascript" src="/static/js/jquery-3.2.1.min.js"></script>
@@ -37,6 +37,11 @@
                         <a href="/" {% if active_page == 'dashboard' %}class="active"{% endif %}><i class="fa fa-dashboard fa-fw"></i> Dashboard</a>
                     </li>
                     <li>
+                        <a href="/scheduler" {% if active_page == 'scheduler_list' %}class="active"{% endif %}><i class="fa fa-clock-o fa-fw"></i> Schedulers</a>
+                        {% block scheduler_submenu %}
+                        {% endblock %}
+                    </li>
+                    <li>
                         <a href="/worker" {% if active_page == 'worker_list' %}class="active"{% endif %}><i class="fa fa-gears fa-fw"></i> Workers</a>
                         {% block worker_submenu %}
                         {% endblock %}
@@ -46,9 +51,9 @@
                         {% block task_submenu %}
                         {% endblock %}
                     </li>
-                    <!--<li>
-                        <a href="http://mars.readthedocs.io"><i class="fa fa-book fa-fw"></i> Documentation</a>
-                    </li>-->
+                    <li>
+                        <a href="https://mars-project.readthedocs.io" target="_blank"><i class="fa fa-book fa-fw"></i> Documentation</a>
+                    </li>
                 </ul>
             </div>
             <!-- /.sidebar-collapse -->

@@ -16,6 +16,12 @@
 
 import numpy as np
 
+from .compat import OrderedDict
+try:
+    from .resource import cpu_count
+except ImportError:  # pragma: no cover
+    from multiprocessing import cpu_count
+
 
 class LocalSession(object):
     def __init__(self):
@@ -37,7 +43,16 @@ class LocalSession(object):
     def run(self, *tensors, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
+        if 'n_parallel' not in kw:
+            kw['n_parallel'] = cpu_count()
         return self._executor.execute_tensors(tensors, **kw)
+
+    def fetch(self, *tensors, **kw):
+        if self._executor is None:
+            raise RuntimeError('Session has closed')
+        if 'n_parallel' not in kw:
+            kw['n_parallel'] = cpu_count()
+        return self._executor.fetch_tensors(tensors, **kw)
 
     def decref(self, *keys):
         self._executor.decref(*keys)
@@ -72,6 +87,7 @@ class Session(object):
     def run(self, *tensors, **kw):
         from . import tensor as mt
 
+        fetch = kw.get('fetch', True)
         ret_list = False
         if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
             ret_list = True
@@ -80,23 +96,54 @@ class Session(object):
             ret_list = True
 
         tensors = tuple(mt.tensor(t) for t in tensors)
-        result = self._sess.run(*tensors, **kw)
-        self._executed_keys.update(t.key for t in tensors)
-        for t in tensors:
-            t._execute_session = self
+        results = [None] * len(tensors)
+        idx_to_run_tensors = OrderedDict()
+        idx_to_fetch_tensors = OrderedDict()
 
-        ret = []
-        for r, t in zip(result, tensors):
-            if r is None:
-                ret.append(r)
-                continue
-            if t.isscalar() and hasattr(r, 'item'):
-                ret.append(np.asscalar(r))
+        # those executed tensors should fetch data directly, submit the others
+        for i, t in enumerate(tensors):
+            if t.key in self._executed_keys:
+                idx_to_fetch_tensors[i] = t
             else:
-                ret.append(r)
-        if ret_list:
-            return ret
-        return ret[0]
+                idx_to_run_tensors[i] = t
+
+        # execute the non-executed tensors
+        if idx_to_run_tensors:
+            execute_result = self._sess.run(*idx_to_run_tensors.values(), **kw)
+            if execute_result:
+                # fetch is True
+                for j, result in zip(idx_to_run_tensors, execute_result):
+                    results[j] = result
+            run_tensors = list(idx_to_run_tensors.values())
+            self._executed_keys.update(t.key for t in run_tensors)
+            for t in run_tensors:
+                t._execute_session = self
+
+        if fetch:
+            # do fetch
+            if idx_to_fetch_tensors:
+                for j, result in zip(idx_to_fetch_tensors,
+                                     self._sess.fetch(*idx_to_fetch_tensors.values(), **kw)):
+                    results[j] = result
+
+            ret = []
+            for r, t in zip(results, tensors):
+                if r is None:
+                    ret.append(r)
+                    continue
+                if t.isscalar() and hasattr(r, 'item'):
+                    ret.append(np.asscalar(r))
+                else:
+                    ret.append(r)
+
+            if ret_list:
+                return ret
+            return ret[0]
+
+    def fetch(self, tensor):
+        if tensor.key not in self._executed_keys:
+            raise ValueError('Cannot fetch the unexecuted tensor')
+        return self._sess.fetch(tensor)
 
     @property
     def endpoint(self):
@@ -107,15 +154,13 @@ class Session(object):
         self._sess.endpoint = endpoint
 
     def decref(self, *keys):
+        self._executed_keys = self._executed_keys.difference(keys)
         if hasattr(self._sess, 'decref'):
             self._sess.decref(*keys)
 
     def __getattr__(self, attr):
-        try:
-            obj = self._sess.__getattribute__(attr)
-            return obj
-        except AttributeError:
-            raise
+        obj = self._sess.__getattribute__(attr)
+        return obj
 
     def __enter__(self):
         self._sess.__enter__()
@@ -124,7 +169,8 @@ class Session(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._sess.__exit__(exc_type, exc_val, exc_tb)
 
-    close = __exit__
+    def close(self):
+        self.__exit__(None, None, None)
 
     def as_default(self):
         Session._default_session = self

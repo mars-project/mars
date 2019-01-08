@@ -28,14 +28,14 @@ import gevent
 import numpy as np
 from numpy.testing import assert_array_equal
 
-
 from mars import tensor as mt
 from mars.actors import new_client
-from mars.utils import get_next_port
-from mars.scheduler import KVStoreActor
-from mars.session import new_session
-from mars.serialize.dataserializer import dumps, loads
 from mars.config import options
+from mars.errors import ExecutionFailed
+from mars.scheduler import ResourceActor
+from mars.session import new_session
+from mars.serialize.dataserializer import dumps
+from mars.utils import get_next_port
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
@@ -54,10 +54,40 @@ class Test(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
+    def wait_scheduler_worker_start(self):
+        actor_client = new_client()
+        time.sleep(1)
+        check_time = time.time()
+        while True:
+            try:
+                resource_ref = actor_client.actor_ref(
+                    ResourceActor.default_name(), address='127.0.0.1:' + self.scheduler_port)
+                if actor_client.has_actor(resource_ref):
+                    break
+                else:
+                    raise SystemError('Check meta_timestamp timeout')
+            except:  # noqa: E722
+                if time.time() - check_time > 10:
+                    raise
+                time.sleep(0.1)
+
+        check_time = time.time()
+        while not resource_ref.get_worker_count():
+            if self.proc_scheduler.poll() is not None:
+                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+            if self.proc_worker.poll() is not None:
+                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+            if time.time() - check_time > 20:
+                raise SystemError('Check meta_timestamp timeout')
+
+            time.sleep(0.1)
+
     def setUp(self):
-        scheduler_port = str(get_next_port())
+        worker_port = self.worker_port = str(get_next_port())
+        scheduler_port = self.scheduler_port = str(get_next_port())
         proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                         '-a', '127.0.0.1',
+                                        '-p', worker_port,
                                         '--level', 'debug',
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
@@ -70,42 +100,12 @@ class Test(unittest.TestCase):
                                            '-p', scheduler_port,
                                            '--format', '%(asctime)-15s %(message)s'])
 
-        self.scheduler_port = scheduler_port
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
 
-        actor_client = new_client()
-        time.sleep(2)
-        check_time = time.time()
-        while True:
-            try:
-                kv_ref = actor_client.actor_ref(KVStoreActor.default_name(), address='127.0.0.1:' + scheduler_port)
-                if actor_client.has_actor(kv_ref):
-                    break
-                else:
-                    raise SystemError('Check meta_timestamp timeout')
-            except:
-                if time.time() - check_time > 10:
-                    raise
-                time.sleep(1)
+        self.wait_scheduler_worker_start()
 
-        check_time = time.time()
-        while True:
-            content = kv_ref.read('/workers/meta_timestamp', silent=True)
-            if self.proc_scheduler.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
-            if self.proc_worker.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
-            if time.time() - check_time > 20:
-                raise SystemError('Check meta_timestamp timeout')
-
-            if not content:
-                time.sleep(0.5)
-            else:
-                break
-
-        web_port = str(get_next_port())
-        self.web_port = web_port
+        web_port = self.web_port = str(get_next_port())
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
                                      '--level', 'debug',
@@ -121,10 +121,10 @@ class Test(unittest.TestCase):
             try:
                 resp = requests.get(service_ep + '/api', timeout=1)
             except (requests.ConnectionError, requests.Timeout):
-                time.sleep(1)
+                time.sleep(0.1)
                 continue
             if resp.status_code >= 400:
-                time.sleep(1)
+                time.sleep(0.1)
                 continue
             break
 
@@ -152,37 +152,50 @@ class Test(unittest.TestCase):
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
             value = sess.run(c)
             assert_array_equal(value, np.ones((100, 100)) * 100)
 
+            value2 = sess.run(c)
+            assert_array_equal(value, value2)
+
             # todo this behavior may change when eager mode is introduced
-            with self.assertRaises(SystemError):
-                sess.run(c)
+            with self.assertRaises(ExecutionFailed):
+                sess.run(c + 1)
 
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))
-            a = mt.array(va, chunks=30)
-            b = mt.array(vb, chunks=30)
+            a = mt.array(va, chunk_size=30)
+            b = mt.array(vb, chunk_size=30)
             c = a.dot(b)
             value = sess.run(c, timeout=120)
             assert_array_equal(value, va.dot(vb))
 
-            # test test multiple outputs
-            a = mt.random.rand(10, 10)
-            U, s, V, raw = sess.run(list(mt.linalg.svd(a)) + [a])
-            np.testing.assert_allclose(U.dot(np.diag(s).dot(V)), raw)
+            graphs = sess.get_graph_states()
 
             # check web UI requests
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get(service_ep + '/task')
+            res = requests.get('%s/task' % (service_ep,))
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get(service_ep + '/worker')
+            res = requests.get('%s/scheduler' % (service_ep,))
+            self.assertEqual(res.status_code, 200)
+            res = requests.get('%s/scheduler?endpoint=127.0.0.1:%s' % (service_ep, self.scheduler_port))
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get('%s/worker' % (service_ep,))
+            self.assertEqual(res.status_code, 200)
+            res = requests.get('%s/worker?endpoint=127.0.0.1:%s' % (service_ep, self.worker_port))
+            self.assertEqual(res.status_code, 200)
+
+            res = requests.get('%s/task' % (service_ep,))
+            self.assertEqual(res.status_code, 200)
+            task_id = next(iter(graphs.keys()))
+            res = requests.get('%s/task?session_id=%s&task_id=%s' % (service_ep, sess._session_id, task_id))
             self.assertEqual(res.status_code, 200)
 
 
@@ -254,9 +267,13 @@ class TestWithMockServer(unittest.TestCase):
         with new_session(self._service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
 
-            a = mt.ones((100, 100), chunks=30)
-            b = mt.ones((100, 100), chunks=30)
+            a = mt.ones((100, 100), chunk_size=30)
+            b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
 
             result = sess.run(c, timeout=120)
             assert_array_equal(result, np.ones((100, 100)) * 100)
+
+            d = a * 100
+            self.assertIsNone(sess.run(d, fetch=False, timeout=120))
+            assert_array_equal(sess.run(d, timeout=120), np.ones((100, 100)) * 100)

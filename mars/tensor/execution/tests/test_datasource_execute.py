@@ -33,7 +33,7 @@ class Test(TestBase):
 
     def testCreateSparseExecution(self):
         mat = sps.csr_matrix([[0, 0, 2], [2, 0, 0]])
-        t = tensor(mat, dtype='f8', chunks=2)
+        t = tensor(mat, dtype='f8', chunk_size=2)
 
         res = self.executor.execute_tensor(t)
         self.assertIsInstance(res[0], SparseNDArray)
@@ -50,7 +50,7 @@ class Test(TestBase):
         np.testing.assert_array_equal(res[0].toarray(), expected[..., :2].toarray())
         np.testing.assert_array_equal(res[1].toarray(), expected[..., 2:].toarray())
 
-        t3 = tensor(np.array([[0, 0, 2], [2, 0, 0]]), chunks=2).tosparse()
+        t3 = tensor(np.array([[0, 0, 2], [2, 0, 0]]), chunk_size=2).tosparse()
 
         res = self.executor.execute_tensor(t3)
         self.assertIsInstance(res[0], SparseNDArray)
@@ -59,7 +59,7 @@ class Test(TestBase):
         np.testing.assert_array_equal(res[1].toarray(), mat[..., 2:].toarray())
 
     def testZerosExecution(self):
-        t = zeros((20, 30), dtype='i8', chunks=5)
+        t = zeros((20, 30), dtype='i8', chunk_size=5)
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertTrue(np.array_equal(res[0], np.zeros((20, 30), dtype='i8')))
@@ -70,20 +70,20 @@ class Test(TestBase):
         self.assertTrue(np.array_equal(res[0], np.zeros((20, 30), dtype='i8')))
         self.assertEqual(res[0].dtype, np.int64)
 
-        t = zeros((20, 30), dtype='i4', chunks=5, sparse=True)
+        t = zeros((20, 30), dtype='i4', chunk_size=5, sparse=True)
         res = self.executor.execute_tensor(t, concat=True)
 
         self.assertEqual(res[0].nnz, 0)
 
     def testEmptyExecution(self):
-        t = empty((20, 30), dtype='i8', chunks=5)
+        t = empty((20, 30), dtype='i8', chunk_size=5)
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertEqual(res[0].shape, (20, 30))
         self.assertEqual(res[0].dtype, np.int64)
         self.assertFalse(np.array_equal(res, np.zeros((20, 30))))
 
-        t = empty((20, 30), chunks=5)
+        t = empty((20, 30), chunk_size=5)
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertFalse(np.allclose(res, np.zeros((20, 30))))
@@ -94,35 +94,35 @@ class Test(TestBase):
         self.assertEqual(res[0].dtype, np.float64)
 
     def testFullExecution(self):
-        t = full((2, 2), 1, dtype='f4', chunks=1)
+        t = full((2, 2), 1, dtype='f4', chunk_size=1)
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertTrue(np.array_equal(res[0], np.full((2, 2), 1, dtype='f4')))
 
-        t = full((2, 2), [1, 2], dtype='f8', chunks=1)
+        t = full((2, 2), [1, 2], dtype='f8', chunk_size=1)
 
         res = self.executor.execute_tensor(t, concat=True)
         self.assertTrue(np.array_equal(res[0], np.full((2, 2), [1, 2], dtype='f8')))
 
     def testArangeExecution(self):
-        t = arange(1, 20, 3, chunks=2)
+        t = arange(1, 20, 3, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.array_equal(res, np.arange(1, 20, 3)))
 
-        t = arange(1, 20, .3, chunks=4)
+        t = arange(1, 20, .3, chunk_size=4)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.arange(1, 20, .3)
         self.assertTrue(np.allclose(res, expected))
 
-        t = arange(1.0, 1.8, .3, chunks=4)
+        t = arange(1.0, 1.8, .3, chunk_size=4)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.arange(1.0, 1.8, .3)
         self.assertTrue(np.allclose(res, expected))
 
-        t = arange('1066-10-13', '1066-10-31', dtype=np.datetime64, chunks=3)
+        t = arange('1066-10-13', '1066-10-31', dtype=np.datetime64, chunk_size=3)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.arange('1066-10-13', '1066-10-31', dtype=np.datetime64)
@@ -130,7 +130,7 @@ class Test(TestBase):
 
     def testDiagExecution(self):
         # 2-d  6 * 6
-        a = arange(36, chunks=2).reshape(6, 6)
+        a = arange(36, chunk_size=2).reshape(6, 6)
 
         d = diag(a)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -158,7 +158,7 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected)
 
         # 2-d  4 * 9
-        a = arange(36, chunks=2).reshape(4, 9)
+        a = arange(36, chunk_size=2).reshape(4, 9)
 
         d = diag(a)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -186,7 +186,7 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected)
 
         # 1-d
-        a = arange(5, chunks=2)
+        a = arange(5, chunk_size=2)
 
         d = diag(a)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -244,26 +244,26 @@ class Test(TestBase):
         np.testing.assert_equal(res.toarray(), expected)
 
     def testDiagflatExecution(self):
-        a = diagflat([[1, 2], [3, 4]], chunks=1)
+        a = diagflat([[1, 2], [3, 4]], chunk_size=1)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         expected = np.diagflat([[1, 2], [3, 4]])
         np.testing.assert_equal(res, expected)
 
-        d = tensor([[1, 2], [3, 4]], chunks=1)
+        d = tensor([[1, 2], [3, 4]], chunk_size=1)
         a = diagflat(d)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         expected = np.diagflat([[1, 2], [3, 4]])
         np.testing.assert_equal(res, expected)
 
-        a = diagflat([1, 2], 1, chunks=1)
+        a = diagflat([1, 2], 1, chunk_size=1)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         expected = np.diagflat([1, 2], 1)
         np.testing.assert_equal(res, expected)
 
-        d = tensor([[1, 2]], chunks=1)
+        d = tensor([[1, 2]], chunk_size=1)
         a = diagflat(d, 1)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
@@ -271,55 +271,55 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected)
 
     def testEyeExecution(self):
-        t = eye(5, chunks=2)
+        t = eye(5, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, k=1, chunks=2)
+        t = eye(5, k=1, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=1)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, k=2, chunks=2)
+        t = eye(5, k=2, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=2)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, k=-1, chunks=2)
+        t = eye(5, k=-1, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=-1)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, k=-3, chunks=2)
+        t = eye(5, k=-3, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=-3)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, M=3, k=1, chunks=2)
+        t = eye(5, M=3, k=1, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=3, k=1)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, M=3, k=-3, chunks=2)
+        t = eye(5, M=3, k=-3, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=3, k=-3)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, M=7, k=1, chunks=2)
+        t = eye(5, M=7, k=1, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=7, k=1)
         np.testing.assert_equal(res, expected)
 
-        t = eye(5, M=8, k=-3, chunks=2)
+        t = eye(5, M=8, k=-3, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=8, k=-3)
@@ -331,63 +331,63 @@ class Test(TestBase):
         self.assertEqual(res.dtype, np.int_)
 
         # test sparse
-        t = eye(5, sparse=True, chunks=2)
+        t = eye(5, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, k=1, sparse=True, chunks=2)
+        t = eye(5, k=1, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=1)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, k=2, sparse=True, chunks=2)
+        t = eye(5, k=2, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=2)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, k=-1, sparse=True, chunks=2)
+        t = eye(5, k=-1, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=-1)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, k=-3, sparse=True, chunks=2)
+        t = eye(5, k=-3, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, k=-3)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, M=3, k=1, sparse=True, chunks=2)
+        t = eye(5, M=3, k=1, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=3, k=1)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, M=3, k=-3, sparse=True, chunks=2)
+        t = eye(5, M=3, k=-3, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=3, k=-3)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, M=7, k=1, sparse=True, chunks=2)
+        t = eye(5, M=7, k=1, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=7, k=1)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
-        t = eye(5, M=8, k=-3, sparse=True, chunks=2)
+        t = eye(5, M=8, k=-3, sparse=True, chunk_size=2)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.eye(5, M=8, k=-3)
@@ -395,27 +395,27 @@ class Test(TestBase):
         np.testing.assert_equal(res.toarray(), expected)
 
     def testLinspaceExecution(self):
-        a = linspace(2.0, 9.0, num=11, chunks=3)
+        a = linspace(2.0, 9.0, num=11, chunk_size=3)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         expected = np.linspace(2.0, 9.0, num=11)
         np.testing.assert_allclose(res, expected)
 
-        a = linspace(2.0, 9.0, num=11, endpoint=False, chunks=3)
+        a = linspace(2.0, 9.0, num=11, endpoint=False, chunk_size=3)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         expected = np.linspace(2.0, 9.0, num=11, endpoint=False)
         np.testing.assert_allclose(res, expected)
 
-        a = linspace(2.0, 9.0, num=11, chunks=3, dtype=int)
+        a = linspace(2.0, 9.0, num=11, chunk_size=3, dtype=int)
 
         res = self.executor.execute_tensor(a, concat=True)[0]
         self.assertEqual(res.dtype, np.int_)
 
     def testMeshgridExecution(self):
-        a = arange(5, chunks=2)
-        b = arange(6, 12, chunks=3)
-        c = arange(12, 19, chunks=4)
+        a = arange(5, chunk_size=2)
+        b = arange(6, 12, chunk_size=3)
+        c = arange(12, 19, chunk_size=4)
 
         A, B, C = meshgrid(a, b, c)
 
@@ -477,7 +477,7 @@ class Test(TestBase):
         np.testing.assert_equal(C_res, C_expected)
 
     def testIndicesExecution(self):
-        grid = indices((2, 3), chunks=1)
+        grid = indices((2, 3), chunk_size=1)
 
         res = self.executor.execute_tensor(grid, concat=True)[0]
         expected = np.indices((2, 3))
@@ -490,7 +490,7 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected[1])
 
     def testTriuExecution(self):
-        a = arange(24, chunks=2).reshape(2, 3, 4)
+        a = arange(24, chunk_size=2).reshape(2, 3, 4)
 
         t = triu(a)
 
@@ -523,7 +523,7 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected)
 
         # test sparse
-        a = arange(12, chunks=2).reshape(3, 4).tosparse()
+        a = arange(12, chunk_size=2).reshape(3, 4).tosparse()
 
         t = triu(a)
 
@@ -561,7 +561,7 @@ class Test(TestBase):
         np.testing.assert_equal(res, expected)
 
     def testTrilExecution(self):
-        a = arange(24, chunks=2).reshape(2, 3, 4)
+        a = arange(24, chunk_size=2).reshape(2, 3, 4)
 
         t = tril(a)
 
@@ -593,7 +593,7 @@ class Test(TestBase):
         expected = np.tril(np.arange(24).reshape(2, 3, 4), k=-2)
         np.testing.assert_equal(res, expected)
 
-        a = arange(12, chunks=2).reshape(3, 4).tosparse()
+        a = arange(12, chunk_size=2).reshape(3, 4).tosparse()
 
         t = tril(a)
 

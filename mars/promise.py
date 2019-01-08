@@ -57,6 +57,7 @@ class Promise(object):
         # promise results
         self._accepted = None if not done else True
         self._args = ()
+        self._kwargs = {}
 
         self.post_create()
 
@@ -124,7 +125,7 @@ class Promise(object):
         :rtype: Promise
         """
         while getattr(p, handler_attr) is None:
-            p = p._get_bind_root()
+            p = p._get_bind_root()  # type: Promise
             if p and p._next_item is not None:
                 if p.id in _promise_pool:
                     # remove predecessor that will not be used later
@@ -134,47 +135,56 @@ class Promise(object):
                 break
         return p
 
+    @staticmethod
+    def _log_unexpected_error(args):
+        if args and len(args) == 3 and issubclass(args[0], Exception):
+            try:
+                six.reraise(*args)
+            except:
+                logger.exception('Unhandled exception in promise')
+
     def step_next(self, *args, **kwargs):
         """
         Step into next promise with given args and kwargs
         """
-        def _log_unexpected_error():
-            if args and len(args) == 3 and issubclass(args[0], Exception):
-                try:
-                    six.reraise(*args)
-                except:
-                    logger.exception('Unhandled exception in promise')
 
         accept = kwargs.pop('_accept', True)
         target_promise = self
 
         self._accepted = accept
-        if not self._accepted:
-            # we only preserve exceptions to avoid tracing huge objects
-            self._args = args
 
         try:
-            target_promise = self._get_bind_root()
+            root_promise = self._get_bind_root()
 
-            if target_promise and target_promise.id in _promise_pool:
-                del _promise_pool[target_promise.id]
+            if root_promise and root_promise.id in _promise_pool:
+                del _promise_pool[root_promise.id]
 
-            target_promise = target_promise._next_item
+            target_promise = root_promise._next_item
+            root_promise._accepted = self._accepted
+            root_promise._args = args
+            root_promise._kwargs = kwargs
             if not target_promise:
                 if not accept:
-                    _log_unexpected_error()
+                    self._log_unexpected_error(args)
                 return
 
             if accept:
                 acceptor = self._get_handling_promise(target_promise, '_accept_handler')
                 if acceptor and acceptor._accept_handler:
                     acceptor._accept_handler(*args, **kwargs)
+                else:
+                    acceptor._accepted = accept
+                    acceptor._args = args
+                    acceptor._kwargs = kwargs
             else:
                 rejecter = self._get_handling_promise(target_promise, '_reject_handler')
                 if rejecter and rejecter._reject_handler:
                     rejecter._reject_handler(*args, **kwargs)
                 else:
-                    _log_unexpected_error()
+                    rejecter._accepted = accept
+                    rejecter._args = args
+                    rejecter._kwargs = kwargs
+                    self._log_unexpected_error(args)
         finally:
             if target_promise and target_promise.id in _promise_pool:
                 del _promise_pool[target_promise.id]
@@ -183,7 +193,8 @@ class Promise(object):
         promise = Promise(on_fulfilled, on_rejected)
         self._next_item = promise
         if self._accepted is not None:
-            self.step_next(*self._args, **dict(_accept=self._accepted))
+            self._kwargs['_accept'] = self._accepted
+            self.step_next(*self._args, **self._kwargs)
         return promise
 
     def catch(self, on_rejected):
@@ -231,10 +242,6 @@ class PromiseRefWrapper(object):
         return self._ref.uid
 
     @property
-    def ctx(self):
-        return self._ref.ctx
-
-    @property
     def address(self):
         return self._ref.address
 
@@ -248,7 +255,7 @@ class PromiseRefWrapper(object):
                 return ref_fun(*args, **kwargs)
 
             p = Promise()
-            self._caller._promises[p.id] = p
+            self._caller.register_promise(p, self._ref)
 
             timeout = kwargs.pop('_timeout', 0)
 
@@ -307,7 +314,9 @@ class PromiseActor(FunctionActor):
         Wraps an existing ActorRef into a promise ref
         """
         if not hasattr(self, '_promises'):
-            self._promises = weakref.WeakValueDictionary()  # type: dict[object, Promise]
+            self._promises = dict()
+            self._promise_uids = dict()
+            self._uid_promises = dict()
 
         if not args and not kwargs:
             ref = self.ref()
@@ -316,6 +325,57 @@ class PromiseActor(FunctionActor):
         else:
             ref = self.ctx.actor_ref(*args, **kwargs)
         return PromiseRefWrapper(ref, self)
+
+    def register_promise(self, promise, ref):
+        """
+        Register a promise into the actor with referrer info
+
+        :param Promise promise: promise object to register
+        :param ActorRef ref: ref
+        """
+        promise_id = promise.id
+
+        def _weak_callback(*_):
+            self.delete_promise(promise_id)
+
+        self._promises[promise_id] = weakref.ref(promise, _weak_callback)
+        ref_key = (ref.uid, ref.address)
+        self._promise_uids[promise_id] = ref_key
+        if ref_key not in self._uid_promises:
+            self._uid_promises[ref_key] = set()
+        self._uid_promises[ref_key].add(promise_id)
+
+    def get_promise(self, promise_id):
+        """
+        Get promise object from weakref.
+        """
+        obj = self._promises.get(promise_id)
+        if obj is None:
+            return None
+        return obj()
+
+    def delete_promise(self, promise_id):
+        if promise_id not in self._promises:
+            return
+        ref_key = self._promise_uids[promise_id]
+        self._uid_promises[ref_key].remove(promise_id)
+        del self._promises[promise_id]
+        del self._promise_uids[promise_id]
+
+    def reject_promise_ref(self, ref, *args, **kwargs):
+        """
+        Reject all promises related to given actor ref
+        :param ref: actor ref to reject
+        """
+        kwargs['_accept'] = False
+        ref_key = (ref.uid, ref.address)
+        if ref_key not in self._uid_promises:
+            return
+        for promise_id in list(self._uid_promises[ref_key]):
+            p = self.get_promise(promise_id)
+            if p is None:
+                continue
+            p.step_next(*args, **kwargs)
 
     def tell_promise(self, callback, *args, **kwargs):
         """
@@ -331,28 +391,24 @@ class PromiseActor(FunctionActor):
         Callback entry for promise results
         :param promise_id: promise key
         """
-        try:
-            self._promises[promise_id].step_next(*args, **kwargs)
-            if promise_id in self._promises:
-                del self._promises[promise_id]
-        except KeyError:
+        p = self.get_promise(promise_id)
+        if p is None:
             logger.warning('Promise %r reentered in %s', promise_id, self.uid)
+            return
+        self.get_promise(promise_id).step_next(*args, **kwargs)
+        self.delete_promise(promise_id)
 
     def handle_promise_timeout(self, promise_id):
         """
         Callback entry for promise timeout
         :param promise_id: promise key
         """
-        p = self._promises.get(promise_id)
+        p = self.get_promise(promise_id)
         if not p or p._accepted is not None:
             # skip promises that are already finished
             return
 
-        try:
-            del self._promises[promise_id]
-        except KeyError:
-            pass
-
+        self.delete_promise(promise_id)
         try:
             raise PromiseTimeout
         except PromiseTimeout:
@@ -381,6 +437,11 @@ def all_(promises):
     def _handle_reject(*args, **kw):
         if new_promise._accepted is not None:
             return
+        for p in promises:
+            try:
+                del _promise_pool[p.id]
+            except KeyError:
+                pass
         kw['_accept'] = False
         new_promise.step_next(*args, **kw)
 

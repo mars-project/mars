@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
 import math
-import contextlib
+import os
+import time
+from collections import OrderedDict
 
-from .. import kvstore
 from ..actors import ActorNotExist
+from ..compat import OrderedDict3
 from ..config import options
 from ..promise import PromiseActor
 from ..cluster_info import HasClusterInfoActor
@@ -31,37 +32,28 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
     """
     Base class of all worker actors, providing necessary utils
     """
-    def __init__(self):
-        super(WorkerActor, self).__init__()
-        self._callbacks = dict()
-
-        self._kv_store_ref = None
-        self._kv_store = None
-        if options.kv_store:
-            self._kv_store = kvstore.get(options.kv_store)
-
     @classmethod
     def default_name(cls):
         return 'w:{0}'.format(cls.__name__)
 
     def post_create(self):
-        from ..scheduler.kvstore import KVStoreActor
-
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         try:
             self.set_cluster_info_ref()
-            has_cluster_info = True
         except ActorNotExist:
-            has_cluster_info = False
-        if has_cluster_info:
-            self._kv_store_ref = self.get_actor_ref(KVStoreActor.default_name())
+            pass
         self._init_chunk_store()
 
     def _init_chunk_store(self):
         import pyarrow.plasma as plasma
         from .chunkstore import PlasmaChunkStore
         self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
-        self._chunk_store = PlasmaChunkStore(self._plasma_client, self._kv_store_ref)
+        self._chunk_store = PlasmaChunkStore(self._plasma_client)
+
+    def get_meta_ref(self, session_id, chunk_key):
+        from ..scheduler.chunkmeta import LocalChunkMetaActor
+        addr = self.get_scheduler((session_id, chunk_key))
+        return self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
 
 
 class ExpMeanHolder(object):
@@ -96,3 +88,42 @@ class ExpMeanHolder(object):
 
     def std(self):
         return math.sqrt(self.var())
+
+
+class ExpiringCache(dict):
+    def __init__(self, *args, **kwargs):
+        expire_time = kwargs.pop('_expire_time', options.worker.callback_preserve_time)
+        super(ExpiringCache, self).__init__(*args, **kwargs)
+
+        self._expire_time = expire_time
+        self._insert_times = OrderedDict3()
+
+    def __setitem__(self, key, value):
+        super(ExpiringCache, self).__setitem__(key, value)
+        if key in self._insert_times:
+            self._insert_times[key] = time.time()
+            self._insert_times.move_to_end(key)
+            return
+
+        clean_keys = []
+        self._insert_times[key] = time.time()
+        last_finish_time = time.time() - self._expire_time
+        for k, t in self._insert_times.items():
+            if t < last_finish_time:
+                clean_keys.append(k)
+            else:
+                break
+        for k in clean_keys:
+            del self[k]
+
+
+def concat_operand_keys(graph, sep=','):
+    from ..tensor.expressions.datasource import TensorFetchChunk
+    graph_op_dict = OrderedDict()
+    for c in graph:
+        if isinstance(c.op, TensorFetchChunk):
+            continue
+        graph_op_dict[c.op.key] = type(c.op).__name__
+    keys = sep.join(graph_op_dict.keys())
+    graph_ops = sep.join(graph_op_dict.values())
+    return keys, graph_ops

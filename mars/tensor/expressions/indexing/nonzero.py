@@ -43,7 +43,7 @@ class TensorNonzero(Nonzero, TensorOperandMixin):
 
         flattened = in_tensor.astype(bool).flatten()
         recursive_tile(flattened)
-        indices = arange(flattened.size, dtype=np.intp, chunks=flattened.nsplits)
+        indices = arange(flattened.size, dtype=np.intp, chunk_size=flattened.nsplits)
         indices = indices[flattened]
         dim_indices = unravel_index(indices, in_tensor.shape)
         [recursive_tile(ind) for ind in dim_indices]

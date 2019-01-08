@@ -36,7 +36,7 @@ from mars.tests.core import TestBase
 
 class Test(TestBase):
     def testChunkSerialize(self):
-        t = ones((10, 3), chunks=(5, 2)).tiles()
+        t = ones((10, 3), chunk_size=(5, 2)).tiles()
 
         # pb
         chunk = t.chunks[0]
@@ -66,7 +66,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
 
-        t = tensor(np.random.random((10, 3)), chunks=(5, 2)).tiles()
+        t = tensor(np.random.random((10, 3)), chunk_size=(5, 2)).tiles()
 
         # pb
         chunk = t.chunks[0]
@@ -96,7 +96,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertTrue(np.array_equal(chunk.op.data, chunk2.op.data))
 
-        t = (tensor(np.random.random((10, 3)), chunks=(5, 2)) + 1).tiles()
+        t = (tensor(np.random.random((10, 3)), chunk_size=(5, 2)) + 1).tiles()
 
         # pb
         chunk1 = t.chunks[0]
@@ -135,8 +135,8 @@ class Test(TestBase):
                          composed_chunk2.composed[0].inputs[0].key)
         self.assertEqual(composed_chunk.inputs[-1].key, composed_chunk2.inputs[-1].key)
 
-        t1 = ones((10, 3), chunks=2)
-        t2 = ones((3, 5), chunks=2)
+        t1 = ones((10, 3), chunk_size=2)
+        t2 = ones((3, 5), chunk_size=2)
         c = dot(t1, t2).tiles().chunks[0].inputs[0]
 
         # pb
@@ -152,17 +152,17 @@ class Test(TestBase):
     def testTensorSerialize(self):
         from mars.tensor import split
 
-        t = ones((10, 10, 8), chunks=(3, 3, 5))
+        t = ones((10, 10, 8), chunk_size=(3, 3, 5))
 
         serials = self._pb_serial(t)
         dt = self._pb_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunks, (3, 3, 5))
+        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
 
         serials = self._json_serial(t)
         dt = self._json_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunks, (3, 3, 5))
+        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
 
         t2, _ = split(t, 2)
 
@@ -170,7 +170,7 @@ class Test(TestBase):
         dt = self._pb_deserial(serials)[t2.data]
         self.assertEqual(dt.op.indices_or_sections, 2)
 
-        t2, _, _ = split(t, ones(2, chunks=2))
+        t2, _, _ = split(t, ones(2, chunk_size=2))
 
         serials = self._pb_serial(t2)
         dt = self._pb_deserial(serials)[t2.data]
@@ -178,28 +178,28 @@ class Test(TestBase):
             self.assertIn(dt.op.indices_or_sections, dt.inputs)
 
     def testOnes(self):
-        tensor = ones((10, 10, 8), chunks=(3, 3, 5))
+        tensor = ones((10, 10, 8), chunk_size=(3, 3, 5))
         tensor.tiles()
         self.assertEqual(tensor.shape, (10, 10, 8))
         self.assertEqual(len(tensor.chunks), 32)
 
-        tensor = ones((10, 3), chunks=(4, 2))
+        tensor = ones((10, 3), chunk_size=(4, 2))
         tensor.tiles()
         self.assertEqual(tensor.shape, (10, 3))
 
         chunk = tensor.cix[1, 1]
         self.assertEqual(tensor.get_chunk_slices(chunk.index), (slice(4, 8), slice(2, 3)))
 
-        tensor = ones((10, 5), chunks=(2, 3), gpu=True)
+        tensor = ones((10, 5), chunk_size=(2, 3), gpu=True)
         tensor.tiles()
 
         self.assertTrue(tensor.op.gpu)
         self.assertTrue(tensor.chunks[0].op.gpu)
 
-        tensor1 = ones((10, 10, 8), chunks=(3, 3, 5))
+        tensor1 = ones((10, 10, 8), chunk_size=(3, 3, 5))
         tensor1.tiles()
 
-        tensor2 = ones((10, 10, 8), chunks=(3, 3, 5))
+        tensor2 = ones((10, 10, 8), chunk_size=(3, 3, 5))
         tensor2.tiles()
 
         self.assertEqual(tensor1.chunks[0].op.key, tensor2.chunks[0].op.key)
@@ -214,18 +214,18 @@ class Test(TestBase):
         from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
 
         data = np.random.random((10, 3))
-        t = tensor(data, chunks=2)
+        t = tensor(data, chunk_size=2)
         t.tiles()
         self.assertTrue((t.chunks[0].op.data == data[:2, :2]).all())
         self.assertTrue((t.chunks[1].op.data == data[:2, 2:3]).all())
         self.assertTrue((t.chunks[2].op.data == data[2:4, :2]).all())
         self.assertTrue((t.chunks[3].op.data == data[2:4, 2:3]).all())
 
-        self.assertEqual(t.key, tensor(data, chunks=2).tiles().key)
-        self.assertNotEqual(t.key, tensor(data, chunks=3).tiles().key)
-        self.assertNotEqual(t.key, tensor(np.random.random((10, 3)), chunks=2).tiles().key)
+        self.assertEqual(t.key, tensor(data, chunk_size=2).tiles().key)
+        self.assertNotEqual(t.key, tensor(data, chunk_size=3).tiles().key)
+        self.assertNotEqual(t.key, tensor(np.random.random((10, 3)), chunk_size=2).tiles().key)
 
-        t = tensor(data, chunks=2, gpu=True)
+        t = tensor(data, chunk_size=2, gpu=True)
         t.tiles()
 
         self.assertTrue(t.op.gpu)
@@ -244,7 +244,7 @@ class Test(TestBase):
             full((2, 2), [1.0, 2.0, 3.0], dtype='f4')
 
     def testTensorGraphSerialize(self):
-        t = ones((10, 3), chunks=(5, 2)) + tensor(np.random.random((10, 3)), chunks=(5, 2))
+        t = ones((10, 3), chunk_size=(5, 2)) + tensor(np.random.random((10, 3)), chunk_size=(5, 2))
         graph = t.build_graph(tiled=False)
 
         pb = graph.to_pb()
@@ -268,7 +268,7 @@ class Test(TestBase):
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
 
     def testTensorGraphTiledSerialize(self):
-        t = ones((10, 3), chunks=(5, 2)) + tensor(np.random.random((10, 3)), chunks=(5, 2))
+        t = ones((10, 3), chunk_size=(5, 2)) + tensor(np.random.random((10, 3)), chunk_size=(5, 2))
         graph = t.build_graph(tiled=True)
 
         pb = graph.to_pb()
@@ -291,7 +291,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
 
-        t = ones((10, 3), chunks=(5, 2)) + 2
+        t = ones((10, 3), chunk_size=(5, 2)) + 2
         graph = t.build_graph(tiled=True)
 
         pb = graph.to_pb()
@@ -309,16 +309,16 @@ class Test(TestBase):
         self.assertEqual(sorted(i.key for i in chunk.composed), sorted(i.key for i in chunk2.composed))
 
     def testUfunc(self):
-        t = ones((3, 10), chunks=2)
+        t = ones((3, 10), chunk_size=2)
 
         x = np.add(t, [[1], [2], [3]])
         self.assertIsInstance(x, Tensor)
 
         y = np.sum(t, axis=1)
-        self.assertIsInstance(x, Tensor)
+        self.assertIsInstance(y, Tensor)
 
     def testArange(self):
-        t = arange(10, chunks=3)
+        t = arange(10, chunk_size=3)
         t.tiles()
 
         self.assertEqual(t.shape, (10,))
@@ -326,7 +326,7 @@ class Test(TestBase):
         self.assertEqual(t.chunks[1].op.start, 3)
         self.assertEqual(t.chunks[1].op.stop, 6)
 
-        t = arange(0, 10, 3, chunks=2)
+        t = arange(0, 10, 3, chunk_size=2)
         t.tiles()
 
         self.assertEqual(t.shape, (4,))
@@ -345,14 +345,14 @@ class Test(TestBase):
 
     def testDiag(self):
         # test 2-d, shape[0] == shape[1], k == 0
-        v = tensor(np.arange(16).reshape(4, 4), chunks=2)
+        v = tensor(np.arange(16).reshape(4, 4), chunk_size=2)
         t = diag(v)
 
         self.assertEqual(t.shape, (4,))
         t.tiles()
         self.assertEqual(t.nsplits, ((2, 2),))
 
-        v = tensor(np.arange(16).reshape(4, 4), chunks=(2, 3))
+        v = tensor(np.arange(16).reshape(4, 4), chunk_size=(2, 3))
         t = diag(v)
 
         self.assertEqual(t.shape, (4,))
@@ -360,7 +360,7 @@ class Test(TestBase):
         self.assertEqual(t.nsplits, ((2, 1, 1),))
 
         # test 1-d, k == 0
-        v = tensor(np.arange(3), chunks=2)
+        v = tensor(np.arange(3), chunk_size=2)
         t = diag(v, sparse=True)
 
         self.assertEqual(t.shape, (3, 3))
@@ -371,14 +371,14 @@ class Test(TestBase):
         self.assertTrue(t.chunks[0].op.sparse)
 
         # test 2-d, shape[0] != shape[1]
-        v = tensor(np.arange(24).reshape(4, 6), chunks=2)
+        v = tensor(np.arange(24).reshape(4, 6), chunk_size=2)
         t = diag(v)
 
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6)).shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
 
-        v = tensor(np.arange(24).reshape(4, 6), chunks=2)
+        v = tensor(np.arange(24).reshape(4, 6), chunk_size=2)
 
         t = diag(v, k=1)
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6), k=1).shape)
@@ -401,7 +401,7 @@ class Test(TestBase):
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
 
     def testLinspace(self):
-        a = linspace(2.0, 3.0, num=5, chunks=2)
+        a = linspace(2.0, 3.0, num=5, chunk_size=2)
 
         self.assertEqual(a.shape, (5,))
 
@@ -414,7 +414,7 @@ class Test(TestBase):
         self.assertEqual(a.chunks[2].op.start, 3.)
         self.assertEqual(a.chunks[2].op.stop, 3.)
 
-        a = linspace(2.0, 3.0, num=5, endpoint=False, chunks=2)
+        a = linspace(2.0, 3.0, num=5, endpoint=False, chunk_size=2)
 
         self.assertEqual(a.shape, (5,))
 
@@ -427,12 +427,12 @@ class Test(TestBase):
         self.assertEqual(a.chunks[2].op.start, 2.8)
         self.assertEqual(a.chunks[2].op.stop, 2.8)
 
-        _, step = linspace(2.0, 3.0, num=5, chunks=2, retstep=True)
+        _, step = linspace(2.0, 3.0, num=5, chunk_size=2, retstep=True)
         self.assertEqual(step, .25)
 
     def testTriuTril(self):
         a_data = np.arange(12).reshape(4, 3)
-        a = tensor(a_data, chunks=2)
+        a = tensor(a_data, chunk_size=2)
 
         t = triu(a)
         t.tiles()
@@ -499,8 +499,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[3].op, TensorZeros)
 
     def testSetTensorInputs(self):
-        t1 = tensor([1, 2], chunks=2)
-        t2 = tensor([2, 3], chunks=2)
+        t1 = tensor([1, 2], chunk_size=2)
+        t2 = tensor([2, 3], chunk_size=2)
         t3 = t1 + t2
 
         t1c = copy(t1)
@@ -517,8 +517,8 @@ class Test(TestBase):
         with self.assertRaises(ValueError):
             t3.inputs = []
 
-        t1 = tensor([1, 2], chunks=2)
-        t2 = tensor([True, False], chunks=2)
+        t1 = tensor([1, 2], chunk_size=2)
+        t2 = tensor([True, False], chunk_size=2)
         t3 = t1[t2]
 
         t1c = copy(t1)
@@ -531,7 +531,7 @@ class Test(TestBase):
             self.assertIs(t3c.op.indexes[0], t2c.data)
 
     def testFromSpmatrix(self):
-        t = tensor(sps.csr_matrix([[0, 0, 1], [1, 0, 0]], dtype='f8'), chunks=2)
+        t = tensor(sps.csr_matrix([[0, 0, 1], [1, 0, 0]], dtype='f8'), chunk_size=2)
 
         self.assertIsInstance(t, SparseTensor)
         self.assertIsInstance(t.op, CSRMatrixDataSource)
@@ -549,7 +549,7 @@ class Test(TestBase):
         self.assertTrue(np.array_equal(t.chunks[0].op.shape, m.shape))
 
     def testFromDense(self):
-        t = fromdense(tensor([[0, 0, 1], [1, 0, 0]], chunks=2))
+        t = fromdense(tensor([[0, 0, 1], [1, 0, 0]], chunk_size=2))
 
         self.assertIsInstance(t, SparseTensor)
         self.assertIsInstance(t.op, DenseToSparse)
@@ -560,7 +560,7 @@ class Test(TestBase):
         self.assertIsInstance(t.op, DenseToSparse)
 
     def testOnesLike(self):
-        t1 = tensor([[0, 0, 1], [1, 0, 0]], chunks=2).tosparse()
+        t1 = tensor([[0, 0, 1], [1, 0, 0]], chunk_size=2).tosparse()
         t = ones_like(t1, dtype='f8')
 
         self.assertIsInstance(t, SparseTensor)

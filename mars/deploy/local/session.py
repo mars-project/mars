@@ -19,6 +19,7 @@ import json
 import time
 
 from ...api import MarsAPI
+from ...compat import TimeoutError
 from ...graph import DirectedGraph
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
@@ -45,6 +46,7 @@ class LocalClusterSession(object):
 
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
+        fetch = kw.pop('fetch', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -73,12 +75,24 @@ class LocalClusterSession(object):
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
 
-        data_list = []
-        for target in targets:
-            resp = self._api.fetch_data(self._session_id, graph_key, target)
-            data_list.append(dataserializer.loads(resp))
+        if not fetch:
+            return
 
-        return data_list
+        futures = []
+        for target in targets:
+            future = self._api.fetch_data(self._session_id, graph_key, target, wait=False)
+            futures.append(future)
+
+        return [dataserializer.loads(f.result()) for f in futures]
+
+    def fetch(self, *tensors):
+        futures = []
+        for tensor in tensors:
+            key = tensor.key
+            graph_key = self._tensor_to_graph[key]
+            future = self._api.fetch_data(self._session_id, graph_key, key, wait=False)
+            futures.append(future)
+        return [dataserializer.loads(f.result()) for f in futures]
 
     def decref(self, *keys):
         for k in keys:

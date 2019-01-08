@@ -36,11 +36,11 @@ class TensorChoice(operands.Choice, TensorRandomOperandMixin):
         super(TensorChoice, self).__init__(_state=state, _size=size,
                                            _replace=replace, _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, a, p, chunks=None):
-        return self.new_tensor([a, p], None, raw_chunks=chunks)
+    def __call__(self, a, p, chunk_size=None):
+        return self.new_tensor([a, p], None, raw_chunk_size=chunk_size)
 
 
-def choice(random_state, a, size=None, replace=True, p=None, chunks=None, gpu=None, **kw):
+def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gpu=None):
     """
     Generates a random sample from a given 1-D array
 
@@ -59,7 +59,7 @@ def choice(random_state, a, size=None, replace=True, p=None, chunks=None, gpu=No
         The probabilities associated with each entry in a.
         If not given the sample assumes a uniform distribution over all
         entries in a.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -122,12 +122,12 @@ def choice(random_state, a, size=None, replace=True, p=None, chunks=None, gpu=No
     if isinstance(a, Integral):
         if a <= 0:
             raise ValueError('a must be greater than 0')
-        a = arange(a, chunks=chunks)
+        a = arange(a, chunk_size=chunk_size)
         dtype = np.random.choice(1, size=(), p=np.array([1]) if p is not None else p).dtype
     else:
         if not isinstance(a, TENSOR_TYPE):
             a = np.asarray(a)
-        a = array(a, chunks=a.size).rechunk(a.size)  # do rechunk if a is already a tensor
+        a = array(a, chunk_size=a.size).rechunk(a.size)  # do rechunk if a is already a tensor
         if a.ndim != 1:
             raise ValueError('a must be one dimensional')
         dtype = a.dtype
@@ -137,7 +137,7 @@ def choice(random_state, a, size=None, replace=True, p=None, chunks=None, gpu=No
             p = np.asarray(p)
             if not np.isclose(p.sum(), 1, rtol=1e-7, atol=0):
                 raise ValueError('probabilities do not sum to 1')
-            p = array(p, chunks=p.size)
+            p = array(p, chunk_size=p.size)
         else:
             p = p.rechunk(p.size)
         if p.ndim != 1:
@@ -156,5 +156,5 @@ def choice(random_state, a, size=None, replace=True, p=None, chunks=None, gpu=No
 
     size = random_state._handle_size(size)
     op = TensorChoice(state=random_state._state, replace=replace,
-                      size=size, dtype=dtype, gpu=gpu, **kw)
-    return op(a, p, chunks=chunks)
+                      size=size, dtype=dtype, gpu=gpu)
+    return op(a, p, chunk_size=chunk_size)

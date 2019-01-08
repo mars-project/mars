@@ -150,7 +150,8 @@ class TestBase(unittest.TestCase):
 
 
 class EtcdProcessHelper(object):
-
+    # from https://github.com/jplana/python-etcd/blob/master/src/etcd/tests/integration/helpers.py
+    # licensed under mit license
     def __init__(
             self,
             base_directory=None,
@@ -174,9 +175,25 @@ class EtcdProcessHelper(object):
         if tls:
             self.schema = 'https://'
 
-    def run(self, number=1, proc_args=[]):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        dirs = list(tp[0] for tp in self.processes.values())
+        self.stop()
+        for temp_dir in dirs:
+            try:
+                shutil.rmtree(temp_dir)
+            except OSError:
+                pass
+
+    def run(self, number=1, proc_args=None):
+        proc_args = proc_args or []
         if number > 1:
-            initial_cluster = ",".join([ "test-node-{}={}127.0.0.1:{}".format(slot, 'http://', self.internal_port_range_start + slot) for slot in range(0, number)])
+            initial_cluster = ",".join([
+                "test-node-{}={}127.0.0.1:{}".format(slot, 'http://', self.internal_port_range_start + slot)
+                for slot in range(0, number)
+            ])
             proc_args.extend([
                 '-initial-cluster', initial_cluster,
                 '-initial-cluster-state', 'new'
@@ -189,9 +206,9 @@ class EtcdProcessHelper(object):
 
         for i in range(0, number):
             self.add_one(i, proc_args)
+        return self
 
     def stop(self):
-        log = logging.getLogger()
         for key in [k for k in self.processes.keys()]:
             self.kill_one(key)
 
@@ -232,3 +249,11 @@ class EtcdProcessHelper(object):
         log.debug('Killed etcd pid:%d', process.pid)
         shutil.rmtree(data_dir)
         log.debug('Removed directory %s' % data_dir)
+
+
+def patch_method(method, *args, **kwargs):
+    if hasattr(method, '__qualname__'):
+        return mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
+    else:
+        return mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
+                          *args, **kwargs)

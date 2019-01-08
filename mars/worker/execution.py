@@ -318,7 +318,10 @@ class ExecutionActor(WorkerActor):
                     continue
 
                 # load data from another worker
-                worker_results = self._kv_store_ref.read('/sessions/%s/chunks/%s/workers' % (session_id, chunk.key))
+                worker_results = self.get_meta_ref(session_id, chunk.key) \
+                    .get_workers(session_id, chunk.key)
+                if worker_results is None:
+                    raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
 
                 worker_priorities = []
                 for w in worker_results.children:
@@ -578,3 +581,18 @@ class ExecutionActor(WorkerActor):
             cur_time = time.time()
             stages = dict((k, (cur_time - v[-1], v[0])) for k, v in self._graph_stages.items())
             logger.debug('Executing stages: %r', stages)
+
+    def handle_process_down(self, halt_refs):
+        """
+        Handle process down event
+        :param halt_refs: actor refs in halt processes
+        """
+        logger.debug('Process halt detected. Trying to reject affected promises %r.',
+                     [ref.uid for ref in halt_refs])
+        try:
+            raise WorkerProcessStopped
+        except WorkerProcessStopped:
+            exc_info = sys.exc_info()
+
+        for ref in halt_refs:
+            self.reject_promise_ref(ref, *exc_info)

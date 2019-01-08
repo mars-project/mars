@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% set active_page = 'scheduler_list' %}
+{% block custom_head %}
+    <script type="text/javascript">
+        $(function() {
+            function reloader() {
+                $.get(document.URL, function(txt) {
+                    $('#scheduler-list').replaceWith($(txt).find('#scheduler-list'));
+                }, 'text');
+                window.setTimeout(reloader, 10000);
+            }
+            window.setTimeout(reloader, 10000);
+        });
+    </script>
+{% endblock %}
+{% block body %}
+    <div id="scheduler-list" class="row">
+        <h2>Scheduler List</h2>
+        <table class="table sortable">
+            <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>CPU</th>
+                <th>Mem</th>
+                <th>Update Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            {%- if scheduler_metrics %}
+                {%- for endpoint in scheduler_metrics %}
+                    {% set metrics = scheduler_metrics[endpoint] %}
+                    <tr>
+                        <td><a href="/scheduler?endpoint={{ endpoint }}">{{ endpoint }}</a></td>
+                        <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
+                        <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
+                        <td>{{ scheduler_metrics[endpoint]['update_time'] | format_ts }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor -%}
+            {% else %}
+                <tr>
+                    <td colspan="8" style="font-style: italic; text-align: center">No schedulers attached.</td>
+                </tr>
+            {% endif -%}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

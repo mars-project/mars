@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2017 Alibaba Group Holding Ltd.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -304,13 +304,13 @@ class Rechunk(HasInput):
     _op_type_ = OperandDef.RECHUNK
 
     _input = KeyField('input')
-    _chunks = AnyField('chunks')
+    _chunk_size = AnyField('chunk_size')
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
     @property
-    def chunks(self):
-        return self._chunks
+    def chunk_size(self):
+        return self._chunk_size
 
     @property
     def threshold(self):

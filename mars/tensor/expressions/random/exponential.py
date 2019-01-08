@@ -29,11 +29,11 @@ class TensorExponential(operands.Exponential, TensorRandomOperandMixin):
         super(TensorExponential, self).__init__(_state=state, _size=size,
                                                 _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, scale, chunks=None):
-        return self.new_tensor([scale], self._size, raw_chunks=chunks)
+    def __call__(self, scale, chunk_size=None):
+        return self.new_tensor([scale], self._size, raw_chunk_size=chunk_size)
 
 
-def exponential(random_state, scale=1.0, size=None, chunks=None, gpu=None, **kw):
+def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from an exponential distribution.
 
@@ -60,10 +60,12 @@ def exponential(random_state, scale=1.0, size=None, chunks=None, gpu=None, **kw)
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``scale`` is a scalar.  Otherwise,
         ``np.array(scale).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -79,9 +81,9 @@ def exponential(random_state, scale=1.0, size=None, chunks=None, gpu=None, **kw)
     .. [3] Wikipedia, "Exponential distribution",
            http://en.wikipedia.org/wiki/Exponential_distribution
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().exponential(
+    if dtype is None:
+        dtype = np.random.RandomState().exponential(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorExponential(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(scale, chunks=chunks)
+    op = TensorExponential(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    return op(scale, chunk_size=chunk_size)

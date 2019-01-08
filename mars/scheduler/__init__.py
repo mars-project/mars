@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .graph import GraphActor
+from .chunkmeta import ChunkMetaActor
+from .graph import GraphActor, GraphMetaActor
 from .operand import OperandActor
 from .assigner import AssignerActor
 from .resource import ResourceActor
 from .session import SessionActor, SessionManagerActor
 from .kvstore import KVStoreActor
+from .utils import GraphState, OperandState

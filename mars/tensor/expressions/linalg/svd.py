@@ -57,12 +57,9 @@ class TensorSVD(operands.SVD, TSQR):
 
     @classmethod
     def tile(cls, op):
-        get_obj_attr = cls._get_obj_attr
         U, s, V = op.outputs
-        U_dtype, s_dtype, V_dtype = \
-            get_obj_attr(U, 'dtype'), get_obj_attr(s, 'dtype'), get_obj_attr(V, 'dtype')
-        U_shape, s_shape, V_shape = \
-            get_obj_attr(U, 'shape'), get_obj_attr(s, 'shape'), get_obj_attr(V, 'shape')
+        U_dtype, s_dtype, V_dtype = U.dtype, s.dtype, V.dtype
+        U_shape, s_shape, V_shape = U.shape, s.shape, V.shape
         in_tensor = op.input
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]

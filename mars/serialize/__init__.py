@@ -25,6 +25,6 @@ from .core import ValueType, Serializable, SerializableMetaclass, AttributeAsDic
 from .jsonserializer import JsonSerializeProvider
 try:
     from .pbserializer import ProtobufSerializeProvider
-except ImportError:
+except ImportError:  # pragma: no cover
     # ProtobufSerializeProvider used in distributed environment
     pass

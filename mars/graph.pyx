@@ -18,7 +18,8 @@ import logging
 from collections import deque
 
 from .compat import six, Enum
-from .serialize import Serializable, ValueType, ProviderType, \
+from .serialize import Serializable
+from .serialize.core cimport ValueType, ProviderType, \
     OneOfField, ListField, Int8Field
 
 logger = logging.getLogger(__name__)
@@ -225,7 +226,10 @@ cdef class DirectedGraph:
 
     def bfs(self, start=None, visit_predicate=None, successors=None, reverse=False):
         cdef:
+            object queue
+            object node
             set visited = set()
+            bint visit_all = False
 
         if reverse:
             pred_fun, succ_fun = self.successors, self.predecessors
@@ -244,6 +248,7 @@ cdef class DirectedGraph:
             return not preds or all(pred in visited for pred in preds)
 
         successors = successors or succ_fun
+        visit_all = (visit_predicate == 'all')
         visit_predicate = visit_predicate or _default_visit_predicate
 
         while queue:
@@ -251,7 +256,7 @@ cdef class DirectedGraph:
             if node in visited:
                 continue
             preds = pred_fun(node)
-            if visit_predicate(node, visited):
+            if visit_all or visit_predicate(node, visited):
                 yield node
                 visited.add(node)
                 queue.extend(n for n in successors(node) if n not in visited)
@@ -311,15 +316,15 @@ cdef class DirectedGraph:
             elif isinstance(node, TENSOR_TYPE):
                 node = node.data if isinstance(node, Tensor) else node
                 if level is None:
-                    level = SerialiableGraph.Level.TENSOR
+                    level = SerializableGraph.Level.TENSOR
                 for c in (node.chunks or ()):
                     add_obj(c)
                 add_obj(node)
             else:
                 raise TypeError('Unknown node type to serialize: {0}'.format(type(node)))
 
-        s_graph = SerialiableGraph(_nodes=nodes)
-        s_graph.level = level if level is not None else SerialiableGraph.Level.CHUNK
+        s_graph = SerializableGraph(_nodes=nodes)
+        s_graph.level = level if level is not None else SerializableGraph.Level.CHUNK
         return s_graph
 
     @classmethod
@@ -384,7 +389,7 @@ cdef class DirectedGraph:
         from .tensor.core import ChunkData, TensorData
 
         graph = cls()
-        node_type = TensorData if s_graph.level == SerialiableGraph.Level.TENSOR else ChunkData
+        node_type = TensorData if s_graph.level == SerializableGraph.Level.TENSOR else ChunkData
         for node in s_graph.nodes:
             if isinstance(node, node_type):
                 graph.add_node(node)
@@ -401,7 +406,7 @@ cdef class DirectedGraph:
     @classmethod
     def from_pb(cls, pb_obj):
         try:
-            return cls.deserialize(SerialiableGraph.from_pb(pb_obj))
+            return cls.deserialize(SerializableGraph.from_pb(pb_obj))
         except KeyError as e:
             logger.error('Failed to deserialize graph, graph_def: {0}'.format(pb_obj))
             raise
@@ -411,7 +416,7 @@ cdef class DirectedGraph:
 
     @classmethod
     def from_json(cls, json_obj):
-        return cls.deserialize(SerialiableGraph.from_json(json_obj))
+        return cls.deserialize(SerializableGraph.from_json(json_obj))
 
     def compose(self, list keys=None):
         from .fuse import Fusion
@@ -491,7 +496,7 @@ class SerializableGraphNode(Serializable):
         return getattr(self, '_node', None)
 
 
-class SerialiableGraph(Serializable):
+class SerializableGraph(Serializable):
     class Level(Enum):
         CHUNK = 0
         TENSOR = 1
@@ -506,11 +511,11 @@ class SerialiableGraph(Serializable):
 
             return GraphDef
 
-        return super(SerialiableGraph, cls).cls(provider)
+        return super(SerializableGraph, cls).cls(provider)
 
     @property
     def level(self):
-        return SerialiableGraph.Level(self._level)
+        return SerializableGraph.Level(self._level)
 
     @level.setter
     def level(self, level):

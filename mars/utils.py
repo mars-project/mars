@@ -26,6 +26,7 @@ import socket
 import struct
 import sys
 import time
+import zlib
 from hashlib import md5
 
 import numpy as np
@@ -138,6 +139,29 @@ def git_info():
 
 LOW_PORT_BOUND = 10000
 HIGH_PORT_BOUND = 65535
+_local_occupied_ports = set()
+
+
+def _get_ports_from_netstat():
+    import subprocess
+    p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
+    p.wait()
+    occupied = set()
+    for line in p.stdout:
+        line = to_str(line)
+        if '.' not in line:
+            continue
+        for part in line.split():
+            if '.' in part:
+                _, port_str = part.rsplit('.', 1)
+                if port_str == '*':
+                    continue
+                port = int(port_str)
+                if LOW_PORT_BOUND <= port <= HIGH_PORT_BOUND:
+                    occupied.add(int(port_str))
+                break
+    p.stdout.close()
+    return occupied
 
 
 def get_next_port(typ=None):
@@ -148,31 +172,16 @@ def get_next_port(typ=None):
         occupied = set(sc.laddr.port for sc in conns
                        if sc.type == typ and LOW_PORT_BOUND <= sc.laddr.port <= HIGH_PORT_BOUND)
     except psutil.AccessDenied:
-        import subprocess
-        p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
-        p.wait()
-        occupied = set()
-        for line in p.stdout:
-            line = to_str(line)
-            if '.' not in line:
-                continue
-            for part in line.split():
-                if '.' in part:
-                    _, port_str = part.rsplit('.', 1)
-                    if port_str == '*':
-                        continue
-                    port = int(port_str)
-                    if LOW_PORT_BOUND <= port <= HIGH_PORT_BOUND:
-                        occupied.add(int(port_str))
-                    break
-        p.stdout.close()
+        occupied = _get_ports_from_netstat()
 
+    occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
     for i in irange(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
         if i in occupied:
             continue
         if idx == 0:
+            _local_occupied_ports.add(i)
             return i
         idx -= 1
     raise SystemError('No ports available.')
@@ -191,20 +200,29 @@ class classproperty(object):
         return self.f(owner)
 
 
-def serialize_graph(graph):
-    return base64.b64encode(graph.to_pb().SerializeToString())
+def serialize_graph(graph, compress=False):
+    ser_graph = graph.to_pb().SerializeToString()
+    if compress:
+        ser_graph = zlib.compress(ser_graph)
+    return base64.b64encode(ser_graph)
 
 
-def deserialize_graph(graph_b64):
+def deserialize_graph(graph_b64, graph_cls=None):
     from .serialize.protos.graph_pb2 import GraphDef
     from .graph import DirectedGraph
+    graph_cls = graph_cls or DirectedGraph
     try:
         json_obj = json.loads(to_str(graph_b64))
-        return DirectedGraph.from_json(json_obj)
+        return graph_cls.from_json(json_obj)
     except (SyntaxError, ValueError):
         g = GraphDef()
-        g.ParseFromString(base64.b64decode(graph_b64))
-        return DirectedGraph.from_pb(g)
+        ser_graph = base64.b64decode(graph_b64)
+        try:
+            ser_graph = zlib.decompress(ser_graph)
+        except zlib.error:
+            pass
+        g.ParseFromString(ser_graph)
+        return graph_cls.from_pb(g)
 
 
 def merge_tensor_chunks(input_tensor, ctx):
@@ -245,13 +263,18 @@ def calc_data_size(dt):
         return dt.nbytes
 
 
-def log_unhandled(func):
-    frame_globals = inspect.currentframe().f_back.f_globals
+def _get_mod_logger():
     mod_logger = None
+    frame_globals = inspect.currentframe().f_back.f_globals
     for logger_name in ('logger', 'LOG', 'LOGGER'):
         if logger_name in frame_globals:
             mod_logger = frame_globals[logger_name]
             break
+    return mod_logger
+
+
+def log_unhandled(func):
+    mod_logger = _get_mod_logger()
     if not mod_logger:
         return func
 
@@ -262,9 +285,14 @@ def log_unhandled(func):
     def _wrapped(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except:
+        except:  # noqa: E722
             kwcopy = kwargs.copy()
             kwcopy.update(zip(func_args.args, args))
+            if getattr(func, '__closure__', None) is not None:
+                kwargs.update(zip(
+                    func.__code__.co_freevars + getattr(func.__code__, 'co_cellvars', ()),
+                    [getattr(c, 'cell_contents', None) for c in func.__closure__],
+                ))
 
             messages = []
             for k, v in kwcopy.items():

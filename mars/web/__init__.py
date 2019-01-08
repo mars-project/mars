@@ -17,7 +17,7 @@
 from .session import Session
 
 try:
-    from . import api, dashboard, worker_pages, task_pages
+    from . import api, dashboard, scheduler_pages, task_pages, worker_pages
     from .server import MarsWeb
-except ImportError:
+except ImportError:  # pragma: no cover
     MarsUI = None

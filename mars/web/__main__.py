@@ -17,11 +17,13 @@
 import gevent.monkey
 gevent.monkey.patch_all(thread=False)
 
-import logging
-import time
+import logging  # noqa: E402
+import random   # noqa: E402
+import time     # noqa: E402
 
-from ..base_app import BaseApplication
-from ..errors import StartArgumentError
+from ..base_app import BaseApplication   # noqa: E402
+from ..compat import six                 # noqa: E402
+from ..errors import StartArgumentError  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +36,6 @@ class WebApplication(BaseApplication):
 
     def config_args(self, parser):
         parser.add_argument('--ui-port', help='port of Mars UI')
-        parser.add_argument('-s', '--schedulers', help='endpoint of scheduler, when single scheduler '
-                            'and etcd is not available')
 
     def validate_arguments(self):
         if not self.args.schedulers and not self.args.kv_store:
@@ -57,6 +57,9 @@ class WebApplication(BaseApplication):
         else:
             ui_port = int(self.args.ui_port) if self.args.ui_port else None
             scheduler_ip = self.args.schedulers or None
+            if isinstance(scheduler_ip, six.string_types):
+                schedulers = scheduler_ip.split(',')
+                scheduler_ip = schedulers[random.randint(0, len(schedulers) - 1)]
             self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ip)
             self.mars_web.start()
 

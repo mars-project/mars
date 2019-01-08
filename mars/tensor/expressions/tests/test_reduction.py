@@ -31,67 +31,67 @@ class Test(unittest.TestCase):
         all = lambda x, *args, **kwargs: x.all(*args, **kwargs).tiles()
         any = lambda x, *args, **kwargs: x.any(*args, **kwargs).tiles()
 
-        for f in [sum, max, min, all, any]:
-            res = f(ones((8, 8), chunks=8))
+        for f in [sum, prod, max, min, all, any]:
+            res = f(ones((8, 8), chunk_size=8))
             self.assertEqual(res.shape, ())
 
-            res = f(ones((10, 8), chunks=3))
+            res = f(ones((10, 8), chunk_size=3))
             self.assertIsNotNone(res.dtype)
             self.assertEqual(res.shape, ())
 
-            res = f(ones((10, 8), chunks=3), axis=0)
+            res = f(ones((10, 8), chunk_size=3), axis=0)
             self.assertEqual(res.shape, (8,))
 
-            res = f(ones((10, 8), chunks=3), axis=1)
+            res = f(ones((10, 8), chunk_size=3), axis=1)
             self.assertEqual(res.shape, (10,))
 
-            res = f(ones((10, 8), chunks=3), keepdims=True)
+            res = f(ones((10, 8), chunk_size=3), keepdims=True)
             self.assertEqual(res.shape, (1, 1))
 
-            res = f(ones((10, 8), chunks=3), axis=0, keepdims=True)
+            res = f(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
             self.assertEqual(res.shape, (1, 8))
 
-            res = f(ones((10, 8), chunks=3), axis=1, keepdims=True)
+            res = f(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
             self.assertEqual(res.shape, (10, 1))
 
-            res = f(ones((10, 8, 10), chunks=3), axis=1)
+            res = f(ones((10, 8, 10), chunk_size=3), axis=1)
             self.assertEqual(res.shape, (10, 10))
 
-            res = f(ones((10, 8, 10), chunks=3), axis=1, keepdims=True)
+            res = f(ones((10, 8, 10), chunk_size=3), axis=1, keepdims=True)
             self.assertEqual(res.shape, (10, 1, 10))
 
-            res = f(ones((10, 8, 10), chunks=3), axis=(0, 2))
+            res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2))
             self.assertEqual(res.shape, (8,))
 
-            res = f(ones((10, 8, 10), chunks=3), axis=(0, 2), keepdims=True)
+            res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2), keepdims=True)
             self.assertEqual(res.shape, (1, 8, 1))
 
     def testMeanReduction(self):
         mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs).tiles()
 
-        res = mean(ones((10, 8), chunks=3))
+        res = mean(ones((10, 8), chunk_size=3))
         self.assertEqual(res.shape, ())
         self.assertIsNotNone(res.dtype)
         self.assertIsInstance(res.chunks[0].op, Mean)
         self.assertIsInstance(res.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, MeanCombine)
 
-        res = mean(ones((8, 8), chunks=8))
+        res = mean(ones((8, 8), chunk_size=8))
         self.assertEqual(res.shape, ())
 
-        res = mean(ones((10, 8), chunks=3), axis=0)
+        res = mean(ones((10, 8), chunk_size=3), axis=0)
         self.assertEqual(res.shape, (8,))
 
-        res = mean(ones((10, 8), chunks=3), axis=1)
+        res = mean(ones((10, 8), chunk_size=3), axis=1)
         self.assertEqual(res.shape, (10,))
 
-        res = mean(ones((10, 8), chunks=3), keepdims=True)
+        res = mean(ones((10, 8), chunk_size=3), keepdims=True)
         self.assertEqual(res.shape, (1, 1))
 
-        res = mean(ones((10, 8), chunks=3), axis=0, keepdims=True)
+        res = mean(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
         self.assertEqual(res.shape, (1, 8))
 
-        res = mean(ones((10, 8), chunks=3), axis=1, keepdims=True)
+        res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res.shape, (10, 1))
         self.assertIsInstance(res.chunks[0].op, Mean)
         self.assertIsInstance(res.chunks[0].inputs[0].op, Concatenate)
@@ -101,8 +101,8 @@ class Test(unittest.TestCase):
         argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs).tiles()
         argmin = lambda x, *args, **kwargs: x.argmin(*args, **kwargs).tiles()
 
-        res1 = argmax(ones((10, 8, 10), chunks=3))
-        res2 = argmin(ones((10, 8, 10), chunks=3))
+        res1 = argmax(ones((10, 8, 10), chunk_size=3))
+        res2 = argmin(ones((10, 8, 10), chunk_size=3))
         self.assertEqual(res1.shape, ())
         self.assertIsNotNone(res1.dtype)
         self.assertEqual(res2.shape, ())
@@ -113,8 +113,8 @@ class Test(unittest.TestCase):
         self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxCombine)
         self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminCombine)
 
-        res1 = argmax(ones((10, 8), chunks=3), axis=1, keepdims=True)
-        res2 = argmin(ones((10, 8), chunks=3), axis=1, keepdims=True)
+        res1 = argmax(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
+        res2 = argmin(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res1.shape, (10, 1))
         self.assertEqual(res2.shape, (10, 1))
         self.assertIsInstance(res1.chunks[0].op, Argmax)
@@ -124,22 +124,22 @@ class Test(unittest.TestCase):
         self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxChunk)
         self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminChunk)
 
-        self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunks=3), axis=(0, 1)))
-        self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunks=3), axis=(0, 1)))
+        self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
+        self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
 
     def testCumReduction(self):
         cumsum = lambda x, *args, **kwargs: x.cumsum(*args, **kwargs).tiles()
         cumprod = lambda x, *args, **kwargs: x.cumprod(*args, **kwargs).tiles()
 
-        res1 = cumsum(ones((10, 8), chunks=3), axis=0)
-        res2 = cumprod(ones((10, 8), chunks=3), axis=0)
+        res1 = cumsum(ones((10, 8), chunk_size=3), axis=0)
+        res2 = cumprod(ones((10, 8), chunk_size=3), axis=0)
         self.assertEqual(res1.shape, (10, 8))
         self.assertIsNotNone(res1.dtype)
         self.assertEqual(res2.shape, (10, 8))
         self.assertIsNotNone(res2.dtype)
 
-        res1 = cumsum(ones((10, 8, 8), chunks=3), axis=1)
-        res2 = cumprod(ones((10, 8, 8), chunks=3), axis=1)
+        res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=1)
+        res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=1)
         self.assertEqual(res1.shape, (10, 8, 8))
         self.assertEqual(res2.shape, (10, 8, 8))
 
@@ -152,9 +152,9 @@ class Test(unittest.TestCase):
     def testVarReduction(self):
         var = lambda x, *args, **kwargs: x.var(*args, **kwargs).tiles()
 
-        res1 = var(ones((10, 8), chunks=3), ddof=2)
+        res1 = var(ones((10, 8), chunk_size=3), ddof=2)
         self.assertEqual(res1.shape, ())
         self.assertEqual(res1.op.ddof, 2)
 
-        res1 = var(ones((10, 8, 8), chunks=3), axis=1)
+        res1 = var(ones((10, 8, 8), chunk_size=3), axis=1)
         self.assertEqual(res1.shape, (10, 8))

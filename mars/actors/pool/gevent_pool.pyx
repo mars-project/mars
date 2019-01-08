@@ -36,7 +36,7 @@ from gevent._tblib import _init as gevent_init_tblib
 from gevent.threadpool import ThreadPool as GThreadPool
 
 from ...lib import gipc
-from ...compat import six, OrderedDict, BrokenPipeError
+from ...compat import six, OrderedDict, BrokenPipeError, ConnectionRefusedError
 from ..errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from ..distributor cimport Distributor
 from ..core cimport ActorRef, Actor
@@ -135,6 +135,10 @@ cdef class ActorContext:
     @property
     def index(self):
         return self._comm.index
+
+    @property
+    def distributor(self):
+        return self._comm.distributor
 
     def create_actor(self, actor_cls, *args, **kwargs):
         cdef bint wait
@@ -372,7 +376,15 @@ class Connections(object):
                 # create a new connection
                 lock = gevent.lock.Semaphore()
                 lock.acquire()
-                conn = gevent.socket.create_connection(self.address)
+                try:
+                    conn = gevent.socket.create_connection(self.address)
+                except ConnectionRefusedError:
+                    raise
+                except socket.error as exc:
+                    if exc.errno == errno.ECONNREFUSED:
+                        raise ConnectionRefusedError
+                    else:
+                        raise
 
                 self.conn_locks[conn.fileno()] = (conn, lock)
                 return self._connect(conn, lock)
@@ -452,7 +464,9 @@ cdef class ActorRemoteHelper:
             except socket.error as exc:
                 if exc.errno == errno.EPIPE:
                     self._connections[address].got_broken_pipe(sock.fileno())
-                raise
+                    raise BrokenPipeError
+                else:
+                    raise
 
     def create_actor(self, str address, object uid, object actor_cls, *args, **kwargs):
         cdef bint wait
@@ -594,11 +608,11 @@ cdef class Communicator(AsyncHandler):
     """
 
     cdef public int index
+    cdef public Distributor distributor
 
     cdef object pool
     cdef ClusterInfo cluster_info
     cdef object pipe
-    cdef Distributor distributor
     cdef object remote_handler
     cdef object running
     cdef dict _handlers
@@ -1057,18 +1071,22 @@ cdef class Dispatcher(AsyncHandler):
 
     cdef ClusterInfo cluster_info
     cdef int index
-    cdef object pipes
+    cdef list pipes
+    cdef list pipe_checkers
     cdef object distributor  # has to be object, not Distributor
     cdef object remote_handler
+    cdef object checker_group
     cdef dict handlers
 
-    def __init__(self, ClusterInfo cluster_info, pipes, Distributor distributor=None, parallel=None):
+    def __init__(self, ClusterInfo cluster_info, list pipes, Distributor distributor=None, parallel=None):
         super(Dispatcher, self).__init__()
         AsyncHandler.__init__(self)
 
         self.cluster_info = cluster_info
         self.index = -1
-        self.pipes = pipes
+        self.pipes = pipes  # type: list
+        self.pipe_checkers = []
+        self.checker_group = None
         if distributor is None:
             self.distributor = Distributor(self.cluster_info.n_process)
         else:
@@ -1298,20 +1316,36 @@ cdef class Dispatcher(AsyncHandler):
         message_type = unpack_message_type_value(binary)
         return self.handlers[message_type](binary)
 
+    def replace_pipe(self, idx):
+        new_gl = gevent.spawn(self._check_pipe, self.pipes[idx])
+        self.checker_group.start(new_gl)
+        self.checker_group.discard(self.pipe_checkers[idx])
+        self.pipe_checkers[idx] = new_gl
+
     def _check_pipe(self, pipe):
         cdef bytes message
-
         while True:
             try:
                 message = pipe.get()
             except EOFError:
                 # broken pipe
                 return
-            gevent.spawn(self.on_receive, message)
+            try:
+                gevent.spawn(self.on_receive, message)
+            except BrokenPipeError:
+                return
 
     def run(self):
-        gevent.joinall([gevent.spawn(self._check_pipe, pipe)
-                        for pipe in self.pipes])
+        while True:
+            self.checker_group = gevent.pool.Group()
+            for pipe in self.pipes:
+                gl = gevent.spawn(self._check_pipe, pipe)
+                self.pipe_checkers.append(gl)
+                self.checker_group.start(gl)
+            self.checker_group.join()
+            gevent.sleep(0.05)
+            if all(p is None for p in self.pipes):
+                break
 
 
 cdef class ActorServerHandler:
@@ -1402,6 +1436,18 @@ def start_local_pool(int index, ClusterInfo cluster_info,
         return comm
 
 
+def close_pipe(p):
+    if p is None:
+        return
+    for _ in range(3):
+        try:
+            p.close()
+        except gipc.GIPCClosed:
+            break
+        except gipc.GIPCLocked:
+            continue
+
+
 cdef class ActorPool:
     """
     1) If only 1 process, start local pool
@@ -1410,7 +1456,7 @@ cdef class ActorPool:
 
     cdef public ClusterInfo cluster_info
     cdef public object _dispatcher
-    cdef Distributor distributor
+    cpdef public Distributor distributor
     cdef bint _started
     cdef object _stopped
     cdef bint _multi_process
@@ -1418,6 +1464,8 @@ cdef class ActorPool:
     cdef object _parallel
     cdef list _stop_funcs
     cdef list _processes
+    cdef list _comm_pipes
+    cdef list _pool_pipes
 
     def __init__(self, ClusterInfo cluster_info, Distributor distributor=None, parallel=None):
         self.cluster_info = cluster_info
@@ -1431,6 +1479,8 @@ cdef class ActorPool:
         self._parallel = parallel
         self._stop_funcs = []
         self._processes = []
+        self._comm_pipes = []
+        self._pool_pipes = []
 
     cdef void _check_started(self):
         if not self._started:
@@ -1488,6 +1538,21 @@ cdef class ActorPool:
     def processes(self):
         return self._processes
 
+    cpdef tuple _start_process(self, idx):
+        comm_pipe, pool_pipe = gipc.pipe(True, encoder=_inaction_encoder, decoder=_inaction_decoder)
+        p = gipc.start_process(start_local_pool,
+                               args=(idx, self.cluster_info, comm_pipe, self.distributor),
+                               kwargs={'parallel': self._parallel, 'join': True}, daemon=True)
+        return p, comm_pipe, pool_pipe
+
+    cpdef restart_process(self, int idx):
+        if self._processes[idx].is_alive():
+            self._processes[idx].terminate()
+        close_pipe(self._comm_pipes[idx])
+        close_pipe(self._pool_pipes[idx])
+        self._processes[idx], self._comm_pipes[idx], self._pool_pipes[idx] = self._start_process(idx)
+        self._dispatcher.replace_pipe(idx)
+
     def run(self):
         if self._started:
             return
@@ -1497,37 +1562,24 @@ cdef class ActorPool:
             self._dispatcher = start_local_pool(0, self.cluster_info, distributor=self.distributor,
                                                 parallel=self._parallel)
         else:
-            comm_pipes, pool_pipes = tuple(zip(
-                *[gipc.pipe(True, encoder=_inaction_encoder, decoder=_inaction_decoder)
-                  for _ in range(self.cluster_info.n_process)]))
-
-            for i in range(self.cluster_info.n_process):
-                p = gipc.start_process(start_local_pool,
-                                       args=(i, self.cluster_info, comm_pipes[i], self.distributor),
-                                       kwargs={'parallel': self._parallel, 'join': True}, daemon=True)
-                self._processes.append(p)
+            self._processes, self._comm_pipes, self._pool_pipes = [list(tp) for tp in zip(
+                *(self._start_process(idx) for idx in range(self.cluster_info.n_process))
+            )]
 
             def stop_func():
-                def close_pipe(p):
-                    for _ in range(3):
-                        try:
-                            p.close()
-                        except gipc.GIPCClosed:
-                            break
-                        except gipc.GIPCLocked:
-                            continue
-
                 for process in self._processes:
                     process.terminate()
-                for p in comm_pipes:
+                for idx, p in enumerate(self._comm_pipes):
                     close_pipe(p)
-                for p in pool_pipes:
+                    self._comm_pipes[idx] = None
+                for idx, p in enumerate(self._pool_pipes):
                     close_pipe(p)
+                    self._pool_pipes[idx] = None
 
             self._stop_funcs.append(stop_func)
 
             # start dispatcher
-            self._dispatcher = Dispatcher(self.cluster_info, pool_pipes,
+            self._dispatcher = Dispatcher(self.cluster_info, self._pool_pipes,
                                           self.distributor)
             gevent.spawn(self._dispatcher.run)
 

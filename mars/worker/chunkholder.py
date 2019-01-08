@@ -220,7 +220,7 @@ class ChunkHolderActor(WorkerActor):
 
     @log_unhandled
     def unregister_chunk(self, session_id, chunk_key):
-        _ = session_id
+        _ = session_id  # noqa: F841
 
         spill_ref = self._get_spill_actor_ref(chunk_key)
         if spill_ref:
@@ -230,8 +230,10 @@ class ChunkHolderActor(WorkerActor):
             del self._cache_chunk_sessions[chunk_key]
 
         if chunk_key in self._chunk_holder:
-            self._total_hold -= self._chunk_holder[chunk_key].size
+            data_size = self._chunk_holder[chunk_key].size
+            self._total_hold -= data_size
             del self._chunk_holder[chunk_key]
+            self._chunk_store.evict(data_size)
 
         logger.debug('Chunk %s unregistered in %s. total_hold=%d', chunk_key, self.uid, self._total_hold)
 

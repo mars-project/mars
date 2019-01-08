@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import threading
-import logging
 import functools
+import logging
+import random
+import threading
+import os
 from collections import defaultdict
 
 from bokeh.application import Application
@@ -39,8 +40,8 @@ def get_jinja_env():
     from ..utils import readable_size
 
     _jinja_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
-        )
+        loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
+    )
 
     def format_ts(value):
         if value is None:
@@ -73,9 +74,13 @@ class MarsWebAPI(MarsAPI):
     def __init__(self, scheduler_ip):
         super(MarsWebAPI, self).__init__(scheduler_ip)
 
-    def get_tasks_info(self):
+    def get_tasks_info(self, select_session_id=None):
+        from ..scheduler import GraphState
+
         sessions = defaultdict(dict)
         for session_id, session_ref in six.iteritems(self.session_manager.get_sessions()):
+            if select_session_id and session_id != select_session_id:
+                continue
             session_desc = sessions[session_id]
             session_desc['id'] = session_id
             session_desc['name'] = session_id
@@ -84,10 +89,9 @@ class MarsWebAPI(MarsAPI):
             for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
                 task_desc = dict()
 
-                state = self.kv_store.read(
-                    '/sessions/%s/graph/%s/state' % (session_id, graph_key)).value
-                if state == 'PREPARING':
-                    task_desc['state'] = state.lower()
+                state = self.get_graph_state(session_id, graph_key)
+                if state == GraphState.PREPARING:
+                    task_desc['state'] = state.name.lower()
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
@@ -96,8 +100,8 @@ class MarsWebAPI(MarsAPI):
                 task_desc['state'] = graph_ref.get_state().value
                 start_time, end_time, graph_size = graph_ref.get_graph_info()
                 task_desc['start_time'] = start_time
-                task_desc['end_time'] = end_time or 'N/A'
-                task_desc['graph_size'] = graph_size or 'N/A'
+                task_desc['end_time'] = end_time
+                task_desc['graph_size'] = graph_size
 
                 session_desc['tasks'][graph_key] = task_desc
         return sessions
@@ -124,7 +128,8 @@ class MarsWeb(object):
     def port(self):
         return self._port
 
-    def start(self, event=None, block=False):
+    @staticmethod
+    def _configure_loop():
         try:
             ioloop.IOLoop.current()
         except RuntimeError:
@@ -134,21 +139,14 @@ class MarsWeb(object):
                 loop = None
                 try:
                     loop = ioloop.IOLoop.current()
-                except:
+                except:  # noqa: E722
                     pass
                 if loop is None:
                     raise
             else:
                 raise
 
-        if self._scheduler_ip is None:
-            kv_store = kvstore.get(options.kv_store)
-            try:
-                schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
-                self._scheduler_ip = schedulers[0]
-            except KeyError:
-                raise KeyError('No scheduler is available')
-
+    def _try_start_web_server(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
 
         handlers = dict()
@@ -176,12 +174,25 @@ class MarsWeb(object):
                 self._port = use_port
                 logger.info('Mars UI started at 0.0.0.0:%d', self._port)
                 break
-            except:
+            except OSError:
                 if self._port is not None:
                     raise
                 retrial -= 1
                 if retrial == 0:
                     raise
+
+    def start(self, event=None, block=False):
+        self._configure_loop()
+
+        if self._scheduler_ip is None:
+            kv_store = kvstore.get(options.kv_store)
+            try:
+                schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
+                self._scheduler_ip = random.choice(schedulers)
+            except KeyError:
+                raise KeyError('No scheduler is available')
+
+        self._try_start_web_server()
 
         if not block:
             self._server_thread = threading.Thread(target=self._server.io_loop.start)

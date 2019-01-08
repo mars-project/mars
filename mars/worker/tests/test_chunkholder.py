@@ -26,7 +26,7 @@ from mars import promise
 from mars.errors import StoreFull, SpillExhausted
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
-from mars.tests.core import mock
+from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.utils import WorkerActor
@@ -111,8 +111,6 @@ class CacheTestActor(WorkerActor):
 
 class Test(WorkerCase):
     def setUp(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
         options.worker.min_spill_size = 0
 
     def tearDown(self):
@@ -141,7 +139,7 @@ class Test(WorkerCase):
             finally:
                 pool.destroy_actor(cache_ref)
 
-    @mock.patch(SpillActor.__module__ + '.SpillActor.load')
+    @patch_method(SpillActor.load)
     def testEnsureTimeout(self, *_):
         from mars.errors import PromiseTimeout
 
@@ -149,7 +147,7 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
-            pool.create_actor(KVStoreActor, uid='KVStoreActor')
+            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
             pool.create_actor(SpillActor, uid=SpillActor.default_name())

@@ -29,11 +29,11 @@ class TensorBinomial(operands.Binomial, TensorRandomOperandMixin):
         super(TensorBinomial, self).__init__(_state=state, _size=size,
                                              _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, n, p, chunks=None):
-        return self.new_tensor([n, p], None, raw_chunks=chunks)
+    def __call__(self, n, p, chunk_size=None):
+        return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)
 
 
-def binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
+def binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a binomial distribution.
 
@@ -54,10 +54,12 @@ def binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
         ``m * n * k`` samples are drawn.  If size is ``None`` (default),
         a single value is returned if ``n`` and ``p`` are both scalars.
         Otherwise, ``mt.broadcast(n, p).size`` samples are drawn.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -121,9 +123,9 @@ def binomial(random_state, n, p, size=None, chunks=None, gpu=None, **kw):
     >>> (mt.sum(mt.random.binomial(9, 0.1, 20000) == 0)/20000.).execute()
     # answer = 0.38885, or 38%.
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().binomial(
+    if dtype is None:
+        dtype = np.random.RandomState().binomial(
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorBinomial(state=random_state._state, size=size, gpu=gpu, **kw)
-    return op(n, p, chunks=chunks)
+    op = TensorBinomial(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    return op(n, p, chunk_size=chunk_size)

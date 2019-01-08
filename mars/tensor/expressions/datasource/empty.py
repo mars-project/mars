@@ -49,7 +49,7 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
         super(TensorEmpty, self).__init__(_dtype=dtype, _gpu=gpu, **kw)
 
 
-def empty(shape, dtype=None, chunks=None, gpu=False):
+def empty(shape, dtype=None, chunk_size=None, gpu=False):
     """
     Return a new tensor of given shape and type, without initializing entries.
 
@@ -59,7 +59,7 @@ def empty(shape, dtype=None, chunks=None, gpu=False):
         Shape of the empty tensor
     dtype : data-type, optional
         Desired output data-type.
-    chunks : int or tuple of int or tuple of ints, optional
+    chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
@@ -94,7 +94,7 @@ def empty(shape, dtype=None, chunks=None, gpu=False):
            [  496041986,    19249760]])                     #random
     """
     op = TensorEmpty(dtype=dtype, gpu=gpu)
-    return op(shape, chunks=chunks)
+    return op(shape, chunk_size=chunk_size)
 
 
 class TensorEmptyLike(TensorEmptyBase, TensorLike):

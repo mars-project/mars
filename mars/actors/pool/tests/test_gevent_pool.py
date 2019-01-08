@@ -65,7 +65,7 @@ class DummyActor(Actor):
             raise ValueError('value < 0')
         self.value = value
 
-    def on_receive(self, message):
+    def on_receive(self, message):  # noqa: C901
         if message[0] == 'add':
             if not isinstance(message[1], six.integer_types):
                 raise TypeError('add number must be int')
@@ -395,6 +395,17 @@ class Test(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ref1.send(('create_async', (DummyActor, -2)))
 
+    def testProcessRestart(self):
+        with create_actor_pool(n_process=2, distributor=DummyDistributor(2),
+                               backend='gevent') as pool:
+            ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
+            ref2 = pool.create_actor(DummyActor, 2, uid='user-2')
+            self.assertEqual(ref1.send(('send', ref2, 'add', 3)), 5)
+            pool.processes[1].terminate()
+            pool.restart_process(1)
+            ref2 = pool.create_actor(DummyActor, 2, uid='user-2')
+            self.assertEqual(ref1.send(('send', ref2, 'add', 5)), 7)
+
     def testProcessSend(self):
         with create_actor_pool(n_process=2, distributor=DummyDistributor(2),
                                backend='gevent') as pool:
@@ -557,7 +568,7 @@ class Test(unittest.TestCase):
                 with create_actor_pool(address='127.0.0.1:12347', n_process=2, backend='gevent') as pool3:
                     addr3 = pool3.cluster_info.address
 
-                    _ = Connections(addr3)
+                    conns3 = Connections(addr3)
 
                     ps = list()
                     ps.append(gevent.spawn(connections1.connect))
@@ -565,6 +576,8 @@ class Test(unittest.TestCase):
                     gevent.joinall(ps)
 
                     self.assertEqual(len(connections1.conn), 66)
+
+                    del conns3
 
     def testRemotePostCreatePreDestroy(self):
         with create_actor_pool(address=True, n_process=1, backend='gevent') as pool:
@@ -1500,9 +1513,8 @@ class Test(unittest.TestCase):
             pool.join(0.2)
             self.assertGreaterEqual(time.time() - start, 0.2)
 
-            gevent.spawn_later(0.2, lambda: pool.stop())
-
             start = time.time()
+            gevent.spawn_later(0.2, lambda: pool.stop())
             pool.join()
             self.assertGreaterEqual(time.time() - start, 0.2)
 

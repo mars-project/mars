@@ -26,7 +26,7 @@ from mars.operands.base import CopyTo
 
 class Test(unittest.TestCase):
     def testArray(self):
-        a = tensor([0, 1, 2], chunks=2)
+        a = tensor([0, 1, 2], chunk_size=2)
 
         b = array(a)
         self.assertIsNot(a, b)
@@ -35,14 +35,14 @@ class Test(unittest.TestCase):
         self.assertIs(a, c)
 
     def testCopyto(self):
-        a = ones((10, 20), chunks=3)
-        b = ones(10, chunks=4)
+        a = ones((10, 20), chunk_size=3)
+        b = ones(10, chunk_size=4)
 
         with self.assertRaises(ValueError):
             copyto(a, b)
 
         tp = type(a.op)
-        b = ones(20, chunks=4)
+        b = ones(20, chunk_size=4)
         copyto(a, b)
 
         self.assertIsInstance(a.op, CopyTo)
@@ -54,13 +54,13 @@ class Test(unittest.TestCase):
         self.assertIsInstance(a.chunks[0].op, CopyTo)
         self.assertEqual(len(a.chunks[0].inputs), 2)
 
-        a = ones((10, 20), chunks=3, dtype='i4')
-        b = ones(20, chunks=4, dtype='f8')
+        a = ones((10, 20), chunk_size=3, dtype='i4')
+        b = ones(20, chunk_size=4, dtype='f8')
 
         with self.assertRaises(TypeError):
             copyto(a, b)
 
-        b = ones(20, chunks=4, dtype='i4')
+        b = ones(20, chunk_size=4, dtype='i4')
         copyto(a, b, where=b>0)
 
         self.assertIsNotNone(a.op.where)
@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
             copyto(a, a, where=np.ones(30, dtype='?'))
 
     def testAstype(self):
-        arr = ones((10, 20, 30), chunks=3)
+        arr = ones((10, 20, 30), chunk_size=3)
 
         arr2 = arr.astype(np.int32)
         arr2.tiles()
@@ -87,7 +87,7 @@ class Test(unittest.TestCase):
             arr.astype(np.int32, casting='safe')
 
     def testTranspose(self):
-        arr = ones((10, 20, 30), chunks=[4, 3, 5])
+        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
 
         arr2 = transpose(arr)
         arr2.tiles()
@@ -125,7 +125,7 @@ class Test(unittest.TestCase):
         self.assertEqual(arr5.chunks[-1].shape, (5, 2, 2))
 
     def testSwapaxes(self):
-        arr = ones((10, 20, 30), chunks=[4, 3, 5])
+        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
         arr2 = arr.swapaxes(0, 1)
         arr2.tiles()
 
@@ -133,7 +133,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(arr.chunks), len(arr2.chunks))
 
     def testBroadcastTo(self):
-        arr = ones((10, 5), chunks=2)
+        arr = ones((10, 5), chunk_size=2)
         arr2 = broadcast_to(arr, (20, 10, 5))
         arr2.tiles()
 
@@ -141,7 +141,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(arr2.chunks), len(arr.chunks))
         self.assertEqual(arr2.chunks[0].shape, (20, 2, 2))
 
-        arr = ones((10, 5, 1), chunks=2)
+        arr = ones((10, 5, 1), chunk_size=2)
         arr3 = broadcast_to(arr, (5, 10, 5, 6))
         arr3.tiles()
 
@@ -150,7 +150,7 @@ class Test(unittest.TestCase):
         self.assertEqual(arr3.nsplits, ((5,), (2, 2, 2, 2, 2), (2, 2, 1), (6,)))
         self.assertEqual(arr3.chunks[0].shape, (5, 2, 2, 6))
 
-        arr = ones((10, 1), chunks=2)
+        arr = ones((10, 1), chunk_size=2)
         arr4 = broadcast_to(arr, (20, 10, 5))
         arr4.tiles()
 
@@ -165,9 +165,9 @@ class Test(unittest.TestCase):
             broadcast_to(arr, (5, 1))
 
     def testWhere(self):
-        cond = tensor([[True, False], [False, True]], chunks=1)
-        x = tensor([1, 2], chunks=1)
-        y = tensor([3, 4], chunks=1)
+        cond = tensor([[True, False], [False, True]], chunk_size=1)
+        x = tensor([1, 2], chunk_size=1)
+        y = tensor([3, 4], chunk_size=1)
 
         arr = where(cond, x, y)
         arr.tiles()
@@ -195,7 +195,7 @@ class Test(unittest.TestCase):
         self.assertEqual(y.dtype, np.float64)
 
     def testArgwhere(self):
-        cond = tensor([[True, False], [False, True]], chunks=1)
+        cond = tensor([[True, False], [False, True]], chunk_size=1)
         indices = argwhere(cond)
 
         self.assertTrue(np.isnan(indices.shape[0]))
@@ -206,7 +206,7 @@ class Test(unittest.TestCase):
         self.assertEqual(indices.nsplits[1], (1, 1))
 
     def testArraySplit(self):
-        a = arange(8, chunks=2)
+        a = arange(8, chunk_size=2)
 
         splits = array_split(a, 3)
         self.assertEqual(len(splits), 3)
@@ -217,7 +217,7 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[1].nsplits, ((1, 2),))
         self.assertEqual(splits[2].nsplits, ((2,),))
 
-        a = arange(7, chunks=2)
+        a = arange(7, chunk_size=2)
 
         splits = array_split(a, 3)
         self.assertEqual(len(splits), 3)
@@ -229,7 +229,7 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[2].nsplits, ((1, 1),))
 
     def testSplit(self):
-        a = arange(9, chunks=2)
+        a = arange(9, chunk_size=2)
 
         splits = split(a, 3)
         self.assertEqual(len(splits), 3)
@@ -240,7 +240,7 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[1].nsplits, ((1, 2),))
         self.assertEqual(splits[2].nsplits, ((2, 1),))
 
-        a = arange(8, chunks=2)
+        a = arange(8, chunk_size=2)
 
         splits = split(a, [3, 5, 6, 10])
         self.assertEqual(len(splits), 5)
@@ -275,7 +275,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t.shape, (1, 3))
 
     def testDigitize(self):
-        x = tensor(np.array([0.2, 6.4, 3.0, 1.6]), chunks=2)
+        x = tensor(np.array([0.2, 6.4, 3.0, 1.6]), chunk_size=2)
         bins = np.array([0.0, 1.0, 2.5, 4.0, 10.0])
         inds = digitize(x, bins)
         self.assertEqual(inds.shape, (4,))
@@ -295,7 +295,7 @@ class Test(unittest.TestCase):
         self.assertEqual(r, e)
 
     def testRepeat(self):
-        a = arange(10, chunks=2).reshape(2, 5)
+        a = arange(10, chunk_size=2).reshape(2, 5)
 
         t = repeat(a, 3)
         self.assertEqual(t.shape, (30,))
@@ -312,20 +312,20 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             repeat(a, [3, 4], axis=1)
 
-        a = tensor(np.random.randn(10), chunks=5)
+        a = tensor(np.random.randn(10), chunk_size=5)
 
         t = repeat(a, 3)
         t.tiles()
         self.assertEqual(sum(t.nsplits[0]), 30)
 
-        a = tensor(np.random.randn(100), chunks=10)
+        a = tensor(np.random.randn(100), chunk_size=10)
 
         t = repeat(a, 3)
         t.tiles()
         self.assertEqual(sum(t.nsplits[0]), 300)
 
     def testIsIn(self):
-        element = 2 * arange(4, chunks=1).reshape(2, 2)
+        element = 2 * arange(4, chunk_size=1).reshape(2, 2)
         test_elements = [1, 2, 4, 8]
 
         mask = isin(element, test_elements)
@@ -338,8 +338,8 @@ class Test(unittest.TestCase):
         self.assertEqual(len(mask.op.test_elements.chunks), 1)
         self.assertIs(mask.chunks[0].inputs[0], element.chunks[0].data)
 
-        element = 2 * arange(4, chunks=1).reshape(2, 2)
-        test_elements = tensor([1, 2, 4, 8], chunks=2)
+        element = 2 * arange(4, chunk_size=1).reshape(2, 2)
+        test_elements = tensor([1, 2, 4, 8], chunk_size=2)
 
         mask = isin(element, test_elements, invert=True)
         self.assertEqual(mask.shape, (2, 2))

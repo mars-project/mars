@@ -26,8 +26,8 @@ class TensorRand(operands.Rand, TensorRandomOperandMixin):
         super(TensorRand, self).__init__(_state=state, _size=size,
                                          _dtype=dtype, _gpu=gpu, **kw)
 
-    def __call__(self, chunks=None):
-        return self.new_tensor(None, None, raw_chunks=chunks)
+    def __call__(self, chunk_size=None):
+        return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
 def rand(random_state, *dn, **kw):
@@ -63,7 +63,7 @@ def rand(random_state, *dn, **kw):
     --------
     >>> import mars.tensor as mt
 
-    >>> mt.random.rand(3,2).execute()
+    >>> mt.random.rand(3, 2).execute()
     array([[ 0.14022471,  0.96360618],  #random
            [ 0.37601032,  0.25528411],  #random
            [ 0.49313049,  0.94909878]]) #random
@@ -72,6 +72,11 @@ def rand(random_state, *dn, **kw):
         raise TypeError("'tuple' object cannot be interpreted as an integer")
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
-    chunks = kw.pop('chunks', None)
+    chunk_size = kw.pop('chunk_size', None)
     op = TensorRand(state=random_state._state, size=dn, **kw)
-    return op(chunks=chunks)
+
+    for key in op.params:
+        if not key.startswith('_'):
+            raise ValueError('rand got unexpected key arguments {0}'.format(key))
+
+    return op(chunk_size=chunk_size)

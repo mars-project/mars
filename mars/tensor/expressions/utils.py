@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,20 +33,20 @@ def normalize_shape(shape):
         return shape,
 
 
-def normalize_chunks(shape, chunks):
+def normalize_chunk_sizes(shape, chunk_size):
     shape = normalize_shape(shape)
-    if not isinstance(chunks, tuple):
-        if isinstance(chunks, Iterable):
-            chunks = tuple(chunks)
-        elif isinstance(chunks, six.integer_types):
-            chunks = (chunks,) * len(shape)
+    if not isinstance(chunk_size, tuple):
+        if isinstance(chunk_size, Iterable):
+            chunk_size = tuple(chunk_size)
+        elif isinstance(chunk_size, six.integer_types):
+            chunk_size = (chunk_size,) * len(shape)
 
-    if len(shape) != len(chunks):
+    if len(shape) != len(chunk_size):
         raise ValueError('Chunks must have the same dimemsion, '
-                         'got shape: %s, chunks: %s' % (shape, chunks))
+                         'got shape: %s, chunks: %s' % (shape, chunk_size))
 
     chunk_sizes = []
-    for size, chunk in izip(shape, chunks):
+    for size, chunk in izip(shape, chunk_size):
         if isinstance(chunk, Iterable):
             if not isinstance(chunk, tuple):
                 chunk = tuple(chunk)
@@ -390,34 +390,34 @@ def recursive_tile(tensor):
     return tensor
 
 
-def decide_chunks(shape, chunks, itemsize):
+def decide_chunk_sizes(shape, chunk_size, itemsize):
     from ...config import options
 
-    if chunks is not None:
-        if isinstance(chunks, Iterable):
-            if not isinstance(chunks, dict):
-                chunks = {i: c for i, c in enumerate(chunks)}
-        elif isinstance(chunks, six.integer_types):
-            chunks = {i: chunks for i in range(len(shape))}
+    if chunk_size is not None:
+        if isinstance(chunk_size, Iterable):
+            if not isinstance(chunk_size, dict):
+                chunk_size = {i: c for i, c in enumerate(chunk_size)}
+        elif isinstance(chunk_size, six.integer_types):
+            chunk_size = {i: chunk_size for i in range(len(shape))}
         else:
-            raise TypeError('chunks must be iterable, got {0}'.format(type(chunks)))
+            raise TypeError('chunks must be iterable, got {0}'.format(type(chunk_size)))
 
-    if chunks is None:
-        chunks = dict()
+    if chunk_size is None:
+        chunk_size = dict()
 
-    nleft = len(shape) - len(chunks)
+    nleft = len(shape) - len(chunk_size)
 
     if nleft < 0:
         raise ValueError("chunks have more dimensions than input tensor")
 
     if nleft == 0:
-        return normalize_chunks(shape, tuple(chunks[j] for j in range(len(shape))))
+        return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
 
-    max_chunk_size = options.tensor.chunk_size_limit
+    max_chunk_size = options.tensor.chunk_store_limit
 
     # normalize the dimension which specified first
-    dim_to_normalized = {i: normalize_chunks((shape[i],), (c,))[0]
-                         for i, c in six.iteritems(chunks)}
+    dim_to_normalized = {i: normalize_chunk_sizes((shape[i],), (c,))[0]
+                         for i, c in six.iteritems(chunk_size)}
 
     left = {j: [] for j in range(len(shape)) if j not in dim_to_normalized}
     left_unsplit = {j: shape[j] for j in left}
@@ -436,4 +436,3 @@ def decide_chunks(shape, chunks, itemsize):
             break
 
     return tuple(dim_to_normalized[i] for i in range(len(dim_to_normalized)))
-

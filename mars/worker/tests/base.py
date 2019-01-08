@@ -12,11 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import os
+import sys
 import unittest
 
+import gevent.event
+
 from mars.config import options
+from mars.compat import six
 from mars.utils import classproperty
+from mars.worker.utils import WorkerActor
+
+
+class WorkerTestActor(WorkerActor):
+    def __init__(self):
+        super(WorkerTestActor, self).__init__()
+        self.test_obj = None
+
+    def set_test_object(self, test_obj):
+        self.test_obj = test_obj
+
+    def run_test(self):
+        yield self
+        v = yield
+        del v
+
+    def set_result(self, result, accept=True, destroy=True):
+        self.test_obj._result_store = (result, accept)
+        self.test_obj._result_event.set()
+        try:
+            if destroy:
+                self.ctx.destroy_actor(self.ref())
+        except:
+            pass
 
 
 class WorkerCase(unittest.TestCase):
@@ -52,3 +81,34 @@ class WorkerCase(unittest.TestCase):
                 shutil.rmtree(p)
         if os.path.exists(cls.plasma_socket):
             os.unlink(cls.plasma_socket)
+
+    def setUp(self):
+        super(WorkerCase, self).setUp()
+        self._test_pool = None
+        self._test_actor_ref = None
+        self._result_store = None
+        self._result_event = gevent.event.Event()
+
+    @contextlib.contextmanager
+    def run_actor_test(self, pool):
+        self._test_pool = pool
+        self._test_actor_ref = pool.create_actor(WorkerTestActor)
+        self._test_actor_ref.set_test_object(self)
+        gen = self._test_actor_ref.run_test()
+        try:
+            yield next(gen)
+        except:
+            self._result_store = (sys.exc_info(), False)
+            self._result_event.set()
+            raise
+        finally:
+            gen.send(None)
+
+    def get_result(self, timeout=None):
+        self._result_event.wait(timeout)
+        self._result_event.clear()
+        r, accept = self._result_store
+        if accept:
+            return r
+        else:
+            six.reraise(*r)

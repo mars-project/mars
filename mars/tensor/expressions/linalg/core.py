@@ -17,7 +17,7 @@
 import numpy as np
 
 from ....compat import izip
-from ..utils import decide_chunks
+from ..utils import decide_chunk_sizes
 from ..core import TensorOperandMixin
 
 
@@ -28,10 +28,6 @@ class TSQR(TensorOperandMixin):
     def _is_svd(cls):
         return False
 
-    @staticmethod
-    def _get_obj_attr(x, attr):
-        return getattr(x, attr) if x is not None else None
-
     @classmethod
     def tile(cls, op):
         from ..merge.concatenate import TensorConcatenate
@@ -41,7 +37,6 @@ class TSQR(TensorOperandMixin):
         from .svd import TensorSVD
 
         calc_svd = cls._is_svd()
-        get_obj_attr = cls._get_obj_attr
 
         a = op.input
 
@@ -49,8 +44,8 @@ class TSQR(TensorOperandMixin):
         q_dtype, r_dtype = tinyq.dtype, tinyr.dtype
 
         if a.chunk_shape[1] != 1:
-            new_chunks = decide_chunks(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
-            a = a.rechunk(new_chunks).single_tiles()
+            new_chunk_size = decide_chunk_sizes(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
+            a = a.rechunk(new_chunk_size).single_tiles()
 
         # stage 1, map phase
         stage1_q_chunks, stage1_r_chunks = stage1_chunks = [[], []]  # Q and R chunks
@@ -99,17 +94,15 @@ class TSQR(TensorOperandMixin):
             r_nsplits = ((stage2_r_chunk.shape[0],), (stage2_r_chunk.shape[1],))
             kws = [
                 # Q
-                {'chunks': stage3_q_chunks, 'nsplits': q_nsplits, 'dtype': get_obj_attr(q, 'dtype')},
+                {'chunks': stage3_q_chunks, 'nsplits': q_nsplits, 'dtype': q.dtype},
                 # R, calculate from stage2
-                {'chunks': [stage2_r_chunk], 'nsplits': r_nsplits, 'dtype': get_obj_attr(r, 'dtype')}
+                {'chunks': [stage2_r_chunk], 'nsplits': r_nsplits, 'dtype': r.dtype}
             ]
-            return new_op.new_tensors(op.inputs, [get_obj_attr(q, 'shape'), get_obj_attr(r, 'shape')], kws=kws)
+            return new_op.new_tensors(op.inputs, [q.shape, r.shape], kws=kws)
         else:
             U, s, V = op.outputs
-            U_dtype, s_dtype, V_dtype = \
-                get_obj_attr(U, 'dtype'), get_obj_attr(s, 'dtype'), get_obj_attr(V, 'dtype')
-            U_shape, s_shape, V_shape = \
-                get_obj_attr(U, 'shape'), get_obj_attr(s, 'shape'), get_obj_attr(V, 'shape')
+            U_dtype, s_dtype, V_dtype = U.dtype, s.dtype, V.dtype
+            U_shape, s_shape, V_shape = U.shape, s.shape, V.shape
 
             svd_op = TensorSVD()
             u_shape = stage2_r_chunk.shape

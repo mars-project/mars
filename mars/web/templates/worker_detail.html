@@ -162,8 +162,25 @@ Total: {{ worker_metrics['hardware']['disk_total'] | readable_size }}</pre></td>
             </tr>
             <tr>
                 <td>Update Time</td>
-                <td>{{ worker_metrics['update_time']}}</td>
+                <td>{{ worker_metrics['update_time'] | format_ts }}</td>
             </tr>
+            </tbody>
+        </table>
+        <div><h3>Slots</h3></div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for key, value in worker_metrics['slots'].items() %}
+                <tr>
+                    <td>{{ key }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+            {% endfor %}
             </tbody>
         </table>
         {% if worker_metrics['hardware']['disk_stats'] is defined %}

@@ -43,11 +43,13 @@ class _ClusterInfoWatchActor(FunctionActor):
         self._client = kvstore.get(service_discover_addr)
         self._cluster_info_ref = cluster_info_ref
 
-        if not isinstance(self._client, kvstore.EtcdKVStore):
-            raise ValueError('etcd_addr should be etcd address, got {0}'.format(service_discover_addr))
+        if isinstance(self._client, kvstore.LocalKVStore):
+            raise ValueError('etcd_addr should not be a local address, got {0}'.format(service_discover_addr))
 
     def _get_schedulers(self):
-        return [s.key.rsplit('/', 1)[1] for s in self._client.read(SCHEDULER_PATH).children]
+        schedulers = [s.key.rsplit('/', 1)[1] for s in self._client.read(SCHEDULER_PATH).children]
+        logger.debug('Schedulers obtained. Results: %r', schedulers)
+        return schedulers
 
     def get_schedulers(self):
         try:
@@ -75,7 +77,7 @@ class ClusterInfoActor(FunctionActor):
 
     @classmethod
     def default_name(cls):
-        return 's:' + cls.__name__
+        return cls.__name__
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
