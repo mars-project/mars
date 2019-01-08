@@ -98,6 +98,10 @@ def qr(a, method='tsqr'):
             IEEE International Conference on Big Data, 2013.
             http://arxiv.org/abs/1301.1071
 
+        FSQR is a QR decomposition for fat and short matrix:
+            A = [A1, A2, A3, ...], A1 may be decomposed as A1 = Q1 * R1,
+            for A = Q * R, Q = Q1, R = [R1, R2, R3, ...] where A2 = Q1 * R2, A3 = Q1 * R3, ...
+
     Returns
     -------
     q : Tensor of float or complex, optional
