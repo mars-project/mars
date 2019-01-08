@@ -20,10 +20,11 @@ from numpy.linalg import LinAlgError
 from .... import operands
 from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
+from ..core import TensorOperandMixin
 from .core import TSQR
 
 
-class TensorSVD(operands.SVD, TSQR):
+class TensorSVD(operands.SVD, TensorOperandMixin):
     def __init__(self, method=None, dtype=None, **kw):
         super(TensorSVD, self).__init__(_method=method, _dtype=dtype, **kw)
 
@@ -44,9 +45,17 @@ class TensorSVD(operands.SVD, TSQR):
 
         tiny_U, tiny_s, tiny_V = np.linalg.svd(np.ones((1, 1), dtype=a.dtype))
 
-        U_shape = a.shape
-        s_shape = (a.shape[1],)
-        V_shape = (a.shape[1],) * 2
+        # if a's shape is (6, 18), U's shape is (6, 6), s's shape is (6,), V's shape is (6, 18)
+        # if a's shape is (18, 6), U's shape is (18, 6), s's shape is (6,), V's shape is (6, 6)
+        x, y = a.shape
+        if x > y:
+            U_shape = (x, y)
+            s_shape = (y, )
+            V_shape = (y, y)
+        else:
+            U_shape = (x, x)
+            s_shape = (x, )
+            V_shape = (x, y)
         U, s, V = self.new_tensors([a], (U_shape, s_shape, V_shape),
                                    kws=[
                                        {'side': 'U', 'dtype': tiny_U.dtype},
@@ -83,7 +92,7 @@ class TensorSVD(operands.SVD, TSQR):
             ]
             return new_op.new_tensors(op.inputs, [U_shape, s_shape, V_shape], kws=kws)
         elif op.method == 'tsqr':
-            return super(TensorSVD, cls).tile(op)
+            return TSQR.tile(op)
         else:
             raise NotImplementedError('Only tsqr method supported for now')
 
