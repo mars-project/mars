@@ -20,10 +20,11 @@ from numpy.linalg import LinAlgError
 from .... import operands
 from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
-from .core import QRBase
+from ..core import TensorOperandMixin
+from .core import SFQR, TSQR
 
 
-class TensorQR(operands.QR, QRBase):
+class TensorQR(operands.QR, TensorOperandMixin):
     def __init__(self, method=None, dtype=None, **kw):
         super(TensorQR, self).__init__(_method=method, _dtype=dtype, **kw)
 
@@ -67,8 +68,12 @@ class TensorQR(operands.QR, QRBase):
                 {'chunks': [r_chunk], 'nsplits': ((1,), (1,)), 'dtype': r_dtype}
             ]
             return new_op.new_tensors(op.inputs, [q_shape, r_shape], kws=kws)
+        elif op.method == 'tsqr':
+            return TSQR.tile(op)
+        elif op.method == 'sfqr':
+            return SFQR.tile(op)
         else:
-            return super(TensorQR, cls).tile(op)
+            raise NotImplementedError('Only tsqr method supported for now')
 
 
 def qr(a, method='tsqr'):

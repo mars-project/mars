@@ -18,27 +18,13 @@ import numpy as np
 
 from ....compat import izip
 from ..utils import decide_chunk_sizes
-from ..core import TensorOperandMixin
 
 
-class QRBase(TensorOperandMixin):
+class SFQR(object):
     __slots__ = ()
 
     @classmethod
-    def _is_svd(cls):
-        return False
-
-    @classmethod
     def tile(cls, op):
-        if op.method == 'tsqr':
-            return cls.tsqr_tile(op)
-        elif op.method == 'sfqr':
-            return cls.sfqr_tile(op)
-        else:
-            raise NotImplementedError('Only tsqr and sfqr method supported for now')
-
-    @classmethod
-    def sfqr_tile(cls, op):
         """
         Short-and-Fat QR
 
@@ -82,22 +68,24 @@ class QRBase(TensorOperandMixin):
         q_nsplits = ((q_chunk.shape[0],), (q_chunk.shape[1],))
         r_nsplits = ((1,), (c.shape[1] for c in r_chunks))
         kws = [
-            # Q
             {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype},
-            # R, calculate from stage2
             {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype}
         ]
         return new_op.new_tensors(op.inputs, [q.shape, r.shape], kws=kws)
 
+
+class TSQR(object):
+    __slots__ = ()
+
     @classmethod
-    def tsqr_tile(cls, op):
+    def tile(cls, op):
         from ..merge.concatenate import TensorConcatenate
         from ..indexing.slice import TensorSlice
         from .dot import TensorDot
         from .qr import TensorQR
         from .svd import TensorSVD
 
-        calc_svd = cls._is_svd()
+        calc_svd = getattr(op, '_is_svd', lambda: None)() or False
 
         a = op.input
 

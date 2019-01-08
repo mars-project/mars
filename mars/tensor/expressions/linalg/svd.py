@@ -20,10 +20,11 @@ from numpy.linalg import LinAlgError
 from .... import operands
 from ...core import ExecutableTuple
 from ..datasource import tensor as astensor
-from .core import QRBase
+from ..core import TensorOperandMixin
+from .core import TSQR
 
 
-class TensorSVD(operands.SVD, QRBase):
+class TensorSVD(operands.SVD, TensorOperandMixin):
     def __init__(self, method=None, dtype=None, **kw):
         super(TensorSVD, self).__init__(_method=method, _dtype=dtype, **kw)
 
@@ -91,7 +92,7 @@ class TensorSVD(operands.SVD, QRBase):
             ]
             return new_op.new_tensors(op.inputs, [U_shape, s_shape, V_shape], kws=kws)
         elif op.method == 'tsqr':
-            return super(TensorSVD, cls).tile(op)
+            return TSQR.tile(op)
         else:
             raise NotImplementedError('Only tsqr method supported for now')
 
