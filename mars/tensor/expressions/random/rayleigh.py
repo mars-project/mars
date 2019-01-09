@@ -33,7 +33,7 @@ class TensorRayleigh(operands.Rayleigh, TensorRandomOperandMixin):
         return self.new_tensor([scale], None, raw_chunk_size=chunk_size)
 
 
-def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Rayleigh distribution.
 
@@ -53,6 +53,8 @@ def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, **kw
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -99,9 +101,9 @@ def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, **kw
     >>> (100.*mt.sum(s>3)/1000000.).execute()
     0.087300000000000003
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().rayleigh(
+    if dtype is None:
+        dtype = np.random.RandomState().rayleigh(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorRayleigh(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorRayleigh(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(scale, chunk_size=chunk_size)

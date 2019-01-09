@@ -33,7 +33,7 @@ class TensorVonmises(operands.Vonmises, TensorRandomOperandMixin):
         return self.new_tensor([mu, kappa], None, raw_chunk_size=chunk_size)
 
 
-def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, **kw):
+def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a von Mises distribution.
 
@@ -60,6 +60,8 @@ def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, **kw
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -114,10 +116,10 @@ def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, **kw
     >>> plt.plot(x.execute(), y.execute(), linewidth=2, color='r')
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().vonmises(
+    if dtype is None:
+        dtype = np.random.RandomState().vonmises(
             handle_array(mu), handle_array(kappa), size=(0,)).dtype
 
     size = random_state._handle_size(size)
-    op = TensorVonmises(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorVonmises(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(mu, kappa, chunk_size=chunk_size)

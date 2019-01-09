@@ -71,7 +71,7 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
                                   chunks=out_chunks, nsplits=nsplits)
 
 
-def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, **kw):
+def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from the Dirichlet distribution.
 
@@ -93,6 +93,8 @@ def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -145,8 +147,8 @@ def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, **kw):
         alpha = tuple(alpha)
     else:
         raise TypeError('`alpha` should be an array')
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
+    if dtype is None:
+        dtype = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorDirichlet(state=random_state._state, alpha=alpha, size=size, gpu=gpu, **kw)
+    op = TensorDirichlet(state=random_state._state, alpha=alpha, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

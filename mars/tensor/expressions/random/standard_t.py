@@ -33,7 +33,7 @@ class TensorStandardT(operands.StandardT, TensorRandomOperandMixin):
         return self.new_tensor([df], None, raw_chunk_size=chunk_size)
 
 
-def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, **kw):
+def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a standard Student's t distribution with `df` degrees
     of freedom.
@@ -55,6 +55,8 @@ def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -124,9 +126,9 @@ def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, **kw):
     So the p-value is about 0.009, which says the null hypothesis has a
     probability of about 99% of being true.
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().standard_t(
+    if dtype is None:
+        dtype = np.random.RandomState().standard_t(
             handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorStandardT(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorStandardT(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(df, chunk_size=chunk_size)

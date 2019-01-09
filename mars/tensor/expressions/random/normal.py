@@ -33,7 +33,7 @@ class TensorNormal(operands.Normal, TensorRandomOperandMixin):
         return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)
 
 
-def normal(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, **kw):
+def normal(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw random samples from a normal (Gaussian) distribution.
 
@@ -62,6 +62,8 @@ def normal(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=Non
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -125,9 +127,9 @@ def normal(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=Non
     ...          linewidth=2, color='r')
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().normal(
+    if dtype is None:
+        dtype = np.random.RandomState().normal(
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNormal(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorNormal(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(loc, scale, chunk_size=chunk_size)

@@ -32,7 +32,7 @@ class TensorStandardNormal(operands.StandardNormal, TensorRandomOperandMixin):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def standard_normal(random_state, size=None, chunk_size=None, gpu=None, **kw):
+def standard_normal(random_state, size=None, chunk_size=None, gpu=None, dtype=None):
     """
     Draw samples from a standard Normal distribution (mean=0, stdev=1).
 
@@ -46,6 +46,8 @@ def standard_normal(random_state, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -66,8 +68,8 @@ def standard_normal(random_state, size=None, chunk_size=None, gpu=None, **kw):
     >>> s.shape
     (3, 4, 2)
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().standard_normal(size=(0,)).dtype
+    if dtype is None:
+        dtype = np.random.RandomState().standard_normal(size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorStandardNormal(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorStandardNormal(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

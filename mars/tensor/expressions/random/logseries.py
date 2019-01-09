@@ -33,7 +33,7 @@ class TensorLogseries(operands.Logseries, TensorRandomOperandMixin):
         return self.new_tensor([p], None, raw_chunk_size=chunk_size)
 
 
-def logseries(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
+def logseries(random_state, p, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a logarithmic series distribution.
 
@@ -53,6 +53,8 @@ def logseries(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -111,9 +113,9 @@ def logseries(random_state, p, size=None, chunk_size=None, gpu=None, **kw):
     ...          logseries(bins, a).max()).execute(), 'r')
     >>> plt.show()
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().logseries(
+    if dtype is None:
+        dtype = np.random.RandomState().logseries(
             handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLogseries(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorLogseries(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(p, chunk_size=chunk_size)
