@@ -23,105 +23,15 @@ import threading
 
 import numpy as np
 
-from ..core import Entity, SerializableWithKey
+from ..core import Entity, SerializableWithKey, ChunkData
 from ..compat import builtins, reduce
 from ..graph import DAG
 from ..tiles import Tilesable, handler
 from ..serialize import ValueType, ProviderType, \
-    ListField, TupleField, DictField, DataTypeField, KeyField, BoolField
-from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape, tokenize
+    ListField, TupleField, DictField, DataTypeField, KeyField
+from ..core import Chunk
+from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
-
-
-class ChunkData(SerializableWithKey):
-    __slots__ = '__weakref__',
-
-    # required fields
-    _shape = TupleField('shape', ValueType.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _op = KeyField('op')  # store key of operand here
-    # optional fields
-    _dtype = DataTypeField('dtype')
-    _index = TupleField('index', ValueType.uint32)
-    _cached = BoolField('cached')
-    _composed = ListField('composed', ValueType.reference('self'))
-    _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
-
-    def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_params'] = kwargs.pop('_params', extras)
-        super(ChunkData, self).__init__(*args, **kwargs)
-
-    def __repr__(self):
-        return 'Chunk <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.chunk_pb2 import ChunkDef
-            return ChunkDef
-        return super(ChunkData, cls).cls(provider)
-
-    @property
-    def shape(self):
-        return getattr(self, '_shape', None)
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    @property
-    def index(self):
-        return getattr(self, '_index', None)
-
-    @property
-    def op(self):
-        try:
-            return self._op
-        except AttributeError:
-            return None
-
-    @property
-    def cached(self):
-        return getattr(self, '_cached', None)
-
-    @property
-    def inputs(self):
-        return self.op.inputs
-
-    @inputs.setter
-    def inputs(self, new_inputs):
-        self.op.inputs = new_inputs
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
-
-    @property
-    def nbytes(self):
-        return np.prod(self.shape) * self.dtype.itemsize
-
-    @property
-    def composed(self):
-        return getattr(self, '_composed', None)
-
-    @property
-    def device(self):
-        return self.op.device
-
-    def is_sparse(self):
-        return self.op.is_sparse()
-
-    issparse = is_sparse
-
-    def update_key(self):
-        object.__setattr__(self, '_key', tokenize(
-            type(self), *(getattr(self, k, None) for k in self.__slots__ if k != '_index')))
-
-
-class Chunk(Entity):
-    __slots__ = ()
-    _allow_data_type_ = (ChunkData,)
 
 
 class TensorData(SerializableWithKey, Tilesable):
