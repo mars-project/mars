@@ -23,13 +23,12 @@ import threading
 
 import numpy as np
 
-from ..core import Entity, SerializableWithKey, ChunkData
+from ..core import Entity, SerializableWithKey, ChunkData, Chunk
 from ..compat import builtins, reduce
 from ..graph import DAG
 from ..tiles import Tilesable, handler
 from ..serialize import ValueType, ProviderType, \
     ListField, TupleField, DictField, DataTypeField, KeyField
-from ..core import Chunk
 from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
