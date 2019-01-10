@@ -16,9 +16,10 @@ from .calc import CpuCalcActor
 from .chunkholder import ChunkHolderActor, ensure_chunk
 from .daemon import WorkerDaemonActor
 from .dispatcher import DispatchActor
-from .execution import ExecutionActor
+from .execution import ExecutionActor, ExecutionState
 from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
 from .spill import SpillActor
 from .status import StatusActor
+from .taskqueue import TaskQueueActor
 from .transfer import SenderActor, ReceiverActor

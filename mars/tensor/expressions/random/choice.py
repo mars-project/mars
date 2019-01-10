@@ -40,7 +40,7 @@ class TensorChoice(operands.Choice, TensorRandomOperandMixin):
         return self.new_tensor([a, p], None, raw_chunk_size=chunk_size)
 
 
-def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gpu=None, **kw):
+def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gpu=None):
     """
     Generates a random sample from a given 1-D array
 
@@ -156,5 +156,5 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
 
     size = random_state._handle_size(size)
     op = TensorChoice(state=random_state._state, replace=replace,
-                      size=size, dtype=dtype, gpu=gpu, **kw)
+                      size=size, dtype=dtype, gpu=gpu)
     return op(a, p, chunk_size=chunk_size)

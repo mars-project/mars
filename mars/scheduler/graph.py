@@ -29,7 +29,7 @@ from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
-from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks
+from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,8 @@ class GraphActor(SchedulerActor):
         self._op_key_to_chunk = defaultdict(list)
 
         self._resource_actor = None
-        self._tensor_to_tiled = defaultdict(list)
+        self._tensor_key_opid_to_tiled = defaultdict(list)
+        self._tensor_key_to_opid = dict()
         self._terminal_chunk_op_tensor = defaultdict(set)
         self._terminated_tensors = set()
         self._operand_infos = dict()
@@ -175,7 +176,7 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_name(self._session_id))
+        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
@@ -249,7 +250,7 @@ class GraphActor(SchedulerActor):
             _detect_cancel(self.stop_graph)
         except ExecutionInterrupted:
             pass
-        except:
+        except:  # noqa: E722
             logger.exception('Failed to start graph execution.')
             self.stop_graph()
             self.state = GraphState.FAILED
@@ -270,6 +271,7 @@ class GraphActor(SchedulerActor):
             self.state = GraphState.CANCELLED
             return
 
+        has_stopping = False
         for chunk in chunk_graph:
             if chunk.op.key not in self._operand_infos:
                 continue
@@ -279,7 +281,10 @@ class GraphActor(SchedulerActor):
                 op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
                 scheduler_addr = self.get_scheduler(op_uid)
                 ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
+                has_stopping = True
                 ref.stop_operand(_tell=True)
+        if not has_stopping:
+            self.state = GraphState.CANCELLED
 
     def reload_chunk_graph(self):
         """
@@ -328,24 +333,25 @@ class GraphActor(SchedulerActor):
 
         key_to_chunk = {c.key: c for c in chunk_graph}
 
-        tensor_to_tiled = self._tensor_to_tiled
+        tensor_key_opid_to_tiled = self._tensor_key_opid_to_tiled
 
         for t in tensor_graph:
-            if t.key not in tensor_to_tiled:
+            self._tensor_key_to_opid[t.key] = t.op.id
+            if (t.key, t.op.id) not in tensor_key_opid_to_tiled:
                 continue
-            t._chunks = [key_to_chunk[k] for k in [tensor_to_tiled[t.key][-1]]]
+            t._chunks = [key_to_chunk[k] for k in [tensor_key_opid_to_tiled[(t.key, t.op.id)][-1]]]
 
         tq = deque()
         for t in tensor_graph:
-            if t.inputs and not all(ti.key in tensor_to_tiled for ti in t.inputs):
+            if t.inputs and not all((ti.key, ti.op.id) in tensor_key_opid_to_tiled for ti in t.inputs):
                 continue
             tq.append(t)
 
         while tq:
             tensor = tq.popleft()
-            if not tensor.is_coarse() or tensor.key in tensor_to_tiled:
+            if not tensor.is_coarse() or (tensor.key, tensor.op.id) in tensor_key_opid_to_tiled:
                 continue
-            inputs = [tensor_to_tiled[it.key][-1] for it in tensor.inputs or ()]
+            inputs = [tensor_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tensor.inputs or ()]
 
             op = tensor.op.copy()
             _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],  # noqa: F841
@@ -366,7 +372,7 @@ class GraphActor(SchedulerActor):
                         total_tiled.append(td)
 
                 tiled = total_tiled[j]
-                tensor_to_tiled[t.key].append(tiled)
+                tensor_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
                 q = deque([tiled_c.data for tiled_c in tiled.chunks])
@@ -384,16 +390,18 @@ class GraphActor(SchedulerActor):
                             q.append(ic)
                         chunk_graph.add_edge(ic, c)
 
-                for succ in tensor_graph.iter_successors(t):
-                    if any(t.key not in tensor_to_tiled for t in succ.inputs):
+                for succ in tensor_graph.successors(t):
+                    if any((t.key, t.op.id) not in tensor_key_opid_to_tiled for t in succ.inputs):
                         continue
                     tq.append(succ)
 
         # record the chunk nodes in graph
         reserve_chunk = set()
         result_chunk_keys = list()
-        for tk in self._target_tensor_chunk_ops:
-            for n in [c.data for t in tensor_to_tiled[tk] for c in t.chunks]:
+        for tk, topid in tensor_key_opid_to_tiled:
+            if tk not in self._target_tensor_chunk_ops:
+                continue
+            for n in [c.data for t in tensor_key_opid_to_tiled[(tk, topid)] for c in t.chunks]:
                 result_chunk_keys.append(n.key)
                 dq_predecessors = deque([n])
                 while dq_predecessors:
@@ -410,10 +418,10 @@ class GraphActor(SchedulerActor):
         if compose:
             chunk_graph.compose(keys=result_chunk_keys)
 
-        for tk in tensor_to_tiled:
+        for tk, topid in tensor_key_opid_to_tiled:
             if tk not in self._target_tensor_chunk_ops:
                 continue
-            for n in tensor_to_tiled[tk][-1].chunks:
+            for n in tensor_key_opid_to_tiled[(tk, topid)][-1].chunks:
                 self._terminal_chunk_op_tensor[n.op.key].add(tk)
                 self._target_tensor_chunk_ops[tk].add(n.op.key)
 
@@ -705,6 +713,16 @@ class GraphActor(SchedulerActor):
     def get_operand_info(self):
         return self._operand_infos
 
+    @log_unhandled
+    def set_operand_worker(self, op_key, worker):
+        if worker:
+            self._operand_infos[op_key]['worker'] = worker
+        else:
+            try:
+                del self._operand_infos[op_key]['worker']
+            except KeyError:
+                pass
+
     def calc_stats(self):
         states = list(OperandState.__members__.values())
         state_mapping = OrderedDict((v, idx) for idx, v in enumerate(states))
@@ -738,9 +756,13 @@ class GraphActor(SchedulerActor):
                 transposed[state].append(data_src[op][sid])
         return ops, transposed, finished * 100.0 / total_count
 
+    def _get_tensor_by_key(self, key):
+        tid = self._tensor_key_to_opid[key]
+        return self._tensor_key_opid_to_tiled[(key, tid)][-1]
+
     def free_tensor_data(self, tensor_key):
         from .operand import OperandActor
-        tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
+        tiled_tensor = self._get_tensor_by_key(tensor_key)
         for chunk in tiled_tensor.chunks:
             op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
             scheduler_addr = self.get_scheduler(op_uid)
@@ -754,7 +776,7 @@ class GraphActor(SchedulerActor):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
         from ..tensor.expressions.datasource import TensorFetchChunk
 
-        tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
+        tiled_tensor = self._get_tensor_by_key(tensor_key)
         graph = DAG()
         if len(tiled_tensor.chunks) == 1:
             # only one chunk, just trigger fetch
@@ -780,7 +802,7 @@ class GraphActor(SchedulerActor):
         from ..worker.transfer import ResultSenderActor
 
         # TODO for test
-        tiled_tensor = self._tensor_to_tiled[tensor_key][-1]
+        tiled_tensor = self._get_tensor_by_key(tensor_key)
         if tensor_key not in self._terminated_tensors:
             return None
 

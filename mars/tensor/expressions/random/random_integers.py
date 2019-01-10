@@ -34,7 +34,7 @@ class TensorRandomIntegers(operands.RandomIntegers, TensorRandomOperandMixin):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
 
 
-def random_integers(random_state, low, high=None, size=None, chunk_size=None, gpu=None, **kw):
+def random_integers(random_state, low, high=None, size=None, chunk_size=None, gpu=None):
     """
     Random integers of type mt.int between `low` and `high`, inclusive.
 
@@ -117,5 +117,5 @@ def random_integers(random_state, low, high=None, size=None, chunk_size=None, gp
     """
     size = random_state._handle_size(size)
     op = TensorRandomIntegers(state=random_state._state, size=size, dtype=np.dtype(int),
-                              low=low, high=high, gpu=gpu, **kw)
+                              low=low, high=high, gpu=gpu)
     return op(chunk_size=chunk_size)

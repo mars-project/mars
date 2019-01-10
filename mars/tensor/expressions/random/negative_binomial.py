@@ -33,7 +33,7 @@ class TensorNegativeBinomial(operands.NegativeBinomial, TensorRandomOperandMixin
         return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)
 
 
-def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, **kw):
+def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a negative binomial distribution.
 
@@ -57,6 +57,8 @@ def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, 
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
@@ -107,9 +109,9 @@ def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, 
     ...    probability = (mt.sum(s<i) / 100000.).execute()
     ...    print i, "wells drilled, probability of one success =", probability
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().negative_binomial(
+    if dtype is None:
+        dtype = np.random.RandomState().negative_binomial(
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNegativeBinomial(size=size, state=random_state._state, gpu=gpu, **kw)
+    op = TensorNegativeBinomial(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
     return op(n, p, chunk_size=chunk_size)

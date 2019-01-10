@@ -33,7 +33,7 @@ class TensorBeta(operands.Beta, TensorRandomOperandMixin):
         return self.new_tensor([a, b], None, raw_chunk_size=chunk_size)
 
 
-def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, **kw):
+def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, dtype=None):
     r"""
     Draw samples from a Beta distribution.
 
@@ -66,15 +66,17 @@ def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, **kw):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    dtype : data-type, optional
+      Data-type of the returned tensor.
 
     Returns
     -------
     out : Tensor or scalar
         Drawn samples from the parameterized beta distribution.
     """
-    if 'dtype' not in kw:
-        kw['dtype'] = np.random.RandomState().beta(
+    if dtype is None:
+        dtype = np.random.RandomState().beta(
             handle_array(a), handle_array(b), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorBeta(state=random_state._state, size=size, gpu=gpu, **kw)
+    op = TensorBeta(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
     return op(a, b, chunk_size=chunk_size)

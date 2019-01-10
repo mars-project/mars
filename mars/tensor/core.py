@@ -125,7 +125,8 @@ class Chunk(Entity):
 
 
 class TensorData(SerializableWithKey, Tilesable):
-    __slots__ = '__weakref__', '_siblings'
+    __slots__ = '__weakref__', '_siblings', '_cix'
+    _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -273,10 +274,9 @@ class TensorData(SerializableWithKey, Tilesable):
             return ChunksIndexer(self)
 
         try:
-            if self not in _tensor_to_chunk_indexer:
-                _tensor_to_chunk_indexer[self] = ChunksIndexer(self)
-
-            return _tensor_to_chunk_indexer[self]
+            if getattr(self, '_cix', None) is None:
+                self._cix = ChunksIndexer(self)
+            return self._cix
         except (TypeError, ValueError):
             return ChunksIndexer(self)
 
@@ -554,7 +554,6 @@ class SparseTensor(Tensor):
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (Chunk, ChunkData)
 
-_tensor_to_chunk_indexer = WeakKeyDictionary()
 _threading_local = threading.local()
 
 

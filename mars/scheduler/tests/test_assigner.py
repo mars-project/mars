@@ -19,24 +19,8 @@ import gevent
 
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaActor
-from mars.actors import FunctionActor, create_actor_pool
+from mars.actors import create_actor_pool
 from mars.utils import get_next_port
-
-
-class PromiseReplyTestActor(FunctionActor):
-    def __init__(self):
-        super(PromiseReplyTestActor, self).__init__()
-        self._replied = False
-        self._value = None
-
-    def reply(self, value):
-        self._replied = True
-        self._value = value
-
-    def get_reply(self):
-        if not self._replied:
-            return None
-        return self._replied, self._value
 
 
 class Test(unittest.TestCase):
@@ -60,10 +44,9 @@ class Test(unittest.TestCase):
             g = gevent.spawn(write_mock_meta)
             g.join()
 
-            assigner_ref = pool.create_actor(AssignerActor, uid='AssignerActor')
+            assigner_ref = pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
 
             session_id = str(uuid.uuid4())
-            op_key = str(uuid.uuid4())
             chunk_key1 = str(uuid.uuid4())
             chunk_key2 = str(uuid.uuid4())
             chunk_key3 = str(uuid.uuid4())
@@ -85,11 +68,5 @@ class Test(unittest.TestCase):
             chunk_meta_ref.set_chunk_meta(session_id, chunk_key2, size=512, workers=(endpoint1,))
             chunk_meta_ref.set_chunk_meta(session_id, chunk_key3, size=512, workers=(endpoint2,))
 
-            reply_ref = pool.create_actor(PromiseReplyTestActor)
-            reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
-            assigner_ref.apply_for_resource(session_id, op_key, op_info, callback=reply_callback)
-
-            while not reply_ref.get_reply():
-                gevent.sleep(0.1)
-            _, ret_value = reply_ref.get_reply()
-            self.assertEqual(ret_value, endpoint1)
+            workers = assigner_ref.get_worker_assignments(session_id, op_info)
+            self.assertEqual(workers[0], endpoint1)

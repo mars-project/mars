@@ -64,36 +64,36 @@
             </thead>
             <tbody>
             <tr>
-                {% if progresses['allocate_resource'] is defined %}
-                    <td>Allocating ({{ progresses['allocate_resource']['total'] }})</td>
-                    <td>{{ progresses['allocate_resource']['operands'] }}</td>
+                {% if progresses['ALLOCATING'] is defined %}
+                    <td>Allocating ({{ progresses['ALLOCATING']['total'] }})</td>
+                    <td>{{ progresses['ALLOCATING']['operands'] }}</td>
                 {% else %}
                     <td>Allocating</td>
                     <td>Not available</td>
                 {% endif %}
             </tr>
             <tr>
-                {% if progresses['prepare_inputs'] is defined %}
-                    <td>Preparing Data ({{ progresses['prepare_inputs']['total'] }})</td>
-                    <td>{{ progresses['prepare_inputs']['operands'] }}</td>
+                {% if progresses['PREPARING_INPUTS'] is defined %}
+                    <td>Preparing Data ({{ progresses['PREPARING_INPUTS']['total'] }})</td>
+                    <td>{{ progresses['PREPARING_INPUTS']['operands'] }}</td>
                 {% else %}
                     <td>Preparing Data</td>
                     <td>Not available</td>
                 {% endif %}
             </tr>
             <tr>
-                {% if progresses['calculate'] is defined %}
-                    <td>Running ({{ progresses['calculate']['total'] }})</td>
-                    <td>{{ progresses['calculate']['operands'] }}</td>
+                {% if progresses['CALCULATING'] is defined %}
+                    <td>Running ({{ progresses['CALCULATING']['total'] }})</td>
+                    <td>{{ progresses['CALCULATING']['operands'] }}</td>
                 {% else %}
                     <td>Running</td>
                     <td>Not available</td>
                 {% endif %}
             </tr>
             <tr>
-                {% if progresses['dump_cache'] is defined %}
-                    <td>Storing ({{ progresses['dump_cache']['total'] }})</td>
-                    <td>{{ progresses['dump_cache']['operands'] }}</td>
+                {% if progresses['STORING'] is defined %}
+                    <td>Storing ({{ progresses['STORING']['total'] }})</td>
+                    <td>{{ progresses['STORING']['operands'] }}</td>
                 {% else %}
                     <td>Storing</td>
                     <td>Not available</td>
