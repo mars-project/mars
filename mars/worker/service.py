@@ -28,6 +28,7 @@ from ..utils import parse_memory_limit, readable_size
 from ..compat import six
 from ..cluster_info import ClusterInfoActor
 from .status import StatusActor
+from .taskqueue import TaskQueueActor
 from .quota import QuotaActor, MemQuotaActor
 from .chunkholder import ChunkHolderActor
 from .dispatcher import DispatchActor
@@ -49,6 +50,7 @@ class WorkerService(object):
         self._plasma_store = None
 
         self._chunk_holder_ref = None
+        self._task_queue_ref = None
         self._mem_quota_ref = None
         self._dispatch_ref = None
         self._status_ref = None
@@ -124,6 +126,8 @@ class WorkerService(object):
         # create ChunkHolderActor
         self._chunk_holder_ref = pool.create_actor(
             ChunkHolderActor, options.worker.cache_memory_limit, uid=ChunkHolderActor.default_name())
+        # create TaskQueueActor
+        self._task_queue_ref = pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_name())
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
         # create ExecutionActor
@@ -222,6 +226,8 @@ class WorkerService(object):
         # create ChunkHolderActor
         self._chunk_holder_ref = pool.create_actor(
             ChunkHolderActor, options.worker.cache_memory_limit, uid=ChunkHolderActor.default_name())
+        # create TaskQueueActor
+        self._task_queue_ref = pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_name())
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
         # create ExecutionActor

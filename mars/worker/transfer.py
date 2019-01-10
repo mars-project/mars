@@ -564,12 +564,9 @@ class ReceiverActor(WorkerActor):
             self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
 
     def _stop_transfer_with_exc(self, session_id, chunk_key, exc):
-        try:
-            six.reraise(*exc)
-        except ExecutionInterrupted:
-            pass
-        except:
-            logger.exception('Exception occurred in transferring %s. Cancelling transfer.', chunk_key)
+        if not isinstance(exc[1], ExecutionInterrupted):
+            logger.exception('Exception occurred in transferring %s. Cancelling transfer.',
+                             chunk_key, exc_info=exc)
 
         session_chunk_key = (session_id, chunk_key)
 
