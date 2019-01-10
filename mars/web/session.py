@@ -59,6 +59,9 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
+    def _get_graph_key(self, tensor_key):
+        return self._tensor_to_graph[tensor_key]
+
     def _check_response_finished(self, graph_url):
         try:
             resp = self._req_session.get(graph_url)
@@ -155,7 +158,7 @@ class Session(object):
         for tensor in tensors:
             key = tensor.key
             session_url = self._endpoint + '/api/session/' + self._session_id
-            data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[key], key)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(key), key)
             resp = self._req_session.get(data_url, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -166,7 +169,7 @@ class Session(object):
     def _update_tensor_shape(self, tensor):
         tensor_key = tensor.key
         session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/nsplits/%s' % (self._tensor_to_graph[tensor_key], tensor_key)
+        url = session_url + '/graph/%s/nsplits/%s' % (self._get_graph_key(tensor_key), tensor_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
@@ -177,7 +180,7 @@ class Session(object):
         for k in keys:
             if k not in self._tensor_to_graph:
                 continue
-            data_url = session_url + '/graph/%s/data/%s' % (self._tensor_to_graph[k], k)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(k), k)
             self._req_session.delete(data_url)
 
     def stop(self, graph_key):

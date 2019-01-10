@@ -27,9 +27,12 @@ from mars.serialize import Int64Field
 from mars.config import options
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
+from mars.deploy.local.session import LocalClusterSession
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler.session import SessionManagerActor
+from mars.scheduler import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
+from mars.api import MarsAPI
+from mars.tests.core import patch_method
 
 
 def _on_deserialize_fail(x):
@@ -216,6 +219,25 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r[:10], np.ones((10, 5)))
                 np.testing.assert_array_equal(r[10:20], np.ones((10, 5)) * 2)
 
+    # TODO: remove patch if issue(https://github.com/mars-project/mars/issues/117) fixed
+    @patch_method(MarsAPI.get_tensor_nsplits)
+    @patch_method(LocalClusterSession.run)
+    @patch_method(LocalClusterSession._get_graph_key)
+    def testBoolIndexingExecute(self, *_):
+        mock_nsplits = ((4, 4, 4, 4),)
+        MarsAPI.get_tensor_nsplits.return_value = mock_nsplits
+        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+            a = mt.random.rand(8, 8, chunk_size=4)
+            a[2:6, 2:6] = mt.ones((4, 4)) * 2
+            b = a[a > 1]
+            self.assertEqual(b.shape, (np.nan,))
+
+            cluster.session.run(b, fetch=False)
+            self.assertEqual(b.shape, (16,))
+
+            c = b.reshape((4, 4))
+            self.assertEqual(c.shape, (4, 4))
+
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default():
@@ -248,15 +270,6 @@ class Test(unittest.TestCase):
             a = mt.ones((10, 20)) + 1
             self.assertIsNone(session.run(a, fetch=False))
             np.testing.assert_array_equal(a.execute(session=session), np.ones((10, 20)) + 1)
-
-    def testFetchShape(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
-            session = cluster.session
-
-            a = mt.random.rand(10, 10, chunk_size=5)
-            a1 = a[a < 0.5]
-            result = session.run(a1)
-            pass
 
     def testGraphFail(self):
         op = SerializeMustFailOperand(f=3)

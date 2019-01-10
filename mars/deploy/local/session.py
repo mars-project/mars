@@ -44,8 +44,11 @@ class LocalClusterSession(object):
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
 
+    def _get_graph_key(self, tensor_key):
+        return self._tensor_to_graph[tensor_key]
+
     def _update_tensor_shape(self, tensor):
-        graph_key = self._tensor_to_graph[tensor.key]
+        graph_key = self._get_graph_key(tensor.key)
         new_nsplits = self._api.get_tensor_nsplits(self._session_id, graph_key, tensor.key)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tensor.nsplits = new_nsplits
@@ -95,7 +98,7 @@ class LocalClusterSession(object):
         futures = []
         for tensor in tensors:
             key = tensor.key
-            graph_key = self._tensor_to_graph[key]
+            graph_key = self._get_graph_key(key)
             future = self._api.fetch_data(self._session_id, graph_key, key, wait=False)
             futures.append(future)
         return [dataserializer.loads(f.result()) for f in futures]
@@ -104,7 +107,7 @@ class LocalClusterSession(object):
         for k in keys:
             if k not in self._tensor_to_graph:
                 continue
-            graph_key = self._tensor_to_graph[k]
+            graph_key = self._get_graph_key(k)
             self._api.delete_data(self._session_id, graph_key, k)
 
     def __enter__(self):
