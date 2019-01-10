@@ -26,10 +26,11 @@ _META_CACHE_SIZE = 1000
 
 
 class WorkerMeta(object):
-    __slots__ = 'chunk_size', 'workers'
+    __slots__ = 'chunk_size', 'chunk_shape', 'workers'
 
-    def __init__(self, chunk_size=0, workers=None):
+    def __init__(self, chunk_size=0, chunk_shape=None, workers=None):
         self.chunk_size = chunk_size
+        self.chunk_shape = chunk_shape
         self.workers = workers or ()
 
     def __eq__(self, other):
@@ -41,7 +42,7 @@ class WorkerMeta(object):
             yield getattr(self, slot)
 
     def __repr__(self):
-        return 'WorkerMeta(%r, %r)' % (self.chunk_size, self.workers)
+        return 'WorkerMeta(%r, %r ,%r)' % (self.chunk_size, self.chunk_shape, self.workers)
 
     if PY27:
         def __getstate__(self):
@@ -204,19 +205,21 @@ class LocalChunkMetaActor(SchedulerActor):
         """
         return self._meta_broadcasts.get((session_id, chunk_key))
 
-    def set_chunk_meta(self, session_id, chunk_key, size=None, workers=None):
+    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None):
         """
         Update chunk meta in current storage
         :param session_id: session id
         :param chunk_key: chunk key
         :param size: size of the chunk
+        :param shape: shape of the chunk
         :param workers: workers holding the chunk
         """
         query_key = (session_id, chunk_key)
         # update input with existing value
         if query_key in self._meta_store:
-            stored_size, stored_workers = self._meta_store[query_key]
+            stored_size, stored_shape, stored_workers = self._meta_store[query_key]
             size = size if size is not None else stored_size
+            shape = shape if shape is not None else stored_shape
             if workers is not None:
                 workers = set(tuple(workers) + stored_workers)
 
@@ -225,11 +228,13 @@ class LocalChunkMetaActor(SchedulerActor):
             path = '/sessions/%s/chunks/%s' % (session_id, chunk_key)
             if size is not None:
                 self._kv_store_ref.write(path + '/data_size', size, _tell=True, _wait=False)
+            if shape is not None:
+                self._kv_store_ref.write(path + '/data_shape', shape, _tell=True, _wait=False)
             if workers is not None:
                 for w in workers:
                     self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
 
-        meta = self._meta_store[query_key] = WorkerMeta(size, tuple(workers or ()))
+        meta = self._meta_store[query_key] = WorkerMeta(size, shape, tuple(workers or ()))
 
         # broadcast into pre-determined destinations
         futures = []
@@ -352,17 +357,18 @@ class ChunkMetaActor(SchedulerActor):
         self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
             .set_chunk_broadcasts(session_id, chunk_key, broadcast_dests, _tell=True, _wait=False)
 
-    def set_chunk_meta(self, session_id, chunk_key, size=None, workers=None):
+    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None):
         """
         Update chunk metadata
         :param session_id: session id
         :param chunk_key: chunk key
         :param size: size of the chunk
+        :param shape: shape of the chunk
         :param workers: workers holding the chunk
         """
         addr = self.get_scheduler((session_id, chunk_key))
         self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
-            .set_chunk_meta(session_id, chunk_key, size=size, workers=workers)
+            .set_chunk_meta(session_id, chunk_key, size=size, shape=shape, workers=workers)
 
     def set_chunk_size(self, session_id, chunk_key, size):
         self.set_chunk_meta(session_id, chunk_key, size=size)
@@ -370,6 +376,13 @@ class ChunkMetaActor(SchedulerActor):
     def get_chunk_size(self, session_id, chunk_key):
         meta = self.get_chunk_meta(session_id, chunk_key)
         return meta.chunk_size if meta is not None else None
+
+    def set_chunk_shape(self, session_id, chunk_key, shape):
+        self.set_chunk_meta(session_id, chunk_key, shape=shape)
+
+    def get_chunk_shape(self, session_id, chunk_key):
+        meta = self.get_chunk_meta(session_id, chunk_key)
+        return meta.chunk_shape if meta is not None else None
 
     def add_worker(self, session_id, chunk_key, worker_addr):
         self.set_chunk_meta(session_id, chunk_key, workers=(worker_addr,))
@@ -385,6 +398,10 @@ class ChunkMetaActor(SchedulerActor):
     def batch_get_chunk_size(self, session_id, chunk_keys):
         metas = self.batch_get_chunk_meta(session_id, chunk_keys)
         return [meta.chunk_size if meta is not None else None for meta in metas]
+
+    def batch_get_chunk_shape(self, session_id, chunk_keys):
+        metas = self.batch_get_chunk_meta(session_id, chunk_keys)
+        return [meta.chunk_shape if meta is not None else None for meta in metas]
 
     def get_chunk_meta(self, session_id, chunk_key):
         """

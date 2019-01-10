@@ -142,6 +142,13 @@ class GraphDataHandler(ApiRequestHandler):
         self.web_api.delete_data(session_id, graph_key, tensor_key)
 
 
+class TensorNsplitsHandler(ApiRequestHandler):
+    @gen.coroutine
+    def get(self, session_id, grapy_key, tensor_key):
+        nsplits = self.web_api.get_tensor_nsplits(session_id, grapy_key, tensor_key)
+        self.write(json.dumps(nsplits))
+
+
 class WorkersApiHandler(ApiRequestHandler):
     def get(self):
         workers_num = self.web_api.count_workers()
@@ -156,3 +163,5 @@ register_api_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandle
 register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
 register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tensor_key>[^/]+)',
                      GraphDataHandler)
+register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/nsplits/(?P<tensor_key>[^/]+)',
+                     TensorNsplitsHandler)

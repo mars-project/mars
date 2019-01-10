@@ -44,6 +44,12 @@ class LocalClusterSession(object):
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
 
+    def _update_tensor_shape(self, tensor):
+        graph_key = self._tensor_to_graph[tensor.key]
+        new_nsplits = self._api.get_tensor_nsplits(self._session_id, graph_key, tensor.key)
+        tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tensor.nsplits = new_nsplits
+
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)

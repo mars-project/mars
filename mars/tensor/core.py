@@ -167,6 +167,9 @@ class TensorData(SerializableWithKey, Tilesable):
             self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
             return self._shape
 
+    def _update_shape(self, new_shape):
+        self._shape = new_shape
+
     @property
     def ndim(self):
         return len(self.shape)
@@ -199,6 +202,10 @@ class TensorData(SerializableWithKey, Tilesable):
     @property
     def nsplits(self):
         return getattr(self, '_nsplits', None)
+
+    @nsplits.setter
+    def nsplits(self, new_nsplits):
+        self._nsplits = new_nsplits
 
     @property
     def size(self):
@@ -515,6 +522,9 @@ class Tensor(Entity):
     @shape.setter
     def shape(self, new_shape):
         self._data = self._data.reshape(new_shape).data
+
+    def _update_shape(self, new_shape):
+        self._data._update_shape(new_shape)
 
     @property
     def real(self):

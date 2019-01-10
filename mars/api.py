@@ -17,8 +17,7 @@ import logging
 from .actors import new_client
 from .cluster_info import ClusterInfoActor
 from .node_info import NodeInfoActor
-from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor
-from .scheduler.session import SessionManagerActor
+from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, SessionManagerActor
 from .scheduler.graph import ResultReceiverActor
 
 logger = logging.getLogger(__name__)
@@ -62,11 +61,6 @@ class MarsAPI(object):
         session_ref = self.get_actor_ref(session_uid)
         session_ref.submit_tensor_graph(serialized_graph, graph_key, target, _tell=True)
 
-    def get_graph_states(self, session_id):
-        session_uid = SessionActor.gen_name(session_id)
-        session_ref = self.get_actor_ref(session_uid)
-        return session_ref.get_tensor_graph_states()
-
     def delete_graph(self, session_id, graph_key):
         graph_uid = GraphActor.gen_name(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
@@ -104,3 +98,24 @@ class MarsAPI(object):
         graph_uid = GraphActor.gen_name(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
         graph_ref.free_tensor_data(tensor_key, _tell=True)
+
+    def get_tensor_nsplits(self, session_id, graph_key, tensor_key):
+        # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
+        graph_uid = GraphActor.gen_name(session_id, graph_key)
+        graph_ref = self.get_actor_ref(graph_uid)
+        chunk_indexes = graph_ref.get_tensor_chunk_indexes(tensor_key)
+
+        chunk_meta_ref = self.get_actor_ref(ChunkMetaActor.default_name())
+        chunk_shapes = chunk_meta_ref.batch_get_chunk_shape(session_id, list(chunk_indexes.keys()))
+
+        # for each dimension, record chunk shape whose index is zero on other dimensions
+        ndim = len(chunk_shapes[0])
+        tensor_nsplits = []
+        for i in range(ndim):
+            splits = []
+            for index, shape in zip(chunk_indexes.values(), chunk_shapes):
+                if all(idx == 0 for j, idx in enumerate(index) if j != i):
+                    splits.append(shape[i])
+            tensor_nsplits.append(tuple(splits))
+
+        return tuple(tensor_nsplits)

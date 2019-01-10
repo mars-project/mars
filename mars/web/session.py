@@ -102,7 +102,6 @@ class Session(object):
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
         compose = kw.pop('compose', True)
-        wait = kw.pop('wait', True)
         fetch = kw.pop('fetch', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
@@ -122,9 +121,6 @@ class Session(object):
 
         for t in tensors:
             self._tensor_to_graph[t.key] = graph_key
-
-        if not wait:
-            return graph_key
 
         exec_start_time = time.time()
         while timeout <= 0 or time.time() - exec_start_time <= timeout:
@@ -166,6 +162,15 @@ class Session(object):
                                  (resp.status_code, resp.reason, resp.text))
             results.append(dataserializer.loads(resp.content))
         return results
+
+    def _update_tensor_shape(self, tensor):
+        tensor_key = tensor.key
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        url = session_url + '/graph/%s/nsplits/%s' % (self._tensor_to_graph[tensor_key], tensor_key)
+        resp = self._req_session.get(url)
+        new_nsplits = json.loads(resp.text)
+        tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tensor.nsplits = new_nsplits
 
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id
