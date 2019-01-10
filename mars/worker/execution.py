@@ -21,7 +21,7 @@ from functools import partial
 from collections import defaultdict
 
 from .. import promise
-from ..compat import six, Enum
+from ..compat import Enum
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from ..tensor.expressions.datasource import TensorFetchChunk
@@ -435,10 +435,7 @@ class ExecutionActor(WorkerActor):
             if isinstance(exc[1], ExecutionInterrupted):
                 logger.warning('Execution of graph %s interrupted.', graph_key)
             else:
-                try:
-                    six.reraise(*exc)
-                except:
-                    logger.exception('Unexpected error occurred in executing %s', graph_key)
+                logger.exception('Unexpected error occurred in executing %s', graph_key, exc_info=exc)
 
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(_accept=False))
             self._invoke_finish_callbacks(session_id, graph_key)

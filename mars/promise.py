@@ -20,7 +20,7 @@ import weakref
 
 import numpy as np
 
-from .compat import getargspec, six
+from .compat import getargspec
 from .actors import FunctionActor
 from .actors.core import ActorRef
 from .errors import PromiseTimeout
@@ -138,10 +138,7 @@ class Promise(object):
     @staticmethod
     def _log_unexpected_error(args):
         if args and len(args) == 3 and issubclass(args[0], Exception):
-            try:
-                six.reraise(*args)
-            except:
-                logger.exception('Unhandled exception in promise')
+            logger.exception('Unhandled exception in promise', exc_info=args)
 
     def step_next(self, *args, **kwargs):
         """

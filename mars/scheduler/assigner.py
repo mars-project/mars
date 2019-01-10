@@ -30,13 +30,9 @@ logger = logging.getLogger(__name__)
 
 class AssignerActor(SchedulerActor):
     """
-    Actor handling worker assignment requests from operands.
-    Note that this actor does not assign workers itself.
+    Actor handling worker assignment queries from operands
+    and returning appropriate workers.
     """
-    @classmethod
-    def default_name(cls):
-        return cls.__name__
-
     def __init__(self):
         super(AssignerActor, self).__init__()
         self._resource_ref = None

@@ -24,7 +24,6 @@ from .graph import GraphActor
 from .kvstore import KVStoreActor
 from .resource import ResourceActor
 from .utils import SchedulerActor, OperandState, GraphState, array_to_bytes
-from ..compat import six
 from ..config import options
 from ..errors import *
 from ..utils import log_unhandled
@@ -473,7 +472,6 @@ class OperandActor(SchedulerActor):
 
         data_sizes = dict(zip(self._input_chunks, chunk_sizes))
 
-        dead_workers = set()
         serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
         for worker_ep in new_assignment:
             try:
@@ -483,11 +481,6 @@ class OperandActor(SchedulerActor):
                     .then(functools.partial(self._handle_worker_accept, worker_ep))
             except:
                 self._assigned_workers.difference_update([worker_ep])
-                raise
-        if dead_workers:
-            self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
-            if not self._assigned_workers:
-                self.ref().start_operand(_tell=True)
 
     @log_unhandled
     def _on_running(self):
@@ -518,14 +511,12 @@ class OperandActor(SchedulerActor):
                 logger.warning('Execution of operand %s interrupted.', self._op_key)
                 self.free_data(OperandState.CANCELLED)
             else:
-                try:
-                    if exc:
-                        six.reraise(*exc)
-                    else:
-                        raise SystemError('Worker throws rejection without details')
-                except:
+                if exc:
                     logger.exception('Attempt %d: Unexpected error occurred in executing operand %s in %s',
-                                     self.retries + 1, self._op_key, self.worker)
+                                     self.retries + 1, self._op_key, self.worker, exc_info=exc)
+                else:
+                    logger.error('Attempt %d: Unexpected error occurred in executing operand %s in %s '
+                                 'without details.', self.retries + 1, self._op_key, self.worker)
                 # increase retry times
                 self.retries += 1
                 if self.retries >= options.scheduler.retry_num:
@@ -540,11 +531,11 @@ class OperandActor(SchedulerActor):
 
     @log_unhandled
     def _on_finished(self):
-        futures = []
         if self._last_state == OperandState.CANCELLING:
             self.start_operand(OperandState.CANCELLING)
-            [f.result() for f in futures]
             return
+
+        futures = []
         # update pred & succ finish records to trigger further actions
         # record if successors can be executed
         for out_key in self._succ_keys:
