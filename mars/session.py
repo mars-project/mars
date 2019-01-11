@@ -47,6 +47,11 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return self._executor.execute_tensors(tensors, **kw)
 
+    def _update_tensor_shape(self, tensor):
+        new_nsplits = self._executor.get_tensor_nsplits(tensor)
+        tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tensor.nsplits = new_nsplits
+
     def fetch(self, *tensors, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
@@ -118,6 +123,10 @@ class Session(object):
             self._executed_keys.update(t.key for t in run_tensors)
             for t in run_tensors:
                 t._execute_session = self
+
+        for t in tensors:
+            if np.nan in t.shape:
+                self._sess._update_tensor_shape(t)
 
         if fetch:
             # do fetch

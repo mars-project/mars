@@ -29,28 +29,28 @@ class Test(unittest.TestCase):
     def testChunkMetaStore(self):
         store = ChunkMetaStore()
 
-        store['c0'] = WorkerMeta(0, ('w0',))
+        store['c0'] = WorkerMeta(0, (0,), ('w0',))
         self.assertIn('c0', store)
-        self.assertEqual(store['c0'], WorkerMeta(0, ('w0',)))
-        self.assertEqual(store.get('c0'), WorkerMeta(0, ('w0',)))
+        self.assertEqual(store['c0'], WorkerMeta(0, (0,), ('w0',)))
+        self.assertEqual(store.get('c0'), WorkerMeta(0, (0,), ('w0',)))
         self.assertIsNone(store.get('c1'))
         self.assertSetEqual(store.get_worker_chunk_keys('w0'), {'c0'})
 
-        store['c0'] = WorkerMeta(0, ('w1',))
+        store['c0'] = WorkerMeta(0, (0,), ('w1',))
         self.assertEqual(store.get_worker_chunk_keys('w0'), set())
         self.assertSetEqual(store.get_worker_chunk_keys('w1'), {'c0'})
 
         del store['c0']
         self.assertNotIn('c0', store)
 
-        store['c1'] = WorkerMeta(1, ('w0', 'w1'))
-        store['c2'] = WorkerMeta(2, ('w1',))
-        store['c3'] = WorkerMeta(3, ('w0',))
-        store['c4'] = WorkerMeta(4, ('w0',))
+        store['c1'] = WorkerMeta(1, (1,), ('w0', 'w1'))
+        store['c2'] = WorkerMeta(2, (2,), ('w1',))
+        store['c3'] = WorkerMeta(3, (3,), ('w0',))
+        store['c4'] = WorkerMeta(4, (4,), ('w0',))
         affected = store.remove_worker_keys('w0', lambda k: k[-1] < '4')
         self.assertListEqual(affected, ['c3'])
-        self.assertEqual(store.get('c1'), WorkerMeta(1, ('w1',)))
-        self.assertEqual(store.get('c2'), WorkerMeta(2, ('w1',)))
+        self.assertEqual(store.get('c1'), WorkerMeta(1, (1,), ('w1',)))
+        self.assertEqual(store.get('c2'), WorkerMeta(2, (2,), ('w1',)))
         self.assertSetEqual(store.get_worker_chunk_keys('w0'), {'c4'})
         self.assertSetEqual(store.get_worker_chunk_keys('w1'), {'c1', 'c2'})
         self.assertNotIn('c3', store)
@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
         cache = ChunkMetaCache(9)
 
         for idx in range(10):
-            cache['c%d' % idx] = WorkerMeta(idx, ('w0',))
+            cache['c%d' % idx] = WorkerMeta(idx, (idx,), ('w0',))
         self.assertNotIn('c0', cache)
         self.assertTrue(all('c%d' % idx in cache for idx in range(1, 10)))
         self.assertListEqual(sorted(cache.get_worker_chunk_keys('w0')),
@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
 
         dup_cache = copy.deepcopy(cache)
         dup_cache.get('c1')
-        dup_cache['c10'] = WorkerMeta(10, ('w0',))
+        dup_cache['c10'] = WorkerMeta(10, (10,), ('w0',))
         self.assertIsNone(dup_cache.get('c0'))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
@@ -82,14 +82,14 @@ class Test(unittest.TestCase):
 
         dup_cache = copy.deepcopy(cache)
         _ = dup_cache['c1']  # noqa: F841
-        dup_cache['c10'] = WorkerMeta(10, ('w0',))
+        dup_cache['c10'] = WorkerMeta(10, (10,), ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
 
         dup_cache = copy.deepcopy(cache)
-        dup_cache['c1'] = WorkerMeta(1, ('w0',))
-        dup_cache['c10'] = WorkerMeta(10, ('w0',))
+        dup_cache['c1'] = WorkerMeta(1, (1,), ('w0',))
+        dup_cache['c10'] = WorkerMeta(10, (10,), ('w0',))
         self.assertNotIn('c2', dup_cache)
         self.assertIn('c1', dup_cache)
         self.assertTrue(all('c%d' % idx in dup_cache for idx in range(3, 11)))
@@ -138,6 +138,18 @@ class Test(unittest.TestCase):
 
                 self.assertListEqual(ref1.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
                 self.assertListEqual(ref2.batch_get_chunk_size(session1, [key1, key2]), [512, 1024])
+
+                ref1.set_chunk_shape(session1, key1, (10,))
+                ref2.set_chunk_shape(session1, key2, (10,) * 2)
+                ref2.set_chunk_shape(session2, key3, (10,) * 2)
+
+                self.assertEqual(ref1.get_chunk_shape(session1, key1), (10,))
+                self.assertEqual(ref2.get_chunk_shape(session1, key2), (10,) * 2)
+                self.assertEqual(ref1.get_chunk_shape(session1, key2), (10,) * 2)
+                self.assertEqual(ref2.get_chunk_shape(session1, key1), (10,))
+
+                self.assertListEqual(ref1.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
+                self.assertListEqual(ref2.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
 
                 ref1.add_worker(session1, key1, 'abc')
                 ref1.add_worker(session1, key1, 'def')
@@ -202,15 +214,19 @@ class Test(unittest.TestCase):
 
                 ref1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
                 ref1.set_chunk_size(session_id, key1, 512)
+                ref1.set_chunk_shape(session_id, key1, (10,) * 2)
                 ref1.add_worker(session_id, key1, 'abc')
                 ref2.set_chunk_broadcasts(session_id, key2, [endpoints[0]])
                 ref2.set_chunk_size(session_id, key2, 512)
+                ref1.set_chunk_shape(session_id, key2, (10,) * 2)
                 ref2.add_worker(session_id, key2, 'def')
                 pool2.sleep(0.1)
 
                 self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_size, 512)
+                self.assertEqual(local_ref1.get_chunk_meta(session_id, key1).chunk_shape, (10,) * 2)
                 self.assertEqual(local_ref1.get_chunk_broadcasts(session_id, key1), [endpoints[1]])
                 self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_size, 512)
+                self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_shape, (10,) * 2)
                 self.assertEqual(local_ref2.get_chunk_broadcasts(session_id, key2), [endpoints[0]])
 
                 ref1.delete_meta(session_id, key1)

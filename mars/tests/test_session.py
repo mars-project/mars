@@ -148,3 +148,17 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             session.run(arr + 1)
+
+    def testBoolIndexing(self):
+        arr = mt.random.rand(10, 10, chunk_size=5)
+        arr[3:8, 3:8] = mt.ones((5, 5))
+
+        arr2 = arr[arr == 1]
+        self.assertEqual(arr2.shape, (np.nan,))
+
+        arr2.execute()
+        self.assertEqual(arr2.shape, (25,))
+
+        arr3 = arr2.reshape((5, 5))
+        expected = np.ones((5, 5))
+        np.testing.assert_array_equal(arr3.execute(), expected)
