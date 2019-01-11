@@ -280,8 +280,8 @@ class Test(WorkerCase):
             arr_add.chunks[0]._op = TensorFetchChunk(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, mock_data.nbytes,
-                                          ('0.0.0.0:1234', pool_address))
+            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
@@ -343,8 +343,8 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, mock_data.nbytes,
-                                          ('0.0.0.0:1234', pool_address))
+            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
             with self.run_actor_test(pool) as test_actor:
@@ -367,8 +367,8 @@ class Test(WorkerCase):
             chunk_holder_ref.destroy()
             pool.create_actor(ChunkHolderActor, uid=ChunkHolderActor.default_name())
             chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, mock_data.nbytes,
-                                          ('0.0.0.0:1234', pool_address))
+            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
             with self.run_actor_test(pool) as test_actor:
@@ -501,8 +501,8 @@ class Test(WorkerCase):
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
 
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, mock_data.nbytes,
-                                          ('0.0.0.0:1234', pool_address))
+            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
                     data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
