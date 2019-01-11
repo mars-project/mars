@@ -16,6 +16,7 @@
 
 import unittest
 
+from mars.compat import OrderedDict
 from mars.actors import create_actor_pool
 from mars.utils import get_next_port
 from mars.cluster_info import ClusterInfoActor
@@ -80,8 +81,10 @@ class Test(unittest.TestCase):
         self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
         mock_indexes = [
-            {'chunk_key1': (0,), 'chunk_key2': (1,), 'chunk_key3': (2,), 'chunk_key4': (3,)},
-            {'chunk_key1': (0, 0), 'chunk_key2': (0, 1), 'chunk_key3': (1, 0), 'chunk_key4': (1, 1)},
+            OrderedDict(zip(['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'],
+                            [(0, ), (1,), (2,), (3,)])),
+            OrderedDict(zip(['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'],
+                            [(0, 0), (0, 1), (1, 0), (1, 1)]))
         ]
         mock_shapes = [
             [(3,), (4,), (5,), (6,)],
