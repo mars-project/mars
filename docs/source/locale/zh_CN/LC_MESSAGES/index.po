@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-03 14:04+0800\n"
+"POT-Creation-Date: 2018-11-28 19:54+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.6.0\n"
 
 #: ../../source/index.rst:7
 msgid "Mars"
@@ -47,14 +47,17 @@ msgid "**Mars tensor**"
 msgstr "**Mars tensor**"
 
 #: ../../source/index.rst:30
-msgid "Easy to scale down and scale up"
-msgstr ""
+msgid "Easy to scale in and scale out"
+msgstr "适应各种数据规模"
 
 #: ../../source/index.rst:32
 msgid ""
-"Mars can scale down to a single machine, and scale up to a cluster with "
+"Mars can scale in to a single machine, and scale out to a cluster with "
 "hundreds of machines. Both the local and distributed version share the "
 "same piece of code, it's fairly simple to migrate from a single machine "
 "to a cluster due to the increase of data."
 msgstr ""
+"Mars 可以在单台机器上运行，也可以扩展到上百台机器组成的集群中运行，且在"
+"两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
+"适应数据量的增长。"
 

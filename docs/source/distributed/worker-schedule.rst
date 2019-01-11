@@ -6,11 +6,11 @@ processes. To reduce unnecessary memory copy and inter-process communication,
 shared memory is used to store computation results.
 
 When an operand is submitted into a worker, it will first be queued and wait
-for memory allocation.  When the memory is allocated, data from other workers
-or from files already spilled to disk are loaded.  After that all data required
-are in memory and calculation can start. When calculation is done, the worker
-then put the result into shared memory cache. These four states can be seen in
-the graph below.
+for memory allocation.  When the memory is allocated, dependencies' data from
+other workers or from files already spilled to disk are loaded.  Once all data
+required are in memory, calculation can start. When calculation is done, the
+worker then put the result into shared memory cache. These four states can be
+seen in the graph below.
 
 .. figure:: ../images/worker-states.svg
 

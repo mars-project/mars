@@ -102,7 +102,7 @@ msgstr ""
 msgid ""
 "``FREED``: the operand is in this state when all data related to this "
 "operand is freed."
-msgstr "``FREED``：一个 Operand 位于此状态，当其上所有数据都已被释放。"
+msgstr "``FREED``：一个 Operand 位于此状态，当相关的所有数据都已被释放。"
 
 #: ../../source/distributed/states.rst:42
 msgid ""
