@@ -44,6 +44,8 @@ cpdef bytes to_binary(s, encoding='utf-8'):
         return (<unicode>s).encode(encoding)
     elif isinstance(s, bytes):
         return bytes(s)
+    elif s is None:
+        return None
     else:
         raise TypeError("Could not convert to bytes.")
 
@@ -55,6 +57,8 @@ cpdef unicode to_text(s, encoding='utf-8'):
         return (<bytes>s).decode('utf-8')
     elif isinstance(s, unicode):
         return unicode(s)
+    elif s is None:
+        return None
     else:
         raise TypeError("Could not convert to unicode.")
 
