@@ -59,7 +59,7 @@ class InProcessCacheActor(WorkerActor):
         Dump data in rss memory into shared cache
         """
         @log_unhandled
-        def _try_put_chunk(session_id, chunk_key, data_size):
+        def _try_put_chunk(session_id, chunk_key, data_size, data_shape):
             logger.debug('Try putting %s into shared cache.', chunk_key)
             try:
                 if chunk_key not in _calc_result_cache:
@@ -76,17 +76,17 @@ class InProcessCacheActor(WorkerActor):
                     self._chunk_holder_ref.register_chunk(session_id, chunk_key)
                     data_size = self._chunk_store.get_actual_size(session_id, chunk_key)
                     self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
-                        session_id, chunk_key, size=data_size, workers=(self.address,))
+                        session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
                 finally:
                     del ref
 
             except StoreFull:
                 # if we cannot put data into shared cache, we store it into spill directly
                 self._chunk_holder_ref.spill_size(data_size, _tell=True)
-                _put_spill_directly(session_id, chunk_key, data_size)
+                _put_spill_directly(session_id, chunk_key, data_size, data_shape)
 
         @log_unhandled
-        def _put_spill_directly(session_id, chunk_key, data_size, *_):
+        def _put_spill_directly(session_id, chunk_key, data_size, data_shape, *_):
             if self._spill_dump_pool is None:
                 raise SpillNotConfigured
 
@@ -97,15 +97,18 @@ class InProcessCacheActor(WorkerActor):
             self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
             self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
-                session_id, chunk_key, size=data_size, workers=(self.address,))
+                session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
 
         promises = []
         for k in keys:
             session_id, value = _calc_result_cache[k]
             data_size = calc_data_size(value)
+            # for some special operands(argmax, argmean, mean, ..), intermediate chunk data has multiple parts, choose
+            # first part's shape as chunk's shape.
+            data_shape = value[0].shape if isinstance(value, tuple) else value.shape
             del value
             promises.append(
-                promise.Promise(done=True).then(partial(_try_put_chunk, session_id, k, data_size))
+                promise.Promise(done=True).then(partial(_try_put_chunk, session_id, k, data_size, data_shape))
             )
         promise.all_(promises).then(lambda *_: self.tell_promise(callback)) \
             .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))

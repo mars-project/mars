@@ -129,14 +129,19 @@ class GraphApiHandler(ApiRequestHandler):
 class GraphDataHandler(ApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tensor_key):
-        executor = futures.ThreadPoolExecutor(1)
+        data_type = self.request.arguments.get('type')
+        if data_type == 'nsplits':
+            nsplits = self.web_api.get_tensor_nsplits(session_id, graph_key, tensor_key)
+            self.write(json.dumps(nsplits))
+        else:
+            executor = futures.ThreadPoolExecutor(1)
 
-        def _fetch_fun():
-            web_api = MarsWebAPI(self._scheduler)
-            return web_api.fetch_data(session_id, graph_key, tensor_key)
+            def _fetch_fun():
+                web_api = MarsWebAPI(self._scheduler)
+                return web_api.fetch_data(session_id, graph_key, tensor_key)
 
-        data = yield executor.submit(_fetch_fun)
-        self.write(data)
+            data = yield executor.submit(_fetch_fun)
+            self.write(data)
 
     def delete(self, session_id, graph_key, tensor_key):
         self.web_api.delete_data(session_id, graph_key, tensor_key)
