@@ -769,6 +769,9 @@ class GraphActor(SchedulerActor):
             op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
             op_ref.free_data(_tell=True)
 
+    def get_tensor_chunk_indexes(self, tensor_key):
+        return OrderedDict((c.key, c.index) for c in self._tensor_to_tiled[tensor_key][-1].chunks)
+
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
         from ..tensor.expressions.datasource import TensorFetchChunk

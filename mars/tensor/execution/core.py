@@ -180,6 +180,21 @@ class Executor(object):
 
         return results
 
+    def get_tensor_nsplits(self, tensor):
+        chunk_indexes = [c.index for c in tensor.chunks]
+        chunk_shapes = [r.shape for r in [self._chunk_result[c.key] for c in tensor.chunks]]
+
+        ndim = len(chunk_shapes[0])
+        tensor_nsplits = []
+        for i in range(ndim):
+            splits = []
+            for index, shape in zip(chunk_indexes, chunk_shapes):
+                if all(idx == 0 for j, idx in enumerate(index) if j != i):
+                    splits.append(shape[i])
+            tensor_nsplits.append(tuple(splits))
+
+        return tuple(tensor_nsplits)
+
     def decref(self, *keys):
         for key in keys:
             for chunk_key in self.tensor_key_to_chunk_keys.get(key, []):
