@@ -32,8 +32,8 @@ class WorkerApplication(BaseApplication, WorkerService):
     service_logger = logger
 
     def __init__(self):
-        super(BaseApplication, self).__init__()
-        super(WorkerService, self).__init__()
+        BaseApplication.__init__(self)
+        WorkerService.__init__(self)
 
     def config_args(self, parser):
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')

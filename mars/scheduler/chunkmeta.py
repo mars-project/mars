@@ -37,10 +37,6 @@ class WorkerMeta(object):
         return all(getattr(self, attr) == getattr(other, attr)
                    for attr in self.__slots__)
 
-    def __iter__(self):
-        for slot in self.__slots__:
-            yield getattr(self, slot)
-
     def __repr__(self):
         return 'WorkerMeta(%r, %r ,%r)' % (self.chunk_size, self.chunk_shape, self.workers)
 
@@ -217,7 +213,11 @@ class LocalChunkMetaActor(SchedulerActor):
         query_key = (session_id, chunk_key)
         # update input with existing value
         if query_key in self._meta_store:
-            stored_size, stored_shape, stored_workers = self._meta_store[query_key]
+            old_meta = self._meta_store[query_key]  # type: WorkerMeta
+            stored_size = old_meta.chunk_size
+            stored_shape = old_meta.chunk_shape
+            stored_workers = old_meta.workers
+
             size = size if size is not None else stored_size
             shape = shape if shape is not None else stored_shape
             if workers is not None:

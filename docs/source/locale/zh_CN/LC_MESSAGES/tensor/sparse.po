@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 22:26+0800\n"
+"POT-Creation-Date: 2018-11-28 19:54+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.6.0\n"
 
 #: ../../source/tensor/sparse.rst:2
 msgid "Sparse tensor"
@@ -32,43 +32,39 @@ msgstr ""
 msgid "Functions to create sparse tensor"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid "Create a tensor."
-msgstr ""
-
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.zeros <mars.tensor.zeros>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid "Return a new tensor of given shape and type, filled with zeros."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.eye <mars.tensor.eye>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid "Return a 2-D tensor with ones on the diagonal and zeros elsewhere."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.identity <mars.tensor.identity>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid "Return the identity tensor."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.random.randint <mars.tensor.random.randint>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
 msgstr ""
 
