@@ -98,7 +98,7 @@ cdef class Actor:
         pass
 
     cpdef on_receive(self, message):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     cpdef pre_destroy(self):
         pass

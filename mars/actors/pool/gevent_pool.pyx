@@ -380,7 +380,7 @@ class Connections(object):
                     conn = gevent.socket.create_connection(self.address)
                 except ConnectionRefusedError:
                     raise
-                except socket.error as exc:
+                except socket.error as exc:  # pragma: no cover
                     if exc.errno == errno.ECONNREFUSED:
                         raise ConnectionRefusedError
                     else:
@@ -411,7 +411,7 @@ class Connections(object):
         for c, _ in self.conn_locks.values():
             try:
                 c.close()
-            except:
+            except:  # pragma: no cover
                 pass
 
 
@@ -461,7 +461,7 @@ cdef class ActorRemoteHelper:
             except BrokenPipeError:
                 self._connections[address].got_broken_pipe(sock.fileno())
                 raise
-            except socket.error as exc:
+            except socket.error as exc:  # pragma: no cover
                 if exc.errno == errno.EPIPE:
                     self._connections[address].got_broken_pipe(sock.fileno())
                     raise BrokenPipeError

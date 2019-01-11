@@ -484,7 +484,7 @@ cdef inline object _pack_send_message(INT32_t from_index, INT32_t to_index, Acto
     _pack_actor_ref(actor_ref, buf)
     m = _pack_message(message, buf)
 
-    if write:
+    if write is not None:
         write(buf, *m)
         return message_id
 
@@ -572,7 +572,7 @@ cpdef object pack_create_actor_message(INT32_t from_index, int to_index, ActorRe
     _pack_object(args if args else None, buf)
     _pack_object(kw if kw else None, buf)
 
-    if write:
+    if write is not None:
         write(buf)
         return message_id
 
@@ -622,7 +622,7 @@ cpdef object pack_destroy_actor_message(INT32_t from_index, INT32_t to_index, Ac
     _pack_index(to_index, buf)
     _pack_actor_ref(actor_ref, buf)
 
-    if write:
+    if write is not None:
         write(buf)
         return message_id
 
@@ -663,7 +663,7 @@ cpdef object pack_has_actor_message(INT32_t from_index, int to_index, ActorRef a
     _pack_index(to_index, buf)
     _pack_actor_ref(actor_ref, buf)
 
-    if write:
+    if write is not None:
         write(buf)
         return message_id
 
@@ -700,7 +700,7 @@ cpdef object pack_result_message(bytes message_id, INT32_t from_index, int to_in
     _pack_index(to_index, buf)
     _pack_object(result, buf)
 
-    if write:
+    if write is not None:
         write(buf)
         return message_id
 
@@ -745,7 +745,7 @@ cpdef object pack_error_message(bytes message_id, INT32_t from_index, INT32_t to
     _pack_object(error, buf)
     _pack_object(tb, buf)
 
-    if write:
+    if write is not None:
         write(buf)
         return message_id
 
@@ -821,7 +821,7 @@ def write_remote_message(write_func, *binary):
     [write_func(b) for b in binary]
 
 
-if PY_MAJOR_VERSION < 3:
+if PY_MAJOR_VERSION < 3:  # pragma: no cover
     _write_remote_message = write_remote_message
 
     def write_remote_message(*args, **kwargs):

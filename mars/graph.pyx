@@ -265,7 +265,7 @@ cdef class DirectedGraph:
                 queue.extend(n for n in preds if n not in visited)
 
     def build_undirected(self):
-        graph = DirectedGraph()
+        cdef DirectedGraph graph = DirectedGraph()
         for n in self:
             if n not in graph:
                 graph.add_node(n)
@@ -277,7 +277,7 @@ cdef class DirectedGraph:
         return graph
 
     def build_reversed(self):
-        graph = DirectedGraph()
+        cdef graph = DirectedGraph()
         for n in self:
             if n not in graph:
                 graph.add_node(n)
@@ -335,7 +335,7 @@ cdef class DirectedGraph:
             return '"{0}"'.format(val)
         return val
 
-    def to_dot(self, graph_attrs=None, node_attrs=None):
+    def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5):
         sio = six.StringIO()
         sio.write('digraph {\n')
         sio.write('splines=curved\n')
@@ -360,28 +360,27 @@ cdef class DirectedGraph:
                 continue
             for input_chunk in (op.inputs or []):
                 if input_chunk.key not in visited:
-                    sio.write('"Chunk:%s" %s\n' % (input_chunk.key[:5], chunk_style))
+                    sio.write('"Chunk:%s" %s\n' % (input_chunk.key[:trunc_key], chunk_style))
                     visited.add(input_chunk.key)
                 if op.key not in visited:
-                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:5], operand_style))
+                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:trunc_key], operand_style))
                     visited.add(op.key)
-                sio.write('"Chunk:%s" -> "%s:%s"\n' % (input_chunk.key[:5], type(op).__name__, op.key[:5]))
+                sio.write('"Chunk:%s" -> "%s:%s"\n' % (input_chunk.key[:trunc_key], type(op).__name__, op.key[:5]))
 
             for output_chunk in (op.outputs or []):
                 if output_chunk.key not in visited:
-                    sio.write('"Chunk:%s" %s\n' % (output_chunk.key[:5], chunk_style))
+                    sio.write('"Chunk:%s" %s\n' % (output_chunk.key[:trunc_key], chunk_style))
                     visited.add(output_chunk.key)
                 if op.key not in visited:
-                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:5], operand_style))
+                    sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:trunc_key], operand_style))
                     visited.add(op.key)
-                sio.write('"%s:%s" -> "Chunk:%s"\n' % (type(op).__name__, op.key[:5], output_chunk.key[:5]))
+                sio.write('"%s:%s" -> "Chunk:%s"\n' % (type(op).__name__, op.key[:trunc_key], output_chunk.key[:5]))
 
         sio.write('}')
         return sio.getvalue()
 
-    def _repr_svg_(self):
+    def _repr_svg_(self):  # pragma: no cover
         from graphviz import Source
-
         return Source(self.to_dot())._repr_svg_()
 
     @classmethod
@@ -428,7 +427,7 @@ cdef class DirectedGraph:
 
         Fusion(self).decompose(nodes=nodes)
 
-    def view(self, filename='default', graph_attrs=None, node_attrs=None):
+    def view(self, filename='default', graph_attrs=None, node_attrs=None):  # pragma: no cover
         from graphviz import Source
 
         g = Source(self.to_dot(graph_attrs, node_attrs))

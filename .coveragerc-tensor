@@ -6,6 +6,7 @@
 branch = True
 cover_pylib = False
 parallel = True
+plugins = Cython.Coverage
 include =
     mars/*
 omit =
@@ -14,14 +15,18 @@ omit =
     mars/lib/futures/*
     mars/lib/enum.py
     mars/lib/six.py
+    mars/lib/gipc.pyx
     mars/lib/tblib/*
     mars/lib/uhashring/*
     mars/serialize/protos/*
+    *.pxd
     */tests/*
 
 [report]
 exclude_lines =
     pragma: no cover
+    cdef public
+    cpdef public
     def __repr__
     raise AssertionError
     raise NotImplementedError

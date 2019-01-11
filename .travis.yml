@@ -11,7 +11,7 @@ matrix:
       python: "3.5"
       services:
         - docker
-      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m
+      env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m CI_MODE=1
     - os: linux
       python: "3.6"
       services:
@@ -46,11 +46,12 @@ install:
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
   - pip install virtualenv coveralls flake8
+  - bash bin/fix-gevent-cov.sh  # temporary fix on cython coverage problem
   - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
-  - CI_MODE=1 python setup.py build_ext --force --inplace
+  - python setup.py build_ext --force --inplace
   - source bin/download-etcd.sh
 
 before_script:
