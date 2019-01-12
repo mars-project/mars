@@ -546,6 +546,12 @@ class Tensor(Entity):
 
         self._data = set_imag(self._data, new_imag).data
 
+    def __array__(self, dtype=None):
+        ret = np.asarray(self.execute())
+        if dtype is not None:
+            ret = ret.astype(dtype)
+        return ret
+
 
 class SparseTensor(Tensor):
     __slots__ = ()
