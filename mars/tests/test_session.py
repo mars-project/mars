@@ -162,3 +162,24 @@ class Test(unittest.TestCase):
         arr3 = arr2.reshape((5, 5))
         expected = np.ones((5, 5))
         np.testing.assert_array_equal(arr3.execute(), expected)
+
+    def testArrayProtocol(self):
+        arr = mt.ones((10, 20))
+
+        result = np.asarray(arr)
+        np.testing.assert_array_equal(result, np.ones((10, 20)))
+
+        arr2 = mt.ones((10, 20))
+
+        result = np.asarray(arr2, mt.bool_)
+        np.testing.assert_array_equal(result, np.ones((10, 20), dtype=np.bool_))
+
+        arr3 = mt.ones((10, 20)).sum()
+
+        result = np.asarray(arr3)
+        np.testing.assert_array_equal(result, np.asarray(200))
+
+        arr4 = mt.ones((10, 20)).sum()
+
+        result = np.asarray(arr4, dtype=np.float_)
+        np.testing.assert_array_equal(result, np.asarray(200, dtype=np.float_))
