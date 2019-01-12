@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..serialize import SerializableWithKey
-from ..core import Entity
+from ..core import Entity, SerializableWithKey
 
 
 class IndexData(SerializableWithKey):
