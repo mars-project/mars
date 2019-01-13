@@ -23,19 +23,13 @@ from ....operands import IndexSetValue
 from ....core import BaseWithKey, Entity
 from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..core import TensorOperandMixin
-from .core import process_index, get_index_and_shape, get_rough_size
+from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
 
 
 class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
-
-    def _calc_rough_nbytes(self):
-        shape = self.outputs[0].shape
-        indexes = self.indexes
-        rough_size = get_rough_size(self.input.shape, indexes, shape)
-        return rough_size * self.input.dtype.itemsize
 
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes, value):

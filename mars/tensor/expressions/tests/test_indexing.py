@@ -41,6 +41,13 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed.shape[1], 300)
         self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
+        t2 = ones((100, 200))
+        indexed = t[t2 < 2] + 1
+        self.assertEqual(len(indexed.shape), 2)
+        self.assertTrue(np.isnan(indexed.shape[0]))
+        self.assertEqual(indexed.shape[1], 300)
+        self.assertEqual(indexed.rough_nbytes, t.nbytes)
+
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
             _ = t[t3 < 2]  # noqa: F841

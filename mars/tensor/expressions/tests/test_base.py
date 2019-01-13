@@ -200,6 +200,7 @@ class Test(unittest.TestCase):
 
         self.assertTrue(np.isnan(indices.shape[0]))
         self.assertEqual(indices.shape[1], 2)
+        self.assertEqual(indices.rough_nbytes, 4 * 2 * 8)
 
         indices.tiles()
 

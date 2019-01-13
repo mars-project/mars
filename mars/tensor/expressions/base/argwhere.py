@@ -31,7 +31,7 @@ class TensorArgwhere(Argwhere, TensorOperandMixin):
 
     def _calc_rough_nbytes(self):
         rough_shape = (np.prod(self.input.shape), self.input.ndim)
-        return np.prod(rough_shape) * self.input.dtype.itemsize
+        return np.prod(rough_shape) * self.outputs[0].dtype.itemsize
 
     def _set_inputs(self, inputs):
         super(TensorArgwhere, self)._set_inputs(inputs)
@@ -111,5 +111,5 @@ def argwhere(a):
 
     """
     a = astensor(a).astype(bool)
-    op = TensorArgwhere(np.intp)
+    op = TensorArgwhere(np.dtype(np.intp))
     return op(a)
