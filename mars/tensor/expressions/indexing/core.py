@@ -118,3 +118,14 @@ def process_index(tensor, item):
     if missing < 0:
         raise IndexError('too many indices for tensor')
     return index + (slice(None),) * missing
+
+
+def get_rough_size(in_tensor_shape, indexes, shape):
+    rough_size = np.nanprod(shape)
+
+    new_indexes = [index for index in indexes if index is not None]
+    for idx, index in enumerate(new_indexes):
+        if isinstance(index, TENSOR_TYPE):
+            rough_size *= np.nanprod(in_tensor_shape[idx: (idx + index.ndim)])
+
+    return rough_size

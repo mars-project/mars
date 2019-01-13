@@ -102,6 +102,16 @@ class ChunkData(SerializableWithKey):
         return np.prod(self.shape) * self.dtype.itemsize
 
     @property
+    def rough_nbytes(self):
+        if np.isnan(self.nbytes):
+            try:
+                return self.op._calc_rough_nbytes()
+            except AttributeError:
+                return sum([inp.rough_nbytes for inp in self.op.inputs])
+        else:
+            return self.nbytes
+
+    @property
     def composed(self):
         return getattr(self, '_composed', None)
 
@@ -186,6 +196,17 @@ class TensorData(SerializableWithKey, Tilesable):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
+
+    @property
+    def rough_nbytes(self):
+        if np.isnan(self.nbytes):
+            try:
+                return self.op._calc_rough_nbytes()
+            except AttributeError:
+                return sum([inp.rough_nbytes for inp in self.op.inputs])
+        else:
+            return self.nbytes
+
 
     @property
     def chunk_shape(self):

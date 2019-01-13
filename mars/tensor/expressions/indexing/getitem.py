@@ -28,12 +28,18 @@ from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
     slice_split, calc_sliced_size
 from ..core import TensorOperandMixin
-from .core import process_index, get_index_and_shape
+from .core import process_index, get_index_and_shape, get_rough_size
 
 
 class TensorIndex(Index, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    def _calc_rough_nbytes(self):
+        shape = self.outputs[0].shape
+        indexes = self.indexes
+        rough_size = get_rough_size(self.input.shape, indexes, shape)
+        return rough_size * self.input.dtype.itemsize
 
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes):

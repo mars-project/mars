@@ -32,12 +32,14 @@ class Test(unittest.TestCase):
         indexed = t[t < 2]
         self.assertEqual(len(indexed.shape), 1)
         self.assertTrue(np.isnan(indexed.shape[0]))
+        self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
         t2 = ones((100, 200))
         indexed = t[t2 < 2]
         self.assertEqual(len(indexed.shape), 2)
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
+        self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
@@ -96,6 +98,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t2.shape), 3)
         self.assertTrue(np.isnan(t2.shape[0]))
         self.assertEqual(t2.shape[1:], (200, 3))
+        self.assertEqual(t2.rough_nbytes, 100 * 200 * 3 * t.dtype.itemsize)
 
     def testBoolIndexingTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -118,6 +121,7 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed2.chunks[0].shape[1], 30)
         self.assertEqual(indexed2.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertEqual(indexed2.chunks[20].inputs[1], indexed2.op.indexes[0].cix[0, 2].data)
+        self.assertEqual(indexed2.rough_nbytes, t.nbytes)
 
     def testSliceTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -157,6 +161,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(t2.shape[:-1], (27, 300, 1))
         self.assertTrue(np.isnan(t2.shape[-1]))
+        self.assertEqual(t2.rough_nbytes, 27 * 300 * 400 * t.dtype.itemsize)
         self.assertEqual(t2.chunk_shape, (4, 13, 1, 17))
         self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0,].data])
 
