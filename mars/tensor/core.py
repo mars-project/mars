@@ -15,49 +15,20 @@
 # limitations under the License.
 
 
-import itertools
-from operator import attrgetter, mul
 from weakref import WeakKeyDictionary, ref
 from collections import Iterable
-import threading
 
-import numpy as np
-
-from ..core import Entity, SerializableWithKey, ChunkData, Chunk
-from ..compat import builtins, reduce
-from ..graph import DAG
-from ..tiles import Tilesable, handler
-from ..serialize import ValueType, ProviderType, \
-    ListField, TupleField, DictField, DataTypeField, KeyField
-from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape
+from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode
+from ..tiles import handler
+from ..serialize import ProviderType, DataTypeField
 from .expressions.utils import get_chunk_slices
 
 
-class TensorData(SerializableWithKey, Tilesable):
-    __slots__ = '__weakref__', '_siblings', '_cix'
-    _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
+class TensorData(TilesableData):
+    __slots__ = ()
 
-    # required fields
-    _shape = TupleField('shape', ValueType.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _dtype = DataTypeField('dtype')
-    _op = KeyField('op')
     # optional fields
-    # `nsplits` means the sizes of chunks for each dimension
-    _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
-    _chunks = ListField('chunks', ValueType.reference(Chunk))
-    _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
-
-    def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_params'] = kwargs.pop('_params', extras)
-        if '_nsplits' in kwargs:
-            kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
-
-        super(TensorData, self).__init__(*args, **kwargs)
-
-        if hasattr(self, '_chunks') and self._chunks:
-            self._chunks = sorted(self._chunks, key=attrgetter('index'))
+    _dtype = DataTypeField('dtype')
 
     @classmethod
     def cls(cls, provider):
@@ -68,67 +39,6 @@ class TensorData(SerializableWithKey, Tilesable):
 
     def __repr__(self):
         return 'Tensor <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
-
-    @property
-    def shape(self):
-        if hasattr(self, '_shape') and self._shape is not None:
-            return self._shape
-        if hasattr(self, '_nsplits') and self._nsplits is not None:
-            self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
-            return self._shape
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    def __len__(self):
-        try:
-            return self.shape[0]
-        except IndexError:
-            if build_mode().is_build_mode:
-                return 0
-            raise TypeError('len() of unsized object')
-
-    @property
-    def nbytes(self):
-        return np.prod(self.shape) * self.dtype.itemsize
-
-    @property
-    def chunk_shape(self):
-        if hasattr(self, '_nsplits') and self._nsplits is not None:
-            return tuple(map(len, self._nsplits))
-
-    @property
-    def chunks(self):
-        return getattr(self, '_chunks', None)
-
-    @property
-    def op(self):
-        return getattr(self, '_op', None)
-
-    @property
-    def nsplits(self):
-        return getattr(self, '_nsplits', None)
-
-    @property
-    def size(self):
-        return np.prod(self.shape).item()
-
-    @property
-    def inputs(self):
-        return self.op.inputs or []
-
-    @inputs.setter
-    def inputs(self, new_inputs):
-        self.op.inputs = new_inputs
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
-
-    @property
-    def params(self):
-        return self._params
 
     @property
     def real(self):
@@ -142,9 +52,6 @@ class TensorData(SerializableWithKey, Tilesable):
 
     def get_chunk_slices(self, idx):
         return get_chunk_slices(self.nsplits, idx)
-
-    def is_coarse(self):
-        return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
     def is_scalar(self):
         return self.ndim == 0
@@ -169,54 +76,6 @@ class TensorData(SerializableWithKey, Tilesable):
 
         from .expressions.datasource import fromsparse
         return fromsparse(self)
-
-    @property
-    def cix(self):
-        if self.ndim == 0:
-            return ChunksIndexer(self)
-
-        try:
-            if getattr(self, '_cix', None) is None:
-                self._cix = ChunksIndexer(self)
-            return self._cix
-        except (TypeError, ValueError):
-            return ChunksIndexer(self)
-
-    def tiles(self):
-        return handler.tiles(self)
-
-    def single_tiles(self):
-        return handler.single_tiles(self)
-
-    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True):
-        if tiled and self.is_coarse():
-            self.tiles()
-
-        graph = graph if graph is not None else cls()
-        keys = None
-
-        if tiled:
-            nodes = list(c.data for c in self.chunks)
-            keys = list(c.key for c in self.chunks)
-        else:
-            nodes = list(self.op.outputs)
-        visited = set()
-        while len(nodes) > 0:
-            chunk = nodes.pop()
-            visited.add(chunk)
-            if not graph.contains(chunk):
-                graph.add_node(chunk)
-            children = chunk.inputs or []
-            for c in children:
-                if not graph.contains(c):
-                    graph.add_node(c)
-                if not graph.has_successor(c, chunk):
-                    graph.add_edge(c, chunk)
-            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in chunk.inputs or []])
-                          if c not in visited])
-        if tiled and compose:
-            graph.compose(keys=keys)
-        return graph
 
     def transpose(self, *axes):
         """
@@ -359,14 +218,6 @@ class TensorData(SerializableWithKey, Tilesable):
 
     _execute_session = property(fset=_set_execute_session)
 
-    def visualize(self, graph_attrs=None, node_attrs=None, **kw):
-        from graphviz import Source
-
-        g = self.build_graph(**kw)
-        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs)
-
-        return Source(dot)
-
 
 class ExecutableTuple(tuple):
     def execute(self, session=None, **kw):
@@ -375,30 +226,6 @@ class ExecutableTuple(tuple):
         if session is None:
             session = Session.default_or_local()
         return session.run(*self, **kw)
-
-
-class ChunksIndexer(object):
-    __slots__ = '_tensor',
-
-    def __init__(self, tensor):
-        self._tensor = tensor
-
-    def __getitem__(self, item):
-        if isinstance(item, tuple):
-            if len(item) == 0 and self._tensor.is_scalar():
-                return self._tensor.chunks[0]
-            elif all(np.issubdtype(type(it), np.integer) for it in item):
-                if len(item) != self._tensor.ndim:
-                    raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
-                        item, self._tensor.ndim))
-
-                s = self._tensor.chunk_shape
-                item = tuple(i if i >= 0 else i + s for i, s in zip(item, s))
-                idx = sum(idx * reduce(mul, s[i+1:], 1) for i, idx
-                          in zip(itertools.count(0), item))
-                return self._tensor._chunks[idx]
-
-        raise ValueError('Cannot get tensor chunk by {0}'.format(item))
 
 
 class Tensor(Entity):
@@ -453,8 +280,6 @@ class SparseTensor(Tensor):
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (Chunk, ChunkData)
 
-_threading_local = threading.local()
-
 
 class _TensorSession(object):
     def __init__(self, tensor, session):
@@ -480,28 +305,3 @@ class _TensorCleaner(object):
 # and op's outputs contains the tensor, so a circular references exists
 _cleaner = _TensorCleaner()
 
-
-class BuildMode(object):
-    def __init__(self):
-        self.is_build_mode = False
-        self._old_mode = None
-
-    def __enter__(self):
-        if self._old_mode is None:
-            # check to prevent nested enter and exit
-            self._old_mode = self.is_build_mode
-            self.is_build_mode = True
-
-    def __exit__(self, *_):
-        if self._old_mode is not None:
-            self.is_build_mode = self._old_mode
-            self._old_mode = None
-
-
-def build_mode():
-    ret = getattr(_threading_local, 'build_mode', None)
-    if ret is None:
-        ret = BuildMode()
-        _threading_local.build_mode = ret
-
-    return ret

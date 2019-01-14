@@ -15,10 +15,13 @@
 # limitations under the License.
 
 from ..core import Entity, SerializableWithKey
+from ..tiles import Tilesable
 
 
-class IndexData(SerializableWithKey):
-    pass
+class IndexData(SerializableWithKey, Tilesable):
+    __slots__ = ()
+
+    # required
 
 
 class Index(Entity):
