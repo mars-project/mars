@@ -128,7 +128,7 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed2.chunks[0].shape[1], 30)
         self.assertEqual(indexed2.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertEqual(indexed2.chunks[20].inputs[1], indexed2.op.indexes[0].cix[0, 2].data)
-        self.assertEqual(indexed2.rough_nbytes, t.nbytes)
+        self.assertEqual(indexed2.chunks[0].rough_nbytes, 30 * 30 * 30 * t2.dtype.itemsize)
 
     def testSliceTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -170,7 +170,23 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(t2.shape[-1]))
         self.assertEqual(t2.rough_nbytes, 27 * 300 * 400 * t.dtype.itemsize)
         self.assertEqual(t2.chunk_shape, (4, 13, 1, 17))
-        self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0,].data])
+        self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0, ].data])
+        self.assertEqual(t2.chunks[0].rough_nbytes, 5 * 24 * 24 * t.dtype.itemsize)
+
+        # multiple tensor type as indexes
+        t3 = ones((100, 200, 300, 400), chunk_size=24)
+        cmp2 = ones((100, 200), chunk_size=24) < 2
+        cmp3 = ones(400, chunk_size=24) < 2
+        t4 = t3[cmp2, 5, None, cmp3]
+        t4.tiles()
+
+        self.assertEqual(t4.shape[1], 1)
+        self.assertTrue(np.isnan(t4.shape[0]))
+        self.assertTrue(np.isnan(t4.shape[-1]))
+        self.assertEqual(t4.rough_nbytes, 100 * 200 * 400 * t.dtype.itemsize)
+        self.assertEqual(t4.chunk_shape, (45, 1, 17))
+        self.assertEqual(t4.chunks[0].op.indexes, [cmp2.cix[0, 0].data, 5, None, cmp3.cix[0, ].data])
+        self.assertEqual(t4.chunks[0].rough_nbytes, 24 * 24 * 24 * t3.dtype.itemsize)
 
     def testSetItem(self):
         shape = (10, 20, 30, 40)

@@ -28,7 +28,7 @@ from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
     slice_split, calc_sliced_size
 from ..core import TensorOperandMixin
-from .core import process_index, get_index_and_shape, get_rough_size
+from .core import process_index, get_index_and_shape
 
 
 class TensorIndex(Index, TensorOperandMixin):
@@ -37,8 +37,16 @@ class TensorIndex(Index, TensorOperandMixin):
 
     def _calc_rough_nbytes(self):
         shape = self.outputs[0].shape
-        indexes = self.indexes
-        rough_size = get_rough_size(self.input.shape, indexes, shape)
+        rough_size = np.nanprod(shape)
+        new_indexes = [index for index in self.indexes if index is not None]
+
+        idx = 0
+        for index in new_indexes:
+            if isinstance(index, (BaseWithKey, Entity)) and index.dtype == np.bool_:
+                rough_size *= np.nanprod(self.input.shape[idx: (idx + index.ndim)])
+                idx += index.ndim - 1
+            idx += 1
+
         return rough_size * self.input.dtype.itemsize
 
     @contextlib.contextmanager
