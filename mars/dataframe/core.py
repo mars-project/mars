@@ -14,21 +14,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import Entity, SerializableWithKey
-from ..tiles import Tilesable
+from ..core import Entity, TilesableData
+from ..serialize import Serializable, DataTypeField, AnyField, ListField
 
 
-class IndexData(SerializableWithKey, Tilesable):
+class IndexValue(Serializable):
     __slots__ = ()
 
-    # required
+    class Index(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _dtype = DataTypeField('dtype')
+
+    class RangeIndex(Serializable):
+        _name = AnyField('name')
+        _slice = AnyField('slice')
+
+
+class IndexData(TilesableData):
+    __slots__ = ()
+
+    # optional field
+    _dtype = DataTypeField('dtype')
 
 
 class Index(Entity):
     _allow_data_type_ = (IndexData,)
 
 
-class SeriesData(SerializableWithKey):
+class SeriesData(TilesableData):
     pass
 
 
@@ -36,7 +50,7 @@ class Series(Entity):
     _allow_data_type_ = (SeriesData,)
 
 
-class DataFrameData(SerializableWithKey):
+class DataFrameData(TilesableData):
     pass
 
 

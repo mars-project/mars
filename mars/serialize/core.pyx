@@ -333,6 +333,14 @@ cdef class DataTypeField(Field):
         self._type = ValueType.dtype
 
 
+cdef class SliceField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(SliceField, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.slice
+
+
 cdef inline _handle_nest_reference(field, ref):
     if not isinstance(ref, Reference):
         return ref

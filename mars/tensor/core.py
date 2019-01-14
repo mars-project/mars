@@ -27,7 +27,7 @@ from .expressions.utils import get_chunk_slices
 class TensorData(TilesableData):
     __slots__ = ()
 
-    # optional fields
+    # required fields
     _dtype = DataTypeField('dtype')
 
     @classmethod
