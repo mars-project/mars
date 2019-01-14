@@ -131,7 +131,7 @@ message SeriesDef {
 message DataFrameDef {
     string key = 1;
     repeated int64 shape = 2;
-    Value dtype = 3;
+    Value dtypes = 3;
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
     repeated ChunkDef chunks = 6;
