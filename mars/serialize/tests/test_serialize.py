@@ -29,7 +29,7 @@ except ImportError:
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
 from mars.serialize.core import Serializable, IdentityField, StringField, Int32Field, BytesField, \
-    KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, \
+    KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, SliceField, \
     ValueType, serializes, deserializes, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
@@ -90,6 +90,7 @@ class Node3(Serializable):
 
 class Node5(AttributeAsDict):
     a = StringField('a')
+    b = SliceField('b')
 
 
 class Node6(AttributeAsDict):
@@ -202,8 +203,8 @@ class Test(unittest.TestCase):
                       e=(1234, to_text('测试'), '属性', None, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.dtype([('x', 'i4'), ('y', 'f4')])),
                       f=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
-                      g=Node5(a='aa'),
-                      h=[Node5(a='bb'), None],
+                      g=Node5(a='aa', b=slice(1, 100, 3)),
+                      h=[Node5(a='bb', b=slice(200, -1, -4)), None],
                       i=Node6(b=3, nid=1))
 
         pbs = ProtobufSerializeProvider()
@@ -218,7 +219,9 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.e, d_node4.e)
         self.assertEqual(node4.f, d_node4.f)
         self.assertEqual(node4.g.a, d_node4.g.a)
+        self.assertEqual(node4.g.b, d_node4.g.b)
         self.assertEqual(node4.h[0].a, d_node4.h[0].a)
+        self.assertEqual(node4.h[0].b, d_node4.h[0].b)
         self.assertIsNone(d_node4.h[1])
         self.assertIsInstance(d_node4.i, Node7)
         self.assertEqual(d_node4.i.b, 3)

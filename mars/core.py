@@ -191,6 +191,7 @@ class ChunkData(SerializableWithKey):
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
+    _dtype = DataTypeField('dtype')
     _index = TupleField('index', ValueType.uint32)
     _cached = BoolField('cached')
     _composed = ListField('composed', ValueType.reference('self'))
@@ -280,7 +281,6 @@ class TilesableData(SerializableWithKey, Tilesable):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _dtype = DataTypeField('dtype')
     _op = KeyField('op')
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
