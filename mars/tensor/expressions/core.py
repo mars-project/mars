@@ -17,14 +17,12 @@
 import numpy as np
 
 from ..core import TensorData, Tensor, SparseTensor, ChunkData, Chunk
+from ...core import TilesableOperandMixin
 
 
-class TensorOperandMixin(object):
+class TensorOperandMixin(TilesableOperandMixin):
     __slots__ = ()
     _op_module_ = 'tensor'
-
-    def check_inputs(self, inputs):
-        pass
 
     def new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, dtype=None, **kw):
         output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit

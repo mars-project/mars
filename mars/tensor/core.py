@@ -18,6 +18,8 @@
 from weakref import WeakKeyDictionary, ref
 from collections import Iterable
 
+import numpy as np
+
 from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode
 from ..tiles import handler
 from ..serialize import ProviderType, DataTypeField
@@ -49,6 +51,14 @@ class TensorData(TilesableData):
     def imag(self):
         from .expressions.arithmetic import imag
         return imag(self)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def nbytes(self):
+        return np.prod(self.shape) * self.dtype.itemsize
 
     def get_chunk_slices(self, idx):
         return get_chunk_slices(self.nsplits, idx)

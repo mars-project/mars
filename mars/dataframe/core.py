@@ -15,7 +15,9 @@
 # limitations under the License.
 
 from ..core import Entity, TilesableData
-from ..serialize import Serializable, DataTypeField, AnyField, ListField
+from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, \
+    BoolField, Int64Field, Int32Field, ListField, DictField, SliceField, OneOfField, ReferenceField
+from .utils import on_serialize_dtypes, on_deserialize_dtypes
 
 
 class IndexValue(Serializable):
@@ -28,7 +30,84 @@ class IndexValue(Serializable):
 
     class RangeIndex(Serializable):
         _name = AnyField('name')
-        _slice = AnyField('slice')
+        _slice = SliceField('slice')
+
+    class CategoricalIndex(Serializable):
+        _name = AnyField('name')
+        _categories = ListField('categories')
+        _ordered = BoolField('ordered')
+
+    class IntervalIndex(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _closed = BoolField('closed')
+
+    class DatetimeIndex(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _freq = AnyField('freq')
+        _start = AnyField('start')
+        _periods = Int64Field('periods')
+        _end = AnyField('end')
+        _closed = AnyField('closed')
+        _tz = AnyField('tz')
+        _dayfirst = BoolField('dayfirst')
+        _yearfirst = BoolField('yearfirst')
+
+    class TimedeltaIndex(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _unit = AnyField('unit')
+        _freq = AnyField('freq')
+        _start = AnyField('start')
+        _periods = Int64Field('periods')
+        _end = AnyField('end')
+        _closed = AnyField('closed')
+
+    class PeriodIndex(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _freq = AnyField('freq')
+        _start = AnyField('start')
+        _periods = Int64Field('periods')
+        _end = AnyField('end')
+        _year = AnyField('year')
+        _month = AnyField('month')
+        _quater = AnyField('quater')
+        _day = AnyField('day')
+        _hour = AnyField('hour')
+        _minute = AnyField('minute')
+        _second = AnyField('second')
+        _tz = AnyField('tz')
+        _dtype = DataTypeField('dtype')
+
+    class Int64Index(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _dtype = DataTypeField('dtype')
+
+    class UInt64Index(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _dtype = DataTypeField('dtype')
+
+    class Float64Index(Serializable):
+        _name = AnyField('name')
+        _data = ListField('data')
+        _dtype = DataTypeField('dtype')
+
+    class MultiIndex(Serializable):
+        _names = ListField('name')
+        _levels = ListField('levels')
+        _labels = ListField('labels')
+        _sortorder = Int32Field('sortorder')
+
+    _index_value = OneOfField('index_value', index=Index,
+                              range_index=RangeIndex, categorical_index=CategoricalIndex,
+                              interval_index=IntervalIndex, datetime_index=DatetimeIndex,
+                              timedelta_index=TimedeltaIndex, period_index=PeriodIndex,
+                              int64_index=Int64Field, uint64_index=UInt64Index,
+                              float64_index=Float64Index, multi_index=MultiIndex)
 
 
 class IndexData(TilesableData):
@@ -36,6 +115,21 @@ class IndexData(TilesableData):
 
     # optional field
     _dtype = DataTypeField('dtype')
+    _index = ReferenceField('index', IndexValue)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import IndexDef
+            return IndexDef
+        return super(IndexData, cls).cls(provider)
+
+    def __repr__(self):
+        return 'Index <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None) or self.op.dtype
 
 
 class Index(Entity):
@@ -43,7 +137,24 @@ class Index(Entity):
 
 
 class SeriesData(TilesableData):
-    pass
+    __slots__ = ()
+
+    # optional field
+    _dtype = DataTypeField('dtype')
+    _name = AnyField('name')
+    _index = ReferenceField('index', IndexValue)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def index(self):
+        return self._index
 
 
 class Series(Entity):
@@ -51,7 +162,25 @@ class Series(Entity):
 
 
 class DataFrameData(TilesableData):
-    pass
+    __slots__ = ()
+
+    # optional field
+    _dtypes = DictField('dtypes', ValueType.string, ValueType.dtype,
+                        on_serialize=on_serialize_dtypes, on_deserialize=on_deserialize_dtypes)
+    _index = ReferenceField('index', IndexValue)
+    _columns = ReferenceField('columns', IndexValue)
+
+    @property
+    def dtypes(self):
+        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def columns(self):
+        return self._columns
 
 
 class DataFrame(Entity):
