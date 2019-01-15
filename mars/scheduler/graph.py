@@ -275,7 +275,7 @@ class GraphActor(SchedulerActor):
         for chunk in chunk_graph:
             if chunk.op.key not in self._operand_infos:
                 continue
-            if self._operand_infos[chunk.op.key]['state'] in \
+            if self._operand_infos[chunk.op.key].get('state') in \
                     (OperandState.READY, OperandState.RUNNING, OperandState.FINISHED):
                 # we only need to stop on ready, running and finished operands
                 op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
@@ -608,7 +608,7 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
-    def create_operand_actors(self, _clean_io_meta=True):
+    def create_operand_actors(self, _clean_io_meta=True, _start=True):
         """
         Create operand actors for all operands
         """
@@ -675,10 +675,11 @@ class GraphActor(SchedulerActor):
 
         self.state = GraphState.RUNNING
 
-        op_refs = dict((k, v.result()) for k, v in op_refs.items())
-        start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
-                         for op_key in initial_keys]
-        [future.result() for future in start_futures]
+        if _start:
+            op_refs = dict((k, v.result()) for k, v in op_refs.items())
+            start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
+                             for op_key in initial_keys]
+            [future.result() for future in start_futures]
 
     def mark_terminal_finished(self, op_key, final_state=None):
         """

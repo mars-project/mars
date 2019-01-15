@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import uuid
 import unittest
 
 import mars.tensor as mt
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import GraphActor, ResourceActor, ChunkMetaActor, AssignerActor
+from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
+    AssignerActor, GraphState
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
+from mars.tests.core import patch_method
 
 
 class Test(unittest.TestCase):
-    def run_expr_suite(self, expr, compose=False):
+    @contextlib.contextmanager
+    def prepare_graph_in_pool(self, expr, clean_io_meta=True, compose=False):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
@@ -68,62 +72,67 @@ class Test(unittest.TestCase):
                 target_worker = op_infos[n.op.key]['target_worker']
                 self.assertIsNotNone(target_worker)
 
-            graph_ref.create_operand_actors(_clean_io_meta=False)
+            graph_ref.create_operand_actors(_clean_io_meta=clean_io_meta)
             op_infos = graph_ref.get_operand_info()
 
-            orig_metas = dict()
-            for n in fetched_graph:
-                try:
-                    meta = orig_metas[n.op.key]
-                except KeyError:
-                    meta = orig_metas[n.op.key] = dict(
-                        predecessors=set(), successors=set(), input_chunks=set(), chunks=set()
-                    )
-                meta['predecessors'].update([pn.op.key for pn in fetched_graph.iter_predecessors(n)])
-                meta['successors'].update([sn.op.key for sn in fetched_graph.iter_successors(n)])
-                meta['input_chunks'].update([pn.key for pn in fetched_graph.iter_predecessors(n)])
-                meta['chunks'].update([c.key for c in n.op.outputs])
+            if not clean_io_meta:
+                orig_metas = dict()
+                for n in fetched_graph:
+                    try:
+                        meta = orig_metas[n.op.key]
+                    except KeyError:
+                        meta = orig_metas[n.op.key] = dict(
+                            predecessors=set(), successors=set(), input_chunks=set(), chunks=set()
+                        )
+                    meta['predecessors'].update([pn.op.key for pn in fetched_graph.iter_predecessors(n)])
+                    meta['successors'].update([sn.op.key for sn in fetched_graph.iter_successors(n)])
+                    meta['input_chunks'].update([pn.key for pn in fetched_graph.iter_predecessors(n)])
+                    meta['chunks'].update([c.key for c in n.op.outputs])
 
-            for n in fetched_graph:
-                self.assertEqual(op_infos[n.op.key]['op_name'], type(n.op).__name__)
+                for n in fetched_graph:
+                    self.assertEqual(op_infos[n.op.key]['op_name'], type(n.op).__name__)
 
-                io_meta = op_infos[n.op.key]['io_meta']
-                orig_io_meta = orig_metas[n.op.key]
+                    io_meta = op_infos[n.op.key]['io_meta']
+                    orig_io_meta = orig_metas[n.op.key]
 
-                self.assertSetEqual(set(io_meta['predecessors']), set(orig_io_meta['predecessors']))
-                self.assertSetEqual(set(io_meta['successors']), set(orig_io_meta['successors']))
-                self.assertSetEqual(set(io_meta['input_chunks']), set(orig_io_meta['input_chunks']))
-                self.assertSetEqual(set(io_meta['chunks']), set(orig_io_meta['chunks']))
+                    self.assertSetEqual(set(io_meta['predecessors']), set(orig_io_meta['predecessors']))
+                    self.assertSetEqual(set(io_meta['successors']), set(orig_io_meta['successors']))
+                    self.assertSetEqual(set(io_meta['input_chunks']), set(orig_io_meta['input_chunks']))
+                    self.assertSetEqual(set(io_meta['chunks']), set(orig_io_meta['chunks']))
 
-                self.assertEqual(op_infos[n.op.key]['output_size'], sum(ch.nbytes for ch in n.op.outputs))
+                    self.assertEqual(op_infos[n.op.key]['output_size'], sum(ch.nbytes for ch in n.op.outputs))
 
-        return fetched_graph
+            yield pool, graph_ref
 
-    def testGraphActor(self):
+    def testSimpleGraphPreparation(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
-        self.run_expr_suite(arr2)
+        with self.prepare_graph_in_pool(arr2, clean_io_meta=False):
+            pass
 
-    def testGraphWithSplit(self):
+    def testSplitPreparation(self, *_):
         arr = mt.ones(12, chunk_size=4)
         arr_split = mt.split(arr, 2)
         arr_sum = arr_split[0] + arr_split[1]
-        self.run_expr_suite(arr_sum)
+        with self.prepare_graph_in_pool(arr_sum, clean_io_meta=False):
+            pass
 
-    def testSameKey(self):
+    def testSameKeyPreparation(self, *_):
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
-        self.run_expr_suite(arr2)
+        with self.prepare_graph_in_pool(arr2, clean_io_meta=False):
+            pass
 
-    def testFuseExist(self):
+    def testFusePreparation(self, *_):
         from mars.tensor.expressions.fuse.core import TensorFuseChunk
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = (arr + 5) * 2
-        out_graph = self.run_expr_suite(arr2, compose=True)
-        self.assertTrue(all(isinstance(v.op, TensorFuseChunk) for v in out_graph))
+        with self.prepare_graph_in_pool(arr2, compose=True) as (pool, graph_ref):
+            out_graph = graph_ref.get_chunk_graph()
+            self.assertTrue(all(isinstance(v.op, TensorFuseChunk) for v in out_graph))
 
-    def testMultipleAdd(self):
+    def testMultipleAddPreparation(self, *_):
         import numpy as np
         import operator
         from mars.compat import reduce
@@ -131,4 +140,89 @@ class Test(unittest.TestCase):
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)
         sumv = reduce(operator.add, [a[:10, :10] for _ in range(10)])
-        self.run_expr_suite(sumv)
+        with self.prepare_graph_in_pool(sumv):
+            pass
+
+    def testGraphTermination(self, *_):
+        from mars.tensor.expressions.arithmetic.add import TensorAddConstant
+        arr = mt.random.random((8, 2), chunk_size=2)
+        arr2 = arr + 1
+        with self.prepare_graph_in_pool(arr2) as (pool, graph_ref):
+            out_graph = graph_ref.get_chunk_graph()
+            for c in out_graph:
+                if not isinstance(c.op, TensorAddConstant):
+                    continue
+                self.assertNotEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
+                graph_ref.mark_terminal_finished(c.op.key)
+
+            self.assertEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
+
+        arr = mt.random.random((8, 2), chunk_size=2)
+        arr2 = arr + 1
+        with self.prepare_graph_in_pool(arr2) as (pool, graph_ref):
+            out_graph = graph_ref.get_chunk_graph()
+            for c in out_graph:
+                if not isinstance(c.op, TensorAddConstant):
+                    continue
+                self.assertNotEqual(graph_ref.get_state(), GraphState.FAILED)
+                graph_ref.mark_terminal_finished(c.op.key, GraphState.FAILED)
+
+            self.assertEqual(graph_ref.get_state(), GraphState.FAILED)
+
+    def testErrorOnPrepare(self, *_):
+        session_id = str(uuid.uuid4())
+
+        addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
+            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
+                              uid=ClusterInfoActor.default_name())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
+
+            resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
+            resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
+
+            # error occurred in create_operand_actors
+            graph_key = str(uuid.uuid4())
+            expr = mt.random.random((8, 2), chunk_size=2) + 1
+            graph = expr.build_graph(compose=False)
+            serialized_graph = serialize_graph(graph)
+
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
+                                          uid=GraphActor.gen_name(session_id, graph_key))
+
+            def _mock_raises(*_):
+                raise RuntimeError
+
+            with patch_method(GraphActor.create_operand_actors, new=_mock_raises):
+                with self.assertRaises(RuntimeError):
+                    graph_ref.execute_graph()
+            self.assertEqual(graph_ref.get_state(), GraphState.FAILED)
+            graph_ref.destroy()
+
+            # interrupted during create_operand_actors
+            graph_key = str(uuid.uuid4())
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
+                                          uid=GraphActor.gen_name(session_id, graph_key))
+
+            def _mock_cancels(*_):
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref.set_state(GraphState.CANCELLING)
+
+            with patch_method(GraphActor.create_operand_actors, new=_mock_cancels):
+                graph_ref.execute_graph()
+            self.assertEqual(graph_ref.get_state(), GraphState.CANCELLED)
+
+            # interrupted during previous steps
+            graph_key = str(uuid.uuid4())
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
+                                          uid=GraphActor.gen_name(session_id, graph_key))
+
+            def _mock_cancels(*_):
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref.set_state(GraphState.CANCELLING)
+
+            with patch_method(GraphActor.place_initial_chunks, new=_mock_cancels):
+                graph_ref.execute_graph()
+            self.assertEqual(graph_ref.get_state(), GraphState.CANCELLED)

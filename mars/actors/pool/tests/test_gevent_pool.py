@@ -454,6 +454,11 @@ class Test(unittest.TestCase):
             self.assertIsNone(ref1.send(('tell_async', ref3, 'add', 3)))
             self.assertEqual(ref3.send(('get',)), 8)
 
+            ref3.tell(('add', 3), wait=False, delay=0.3)
+            self.assertEqual(ref3.send(('get',)), 8)
+            pool.sleep(0.5)
+            self.assertEqual(ref3.send(('get',)), 11)
+
             ref1.send(('tell_delay', ref2, 'add', 4, 0.3))  # delay 0.5 secs
             self.assertEqual(ref2.send(('get',)), 5)
             pool.sleep(0.5)
@@ -470,8 +475,8 @@ class Test(unittest.TestCase):
 
             ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
             ref2 = ref1.send(('create', (DummyActor, 2)))
-
-            self.assertTrue(pool.has_actor(ref2))
+            future = pool.has_actor(ref2, wait=False)
+            self.assertTrue(future.result())
 
             ref1.send(('delete', ref2))
             self.assertFalse(ref1.send(('has', ref2)))
@@ -1054,6 +1059,11 @@ class Test(unittest.TestCase):
             self.assertIsNone(ref1.send(('tell_async', ref3, 'add', 3)))
             self.assertEqual(ref3.send(('get',)), 8)
 
+            ref3.tell(('add', 3), wait=False, delay=0.3)
+            self.assertEqual(ref3.send(('get',)), 8)
+            client.sleep(.5)
+            self.assertEqual(ref3.send(('get',)), 11)
+
             ref1.send(('tell_delay', ref2, 'add', 4, 0.3))  # delay 0.3 secs
             self.assertEqual(ref2.send(('get',)), 5)
             client.sleep(.5)
@@ -1245,6 +1255,11 @@ class Test(unittest.TestCase):
             # test asynchronously destroy
             ref3 = client.create_actor(DummyActor, 1, address=addr)
             future = client.destroy_actor(ref3, wait=False)
+            future.result()
+            self.assertFalse(pool.has_actor(ref3))
+
+            ref3 = client.create_actor(DummyActor, 1, address=addr)
+            future = pool.destroy_actor(ref3, wait=False)
             future.result()
             self.assertFalse(pool.has_actor(ref3))
 
