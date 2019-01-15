@@ -108,6 +108,9 @@ class OperandActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+    def get_state(self):
+        return self._state
+
     @property
     def state(self):
         return self._state
@@ -175,6 +178,12 @@ class OperandActor(SchedulerActor):
             return True
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
         return False
+
+    def remove_finished_predecessor(self, op_key):
+        try:
+            self._finish_preds.remove(op_key)
+        except KeyError:
+            pass
 
     def add_finished_successor(self, op_key):
         self._finish_succs.add(op_key)
@@ -266,12 +275,6 @@ class OperandActor(SchedulerActor):
             logger.debug('Operand %s(%s) now owning a dominant worker %s. scores=%r',
                          self._op_key, self._op_name, max_worker, self._worker_scores)
             return self._input_chunks, max_worker
-
-    def get_op_info(self):
-        info = dict()
-        info['name'] = self._op_name
-        info['state'] = self.state
-        return info
 
     def start_operand(self, state=None):
         """

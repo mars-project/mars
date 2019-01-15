@@ -59,7 +59,11 @@ cdef class DirectedGraph:
                 node_attr.update(node_attrs)
             except AttributeError:
                 raise TypeError('The node_attr argument must be a dictionary')
+        self._add_node(node, node_attr)
 
+    cdef inline _add_node(self, node, node_attr=None):
+        if node_attr is None:
+            node_attr = dict()
         if node not in self._nodes:
             self._nodes[node] = node_attr
             self._successors[node] = dict()
@@ -82,12 +86,6 @@ cdef class DirectedGraph:
         del self._predecessors[node]
 
     def add_edge(self, u, v, edge_attr=None, **edge_attrs):
-        cdef:
-            dict u_succ, v_pred
-        for n in (u, v):
-            if n not in self:
-                raise KeyError('Node %s does not exist in the directed graph' % n)
-
         if edge_attr is None:
             edge_attr = edge_attrs
         else:
@@ -95,6 +93,16 @@ cdef class DirectedGraph:
                 edge_attr.update(edge_attrs)
             except AttributeError:
                 raise TypeError('The edge_attr argument must be a dictionary')
+        self._add_edge(u, v, edge_attr)
+
+    cdef inline _add_edge(self, u, v, edge_attr=None):
+        cdef:
+            dict u_succ, v_pred
+        if edge_attr is None:
+            edge_attr = dict()
+        for n in (u, v):
+            if n not in self:
+                raise KeyError('Node %s does not exist in the directed graph' % n)
 
         u_succ = self._successors[u]
         if v in u_succ:
@@ -268,23 +276,23 @@ cdef class DirectedGraph:
         cdef DirectedGraph graph = DirectedGraph()
         for n in self:
             if n not in graph:
-                graph.add_node(n)
+                graph._add_node(n)
             for succ in self.iter_successors(n):
                 if succ not in graph:
-                    graph.add_node(succ)
-                graph.add_edge(n, succ)
-                graph.add_edge(succ, n)
+                    graph._add_node(succ)
+                graph._add_edge(n, succ)
+                graph._add_edge(succ, n)
         return graph
 
     def build_reversed(self):
-        cdef graph = DirectedGraph()
+        cdef DirectedGraph graph = type(self)()
         for n in self:
             if n not in graph:
-                graph.add_node(n)
+                graph._add_node(n)
             for succ in self.iter_successors(n):
                 if succ not in graph:
-                    graph.add_node(succ)
-                graph.add_edge(succ, n)
+                    graph._add_node(succ)
+                graph._add_edge(succ, n)
         return graph
 
     def serialize(self):
@@ -385,17 +393,18 @@ cdef class DirectedGraph:
 
     @classmethod
     def deserialize(cls, s_graph):
+        cdef DirectedGraph graph = cls()
+
         from .tensor.core import ChunkData, TensorData
 
-        graph = cls()
         node_type = TensorData if s_graph.level == SerializableGraph.Level.TENSOR else ChunkData
         for node in s_graph.nodes:
             if isinstance(node, node_type):
-                graph.add_node(node)
+                graph._add_node(node)
                 if node.inputs:
                     for inode in node.inputs:
-                        graph.add_node(inode)
-                        graph.add_edge(inode, node)
+                        graph._add_node(inode)
+                        graph._add_edge(inode, node)
 
         return graph
 
