@@ -320,10 +320,6 @@ class TilesableData(SerializableWithKey, Tilesable):
             return self._shape
 
     @property
-    def nbytes(self):
-        return np.prod(self.shape) * self.dtype.itemsize
-
-    @property
     def chunk_shape(self):
         if hasattr(self, '_nsplits') and self._nsplits is not None:
             return tuple(map(len, self._nsplits))
@@ -351,10 +347,6 @@ class TilesableData(SerializableWithKey, Tilesable):
     @inputs.setter
     def inputs(self, new_inputs):
         self.op.inputs = new_inputs
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
 
     @property
     def params(self):
@@ -421,24 +413,47 @@ class TilesableData(SerializableWithKey, Tilesable):
 
 
 class ChunksIndexer(object):
-    __slots__ = '_tensor',
+    __slots__ = '_tilesable',
 
-    def __init__(self, tensor):
-        self._tensor = tensor
+    def __init__(self, tilesable):
+        self._tilesable = tilesable
 
     def __getitem__(self, item):
         if isinstance(item, tuple):
-            if len(item) == 0 and self._tensor.is_scalar():
-                return self._tensor.chunks[0]
+            if len(item) == 0 and self._tilesable.is_scalar():
+                return self._tilesable.chunks[0]
             elif all(np.issubdtype(type(it), np.integer) for it in item):
-                if len(item) != self._tensor.ndim:
+                if len(item) != self._tilesable.ndim:
                     raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
-                        item, self._tensor.ndim))
+                        item, self._tilesable.ndim))
 
-                s = self._tensor.chunk_shape
+                s = self._tilesable.chunk_shape
                 item = tuple(i if i >= 0 else i + s for i, s in zip(item, s))
                 idx = sum(idx * reduce(mul, s[i+1:], 1) for i, idx
                           in zip(itertools.count(0), item))
-                return self._tensor._chunks[idx]
+                return self._tilesable._chunks[idx]
 
         raise ValueError('Cannot get tensor chunk by {0}'.format(item))
+
+
+class TilesableOperandMixin(object):
+    __slots__ = ()
+    _chunk_data_type_ = ChunkData
+    _chunk_type_ = Chunk
+    _entity_data_type_ = None
+    _entity_type_ = None
+
+    def check_inputs(self, inputs):
+        pass
+
+    def new_chunks(self):
+        pass
+
+    def new_entities(self):
+        pass
+
+    def new_chunk(self):
+        pass
+
+    def new_entity(self):
+        pass
