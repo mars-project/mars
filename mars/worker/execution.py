@@ -322,13 +322,11 @@ class ExecutionActor(WorkerActor):
                     .get_chunk_meta(session_id, chunk.key)
                 if chunk_meta is None:
                     raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
-                worker_results = chunk_meta.workers
 
                 worker_priorities = []
-                for w in worker_results.children:
-                    _, worker_ip = w.key.rsplit('/', 1)
+                for w in chunk_meta.workers:
                     # todo sort workers by speed of network and other possible factors
-                    worker_priorities.append((worker_ip, (0, )))
+                    worker_priorities.append((w, (0, )))
 
                 transfer_keys.append(chunk.key)
 
