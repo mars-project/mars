@@ -283,14 +283,14 @@ class Test(unittest.TestCase):
         self.assertEqual(len(y), 2)
         self.assertEqual(calc_shape(y[0]), y[0].shape)
         self.assertEqual(calc_shape(y[1]), y[1].shape)
-        self.assertEqual(y[0].rough_nbytes, x.size * x.dtype.itemsize)
-        self.assertEqual(y[1].rough_nbytes, x.size * x.dtype.itemsize)
+        self.assertEqual(y[0].rough_nbytes, x.size * np.dtype(np.intp).itemsize)
+        self.assertEqual(y[1].rough_nbytes, x.size * np.dtype(np.intp).itemsize)
 
         y[0].tiles()
         self.assertEqual(calc_shape(y[0].chunks[0]), y[0].chunks[0].shape)
         self.assertEqual(calc_shape(y[1].chunks[0]), y[1].chunks[0].shape)
-        self.assertEqual(y[0].chunks[0].rough_nbytes, 3 * x.dtype.itemsize)
-        self.assertEqual(y[1].chunks[0].rough_nbytes, 3 * x.dtype.itemsize)
+        self.assertEqual(y[0].chunks[0].rough_nbytes, 3 * np.dtype(np.intp).itemsize)
+        self.assertEqual(y[1].chunks[0].rough_nbytes, 3 * np.dtype(np.intp).itemsize)
 
     def testOperandKey(self):
         t = ones((10, 2), chunk_size=5)
