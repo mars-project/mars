@@ -103,13 +103,23 @@ class ChunkData(SerializableWithKey):
 
     @property
     def rough_nbytes(self):
-        if np.isnan(self.nbytes):
-            try:
-                return self.op._calc_rough_nbytes()
-            except AttributeError:
-                return sum([inp.rough_nbytes for inp in self.op.inputs])
+        return np.prod(self.rough_shape) * self.dtype.itemsize
+
+    @property
+    def rough_shape(self):
+        if np.nan in self.shape:
+            inputs = self.inputs or []
+            inputs_shape = tuple(t.rough_shape for t in inputs)
+            shape = self.op.calc_shape(*inputs_shape)
+            if np.nan in shape:
+                try:
+                    return self.op.calc_rough_shape(*inputs_shape)
+                except AttributeError:
+                    raise
+            else:
+                return shape
         else:
-            return self.nbytes
+            return self.shape
 
     @property
     def composed(self):
@@ -199,14 +209,23 @@ class TensorData(SerializableWithKey, Tilesable):
 
     @property
     def rough_nbytes(self):
-        if np.isnan(self.nbytes):
-            try:
-                return self.op._calc_rough_nbytes()
-            except AttributeError:
-                return sum([inp.rough_nbytes for inp in self.op.inputs])
-        else:
-            return self.nbytes
+        return np.prod(self.rough_shape) * self.dtype.itemsize
 
+    @property
+    def rough_shape(self):
+        if np.nan in self.shape:
+            inputs = self.inputs or []
+            inputs_shape = tuple(t.rough_shape for t in inputs)
+            shape = self.op.calc_shape(*inputs_shape)
+            if np.nan in shape:
+                try:
+                    return self.op.calc_rough_shape(*inputs_shape)
+                except AttributeError:
+                    raise
+            else:
+                return shape
+        else:
+            return self.shape
 
     @property
     def chunk_shape(self):

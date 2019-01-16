@@ -242,13 +242,14 @@ class Test(unittest.TestCase):
                 c = b.reshape((4, 4))
                 self.assertEqual(c.shape, (4, 4))
 
+            # test unknown-shape fusion
             with new_session('http://' + cluster._web_endpoint) as session2:
                 a = mt.random.rand(8, 8, chunk_size=4)
                 a[2:6, 2:6] = mt.ones((4, 4)) * 2
-                b = mt.sum(a[a > 1] - 1)
+                b = (a[a > 1] - 1) * 2
 
                 r = session2.run(b)
-                self.assertEqual(r, 16)
+                np.testing.assert_array_equal(r, np.ones((16,)) * 2)
 
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:

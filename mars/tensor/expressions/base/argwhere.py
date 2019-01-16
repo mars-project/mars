@@ -29,9 +29,13 @@ class TensorArgwhere(Argwhere, TensorOperandMixin):
     def __init__(self, dtype=None, **kw):
         super(TensorArgwhere, self).__init__(_dtype=dtype, **kw)
 
-    def _calc_rough_nbytes(self):
-        rough_shape = (np.prod(self.input.shape), self.input.ndim)
-        return np.prod(rough_shape) * self.outputs[0].dtype.itemsize
+    def calc_rough_shape(self, *inputs_shape):
+        rough_shape = (np.prod(inputs_shape[0]), self.input.ndim)
+        return rough_shape
+
+    def calc_shape(self, *inputs_shape):
+        shape = (np.nan, len(inputs_shape[0]))
+        return shape
 
     def _set_inputs(self, inputs):
         super(TensorArgwhere, self)._set_inputs(inputs)
