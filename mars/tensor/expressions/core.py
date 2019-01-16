@@ -119,4 +119,4 @@ class TensorOperandMixin(object):
         return self.new_tensors(inputs, shape, dtype=dtype, **kw)[0]
 
     def calc_shape(self, *inputs_shape):
-        raise NotImplemented
+        raise NotImplementedError
