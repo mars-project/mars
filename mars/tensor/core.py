@@ -112,10 +112,7 @@ class ChunkData(SerializableWithKey):
             inputs_shape = tuple(t.rough_shape for t in inputs)
             shape = self.op.calc_shape(*inputs_shape)
             if np.nan in shape:
-                try:
-                    return self.op.calc_rough_shape(*inputs_shape)
-                except AttributeError:
-                    raise
+                return self.op.calc_rough_shape(*inputs_shape)
             else:
                 return shape
         else:
@@ -218,10 +215,7 @@ class TensorData(SerializableWithKey, Tilesable):
             inputs_shape = tuple(t.rough_shape for t in inputs)
             shape = self.op.calc_shape(*inputs_shape)
             if np.nan in shape:
-                try:
-                    return self.op.calc_rough_shape(*inputs_shape)
-                except AttributeError:
-                    raise
+                return self.op.calc_rough_shape(*inputs_shape)
             else:
                 return shape
         else:

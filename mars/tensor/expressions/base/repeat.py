@@ -46,17 +46,10 @@ class TensorRepeat(Repeat, TensorOperandMixin):
         input_shape = (np.prod(inputs_shape[0]),) if self._axis is None else inputs_shape[0]
         if len(inputs_shape) == 1:
             repeats = self._repeats
-            size = input_shape[ax] * repeats
-            if not isinstance(repeats, Integral):
-                repeats = np.asarray(repeats)
-                if repeats.size == 1:
-                    repeats = int(repeats[0])
-                    size = repeats * input_shape[ax]
-                elif input_shape[ax] == 1:
-                    size = int(repeats.sum())
-                else:
-                    size = repeats.sum()
-
+            if isinstance(repeats, np.ndarray):
+                size = repeats.sum()
+            else:
+                size = input_shape[ax] * repeats
             return input_shape[:ax] + (size,) + input_shape[ax + 1:]
         else:
             return input_shape[:ax] + (np.nan,) + input_shape[ax + 1:]
@@ -81,9 +74,10 @@ class TensorRepeat(Repeat, TensorOperandMixin):
                     size = repeats.sum()
             else:
                 size = np.nan
-            if repeats.ndim != 1:
-                raise ValueError('repeats should be 1-d tensor')
-            broadcast_shape(repeats.shape, a.shape[ax: ax + 1])
+            if not isinstance(repeats, Integral):
+                if repeats.ndim != 1:
+                    raise ValueError('repeats should be 1-d tensor')
+                broadcast_shape(repeats.shape, a.shape[ax: ax + 1])
         else:
             size = a.shape[axis or 0] * repeats
 

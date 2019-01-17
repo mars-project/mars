@@ -370,6 +370,10 @@ class Test(unittest.TestCase):
         self.assertEqual(t.shape, (2, 15))
         self.assertEqual(calc_shape(t), t.shape)
 
+        t = repeat(a, [3], axis=1)
+        self.assertEqual(t.shape, (2, 15))
+        self.assertEqual(calc_shape(t), t.shape)
+
         t = repeat(a, [3, 4], axis=0)
         self.assertEqual(t.shape, (7, 5))
         self.assertEqual(calc_shape(t), t.shape)
