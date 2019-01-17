@@ -20,7 +20,7 @@ Mars tensor provides a familiar interface like Numpy.
 +------------------------------------------------+----------------------------------------------------+
 |.. code-block:: python                          |.. code-block:: python                              |
 |                                                |                                                    |
-|    import numpy                                |    import mars.tensor as mt                        |
+|    import numpy as np                          |    import mars.tensor as mt                        |
 |    a = np.random.rand(1000, 2000)              |    a = mt.random.rand(1000, 2000)                  |
 |    (a + 1).sum(axis=1)                         |    (a + 1).sum(axis=1).execute()                   |
 |                                                |                                                    |
