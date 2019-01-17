@@ -34,6 +34,21 @@ class TensorReduction(TensorOperandMixin):
     def _is_cum(cls):
         return False
 
+    def calc_shape(self, *inputs_shape):
+        input_shape = inputs_shape[0]
+        if self._is_cum():
+            return input_shape
+        else:
+            axis = getattr(self, 'axis')
+            keepdims = getattr(self, 'keepdims', None)
+
+            axis = lrange(len(input_shape)) if axis is None else axis
+            if not isinstance(axis, Iterable):
+                axis = (axis,)
+            axis = set(axis)
+            return tuple(s if i not in axis else 1 for i, s in enumerate(input_shape)
+                         if keepdims or i not in axis)
+
     def _call(self, a, out):
         a = astensor(a)
         if out is not None and not isinstance(out, Tensor):

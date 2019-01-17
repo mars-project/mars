@@ -26,6 +26,7 @@ from ..compat import six, futures
 from ..lib.tblib import pickling_support
 from ..actors import new_client
 from .server import MarsWebAPI
+from ..utils import to_str
 
 pickling_support.install()
 _actor_client = new_client()
@@ -129,10 +130,14 @@ class GraphApiHandler(ApiRequestHandler):
 class GraphDataHandler(ApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tensor_key):
-        data_type = self.request.arguments.get('type')
-        if data_type == 'nsplits':
-            nsplits = self.web_api.get_tensor_nsplits(session_id, graph_key, tensor_key)
-            self.write(json.dumps(nsplits))
+        type_argument = self.request.arguments.get('type')
+        if type_argument:
+            data_type = to_str(type_argument[0])
+            if data_type == 'nsplits':
+                nsplits = self.web_api.get_tensor_nsplits(session_id, graph_key, tensor_key)
+                self.write(json.dumps(nsplits))
+            else:
+                raise web.HTTPError(403, 'Unknown data type requests')
         else:
             executor = futures.ThreadPoolExecutor(1)
 
