@@ -545,7 +545,6 @@ class GraphActor(SchedulerActor):
             key_transfers = defaultdict(lambda: 0)
             for pred in undigraph.iter_predecessors(v):
                 if pred.op.key in full_assigns:
-                    print(pred.op)
                     key_transfers[full_assigns[pred.op.key]] += pred.rough_nbytes
             if not key_transfers:
                 continue
