@@ -59,15 +59,19 @@ class WorkerApplication(BaseApplication, WorkerService):
 
         options.worker.cpu_process_count = int(self.args.cpu_procs or resource.cpu_count())
         options.worker.io_process_count = int(self.args.io_procs or '1')
+
+        if self.args.phy_mem:
+            mem_total = self._calc_size_limit(self.args.phy_mem, mem_stats.total)
+        else:
+            mem_total = mem_stats.total
+
         options.worker.physical_memory_limit_hard = self._calc_size_limit(
-            self.args.phy_mem or options.worker.physical_memory_limit_hard, mem_stats.total
+            options.worker.physical_memory_limit_hard, mem_total
         )
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
-            self.args.phy_mem or options.worker.physical_memory_limit_soft or '48%', mem_stats.total
+            options.worker.physical_memory_limit_soft, mem_total
         )
-        options.worker.cache_memory_limit = self._calc_size_limit(
-            self.args.cache_mem or options.worker.cache_memory_limit, mem_stats.total
-        )
+        options.worker.cache_memory_limit = self.args.cache_mem
         options.worker.disk_limit = self.args.disk
         if self.args.spill_dir:
             from .spill import parse_spill_dirs
@@ -81,7 +85,7 @@ class WorkerApplication(BaseApplication, WorkerService):
         self.n_process = 1 + options.worker.cpu_process_count + options.worker.io_process_count + spill_dir_count
 
         # start plasma
-        self.start_plasma(options.worker.cache_memory_limit,
+        self.start_plasma(self.calc_cache_memory_limit(),
                           one_mapped_file=options.worker.plasma_one_mapped_file or False)
 
         kwargs['distributor'] = WorkerDistributor(self.n_process)
