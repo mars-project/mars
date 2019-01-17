@@ -6,6 +6,11 @@ labels: ''
 assignees: ''
 
 ---
+<!--
+Thank you for your contribution!
+
+Please review https://github.com/mars-project/mars/blob/master/CONTRIBUTING.rst before opening an issue.
+-->
 
 **Describe the bug**
 A clear and concise description of what the bug is.
