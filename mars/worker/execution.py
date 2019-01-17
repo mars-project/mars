@@ -247,8 +247,8 @@ class ExecutionActor(WorkerActor):
             if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in targets:
                 # use estimated size as potential allocation size
                 calc_keys.add(chunk.key)
-                alloc_mem_batch[chunk.key] = chunk.nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.nbytes
+                alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
+                alloc_cache_batch[chunk.key] = chunk.rough_nbytes
             else:
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
