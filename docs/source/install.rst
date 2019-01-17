@@ -45,7 +45,8 @@ Then start a local cluster by run
 .. code-block:: python
 
     from mars.deploy.local import new_cluster
-
+    import mars.tensor as mt
+    
     cluster = new_cluster()
 
     # new cluster will start a session and set it as default one
