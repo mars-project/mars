@@ -200,6 +200,7 @@ class SeriesData(TilesableData):
 
 
 class Series(Entity):
+    __slots__ = ()
     _allow_data_type_ = (SeriesData,)
 
 
@@ -253,4 +254,5 @@ class DataFrameData(TilesableData):
 
 
 class DataFrame(Entity):
+    __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
