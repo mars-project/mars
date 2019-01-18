@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import ChunkData, Entity, TilesableData
+from ..core import ChunkData, Chunk, Entity, TilesableData
 from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, \
     BoolField, Int64Field, Int32Field, ListField, DictField, SliceField, OneOfField, ReferenceField
 from .utils import on_serialize_dtypes, on_deserialize_dtypes
@@ -115,11 +115,20 @@ class IndexChunkData(ChunkData):
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _index_value = ReferenceField('index', IndexValue)
+    _value = ReferenceField('indexvalue', IndexValue)
 
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def value(self):
+        return self._value
+
+
+class IndexChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (IndexChunkData,)
 
 
 class IndexData(TilesableData):
@@ -127,7 +136,7 @@ class IndexData(TilesableData):
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _index_value = ReferenceField('index_value', IndexValue)
+    _index = ReferenceField('index', IndexValue)
 
     @classmethod
     def cls(cls, provider):
@@ -146,6 +155,27 @@ class IndexData(TilesableData):
 
 class Index(Entity):
     _allow_data_type_ = (IndexData,)
+
+
+class SeriesChunkData(ChunkData):
+    __slots__ = ()
+
+    # optional field
+    _dtype = DataTypeField('dtype')
+    _index_value = ReferenceField('indexvalue', IndexValue)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def index_value(self):
+        return self._index_value
+
+
+class SeriesChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (SeriesChunkData,)
 
 
 class SeriesData(TilesableData):
@@ -171,6 +201,33 @@ class SeriesData(TilesableData):
 
 class Series(Entity):
     _allow_data_type_ = (SeriesData,)
+
+
+class DataFrameChunkData(ChunkData):
+    __slots__ = ()
+
+    # optional field
+    _dtypes = DictField('dtypes', ValueType.string, ValueType.dtype,
+                        on_serialize=on_serialize_dtypes, on_deserialize=on_deserialize_dtypes)
+    _index_value = ReferenceField('indexvalue', IndexValue)
+    _columns = ReferenceField('columns', IndexValue)
+
+    @property
+    def dtypes(self):
+        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+
+    @property
+    def index_value(self):
+        return self._index_value
+
+    @property
+    def columns(self):
+        return self._columns
+
+
+class DataFrameChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (DataFrameChunkData,)
 
 
 class DataFrameData(TilesableData):

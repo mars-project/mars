@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+import "mars/serialize/protos/value.proto";
+
+
+message IndexValue {
+    message Index {
+        Value name = 1;
+        repeated Value data = 2;
+        Value dtype = 3;
+    }
+    message RangeIndex {
+        Value name = 1;
+        Value slice = 2;
+    }
+    message CategoricalIndex {
+        Value name = 1;
+        repeated Value categories = 2;
+        bool ordered = 3;
+    }
+    message IntervalIndex {
+        Value name = 1;
+        repeated Value data = 2;
+        bool closed = 3;
+    }
+    message DatetimeIndex {
+        Value name = 1;
+        repeated Value data = 2;
+        Value freq = 3;
+        Value start = 4;
+        int64 periods = 5;
+        Value end = 6;
+        Value closed = 7;
+        Value tz = 8;
+        bool dayfirst = 9;
+        bool yearfirst = 10;
+    }
+    message TimedeltaIndex {
+        Value name = 1;
+        repeated Value data = 2;
+        Value unit = 3;
+        Value freq = 4;
+        Value start = 5;
+        int64 periods = 6;
+        Value end = 7;
+        Value closed = 8;
+    }
+    message PeriodIndex {
+        Value name = 1;
+        repeated Value data = 2;
+        Value freq = 3;
+        Value start = 4;
+        int64 periods = 5;
+        Value end = 6;
+        Value year = 7;
+        Value month = 8;
+        Value quater = 9;
+        Value day = 10;
+        Value hour = 11;
+        Value minute = 12;
+        Value second = 13;
+        Value tz = 14;
+        Value dtype = 15;
+    }
+    message Int64Index {
+        Value name = 1;
+        repeated Value data = 2;
+        Value dtype = 3;
+    }
+    message UInt64Index {
+        Value name = 1;
+        repeated Value data = 2;
+        Value dtype = 3;
+    }
+    message Float64Index {
+        Value name = 1;
+        repeated Value data = 2;
+        Value dtype = 3;
+    }
+    message MultiIndex {
+        repeated Value names = 1;
+        repeated Value levels = 2;
+        repeated Value labels = 3;
+        int32 sortorder = 4;
+    }
+
+    oneof index_value {
+        Index index = 1;
+        RangeIndex range_index = 2;
+        CategoricalIndex categorical_index = 3;
+        IntervalIndex interval_index = 4;
+        DatetimeIndex datetime_index = 5;
+        TimedeltaIndex timedelta_index = 6;
+        PeriodIndex period_index = 7;
+        Int64Index int64_index = 8;
+        UInt64Index uint64_index = 9;
+        Float64Index float64_index = 10;
+        MultiIndex multi_index = 11;
+    }
+}
