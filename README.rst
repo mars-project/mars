@@ -142,13 +142,13 @@ Web service can be started with the following command:
 
 .. code-block:: bash
 
-    mars-web -a <web_ip> -s <scheduler_ip> --ui-port <ui_port_exposed_to_user>
+    mars-web -a <web_ip> -s <scheduler_endpoint> --ui-port <ui_port_exposed_to_user>
 
 Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>
+    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_endpoint>
 
 After all mars processes are started, users can run
 
