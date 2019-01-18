@@ -1,4 +1,8 @@
 include requirements.txt
+include requirements-*.txt
+global-include *.pyx
+global-include *.pxd
+global-exclude *.c*
 include mars/.git-branch
 recursive-include mars/web/static *
 recursive-include mars/web/templates *
