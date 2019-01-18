@@ -171,6 +171,8 @@ class WorkerService(object):
         :param total_size: total size of the container
         :return: actual size in bytes
         """
+        if limit_str is None:
+            return None
         if isinstance(limit_str, int):
             return limit_str
         mem_limit, is_percent = parse_memory_limit(limit_str)
@@ -180,8 +182,10 @@ class WorkerService(object):
             return int(mem_limit)
 
     @staticmethod
-    def cache_memory_limit():
+    def calc_cache_memory_limit():
         mem_stats = resource.virtual_memory()
+        if options.worker.cache_memory_limit is None:
+            options.worker.cache_memory_limit = mem_stats.free // 2
 
         return WorkerService._calc_size_limit(
             options.worker.cache_memory_limit, mem_stats.total
@@ -195,9 +199,6 @@ class WorkerService(object):
         )
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
             options.worker.physical_memory_limit_soft, mem_stats.total
-        )
-        options.worker.cache_memory_limit = self._calc_size_limit(
-            options.worker.cache_memory_limit, mem_stats.total
         )
         if spill_dir:
             from .spill import parse_spill_dirs

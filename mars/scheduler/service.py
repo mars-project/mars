@@ -51,14 +51,14 @@ class SchedulerService(object):
 
         if not isinstance(kv_store, kvstore.LocalKVStore):
             # set etcd as service discover
-            logger.info('Mars scheduler started with kv store %s.', options.kv_store)
+            logger.info('Mars Scheduler started with kv store %s.', options.kv_store)
             service_discover_addr = options.kv_store
             all_schedulers = None
             # create KVStoreActor when there is a distributed KV store
             self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
         else:
             # single scheduler
-            logger.info('Mars scheduler started in standalone mode.')
+            logger.info('Mars Scheduler started in standalone mode.')
             service_discover_addr = None
             all_schedulers = {endpoint}
             if schedulers:
