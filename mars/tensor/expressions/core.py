@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ..core import TensorData, Tensor, SparseTensor, ChunkData, Chunk
+from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
 from ...core import TilesableOperandMixin
 
 
@@ -24,39 +24,12 @@ class TensorOperandMixin(TilesableOperandMixin):
     __slots__ = ()
     _op_module_ = 'tensor'
 
-    def new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, dtype=None, **kw):
-        output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
-
-        self.check_inputs(inputs)
-        getattr(self, '_set_inputs')(inputs)
-        if getattr(self, '_key', None) is None:
-            getattr(self, 'update_key')()  # update key when inputs are set
-
-        if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
-            if len(shape) != output_limit:
-                raise ValueError('shape size must be equal to output limit, expect {0}, got {1}'.format(
-                    output_limit, len(shape)))
-        else:
-            shape = [shape] * output_limit
-
-        if kws is not None and kw:
-            raise ValueError('can only pass kws or kw')
-
-        chunks = []
-        raw_index = index
-        for i, s in enumerate(shape):
-            dt = None
-            if kws:
-                kw = kws[i]
-                index = kw.pop('index', raw_index)
-                dt = kw.pop('dtype', None)
-            if dt is None:
-                dt = dtype[i] if isinstance(dtype, (tuple, list)) else dtype
-            data = ChunkData(_index=index, _shape=s, _op=self, _dtype=dt, **kw)
-            chunks.append(Chunk(data))
-
-        setattr(self, 'outputs', chunks)
-        return chunks
+    def _create_chunk(self, index, shape, i, **kw):
+        dtype = kw.pop('dtype', None)
+        dt = dtype[i] if isinstance(dtype, (list, tuple)) else dtype
+        data = TensorChunkData(_index=index, _shape=shape, _op=self,
+                               _dtype=dt, **kw)
+        return TensorChunk(data)
 
     def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
@@ -103,12 +76,6 @@ class TensorOperandMixin(TilesableOperandMixin):
             for i, t in enumerate(tensors):
                 t.data._siblings = [tensor.data for tensor in tensors[:i] + tensors[i+1:]]
         return tensors
-
-    def new_chunk(self, inputs, shape, index=None, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
-
-        return self.new_chunks(inputs, shape, index=index, **kw)[0]
 
     def new_tensor(self, inputs, shape, dtype=None, **kw):
         if getattr(self, 'output_limit') != 1:

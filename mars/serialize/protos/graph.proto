@@ -10,14 +10,14 @@ message GraphDef {
     message NodeDef {
         oneof node {
             OperandDef op = 1;
-            ChunkDef chunk = 2;
+            ChunkDef tensor_chunk = 2;
             TensorDef tensor = 3;
         }
     }
 
     enum Level {
         CHUNK = 0;
-        TENSOR = 1;
+        ENTITY = 1;
     }
 
     Level level = 2;

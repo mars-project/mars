@@ -191,7 +191,6 @@ class ChunkData(SerializableWithKey):
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
-    _dtype = DataTypeField('dtype')
     _index = TupleField('index', ValueType.uint32)
     _cached = BoolField('cached')
     _composed = ListField('composed', ValueType.reference('self'))
@@ -242,14 +241,6 @@ class ChunkData(SerializableWithKey):
     @inputs.setter
     def inputs(self, new_inputs):
         self.op.inputs = new_inputs
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
-
-    @property
-    def nbytes(self):
-        return np.prod(self.shape) * self.dtype.itemsize
 
     @property
     def composed(self):
@@ -319,6 +310,9 @@ class TilesableData(SerializableWithKey, Tilesable):
             self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
             return self._shape
 
+    def _update_shape(self, new_shape):
+        self._shape = new_shape
+
     @property
     def chunk_shape(self):
         if hasattr(self, '_nsplits') and self._nsplits is not None:
@@ -335,6 +329,10 @@ class TilesableData(SerializableWithKey, Tilesable):
     @property
     def nsplits(self):
         return getattr(self, '_nsplits', None)
+
+    @nsplits.setter
+    def nsplits(self, new_nsplits):
+        self._nsplits = new_nsplits
 
     @property
     def size(self):
@@ -438,22 +436,49 @@ class ChunksIndexer(object):
 
 class TilesableOperandMixin(object):
     __slots__ = ()
-    _chunk_data_type_ = ChunkData
-    _chunk_type_ = Chunk
-    _entity_data_type_ = None
-    _entity_type_ = None
 
     def check_inputs(self, inputs):
         pass
 
-    def new_chunks(self):
-        pass
+    def _create_chunk(self, index, shape, i, **kw):
+        raise NotImplementedError
+
+    def new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+        output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
+
+        self.check_inputs(inputs)
+        getattr(self, '_set_inputs')(inputs)
+        if getattr(self, '_key', None) is None:
+            getattr(self, 'update_key')()  # update key when inputs are set
+
+        if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
+            if len(shape) != output_limit:
+                raise ValueError('shape size must be equal to output limit, expect {0}, got {1}'.format(
+                    output_limit, len(shape)))
+        else:
+            shape = [shape] * output_limit
+
+        chunks = []
+        raw_index = index
+        for i, s in enumerate(shape):
+            create_chunk_kw = kw.copy()
+            if kws:
+                create_chunk_kw.update(kws[i])
+            index = create_chunk_kw.pop('index', raw_index)
+            chunk = self._create_chunk(index, s, i, **create_chunk_kw)
+            chunks.append(chunk)
+
+        setattr(self, 'outputs', chunks)
+        return chunks
 
     def new_entities(self):
         pass
 
-    def new_chunk(self):
-        pass
+    def new_chunk(self, inputs, shape, index=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new chunk with more than 1 outputs')
+
+        return self.new_chunks(inputs, shape, index=index, **kw)[0]
 
     def new_entity(self):
         pass

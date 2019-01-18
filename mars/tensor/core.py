@@ -26,6 +26,21 @@ from ..serialize import ProviderType, DataTypeField
 from .expressions.utils import get_chunk_slices
 
 
+class TensorChunkData(ChunkData):
+    __slots__ = ()
+
+    # optional fields
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def nbytes(self):
+        return np.prod(self.shape) * self.dtype.itemsize
+
+
 class TensorData(TilesableData):
     __slots__ = ()
 
@@ -238,6 +253,11 @@ class ExecutableTuple(tuple):
         return session.run(*self, **kw)
 
 
+class TensorChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (TensorChunkData,)
+
+
 class Tensor(Entity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
@@ -294,7 +314,7 @@ class SparseTensor(Tensor):
 
 
 TENSOR_TYPE = (Tensor, TensorData)
-CHUNK_TYPE = (Chunk, ChunkData)
+CHUNK_TYPE = (TensorChunk, TensorChunkData)
 
 
 class _TensorSession(object):

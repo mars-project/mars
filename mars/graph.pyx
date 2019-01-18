@@ -479,7 +479,8 @@ cdef class DAG(DirectedGraph):
 
 class SerializableGraphNode(Serializable):
     _node = OneOfField('node', op='mars.operands.Operand',
-                       chunk='mars.tensor.core.ChunkData', tensor='mars.tensor.core.TensorData')
+                       tensor_chunk='mars.tensor.core.TensorChunkData',
+                       tensor='mars.tensor.core.TensorData')
 
     @classmethod
     def cls(cls, provider):
