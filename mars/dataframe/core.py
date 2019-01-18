@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import Entity, TilesableData
+from ..core import ChunkData, Entity, TilesableData
 from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, \
     BoolField, Int64Field, Int32Field, ListField, DictField, SliceField, OneOfField, ReferenceField
 from .utils import on_serialize_dtypes, on_deserialize_dtypes
@@ -110,12 +110,24 @@ class IndexValue(Serializable):
                               float64_index=Float64Index, multi_index=MultiIndex)
 
 
+class IndexChunkData(ChunkData):
+    __slots__ = ()
+
+    # optional field
+    _dtype = DataTypeField('dtype')
+    _index_value = ReferenceField('index', IndexValue)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+
 class IndexData(TilesableData):
     __slots__ = ()
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _index = ReferenceField('index', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @classmethod
     def cls(cls, provider):
