@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    image: mars
+    container_name: mars_web
+    hostname: mars_web
+    restart: always
+    entrypoint: mars-web -a mars_web -s mars_scheduler:5051 --ui-port 5050
+    ports:
+      - "5050:5050"
+    depends_on:
+      - scheduler
+    links:
+    #    allow web to reach scheduler as scheduler or mars_scheduler
+      - "scheduler:mars_scheduler"
+
+  scheduler:
+    build: .
+    image: mars
+    container_name: mars_scheduler
+    hostname: mars_scheduler
+    restart: always
+    entrypoint: mars-scheduler -a mars_scheduler -p 5051
+    ports:
+      - "5051:5051"
+
+  worker:
+    build: .
+    image: mars
+    container_name: mars_worker
+    hostname: mars_worker
+    restart: always
+    entrypoint: mars-worker -a mars_worker -p 5052 -s mars_scheduler:5051 --cache-mem 10m
+    ports:
+      - "5052:5052"
+    depends_on:
+      - scheduler
+    links:
+    #    allow worker to reach scheduler
+      - "scheduler:mars_scheduler"
