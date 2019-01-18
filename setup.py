@@ -111,7 +111,11 @@ setup_options = dict(
     ],
     packages=find_packages(exclude=('*.tests.*', '*.tests')),
     include_package_data=True,
-    scripts=['scripts/mars-scheduler', 'scripts/mars-worker', 'scripts/mars-web'],
+    entry_points={'console_scripts': [
+        'mars-scheduler = mars.scheduler.__main__:main',
+        'mars-worker = mars.worker.__main__:main',
+        'mars-web = mars.web.__main__:main',
+    ]},
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize(extensions, **cythonize_kw),
