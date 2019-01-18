@@ -35,6 +35,32 @@ class TensorIndex(Index, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
+    def calc_rough_shape(self, *inputs_shape):
+        input_shape = inputs_shape[0]
+        shape = self.outputs[0].shape
+        new_indexes = [index for index in self._indexes if index is not None]
+
+        idx = 0
+        new_shape = []
+        for index in new_indexes:
+            if isinstance(index, (BaseWithKey, Entity)) and index.dtype == np.bool_:
+                new_shape.append(input_shape[idx: (idx + index.ndim)])
+                idx += index.ndim - 1
+            idx += 1
+
+        rough_shape = []
+        idx = 0
+        for s in shape:
+            if np.isnan(s):
+                rough_shape.extend(new_shape[idx])
+                idx += 1
+            else:
+                rough_shape.append(s)
+        return tuple(rough_shape)
+
+    def calc_shape(self, *inputs_shape):
+        return tuple(get_index_and_shape(inputs_shape[0], self._indexes)[1])
+
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes):
         """
@@ -227,6 +253,6 @@ def _getitem(a, item):
     # TODO(jisheng): field access, e.g. t['a'], t[['a', 'b']]
 
     index = process_index(a, item)
-    index, shape = get_index_and_shape(a, index)
+    index, shape = get_index_and_shape(a.shape, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse())
     return op(a, index, tuple(shape))

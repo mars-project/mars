@@ -143,6 +143,9 @@ class TensorBinOp(TensorElementWise):
         with self._handle_params(inputs) as inputs:
             return super(TensorBinOp, self).new_chunks(inputs, shape, **kw)
 
+    def calc_shape(self, *inputs_shape):
+        return broadcast_shape(*inputs_shape)
+
     def _call(self, x1, x2, out=None, where=None):
         # if x1 or x2 is scalar, and out is none, to constant
         if (np.isscalar(x1) or np.isscalar(x2)) and not out:
@@ -222,6 +225,12 @@ class TensorConstant(TensorElementWise):
     def new_chunks(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
             return super(TensorConstant, self).new_chunks(inputs, shape, **kw)
+
+    def calc_shape(self, *inputs_shape):
+        if not inputs_shape:
+            return ()
+        else:
+            return inputs_shape[0]
 
     def _call(self, x1, x2):
         x1_scalar = np.isscalar(x1)
@@ -312,6 +321,9 @@ class TensorUnaryOp(TensorElementWise):
     def new_chunks(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
             return super(TensorUnaryOp, self).new_chunks(inputs, shape, **kw)
+
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
 
     def _call(self, x, out=None, where=None):
         x, out, where = self._process_inputs(x, out, where)
@@ -442,6 +454,21 @@ class TensorOutBinOp(TensorElementWise):
     @property
     def _fun(self):
         raise NotImplementedError
+
+    def calc_shape(self, *inputs_shape):
+        if len(inputs_shape) == 1:
+            return (inputs_shape[0],) * 2
+        shape_iter = iter(inputs_shape[1:])
+        shapes = []
+        if getattr(self, '_out1', None):
+            shapes.append(next(shape_iter))
+        else:
+            shapes.append(inputs_shape[0])
+        if getattr(self, '_out2', None):
+            shapes.append(next(shape_iter))
+        else:
+            shapes.append(inputs_shape[0])
+        return tuple(shapes)
 
     def _call(self, x, out1=None, out2=None, out=None, where=None):
         dtype = [r.dtype for r in self._fun(np.empty(1, dtype=x.dtype))]

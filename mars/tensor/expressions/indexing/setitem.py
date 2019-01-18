@@ -67,6 +67,9 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         with self._handle_params(inputs, indexes, value) as mix_inputs:
             return super(TensorIndexSetValue, self).new_chunks(mix_inputs, shape, **kw)
 
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
+
     def __call__(self, a, index, value):
         return self.new_tensor([a], a.shape, indexes=index, value=value)
 
@@ -109,7 +112,7 @@ def _setitem(a, item, value):
     from ..base import broadcast_to
 
     index = process_index(a, item)
-    index, shape = get_index_and_shape(a, index)
+    index, shape = get_index_and_shape(a.shape, index)
 
     for ix in index:
         if not isinstance(ix, (slice, Integral)):

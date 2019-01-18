@@ -545,7 +545,7 @@ class GraphActor(SchedulerActor):
             key_transfers = defaultdict(lambda: 0)
             for pred in undigraph.iter_predecessors(v):
                 if pred.op.key in full_assigns:
-                    key_transfers[full_assigns[pred.op.key]] += pred.nbytes
+                    key_transfers[full_assigns[pred.op.key]] += pred.rough_nbytes
             if not key_transfers:
                 continue
             max_transfer = max(key_transfers.values())
@@ -639,7 +639,7 @@ class GraphActor(SchedulerActor):
                     if chunk_graph.count_successors(pn) > 1:
                         shared_input_chunk_keys.add(pn.key)
                 successor_keys.update(pn.op.key for pn in chunk_graph.iter_successors(c))
-                chunk_key_sizes.update((co.key, co.nbytes) for co in c.op.outputs)
+                chunk_key_sizes.update((co.key, co.rough_nbytes) for co in c.op.outputs)
 
             io_meta = dict(
                 predecessors=list(predecessor_keys),
@@ -760,7 +760,7 @@ class GraphActor(SchedulerActor):
             op_ref.free_data(_tell=True)
 
     def get_tensor_chunk_indexes(self, tensor_key):
-        return OrderedDict((c.key, c.index) for c in self._tensor_to_tiled[tensor_key][-1].chunks)
+        return OrderedDict((c.key, c.index) for c in self._get_tensor_by_key(tensor_key).chunks)
 
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate

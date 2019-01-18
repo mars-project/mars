@@ -30,7 +30,7 @@ from ..tiles import Tilesable, handler
 from ..serialize import SerializableWithKey, ValueType, ProviderType, \
     ListField, TupleField, DictField, DataTypeField, KeyField, BoolField
 from ..utils import AttributeDict, on_serialize_shape, on_deserialize_shape, tokenize
-from .expressions.utils import get_chunk_slices
+from .expressions.utils import get_chunk_slices, calc_rough_shape
 
 
 class ChunkData(SerializableWithKey):
@@ -100,6 +100,14 @@ class ChunkData(SerializableWithKey):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
+
+    @property
+    def rough_nbytes(self):
+        return np.prod(self.rough_shape) * self.dtype.itemsize
+
+    @property
+    def rough_shape(self):
+        return calc_rough_shape(self)
 
     @property
     def composed(self):
@@ -186,6 +194,14 @@ class TensorData(SerializableWithKey, Tilesable):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
+
+    @property
+    def rough_nbytes(self):
+        return np.prod(self.rough_shape) * self.dtype.itemsize
+
+    @property
+    def rough_shape(self):
+        return calc_rough_shape(self)
 
     @property
     def chunk_shape(self):

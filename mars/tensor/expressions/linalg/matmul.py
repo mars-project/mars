@@ -36,6 +36,12 @@ class TensorMatmul(operands.Matmul, TensorOperandMixin):
         self._a = self._inputs[0]
         self._b = self._inputs[1]
 
+    def calc_shape(self, *inputs_shape):
+        a_shape = inputs_shape[0]
+        b_shape = inputs_shape[1]
+        shape = broadcast_shape(a_shape[:-2], b_shape[:-2]) + (a_shape[-2], b_shape[-1])
+        return shape
+
     def __call__(self, a, b, out=None):
         from ..base import broadcast_to
 

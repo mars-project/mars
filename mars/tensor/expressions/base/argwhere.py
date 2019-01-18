@@ -29,6 +29,14 @@ class TensorArgwhere(Argwhere, TensorOperandMixin):
     def __init__(self, dtype=None, **kw):
         super(TensorArgwhere, self).__init__(_dtype=dtype, **kw)
 
+    def calc_rough_shape(self, *inputs_shape):
+        rough_shape = (np.prod(inputs_shape[0]), self.input.ndim)
+        return rough_shape
+
+    def calc_shape(self, *inputs_shape):
+        shape = (np.nan, len(inputs_shape[0]))
+        return shape
+
     def _set_inputs(self, inputs):
         super(TensorArgwhere, self)._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -107,5 +115,5 @@ def argwhere(a):
 
     """
     a = astensor(a).astype(bool)
-    op = TensorArgwhere(np.intp)
+    op = TensorArgwhere(np.dtype(np.intp))
     return op(a)

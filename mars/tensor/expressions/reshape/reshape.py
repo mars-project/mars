@@ -32,6 +32,21 @@ class TensorReshape(Reshape, TensorOperandMixin):
         super(TensorReshape, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def calc_shape(self, *inputs_shape):
+        newshape = self._newshape
+        known_shape = [s for s in newshape if s >= 0]
+        missing_dim = len(newshape) - len(known_shape)
+        if missing_dim > 1:
+            raise ValueError('can only specify one unknown dimension')
+        elif missing_dim == 1:
+            known_size = np.prod(known_shape)
+            input_size = np.prod(inputs_shape[0])
+            shape = tuple((input_size / known_size) if s < 0 and known_size > 0 else s
+                          for s in newshape)
+            return shape
+        else:
+            return newshape
+
     def __call__(self, a):
         return self.new_tensor([a], self._newshape)
 
