@@ -49,7 +49,7 @@ install:
   - bash bin/fix-gevent-cov.sh  # temporary fix on cython coverage problem
   - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt
-  - pip install pytest pytest-timeout
+  - pip install pytest pytest-timeout etcd-gevent
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
   - python setup.py build_ext --force --inplace
   - source bin/download-etcd.sh
