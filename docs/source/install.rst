@@ -46,6 +46,7 @@ Then start a local cluster by run
 
     from mars.deploy.local import new_cluster
     import mars.tensor as mt
+    from mars.session import new_session
     
     cluster = new_cluster()
 
