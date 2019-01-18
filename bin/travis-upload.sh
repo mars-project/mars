@@ -1,4 +1,10 @@
 #!/bin/bash
+set -e -x
+
+# use this when upload formally
+# PYPI_UPLOAD_URL=https://upload.pypi.org/legacy/
+# use this when testing
+PYPI_UPLOAD_URL=https://test.pypi.org/legacy/
 
 if [ "$TRAVIS_TAG" ]; then
   if [ "$TRAVIS_OS_NAME" = "linux" ]; then
@@ -15,13 +21,13 @@ if [ "$TRAVIS_TAG" ]; then
   fi
   ls dist/
 
-  echo "[distutils]"                                  > ~/.pypirc
-  echo "index-servers ="                             >> ~/.pypirc
-  echo "    pypi"                                    >> ~/.pypirc
-  echo "[pypi]"                                      >> ~/.pypirc
-  echo "repository=https://upload.pypi.org/legacy/"  >> ~/.pypirc
-  echo "username=pyodps"                             >> ~/.pypirc
-  echo "password=$PASSWD"                            >> ~/.pypirc
+  echo "[distutils]"                   > ~/.pypirc
+  echo "index-servers ="              >> ~/.pypirc
+  echo "    pypi"                     >> ~/.pypirc
+  echo "[pypi]"                       >> ~/.pypirc
+  echo "repository=$PYPI_UPLOAD_URL"  >> ~/.pypirc
+  echo "username=pyodps"              >> ~/.pypirc
+  echo "password=$PASSWD"             >> ~/.pypirc
 
   python -m pip install twine
   python -m twine upload -r pypi --skip-existing dist/*.whl;
