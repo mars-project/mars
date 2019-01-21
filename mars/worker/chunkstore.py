@@ -150,11 +150,8 @@ class PlasmaChunkStore(object):
         """
         import pyarrow
         from pyarrow.lib import PlasmaStoreFull, PlasmaObjectExists
-        from ..serialize.dataserializer import DataTuple
 
         data_size = calc_data_size(value)
-        if isinstance(value, tuple):
-            value = DataTuple(*value)
 
         obj_id = self._calc_object_id(session_id, chunk_key)
 
