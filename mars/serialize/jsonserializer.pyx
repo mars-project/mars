@@ -23,7 +23,7 @@ cimport numpy as np
 from cpython.version cimport PY_MAJOR_VERSION
 try:
     import pandas as pd
-except ImportError:
+except ImportError:  # pragma: no cover
     pd = None
 
 from ..compat import six, OrderedDict, izip
@@ -364,11 +364,11 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_arr(value)
         elif isinstance(value, np.dtype):
             return self._serialize_dtype(value)
-        elif pd and isinstance(value, pd.Index):
+        elif pd is not None and isinstance(value, pd.Index):
             return self._serialize_index(value)
-        elif pd and isinstance(value, pd.Series):
+        elif pd is not None and isinstance(value, pd.Series):
             return self._serialize_series(value)
-        elif pd and isinstance(value, pd.DataFrame):
+        elif pd is not None and isinstance(value, pd.DataFrame):
             return self._serialize_dataframe(value)
         elif isinstance(value, BaseWithKey):
             return self._serialize_key(value)

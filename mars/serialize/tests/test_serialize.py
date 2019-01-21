@@ -145,6 +145,7 @@ class Node4(AttributeAsDict):
     mm = IndexField('mn')
     n = SeriesField('o')
     o = DataFrameField('p')
+    p = ListField('q')
 
     @classmethod
     def cls(cls, provider):
@@ -257,12 +258,13 @@ class Test(unittest.TestCase):
     def testAttributeAsDict(self):
         other_data = {}
         if pd:
-            df = pd.DataFrame({'a': [1, 2, 3], 'b': ['测试', '属性', 'c']},
+            df = pd.DataFrame({'a': [1, 2, 3], 'b': [to_text('测试'), to_binary('属性'), 'c']},
                               index=[[0, 0, 1], ['测试', '属性', '测试']])
             other_data['m'] = df.columns
             other_data['mm'] = df.index
             other_data['n'] = df['b']
             other_data['o'] = df
+            other_data['p'] = [df.columns, df.index, df['a'], df]
         node4 = Node4(a=to_binary('中文'),
                       b=np.random.randint(4, size=(3, 4)),
                       c=np.datetime64(datetime.datetime.now()),
@@ -300,6 +302,10 @@ class Test(unittest.TestCase):
             pd.testing.assert_index_equal(node4.mm, d_node4.mm)
             pd.testing.assert_series_equal(node4.n, d_node4.n)
             pd.testing.assert_frame_equal(node4.o, d_node4.o)
+            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
+            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
+            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
+            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
 
         jss = JsonSerializeProvider()
 
@@ -326,6 +332,10 @@ class Test(unittest.TestCase):
             pd.testing.assert_index_equal(node4.mm, d_node4.mm)
             pd.testing.assert_series_equal(node4.n, d_node4.n)
             pd.testing.assert_frame_equal(node4.o, d_node4.o)
+            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
+            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
+            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
+            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
 
     def testException(self):
         node1 = Node1(h=[object()])

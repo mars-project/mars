@@ -22,7 +22,7 @@ cimport numpy as np
 cimport cython
 try:
     import pandas as pd
-except ImportError:
+except ImportError:  # pragma: no cover
     pd = None
 
 from cpython.version cimport PY_MAJOR_VERSION
@@ -396,11 +396,11 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_arr(value, obj)
         elif isinstance(value, np.dtype):
             self._set_dtype(value, obj)
-        elif pd and isinstance(value, pd.Index):
+        elif pd is not None and isinstance(value, pd.Index):
             self._set_index(value, obj)
-        elif pd and isinstance(value, pd.Series):
+        elif pd is not None and isinstance(value, pd.Series):
             self._set_series(value, obj)
-        elif pd and isinstance(value, pd.DataFrame):
+        elif pd is not None and isinstance(value, pd.DataFrame):
             self._set_dataframe(value, obj)
         elif isinstance(value, BaseWithKey):
             self._set_key(value, obj)
