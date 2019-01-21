@@ -9,6 +9,7 @@ message OperandDef {
         NULL = 0;
 
         // creation
+        // tensor
         SCALAR = 1;
         TENSOR_DATA_SOURCE = 2;
         TENSOR_ONES = 3;
@@ -25,6 +26,8 @@ message OperandDef {
         TENSOR_LINSPACE = 14;
         TENSOR_TRIU = 15;
         TENSOR_TRIL = 16;
+        // dataframe
+        DATAFRAME_DATA_SOURCE = 17;
 
         // random
         RAND_RAND = 41;

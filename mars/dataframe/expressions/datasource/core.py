@@ -11,3 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+from ....operands.datasource import DataSource
+from .... import opcodes as OperandDef
+from ..core import DataFrameOperandMixin
+
+
+class DataFrameDataSource(DataSource, DataFrameOperandMixin):
+    """
+    Represents data from pandas DataFrame
+    """
+
+    _op_type_ = OperandDef.DATAFRAME_DATA_SOURCE
