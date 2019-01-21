@@ -24,10 +24,11 @@ from cpython.version cimport PY_MAJOR_VERSION
 
 from ..compat import six, OrderedDict, izip
 from ..core import BaseWithKey
-from .core cimport Provider, ValueType, ProviderType, \
-    Field, List, Tuple, Dict, Identity, Reference, OneOf, KeyPlaceholder, \
-    ReferenceField, OneOfField, ListField
 from ..utils_c cimport to_str
+from .core cimport Provider, ValueType, ProviderType, \
+    Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
+    ReferenceField, OneOfField, ListField
+from .dataserializer import dumps as datadumps, loads as dataloads
 
 
 cdef dict PRIMITIVE_TYPE_TO_NAME = {
@@ -103,11 +104,9 @@ cdef class JsonSerializeProvider(Provider):
         cdef bytes bt
         cdef str res
 
-        bio = six.BytesIO()
-        np.save(bio, value)
         return {
             'type': _get_name(ValueType.arr),
-            'value': self._to_str(base64.b64encode(bio.getvalue()))
+            'value': self._to_str(base64.b64encode(datadumps(value)))
         }
 
     cdef inline np.ndarray _deserialize_arr(self, object obj, list callbacks):
@@ -118,7 +117,7 @@ cdef class JsonSerializeProvider(Provider):
         bt = self._to_bytes(base64.b64decode(value))
 
         if bt is not None:
-            return np.load(six.BytesIO(bt))
+            return dataloads(bt)
 
         return None
 
