@@ -106,6 +106,9 @@ cdef class ValueType:
     key = ExtendType.key
     datetime64 = ExtendType.datetime64
     timedelta64 = ExtendType.timedelta64
+    index = ExtendType.index
+    series = ExtendType.series
+    dataframe = ExtendType.dataframe
 
     identity = Identity()
 
@@ -332,6 +335,30 @@ cdef class DataTypeField(Field):
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.dtype
+
+
+cdef class IndexField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(IndexField, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.index
+
+
+cdef class SeriesField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(SeriesField, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.series
+
+
+cdef class DataFrameField(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(DataFrameField, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.dataframe
 
 
 cdef inline _handle_nest_reference(field, ref):

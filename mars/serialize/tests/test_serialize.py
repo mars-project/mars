@@ -21,11 +21,14 @@ import tempfile
 import unittest
 
 import numpy as np
-
 try:
     import pyarrow
 except ImportError:
     pyarrow = None
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
@@ -34,7 +37,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
     UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
     Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
     ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
-    ProviderType, AttributeAsDict
+    IndexField, SeriesField, DataFrameField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -138,6 +141,10 @@ class Node4(AttributeAsDict):
     j = ReferenceField('k', Node5)
     k = ListField('l', ValueType.reference('Node5'))
     l = OneOfField('m', n5=Node5, n6=Node6)
+    m = IndexField('k')
+    mm = IndexField('mj')
+    n = SeriesField('l')
+    o = DataFrameField('m')
 
     @classmethod
     def cls(cls, provider):
@@ -248,6 +255,14 @@ class Test(unittest.TestCase):
         self.assertNotIsInstance(node3.value.i[0], Node8)
 
     def testAttributeAsDict(self):
+        other_data = {}
+        if pd:
+            df = pd.DataFrame({'a': [1, 2, 3], 'b': ['测试', '属性', 'c']},
+                              index=[[0, 0, 1], ['测试', '属性', '测试']])
+            other_data['j'] = df.columns
+            other_data['mj'] = df.index
+            other_data['k'] = df['b']
+            other_data['l'] = df
         node4 = Node4(a=to_binary('中文'),
                       b=np.random.randint(4, size=(3, 4)),
                       c=np.datetime64(datetime.datetime.now()),
@@ -259,7 +274,7 @@ class Test(unittest.TestCase):
                       i=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
                       j=Node5(a='aa'),
                       k=[Node5(a='bb'), None],
-                      l=Node6(b=3, nid=1))
+                      l=Node6(b=3, nid=1), **other_data)
 
         pbs = ProtobufSerializeProvider()
 
@@ -267,7 +282,7 @@ class Test(unittest.TestCase):
         d_node4 = Node4.deserialize(pbs, serial)
 
         self.assertEqual(node4.a, d_node4.a)
-        self.assertTrue(np.array_equal(node4.b, d_node4.b))
+        np.testing.assert_array_equal(node4.b, d_node4.b)
         self.assertEqual(node4.c, d_node4.c)
         self.assertEqual(node4.d, d_node4.d)
         self.assertEqual(node4.e, d_node4.e)
@@ -280,6 +295,11 @@ class Test(unittest.TestCase):
         self.assertIsNone(d_node4.k[1])
         self.assertIsInstance(d_node4.l, Node7)
         self.assertEqual(d_node4.l.b, 3)
+        if pd:
+            pd.testing.assert_index_equal(node4.m, d_node4.m)
+            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
+            pd.testing.assert_series_equal(node4.n, d_node4.n)
+            pd.testing.assert_frame_equal(node4.o, d_node4.o)
 
         jss = JsonSerializeProvider()
 
@@ -288,7 +308,7 @@ class Test(unittest.TestCase):
         d_node4 = Node4.deserialize(jss, serial)
 
         self.assertEqual(node4.a, d_node4.a)
-        self.assertTrue(np.array_equal(node4.b, d_node4.b))
+        np.testing.assert_array_equal(node4.b, d_node4.b)
         self.assertEqual(node4.c, d_node4.c)
         self.assertEqual(node4.d, d_node4.d)
         self.assertEqual(node4.e, d_node4.e)
@@ -301,6 +321,11 @@ class Test(unittest.TestCase):
         self.assertIsNone(d_node4.k[1])
         self.assertIsInstance(d_node4.l, Node7)
         self.assertEqual(d_node4.l.b, 3)
+        if pd:
+            pd.testing.assert_index_equal(node4.m, d_node4.m)
+            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
+            pd.testing.assert_series_equal(node4.n, d_node4.n)
+            pd.testing.assert_frame_equal(node4.o, d_node4.o)
 
     def testException(self):
         node1 = Node1(h=[object()])
