@@ -25,12 +25,13 @@ from cpython.version cimport PY_MAJOR_VERSION
 
 from ..compat import six, OrderedDict
 from ..core import BaseWithKey
+from ..utils_c cimport to_str
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
     OneOfField, ReferenceField, IdentityField, \
     ListField, TupleField
-from ..utils_c cimport to_str
 from .protos.value_pb2 import Value
+from .dataserializer import dumps as datadumps, loads as dataloads
 
 
 cdef dict PRIMITIVE_TYPE_TO_VALUE_FIELD = {
@@ -77,15 +78,13 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline void _set_arr(self, np.ndarray value, obj, tp=None):
         cdef object bio
 
-        bio = six.BytesIO()
-        np.save(bio, value)
-        obj.arr = bio.getvalue()
+        obj.arr = datadumps(value)
 
     cdef inline np.ndarray _get_arr(self, obj):
         cdef object x
 
         x = obj.arr
-        return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
+        return dataloads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_dtype(self, np.dtype value, obj, tp=None):
         if 'V' not in value.str:
