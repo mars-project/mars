@@ -190,7 +190,7 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor, uid='w:1:calc-a')
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorOnes, TensorFetchChunk
+            from mars.tensor.expressions.datasource import TensorOnes, TensorFetch
             arr = mt.ones((10, 8), chunk_size=10)
             arr_add = mt.ones((10, 8), chunk_size=10)
             arr2 = arr + arr_add
@@ -198,7 +198,7 @@ class Test(WorkerCase):
 
             for chunk in graph:
                 if isinstance(chunk.op, TensorOnes):
-                    chunk._op = TensorFetchChunk(
+                    chunk._op = TensorFetch(
                         dtype=chunk.dtype, _outputs=[weakref.ref(o) for o in chunk.op.outputs],
                         _key=chunk.op.key)
 
@@ -270,14 +270,14 @@ class Test(WorkerCase):
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetchChunk
+            from mars.tensor.expressions.datasource import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
 
             modified_chunk = arr_add.chunks[0]
-            arr_add.chunks[0]._op = TensorFetchChunk(
+            arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
             chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
@@ -320,14 +320,14 @@ class Test(WorkerCase):
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetchChunk
+            from mars.tensor.expressions.datasource import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
 
             modified_chunk = arr_add.chunks[0]
-            arr_add.chunks[0]._op = TensorFetchChunk(
+            arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
 
@@ -490,14 +490,14 @@ class Test(WorkerCase):
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetchChunk
+            from mars.tensor.expressions.datasource import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
 
             modified_chunk = arr_add.chunks[0]
-            arr_add.chunks[0]._op = TensorFetchChunk(
+            arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
 

@@ -302,7 +302,10 @@ class TensorData(SerializableWithKey, Tilesable):
     def single_tiles(self):
         return handler.single_tiles(self)
 
-    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True):
+    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, execueted_keys=None):
+        from .expressions.utils import convert_to_fetch
+
+        execueted_keys = execueted_keys or []
         if tiled and self.is_coarse():
             self.tiles()
 
@@ -316,17 +319,24 @@ class TensorData(SerializableWithKey, Tilesable):
             nodes = list(self.op.outputs)
         visited = set()
         while len(nodes) > 0:
-            chunk = nodes.pop()
-            visited.add(chunk)
-            if not graph.contains(chunk):
-                graph.add_node(chunk)
-            children = chunk.inputs or []
+            node = nodes.pop()
+
+            # replace executed tensor/chunk by tensor/chunk with fetch op
+            if node.key in execueted_keys:
+                node = convert_to_fetch(node)
+
+            visited.add(node)
+            if not graph.contains(node):
+                graph.add_node(node)
+            children = node.inputs or []
             for c in children:
+                if c.key in execueted_keys:
+                    continue
                 if not graph.contains(c):
                     graph.add_node(c)
-                if not graph.has_successor(c, chunk):
-                    graph.add_edge(c, chunk)
-            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in chunk.inputs or []])
+                if not graph.has_successor(c, node):
+                    graph.add_edge(c, node)
+            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in node.inputs or []])
                           if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
@@ -593,7 +603,10 @@ class _TensorCleaner(object):
 
     def register(self, tensor, session):
         with build_mode():
-            self._tensor_to_sessions[tensor] = _TensorSession(tensor, session)
+            if tensor in self._tensor_to_sessions:
+                self._tensor_to_sessions[tensor].append(_TensorSession(tensor, session))
+            else:
+                self._tensor_to_sessions[tensor] = [_TensorSession(tensor, session)]
 
 
 # we don't use __del__ to decref because a tensor holds an op,

@@ -20,7 +20,7 @@ import numpy as np
 
 from mars import operands
 from mars.tensor.expressions.datasource import array, ones, tensor, empty
-from mars.tensor.expressions.datasource.core import TensorFetchChunk
+from mars.tensor.expressions.datasource.core import TensorFetch
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \
     isclose, isfinite, negative, cos
 from mars.tensor.expressions.linalg import matmul
@@ -240,12 +240,12 @@ class Test(unittest.TestCase):
         t3.tiles()
 
         c = t3.chunks[0]
-        inputs = c.op.lhs, TensorFetchChunk().new_chunk(
+        inputs = c.op.lhs, TensorFetch().new_chunk(
             c.op.rhs.inputs, c.op.rhs.shape, index=c.op.rhs.index, _key=c.op.rhs.key)
         new_c = c.op.copy().reset_key().new_chunk(inputs, c.shape, _key='new_key')
         self.assertEqual(new_c.key, 'new_key')
         self.assertIs(new_c.inputs[1], new_c.op.rhs)
-        self.assertIsInstance(new_c.inputs[1].op, TensorFetchChunk)
+        self.assertIsInstance(new_c.inputs[1].op, TensorFetch)
 
     def testCompare(self):
         t1 = ones(4, chunk_size=2) * 2

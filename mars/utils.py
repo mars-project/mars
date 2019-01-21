@@ -227,18 +227,18 @@ def deserialize_graph(graph_b64, graph_cls=None):
 
 def merge_tensor_chunks(input_tensor, ctx):
     from .tensor.execution.core import Executor
-    from .tensor.expressions.datasource import TensorFetchChunk
+    from .tensor.expressions.datasource import TensorFetch
 
     if len(input_tensor.chunks) == 1:
         return ctx[input_tensor.chunks[0].key]
 
     chunks = []
     for c in input_tensor.chunks:
-        op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+        op = TensorFetch(dtype=c.dtype)
         chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
         chunks.append(chunk)
 
-    new_op = TensorFetchChunk(dtype=input_tensor.dtype, to_fetch_key=input_tensor.key)
+    new_op = TensorFetch(dtype=input_tensor.dtype)
     tensor = new_op.new_tensor(None, input_tensor.shape, chunks=chunks,
                                nsplits=input_tensor.nsplits)
 
