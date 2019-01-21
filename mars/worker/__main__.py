@@ -34,6 +34,7 @@ class WorkerApplication(BaseApplication, WorkerService):
     def __init__(self):
         BaseApplication.__init__(self)
         WorkerService.__init__(self)
+        self._total_mem = None
 
     def config_args(self, parser):
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
@@ -61,15 +62,15 @@ class WorkerApplication(BaseApplication, WorkerService):
         options.worker.io_process_count = int(self.args.io_procs or '1')
 
         if self.args.phy_mem:
-            mem_total = self._calc_size_limit(self.args.phy_mem, mem_stats.total)
+            self._total_mem = self._calc_size_limit(self.args.phy_mem, mem_stats.total)
         else:
-            mem_total = mem_stats.total
+            self._total_mem = mem_stats.total
 
         options.worker.physical_memory_limit_hard = self._calc_size_limit(
-            options.worker.physical_memory_limit_hard, mem_total
+            options.worker.physical_memory_limit_hard, self._total_mem
         )
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
-            options.worker.physical_memory_limit_soft, mem_total
+            options.worker.physical_memory_limit_soft, self._total_mem
         )
         options.worker.cache_memory_limit = self.args.cache_mem
         options.worker.disk_limit = self.args.disk
@@ -92,8 +93,8 @@ class WorkerApplication(BaseApplication, WorkerService):
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
-        super(WorkerApplication, self).start(self.endpoint, self.args.schedulers,
-                                             self.pool, ignore_avail_mem=self.args.ignore_avail_mem)
+        super(WorkerApplication, self).start(self.endpoint, self.args.schedulers, self.pool,
+                                             total_mem=self._total_mem, ignore_avail_mem=self.args.ignore_avail_mem)
 
     def handle_process_down(self, proc_indices):
         logger.debug('Process %r halt. Trying to recover.', proc_indices)
