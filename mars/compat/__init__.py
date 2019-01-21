@@ -17,6 +17,7 @@ import logging.config
 import itertools
 import platform
 import os
+import socket
 from unicodedata import east_asian_width
 
 from ..lib import six
@@ -177,9 +178,9 @@ else:
         return np.getbuffer(n)
 
     TimeoutError = type('TimeoutError', (Exception, ), {})
-    BrokenPipeError = type('BrokenPipeError', (Exception, ), {})
-    ConnectionRefusedError = type('ConnectionRefusedError', (Exception, ), {})
-    ConnectionResetError = type('ConnectionResetError', (Exception,), {})
+    BrokenPipeError = type('BrokenPipeError', (socket.error, ), {})
+    ConnectionRefusedError = type('ConnectionRefusedError', (socket.error, ), {})
+    ConnectionResetError = type('ConnectionResetError', (socket.error,), {})
 
 
     def accumulate(iterable, func=lambda a, b: a + b):

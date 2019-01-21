@@ -23,6 +23,9 @@ from ..core import TensorOperandMixin
 class TensorFFTMixin(TensorOperandMixin):
     __slots__ = ()
 
+    def calc_shape(self, *inputs_shape):
+        return self._get_shape(self, inputs_shape[0])
+
     @classmethod
     def _get_shape(cls, op, shape):
         raise NotImplementedError
@@ -61,6 +64,9 @@ def validate_fft(tensor, axis=-1, norm=None):
 
 class TensorFFTNMixin(TensorOperandMixin):
     __slots__ = ()
+
+    def calc_shape(self, *inputs_shape):
+        return self._get_shape(self, inputs_shape[0])
 
     @classmethod
     def _get_shape(cls, op, shape):
@@ -111,6 +117,9 @@ def validate_fftn(tensor, s=None, axes=None, norm=None):
 
 class TensorFFTShiftMixin(TensorOperandMixin):
     __slots__ = ()
+
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
 
     @classmethod
     def _is_inverse(cls):

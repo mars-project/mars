@@ -40,6 +40,9 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
         super(TensorCholesky, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
+
     def __call__(self, a):
         return self.new_tensor([a], a.shape)
 

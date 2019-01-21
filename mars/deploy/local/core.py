@@ -96,7 +96,7 @@ class LocalDistributedCluster(object):
         self._started = True
 
         # start plasma
-        self._worker_service.start_plasma(self._worker_service.cache_memory_limit())
+        self._worker_service.start_plasma(self._worker_service.calc_cache_memory_limit())
 
         # start actor pool
         n_process = self._scheduler_n_process + self._worker_n_process

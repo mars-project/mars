@@ -224,8 +224,8 @@ class ExecutionActor(WorkerActor):
         for chunk in graph:
             if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in graph_record.targets:
                 # use estimated size as potential allocation size
-                alloc_mem_batch[chunk.key] = chunk.nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.nbytes
+                alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
+                alloc_cache_batch[chunk.key] = chunk.rough_nbytes
             else:
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = graph_record.data_sizes.get(chunk.key, chunk.nbytes)

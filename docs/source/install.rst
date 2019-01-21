@@ -31,8 +31,8 @@ After installation, you can simply open a Python console and run
 Local cluster
 -------------
 
-Users can start the distributed runtime of Mars on a single machine.
-First, install Mars distributed by run
+Users can start the distributed runtime of Mars on a single machine.  First,
+install Mars distributed by run
 
 .. code-block:: bash
 
@@ -44,7 +44,9 @@ Then start a local cluster by run
 
 .. code-block:: python
 
+    import mars.tensor as mt
     from mars.deploy.local import new_cluster
+    from mars.session import new_session
 
     cluster = new_cluster()
 
@@ -64,6 +66,10 @@ Then start a local cluster by run
 
 Run on Clusters
 ===============
+
+Basic Steps
+-----------
+
 Mars can be deployed on a cluster. First, yu need to run
 
 .. code-block:: bash
@@ -83,13 +89,13 @@ Web service can be started with the following command:
 
 .. code-block:: bash
 
-    mars-web -a <web_ip> -s <scheduler_ip> -p <communicator_port> --ui-port <ui_port_exposed_to_user>
+    mars-web -a <web_ip> -s <scheduler_endpoint> -p <communicator_port> --ui-port <ui_port_exposed_to_user>
 
 Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>
+    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_endpoint>
 
 After all Mars processes are started, you can open a Python console and run
 
@@ -105,3 +111,26 @@ After all Mars processes are started, you can open a Python console and run
 You can open a web browser and type ``http://<web_ip>:<ui_port>`` to open Mars
 UI to look up resource usage of workers and execution progress of the task
 submitted just now.
+
+Memory Tuning
+-------------
+Mars worker manages two different parts of memory. The first is private process
+memory and the second is shared memory between all worker processes handled by
+`plasma_store in Apache Arrow
+<https://arrow.apache.org/docs/python/plasma.html>`_. When Mars Worker starts,
+it will take 50% of free memory space by default as shared memory and the left
+as private process memory. What's more, Mars provides soft and hard memory
+limits for memory allocations, which are 75% and 90% by default. If these
+configurations does not meet your need, you can configure them when Mars Worker
+starts. You can use ``--cache-mem`` argument to configure the size of shared
+memory, ``--phy-mem`` to configure total memory size, from which the soft and
+hard limits are computed.
+
+For instance, by using
+
+.. code-block:: bash
+
+    mars-worker -a localhost -p 9012 -s localhost:9010 --cache-mem 512m --phy-mem 90%
+
+We limit the size of shared memory as 512MB and the worker can use up to 90% of
+total physical memory.

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e -x
 
 if [ "$TRAVIS_TAG" ]; then
   if [ "$TRAVIS_OS_NAME" = "linux" ]; then

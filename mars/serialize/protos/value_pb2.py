@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n!mars/serialize/protos/value.proto\"\xa6\x04\n\x05Value\x12\x11\n\x07is_null\x18\x01 \x01(\x08H\x00\x12\x0b\n\x01\x62\x18\x02 \x01(\x08H\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01s\x18\x05 \x01(\x0cH\x00\x12\x0b\n\x01u\x18\x06 \x01(\tH\x00\x12\x1b\n\x04list\x18\x07 \x01(\x0b\x32\x0b.Value.ListH\x00\x12\x1b\n\x04\x64ict\x18\x08 \x01(\x0b\x32\x0b.Value.DictH\x00\x12\x1d\n\x05slice\x18\t \x01(\x0b\x32\x0c.Value.SliceH\x00\x12\r\n\x03\x61rr\x18\n \x01(\x0cH\x00\x12\x0f\n\x05\x64type\x18\x0b \x01(\x0cH\x00\x12\x19\n\x03key\x18\x0c \x01(\x0b\x32\n.Value.KeyH\x00\x12\x14\n\ndatetime64\x18\r \x01(\x0cH\x00\x12\x15\n\x0btimedelta64\x18\x0e \x01(\x0cH\x00\x1a/\n\x04List\x12\x10\n\x08is_tuple\x18\x01 \x01(\x08\x12\x15\n\x05value\x18\x02 \x03(\x0b\x32\x06.Value\x1an\n\x05Slice\x12\x0f\n\x07is_null\x18\x04 \x01(\x08\x12\x13\n\tstart_val\x18\x01 \x01(\x03H\x00\x12\x12\n\x08stop_val\x18\x02 \x01(\x03H\x01\x12\x12\n\x08step_val\x18\x03 \x01(\x03H\x02\x42\x07\n\x05startB\x06\n\x04stopB\x06\n\x04step\x1a>\n\x04\x44ict\x12\x19\n\x04keys\x18\x01 \x01(\x0b\x32\x0b.Value.List\x12\x1b\n\x06values\x18\x02 \x01(\x0b\x32\x0b.Value.List\x1a\x1e\n\x03Key\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\tB\x07\n\x05valueb\x06proto3')
+  serialized_pb=_b('\n!mars/serialize/protos/value.proto\"\xde\x04\n\x05Value\x12\x11\n\x07is_null\x18\x01 \x01(\x08H\x00\x12\x0b\n\x01\x62\x18\x02 \x01(\x08H\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01s\x18\x05 \x01(\x0cH\x00\x12\x0b\n\x01u\x18\x06 \x01(\tH\x00\x12\x1b\n\x04list\x18\x07 \x01(\x0b\x32\x0b.Value.ListH\x00\x12\x1b\n\x04\x64ict\x18\x08 \x01(\x0b\x32\x0b.Value.DictH\x00\x12\x1d\n\x05slice\x18\t \x01(\x0b\x32\x0c.Value.SliceH\x00\x12\r\n\x03\x61rr\x18\n \x01(\x0cH\x00\x12\x0f\n\x05\x64type\x18\x0b \x01(\x0cH\x00\x12\x19\n\x03key\x18\x0c \x01(\x0b\x32\n.Value.KeyH\x00\x12\x14\n\ndatetime64\x18\r \x01(\x0cH\x00\x12\x15\n\x0btimedelta64\x18\x0e \x01(\x0cH\x00\x12\x0f\n\x05index\x18\x0f \x01(\x0cH\x00\x12\x10\n\x06series\x18\x10 \x01(\x0cH\x00\x12\x13\n\tdataframe\x18\x11 \x01(\x0cH\x00\x1a/\n\x04List\x12\x10\n\x08is_tuple\x18\x01 \x01(\x08\x12\x15\n\x05value\x18\x02 \x03(\x0b\x32\x06.Value\x1an\n\x05Slice\x12\x0f\n\x07is_null\x18\x04 \x01(\x08\x12\x13\n\tstart_val\x18\x01 \x01(\x03H\x00\x12\x12\n\x08stop_val\x18\x02 \x01(\x03H\x01\x12\x12\n\x08step_val\x18\x03 \x01(\x03H\x02\x42\x07\n\x05startB\x06\n\x04stopB\x06\n\x04step\x1a>\n\x04\x44ict\x12\x19\n\x04keys\x18\x01 \x01(\x0b\x32\x0b.Value.List\x12\x1b\n\x06values\x18\x02 \x01(\x0b\x32\x0b.Value.List\x1a\x1e\n\x03Key\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\n\n\x02id\x18\x02 \x01(\tB\x07\n\x05valueb\x06proto3')
 )
 
 
@@ -58,8 +58,8 @@ _VALUE_LIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=324,
-  serialized_end=371,
+  serialized_start=380,
+  serialized_end=427,
 )
 
 _VALUE_SLICE = _descriptor.Descriptor(
@@ -118,8 +118,8 @@ _VALUE_SLICE = _descriptor.Descriptor(
       name='step', full_name='Value.Slice.step',
       index=2, containing_type=None, fields=[]),
   ],
-  serialized_start=373,
-  serialized_end=483,
+  serialized_start=429,
+  serialized_end=539,
 )
 
 _VALUE_DICT = _descriptor.Descriptor(
@@ -155,8 +155,8 @@ _VALUE_DICT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=485,
-  serialized_end=547,
+  serialized_start=541,
+  serialized_end=603,
 )
 
 _VALUE_KEY = _descriptor.Descriptor(
@@ -192,8 +192,8 @@ _VALUE_KEY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=549,
-  serialized_end=579,
+  serialized_start=605,
+  serialized_end=635,
 )
 
 _VALUE = _descriptor.Descriptor(
@@ -301,6 +301,27 @@ _VALUE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index', full_name='Value.index', index=14,
+      number=15, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='series', full_name='Value.series', index=15,
+      number=16, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dataframe', full_name='Value.dataframe', index=16,
+      number=17, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -317,7 +338,7 @@ _VALUE = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=38,
-  serialized_end=588,
+  serialized_end=644,
 )
 
 _VALUE_LIST.fields_by_name['value'].message_type = _VALUE
@@ -382,6 +403,15 @@ _VALUE.fields_by_name['datetime64'].containing_oneof = _VALUE.oneofs_by_name['va
 _VALUE.oneofs_by_name['value'].fields.append(
   _VALUE.fields_by_name['timedelta64'])
 _VALUE.fields_by_name['timedelta64'].containing_oneof = _VALUE.oneofs_by_name['value']
+_VALUE.oneofs_by_name['value'].fields.append(
+  _VALUE.fields_by_name['index'])
+_VALUE.fields_by_name['index'].containing_oneof = _VALUE.oneofs_by_name['value']
+_VALUE.oneofs_by_name['value'].fields.append(
+  _VALUE.fields_by_name['series'])
+_VALUE.fields_by_name['series'].containing_oneof = _VALUE.oneofs_by_name['value']
+_VALUE.oneofs_by_name['value'].fields.append(
+  _VALUE.fields_by_name['dataframe'])
+_VALUE.fields_by_name['dataframe'].containing_oneof = _VALUE.oneofs_by_name['value']
 DESCRIPTOR.message_types_by_name['Value'] = _VALUE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 

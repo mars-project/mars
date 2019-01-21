@@ -27,13 +27,13 @@ from .zeros import TensorZeros
 from .array import tensor
 
 
-def _get_diag_shape(v, k):
+def _get_diag_shape(v_shape, k):
     size_0, size_1 = 0, 0
     if k > 0:
         size_1 += k
     elif k < 0:
         size_0 -= k
-    size = min(v.shape[0] - size_0, v.shape[1] - size_1)
+    size = min(v_shape[0] - size_0, v_shape[1] - size_1)
     return size,
 
 
@@ -129,6 +129,14 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], chunk_shape, index=chunk_idx)
 
+    def calc_shape(self, *inputs_shape):
+        input_shape = inputs_shape[0]
+        k = self._k
+        if len(input_shape) == 1:
+            return (input_shape[0] + abs(k),) * 2
+        else:
+            return _get_diag_shape(input_shape, k)
+
     def __call__(self, v, shape, chunk_size=None):
         return self.new_tensor([v], shape, raw_chunk_size=chunk_size)
 
@@ -160,7 +168,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
                 lu_pos = ru_pos[0], ld_pos[1]
                 chunk_k = fx(*lu_pos)
 
-                chunk_shape = _get_diag_shape(c, chunk_k)
+                chunk_shape = _get_diag_shape(c.shape, chunk_k)
                 chunk_idx = (next(idx),)
                 chunk_op = op.to_chunk_op(chunk_k)
                 chunk = chunk_op.new_chunk([c], chunk_shape, index=chunk_idx)
@@ -249,7 +257,7 @@ def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
     if v.ndim == 1:
         shape = (v.size + abs(k),) * 2
     elif v.ndim == 2:
-        shape = _get_diag_shape(v, k)
+        shape = _get_diag_shape(v.shape, k)
     else:
         raise ValueError('Input must be 1- or 2-d.')
 

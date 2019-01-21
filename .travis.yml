@@ -45,8 +45,7 @@ install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls flake8
-  - bash bin/fix-gevent-cov.sh  # temporary fix on cython coverage problem
+  - pip install virtualenv coveralls flake8 etcd-gevent
   - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout

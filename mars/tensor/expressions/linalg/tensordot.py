@@ -37,6 +37,13 @@ class TensorTensorDot(operands.TensorDot, TensorOperandMixin):
         self._a = self._inputs[0]
         self._b = self._inputs[1]
 
+    def calc_shape(self, *inputs_shape):
+        a_shape = inputs_shape[0]
+        b_shape = inputs_shape[1]
+        shape = tuple(s for i, s in enumerate(a_shape) if i not in set(self._a_axes)) + \
+            tuple(s for i, s in enumerate(b_shape) if i not in set(self._b_axes))
+        return shape
+
     def __call__(self, a, b):
         shape = tuple(s for i, s in enumerate(a.shape) if i not in set(self._a_axes)) + \
             tuple(s for i, s in enumerate(b.shape) if i not in set(self._b_axes))

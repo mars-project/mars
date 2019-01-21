@@ -14,23 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import json
 import os
 import tempfile
 import unittest
 
 import numpy as np
-
 try:
     import pyarrow
 except ImportError:
     pyarrow = None
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
-from mars.serialize.core import Serializable, IdentityField, StringField, Int32Field, BytesField, \
-    KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, SliceField, \
-    ValueType, serializes, deserializes, ProviderType, AttributeAsDict
+from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
+    BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
+    UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
+    Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
+    ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
+    IndexField, SeriesField, DataFrameField, SliceField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -40,11 +47,22 @@ from mars.utils import to_binary, to_text
 
 class Node1(Serializable):
     a = IdentityField('a', ValueType.string)
-    b = Int32Field('b')
-    c = KeyField('c')
-    d = ReferenceField('d', 'Node2')
-    e = ListField('e')
-    f = ListField('f', ValueType.reference('self'))
+    b1 = Int8Field('b1')
+    b2 = Int16Field('b2')
+    b3 = Int32Field('b3')
+    b4 = Int64Field('b4')
+    c1 = UInt8Field('c1')
+    c2 = UInt16Field('c2')
+    c3 = UInt32Field('c3')
+    c4 = UInt64Field('c4')
+    d1 = Float16Field('d1')
+    d2 = Float32Field('d2')
+    d3 = Float64Field('d3')
+    e = BoolField('e')
+    f = KeyField('f')
+    g = ReferenceField('g', 'Node2')
+    h = ListField('h')
+    i = ListField('i', ValueType.reference('self'))
 
     def __new__(cls, *args, **kwargs):
         if 'a' in kwargs and kwargs['a'] == 'test1':
@@ -67,6 +85,7 @@ class Node2(BaseWithKey, Serializable):
     a = ListField('a', ValueType.list(ValueType.string))
     _key = StringField('key')
     _id = StringField('id')
+    _name = UnicodeField('name')
     data = ListField('data', ValueType.int32)
 
     @classmethod
@@ -112,14 +131,22 @@ class Node4(AttributeAsDict):
 
     a = BytesField('b')
     b = NDArrayField('c')
-    c = DictField('d', ValueType.string, ValueType.list(ValueType.bool))
-    d = DictField('e')
-    e = TupleField('f', ValueType.int64, ValueType.unicode, ValueType.string, ValueType.float32,
+    c = Datetime64Field('d')
+    d = Timedelta64Field('e')
+    e = DataTypeField('f')
+    f = DictField('g', ValueType.string, ValueType.list(ValueType.bool))
+    g = DictField('h')
+    h = TupleField('i', ValueType.int64, ValueType.unicode, ValueType.string, ValueType.float32,
                    ValueType.datetime64, ValueType.timedelta64, ValueType.dtype)
-    f = TupleField('g', ValueType.slice)
-    g = ReferenceField('h', Node5)
-    h = ListField('i', ValueType.reference('Node5'))
-    i = OneOfField('j', n5=Node5, n6=Node6)
+    i = TupleField('j', ValueType.slice)
+    j = ReferenceField('k', Node5)
+    k = ListField('l', ValueType.reference('Node5'))
+    l = OneOfField('m', n5=Node5, n6=Node6)
+    m = IndexField('n')
+    mm = IndexField('mn')
+    n = SeriesField('o')
+    o = DataFrameField('p')
+    p = ListField('q')
 
     @classmethod
     def cls(cls, provider):
@@ -134,10 +161,15 @@ class Test(unittest.TestCase):
         provider = ProtobufSerializeProvider()
 
         node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1', b=2, d=Node2(a=[['1', '2'], ['3', '4']]),
-                      c=node2,
-                      e=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      f=[Node1(b=111), Node1(b=222)])
+        node1 = Node1(a='test1',
+                      b1=-2, b2=2000, b3=-5000, b4=500000,
+                      c1=2, c2=2000, c3=5000, c4=500000,
+                      d1=2.5, d2=7.37, d3=5.976321,
+                      e=False,
+                      f=node2,
+                      g=Node2(a=[['1', '2'], ['3', '4']]),
+                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
+                      i=[Node1(b1=111), Node1(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -151,26 +183,42 @@ class Test(unittest.TestCase):
         self.assertIsInstance(d_node3.value, Node8)
         self.assertIsNot(node3.value, d_node3.value)
         self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b, d_node3.value.b)
-        self.assertIsNot(node3.value.c, d_node3.value.c)
-        self.assertEqual(node3.value.c.a, d_node3.value.c.a)
-        self.assertIsNot(node3.value.d, d_node3.value.d)
-        self.assertEqual(node3.value.d.a, d_node3.value.d.a)
-        self.assertEqual(node3.value.e[0], d_node3.value.e[0])
-        self.assertNotIsInstance(d_node3.value.e[1], six.string_types)
-        self.assertIs(d_node3.value.e[1], d_node3.value.c)
-        self.assertEqual(node3.value.e[2], True)
-        self.assertEqual([n.b for n in node3.value.f], [n.b for n in d_node3.value.f])
-        self.assertNotIsInstance(node3.value.f[0], Node8)
+        self.assertEqual(node3.value.b1, d_node3.value.b1)
+        self.assertEqual(node3.value.b2, d_node3.value.b2)
+        self.assertEqual(node3.value.b3, d_node3.value.b3)
+        self.assertEqual(node3.value.b4, d_node3.value.b4)
+        self.assertEqual(node3.value.c1, d_node3.value.c1)
+        self.assertEqual(node3.value.c2, d_node3.value.c2)
+        self.assertEqual(node3.value.c3, d_node3.value.c3)
+        self.assertEqual(node3.value.c4, d_node3.value.c4)
+        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+        self.assertEqual(node3.value.e, d_node3.value.e)
+        self.assertIsNot(node3.value.f, d_node3.value.f)
+        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.g, d_node3.value.g)
+        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertEqual(node3.value.h[2], True)
+        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+        self.assertNotIsInstance(node3.value.i[0], Node8)
 
     def testJSONSerialize(self):
         provider = JsonSerializeProvider()
 
         node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1', b=2, d=Node2(a=[['1', '2'], ['3', '4']]),
-                      c=node2,
-                      e=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      f=[Node1(b=111), Node1(b=222)])
+        node1 = Node1(a='test1',
+                      b1=2, b2=2000, b3=5000, b4=500000,
+                      c1=2, c2=2000, c3=5000, c4=500000,
+                      d1=2.5, d2=7.37, d3=5.976321,
+                      e=False,
+                      f=node2,
+                      g=Node2(a=[['1', '2'], ['3', '4']]),
+                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
+                      i=[Node1(b1=111), Node1(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -185,27 +233,51 @@ class Test(unittest.TestCase):
         self.assertIsInstance(d_node3.value, Node8)
         self.assertIsNot(node3.value, d_node3.value)
         self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b, d_node3.value.b)
-        self.assertIsNot(node3.value.c, d_node3.value.c)
-        self.assertEqual(node3.value.c.a, d_node3.value.c.a)
-        self.assertIsNot(node3.value.d, d_node3.value.d)
-        self.assertEqual(node3.value.d.a, d_node3.value.d.a)
-        self.assertEqual(node3.value.e[0], d_node3.value.e[0])
-        self.assertNotIsInstance(d_node3.value.e[1], six.string_types)
-        self.assertIs(d_node3.value.e[1], d_node3.value.c)
-        self.assertEqual(node3.value.e[2], True)
-        self.assertEqual([n.b for n in node3.value.f], [n.b for n in d_node3.value.f])
-        self.assertNotIsInstance(node3.value.f[0], Node8)
+        self.assertEqual(node3.value.b1, d_node3.value.b1)
+        self.assertEqual(node3.value.b2, d_node3.value.b2)
+        self.assertEqual(node3.value.b3, d_node3.value.b3)
+        self.assertEqual(node3.value.b4, d_node3.value.b4)
+        self.assertEqual(node3.value.c1, d_node3.value.c1)
+        self.assertEqual(node3.value.c2, d_node3.value.c2)
+        self.assertEqual(node3.value.c3, d_node3.value.c3)
+        self.assertEqual(node3.value.c4, d_node3.value.c4)
+        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+        self.assertEqual(node3.value.e, d_node3.value.e)
+        self.assertIsNot(node3.value.f, d_node3.value.f)
+        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.g, d_node3.value.g)
+        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertEqual(node3.value.h[2], True)
+        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+        self.assertNotIsInstance(node3.value.i[0], Node8)
 
     def testAttributeAsDict(self):
-        node4 = Node4(a=to_binary('中文'), b=np.random.randint(4, size=(3, 4)),
-                      c={'a': [True, False, False], 'd': [False, None]},
-                      e=(1234, to_text('测试'), '属性', None, np.datetime64('1066-10-13'),
+        other_data = {}
+        if pd:
+            df = pd.DataFrame({'a': [1, 2, 3], 'b': [to_text('测试'), to_binary('属性'), 'c']},
+                              index=[[0, 0, 1], ['测试', '属性', '测试']])
+            other_data['m'] = df.columns
+            other_data['mm'] = df.index
+            other_data['n'] = df['b']
+            other_data['o'] = df
+            other_data['p'] = [df.columns, df.index, df['a'], df]
+        node4 = Node4(a=to_binary('中文'),
+                      b=np.random.randint(4, size=(3, 4)),
+                      c=np.datetime64(datetime.datetime.now()),
+                      d=np.timedelta64(datetime.timedelta(seconds=1234)),
+                      e=np.dtype('int'),
+                      f={'a': [True, False, False], 'd': [False, None]},
+                      h=(1234, to_text('测试'), '属性', None, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.dtype([('x', 'i4'), ('y', 'f4')])),
-                      f=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
-                      g=Node5(a='aa', b=slice(1, 100, 3)),
-                      h=[Node5(a='bb', b=slice(200, -1, -4)), None],
-                      i=Node6(b=3, nid=1))
+                      i=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
+                      j=Node5(a='aa', b=slice(1, 100, 3)),
+                      k=[Node5(a='bb', b=slice(200, -1, -4)), None],
+                      l=Node6(b=3, nid=1), **other_data)
 
         pbs = ProtobufSerializeProvider()
 
@@ -213,18 +285,30 @@ class Test(unittest.TestCase):
         d_node4 = Node4.deserialize(pbs, serial)
 
         self.assertEqual(node4.a, d_node4.a)
-        self.assertTrue(np.array_equal(node4.b, d_node4.b))
+        np.testing.assert_array_equal(node4.b, d_node4.b)
         self.assertEqual(node4.c, d_node4.c)
-        self.assertFalse(hasattr(d_node4, 'd'))
+        self.assertEqual(node4.d, d_node4.d)
         self.assertEqual(node4.e, d_node4.e)
         self.assertEqual(node4.f, d_node4.f)
-        self.assertEqual(node4.g.a, d_node4.g.a)
-        self.assertEqual(node4.g.b, d_node4.g.b)
-        self.assertEqual(node4.h[0].a, d_node4.h[0].a)
-        self.assertEqual(node4.h[0].b, d_node4.h[0].b)
-        self.assertIsNone(d_node4.h[1])
-        self.assertIsInstance(d_node4.i, Node7)
-        self.assertEqual(d_node4.i.b, 3)
+        self.assertFalse(hasattr(d_node4, 'g'))
+        self.assertEqual(node4.h, d_node4.h)
+        self.assertEqual(node4.i, d_node4.i)
+        self.assertEqual(node4.j.a, d_node4.j.a)
+        self.assertEqual(node4.j.b, d_node4.j.b)
+        self.assertEqual(node4.k[0].a, d_node4.k[0].a)
+        self.assertEqual(node4.k[0].b, d_node4.k[0].b)
+        self.assertIsNone(d_node4.k[1])
+        self.assertIsInstance(d_node4.l, Node7)
+        self.assertEqual(d_node4.l.b, 3)
+        if pd:
+            pd.testing.assert_index_equal(node4.m, d_node4.m)
+            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
+            pd.testing.assert_series_equal(node4.n, d_node4.n)
+            pd.testing.assert_frame_equal(node4.o, d_node4.o)
+            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
+            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
+            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
+            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
 
         jss = JsonSerializeProvider()
 
@@ -233,19 +317,31 @@ class Test(unittest.TestCase):
         d_node4 = Node4.deserialize(jss, serial)
 
         self.assertEqual(node4.a, d_node4.a)
-        self.assertTrue(np.array_equal(node4.b, d_node4.b))
+        np.testing.assert_array_equal(node4.b, d_node4.b)
         self.assertEqual(node4.c, d_node4.c)
-        self.assertFalse(hasattr(d_node4, 'd'))
+        self.assertEqual(node4.d, d_node4.d)
         self.assertEqual(node4.e, d_node4.e)
         self.assertEqual(node4.f, d_node4.f)
-        self.assertEqual(node4.g.a, d_node4.g.a)
-        self.assertEqual(node4.h[0].a, d_node4.h[0].a)
-        self.assertIsNone(d_node4.h[1])
-        self.assertIsInstance(d_node4.i, Node7)
-        self.assertEqual(d_node4.i.b, 3)
+        self.assertFalse(hasattr(d_node4, 'g'))
+        self.assertEqual(node4.h, d_node4.h)
+        self.assertEqual(node4.i, d_node4.i)
+        self.assertEqual(node4.j.a, d_node4.j.a)
+        self.assertEqual(node4.k[0].a, d_node4.k[0].a)
+        self.assertIsNone(d_node4.k[1])
+        self.assertIsInstance(d_node4.l, Node7)
+        self.assertEqual(d_node4.l.b, 3)
+        if pd:
+            pd.testing.assert_index_equal(node4.m, d_node4.m)
+            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
+            pd.testing.assert_series_equal(node4.n, d_node4.n)
+            pd.testing.assert_frame_equal(node4.o, d_node4.o)
+            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
+            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
+            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
+            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
 
     def testException(self):
-        node1 = Node1(e=[object()])
+        node1 = Node1(h=[object()])
 
         pbs = ProtobufSerializeProvider()
 
@@ -328,7 +424,7 @@ class Test(unittest.TestCase):
         except ImportError:
             sps = None
 
-        from mars.serialize.dataserializer import DataTuple, mars_serialize_context
+        from mars.serialize.dataserializer import mars_serialize_context
         context = mars_serialize_context()
 
         if np:
@@ -343,7 +439,7 @@ class Test(unittest.TestCase):
         if np and sps:
             array = np.random.rand(1000, 100)
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
-            tp = DataTuple((array, mat))
+            tp = (array, mat)
             des_tp = pyarrow.deserialize(pyarrow.serialize(tp, context).to_buffer(), context)
             assert_array_equal(tp[0], des_tp[0])
             self.assertTrue((tp[1].spmatrix != des_tp[1].spmatrix).nnz == 0)

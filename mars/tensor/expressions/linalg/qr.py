@@ -32,6 +32,11 @@ class TensorQR(operands.QR, TensorOperandMixin):
         super(TensorQR, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def calc_shape(self, *inputs_shape):
+        input_shape = inputs_shape[0]
+        x, y = input_shape
+        return (input_shape, (y, y)) if x > y else ((x, x), input_shape)
+
     def __call__(self, a):
         a = astensor(a)
 
@@ -42,8 +47,7 @@ class TensorQR(operands.QR, TensorOperandMixin):
         tiny_q, tiny_r = np.linalg.qr(np.ones((1, 1), dtype=a.dtype))
 
         x, y = a.shape
-        q_shape = a.shape if x > y else (x, x)
-        r_shape = a.shape if x < y else (y, y)
+        q_shape, r_shape = (a.shape, (y, y)) if x > y else ((x, x), a.shape)
         q, r = self.new_tensors([a], (q_shape, r_shape),
                                 kws=[{'side': 'q', 'dtype': tiny_q.dtype},
                                      {'side': 'r', 'dtype': tiny_r.dtype}])

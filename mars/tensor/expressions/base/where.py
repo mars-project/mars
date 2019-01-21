@@ -37,6 +37,9 @@ class TensorWhere(Where, TensorOperandMixin):
         self._x = self._inputs[1]
         self._y = self._inputs[2]
 
+    def calc_shape(self, *inputs_shape):
+        return broadcast_shape(inputs_shape[1], inputs_shape[2])
+
     def __call__(self, condition, x, y, shape=None):
         shape = shape or broadcast_shape(x.shape, y.shape)
         return self.new_tensor([condition, x, y], shape)
@@ -54,7 +57,7 @@ class TensorWhere(Where, TensorOperandMixin):
         for out_index in itertools.product(*(map(range, out_chunk_shape))):
             in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
                          for t in inputs]
-            chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
+            chunk_shape = broadcast_shape(*(c.shape for c in in_chunks[1:]))
             out_chunk = op.copy().reset_key().new_chunk(in_chunks, chunk_shape, index=out_index)
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_index, out_chunk.shape):

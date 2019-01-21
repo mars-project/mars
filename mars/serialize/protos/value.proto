@@ -39,6 +39,9 @@ message Value {
         Key key = 12;  // BaseWithKey object, only save `key`
         bytes datetime64 = 13; // numpy datetime64
         bytes timedelta64 = 14; // numpy timedelta64
+        bytes index = 15; // pandas Index
+        bytes series = 16;  // pandas Series
+        bytes dataframe = 17;  // pandas DataFrame
     }
 
 }

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\"mars/serialize/tests/testser.proto\x1a!mars/serialize/protos/value.proto\"r\n\x08Node1Def\x12\t\n\x01\x61\x18\x01 \x01(\t\x12\t\n\x01\x62\x18\x02 \x01(\x05\x12\x11\n\x01\x63\x18\x03 \x01(\x0b\x32\x06.Value\x12\x14\n\x01\x64\x18\x04 \x01(\x0b\x32\t.Node2Def\x12\x11\n\x01\x65\x18\x05 \x03(\x0b\x32\x06.Value\x12\x14\n\x01\x66\x18\x06 \x03(\x0b\x32\t.Node1Def\"D\n\x08Node2Def\x12\x11\n\x01\x61\x18\x01 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x03(\x05\x12\n\n\x02id\x18\x04 \x01(\t\"E\n\x08Node3Def\x12\x17\n\x02n1\x18\x01 \x01(\x0b\x32\t.Node1DefH\x00\x12\x17\n\x02n2\x18\x02 \x01(\x0b\x32\t.Node2DefH\x00\x42\x07\n\x05value\"b\n\x08Node4Def\x12!\n\x04\x61ttr\x18\x01 \x03(\x0b\x32\x13.Node4Def.AttrEntry\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\x62\x06proto3')
+  serialized_pb=_b('\n\"mars/serialize/tests/testser.proto\x1a!mars/serialize/protos/value.proto\"\xf6\x01\n\x08Node1Def\x12\t\n\x01\x61\x18\x01 \x01(\t\x12\n\n\x02\x62\x31\x18\x02 \x01(\x05\x12\n\n\x02\x62\x32\x18\x03 \x01(\x05\x12\n\n\x02\x62\x33\x18\x04 \x01(\x05\x12\n\n\x02\x62\x34\x18\x05 \x01(\x03\x12\n\n\x02\x63\x31\x18\x06 \x01(\r\x12\n\n\x02\x63\x32\x18\x07 \x01(\r\x12\n\n\x02\x63\x33\x18\x08 \x01(\r\x12\n\n\x02\x63\x34\x18\t \x01(\x04\x12\n\n\x02\x64\x31\x18\n \x01(\x02\x12\n\n\x02\x64\x32\x18\x0b \x01(\x02\x12\n\n\x02\x64\x33\x18\x0c \x01(\x01\x12\t\n\x01\x65\x18\r \x01(\x08\x12\x11\n\x01\x66\x18\x0e \x01(\x0b\x32\x06.Value\x12\x14\n\x01g\x18\x0f \x01(\x0b\x32\t.Node2Def\x12\x11\n\x01h\x18\x10 \x03(\x0b\x32\x06.Value\x12\x14\n\x01i\x18\x11 \x03(\x0b\x32\t.Node1Def\"R\n\x08Node2Def\x12\x11\n\x01\x61\x18\x01 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x03 \x03(\x05\x12\n\n\x02id\x18\x04 \x01(\t\x12\x0c\n\x04name\x18\x05 \x01(\t\"E\n\x08Node3Def\x12\x17\n\x02n1\x18\x01 \x01(\x0b\x32\t.Node1DefH\x00\x12\x17\n\x02n2\x18\x02 \x01(\x0b\x32\t.Node2DefH\x00\x42\x07\n\x05value\"b\n\x08Node4Def\x12!\n\x04\x61ttr\x18\x01 \x03(\x0b\x32\x13.Node4Def.AttrEntry\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\x62\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,])
 
@@ -42,36 +42,113 @@ _NODE1DEF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='b', full_name='Node1Def.b', index=1,
+      name='b1', full_name='Node1Def.b1', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='c', full_name='Node1Def.c', index=2,
-      number=3, type=11, cpp_type=10, label=1,
+      name='b2', full_name='Node1Def.b2', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='b3', full_name='Node1Def.b3', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='b4', full_name='Node1Def.b4', index=4,
+      number=5, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='c1', full_name='Node1Def.c1', index=5,
+      number=6, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='c2', full_name='Node1Def.c2', index=6,
+      number=7, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='c3', full_name='Node1Def.c3', index=7,
+      number=8, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='c4', full_name='Node1Def.c4', index=8,
+      number=9, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='d1', full_name='Node1Def.d1', index=9,
+      number=10, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='d2', full_name='Node1Def.d2', index=10,
+      number=11, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='d3', full_name='Node1Def.d3', index=11,
+      number=12, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='e', full_name='Node1Def.e', index=12,
+      number=13, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='f', full_name='Node1Def.f', index=13,
+      number=14, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='d', full_name='Node1Def.d', index=3,
-      number=4, type=11, cpp_type=10, label=1,
+      name='g', full_name='Node1Def.g', index=14,
+      number=15, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='e', full_name='Node1Def.e', index=4,
-      number=5, type=11, cpp_type=10, label=3,
+      name='h', full_name='Node1Def.h', index=15,
+      number=16, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='f', full_name='Node1Def.f', index=5,
-      number=6, type=11, cpp_type=10, label=3,
+      name='i', full_name='Node1Def.i', index=16,
+      number=17, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -88,8 +165,8 @@ _NODE1DEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=73,
-  serialized_end=187,
+  serialized_start=74,
+  serialized_end=320,
 )
 
 
@@ -128,6 +205,13 @@ _NODE2DEF = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='Node2Def.name', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -140,8 +224,8 @@ _NODE2DEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=189,
-  serialized_end=257,
+  serialized_start=322,
+  serialized_end=404,
 )
 
 
@@ -181,8 +265,8 @@ _NODE3DEF = _descriptor.Descriptor(
       name='value', full_name='Node3Def.value',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=259,
-  serialized_end=328,
+  serialized_start=406,
+  serialized_end=475,
 )
 
 
@@ -219,8 +303,8 @@ _NODE4DEF_ATTRENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=377,
-  serialized_end=428,
+  serialized_start=524,
+  serialized_end=575,
 )
 
 _NODE4DEF = _descriptor.Descriptor(
@@ -249,14 +333,14 @@ _NODE4DEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=330,
-  serialized_end=428,
+  serialized_start=477,
+  serialized_end=575,
 )
 
-_NODE1DEF.fields_by_name['c'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_NODE1DEF.fields_by_name['d'].message_type = _NODE2DEF
-_NODE1DEF.fields_by_name['e'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_NODE1DEF.fields_by_name['f'].message_type = _NODE1DEF
+_NODE1DEF.fields_by_name['f'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_NODE1DEF.fields_by_name['g'].message_type = _NODE2DEF
+_NODE1DEF.fields_by_name['h'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_NODE1DEF.fields_by_name['i'].message_type = _NODE1DEF
 _NODE2DEF.fields_by_name['a'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _NODE3DEF.fields_by_name['n1'].message_type = _NODE1DEF
 _NODE3DEF.fields_by_name['n2'].message_type = _NODE2DEF
