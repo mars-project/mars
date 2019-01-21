@@ -141,10 +141,10 @@ class Node4(AttributeAsDict):
     j = ReferenceField('k', Node5)
     k = ListField('l', ValueType.reference('Node5'))
     l = OneOfField('m', n5=Node5, n6=Node6)
-    m = IndexField('k')
-    mm = IndexField('mj')
-    n = SeriesField('l')
-    o = DataFrameField('m')
+    m = IndexField('n')
+    mm = IndexField('mn')
+    n = SeriesField('o')
+    o = DataFrameField('p')
 
     @classmethod
     def cls(cls, provider):
@@ -259,10 +259,10 @@ class Test(unittest.TestCase):
         if pd:
             df = pd.DataFrame({'a': [1, 2, 3], 'b': ['测试', '属性', 'c']},
                               index=[[0, 0, 1], ['测试', '属性', '测试']])
-            other_data['j'] = df.columns
-            other_data['mj'] = df.index
-            other_data['k'] = df['b']
-            other_data['l'] = df
+            other_data['m'] = df.columns
+            other_data['mm'] = df.index
+            other_data['n'] = df['b']
+            other_data['o'] = df
         node4 = Node4(a=to_binary('中文'),
                       b=np.random.randint(4, size=(3, 4)),
                       c=np.datetime64(datetime.datetime.now()),
