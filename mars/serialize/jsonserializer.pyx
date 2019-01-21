@@ -21,6 +21,10 @@ import weakref
 import numpy as np
 cimport numpy as np
 from cpython.version cimport PY_MAJOR_VERSION
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pd = None
 
 from ..compat import six, OrderedDict, izip
 from ..core import BaseWithKey
@@ -52,6 +56,9 @@ cdef dict EXTEND_TYPE_TO_NAME = {
     ValueType.slice: 'slice',
     ValueType.arr: 'arr',
     ValueType.dtype: 'dtype',
+    ValueType.index: 'index',
+    ValueType.series: 'series',
+    ValueType.dataframe: 'dataframe',
     ValueType.key: 'key',
     ValueType.datetime64: 'datetime64',
     ValueType.timedelta64: 'timedelta64',
@@ -101,9 +108,6 @@ cdef class JsonSerializeProvider(Provider):
         return slice(value['start'], value['stop'], value['step'])
 
     cdef inline dict _serialize_arr(self, np.ndarray value):
-        cdef bytes bt
-        cdef str res
-
         return {
             'type': _get_name(ValueType.arr),
             'value': self._to_str(base64.b64encode(datadumps(value)))
@@ -139,6 +143,36 @@ cdef class JsonSerializeProvider(Provider):
         except TypeError:
             val = value['value']
             return np.dtype(pickle.loads(base64.b64decode(val)))
+
+    cdef inline dict _serialize_index(self, value):
+        return {
+            'type': _get_name(ValueType.index),
+            'value': self._to_str(base64.b64encode(datadumps(value)))
+        }
+
+    cdef inline object _deserialize_pd_entity(self, object obj, list callbacks):
+        cdef bytes bt
+
+        value = obj['value']
+
+        bt = self._to_bytes(base64.b64decode(value))
+
+        if bt is not None:
+            return dataloads(bt)
+
+        return None
+
+    cdef inline dict _serialize_series(self, value):
+        return {
+            'type': _get_name(ValueType.series),
+            'value': self._to_str(base64.b64encode(datadumps(value)))
+        }
+
+    cdef inline dict _serialize_dataframe(self, value):
+        return {
+            'type': _get_name(ValueType.dataframe),
+            'value': self._to_str(base64.b64encode(datadumps(value)))
+        }
 
     cdef inline dict _serialize_key(self, value):
         return {
@@ -281,6 +315,12 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_arr(value)
         elif tp is ValueType.dtype:
             return self._serialize_dtype(value)
+        elif tp is ValueType.index:
+            return self._serialize_index(value)
+        elif tp is ValueType.series:
+            return self._serialize_series(value)
+        elif tp is ValueType.dataframe:
+            return self._serialize_dataframe(value)
         elif tp is ValueType.key:
             return self._serialize_key(value)
         elif tp == ValueType.datetime64:
@@ -324,6 +364,12 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_arr(value)
         elif isinstance(value, np.dtype):
             return self._serialize_dtype(value)
+        elif pd is not None and isinstance(value, pd.Index):
+            return self._serialize_index(value)
+        elif pd is not None and isinstance(value, pd.Series):
+            return self._serialize_series(value)
+        elif pd is not None and isinstance(value, pd.DataFrame):
+            return self._serialize_dataframe(value)
         elif isinstance(value, BaseWithKey):
             return self._serialize_key(value)
         elif isinstance(value, list):
@@ -422,6 +468,8 @@ cdef class JsonSerializeProvider(Provider):
             return ref(self._deserialize_arr(obj, callbacks))
         elif tp is ValueType.dtype:
             return ref(self._deserialize_dtype(obj, callbacks))
+        elif tp in (ValueType.index, ValueType.series, ValueType.dataframe):
+            return ref(self._deserialize_pd_entity(obj, callbacks))
         elif tp is ValueType.key:
             return self._deserialize_key(obj, callbacks)  # the weakref will do in the callback, so skip
         elif tp is ValueType.datetime64:

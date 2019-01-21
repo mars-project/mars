@@ -20,6 +20,10 @@ import weakref
 import numpy as np
 cimport numpy as np
 cimport cython
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pd = None
 
 from cpython.version cimport PY_MAJOR_VERSION
 
@@ -76,8 +80,6 @@ cdef class ProtobufSerializeProvider(Provider):
         return slice(start, stop, step)
 
     cdef inline void _set_arr(self, np.ndarray value, obj, tp=None):
-        cdef object bio
-
         obj.arr = datadumps(value)
 
     cdef inline np.ndarray _get_arr(self, obj):
@@ -102,6 +104,27 @@ cdef class ProtobufSerializeProvider(Provider):
             return np.dtype(obj.dtype)
         except TypeError:
             return np.dtype(pickle.loads(obj.dtype))
+
+    cdef inline void _set_index(self, value, obj, tp=None) except *:
+        obj.index = datadumps(value)
+
+    cdef inline _get_index(self, obj):
+        x = obj.index
+        return dataloads(x) if x is not None and len(x) > 0 else None
+
+    cdef inline void _set_series(self, value, obj, tp=None) except *:
+        obj.series = datadumps(value)
+
+    cdef inline _get_series(self, obj):
+        x = obj.series
+        return dataloads(x) if x is not None and len(x) > 0 else None
+
+    cdef inline void _set_dataframe(self, value, obj, tp=None) except *:
+        obj.dataframe = datadumps(value)
+
+    cdef inline object _get_dataframe(self, obj):
+        x = obj.dataframe
+        return dataloads(x) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_key(self, object value, obj, tp=None) except *:
         obj.key.key = value.key
@@ -319,6 +342,12 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_arr(<np.ndarray>value, obj, tp)
         elif tp is ValueType.dtype:
             self._set_dtype(<np.dtype>value, obj, tp)
+        elif tp is ValueType.index:
+            self._set_index(value, obj, tp)
+        elif tp is ValueType.series:
+            self._set_series(value, obj, tp)
+        elif tp is ValueType.dataframe:
+            self._set_dataframe(value, obj, tp)
         elif tp is ValueType.key:
             self._set_key(value, obj, tp)
         elif tp is ValueType.datetime64:
@@ -367,6 +396,12 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_arr(value, obj)
         elif isinstance(value, np.dtype):
             self._set_dtype(value, obj)
+        elif pd is not None and isinstance(value, pd.Index):
+            self._set_index(value, obj)
+        elif pd is not None and isinstance(value, pd.Series):
+            self._set_series(value, obj)
+        elif pd is not None and isinstance(value, pd.DataFrame):
+            self._set_dataframe(value, obj)
         elif isinstance(value, BaseWithKey):
             self._set_key(value, obj)
         elif isinstance(value, list):
@@ -509,6 +544,12 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_arr(obj))
         elif tp is ValueType.dtype:
             return ref(self._get_dtype(obj))
+        elif tp is ValueType.index:
+            return ref(self._get_index(obj))
+        elif tp is ValueType.series:
+            return ref(self._get_series(obj))
+        elif tp is ValueType.dataframe:
+            return ref(self._get_dataframe(obj))
         elif tp is ValueType.key:
             return self._get_key(obj)
         elif tp is ValueType.datetime64:
@@ -571,6 +612,12 @@ cdef class ProtobufSerializeProvider(Provider):
             return ref(self._get_arr(obj))
         elif field == 'dtype':
             return ref(self._get_dtype(obj))
+        elif field == 'index':
+            return ref(self._get_index(obj))
+        elif field == 'series':
+            return ref(self._get_series(obj))
+        elif field == 'dataframe':
+            return ref(self._get_dataframe(obj))
         elif field == 'key':
             return self._get_key(obj)
         elif field == 'datetime64':

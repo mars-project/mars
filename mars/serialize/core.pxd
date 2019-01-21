@@ -39,6 +39,9 @@ cpdef enum ExtendType:
     key = 18
     datetime64 = 19
     timedelta64 = 20
+    index = 21
+    series = 22
+    dataframe = 23
 
 
 cdef class Identity:
@@ -177,6 +180,18 @@ cdef class Timedelta64Field(Field):
 
 
 cdef class DataTypeField(Field):
+    pass
+
+
+cdef class IndexField(Field):
+    pass
+
+
+cdef class SeriesField(Field):
+    pass
+
+
+cdef class DataFrameField(Field):
     pass
 
 
