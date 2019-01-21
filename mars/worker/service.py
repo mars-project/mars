@@ -70,16 +70,17 @@ class WorkerService(object):
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     @classmethod
-    def _calc_soft_memory_limit(cls):
+    def _calc_soft_memory_limit(cls, total_mem=None):
         """
         Calc memory limit for MemQuotaActor given configured percentage. Cache size and memory
         already been used will be excluded from calculated size.
         """
         mem_status = resource.virtual_memory()
+        total_mem = total_mem or mem_status.total
 
         phy_soft_limit = options.worker.physical_memory_limit_soft
         cache_limit = options.worker.cache_memory_limit
-        actual_used = mem_status.total - mem_status.available
+        actual_used = total_mem - mem_status.available
         quota_soft_limit = phy_soft_limit - cache_limit - actual_used
 
         if quota_soft_limit < 512 * 1024 ** 2:
@@ -89,7 +90,7 @@ class WorkerService(object):
         cls.service_logger.info('Setting soft limit to %s.', readable_size(quota_soft_limit))
         return quota_soft_limit
 
-    def start(self, endpoint, schedulers, pool, ignore_avail_mem=False):
+    def start(self, endpoint, schedulers, pool, total_mem=None, ignore_avail_mem=False):
         if schedulers:
             if isinstance(schedulers, six.string_types):
                 schedulers = [schedulers]
@@ -118,7 +119,7 @@ class WorkerService(object):
                 QuotaActor, options.worker.physical_memory_limit_soft, uid=MemQuotaActor.default_name())
         else:
             self._mem_quota_ref = pool.create_actor(
-                MemQuotaActor, self._calc_soft_memory_limit(),
+                MemQuotaActor, self._calc_soft_memory_limit(total_mem),
                 options.worker.physical_memory_limit_hard, uid=MemQuotaActor.default_name())
 
         # create ChunkHolderActor
