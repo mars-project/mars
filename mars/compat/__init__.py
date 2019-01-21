@@ -19,6 +19,7 @@ import platform
 import struct
 import warnings
 import os
+import socket
 try:
     import xml.etree.cElementTree as ElementTree
 except ImportError:
@@ -190,11 +191,11 @@ else:
         pass
 
 
-    class BrokenPipeError(Exception):
+    class BrokenPipeError(socket.error):
         pass
 
 
-    class ConnectionResetError(Exception):
+    class ConnectionResetError(socket.error):
         pass
 
 
