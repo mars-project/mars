@@ -388,7 +388,7 @@ try:
     NUMEXPR_INSTALLED = True
     from .ne import register_numexpr_handler
     register_numexpr_handler()
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 CP_INSTALLED = False
@@ -397,7 +397,7 @@ try:
     CP_INSTALLED = True
     from .cp import register_cp_handler
     register_cp_handler()
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 register_data_source_handler()

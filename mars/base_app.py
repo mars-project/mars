@@ -196,7 +196,7 @@ class BaseApplication(object):
 
             with self.pool:
                 try:
-                    self.start_service()
+                    self.start()
                     self._running = True
                     while True:
                         self.pool.join(1)
@@ -208,7 +208,7 @@ class BaseApplication(object):
                             self.handle_process_down(stopped)
                 except:
                     self._running = False
-                    self.stop_service()
+                    self.stop()
         finally:
             self._running = False
             if profile_file:
@@ -240,8 +240,8 @@ class BaseApplication(object):
     def config_args(self, parser):
         raise NotImplementedError
 
-    def start_service(self):
+    def start(self):
         raise NotImplementedError
 
-    def stop_service(self):
+    def stop(self):
         raise NotImplementedError

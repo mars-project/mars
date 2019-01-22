@@ -26,7 +26,6 @@ from ...actors import create_actor_pool
 from ...session import new_session
 from ...compat import six
 from ...lib import gipc
-from ...config import options
 from .distributor import gen_distributor
 
 
@@ -44,12 +43,9 @@ class LocalDistributedCluster(object):
         self._started = False
         self._stopped = False
 
-        if shared_memory is not None:
-            options.worker.cache_memory_limit = shared_memory
-
         self._pool = None
         self._scheduler_service = SchedulerService()
-        self._worker_service = WorkerService()
+        self._worker_service = WorkerService(cache_mem_limit=shared_memory)
 
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,
@@ -96,7 +92,7 @@ class LocalDistributedCluster(object):
         self._started = True
 
         # start plasma
-        self._worker_service.start_plasma(self._worker_service.calc_cache_memory_limit())
+        self._worker_service.start_plasma()
 
         # start actor pool
         n_process = self._scheduler_n_process + self._worker_n_process
@@ -107,7 +103,8 @@ class LocalDistributedCluster(object):
         self._scheduler_service.start(self._endpoint, None, self._pool)
 
         # start worker next
-        self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)
+        self._worker_service.start(self._endpoint, self._pool, distributed=False,
+                                   process_start_index=self._scheduler_n_process)
 
         # make sure scheduler is ready
         self._make_sure_scheduler_ready()
@@ -169,7 +166,7 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
 
     kw = kw.copy()
     kw['n_process'] = n_process
-    kw['shared_memory'] = shared_memory or options.worker.cache_memory_limit or '20%'
+    kw['shared_memory'] = shared_memory or '20%'
     process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
 
     while True:
