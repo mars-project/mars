@@ -4,19 +4,16 @@ if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
 
     ulimit -n 1024
 
-    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-    PYENV_ROOT="$HOME/.pyenv"
-    PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-
     function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 
     if version_gt "3.0" "$PYTHON" ; then
         curl -O https://bootstrap.pypa.io/get-pip.py
         python get-pip.py --user
     else
-        pyenv install $PYTHON
-        pyenv global $PYTHON
+        curl -s -o miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+        bash miniconda.sh -b -p $HOME/miniconda && rm miniconda.sh
+        $HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil nomkl
+        export PATH="$HOME/miniconda/envs/test/bin:$PATH"
     fi
 fi
 
