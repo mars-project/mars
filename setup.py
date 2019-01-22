@@ -57,7 +57,7 @@ if os.path.exists(os.path.join(repo_root, '.git')):
 
 cythonize_kw = dict(language_level=sys.version_info[0])
 extension_kw = dict()
-if 'CYTHON_TRACE' in os.environ:
+if 'CI_MODE' in os.environ:
     extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
     cythonize_kw['compiler_directives'] = {'linetrace': True, 'binding': True}
 
