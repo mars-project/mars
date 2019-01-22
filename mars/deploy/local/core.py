@@ -17,6 +17,7 @@
 import multiprocessing
 import signal
 import os
+import time
 
 from ...utils import get_next_port
 from ...resource import cpu_count
@@ -77,12 +78,15 @@ class LocalDistributedCluster(object):
 
         return n_scheduler, n_worker
 
-    def _make_sure_scheduler_ready(self):
+    def _make_sure_scheduler_ready(self, timeout=120):
+        check_start_time = time.time()
         while True:
             workers_meta = self._scheduler_service._resource_ref.get_workers_meta()
             if not workers_meta:
                 # wait for worker to report status
                 self._pool.sleep(.5)
+                if time.time() - check_start_time > timeout:  # pragma: no cover
+                    raise TimeoutError('Check worker ready timed out.')
             else:
                 break
 
