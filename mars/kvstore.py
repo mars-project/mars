@@ -15,7 +15,7 @@
 from datetime import datetime, timedelta
 from gevent.event import Event
 
-from .compat import urlparse, TimeoutError
+from .compat import urlparse, TimeoutError  # pylint: disable=W0622
 
 
 def _normalize_path(path):

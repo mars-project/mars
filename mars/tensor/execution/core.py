@@ -29,14 +29,14 @@ NUMEXPR_INSTALLED = False
 try:
     import numexpr  # noqa: F401
     NUMEXPR_INSTALLED = True
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 CP_INSTALLED = False
 try:
     import cupy  # noqa: F401
     CP_INSTALLED = True
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 

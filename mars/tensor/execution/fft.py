@@ -17,7 +17,7 @@
 import numpy as np
 try:
     import scipy.fftpack as scifft
-except ImportError:
+except ImportError:  # pragma: no cover
     scifft = None
 
 from ...operands import fft as fftop

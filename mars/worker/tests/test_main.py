@@ -23,11 +23,13 @@ import uuid
 import gevent
 
 from mars.actors import create_actor_pool
+from mars.compat import TimeoutError
 from mars.config import options
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor, ChunkMetaActor
+from mars.worker import DispatchActor, WorkerDaemonActor
 
 
 class WorkerProcessTestActor(PromiseActor):
@@ -65,8 +67,7 @@ class Test(unittest.TestCase):
     def setUpClass(cls):
         import tempfile
         from mars import kvstore
-        options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
-
+        cls._spill_dir = options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
         cls._kv_store = kvstore.get(options.kv_store)
 
     @classmethod
@@ -74,6 +75,29 @@ class Test(unittest.TestCase):
         import shutil
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
+
+    @staticmethod
+    def _wait_worker_ready(proc, resource_ref):
+        worker_ips = []
+
+        def waiter():
+            check_time = time.time()
+            while True:
+                if not resource_ref.get_workers_meta():
+                    gevent.sleep(0.1)
+                    if proc.poll() is not None:
+                        raise SystemError('Worker dead. exit code %s' % proc.poll())
+                    if time.time() - check_time > 20:
+                        raise TimeoutError('Check meta_timestamp timeout')
+                    continue
+                else:
+                    break
+            val = resource_ref.get_workers_meta()
+            worker_ips.extend(val.keys())
+
+        gl = gevent.spawn(waiter)
+        gl.join()
+        return worker_ips[0]
 
     def testExecuteWorker(self):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
@@ -90,41 +114,67 @@ class Test(unittest.TestCase):
                                          '--schedulers', mock_scheduler_addr,
                                          '--cpu-procs', '1',
                                          '--cache-mem', '10m',
+                                         '--spill-dir', self._spill_dir,
                                          '--ignore-avail-mem'])
-                worker_ips = []
-
-                def waiter():
-                    check_time = time.time()
-                    while True:
-                        if not resource_ref.get_workers_meta():
-                            gevent.sleep(0.5)
-                            if proc.poll() is not None:
-                                raise SystemError('Worker dead. exit code %s' % proc.poll())
-                            if time.time() - check_time > 20:
-                                raise SystemError('Check meta_timestamp timeout')
-                            continue
-                        else:
-                            break
-                    val = resource_ref.get_workers_meta()
-                    worker_ips.extend(val.keys())
-
-                gl = gevent.spawn(waiter)
-                gl.join()
+                worker_endpoint = self._wait_worker_ready(proc, resource_ref)
 
                 test_ref = pool.create_actor(WorkerProcessTestActor)
-                test_ref.run_test(worker_ips[0], _tell=True)
+                test_ref.run_test(worker_endpoint, _tell=True)
 
                 check_time = time.time()
                 while not test_ref.get_reply():
                     gevent.sleep(0.1)
                     if time.time() - check_time > 20:
-                        raise SystemError('Check reply timeout')
+                        raise TimeoutError('Check reply timeout')
         finally:
             if proc.poll() is None:
                 proc.send_signal(signal.SIGINT)
                 check_time = time.time()
                 while True:
-                    time.sleep(1)
+                    time.sleep(0.1)
+                    if proc.poll() is not None or time.time() - check_time >= 5:
+                        break
+                if proc.poll() is None:
+                    proc.kill()
+            if os.path.exists(options.worker.plasma_socket):
+                os.unlink(options.worker.plasma_socket)
+
+    def testWorkerProcessRestart(self):
+        mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
+        try:
+            with create_actor_pool(n_process=1, backend='gevent',
+                                   address=mock_scheduler_addr) as pool:
+                pool.create_actor(ClusterInfoActor, schedulers=[mock_scheduler_addr],
+                                  uid=ClusterInfoActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+
+                proc = subprocess.Popen([sys.executable, '-m', 'mars.worker',
+                                         '-a', '127.0.0.1',
+                                         '--schedulers', mock_scheduler_addr,
+                                         '--cpu-procs', '1',
+                                         '--cache-mem', '10m',
+                                         '--spill-dir', self._spill_dir,
+                                         '--ignore-avail-mem'])
+                worker_endpoint = self._wait_worker_ready(proc, resource_ref)
+
+                daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name(), address=worker_endpoint)
+                dispatch_ref = pool.actor_ref(DispatchActor.default_name(), address=worker_endpoint)
+                cpu_slots = dispatch_ref.get_slots('cpu')
+                calc_ref = pool.actor_ref(cpu_slots[0], address=worker_endpoint)
+                daemon_ref.kill_actor_process(calc_ref)
+
+                check_start = time.time()
+                while not daemon_ref.is_actor_process_alive(calc_ref):
+                    gevent.sleep(0.1)
+                    if time.time() - check_start > 10:
+                        raise TimeoutError('Check process restart timeout')
+        finally:
+            if proc.poll() is None:
+                proc.send_signal(signal.SIGINT)
+                check_time = time.time()
+                while True:
+                    time.sleep(0.1)
                     if proc.poll() is not None or time.time() - check_time >= 5:
                         break
                 if proc.poll() is None:

@@ -17,15 +17,15 @@
 import numpy as np
 try:
     import cupy.sparse as cps
-except ImportError:
+except ImportError:  # pragma: no cover
     cps = None
 try:
     import scipy.sparse as sps
-except ImportError:
+except ImportError:  # pragma: no cover
     sps = None
 try:
     import cupy as cp
-except ImportError:
+except ImportError:  # pragma: no cover
     cp = None
 
 
