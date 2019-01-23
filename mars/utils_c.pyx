@@ -116,6 +116,11 @@ cdef inline object h_non_iterative(object ob):
     elif pd is not None and isinstance(ob, pd.DataFrame):
         return h_pandas_dataframe(ob)
 
+    from .dataframe.core import IndexValue
+
+    if isinstance(ob, IndexValue):
+        return h_index_value(ob)
+
     raise TypeError('Cannot generate token for %s, type: %s' % (ob, type(ob)))
 
 
@@ -145,6 +150,11 @@ cdef h_numpy(ob):
         except (BufferError, AttributeError, ValueError):
             data = md5(ob.copy().ravel().view('i1').data).hexdigest()
     return data, ob.dtype, ob.shape, ob.strides
+
+
+cdef h_index_value(ob):
+    v = ob._index_value
+    return h_iterative([type(v).__name__] + [getattr(v, f, None) for f in v.__slots__])
 
 
 cdef h_pandas_index(ob):

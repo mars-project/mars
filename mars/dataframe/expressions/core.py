@@ -34,15 +34,15 @@ class DataFrameOperandMixin(TilesableOperandMixin):
                              _index_value=kw.pop('index_value', None), **kw)
         return DataFrame(data)
 
-    def new_dataframes(self, inputs, shape, dtypes=None, index=None, columns=None,
+    def new_dataframes(self, inputs, shape, dtypes=None, index_value=None, columns=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
-        return self.new_entities(inputs, shape, dtypes=dtypes, index=index, columns=columns,
+        return self.new_entities(inputs, shape, dtypes=dtypes, index_value=index_value, columns=columns,
                                  chunks=chunks, nsplits=nsplits,
                                  output_limit=output_limit, kws=kws, **kw)
 
-    def new_dataframe(self, inputs, shape, dtypes=None, index=None, columns=None, **kw):
+    def new_dataframe(self, inputs, shape, dtypes=None, index_value=None, columns=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new tensor with more than 1 outputs')
 
         return self.new_dataframes(inputs, shape, dtypes=dtypes,
-                                   index=index, columns=columns, **kw)[0]
+                                   index_value=index_value, columns=columns, **kw)[0]

@@ -15,6 +15,7 @@
 import numpy as np
 
 from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
+from ..core import IndexValue
 
 
 def decide_chunk_sizes(shape, chunk_size, memory_usage):
@@ -81,3 +82,24 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
             break
 
     return tuple(row_chunk_size), tuple(col_chunk_size)
+
+
+def parse_index(index_value):
+    import pandas as pd
+
+    def _serialize_index(index):
+        return getattr(IndexValue, type(index).__name__)(_name=index.name)
+
+    def _serialize_range_index(index):
+        return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
+                                     _name=index.name)
+
+    def _serialize_multi_index(index):
+        return IndexValue.MultiIndex(_names=index.names)
+
+    if isinstance(index_value, pd.RangeIndex):
+        return IndexValue(_index_value=_serialize_range_index(index_value))
+    elif isinstance(index_value, pd.MultiIndex):
+        return IndexValue(_index_value=_serialize_multi_index(index_value))
+    else:
+        return IndexValue(_index_value=_serialize_index(index_value))

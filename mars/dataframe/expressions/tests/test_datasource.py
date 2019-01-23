@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover
 
 from mars import opcodes as OperandDef
 from mars.tests.core import TestBase
+from mars.dataframe.core import IndexValue
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
 
 
@@ -58,3 +59,55 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
 
+    def testFromPandas(self):
+        data = pd.DataFrame(np.random.rand(10, 10))
+        df = from_pandas(data, chunk_size=4)
+
+        pd.testing.assert_series_equal(df.op.dtypes, data.dtypes)
+        self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(df.index_value._index_value._slice, slice(0, 10, 1))
+
+        df.tiles()
+
+        self.assertEqual(len(df.chunks), 9)
+        pd.testing.assert_frame_equal(df.chunks[0].op.data, df.op.data.iloc[:4, :4])
+        self.assertEqual(df.chunks[0].index_value._index_value._slice, slice(0, 4, 1))
+        pd.testing.assert_frame_equal(df.chunks[1].op.data, df.op.data.iloc[:4, 4:8])
+        self.assertEqual(df.chunks[1].index_value._index_value._slice, slice(0, 4, 1))
+        pd.testing.assert_frame_equal(df.chunks[2].op.data, df.op.data.iloc[:4, 8:])
+        self.assertEqual(df.chunks[2].index_value._index_value._slice, slice(0, 4, 1))
+        pd.testing.assert_frame_equal(df.chunks[3].op.data, df.op.data.iloc[4:8, :4])
+        self.assertEqual(df.chunks[3].index_value._index_value._slice, slice(4, 8, 1))
+        pd.testing.assert_frame_equal(df.chunks[4].op.data, df.op.data.iloc[4:8, 4:8])
+        self.assertEqual(df.chunks[4].index_value._index_value._slice, slice(4, 8, 1))
+        pd.testing.assert_frame_equal(df.chunks[5].op.data, df.op.data.iloc[4:8, 8:])
+        self.assertEqual(df.chunks[5].index_value._index_value._slice, slice(4, 8, 1))
+        pd.testing.assert_frame_equal(df.chunks[6].op.data, df.op.data.iloc[8:, :4])
+        self.assertEqual(df.chunks[6].index_value._index_value._slice, slice(8, 10, 1))
+        pd.testing.assert_frame_equal(df.chunks[7].op.data, df.op.data.iloc[8:, 4:8])
+        self.assertEqual(df.chunks[7].index_value._index_value._slice, slice(8, 10, 1))
+        pd.testing.assert_frame_equal(df.chunks[8].op.data, df.op.data.iloc[8:, 8:])
+        self.assertEqual(df.chunks[8].index_value._index_value._slice, slice(8, 10, 1))
+
+        data2 = data[::2]
+        df2 = from_pandas(data2, chunk_size=4)
+
+        pd.testing.assert_series_equal(df.op.dtypes, data2.dtypes)
+        self.assertIsInstance(df2.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(df2.index_value._index_value._slice, slice(0, 10, 2))
+
+        df2.tiles()
+
+        self.assertEqual(len(df2.chunks), 6)
+        pd.testing.assert_frame_equal(df2.chunks[0].op.data, df2.op.data.iloc[:4, :4])
+        self.assertEqual(df2.chunks[0].index_value._index_value._slice, slice(0, 8, 2))
+        pd.testing.assert_frame_equal(df2.chunks[1].op.data, df2.op.data.iloc[:4, 4:8])
+        self.assertEqual(df2.chunks[1].index_value._index_value._slice, slice(0, 8, 2))
+        pd.testing.assert_frame_equal(df2.chunks[2].op.data, df2.op.data.iloc[:4, 8:])
+        self.assertEqual(df2.chunks[2].index_value._index_value._slice, slice(0, 8, 2))
+        pd.testing.assert_frame_equal(df2.chunks[3].op.data, df2.op.data.iloc[4:, :4])
+        self.assertEqual(df2.chunks[3].index_value._index_value._slice, slice(8, 10, 2))
+        pd.testing.assert_frame_equal(df2.chunks[4].op.data, df2.op.data.iloc[4:, 4:8])
+        self.assertEqual(df2.chunks[3].index_value._index_value._slice, slice(8, 10, 2))
+        pd.testing.assert_frame_equal(df2.chunks[5].op.data, df2.op.data.iloc[4:, 8:])
+        self.assertEqual(df2.chunks[3].index_value._index_value._slice, slice(8, 10, 2))

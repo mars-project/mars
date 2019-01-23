@@ -20,7 +20,7 @@ from ....serialize import DataFrameField, SeriesField
 from ....config import options
 from ....compat import izip
 from ....tensor.expressions.utils import get_chunk_slices
-from ..utils import decide_chunk_sizes
+from ..utils import decide_chunk_sizes, parse_index
 from ..core import DataFrameOperandMixin
 
 
@@ -34,10 +34,10 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
     _data = DataFrameField('data')
     _dtypes = SeriesField('dtypes')
 
-    def __init__(self, data=None, dtypes=None, gpu=None, sparse=None, **kw):
+    def __init__(self, data=None, dtypes=None, index_value=None, gpu=None, sparse=None, **kw):
         if dtypes is None and data is not None:
             dtypes = data.dtypes
-        super(DataFrameDataSource, self).__init__(_data=data, _dtypes=dtypes,
+        super(DataFrameDataSource, self).__init__(_data=data, _dtypes=dtypes, _index_value=index_value,
                                                   _gpu=gpu, _sparse=sparse, **kw)
 
     @property
@@ -50,6 +50,7 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
 
     def __call__(self, shape, chunk_size=None):
         return self.new_dataframe(None, shape, dtypes=self.dtypes,
+                                  index_value=parse_index(self._data.index),
                                   raw_chunk_size=chunk_size)
 
     @classmethod
@@ -70,6 +71,7 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
             chunk_op._data = raw_df.iloc[slc]
             chunk_op._dtypes = chunk_op._data.dtypes
             out_chunk = chunk_op.new_chunk(None, chunk_shape, index=chunk_idx,
+                                           index_value=parse_index(chunk_op.data.index),
                                            dtypes=chunk_op._data.dtypes)
             out_chunks.append(out_chunk)
 
