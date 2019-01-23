@@ -409,8 +409,9 @@ cdef class JsonSerializeProvider(Provider):
                 field_val = getattr(model_instance, field.attr)
                 if field.weak_ref:
                     field_val = field_val()
-                value = self._on_serial(field, field_val)
-                value.serialize(self, new_obj)
+                if field_val is not None:
+                    value = self._on_serial(field, field_val)
+                    value.serialize(self, new_obj)
         elif isinstance(field, OneOfField):
             has_val = False
             field_val = getattr(model_instance, field.attr, None)

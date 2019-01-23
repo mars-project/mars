@@ -14,7 +14,7 @@ message IndexDef {
     repeated ChunkDef chunks = 6;
     Value params = 7;
     string id = 8;
-    IndexValue index = 9;
+    IndexValue index_value = 9;
 }
 
 
@@ -28,7 +28,7 @@ message SeriesDef {
     Value params = 7;
     string id = 8;
     Value name = 9;
-    IndexValue index = 10;
+    IndexValue index_value = 10;
 }
 
 
@@ -41,6 +41,5 @@ message DataFrameDef {
     repeated ChunkDef chunks = 6;
     Value params = 7;
     string id = 8;
-    IndexValue index = 9;
-    IndexValue columns = 10;
+    IndexValue index_value = 9;
 }

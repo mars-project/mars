@@ -15,9 +15,8 @@
 # limitations under the License.
 
 from ..core import ChunkData, Chunk, Entity, TilesableData
-from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, \
+from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, SeriesField, \
     BoolField, Int64Field, Int32Field, ListField, DictField, SliceField, OneOfField, ReferenceField
-from .utils import on_serialize_dtypes, on_deserialize_dtypes
 
 
 class IndexValue(Serializable):
@@ -115,15 +114,15 @@ class IndexChunkData(ChunkData):
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _value = ReferenceField('indexvalue', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @property
     def dtype(self):
         return self._dtype
 
     @property
-    def value(self):
-        return self._value
+    def index_value(self):
+        return self._index_value
 
 
 class IndexChunk(Chunk):
@@ -136,7 +135,7 @@ class IndexData(TilesableData):
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _index = ReferenceField('index', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @classmethod
     def cls(cls, provider):
@@ -152,6 +151,10 @@ class IndexData(TilesableData):
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
 
+    @property
+    def index_value(self):
+        return self._index_value
+
 
 class Index(Entity):
     _allow_data_type_ = (IndexData,)
@@ -162,7 +165,7 @@ class SeriesChunkData(ChunkData):
 
     # optional field
     _dtype = DataTypeField('dtype')
-    _index_value = ReferenceField('indexvalue', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @property
     def dtype(self):
@@ -184,7 +187,7 @@ class SeriesData(TilesableData):
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
-    _index = ReferenceField('index', IndexValue)
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @property
     def dtype(self):
@@ -195,8 +198,8 @@ class SeriesData(TilesableData):
         return self._name
 
     @property
-    def index(self):
-        return self._index
+    def index_value(self):
+        return self._index_value
 
 
 class Series(Entity):
@@ -208,10 +211,8 @@ class DataFrameChunkData(ChunkData):
     __slots__ = ()
 
     # optional field
-    _dtypes = DictField('dtypes', ValueType.string, ValueType.dtype,
-                        on_serialize=on_serialize_dtypes, on_deserialize=on_deserialize_dtypes)
-    _index_value = ReferenceField('indexvalue', IndexValue)
-    _columns = ReferenceField('columns', IndexValue)
+    _dtypes = SeriesField('dtypes')
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @property
     def dtypes(self):
@@ -235,18 +236,16 @@ class DataFrameData(TilesableData):
     __slots__ = ()
 
     # optional field
-    _dtypes = DictField('dtypes', ValueType.string, ValueType.dtype,
-                        on_serialize=on_serialize_dtypes, on_deserialize=on_deserialize_dtypes)
-    _index = ReferenceField('index', IndexValue)
-    _columns = ReferenceField('columns', IndexValue)
+    _dtypes = SeriesField('dtypes')
+    _index_value = ReferenceField('index_value', IndexValue)
 
     @property
     def dtypes(self):
         return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
 
     @property
-    def index(self):
-        return self._index
+    def index_value(self):
+        return self._index_value
 
     @property
     def columns(self):

@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/chunk.proto\"\xc5\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x1a\n\x05index\x18\t \x01(\x0b\x32\x0b.IndexValue\"\xdc\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12\x1a\n\x05index\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xe8\x01\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x1a\n\x05index\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x07\x63olumns\x18\n \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
+  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/chunk.proto\"\xcb\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\"\xe2\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xd0\x01\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_indexvalue__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_chunk__pb2.DESCRIPTOR,])
 
@@ -93,7 +93,7 @@ _INDEXDEF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='index', full_name='IndexDef.index', index=8,
+      name='index_value', full_name='IndexDef.index_value', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -112,7 +112,7 @@ _INDEXDEF = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=152,
-  serialized_end=349,
+  serialized_end=355,
 )
 
 
@@ -187,7 +187,7 @@ _SERIESDEF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='index', full_name='SeriesDef.index', index=9,
+      name='index_value', full_name='SeriesDef.index_value', index=9,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -205,8 +205,8 @@ _SERIESDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=352,
-  serialized_end=572,
+  serialized_start=358,
+  serialized_end=584,
 )
 
 
@@ -274,15 +274,8 @@ _DATAFRAMEDEF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='index', full_name='DataFrameDef.index', index=8,
+      name='index_value', full_name='DataFrameDef.index_value', index=8,
       number=9, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='columns', full_name='DataFrameDef.columns', index=9,
-      number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -299,8 +292,8 @@ _DATAFRAMEDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=575,
-  serialized_end=807,
+  serialized_start=587,
+  serialized_end=795,
 )
 
 _INDEXDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -308,21 +301,20 @@ _INDEXDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_
 _INDEXDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
 _INDEXDEF.fields_by_name['params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_INDEXDEF.fields_by_name['index'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_INDEXDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 _SERIESDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
 _SERIESDEF.fields_by_name['params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_SERIESDEF.fields_by_name['index'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_SERIESDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 _DATAFRAMEDEF.fields_by_name['dtypes'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
 _DATAFRAMEDEF.fields_by_name['params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_DATAFRAMEDEF.fields_by_name['index'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
-_DATAFRAMEDEF.fields_by_name['columns'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_DATAFRAMEDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 DESCRIPTOR.message_types_by_name['IndexDef'] = _INDEXDEF
 DESCRIPTOR.message_types_by_name['SeriesDef'] = _SERIESDEF
 DESCRIPTOR.message_types_by_name['DataFrameDef'] = _DATAFRAMEDEF

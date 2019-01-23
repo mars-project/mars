@@ -23,8 +23,7 @@ class DataFrameOperandMixin(TilesableOperandMixin):
     def _create_chunk(self, output_idx, index, shape, **kw):
         data = DataFrameChunkData(_index=index, _shape=shape, _op=self,
                                   _dtypes=kw.pop('dtypes', None),
-                                  _index_values=kw.pop('index_values', None),
-                                  _columns=kw.pop('columns', None))
+                                  _index_value=kw.pop('index_value', None), **kw)
         return DataFrameChunk(data)
 
     def _create_entity(self, output_idx, shape, nsplits, chunks, **kw):
@@ -32,8 +31,7 @@ class DataFrameOperandMixin(TilesableOperandMixin):
             kw['_nsplits'] = nsplits
         data = DataFrameData(_shape=shape, _op=self, _chunks=chunks,
                              _dtypes=kw.pop('dtypes', None),
-                             _index=kw.pop('index', None),
-                             _columns=kw.pop('columns', None), **kw)
+                             _index_value=kw.pop('index_value', None), **kw)
         return DataFrame(data)
 
     def new_dataframes(self, inputs, shape, dtypes=None, index=None, columns=None,
