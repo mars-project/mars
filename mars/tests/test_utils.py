@@ -92,7 +92,8 @@ class Test(unittest.TestCase):
         self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
 
         # pandas relative
-        df = pd.DataFrame([[utils.to_binary('测试'), utils.to_text('数据')]],
-                          index=['a'], columns=['中文', 'data'])
-        v = [df, df.index, df.columns, df['data']]
-        self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+        if pd is not None:
+            df = pd.DataFrame([[utils.to_binary('测试'), utils.to_text('数据')]],
+                              index=['a'], columns=['中文', 'data'])
+            v = [df, df.index, df.columns, df['data']]
+            self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
