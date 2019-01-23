@@ -19,14 +19,14 @@ import signal
 import os
 import time
 
-from ...utils import get_next_port
+from ...actors import create_actor_pool
+from ...compat import six, TimeoutError
+from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
-from ...worker.service import WorkerService
-from ...actors import create_actor_pool
 from ...session import new_session
-from ...compat import six
-from ...lib import gipc
+from ...utils import get_next_port
+from ...worker.service import WorkerService
 from .distributor import gen_distributor
 
 
@@ -36,9 +36,8 @@ class LocalDistributedCluster(object):
     MIN_SCHEDULER_N_PROCESS = 2
     MIN_WORKER_N_PROCESS = 2
 
-    def __init__(self, endpoint, n_process=None,
-                 scheduler_n_process=None, worker_n_process=None,
-                 shared_memory=None):
+    def __init__(self, endpoint, n_process=None, scheduler_n_process=None,
+                 worker_n_process=None, ignore_avail_mem=True, shared_memory=None):
         self._endpoint = endpoint
 
         self._started = False
@@ -46,7 +45,8 @@ class LocalDistributedCluster(object):
 
         self._pool = None
         self._scheduler_service = SchedulerService()
-        self._worker_service = WorkerService(cache_mem_limit=shared_memory)
+        self._worker_service = WorkerService(ignore_avail_mem=ignore_avail_mem,
+                                             cache_mem_limit=shared_memory)
 
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,

@@ -12,7 +12,7 @@ if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
     else
         curl -s -o miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
         bash miniconda.sh -b -p $HOME/miniconda && rm miniconda.sh
-        $HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil nomkl
+        $HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil pyyaml nomkl
         export PATH="$HOME/miniconda/envs/test/bin:$PATH"
     fi
 fi

@@ -25,16 +25,16 @@ matrix:
       env: DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp37-cp37m
     - os: osx
       language: generic
-      env: PYTHON=2.7.12
+      env: PYTHON=2.7
     - os: osx
       language: generic
-      env: PYTHON=3.5.3
+      env: PYTHON=3.5
     - os: osx
       language: generic
-      env: PYTHON=3.6.1
+      env: PYTHON=3.6
     - os: osx
       language: generic
-      env: PYTHON=3.7.1
+      env: PYTHON=3.7
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source ./bin/travis-prepare-osx.sh; fi
