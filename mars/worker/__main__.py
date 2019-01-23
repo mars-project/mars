@@ -72,7 +72,9 @@ class WorkerApplication(BaseApplication, WorkerService):
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
             options.worker.physical_memory_limit_soft, self._total_mem
         )
-        options.worker.cache_memory_limit = self.args.cache_mem
+        options.worker.cache_memory_limit = self._calc_size_limit(
+            self.args.cache_mem, self._total_mem
+        )
         options.worker.disk_limit = self.args.disk
         if self.args.spill_dir:
             from .spill import parse_spill_dirs
