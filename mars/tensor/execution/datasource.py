@@ -168,7 +168,7 @@ def _scalar(ctx, chunk):
 
 
 def register_data_source_handler():
-    from .core import register
+    from ...executor import register
 
     register(datasource.TensorOnes, _tensor_ones)
     register(datasource.TensorZeros, _tensor_zeros)

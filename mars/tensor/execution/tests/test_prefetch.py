@@ -17,7 +17,7 @@
 import threading
 import unittest
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import ones
 
 

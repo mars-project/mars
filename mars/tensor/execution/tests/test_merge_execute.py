@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor
 from mars.tensor.expressions.merge import concatenate, stack, hstack, vstack, dstack, column_stack
 

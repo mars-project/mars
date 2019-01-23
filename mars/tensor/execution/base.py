@@ -153,7 +153,7 @@ def _isin(ctx, chunk):
 
 def register_basic_handler():
     from ... import operands
-    from .core import register
+    from ...executor import register
 
     register(operands.CopyTo, _copyto)
     register(operands.Astype, _astype)

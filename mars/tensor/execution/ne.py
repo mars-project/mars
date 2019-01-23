@@ -178,6 +178,6 @@ def evaluate(ctx, chunk):
 
 
 def register_numexpr_handler():
-    from .core import register
+    from ...executor import register
 
     register(TensorNeFuseChunk, evaluate)

@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, arange
 from mars.tensor.expressions.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero

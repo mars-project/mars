@@ -49,7 +49,7 @@ class ResultReceiverActor(SchedulerActor):
 
     def fetch_tensor(self, session_id, graph_key, tensor_key):
         from ..tensor.expressions.datasource import TensorFetchChunk
-        from ..tensor.execution.core import Executor
+        from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))

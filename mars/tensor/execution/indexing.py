@@ -62,7 +62,7 @@ def _unravel_index(ctx, chunk):
 
 def register_indexing_handler():
     from ...operands import Slice, Index, IndexSetValue, Choose, UnravelIndex
-    from .core import register
+    from ...executor import register
 
     register(Slice, _slice)
     register(Index, _index)

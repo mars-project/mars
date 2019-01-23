@@ -17,7 +17,7 @@
 import unittest
 
 from mars.compat import lmap
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.arithmetic import TensorTreeAdd
 from mars.tensor.expressions.indexing import TensorSlice
 from mars.graph import DirectedGraph
