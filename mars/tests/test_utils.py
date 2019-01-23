@@ -17,6 +17,10 @@ import copy
 import unittest
 
 import numpy as np
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pd = None
 
 from mars import utils
 
@@ -85,4 +89,10 @@ class Test(unittest.TestCase):
         self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
 
         v = dict(x='abcd', y=98765)
+        self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+
+        # pandas relative
+        df = pd.DataFrame([[utils.to_binary('测试'), utils.to_text('数据')]],
+                          index=['a'], columns=['中文', 'data'])
+        v = [df, df.index, df.columns, df['data']]
         self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
