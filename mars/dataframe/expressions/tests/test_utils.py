@@ -16,7 +16,6 @@
 import unittest
 from numbers import Integral
 
-import numpy as np
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover

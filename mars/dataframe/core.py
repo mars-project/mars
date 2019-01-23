@@ -15,8 +15,8 @@
 # limitations under the License.
 
 from ..core import ChunkData, Chunk, Entity, TilesableData
-from ..serialize import Serializable, ProviderType, ValueType, DataTypeField, AnyField, SeriesField, \
-    BoolField, Int64Field, Int32Field, ListField, DictField, SliceField, OneOfField, ReferenceField
+from ..serialize import Serializable, ProviderType, DataTypeField, AnyField, SeriesField, \
+    BoolField, Int64Field, Int32Field, ListField, SliceField, OneOfField, ReferenceField
 
 
 class IndexValue(Serializable):
