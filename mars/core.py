@@ -193,7 +193,6 @@ class ChunkData(SerializableWithKey):
     # optional fields
     _index = TupleField('index', ValueType.uint32)
     _cached = BoolField('cached')
-    _composed = ListField('composed', ValueType.reference('self'))
     _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):

@@ -22,7 +22,7 @@ import numpy as np
 
 from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode
 from ..tiles import handler
-from ..serialize import ProviderType, DataTypeField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField
 from .expressions.utils import get_chunk_slices, calc_rough_shape
 
 
@@ -31,6 +31,7 @@ class TensorChunkData(ChunkData):
 
     # optional fields
     _dtype = DataTypeField('dtype')
+    _composed = ListField('composed', ValueType.reference('self'))
 
     @property
     def dtype(self):
