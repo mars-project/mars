@@ -114,7 +114,7 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while any(p.poll() is None for p in procs):
-            time.sleep(1)
+            time.sleep(0.1)
             if time.time() - check_time > 5:
                 break
 

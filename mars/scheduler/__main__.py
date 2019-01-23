@@ -22,23 +22,28 @@ from .service import SchedulerService
 logger = logging.getLogger(__name__)
 
 
-class SchedulerApplication(BaseApplication, SchedulerService):
+class SchedulerApplication(BaseApplication):
     service_description = 'Mars Scheduler'
     service_logger = logger
+
+    def __init__(self):
+        super(SchedulerApplication, self).__init__()
+        self._service = None
 
     def config_args(self, parser):
         parser.add_argument('--nproc', help='number of processes')
 
     def create_pool(self, *args, **kwargs):
+        self._service = SchedulerService()
         self.n_process = int(self.args.nproc or resource.cpu_count())
         kwargs['distributor'] = SchedulerDistributor(self.n_process)
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
-    def start_service(self):
-        super(SchedulerApplication, self).start(self.endpoint, self.args.schedulers, self.pool)
+    def start(self):
+        self._service.start(self.endpoint, self.args.schedulers, self.pool)
 
-    def stop_service(self):
-        super(SchedulerApplication, self).stop(self.pool)
+    def stop(self):
+        self._service.stop(self.pool)
 
 
 main = SchedulerApplication()

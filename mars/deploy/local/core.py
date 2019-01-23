@@ -17,16 +17,16 @@
 import multiprocessing
 import signal
 import os
+import time
 
-from ...utils import get_next_port
+from ...actors import create_actor_pool
+from ...compat import six, TimeoutError  # pylint: disable=W0622
+from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
-from ...worker.service import WorkerService
-from ...actors import create_actor_pool
 from ...session import new_session
-from ...compat import six
-from ...lib import gipc
-from ...config import options
+from ...utils import get_next_port
+from ...worker.service import WorkerService
 from .distributor import gen_distributor
 
 
@@ -36,20 +36,17 @@ class LocalDistributedCluster(object):
     MIN_SCHEDULER_N_PROCESS = 2
     MIN_WORKER_N_PROCESS = 2
 
-    def __init__(self, endpoint, n_process=None,
-                 scheduler_n_process=None, worker_n_process=None,
-                 shared_memory=None):
+    def __init__(self, endpoint, n_process=None, scheduler_n_process=None,
+                 worker_n_process=None, ignore_avail_mem=True, shared_memory=None):
         self._endpoint = endpoint
 
         self._started = False
         self._stopped = False
 
-        if shared_memory is not None:
-            options.worker.cache_memory_limit = shared_memory
-
         self._pool = None
         self._scheduler_service = SchedulerService()
-        self._worker_service = WorkerService()
+        self._worker_service = WorkerService(ignore_avail_mem=ignore_avail_mem,
+                                             cache_mem_limit=shared_memory)
 
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,
@@ -81,12 +78,15 @@ class LocalDistributedCluster(object):
 
         return n_scheduler, n_worker
 
-    def _make_sure_scheduler_ready(self):
+    def _make_sure_scheduler_ready(self, timeout=120):
+        check_start_time = time.time()
         while True:
             workers_meta = self._scheduler_service._resource_ref.get_workers_meta()
             if not workers_meta:
                 # wait for worker to report status
                 self._pool.sleep(.5)
+                if time.time() - check_start_time > timeout:  # pragma: no cover
+                    raise TimeoutError('Check worker ready timed out.')
             else:
                 break
 
@@ -96,7 +96,7 @@ class LocalDistributedCluster(object):
         self._started = True
 
         # start plasma
-        self._worker_service.start_plasma(self._worker_service.calc_cache_memory_limit())
+        self._worker_service.start_plasma()
 
         # start actor pool
         n_process = self._scheduler_n_process + self._worker_n_process
@@ -107,7 +107,8 @@ class LocalDistributedCluster(object):
         self._scheduler_service.start(self._endpoint, None, self._pool)
 
         # start worker next
-        self._worker_service.start_local(self._endpoint, self._pool, self._scheduler_n_process)
+        self._worker_service.start(self._endpoint, self._pool, distributed=False,
+                                   process_start_index=self._scheduler_n_process)
 
         # make sure scheduler is ready
         self._make_sure_scheduler_ready()
@@ -169,7 +170,7 @@ def _start_cluster_process(endpoint, n_process, shared_memory, **kw):
 
     kw = kw.copy()
     kw['n_process'] = n_process
-    kw['shared_memory'] = shared_memory or options.worker.cache_memory_limit or '20%'
+    kw['shared_memory'] = shared_memory or '20%'
     process = gipc.start_process(_start_cluster, args=(endpoint, event), kwargs=kw)
 
     while True:

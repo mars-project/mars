@@ -19,7 +19,7 @@ import logging
 
 import requests
 
-from ..compat import six, TimeoutError
+from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped

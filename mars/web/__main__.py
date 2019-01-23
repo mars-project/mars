@@ -43,13 +43,13 @@ class WebApplication(BaseApplication):
 
     def main_loop(self):
         try:
-            self.start_service()
+            self.start()
             while True:
                 time.sleep(0.1)
         finally:
-            self.stop_service()
+            self.stop()
 
-    def start_service(self):
+    def start(self):
         from .server import MarsWeb
         if MarsWeb is None:
             self.mars_web = None
@@ -63,7 +63,7 @@ class WebApplication(BaseApplication):
             self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ip)
             self.mars_web.start()
 
-    def stop_service(self):
+    def stop(self):
         if self.mars_web:
             self.mars_web.stop()
 

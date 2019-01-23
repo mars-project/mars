@@ -20,7 +20,7 @@ from contextlib import contextmanager
 import numpy as np
 try:
     import cupy as cp
-except ImportError:
+except ImportError:  # pragma: no cover
     cp = None
 
 from ...lib import sparse
