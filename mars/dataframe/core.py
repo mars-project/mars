@@ -255,3 +255,7 @@ class DataFrameData(TilesableData):
 class DataFrame(Entity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
+
+
+DATAFRAME_TYPE = (DataFrame, DataFrameData)
+CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)

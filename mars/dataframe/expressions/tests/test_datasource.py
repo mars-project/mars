@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from weakref import ReferenceType
 
 import numpy as np
 try:
@@ -21,14 +22,15 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars import opcodes as OperandDef
-from mars.tests.core import TestBase
+from mars.graph import DAG
 from mars.dataframe.core import IndexValue
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
+from mars.tests.core import TestBase
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
-    def testSerialize(self):
+    def testChunkSerialize(self):
         df = from_pandas(pd.DataFrame(np.random.rand(10, 10))).tiles()
 
         # pb
@@ -58,6 +60,30 @@ class Test(TestBase):
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
+
+    def testDataFrameGraphSerialize(self):
+        df = from_pandas(pd.DataFrame(np.random.rand(10, 10)))
+        graph = df.build_graph(tiled=False)
+
+        pb = graph.to_pb()
+        graph2 = DAG.from_pb(pb)
+        self.assertEqual(len(graph), len(graph2))
+        t = next(iter(graph))
+        t2 = next(iter(graph2))
+        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
+        self.assertBaseEqual(t.op, t2.op)
+        self.assertEqual(t.shape, t2.shape)
+        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
+
+        jsn = graph.to_json()
+        graph2 = DAG.from_json(jsn)
+        self.assertEqual(len(graph), len(graph2))
+        t = next(iter(graph))
+        t2 = next(iter(graph2))
+        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
+        self.assertBaseEqual(t.op, t2.op)
+        self.assertEqual(t.shape, t2.shape)
+        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
 
     def testFromPandas(self):
         data = pd.DataFrame(np.random.rand(10, 10))

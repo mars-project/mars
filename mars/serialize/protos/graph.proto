@@ -4,6 +4,7 @@ syntax = "proto3";
 import "mars/serialize/protos/operand.proto";
 import "mars/serialize/protos/chunk.proto";
 import "mars/serialize/protos/tensor.proto";
+import "mars/serialize/protos/dataframe.proto";
 
 
 message GraphDef {
@@ -12,6 +13,8 @@ message GraphDef {
             OperandDef op = 1;
             ChunkDef tensor_chunk = 2;
             TensorDef tensor = 3;
+            ChunkDef dataframe_chunk = 4;
+            DataFrameDef dataframe = 5;
         }
     }
 
