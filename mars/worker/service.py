@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
@@ -45,7 +44,6 @@ logger = logging.getLogger(__name__)
 
 class WorkerService(object):
     def __init__(self, **kwargs):
-        self._pool = None
         self._plasma_store = None
 
         self._chunk_holder_ref = None
@@ -66,13 +64,16 @@ class WorkerService(object):
 
         self._advertise_addr = kwargs.pop('advertise_addr', None)
 
-        self._n_cpu_process = int(kwargs.pop('cpu_procs', None) or resource.cpu_count())
-        self._n_io_process = int(kwargs.pop('io_procs', None) or '1')
+        self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())
+        self._n_io_process = int(kwargs.pop('n_io_process', None) or '1')
 
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
-            from .spill import parse_spill_dirs
-            self._spill_dirs = options.worker.spill_directory = parse_spill_dirs(self._spill_dirs)
+            if isinstance(self._spill_dirs, six.string_types):
+                from .spill import parse_spill_dirs
+                self._spill_dirs = options.worker.spill_directory = parse_spill_dirs(self._spill_dirs)
+            else:
+                options.worker.spill_directory = self._spill_dirs
         else:
             self._spill_dirs = options.worker.spill_directory = []
 
@@ -90,7 +91,7 @@ class WorkerService(object):
             raise TypeError('Keyword arguments %r cannot be recognized.' % ', '.join(kwargs))
 
     @property
-    def n_processes(self):
+    def n_process(self):
         return 1 + self._n_cpu_process + self._n_io_process + (1 if self._spill_dirs else 0)
 
     def _calc_memory_limits(self):
@@ -138,8 +139,6 @@ class WorkerService(object):
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     def start(self, endpoint, pool, distributed=True, schedulers=None, process_start_index=0):
-        self._pool = pool
-
         if schedulers:
             if isinstance(schedulers, six.string_types):
                 schedulers = [schedulers]
@@ -200,7 +199,7 @@ class WorkerService(object):
 
         if distributed:
             # create SenderActor and ReceiverActor
-            start_pid = 1 + self._n_cpu_process
+            start_pid = 1 + process_start_index + self._n_cpu_process
             for sender_id in range(self._n_io_process):
                 uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
@@ -227,10 +226,10 @@ class WorkerService(object):
                 actor = actor_holder.create_actor(SpillActor, uid=uid)
                 self._spill_actors.append(actor)
 
-    def handle_process_down(self, proc_indices):
+    def handle_process_down(self, pool, proc_indices):
         logger.debug('Process %r halt. Trying to recover.', proc_indices)
         for pid in proc_indices:
-            self._pool.restart_process(pid)
+            pool.restart_process(pid)
         self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     def stop(self):
@@ -250,4 +249,3 @@ class WorkerService(object):
             actor.destroy()
 
         self._plasma_store.__exit__(None, None, None)
-        self._pool = None

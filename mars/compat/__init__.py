@@ -423,7 +423,7 @@ except ImportError:
                     gc.enable()
 
 
-__all__ = ['PY27', 'sys', 'builtins', 'OrderedDict', 'dictconfig', 'suppress', 'reduce', 'reload_module',
+__all__ = ['PY27', 'sys', 'builtins', 'long_type', 'OrderedDict', 'dictconfig', 'suppress', 'reduce', 'reload_module',
            'Queue', 'PriorityQueue', 'Empty', 'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote',
            'quote', 'quote_plus', 'parse_qsl', 'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES',
            'FixedOffset', 'utc', 'finalize', 'functools32', 'zip_longest', 'OrderedDict3', 'BrokenPipeError',

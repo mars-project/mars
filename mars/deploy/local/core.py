@@ -20,7 +20,7 @@ import os
 import time
 
 from ...actors import create_actor_pool
-from ...compat import six, TimeoutError
+from ...compat import six, TimeoutError  # pylint: disable=W0622
 from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService

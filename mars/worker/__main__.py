@@ -54,8 +54,8 @@ class WorkerApplication(BaseApplication):
         # and distribute them over processes
         self._service = WorkerService(
             advertise_addr=self.args.advertise,
-            cpu_procs=self.args.cpu_procs,
-            io_procs=self.args.io_procs,
+            n_cpu_process=self.args.cpu_procs,
+            n_io_process=self.args.io_procs,
             spill_dirs=self.args.spill_dir,
             total_mem=self.args.phy_mem,
             cache_mem_limit=self.args.cache_mem,
@@ -64,7 +64,7 @@ class WorkerApplication(BaseApplication):
         # start plasma
         self._service.start_plasma(one_mapped_file=self.args.plasma_one_mapped_file or False)
 
-        self.n_process = self._service.n_processes
+        self.n_process = self._service.n_process
         kwargs['distributor'] = WorkerDistributor(self.n_process)
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
@@ -72,7 +72,7 @@ class WorkerApplication(BaseApplication):
         self._service.start(self.endpoint, self.pool, schedulers=self.args.schedulers)
 
     def handle_process_down(self, proc_indices):
-        self._service.handle_process_down(proc_indices)
+        self._service.handle_process_down(self.pool, proc_indices)
 
     def stop(self):
         self._service.stop()
