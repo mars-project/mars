@@ -43,14 +43,15 @@ before_install:
 # command to install dependencies
 install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
+  - if [ ! -z "$TRAVIS_TAG" ]; then unset CYTHON_TRACE; fi
   - if [ -z "$CYTHON_TRACE" ]; then
       for cf in `ls .coveragerc*`; do
         sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
       done
     fi
-  - pip install -r requirements-dev.txt
-  - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls flake8 etcd-gevent
+  - pip install -r requirements-dev.txt &&
+    pip install -r requirements-extra.txt &&
+    pip install virtualenv coveralls flake8 etcd-gevent
   - virtualenv venv && source venv/bin/activate
   - pip install -r requirements.txt && pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi

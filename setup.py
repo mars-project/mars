@@ -37,11 +37,13 @@ requirements = []
 with open(os.path.join(repo_root, 'requirements.txt'), 'r') as f:
     requirements.extend(f.read().splitlines())
 
-
 extra_requirements = []
 with open(os.path.join(repo_root, 'requirements-extra.txt'), 'r') as f:
     extra_requirements.extend(f.read().splitlines())
 
+dev_requirements = []
+with open(os.path.join(repo_root, 'requirements-dev.txt'), 'r') as f:
+    dev_requirements.extend(f.read().splitlines())
 
 long_description = None
 if os.path.exists(os.path.join(repo_root, 'README.rst')):
@@ -119,6 +121,9 @@ setup_options = dict(
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
     ext_modules=cythonize(extensions, **cythonize_kw),
-    extras_require={'distributed': extra_requirements}
+    extras_require={
+        'distributed': extra_requirements,
+        'dev': extra_requirements + dev_requirements,
+    }
 )
 setup(**setup_options)

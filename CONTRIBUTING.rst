@@ -19,7 +19,8 @@ To contribute a patch:
    your comments in English so developers all over the world can understand
    your idea.
 4. Make sure that your code passes the tests.
-5. Add new unit tests for your code.
+5. Add new unit tests for your code and try to cover all crucial branches of
+   your code.
 6. If your patch changes the way people use Mars, you need to update docs to
    reflect these changes.
 
