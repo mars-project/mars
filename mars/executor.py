@@ -162,7 +162,7 @@ class Executor(object):
                 results.append(result)
                 continue
 
-            # generate TensorFetchChunk op for each chunk
+            # generate TensorFetch op for each chunk
             chunks = []
             for c in tensor.chunks:
                 op = TensorFetch(dtype=c.dtype)
@@ -170,8 +170,9 @@ class Executor(object):
                 chunks.append(chunk)
 
             new_op = tensor.op.copy()
+            # copy key and id to ensure that fetch tensor won't add the count of executed tensor
             tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
-                                       nsplits=tensor.nsplits)
+                                       nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
 
             # add this concat tensor into the list which shall be executed later
             to_concat_tensors[i] = tensor

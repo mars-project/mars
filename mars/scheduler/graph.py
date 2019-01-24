@@ -779,8 +779,6 @@ class GraphActor(SchedulerActor):
         from .operand import OperandActor
 
         tiled_tensor = self._get_tensor_by_key(tensor_key)
-        if isinstance(tiled_tensor.op, TensorFetch):
-            return
         for chunk in tiled_tensor.chunks:
             op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
             scheduler_addr = self.get_scheduler(op_uid)

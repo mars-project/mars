@@ -29,6 +29,7 @@ from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_end
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
+from mars.errors import ExecutionFailed
 
 
 def _on_deserialize_fail(x):
@@ -314,6 +315,10 @@ class Test(unittest.TestCase):
             r4 = session.run(a2)
             np.testing.assert_array_equal(r4, r1)
 
+            del a2
+            with self.assertRaises(SystemError):
+                session.run(mt.ones((10, 20), chunk_size=8) + 1)
+
             with new_session('http://' + cluster._web_endpoint) as session:
                 a3 = mt.ones((5, 10), chunk_size=3) + 1
                 r1 = session.run(a3)
@@ -330,3 +335,40 @@ class Test(unittest.TestCase):
                 del a3
                 r4 = session.run(a4)
                 np.testing.assert_array_equal(r4, r1)
+
+                del a4
+                with self.assertRaises(ExecutionFailed):
+                    session.run(mt.ones((5, 10), chunk_size=3) + 1)
+
+    def testMultiSessionDecref(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+            session = cluster.session
+
+            a = mt.ones((10, 20), chunk_size=8)
+            b = mt.ones((10, 20), chunk_size=8)
+            self.assertEqual(a.key, b.key)
+
+            r1 = session.run(a)
+            r1_fetch = session.fetch(a)
+            np.testing.assert_array_equal(r1, r1_fetch)
+
+            web_session = new_session('http://' + cluster._web_endpoint)
+            r2 = web_session.run(a)
+            r2_fetch = web_session.fetch(a)
+            np.testing.assert_array_equal(r1, r2)
+            np.testing.assert_array_equal(r2, r2_fetch)
+
+            local_session = new_session()
+            r3 = local_session.run(a)
+            r3_fetch = local_session.fetch(a)
+            np.testing.assert_array_equal(r1, r3)
+            np.testing.assert_array_equal(r3, r3_fetch)
+
+            del a
+            self.assertEqual(len(local_session._sess._executor.chunk_result), 0)
+
+            with self.assertRaises(ValueError):
+                session.fetch(b)
+
+            with self.assertRaises(ValueError):
+                web_session.fetch(b)

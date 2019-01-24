@@ -195,7 +195,7 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(res1, res2)
 
-    def testDecref(self):
+    def testFetch(self):
         sess = new_session()
 
         arr1 = mt.ones((10, 5), chunk_size=3)
@@ -220,6 +220,19 @@ class Test(unittest.TestCase):
         r6 = sess.run(arr2 + 1)
         np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
 
-        self.assertEqual(arr1.key, arr2.key)
-        del arr2
+    def testDecref(self):
+        sess = new_session()
+
+        arr1 = mt.ones((10, 5), chunk_size=3)
+        arr2 = mt.ones((10, 5), chunk_size=3)
+        sess.run(arr1)
+        sess.run(arr2)
+        sess.fetch(arr1)
+
+        executor = sess._sess._executor
+
         self.assertEqual(len(executor.chunk_result), 8)
+        del arr1
+        self.assertEqual(len(executor.chunk_result), 8)
+        del arr2
+        self.assertEqual(len(executor.chunk_result), 0)

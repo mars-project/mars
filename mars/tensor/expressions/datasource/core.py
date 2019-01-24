@@ -134,4 +134,4 @@ class TensorFetch(TensorNoInput):
 
     @classmethod
     def tile(cls, op):
-        pass
+        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
