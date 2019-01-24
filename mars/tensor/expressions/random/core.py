@@ -156,6 +156,9 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             shapes.append(getattr(self, '_size'))
         return broadcast_shape(*shapes)
 
+    def calc_shape(self, *inputs_shape):
+        return self._get_shape(list(inputs_shape))
+
     @classmethod
     def _handle_arg(cls, arg, chunk_size):
         if isinstance(arg, (list, np.ndarray)):

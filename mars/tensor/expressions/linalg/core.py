@@ -54,8 +54,7 @@ class SFQR(object):
         r_chunks = []
         first_chunk = a.chunks[0]
         x, y = first_chunk.shape
-        q_shape = first_chunk.shape if x > y else (x, x)
-        r_shape = first_chunk.shape if x < y else (y, y)
+        q_shape, r_shape = (first_chunk.shape, (y, y)) if x > y else ((x, x), first_chunk.shape)
         qr_op = TensorQR()
         q_chunk, r_chunk = qr_op.new_chunks([first_chunk], (q_shape, r_shape),
                                             index=(0, 0),
@@ -107,8 +106,7 @@ class TSQR(object):
         stage1_q_chunks, stage1_r_chunks = stage1_chunks = [[], []]  # Q and R chunks
         for c in a.chunks:
             x, y = c.shape
-            q_shape = c.shape if x > y else (x, x)
-            r_shape = c.shape if x < y else (y, y)
+            q_shape, r_shape = (c.shape, (y, y)) if x > y else ((x, x), c.shape)
             qr_op = TensorQR()
             qr_chunks = qr_op.new_chunks([c], [q_shape, r_shape], index=c.index,
                                          kws=[{'side': 'q', 'dtype': q_dtype},

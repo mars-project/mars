@@ -247,8 +247,8 @@ class ExecutionActor(WorkerActor):
             if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in targets:
                 # use estimated size as potential allocation size
                 calc_keys.add(chunk.key)
-                alloc_mem_batch[chunk.key] = chunk.nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.nbytes
+                alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
+                alloc_cache_batch[chunk.key] = chunk.rough_nbytes
             else:
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
@@ -322,13 +322,11 @@ class ExecutionActor(WorkerActor):
                     .get_chunk_meta(session_id, chunk.key)
                 if chunk_meta is None:
                     raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
-                worker_results = chunk_meta.workers
 
                 worker_priorities = []
-                for w in worker_results.children:
-                    _, worker_ip = w.key.rsplit('/', 1)
+                for w in chunk_meta.workers:
                     # todo sort workers by speed of network and other possible factors
-                    worker_priorities.append((worker_ip, (0, )))
+                    worker_priorities.append((w, (0, )))
 
                 transfer_keys.append(chunk.key)
 

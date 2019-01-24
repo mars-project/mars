@@ -30,6 +30,9 @@ class TensorAstype(Astype, TensorOperandMixin):
         super(TensorAstype, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
+
     def __call__(self, tensor, copy=True):
         t = self.new_tensor([tensor], tensor.shape)
         if copy:

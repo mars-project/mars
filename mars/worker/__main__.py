@@ -32,8 +32,9 @@ class WorkerApplication(BaseApplication, WorkerService):
     service_logger = logger
 
     def __init__(self):
-        super(BaseApplication, self).__init__()
-        super(WorkerService, self).__init__()
+        BaseApplication.__init__(self)
+        WorkerService.__init__(self)
+        self._total_mem = None
 
     def config_args(self, parser):
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
@@ -59,14 +60,20 @@ class WorkerApplication(BaseApplication, WorkerService):
 
         options.worker.cpu_process_count = int(self.args.cpu_procs or resource.cpu_count())
         options.worker.io_process_count = int(self.args.io_procs or '1')
+
+        if self.args.phy_mem:
+            self._total_mem = self._calc_size_limit(self.args.phy_mem, mem_stats.total)
+        else:
+            self._total_mem = mem_stats.total
+
         options.worker.physical_memory_limit_hard = self._calc_size_limit(
-            self.args.phy_mem or options.worker.physical_memory_limit_hard, mem_stats.total
+            options.worker.physical_memory_limit_hard, self._total_mem
         )
         options.worker.physical_memory_limit_soft = self._calc_size_limit(
-            self.args.phy_mem or options.worker.physical_memory_limit_soft or '48%', mem_stats.total
+            options.worker.physical_memory_limit_soft, self._total_mem
         )
         options.worker.cache_memory_limit = self._calc_size_limit(
-            self.args.cache_mem or options.worker.cache_memory_limit, mem_stats.total
+            self.args.cache_mem, self._total_mem
         )
         options.worker.disk_limit = self.args.disk
         if self.args.spill_dir:
@@ -81,15 +88,15 @@ class WorkerApplication(BaseApplication, WorkerService):
         self.n_process = 1 + options.worker.cpu_process_count + options.worker.io_process_count + spill_dir_count
 
         # start plasma
-        self.start_plasma(options.worker.cache_memory_limit,
+        self.start_plasma(self.calc_cache_memory_limit(),
                           one_mapped_file=options.worker.plasma_one_mapped_file or False)
 
         kwargs['distributor'] = WorkerDistributor(self.n_process)
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):
-        super(WorkerApplication, self).start(self.endpoint, self.args.schedulers,
-                                             self.pool, ignore_avail_mem=self.args.ignore_avail_mem)
+        super(WorkerApplication, self).start(self.endpoint, self.args.schedulers, self.pool,
+                                             total_mem=self._total_mem, ignore_avail_mem=self.args.ignore_avail_mem)
 
     def handle_process_down(self, proc_indices):
         logger.debug('Process %r halt. Trying to recover.', proc_indices)

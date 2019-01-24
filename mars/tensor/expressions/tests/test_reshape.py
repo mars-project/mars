@@ -17,6 +17,7 @@
 import unittest
 
 from mars.tensor.expressions.datasource import ones
+from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -26,6 +27,8 @@ class Test(unittest.TestCase):
 
         b.tiles()
 
+        self.assertEqual(calc_shape(b), b.shape)
+        self.assertEqual(calc_shape(b.chunks[0]), b.chunks[0].shape)
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 600))
 
         a = ones((10, 600), chunk_size=5)
@@ -33,6 +36,8 @@ class Test(unittest.TestCase):
 
         b.tiles()
 
+        self.assertEqual(calc_shape(b), b.shape)
+        self.assertEqual(calc_shape(b.chunks[0]), b.chunks[0].shape)
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 30, 20))
 
         a = ones((10, 600), chunk_size=5)
@@ -40,4 +45,6 @@ class Test(unittest.TestCase):
 
         a.tiles()
 
+        self.assertEqual(calc_shape(b), b.shape)
+        self.assertEqual(calc_shape(b.chunks[0]), b.chunks[0].shape)
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))

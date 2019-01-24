@@ -19,7 +19,7 @@ from numbers import Integral
 
 import numpy as np
 
-from ...core import TENSOR_TYPE
+from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..utils import calc_sliced_size, broadcast_shape, replace_ellipsis, index_ndim
 from ..datasource import tensor as astensor
 
@@ -28,16 +28,16 @@ _INDEX_ERROR_MSG = 'only integers, slices (`:`), ellipsis (`...`), ' \
                    'numpy.newaxis (`None`) and integer or boolean arrays are valid indices'
 
 
-def get_index_and_shape(tensor, index):
+def get_index_and_shape(tensor_shape, index):
     shape = []
     idx = 0
     fancy_index = None
     fancy_index_shapes = []
     for ind in index:
-        if isinstance(ind, TENSOR_TYPE):
+        if isinstance(ind, (TENSOR_TYPE + CHUNK_TYPE)):
             if ind.dtype == np.bool_:
                 shape.append(np.nan)
-                for i, t_size, size in zip(itertools.count(0), ind.shape, tensor.shape[idx:ind.ndim + idx]):
+                for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[idx:ind.ndim + idx]):
                     if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
                         raise IndexError(
                             'boolean index did not match indexed array along dimension {0}; '
@@ -51,14 +51,14 @@ def get_index_and_shape(tensor, index):
             fancy_index_shapes.append(ind.shape)
             idx += 1
         elif isinstance(ind, slice):
-            if np.isnan(tensor.shape[idx]):
+            if np.isnan(tensor_shape[idx]):
                 shape.append(np.nan)
                 idx += 1
             else:
-                shape.append(calc_sliced_size(tensor.shape[idx], ind))
+                shape.append(calc_sliced_size(tensor_shape[idx], ind))
                 idx += 1
         elif isinstance(ind, Integral):
-            size = tensor.shape[idx]
+            size = tensor_shape[idx]
             if not np.isnan(size) and ind >= size:
                 raise IndexError('index {0} is out of bounds for axis {1} with size {2}'.format(
                     ind, idx, size

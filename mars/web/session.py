@@ -169,7 +169,7 @@ class Session(object):
     def _update_tensor_shape(self, tensor):
         tensor_key = tensor.key
         session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/data/%s/?type=nsplits' % (self._get_graph_key(tensor_key), tensor_key)
+        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_graph_key(tensor_key), tensor_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))

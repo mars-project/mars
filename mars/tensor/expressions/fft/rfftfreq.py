@@ -29,6 +29,9 @@ class TensorRFFTFreq(fftop.RFFTFreq, TensorOperandMixin):
         shape = (self.n // 2 + 1,)
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
+    def calc_shape(self, *inputs_shape):
+        return self.n // 2 + 1,
+
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]

@@ -56,6 +56,9 @@ class TensorCopyTo(CopyTo, TensorOperandMixin):
 
         return src, dst, where
 
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[1]
+
     def __call__(self, *inputs):
         from ..core import Tensor
 
@@ -106,7 +109,7 @@ class TensorCopyTo(CopyTo, TensorOperandMixin):
         for out_idx in itertools.product(*(map(range, out_chunk_shape))):
             in_chunks = [t.cix[get_index(out_idx[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
                          for t in inputs]
-            out_chunk = op.copy().reset_key().new_chunk(in_chunks, in_chunks[0].shape, index=out_idx)
+            out_chunk = op.copy().reset_key().new_chunk(in_chunks, in_chunks[1].shape, index=out_idx)
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_idx, out_chunk.shape):
                 nsplits[i][idx] = s

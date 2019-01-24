@@ -71,6 +71,9 @@ class TensorNoInput(TensorDataSource):
         if inputs and len(inputs) > 0:
             raise ValueError("Tensor data source has no inputs")
 
+    def calc_shape(self, *inputs_shape):
+        return self.outputs[0].shape
+
     def __call__(self, shape, chunk_size=None):
         shape = normalize_shape(shape)
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
@@ -104,6 +107,9 @@ class TensorHasInput(TensorDataSource):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks,
                                   nsplits=op.input.nsplits)
+
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
 
     def __call__(self, a):
         return self.new_tensor([a], a.shape)

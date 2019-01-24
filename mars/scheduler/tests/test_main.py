@@ -55,13 +55,20 @@ class Test(unittest.TestCase):
 
     def setUp(self):
         scheduler_port = str(get_next_port())
-        proc_worker = subprocess.Popen([sys.executable, '-m', 'mars.worker',
-                                        '-a', '127.0.0.1',
-                                        '--cpu-procs', '2',
-                                        '--level', 'debug',
-                                        '--cache-mem', '16m',
-                                        '--schedulers', '127.0.0.1:' + scheduler_port,
-                                        '--ignore-avail-mem'])
+        proc_worker1 = subprocess.Popen([sys.executable, '-m', 'mars.worker',
+                                         '-a', '127.0.0.1',
+                                         '--cpu-procs', '2',
+                                         '--level', 'debug',
+                                         '--cache-mem', '16m',
+                                         '--schedulers', '127.0.0.1:' + scheduler_port,
+                                         '--ignore-avail-mem'])
+        proc_worker2 = subprocess.Popen([sys.executable, '-m', 'mars.worker',
+                                         '-a', '127.0.0.1',
+                                         '--cpu-procs', '2',
+                                         '--level', 'debug',
+                                         '--cache-mem', '16m',
+                                         '--schedulers', '127.0.0.1:' + scheduler_port,
+                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '-H', '127.0.0.1',
                                            '--level', 'debug',
@@ -69,7 +76,7 @@ class Test(unittest.TestCase):
                                            '--format', '%(asctime)-15s %(message)s'])
 
         self.scheduler_port = scheduler_port
-        self.proc_worker = proc_worker
+        self.proc_workers = [proc_worker1, proc_worker2]
         self.proc_scheduler = proc_scheduler
 
         time.sleep(2)
@@ -89,7 +96,7 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while True:
-            if not resource_ref.get_worker_count():
+            if resource_ref.get_worker_count() < 2:
                 time.sleep(0.5)
                 self.check_process_statuses()
                 if time.time() - check_time > 20:
@@ -101,7 +108,7 @@ class Test(unittest.TestCase):
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
     def tearDown(self):
-        procs = (self.proc_worker, self.proc_scheduler)
+        procs = (self.proc_scheduler,) + tuple(self.proc_workers)
         for p in procs:
             p.send_signal(signal.SIGINT)
 
@@ -120,8 +127,9 @@ class Test(unittest.TestCase):
     def check_process_statuses(self):
         if self.proc_scheduler.poll() is not None:
             raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
-        if self.proc_worker.poll() is not None:
-            raise SystemError('Worker not started. exit code %s' % self.proc_worker.poll())
+        for worker_proc in self.proc_workers:
+            if worker_proc.poll() is not None:
+                raise SystemError('Worker not started. exit code %s' % worker_proc.poll())
 
     def wait_for_termination(self, session_ref, graph_key):
         check_time = time.time()
