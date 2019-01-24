@@ -92,7 +92,7 @@ class LocalClusterSession(object):
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
 
-        for t in run_tensors:
+        for t in tensors:
             self._set_graph_key(t.key, t.id, graph_key)
 
         if not fetch:

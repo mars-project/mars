@@ -310,6 +310,10 @@ class Test(unittest.TestCase):
             r4 = session.run(a2)
             np.testing.assert_array_equal(r4, r1)
 
+            del a1
+            r4 = session.run(a2)
+            np.testing.assert_array_equal(r4, r1)
+
             with new_session('http://' + cluster._web_endpoint) as session:
                 a3 = mt.ones((5, 10), chunk_size=3) + 1
                 r1 = session.run(a3)
@@ -320,5 +324,9 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r3, r1 * 2)
 
                 a4 = mt.ones((5, 10), chunk_size=3) + 1
+                r4 = session.run(a4)
+                np.testing.assert_array_equal(r4, r1)
+
+                del a3
                 r4 = session.run(a4)
                 np.testing.assert_array_equal(r4, r1)

@@ -132,7 +132,7 @@ class Session(object):
         graph_key = resp_json['graph_key']
         graph_url = session_url + '/graph/' + graph_key
 
-        for t in run_tensors:
+        for t in tensors:
             self._set_graph_key(t.key, t.id, graph_key)
 
         exec_start_time = time.time()
