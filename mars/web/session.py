@@ -198,7 +198,7 @@ class Session(object):
                 # for those same key tensors, do decref only when all those tensors are garbage collected
                 if len(ids) != 0:
                     continue
-                data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(tensor_key), tensor_key)
+                data_url = session_url + '/graph/%s/data/%s' % (graph_key, tensor_key)
                 self._req_session.delete(data_url)
                 del self._executed_tensors[tensor_key]
 
