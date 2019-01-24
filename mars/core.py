@@ -514,9 +514,3 @@ class TilesableOperandMixin(object):
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_chunks(inputs, shape, index=index, **kw)[0]
-
-    def new_entity(self, inputs, shape, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new entity with more than 1 outputs')
-
-        return self.new_tensors(inputs, shape, **kw)[0]
