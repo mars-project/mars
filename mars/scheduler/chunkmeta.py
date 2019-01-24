@@ -193,6 +193,17 @@ class LocalChunkMetaActor(SchedulerActor):
         self._meta_broadcasts[(session_id, chunk_key)] = \
             [d for d in broadcast_dests if d != self.address]
 
+    def batch_set_chunk_broadcasts(self, session_id, chunk_keys, broadcast_dests):
+        """
+        Configure broadcast destinations in batch
+        :param session_id: session id
+        :param chunk_keys: chunk key
+        :param broadcast_dests:
+        :return:
+        """
+        for key, dests in zip(chunk_keys, broadcast_dests):
+            self.set_chunk_broadcasts(session_id, key, dests)
+
     def get_chunk_broadcasts(self, session_id, chunk_key):
         """
         Get chunk broadcast addresses, for test only
@@ -201,7 +212,8 @@ class LocalChunkMetaActor(SchedulerActor):
         """
         return self._meta_broadcasts.get((session_id, chunk_key))
 
-    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None):
+    def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None,
+                       broadcast=True):
         """
         Update chunk meta in current storage
         :param session_id: session id
@@ -209,6 +221,7 @@ class LocalChunkMetaActor(SchedulerActor):
         :param size: size of the chunk
         :param shape: shape of the chunk
         :param workers: workers holding the chunk
+        :param broadcast: broadcast meta into registered destinations
         """
         query_key = (session_id, chunk_key)
         # update input with existing value
@@ -238,24 +251,54 @@ class LocalChunkMetaActor(SchedulerActor):
 
         # broadcast into pre-determined destinations
         futures = []
-        if query_key in self._meta_broadcasts:
+        if broadcast and query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
                 futures.append(
                     self.ctx.actor_ref(self.default_name(), address=dest)
-                        .cache_chunk_meta(session_id, chunk_key, meta, _wait=False, _tell=True)
+                        .batch_cache_chunk_meta(session_id, [chunk_key], [meta], _wait=False, _tell=True)
                 )
             [f.result() for f in futures]
 
-    def cache_chunk_meta(self, session_id, chunk_key, meta):
+    def batch_set_chunk_meta(self, session_id, keys, metas):
+        """
+        Set chunk metas in batch
+        :param session_id: session id
+        :param keys: keys to set
+        :param metas: metas to set
+        """
+        query_dict = defaultdict(lambda: (list(), list()))
+
+        for key, meta in zip(keys, metas):
+            self.set_chunk_meta(session_id, key, size=meta.chunk_size, shape=meta.chunk_shape,
+                                workers=meta.workers, broadcast=False)
+            try:
+                dests = self._meta_broadcasts[(session_id, key)]
+            except KeyError:
+                continue
+
+            for dest in dests:
+                query_dict[dest][0].append(key)
+                query_dict[dest][1].append(meta)
+
+        futures = []
+        for dest, (chunk_keys, metas) in query_dict.items():
+            futures.append(
+                self.ctx.actor_ref(self.default_name(), address=dest)
+                    .batch_cache_chunk_meta(session_id, chunk_keys, metas, _wait=False, _tell=True)
+            )
+        [f.result() for f in futures]
+
+    def batch_cache_chunk_meta(self, session_id, chunk_keys, metas):
         """
         Receive updates for caching
 
         :param session_id: session id
-        :param chunk_key: chunk key
-        :param meta: meta data
+        :param chunk_keys: chunk keys
+        :param metas: meta data
         """
-        query_key = (session_id, chunk_key)
-        self._meta_cache[query_key] = meta
+        for chunk_key, meta in zip(chunk_keys, metas):
+            query_key = (session_id, chunk_key)
+            self._meta_cache[query_key] = meta
 
     def get_chunk_meta(self, session_id, chunk_key):
         """
@@ -360,6 +403,17 @@ class ChunkMetaActor(SchedulerActor):
         addr = self.get_scheduler((session_id, chunk_key))
         self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
             .set_chunk_broadcasts(session_id, chunk_key, broadcast_dests, _tell=True, _wait=False)
+
+    def batch_set_chunk_broadcasts(self, session_id, chunk_keys, broadcast_dests):
+        query_chunk = defaultdict(lambda: (list(), list()))
+        for key, dests in zip(chunk_keys, broadcast_dests):
+            addr = self.get_scheduler((session_id, key))
+            query_chunk[addr][0].append(key)
+            query_chunk[addr][1].append(dests)
+
+        for addr, (chunk_keys, dest_groups) in query_chunk.items():
+            self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr) \
+                .batch_set_chunk_broadcasts(session_id, chunk_keys, dest_groups)
 
     def set_chunk_meta(self, session_id, chunk_key, size=None, shape=None, workers=None):
         """

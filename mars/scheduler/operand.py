@@ -430,9 +430,13 @@ class OperandActor(SchedulerActor):
         broadcast_eps.difference_update({self.address})
         broadcast_eps = tuple(broadcast_eps)
 
+        chunk_keys, broadcast_ep_groups = [], []
         for chunk_key in self._chunks:
-            self._chunk_meta_ref.set_chunk_broadcasts(
-                self._session_id, chunk_key, broadcast_eps, _tell=True, _wait=False)
+            chunk_keys.append(chunk_key)
+            broadcast_ep_groups.append(broadcast_eps)
+
+        self._chunk_meta_ref.batch_set_chunk_broadcasts(
+            self._session_id, chunk_keys, broadcast_ep_groups, _tell=True, _wait=False)
 
         # submit job
         logger.debug('Start running operand %s on %s', self._op_key, worker)

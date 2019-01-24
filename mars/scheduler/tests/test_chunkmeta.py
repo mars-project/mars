@@ -126,7 +126,8 @@ class Test(unittest.TestCase):
                 key1 = str(uuid.uuid4())
                 key2 = str(uuid.uuid4())
                 key3 = str(uuid.uuid4())
-                keys = [key1, key2, key3]
+                key4 = str(uuid.uuid4())
+                keys = [key1, key2, key3, key4]
                 ref1.set_chunk_size(session1, key1, 512)
                 ref2.set_chunk_size(session1, key2, 1024)
                 ref2.set_chunk_size(session2, key3, 1024)
@@ -181,6 +182,11 @@ class Test(unittest.TestCase):
                 self.assertIsNone(ref1.batch_get_chunk_size(session1, [key1, key2])[1])
                 self.assertIsNone(ref1.batch_get_workers(session1, [key1, key2])[1])
 
+                meta4 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
+                loc_ref2.batch_set_chunk_meta(session1, [key4], [meta4])
+                self.assertEqual(loc_ref2.get_chunk_meta(session1, key4).chunk_size, 512)
+                self.assertEqual(loc_ref2.get_chunk_meta(session1, key4).chunk_shape, (10,) * 2)
+
     @unittest.skipIf(sys.platform == 'win32', 'Currently not support multiple pools under Windows')
     @patch_method(ChunkMetaActor.get_scheduler)
     def testChunkBroadcast(self, *_):
@@ -210,7 +216,8 @@ class Test(unittest.TestCase):
 
                 key1 = str(uuid.uuid4())
                 key2 = str(uuid.uuid4())
-                keys = [key1, key2]
+                key3 = str(uuid.uuid4())
+                keys = [key1, key2, key3]
 
                 ref1.set_chunk_broadcasts(session_id, key1, [endpoints[1]])
                 ref1.set_chunk_size(session_id, key1, 512)
@@ -228,6 +235,12 @@ class Test(unittest.TestCase):
                 self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_size, 512)
                 self.assertEqual(local_ref2.get_chunk_meta(session_id, key1).chunk_shape, (10,) * 2)
                 self.assertEqual(local_ref2.get_chunk_broadcasts(session_id, key2), [endpoints[0]])
+
+                ref1.batch_set_chunk_broadcasts(session_id, [key3], [[endpoints[1]]])
+                meta3 = WorkerMeta(chunk_size=512, chunk_shape=(10,) * 2, workers=(endpoints[0],))
+                local_ref1.batch_set_chunk_meta(session_id, [key3], [meta3])
+                self.assertEqual(local_ref2.get_chunk_meta(session_id, key3).chunk_size, 512)
+                self.assertEqual(local_ref2.get_chunk_meta(session_id, key3).chunk_shape, (10,) * 2)
 
                 ref1.delete_meta(session_id, key1)
                 pool2.sleep(0.1)
