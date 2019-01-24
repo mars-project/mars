@@ -63,9 +63,9 @@ installed.
 
 Rebuilding Cython Code
 ``````````````````````
-Mars uses Cython to accelerate part of its code. After you changes Cython
-files, or ``*.pyx``, you need to compile them into binaries by executing the
-command below on the root of Mars project:
+Mars uses Cython to accelerate part of its code. After you change Cython source
+code, you need to compile them into binaries by executing the command below on
+the root of Mars project:
 
 .. code-block:: bash
 
