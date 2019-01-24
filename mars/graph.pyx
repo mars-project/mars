@@ -300,7 +300,8 @@ cdef class DirectedGraph:
             set visited = set()
             list nodes = []
 
-        from .tensor.core import CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
+        from .tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
+        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 
         level = None
 
@@ -315,16 +316,16 @@ cdef class DirectedGraph:
                 visited.add(c)
 
         for node in self.iter_nodes():
-            if isinstance(node, CHUNK_TYPE):
+            if isinstance(node, TENSOR_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE):
                 node = node.data if isinstance(node, Chunk) else node
                 add_obj(node)
                 if node.composed:
                     for c in node.composed:
                         nodes.append(SerializableGraphNode(_node=c.op))
-            elif isinstance(node, TENSOR_TYPE):
+            elif isinstance(node, TENSOR_TYPE + DATAFRAME_TYPE):
                 node = node.data if isinstance(node, Tensor) else node
                 if level is None:
-                    level = SerializableGraph.Level.TENSOR
+                    level = SerializableGraph.Level.ENTITY
                 for c in (node.chunks or ()):
                     add_obj(c)
                 add_obj(node)
@@ -395,9 +396,9 @@ cdef class DirectedGraph:
     def deserialize(cls, s_graph):
         cdef DirectedGraph graph = cls()
 
-        from .tensor.core import ChunkData, TensorData
+        from .core import ChunkData, TilesableData
 
-        node_type = TensorData if s_graph.level == SerializableGraph.Level.TENSOR else ChunkData
+        node_type = TilesableData if s_graph.level == SerializableGraph.Level.ENTITY else ChunkData
         for node in s_graph.nodes:
             if isinstance(node, node_type):
                 graph._add_node(node)
@@ -488,7 +489,10 @@ cdef class DAG(DirectedGraph):
 
 class SerializableGraphNode(Serializable):
     _node = OneOfField('node', op='mars.operands.Operand',
-                       chunk='mars.tensor.core.ChunkData', tensor='mars.tensor.core.TensorData')
+                       tensor_chunk='mars.tensor.core.TensorChunkData',
+                       tensor='mars.tensor.core.TensorData',
+                       dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
+                       dataframe='mars.dataframe.core.DataFrameData')
 
     @classmethod
     def cls(cls, provider):
@@ -507,7 +511,7 @@ class SerializableGraphNode(Serializable):
 class SerializableGraph(Serializable):
     class Level(Enum):
         CHUNK = 0
-        TENSOR = 1
+        ENTITY = 1
 
     _nodes = ListField('node', ValueType.reference(SerializableGraphNode))
     _level = Int8Field('level')

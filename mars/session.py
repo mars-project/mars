@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover
 
 class LocalSession(object):
     def __init__(self):
-        from .tensor.execution.core import Executor
+        from .executor import Executor
 
         self._executor = Executor()
         self._endpoint = None

@@ -19,7 +19,7 @@ import unittest
 import itertools
 import numpy as np
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor
 
 

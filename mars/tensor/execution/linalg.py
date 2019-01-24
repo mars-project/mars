@@ -138,7 +138,7 @@ def _matmul(ctx, chunk):
 def register_linalg_handler():
     from ...operands.arithmetic import TensorDot, Dot, Matmul
     from ...operands.linalg import QR, SVD, Cholesky, SolveTriangular, Norm, LU
-    from .core import register
+    from ...executor import register
 
     register(QR, _qr)
     register(SVD, _svd)

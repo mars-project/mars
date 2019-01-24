@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor
 from mars.tensor.expressions.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, irfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift

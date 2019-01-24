@@ -24,7 +24,7 @@ from ..config import options
 from ..errors import *
 from ..utils import deserialize_graph, log_unhandled, calc_data_size
 from ..compat import six, OrderedDict3
-from ..tensor.execution.core import Executor
+from ..executor import Executor
 
 logger = logging.getLogger(__name__)
 

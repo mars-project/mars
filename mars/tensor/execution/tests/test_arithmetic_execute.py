@@ -20,7 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.compat import six
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import ones, tensor, zeros
 from mars.tensor.expressions.arithmetic import add, truediv, frexp, \
     modf, clip, isclose

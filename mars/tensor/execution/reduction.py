@@ -424,7 +424,7 @@ def _var(ctx, chunk):
 
 
 def register_reduction_handler():
-    from .core import register
+    from ...executor import register
     from ...operands import Sum, Prod, Min, Max, All, Any, Mean, MeanChunk, MeanCombine, \
         Argmax, ArgmaxChunk, ArgmaxCombine, Argmin, ArgminChunk, ArgminCombine, NanSum,\
         NanProd, NanMax, NanMin, NanMeanChunk, NanMean, NanArgmax, NanArgmaxChunk, NanArgmin,\

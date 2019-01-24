@@ -17,8 +17,8 @@
 import numpy as np
 import scipy.sparse as sps
 
+from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.tensor.execution.core import Executor
 from mars.tensor.expressions.datasource import tensor, ones_like, zeros, zeros_like, full, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril

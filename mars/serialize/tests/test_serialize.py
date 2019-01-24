@@ -37,7 +37,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
     UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
     Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
     ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
-    IndexField, SeriesField, DataFrameField, ProviderType, AttributeAsDict
+    IndexField, SeriesField, DataFrameField, SliceField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -81,7 +81,7 @@ class Node8(Node1):
     pass
 
 
-class Node2(Serializable, BaseWithKey):
+class Node2(BaseWithKey, Serializable):
     a = ListField('a', ValueType.list(ValueType.string))
     _key = StringField('key')
     _id = StringField('id')
@@ -109,6 +109,7 @@ class Node3(Serializable):
 
 class Node5(AttributeAsDict):
     a = StringField('a')
+    b = SliceField('b')
 
 
 class Node6(AttributeAsDict):
@@ -274,8 +275,8 @@ class Test(unittest.TestCase):
                       h=(1234, to_text('测试'), '属性', None, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.dtype([('x', 'i4'), ('y', 'f4')])),
                       i=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
-                      j=Node5(a='aa'),
-                      k=[Node5(a='bb'), None],
+                      j=Node5(a='aa', b=slice(1, 100, 3)),
+                      k=[Node5(a='bb', b=slice(200, -1, -4)), None],
                       l=Node6(b=3, nid=1), **other_data)
 
         pbs = ProtobufSerializeProvider()
@@ -293,7 +294,9 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.h, d_node4.h)
         self.assertEqual(node4.i, d_node4.i)
         self.assertEqual(node4.j.a, d_node4.j.a)
+        self.assertEqual(node4.j.b, d_node4.j.b)
         self.assertEqual(node4.k[0].a, d_node4.k[0].a)
+        self.assertEqual(node4.k[0].b, d_node4.k[0].b)
         self.assertIsNone(d_node4.k[1])
         self.assertIsInstance(d_node4.l, Node7)
         self.assertEqual(d_node4.l.b, 3)

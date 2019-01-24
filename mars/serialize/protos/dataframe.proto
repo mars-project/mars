@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+import "mars/serialize/protos/value.proto";
+import "mars/serialize/protos/indexvalue.proto";
+import "mars/serialize/protos/chunk.proto";
+
+
+message IndexDef {
+    string key = 1;
+    repeated int64 shape = 2;
+    Value dtype = 3;
+    Value op = 4; // store operand's key and id
+    Value nsplits = 5;
+    repeated ChunkDef chunks = 6;
+    Value params = 7;
+    string id = 8;
+    IndexValue index_value = 9;
+}
+
+
+message SeriesDef {
+    string key = 1;
+    repeated int64 shape = 2;
+    Value dtype = 3;
+    Value op = 4;  // store operand's key and id
+    Value nsplits = 5;
+    repeated ChunkDef chunks = 6;
+    Value params = 7;
+    string id = 8;
+    Value name = 9;
+    IndexValue index_value = 10;
+}
+
+
+message DataFrameDef {
+    string key = 1;
+    repeated int64 shape = 2;
+    Value dtypes = 3;
+    Value op = 4;  // store operand's key and id
+    Value nsplits = 5;
+    repeated ChunkDef chunks = 6;
+    Value params = 7;
+    string id = 8;
+    IndexValue index_value = 9;
+}

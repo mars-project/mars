@@ -387,7 +387,7 @@ def _tree_multiply(ctx, chunk):
 
 
 def register_arithmetic_handler():
-    from .core import register
+    from ...executor import register
 
     for op, new_op in six.iteritems(OP_TO_HANDLER):
         register(op, _build_elementwise(new_op))

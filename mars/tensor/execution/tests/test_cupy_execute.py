@@ -16,7 +16,7 @@
 
 import unittest
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.execution.cp import _evaluate
 from mars.tensor.expressions.datasource import ones
 from mars.tensor import sqrt

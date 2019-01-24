@@ -69,6 +69,6 @@ def _execute_cp(ctx, chunk):
 
 
 def register_cp_handler():
-    from .core import register
+    from ...executor import register
 
     register(TensorCpFuseChunk, _execute_cp)

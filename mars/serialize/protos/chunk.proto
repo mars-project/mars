@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "mars/serialize/protos/value.proto";
+import "mars/serialize/protos/indexvalue.proto";
 
 
 message ChunkDef {
@@ -9,7 +10,9 @@ message ChunkDef {
     repeated int64 shape = 3;
     Value op = 4;  // just store key here
     bool cached = 5;
-    Value dtype = 6;
+    Value dtype = 6;  // chunk of Tensor, Index, Series
+    Value dtypes = 10; // chunk of DataFrame
+    IndexValue index_value = 11; // chunk of DataFrame and Series
     repeated ChunkDef composed = 7;
     Value params = 8;
     string id = 9;

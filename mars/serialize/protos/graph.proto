@@ -4,20 +4,23 @@ syntax = "proto3";
 import "mars/serialize/protos/operand.proto";
 import "mars/serialize/protos/chunk.proto";
 import "mars/serialize/protos/tensor.proto";
+import "mars/serialize/protos/dataframe.proto";
 
 
 message GraphDef {
     message NodeDef {
         oneof node {
             OperandDef op = 1;
-            ChunkDef chunk = 2;
+            ChunkDef tensor_chunk = 2;
             TensorDef tensor = 3;
+            ChunkDef dataframe_chunk = 4;
+            DataFrameDef dataframe = 5;
         }
     }
 
     enum Level {
         CHUNK = 0;
-        TENSOR = 1;
+        ENTITY = 1;
     }
 
     Level level = 2;

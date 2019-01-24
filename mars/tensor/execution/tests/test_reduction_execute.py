@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import ones, tensor
 from mars.tensor.expressions.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
     nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod

@@ -390,9 +390,15 @@ def recursive_tile(tensor):
     return tensor
 
 
-def decide_chunk_sizes(shape, chunk_size, itemsize):
-    from ...config import options
+def dictify_chunk_size(shape, chunk_size):
+    """
+    Given chunk_size which may be a tuple or dict, return a dict type all the same.
 
+    :param shape: tensor's shape
+    :param chunk_size: if dict provided, it's dimension id to chunk size;
+                       if provided, it's the chunk size for each dimension.
+    :return: dict form of chunk_size
+    """
     if chunk_size is not None:
         if isinstance(chunk_size, Iterable):
             if not isinstance(chunk_size, dict):
@@ -405,11 +411,27 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
     if chunk_size is None:
         chunk_size = dict()
 
-    nleft = len(shape) - len(chunk_size)
+    return chunk_size
 
+
+def decide_chunk_sizes(shape, chunk_size, itemsize):
+    """
+    Decide how a given tensor can be split into chunk.
+
+    :param shape: tensor's shape
+    :param chunk_size: if dict provided, it's dimension id to chunk size;
+                       if provided, it's the chunk size for each dimension.
+    :param itemsize: element size
+    :return: the calculated chunk size for each dimension
+    :rtype: tuple
+    """
+
+    from ...config import options
+
+    chunk_size = dictify_chunk_size(shape, chunk_size)
+    nleft = len(shape) - len(chunk_size)
     if nleft < 0:
         raise ValueError("chunks have more dimensions than input tensor")
-
     if nleft == 0:
         return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
 

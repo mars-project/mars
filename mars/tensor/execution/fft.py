@@ -71,7 +71,7 @@ def _fftfreq_chunk(ctx, chunk):
 
 def register_fft_handler():
     from ... import operands
-    from .core import register
+    from ...executor import register
 
     register(operands.StandardFFT, _fft)
     register(operands.StandardFFTN, _fftn)

@@ -87,7 +87,7 @@ def _stack(ctx, chunk):
 
 def register_merge_handler():
     from ...operands import Concatenate, Stack
-    from .core import register
+    from ...executor import register
 
     register(Concatenate, _concatenate)
     register(Stack, _stack)

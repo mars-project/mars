@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.execution.core import Executor
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul

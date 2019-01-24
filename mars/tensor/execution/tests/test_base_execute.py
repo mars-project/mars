@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.execution.core import Executor
 from mars import tensor as mt
+from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, ones, zeros, arange
 from mars.tensor.expressions.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \

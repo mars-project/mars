@@ -242,7 +242,7 @@ def _randint(ctx, chunk):
 
 
 def register_random_handler():
-    from .core import register
+    from ...executor import register
     from ...operands import random as random_op
 
     register(random_op.SimpleRandomData, _rand)
