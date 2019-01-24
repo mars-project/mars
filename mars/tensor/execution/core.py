@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
     pass
 
 
-def register_execution_handler():
+def register_tensor_execution_handler():
     if NUMEXPR_INSTALLED:
         from .ne import register_numexpr_handler
         register_numexpr_handler()

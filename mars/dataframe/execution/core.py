@@ -15,5 +15,5 @@
 from .datasource import register_data_source_handler
 
 
-def register_execution_handler():
+def register_dataframe_execution_handler():
     register_data_source_handler()

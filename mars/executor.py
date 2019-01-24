@@ -375,8 +375,9 @@ def register(op, handler):
 
 
 # register tensor and dataframe execution handler
-from .tensor.execution.core import register_execution_handler
-register_execution_handler()
-from.dataframe.execution.core import register_execution_handler
-register_execution_handler()
-del register_execution_handler
+from .tensor.execution.core import register_tensor_execution_handler
+register_tensor_execution_handler()
+del register_tensor_execution_handler
+from.dataframe.execution.core import register_dataframe_execution_handler
+register_dataframe_execution_handler()
+del register_dataframe_execution_handler
