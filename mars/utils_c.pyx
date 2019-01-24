@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import pickle
+import uuid
 from hashlib import md5
 from datetime import date, datetime, timedelta
 from collections import deque
@@ -140,10 +142,15 @@ cdef h_numpy(ob):
                 ob.shape, ob.strides, offset)
     if ob.dtype.hasobject:
         try:
-            data = md5('-'.join(ob.flat).encode('utf-8')).hexdigest()
+            data = md5('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')).hexdigest()
+        except UnicodeDecodeError:
+            data = md5(b'-'.join([to_binary(x) for x in ob.flat])).hexdigest()
         except TypeError:
-            data = md5(b'-'.join([unicode(item).encode('utf-8') for item in
-                                  ob.flat])).hexdigest()
+            try:
+                data = md5(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)).hexdigest()
+            except:
+                # nothing can do, generate uuid
+                data = uuid.uuid4().hex
     else:
         try:
             data = md5(ob.ravel().view('i1').data).hexdigest()
