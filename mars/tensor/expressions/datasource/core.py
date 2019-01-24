@@ -19,11 +19,9 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import StringField
 from ....operands import DataSource
 from ....compat import izip
 from ....config import options
-from ....tiles import NotSupportTile
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
 
@@ -128,15 +126,12 @@ class TensorLike(TensorHasInput):
             raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
 
 
-class TensorFetchChunk(TensorNoInput, TensorOperandMixin):
+class TensorFetch(TensorNoInput):
     _op_type_ = OperandDef.FETCH
 
-    _to_fetch_key = StringField('to_fetch_key')
-
-    def __init__(self, dtype=None, to_fetch_key=None, **kw):
-        super(TensorFetchChunk, self).__init__(_dtype=dtype, _to_fetch_key=to_fetch_key,
-                                               **kw)
+    def __init__(self, dtype=None, **kw):
+        super(TensorFetch, self).__init__(_dtype=dtype, **kw)
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('FetchChunk is a chunk operand which does not support tile')
+        pass

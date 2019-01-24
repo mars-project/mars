@@ -32,4 +32,4 @@ from .indices import indices, TensorIndices
 from .tri import triu, tril, TensorTriu, TensorTril
 from .fromdense import fromdense, DenseToSparse
 from .fromsparse import fromsparse, SparseToDense
-from .core import TensorFetchChunk
+from .core import TensorFetch

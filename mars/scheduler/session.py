@@ -31,6 +31,7 @@ class SessionActor(SchedulerActor):
         self._cluster_info_ref = None
         self._assigner_ref = None
         self._graph_refs = dict()
+        self._tensor_to_graph = dict()
 
     @staticmethod
     def gen_name(session_id):
@@ -41,6 +42,9 @@ class SessionActor(SchedulerActor):
 
     def get_graph_refs(self):
         return self._graph_refs
+
+    def get_graph_ref_by_tensor(self, tensor_key):
+        return self._tensor_to_graph[tensor_key]
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -56,6 +60,9 @@ class SessionActor(SchedulerActor):
                                           uid=graph_uid, address=self.get_scheduler(graph_uid))
         graph_ref.execute_graph(_tell=True)
         self._graph_refs[graph_key] = graph_ref
+        for tensor_key in target_tensors:
+            if tensor_key not in self._tensor_to_graph:
+                self._tensor_to_graph[tensor_key] = graph_ref
 
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()

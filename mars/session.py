@@ -16,7 +16,6 @@
 
 import numpy as np
 
-from .compat import OrderedDict
 try:
     from .resource import cpu_count
 except ImportError:  # pragma: no cover
@@ -29,6 +28,7 @@ class LocalSession(object):
 
         self._executor = Executor()
         self._endpoint = None
+        self._executed_keys = set()
 
     @property
     def endpoint(self):
@@ -45,7 +45,9 @@ class LocalSession(object):
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
             kw['n_parallel'] = cpu_count()
-        return self._executor.execute_tensors(tensors, **kw)
+        res = self._executor.execute_tensors(tensors, **kw)
+        self._executed_keys.update(t.key for t in tensors)
+        return res
 
     def _update_tensor_shape(self, tensor):
         new_nsplits = self._executor.get_tensor_nsplits(tensor)
@@ -53,6 +55,9 @@ class LocalSession(object):
         tensor.nsplits = new_nsplits
 
     def fetch(self, *tensors, **kw):
+        for t in tensors:
+            if t.key not in self._executed_keys:
+                raise ValueError('Cannot fetch the unexecuted tensor')
         if self._executor is None:
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
@@ -61,6 +66,7 @@ class LocalSession(object):
 
     def decref(self, *keys):
         self._executor.decref(*keys)
+        self._executed_keys = self._executed_keys.difference(keys)
 
     def __enter__(self):
         return self
@@ -87,8 +93,6 @@ class Session(object):
         else:
             self._sess = LocalSession()
 
-        self._executed_keys = set()
-
     def run(self, *tensors, **kw):
         from . import tensor as mt
 
@@ -101,42 +105,18 @@ class Session(object):
             ret_list = True
 
         tensors = tuple(mt.tensor(t) for t in tensors)
-        results = [None] * len(tensors)
-        idx_to_run_tensors = OrderedDict()
-        idx_to_fetch_tensors = OrderedDict()
+        result = self._sess.run(*tensors, **kw)
 
-        # those executed tensors should fetch data directly, submit the others
-        for i, t in enumerate(tensors):
-            if t.key in self._executed_keys:
-                idx_to_fetch_tensors[i] = t
-            else:
-                idx_to_run_tensors[i] = t
-
-        # execute the non-executed tensors
-        if idx_to_run_tensors:
-            execute_result = self._sess.run(*idx_to_run_tensors.values(), **kw)
-            if execute_result:
-                # fetch is True
-                for j, result in zip(idx_to_run_tensors, execute_result):
-                    results[j] = result
-            run_tensors = list(idx_to_run_tensors.values())
-            self._executed_keys.update(t.key for t in run_tensors)
-            for t in run_tensors:
-                t._execute_session = self
+        for t in tensors:
+            t._execute_session = self
 
         for t in tensors:
             if np.nan in t.shape:
                 self._sess._update_tensor_shape(t)
 
         if fetch:
-            # do fetch
-            if idx_to_fetch_tensors:
-                for j, result in zip(idx_to_fetch_tensors,
-                                     self._sess.fetch(*idx_to_fetch_tensors.values(), **kw)):
-                    results[j] = result
-
             ret = []
-            for r, t in zip(results, tensors):
+            for r, t in zip(result, tensors):
                 if r is None:
                     ret.append(r)
                     continue
@@ -144,15 +124,32 @@ class Session(object):
                     ret.append(np.asscalar(r))
                 else:
                     ret.append(r)
-
             if ret_list:
                 return ret
             return ret[0]
 
-    def fetch(self, tensor):
-        if tensor.key not in self._executed_keys:
-            raise ValueError('Cannot fetch the unexecuted tensor')
-        return self._sess.fetch(tensor)
+    def fetch(self, *tensors, **kw):
+        ret_list = False
+        if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
+            ret_list = True
+            tensors = tensors[0]
+        elif len(tensors) > 1:
+            ret_list = True
+
+        result = self._sess.fetch(*tensors, **kw)
+
+        ret = []
+        for r, t in zip(result, tensors):
+            if r is None:
+                ret.append(r)
+                continue
+            if t.isscalar() and hasattr(r, 'item'):
+                ret.append(np.asscalar(r))
+            else:
+                ret.append(r)
+        if ret_list:
+            return ret
+        return ret[0]
 
     @property
     def endpoint(self):
@@ -163,7 +160,6 @@ class Session(object):
         self._sess.endpoint = endpoint
 
     def decref(self, *keys):
-        self._executed_keys = self._executed_keys.difference(keys)
         if hasattr(self._sess, 'decref'):
             self._sess.decref(*keys)
 

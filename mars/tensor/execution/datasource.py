@@ -187,5 +187,5 @@ def register_data_source_handler():
     register(datasource.CSRMatrixDataSource, _tensor_csr_matrix_data_source)
     register(datasource.SparseToDense, _tensor_sparse_to_dense)
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
-    register(datasource.TensorFetchChunk, _tensor_fetch_chunk)
+    register(datasource.TensorFetch, _tensor_fetch_chunk)
     register(datasource.Scalar, _scalar)

@@ -31,7 +31,6 @@ from numpy.testing import assert_array_equal
 from mars import tensor as mt
 from mars.actors import new_client
 from mars.config import options
-from mars.errors import ExecutionFailed
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
@@ -148,7 +147,7 @@ class Test(unittest.TestCase):
 
         gevent.hub.Hub.NOT_ERROR = self.exceptions
 
-    def testApi(self):
+    def testWebApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
@@ -160,10 +159,6 @@ class Test(unittest.TestCase):
 
             value2 = sess.run(c)
             assert_array_equal(value, value2)
-
-            # todo this behavior may change when eager mode is introduced
-            with self.assertRaises(ExecutionFailed):
-                sess.run(c + 1)
 
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))

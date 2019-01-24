@@ -183,3 +183,32 @@ class Test(unittest.TestCase):
 
         result = np.asarray(arr4, dtype=np.float_)
         np.testing.assert_array_equal(result, np.asarray(200, dtype=np.float_))
+
+    def testDecref(self):
+        sess = new_session()
+
+        arr1 = mt.ones((10, 5), chunk_size=3)
+
+        r1 = sess.run(arr1)
+        r2 = sess.run(arr1)
+        np.testing.assert_array_equal(r1, r2)
+
+        executor = sess._sess._executor
+        executor.chunk_result[arr1.chunks[0].key] = np.ones((3, 3)) * 2
+        r3 = sess.run(arr1 + 1)
+        np.testing.assert_array_equal(r3[:3, :3], np.ones((3, 3)) * 3)
+
+        # rerun to ensure arr1's chunk results still exist
+        r4 = sess.run(arr1 + 1)
+        np.testing.assert_array_equal(r4[:3, :3], np.ones((3, 3)) * 3)
+
+        arr2 = mt.ones((10, 5), chunk_size=3)
+        r5 = sess.run(arr2)
+        np.testing.assert_array_equal(r5[:3, :3], np.ones((3, 3)) * 2)
+
+        r6 = sess.run(arr2 + 1)
+        np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
+
+        self.assertEqual(arr1.key, arr2.key)
+        del arr2
+        self.assertEqual(len(executor.chunk_result), 8)
