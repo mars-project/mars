@@ -33,7 +33,6 @@ from ..base import broadcast_to
 class RandomState(object):
     def __init__(self, seed=None):
         self._random_state = np.random.RandomState(seed=seed)
-        self._curr_seed = seed
 
     def seed(self, seed=None):
         """
@@ -53,11 +52,10 @@ class RandomState(object):
         RandomState
         """
         self._random_state.seed(seed=seed)
-        self._curr_seed = seed
 
     @property
     def _state(self):
-        return State(self._random_state) if self._curr_seed is not None else None
+        return State(self._random_state)
 
     @classmethod
     def _handle_size(cls, size):

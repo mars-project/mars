@@ -184,6 +184,17 @@ class Test(unittest.TestCase):
         result = np.asarray(arr4, dtype=np.float_)
         np.testing.assert_array_equal(result, np.asarray(200, dtype=np.float_))
 
+    def testRandomExecuteInSessions(self):
+        arr = mt.random.rand(20, 20)
+
+        sess1 = new_session()
+        res1 = sess1.run(arr)
+
+        sess2 = new_session()
+        res2 = sess2.run(arr)
+
+        np.testing.assert_array_equal(res1, res2)
+
     def testDecref(self):
         sess = new_session()
 
