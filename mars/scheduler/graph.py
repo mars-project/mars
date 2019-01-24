@@ -767,7 +767,9 @@ class GraphActor(SchedulerActor):
             transposed[state] = list()
             for op in ops:
                 transposed[state].append(data_src[op][sid])
-        return ops, transposed, finished * 100.0 / total_count
+
+        percentage = finished * 100.0 / total_count if total_count != 0 else 1
+        return ops, transposed, percentage
 
     def _get_tensor_by_key(self, key):
         tid = self._tensor_key_to_opid[key]
