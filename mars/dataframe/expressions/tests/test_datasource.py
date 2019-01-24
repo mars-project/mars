@@ -31,7 +31,8 @@ from mars.tests.core import TestBase
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
     def testChunkSerialize(self):
-        df = from_pandas(pd.DataFrame(np.random.rand(10, 10))).tiles()
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)))
+        df = from_pandas(data).tiles()
 
         # pb
         chunk = df.chunks[0]
