@@ -137,9 +137,6 @@ class Session(object):
 
         ret = []
         for r, t in zip(result, tensors):
-            if r is None:
-                ret.append(r)
-                continue
             if t.isscalar() and hasattr(r, 'item'):
                 ret.append(np.asscalar(r))
             else:
