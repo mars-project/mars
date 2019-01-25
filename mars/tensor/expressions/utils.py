@@ -471,27 +471,3 @@ def calc_rough_shape(tensor):
             return shape
     else:
         return tensor.shape
-
-
-def convert_to_fetch(tensor):
-    from ..core import CHUNK_TYPE, TENSOR_TYPE
-    from .datasource import TensorFetch
-
-    if isinstance(tensor, CHUNK_TYPE):
-        new_op = TensorFetch(dtype=tensor.dtype)
-        return new_op.new_chunk(None, tensor.shape, index=tensor.index,
-                                _key=tensor.key, _id=tensor.id)
-    elif isinstance(tensor, TENSOR_TYPE):
-        new_op = TensorFetch(dtype=tensor.dtype)
-        if tensor.is_coarse():
-            return new_op.new_tensor(None, tensor.shape, _key=tensor.key, _id=tensor.id)
-        else:
-            chunks = []
-            for c in tensor.chunks:
-                op = TensorFetch(dtype=c.dtype)
-                chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key, _id=c.id)
-                chunks.append(chunk)
-            return new_op.new_tensor(None, tensor.shape, chunks=chunks, nsplits=tensor.nsplits,
-                                     _key=tensor.key, _id=tensor.id)
-    else:
-        raise ValueError('Only support tensor or chunk type.')

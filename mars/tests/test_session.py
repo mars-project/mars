@@ -220,6 +220,24 @@ class Test(unittest.TestCase):
         r6 = sess.run(arr2 + 1)
         np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
 
+        # test fetch multiple tensors
+        raw = np.random.rand(5, 10)
+        arr1 = mt.ones((5, 10), chunk_size=5)
+        arr2 = mt.tensor(raw, chunk_size=3)
+        arr3 = mt.sum(arr2)
+
+        sess.run(arr1, arr2, arr3)
+
+        fetch1, fetch2, fetch3 = sess.fetch(arr1, arr2, arr3)
+        np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
+        np.testing.assert_array_equal(fetch2, raw)
+        np.testing.assert_almost_equal(fetch3, raw.sum())
+
+        fetch1, fetch2, fetch3 = sess.fetch([arr1, arr2, arr3])
+        np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
+        np.testing.assert_array_equal(fetch2, raw)
+        np.testing.assert_almost_equal(fetch3, raw.sum())
+
     def testDecref(self):
         sess = new_session()
 

@@ -49,7 +49,6 @@ class ResultReceiverActor(SchedulerActor):
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
     def fetch_tensor(self, session_id, graph_key, tensor_key):
-        from ..tensor.expressions.datasource import TensorFetch
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 

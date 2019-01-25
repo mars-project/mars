@@ -44,14 +44,14 @@ class LocalClusterSession(object):
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
 
-    def _get_graph_key(self, key):
-        return self._executed_tensors[key][0]
+    def _get_graph_key(self, tensor_key):
+        return self._executed_tensors[tensor_key][0]
 
-    def _set_graph_key(self, key, tid, graph_key):
-        if key in self._executed_tensors:
-            self._executed_tensors[key][1].add(tid)
+    def _set_graph_key(self, tensor_key, tid, graph_key):
+        if tensor_key in self._executed_tensors:
+            self._executed_tensors[tensor_key][1].add(tid)
         else:
-            self._executed_tensors[key] = tuple([graph_key, {tid}])
+            self._executed_tensors[tensor_key] = tuple([graph_key, {tid}])
 
     def _update_tensor_shape(self, tensor):
         graph_key = self._get_graph_key(tensor.key)
@@ -72,7 +72,7 @@ class LocalClusterSession(object):
         targets = [t.key for t in run_tensors]
         graph_key = uuid.uuid4()
         for t in run_tensors:
-            t.build_graph(graph, tiled=False, execueted_keys=list(self._executed_tensors.keys()))
+            t.build_graph(graph, tiled=False, executed_keys=list(self._executed_tensors.keys()))
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json()),
@@ -114,8 +114,7 @@ class LocalClusterSession(object):
         return [dataserializer.loads(f.result()) for f in futures]
 
     def decref(self, *keys):
-        for k in keys:
-            tensor_key, tensor_id = k
+        for tensor_key, tensor_id in keys:
             if tensor_key not in self._executed_tensors:
                 continue
             graph_key, ids = self._executed_tensors[tensor_key]

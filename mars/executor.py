@@ -129,7 +129,7 @@ class Executor(object):
             else:
                 concat_keys.append(tensor.chunks[0].key)
 
-            tensor.build_graph(graph=graph, tiled=True, execueted_keys=list(self._chunk_result.keys()))
+            tensor.build_graph(graph=graph, tiled=True, executed_keys=list(self._chunk_result.keys()))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
                            show_progress=show_progress, mock=mock,

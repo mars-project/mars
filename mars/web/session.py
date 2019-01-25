@@ -59,14 +59,14 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
-    def _get_graph_key(self, key):
-        return self._executed_tensors[key][0]
+    def _get_graph_key(self, tensor_key):
+        return self._executed_tensors[tensor_key][0]
 
-    def _set_graph_key(self, key, tid, graph_key):
-        if key in self._executed_tensors:
-            self._executed_tensors[key][1].add(tid)
+    def _set_graph_key(self, tensor_key, tid, graph_key):
+        if tensor_key in self._executed_tensors:
+            self._executed_tensors[tensor_key][1].add(tid)
         else:
-            self._executed_tensors[key] = tuple([graph_key, {tid}])
+            self._executed_tensors[tensor_key] = tuple([graph_key, {tid}])
 
     def _check_response_finished(self, graph_url):
         try:
@@ -121,7 +121,7 @@ class Session(object):
         graph = DirectedGraph()
         for t in run_tensors:
             graph = t.build_graph(graph=graph, tiled=False, compose=compose,
-                                  execueted_keys=list(self._executed_tensors.keys()))
+                                  executed_keys=list(self._executed_tensors.keys()))
         targets = [t.key for t in run_tensors]
 
         targets_join = ','.join(targets)
@@ -187,8 +187,7 @@ class Session(object):
 
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id
-        for k in keys:
-            tensor_key, tensor_id = k
+        for tensor_key, tensor_id in keys:
             if tensor_key not in self._executed_tensors:
                 continue
             graph_key, ids = self._executed_tensors[tensor_key]
