@@ -180,7 +180,7 @@ After all mars processes are started, users can run
 Getting involved
 ----------------
 
-- Read `contributing guide <https://mars-project.readthedocs.io/en/latest/contributing.html>`_.
+- Read `contribution guide <https://mars-project.readthedocs.io/en/latest/contributing.html>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.
