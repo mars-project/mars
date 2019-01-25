@@ -374,7 +374,7 @@ class TilesableData(SerializableWithKey, Tilesable):
         from .tensor.core import CHUNK_TYPE, TENSOR_TYPE
         from .tensor.expressions.datasource.core import TensorFetch
 
-        execueted_keys = executed_keys or []
+        executed_keys = executed_keys or []
         if tiled and self.is_coarse():
             self.tiles()
 
@@ -391,7 +391,7 @@ class TilesableData(SerializableWithKey, Tilesable):
             node = nodes.pop()
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
-            if node.key in execueted_keys:
+            if node.key in executed_keys:
                 if isinstance(node, CHUNK_TYPE):
                     new_op = TensorFetch(dtype=node.dtype)
                     node = new_op.new_chunk(None, node.shape, index=node.index, _key=node.key, _id=node.id)
@@ -404,7 +404,7 @@ class TilesableData(SerializableWithKey, Tilesable):
                 graph.add_node(node)
             children = node.inputs or []
             for c in children:
-                if c.key in execueted_keys:
+                if c.key in executed_keys:
                     continue
                 if not graph.contains(c):
                     graph.add_node(c)
