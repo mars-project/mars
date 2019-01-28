@@ -153,9 +153,6 @@ class Session(object):
     def endpoint(self, endpoint):
         self._sess.endpoint = endpoint
 
-    def executed_tensors(self):
-        return False
-
     def decref(self, *keys):
         if hasattr(self._sess, 'decref'):
             self._sess.decref(*keys)

@@ -23,7 +23,7 @@ from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..graph import DirectedGraph
+from ..utils import build_graph
 
 logger = logging.getLogger(__name__)
 
@@ -122,10 +122,8 @@ class Session(object):
         # those executed tensors should fetch data directly, submit the others
         run_tensors = [t for t in tensors if t.key not in self._executed_tensors]
 
-        graph = DirectedGraph()
-        for t in run_tensors:
-            graph = t.build_graph(graph=graph, tiled=False, compose=compose,
-                                  executed_keys=list(self._executed_tensors.keys()))
+        graph = build_graph(run_tensors, compose=compose,
+                            executed_keys=list(self._executed_tensors.keys()))
         targets = [t.key for t in run_tensors]
 
         targets_join = ','.join(targets)

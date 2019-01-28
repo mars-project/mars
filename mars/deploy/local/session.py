@@ -20,10 +20,10 @@ import time
 
 from ...api import MarsAPI
 from ...compat import TimeoutError  # pylint: disable=W0622
-from ...graph import DirectedGraph
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
+from ...utils import build_graph
 
 
 class LocalClusterSession(object):
@@ -73,11 +73,9 @@ class LocalClusterSession(object):
         # those executed tensors should fetch data directly, submit the others
         run_tensors = [t for t in tensors if t.key not in self._executed_tensors]
 
-        graph = DirectedGraph()
+        graph = build_graph(run_tensors, executed_keys=list(self._executed_tensors.keys()))
         targets = [t.key for t in run_tensors]
         graph_key = uuid.uuid4()
-        for t in run_tensors:
-            t.build_graph(graph, tiled=False, executed_keys=list(self._executed_tensors.keys()))
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json()),

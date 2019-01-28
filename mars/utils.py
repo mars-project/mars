@@ -305,3 +305,15 @@ def log_unhandled(func):
             mod_logger.exception(err_msg)
             raise
     return _wrapped
+
+
+def build_graph(tensors, graph=None, executed_keys=None, tiled=False, compose=True):
+    from .graph import DirectedGraph
+
+    graph = graph or DirectedGraph()
+    executed_keys = executed_keys or []
+    tensors = tensors if isinstance(tensors, (tuple, list, set)) else [tensors]
+    for t in tensors:
+        graph = t.build_graph(graph=graph, tiled=tiled, compose=compose,
+                              executed_keys=executed_keys)
+    return graph
