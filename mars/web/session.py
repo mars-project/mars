@@ -32,6 +32,8 @@ class Session(object):
     def __init__(self, endpoint, args=None):
         self._endpoint = endpoint
         self._args = args
+        # dict structure: {tensor_key -> graph_key, tensor_ids}
+        # dict value is a tuple object which records graph key and tensor id
         self._executed_tensors = dict()
 
         self._req_session = requests.Session()
@@ -59,14 +61,16 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
-    def _get_graph_key(self, tensor_key):
+    def _get_tensor_graph_key(self, tensor_key):
         return self._executed_tensors[tensor_key][0]
 
-    def _set_graph_key(self, tensor_key, tid, graph_key):
+    def _set_tensor_graph_key(self, tensor, graph_key):
+        tensor_key = tensor.key
+        tensor_id = tensor.id
         if tensor_key in self._executed_tensors:
-            self._executed_tensors[tensor_key][1].add(tid)
+            self._executed_tensors[tensor_key][1].add(tensor_id)
         else:
-            self._executed_tensors[tensor_key] = tuple([graph_key, {tid}])
+            self._executed_tensors[tensor_key] = graph_key, {tensor_id}
 
     def _check_response_finished(self, graph_url):
         try:
@@ -133,7 +137,7 @@ class Session(object):
         graph_url = session_url + '/graph/' + graph_key
 
         for t in tensors:
-            self._set_graph_key(t.key, t.id, graph_key)
+            self._set_tensor_graph_key(t, graph_key)
 
         exec_start_time = time.time()
         while timeout <= 0 or time.time() - exec_start_time <= timeout:
@@ -168,7 +172,7 @@ class Session(object):
                 raise ValueError('Cannot fetch the unexecuted tensor')
 
             session_url = self._endpoint + '/api/session/' + self._session_id
-            data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(key), key)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_tensor_graph_key(key), key)
             resp = self._req_session.get(data_url, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -179,7 +183,7 @@ class Session(object):
     def _update_tensor_shape(self, tensor):
         tensor_key = tensor.key
         session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_graph_key(tensor_key), tensor_key)
+        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_tensor_graph_key(tensor_key), tensor_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))

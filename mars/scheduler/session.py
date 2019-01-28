@@ -43,7 +43,7 @@ class SessionActor(SchedulerActor):
     def get_graph_refs(self):
         return self._graph_refs
 
-    def get_graph_ref_by_tensor(self, tensor_key):
+    def get_graph_ref_by_tensor_key(self, tensor_key):
         return self._tensor_to_graph[tensor_key]
 
     def post_create(self):

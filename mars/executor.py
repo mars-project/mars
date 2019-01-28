@@ -36,6 +36,8 @@ class Executor(object):
 
         # only record the executed tensor
         self.tensor_to_tiled = weakref.WeakKeyDictionary()
+        # dict structure: {tensor_key -> chunk_keys, tensor_ids}
+        # dict value is a tuple object which records chunk keys and tensor id
         self.stored_tensors = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
@@ -69,7 +71,9 @@ class Executor(object):
         with build_mode():
             optimized_graph = self._preprocess(graph, keys)
 
-        return execute_graph(optimized_graph, keys, self, n_parallel=n_parallel or n_thread,
+        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
+        return execute_graph(optimized_graph, keys, self, executed_keys=executed_keys,
+                             n_parallel=n_parallel or n_thread,
                              show_progress=show_progress, mock=mock,
                              sparse_mock_percent=sparse_mock_percent,
                              prefetch=self._prefetch, retval=True)
@@ -291,7 +295,7 @@ def _order_starts(graph):
             stack.appendleft(starts.popleft())
 
 
-def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
+def execute_graph(graph, keys, executor, executed_keys=None, n_parallel=None, show_progress=False,
                   mock=False, sparse_mock_percent=1.0, prefetch=False, retval=True):
     pool_executor = futures.ThreadPoolExecutor(n_parallel or 1)
     prefetch_executor = futures.ThreadPoolExecutor(n_parallel or 1) if prefetch else None
@@ -317,9 +321,9 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
     visited = set()
     fs = dict()
     ref_counts = dict()
-    key_set = set(keys)
+    key_set = set(keys).union(set(executed_keys or []))
     for chunk in graph:
-        if chunk.key not in key_set and chunk.key not in chunk_result:
+        if chunk.key not in key_set:
             ref_counts[chunk.key] = ref_counts.get(chunk.key, 0) + len(graph[chunk])
     node_keys_set = {n.key for n in graph}
     count = itertools.count(0)

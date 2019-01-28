@@ -371,8 +371,7 @@ class TilesableData(SerializableWithKey, Tilesable):
         return handler.single_tiles(self)
 
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
-        from .tensor.core import CHUNK_TYPE, TENSOR_TYPE
-        from .tensor.expressions.datasource.core import TensorFetch
+        from .tensor.expressions.utils import convert_to_fetch
 
         executed_keys = executed_keys or []
         if tiled and self.is_coarse():
@@ -392,12 +391,7 @@ class TilesableData(SerializableWithKey, Tilesable):
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
-                if isinstance(node, CHUNK_TYPE):
-                    new_op = TensorFetch(dtype=node.dtype)
-                    node = new_op.new_chunk(None, node.shape, index=node.index, _key=node.key, _id=node.id)
-                elif isinstance(node, TENSOR_TYPE):
-                    new_op = TensorFetch(dtype=node.dtype)
-                    node = new_op.new_tensor(None, node.shape, _key=node.key, _id=node.id)
+                node = convert_to_fetch(node)
 
             visited.add(node)
             if not graph.contains(node):

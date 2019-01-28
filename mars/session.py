@@ -28,7 +28,7 @@ class LocalSession(object):
 
         self._executor = Executor()
         self._endpoint = None
-        self._executed_keys = set()
+        self._executed_tensors = set()
 
     @property
     def endpoint(self):
@@ -46,7 +46,7 @@ class LocalSession(object):
         if 'n_parallel' not in kw:
             kw['n_parallel'] = cpu_count()
         res = self._executor.execute_tensors(tensors, **kw)
-        self._executed_keys.update(t.key for t in tensors)
+        self._executed_tensors.update(t.key for t in tensors)
         return res
 
     def _update_tensor_shape(self, tensor):
@@ -56,7 +56,7 @@ class LocalSession(object):
 
     def fetch(self, *tensors, **kw):
         for t in tensors:
-            if t.key not in self._executed_keys:
+            if t.key not in self._executed_tensors:
                 raise ValueError('Cannot fetch the unexecuted tensor')
         if self._executor is None:
             raise RuntimeError('Session has closed')
@@ -66,7 +66,7 @@ class LocalSession(object):
 
     def decref(self, *keys):
         self._executor.decref(*keys)
-        self._executed_keys = self._executed_keys.difference(keys)
+        self._executed_tensors = self._executed_tensors.difference([k[0] for k in keys])
 
     def __enter__(self):
         return self
@@ -152,6 +152,9 @@ class Session(object):
     @endpoint.setter
     def endpoint(self, endpoint):
         self._sess.endpoint = endpoint
+
+    def executed_tensors(self):
+        return False
 
     def decref(self, *keys):
         if hasattr(self._sess, 'decref'):

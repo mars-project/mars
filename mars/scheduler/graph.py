@@ -31,6 +31,7 @@ from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 from ..tensor.expressions.datasource.core import TensorFetch
+from ..tensor.core import ChunkData
 
 logger = logging.getLogger(__name__)
 
@@ -381,7 +382,7 @@ class GraphActor(SchedulerActor):
                 tensor_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
-                q = deque([tiled_c.data for tiled_c in tiled.chunks])
+                q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data for tiled_c in tiled.chunks])
                 input_chunk_keys = set(itertools.chain(*([(it.key, it.id) for it in input.chunks]
                                                          for input in to_tile.inputs)))
                 while len(q) > 0:
@@ -813,35 +814,42 @@ class GraphActor(SchedulerActor):
 
         return serialize_graph(graph)
 
+    def build_fetch_graph(self, tensor_key):
+        """
+        Convert single tensor to graph which contains one tensor node and multiple chunk nodes
+        :param tensor_key: the key of tensor
+        """
+        tiled_tensor = self._get_tensor_by_key(tensor_key)
+        graph = DAG()
+        for c in tiled_tensor.chunks:
+            fetch_op = TensorFetch(dtype=c.dtype)
+            fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key).data
+            graph.add_node(fetch_chunk)
+
+        new_op = TensorFetch(dtype=tiled_tensor.dtype)
+        new_tensor = new_op.new_tensor(None, tiled_tensor.shape,
+                                       nsplits=tiled_tensor.nsplits, _key=tiled_tensor.key)
+        graph.add_node(new_tensor)
+        return serialize_graph(graph)
+
     def tile_fetch_tensor(self, tensor):
         from .session import SessionActor
 
         tensor_key = tensor.key
         session_ref = self.get_actor_ref(SessionActor.gen_name(self._session_id))
-        graph_ref = self.ctx.actor_ref(session_ref.get_graph_ref_by_tensor(tensor_key))
-        chunk_meta_ref = self.get_actor_ref(ChunkMetaActor.default_name())
+        graph_ref = self.ctx.actor_ref(session_ref.get_graph_ref_by_tensor_key(tensor_key))
 
-        chunk_indexes = graph_ref.get_tensor_chunk_indexes(tensor_key)
-        chunk_shapes = chunk_meta_ref.batch_get_chunk_shape(self._session_id, list(chunk_indexes.keys()))
-
-        ndim = len(chunk_shapes[0])
+        fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
         chunks = []
-        tensor_nsplits = [[] for _ in range(ndim)]
-
-        for key_index, chunk_shape in zip(chunk_indexes.items(), chunk_shapes):
-            chunk_key, chunk_index = key_index
-            fetch_op = TensorFetch(dtype=tensor.dtype)
-            chunk = fetch_op.new_chunk(None, chunk_shape, index=chunk_index, _key=chunk_key)
-            chunks.append(chunk)
-
-            # calculate nsplits
-            for i in range(ndim):
-                if all(idx == 0 for j, idx in enumerate(chunk_index) if j != i):
-                    tensor_nsplits[i].append(chunk_shape[i])
-
-        nsplits = tuple(tuple(n) for n in tensor_nsplits)
-        new_op = TensorFetch(dtype=tensor.dtype)
-        return new_op.new_tensor(None, tensor.shape, chunks=chunks, nsplits=nsplits, _key=tensor.key)
+        tensor_node = None
+        for node in fetch_graph:
+            if isinstance(node, ChunkData):
+                chunks.append(node)
+            else:
+                tensor_node = node
+        new_op = TensorFetch(dtype=tensor_node.dtype)
+        return new_op.new_tensor(None, tensor_node.shape, chunks=chunks,
+                                 nsplits=tensor_node.nsplits, _key=tensor_node.key)
 
     def fetch_tensor_result(self, tensor_key):
         from ..worker.transfer import ResultSenderActor

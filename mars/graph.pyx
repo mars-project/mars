@@ -398,7 +398,7 @@ cdef class DirectedGraph:
 
         from .core import ChunkData, TilesableData
 
-        node_type = TilesableData if s_graph.level == SerializableGraph.Level.ENTITY else ChunkData
+        node_type = TilesableData, ChunkData
         for node in s_graph.nodes:
             if isinstance(node, node_type):
                 graph._add_node(node)

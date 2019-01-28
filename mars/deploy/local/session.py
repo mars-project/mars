@@ -23,12 +23,15 @@ from ...compat import TimeoutError  # pylint: disable=W0622
 from ...graph import DirectedGraph
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
+from ...errors import ExecutionFailed
 
 
 class LocalClusterSession(object):
     def __init__(self, endpoint):
         self._session_id = uuid.uuid4()
         self._endpoint = endpoint
+        # dict structure: {tensor_key -> graph_key, tensor_ids}
+        # dict value is a tuple object which records graph key and tensor id
         self._executed_tensors = dict()
         self._api = MarsAPI(self._endpoint)
 
@@ -44,17 +47,19 @@ class LocalClusterSession(object):
         self._endpoint = endpoint
         self._api = MarsAPI(self._endpoint)
 
-    def _get_graph_key(self, tensor_key):
+    def _get_tensor_graph_key(self, tensor_key):
         return self._executed_tensors[tensor_key][0]
 
-    def _set_graph_key(self, tensor_key, tid, graph_key):
+    def _set_tensor_graph_key(self, tensor, graph_key):
+        tensor_key = tensor.key
+        tensor_id = tensor.id
         if tensor_key in self._executed_tensors:
-            self._executed_tensors[tensor_key][1].add(tid)
+            self._executed_tensors[tensor_key][1].add(tensor_id)
         else:
-            self._executed_tensors[tensor_key] = tuple([graph_key, {tid}])
+            self._executed_tensors[tensor_key] = graph_key, {tensor_id}
 
     def _update_tensor_shape(self, tensor):
-        graph_key = self._get_graph_key(tensor.key)
+        graph_key = self._get_tensor_graph_key(tensor.key)
         new_nsplits = self._api.get_tensor_nsplits(self._session_id, graph_key, tensor.key)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tensor.nsplits = new_nsplits
@@ -87,13 +92,13 @@ class LocalClusterSession(object):
                 break
             if graph_state == GraphState.FAILED:
                 # TODO(qin): add traceback
-                raise SystemError('Graph execution failed with unknown reason')
+                raise ExecutionFailed('Graph execution failed with unknown reason')
 
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
 
         for t in tensors:
-            self._set_graph_key(t.key, t.id, graph_key)
+            self._set_tensor_graph_key(t, graph_key)
 
         if not fetch:
             return
@@ -108,7 +113,7 @@ class LocalClusterSession(object):
             if key not in self._executed_tensors:
                 raise ValueError('Cannot fetch the unexecuted tensor')
 
-            graph_key = self._get_graph_key(tensor.key)
+            graph_key = self._get_tensor_graph_key(tensor.key)
             future = self._api.fetch_data(self._session_id, graph_key, key, wait=False)
             futures.append(future)
         return [dataserializer.loads(f.result()) for f in futures]

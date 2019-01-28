@@ -292,11 +292,12 @@ class Test(unittest.TestCase):
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
-            with self.assertRaises(SystemError):
+            with self.assertRaises(ExecutionFailed):
                 cluster.session.run(tensor)
 
     def testFetch(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             a1 = mt.ones((10, 20), chunk_size=8) + 1
@@ -315,10 +316,6 @@ class Test(unittest.TestCase):
             r4 = session.run(a2)
             np.testing.assert_array_equal(r4, r1)
 
-            del a2
-            with self.assertRaises(SystemError):
-                session.run(mt.ones((10, 20), chunk_size=8) + 1)
-
             with new_session('http://' + cluster._web_endpoint) as session:
                 a3 = mt.ones((5, 10), chunk_size=3) + 1
                 r1 = session.run(a3)
@@ -336,12 +333,9 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4)
                 np.testing.assert_array_equal(r4, r1)
 
-                del a4
-                with self.assertRaises(ExecutionFailed):
-                    session.run(mt.ones((5, 10), chunk_size=3) + 1)
-
     def testMultiSessionDecref(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session
 
             a = mt.ones((10, 20), chunk_size=8)
