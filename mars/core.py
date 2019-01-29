@@ -23,7 +23,7 @@ import numpy as np
 from .compat import six, izip, builtins, reduce
 from .utils import tokenize, AttributeDict, on_serialize_shape, on_deserialize_shape
 from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
-    ListField, TupleField, DictField, KeyField, BoolField, StringField
+    TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tilesable, handler
 from .graph import DAG
 

@@ -86,7 +86,7 @@ class Test(TestBase):
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
 
-        # test graph with tiled tensor
+        # test graph with tiled DataFrame
         t2 = from_pandas(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
         graph = DAG()
         graph.add_node(t2)
