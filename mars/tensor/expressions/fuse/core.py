@@ -33,7 +33,7 @@ class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
         for c in self.outputs[0].composed:
             out_shape = c.op.calc_shape(*in_shapes)
             if np.nan in out_shape:
-                out_shape = c.op.calc_rough_shape(*inputs_shape)
+                out_shape = c.op.calc_rough_shape(*in_shapes)
             in_shapes = [out_shape]
         return out_shape
 

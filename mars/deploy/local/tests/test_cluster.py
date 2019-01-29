@@ -243,12 +243,12 @@ class Test(unittest.TestCase):
 
             # test unknown-shape fusion
             with new_session('http://' + cluster._web_endpoint) as session2:
-                a = mt.random.rand(8, 8, chunk_size=4)
-                a[2:6, 2:6] = mt.ones((4, 4)) * 2
+                a = mt.random.rand(6, 6, chunk_size=3)
+                a[2:5, 2:5] = mt.ones((3, 3)) * 2
                 b = (a[a > 1] - 1) * 2
 
                 r = session2.run(b)
-                np.testing.assert_array_equal(r, np.ones((16,)) * 2)
+                np.testing.assert_array_equal(r, np.ones((9,)) * 2)
 
     def testExecutableTuple(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
