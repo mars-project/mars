@@ -73,7 +73,8 @@ class BaseApplication(object):
     def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
         parser.add_argument('-a', '--advertise', help='advertise ip')
-        parser.add_argument('-k', '--kv-store', help='address of kv store service, for instance, etcd')
+        parser.add_argument('-k', '--kv-store', help='address of kv store service, '
+                                                     'for instance, etcd://localhost:4001')
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
         parser.add_argument('-s', '--schedulers', help='endpoint of scheduler, when single scheduler '
                                                        'and etcd is not available')

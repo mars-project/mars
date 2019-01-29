@@ -14,13 +14,30 @@ Mars is easy to install by
 
     pip install pymars
 
-The distributed version can be installed by
+When you need to install dependencies needed by the distributed version, you can use the command below.
 
 .. code-block:: bash
 
     pip install 'pymars[distributed]'
 
 For now, distributed version is only available on Linux and Mac OS.
+
+
+Developer Install
+`````````````````
+
+When you want to contribute code to Mars, you can follow the instructions below to install Mars
+for development:
+
+.. code-block:: bash
+
+    git clone https://github.com/mars-project/mars.git
+    cd mars
+    pip install -e ".[dev]"
+
+More details about installing Mars can be found at
+`getting started <https://mars-project.readthedocs.io/en/latest/install.html>`_ section in
+Mars document.
 
 
 Mars tensor
@@ -163,6 +180,7 @@ After all mars processes are started, users can run
 Getting involved
 ----------------
 
+- Read `contribution guide <https://mars-project.readthedocs.io/en/latest/contributing.html>`_.
 - Join the mailing list: send an email to `mars-dev@googlegroups.com`_.
 - Please report bugs by submitting a `GitHub issue`_.
 - Submit contributions using `pull requests`_.

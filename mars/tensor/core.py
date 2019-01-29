@@ -50,11 +50,19 @@ class TensorChunkData(ChunkData):
         return calc_rough_shape(self)
 
 
+class TensorChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (TensorChunkData,)
+
+
 class TensorData(TilesableData):
     __slots__ = ()
 
     # required fields
     _dtype = DataTypeField('dtype')
+    _chunks = ListField('chunks', ValueType.reference(TensorChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
 
     @classmethod
     def cls(cls, provider):
@@ -268,11 +276,6 @@ class ExecutableTuple(tuple):
         if session is None:
             session = Session.default_or_local()
         return session.run(*self, **kw)
-
-
-class TensorChunk(Chunk):
-    __slots__ = ()
-    _allow_data_type_ = (TensorChunkData,)
 
 
 class Tensor(Entity):

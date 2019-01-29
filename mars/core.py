@@ -23,7 +23,7 @@ import numpy as np
 from .compat import six, izip, builtins, reduce
 from .utils import tokenize, AttributeDict, on_serialize_shape, on_deserialize_shape
 from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
-    ListField, TupleField, DictField, KeyField, BoolField, StringField
+    TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tilesable, handler
 from .graph import DAG
 
@@ -275,7 +275,6 @@ class TilesableData(SerializableWithKey, Tilesable):
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
-    _chunks = ListField('chunks', ValueType.reference(Chunk))
     _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
