@@ -23,6 +23,7 @@ from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
+from .session import SessionActor
 from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
 from ..compat import six, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
@@ -153,6 +154,7 @@ class GraphActor(SchedulerActor):
         self._kv_store_ref = None
         self._chunk_meta_ref = None
         self._graph_meta_ref = None
+        self._session_ref = None
 
         self._tensor_graph_cache = None
         self._chunk_graph_cache = None
@@ -180,6 +182,7 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
+        self._session_ref = self.ctx.actor_ref(SessionActor.gen_name(self._session_id))
 
         uid = GraphMetaActor.gen_name(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
@@ -816,40 +819,32 @@ class GraphActor(SchedulerActor):
 
     def build_fetch_graph(self, tensor_key):
         """
-        Convert single tensor to graph which contains one tensor node and multiple chunk nodes
+        Convert single tensor to tiled fetch tensor and put into a graph which only contains one tensor
         :param tensor_key: the key of tensor
         """
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         graph = DAG()
+
+        chunks = []
         for c in tiled_tensor.chunks:
             fetch_op = TensorFetch(dtype=c.dtype)
-            fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key).data
-            graph.add_node(fetch_chunk)
+            fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key)
+            chunks.append(fetch_chunk)
 
         new_op = TensorFetch(dtype=tiled_tensor.dtype)
-        new_tensor = new_op.new_tensor(None, tiled_tensor.shape,
+        new_tensor = new_op.new_tensor(None, tiled_tensor.shape, chunks=chunks,
                                        nsplits=tiled_tensor.nsplits, _key=tiled_tensor.key)
         graph.add_node(new_tensor)
         return serialize_graph(graph)
 
     def tile_fetch_tensor(self, tensor):
-        from .session import SessionActor
-
+        """
+        Find the owner of the input tensor and ask for tiling.
+        """
         tensor_key = tensor.key
-        session_ref = self.get_actor_ref(SessionActor.gen_name(self._session_id))
-        graph_ref = self.ctx.actor_ref(session_ref.get_graph_ref_by_tensor_key(tensor_key))
-
+        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tensor_key(tensor_key))
         fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
-        chunks = []
-        tensor_node = None
-        for node in fetch_graph:
-            if isinstance(node, ChunkData):
-                chunks.append(node)
-            else:
-                tensor_node = node
-        new_op = TensorFetch(dtype=tensor_node.dtype)
-        return new_op.new_tensor(None, tensor_node.shape, chunks=chunks,
-                                 nsplits=tensor_node.nsplits, _key=tensor_node.key)
+        return list(fetch_graph)[0]
 
     def fetch_tensor_result(self, tensor_key):
         from ..worker.transfer import ResultSenderActor
