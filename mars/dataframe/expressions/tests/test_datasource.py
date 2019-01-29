@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 
 from mars import opcodes as OperandDef
 from mars.graph import DAG
-from mars.dataframe.core import IndexValue
+from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
 from mars.tests.core import TestBase
 
@@ -85,6 +85,29 @@ class Test(TestBase):
         self.assertBaseEqual(t.op, t2.op)
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
+
+        # test graph with tiled tensor
+        t2 = from_pandas(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
+        graph = DAG()
+        graph.add_node(t2)
+
+        pb = graph.to_pb()
+        graph2 = DAG.from_pb(pb)
+        self.assertEqual(len(graph), len(graph2))
+        chunks = next(iter(graph2)).chunks
+        self.assertEqual(len(chunks), 6)
+        self.assertIsInstance(chunks[0], DataFrameChunk)
+        self.assertEqual(chunks[0].index, t2.chunks[0].index)
+        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
+
+        jsn = graph.to_json()
+        graph2 = DAG.from_json(jsn)
+        self.assertEqual(len(graph), len(graph2))
+        chunks = next(iter(graph2)).chunks
+        self.assertEqual(len(chunks), 6)
+        self.assertIsInstance(chunks[0], DataFrameChunk)
+        self.assertEqual(chunks[0].index, t2.chunks[0].index)
+        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
 
     def testFromPandas(self):
         data = pd.DataFrame(np.random.rand(10, 10))

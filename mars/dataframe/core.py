@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from ..core import ChunkData, Chunk, Entity, TilesableData
-from ..serialize import Serializable, ProviderType, DataTypeField, AnyField, SeriesField, \
+from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, SeriesField, \
     BoolField, Int64Field, Int32Field, ListField, SliceField, OneOfField, ReferenceField
 
 
@@ -136,6 +136,9 @@ class IndexData(TilesableData):
     # optional field
     _dtype = DataTypeField('dtype')
     _index_value = ReferenceField('index_value', IndexValue)
+    _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x)
 
     @classmethod
     def cls(cls, provider):
@@ -188,6 +191,9 @@ class SeriesData(TilesableData):
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue)
+    _chunks = ListField('chunks', ValueType.reference(SeriesChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
 
     @property
     def dtype(self):
@@ -238,6 +244,9 @@ class DataFrameData(TilesableData):
     # optional field
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
+    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
     @property
     def dtypes(self):

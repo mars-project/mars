@@ -275,7 +275,6 @@ class TilesableData(SerializableWithKey, Tilesable):
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
-    _chunks = ListField('chunks', ValueType.reference(Chunk))
     _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
