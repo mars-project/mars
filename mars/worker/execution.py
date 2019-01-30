@@ -95,17 +95,17 @@ class GraphResultRecord(object):
     """
     Execution result of a graph
     """
-    __slots__ = 'data_sizes', 'exc', 'accept'
+    __slots__ = 'data_sizes', 'exc', 'succeeded'
 
     def __init__(self, *args, **kwargs):
-        accept = self.accept = kwargs.pop('_accept', True)
-        if accept:
+        succeeded = self.succeeded = kwargs.pop('succeeded', True)
+        if succeeded:
             self.data_sizes = args[0]
         else:
             self.exc = args
 
     def build_args(self):
-        if self.accept:
+        if self.succeeded:
             return (self.data_sizes,), {}
         else:
             return self.exc, dict(_accept=False)
@@ -203,7 +203,7 @@ class ExecutionActor(WorkerActor):
         for k in pred_keys or ():
             try:
                 pred_result = self._result_cache[(session_id, k)]
-                if pred_result.accept:
+                if pred_result.succeeded:
                     graph_record.data_sizes.update(pred_result.data_sizes)
                 else:
                     graph_record.undone_pred_keys.add(k)
@@ -502,7 +502,7 @@ class ExecutionActor(WorkerActor):
             else:
                 logger.exception('Unexpected error occurred in executing %s', graph_key, exc_info=exc)
 
-            self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(_accept=False))
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
             self._invoke_finish_callbacks(session_id, graph_key)
 
         self._prepare_graph_inputs(session_id, graph_key) \
