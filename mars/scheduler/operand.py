@@ -81,6 +81,11 @@ class OperandActor(SchedulerActor):
         # set of finished successors, used to detect whether we can do clean up
         self._finish_succs = set()
 
+        # set of running predecessors and workers of predecessors,
+        # used to decide whether to pre-push to a worker
+        self._running_preds = set()
+        self._pred_workers = set()
+
         self._input_worker_scores = dict()
         self._worker_scores = dict()
 
@@ -127,7 +132,8 @@ class OperandActor(SchedulerActor):
             self._graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False),
         ]
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/state' % self._op_path, value.name, _tell=True, _wait=False))
+            futures.append(self._kv_store_ref.write(
+                '%s/state' % self._op_path, value.name, _tell=True, _wait=False))
         [f.result() for f in futures]
 
     @property
@@ -141,7 +147,8 @@ class OperandActor(SchedulerActor):
         ]
         if self._kv_store_ref is not None:
             if value:
-                futures.append(self._kv_store_ref.write('%s/worker' % self._op_path, value, _tell=True, _wait=False))
+                futures.append(self._kv_store_ref.write(
+                    '%s/worker' % self._op_path, value, _tell=True, _wait=False))
             elif self._worker is not None:
                 futures.append(self._kv_store_ref.delete(
                     '%s/worker' % self._op_path, silent=True, _tell=True, _wait=False))
@@ -159,7 +166,8 @@ class OperandActor(SchedulerActor):
         self._info['retries'] = value
 
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write('%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
+            futures.append(self._kv_store_ref.write(
+                '%s/retries' % self._op_path, str(value), _tell=True, _wait=False))
 
         retry_timestamp = time.time()
         self._info['retry_timestamp'] = retry_timestamp
@@ -168,10 +176,41 @@ class OperandActor(SchedulerActor):
                                                     _tell=True, _wait=False))
         [f.result() for f in futures]
 
+    def add_running_predecessor(self, op_key, worker):
+        self._running_preds.add(op_key)
+        self._pred_workers.add(worker)
+        if len(self._pred_workers) > 1:
+            # we do not push when multiple workers in input
+            self._pred_workers = set()
+            self._running_preds = set()
+            return
+
+        if self.state != OperandState.UNSCHEDULED:
+            return
+
+        if all(k in self._running_preds for k in self._pred_keys):
+            try:
+                if worker in self._assigned_workers:
+                    return
+                serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
+
+                self._get_execution_ref(address=worker).enqueue_graph(
+                    self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                    dict(), self._info['optimize'], succ_keys=self._succ_keys,
+                    pred_keys=self._pred_keys, _promise=True) \
+                    .then(functools.partial(self._handle_worker_accept, worker))
+                self._assigned_workers.add(worker)
+                logger.debug('Pre-push operand %s into worker %s.', self._op_key, worker)
+            except:  # noqa: E722
+                logger.exception('Failed to pre-push operand %s', self._op_key)
+            finally:
+                self._pred_workers = set()
+                self._running_preds = set()
+
     def add_finished_predecessor(self, op_key):
         self._finish_preds.add(op_key)
         if all(k in self._finish_preds for k in self._pred_keys):
-            if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
+            if self.state in (OperandState.RUNNING, OperandState.CANCELLING, OperandState.CANCELLED):
                 return True
             # all predecessors done, the operand can be executed now
             self.start_operand(OperandState.READY)
@@ -221,12 +260,13 @@ class OperandActor(SchedulerActor):
                 '%s/optimize/demand_depths' % self._op_path,
                 base64.b64encode(array_to_bytes('I', demand_depths)), _tell=True, _wait=False)
         futures = []
-        if self.state == OperandState.READY:
-            # if the operand is already submitted to AssignerActor, we need to update the priority
-            for w in self._assigned_workers:
-                futures.append(self._get_execution_ref(address=w).update_priority(
-                    self._session_id, self._op_key, optimize_data, _tell=True, _wait=False))
-        else:
+
+        # if the operand is already submitted to AssignerActor, we need to update the priority
+        for w in self._assigned_workers:
+            futures.append(self._get_execution_ref(address=w).update_priority(
+                self._session_id, self._op_key, optimize_data, _tell=True, _wait=False))
+
+        if self.state != OperandState.READY:
             # send update command to predecessors
             for in_key in self._pred_keys:
                 futures.append(self._get_operand_actor(in_key).update_demand_depths(
@@ -446,11 +486,12 @@ class OperandActor(SchedulerActor):
                 self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
         except:
             raise
-        self.ref().start_operand(OperandState.RUNNING, _tell=True)
+        # here we start running immediately to avoid accidental state change
+        # and potential submission
+        self.start_operand(OperandState.RUNNING)
 
     @log_unhandled
     def _on_ready(self):
-        self.worker = None
         self._execution_ref = None
 
         # if under retry, give application a delay
@@ -484,7 +525,8 @@ class OperandActor(SchedulerActor):
             try:
                 self._get_execution_ref(address=worker_ep).enqueue_graph(
                     self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                    data_sizes, self._info['optimize'], _delay=delay, _promise=True) \
+                    data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
+                    _delay=delay, _promise=True) \
                     .then(functools.partial(self._handle_worker_accept, worker_ep))
             except:
                 self._assigned_workers.difference_update([worker_ep])
@@ -511,6 +553,7 @@ class OperandActor(SchedulerActor):
 
             if exc and issubclass(exc[0], ResourceInsufficient):
                 # resource insufficient: just set to READY and continue
+                self.worker = None
                 self.state = OperandState.READY
                 self.ref().start_operand(_tell=True)
             elif exc and issubclass(exc[0], ExecutionInterrupted):
@@ -531,10 +574,17 @@ class OperandActor(SchedulerActor):
                     self.state = OperandState.FATAL
                 else:
                     self.state = OperandState.READY
+                self.worker = None
                 self.ref().start_operand(_tell=True)
 
         self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
             .then(_acceptor, _rejecter)
+
+        futures = []
+        for out_key in self._succ_keys:
+            futures.append(self._get_operand_actor(out_key).add_running_predecessor(
+                self._op_key, self.worker, _tell=True, _wait=False))
+        [f.result() for f in futures]
 
     @log_unhandled
     def _on_finished(self):
@@ -547,7 +597,7 @@ class OperandActor(SchedulerActor):
         # record if successors can be executed
         for out_key in self._succ_keys:
             futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
-                self._op_key, _wait=False))
+                self._op_key, _tell=True, _wait=False))
         for in_key in self._pred_keys:
             futures.append(self._get_operand_actor(in_key).add_finished_successor(
                 self._op_key, _tell=True, _wait=False))

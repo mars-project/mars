@@ -50,10 +50,11 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         self._chunk_store = PlasmaChunkStore(self._plasma_client)
 
-    def get_meta_ref(self, session_id, chunk_key):
-        from ..scheduler.chunkmeta import LocalChunkMetaActor
+    def get_meta_ref(self, session_id, chunk_key, local=True):
+        from ..scheduler.chunkmeta import ChunkMetaActor, LocalChunkMetaActor
         addr = self.get_scheduler((session_id, chunk_key))
-        return self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=addr)
+        actor_cls = LocalChunkMetaActor if local else ChunkMetaActor
+        return self.ctx.actor_ref(actor_cls.default_name(), address=addr)
 
 
 class ExpMeanHolder(object):

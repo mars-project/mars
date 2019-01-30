@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import functools
 import tempfile
 import threading
 import time
@@ -181,9 +182,6 @@ class Test(WorkerCase):
                 raise SystemError('Timed out')
 
     def testSimpleExecution(self):
-        logger = logging.getLogger(ExecutionActor.__module__)
-        logger.setLevel(logging.DEBUG)
-
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False)
@@ -248,6 +246,112 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
             self.get_result()
+
+    def testPrepushGraph(self):
+        import mars.tensor as mt
+        from mars.graph import DAG
+        from mars.tensor.expressions.datasource import TensorFetch
+
+        data_inputs = [np.random.random((4,)) for _ in range(2)]
+
+        arr_inputs = [mt.tensor(di, chunk_size=4) for di in data_inputs]
+        arr_add = arr_inputs[0] + arr_inputs[1]
+
+        graph_inputs = [a.build_graph(tiled=True) for a in arr_inputs]
+        graph_input_op_keys = [a.chunks[0].op.key for a in arr_inputs]
+        arr_add.build_graph(tiled=True)
+
+        graph_add = DAG()
+        input_chunks = []
+        for a in arr_inputs:
+            fetch_op = TensorFetch(dtype=a.dtype, to_fetch_key=a.chunks[0].key)
+            inp_chunk = fetch_op.new_chunk(None, a.shape, _key=a.chunks[0].key).data
+            input_chunks.append(inp_chunk)
+
+        new_op = arr_add.chunks[0].op.copy()
+        new_add_chunk = new_op.new_chunk(input_chunks, arr_add.shape, index=arr_add.chunks[0].index,
+                                         dtype=arr_add.dtype, _key=arr_add.chunks[0].key)
+        graph_add.add_node(new_add_chunk)
+        for inp_chunk in input_chunks:
+            graph_add.add_node(inp_chunk)
+            graph_add.add_edge(inp_chunk, new_add_chunk)
+        graph_add_key = arr_add.chunks[0].op.key
+
+        pool_address = '127.0.0.1:%d' % get_next_port()
+        session_id = str(uuid.uuid4())
+
+        def _validate(_):
+            data = test_actor._chunk_store.get(session_id, arr_add.chunks[0].key)
+            assert_array_equal(data, data_inputs[0] + data_inputs[1])
+
+        options.worker.spill_directory = tempfile.mkdtemp('mars_worker_prep_spilled-')
+
+        # register when all predecessors unfinished
+        with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
+            pool.create_actor(SpillActor)
+            pool.create_actor(CpuCalcActor)
+
+            with self.run_actor_test(pool) as test_actor:
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(
+                    session_id, graph_add_key, serialize_graph(graph_add),
+                    dict(chunks=[new_add_chunk.key]), None,
+                    pred_keys=graph_input_op_keys, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_add_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+                for ginput, op_key, gtensor in zip(graph_inputs, graph_input_op_keys, arr_inputs):
+                    def _start_exec_promise(session_id, op_key, *_):
+                        return execution_ref.start_execution(session_id, op_key, _promise=True)
+
+                    execution_ref.enqueue_graph(
+                        session_id, op_key, serialize_graph(ginput),
+                        dict(chunks=[gtensor.chunks[0].key]), None,
+                        succ_keys=[new_add_chunk.op.key], _promise=True) \
+                        .then(functools.partial(_start_exec_promise, session_id, op_key))
+
+                self.get_result()
+
+        pool_address = '127.0.0.1:%d' % get_next_port()
+        session_id = str(uuid.uuid4())
+
+        # register when part of predecessors unfinished
+        with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
+            pool.create_actor(SpillActor)
+            pool.create_actor(CpuCalcActor)
+
+            with self.run_actor_test(pool) as test_actor:
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+
+                execution_ref.enqueue_graph(
+                    session_id, graph_input_op_keys[0], serialize_graph(graph_inputs[0]),
+                    dict(chunks=[input_chunks[0].key]), None,
+                    succ_keys=[new_add_chunk.op.key], _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_input_op_keys[0], _promise=True)) \
+                    .then(lambda *_: test_actor.set_result(None, destroy=False)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+                self.get_result()
+
+                execution_ref.enqueue_graph(
+                    session_id, graph_add_key, serialize_graph(graph_add),
+                    dict(chunks=[new_add_chunk.key]), None,
+                    pred_keys=graph_input_op_keys, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_add_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+                execution_ref.enqueue_graph(
+                    session_id, graph_input_op_keys[1], serialize_graph(graph_inputs[1]),
+                    dict(chunks=[input_chunks[1].key]), None,
+                    succ_keys=[new_add_chunk.op.key], _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_input_op_keys[1], _promise=True))
+
+                self.get_result()
 
     @patch_method(ChunkHolderActor.pin_chunks)
     def testPrepareQuota(self, *_):
@@ -317,7 +421,7 @@ class Test(WorkerCase):
             pool.create_actor(SpillActor)
             pool.create_actor(CpuCalcActor)
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
-            chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
+            pool.actor_ref(ChunkHolderActor.default_name())
 
             import mars.tensor as mt
             from mars.tensor.expressions.datasource import TensorFetch
@@ -331,6 +435,7 @@ class Test(WorkerCase):
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
 
+            # test meta missing
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
@@ -347,6 +452,7 @@ class Test(WorkerCase):
                                           shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
+            # test read from spilled file
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
                     data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
@@ -356,35 +462,6 @@ class Test(WorkerCase):
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-            self.get_result()
-
-            chunk_meta_ref.destroy()
-            chunk_holder_ref.destroy()
-            pool.create_actor(ChunkHolderActor, uid=ChunkHolderActor.default_name())
-            chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
-            write_spill_file(modified_chunk.key, mock_data)
-
-            with self.run_actor_test(pool) as test_actor:
-                def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
-                    assert_array_equal(data, mock_data + np.ones((4,)))
-
-                graph_key = str(uuid.uuid4())
-                op_meta = dict(
-                    chunks=[result_tensor.chunks[0].key],
-                    input_chunks=[modified_chunk.key],
-                    shared_input_chunks=[modified_chunk.key],
-                )
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                            op_meta, None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \

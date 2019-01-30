@@ -226,10 +226,10 @@ class PromiseRefWrapper(object):
         self._caller = caller  # type: PromiseActor
 
     def send(self, message):
-        return self._ref.send(self, message)
+        return self._ref.send(message)
 
     def tell(self, message, delay=None):
-        return self._ref.tell(self, message, delay=delay)
+        return self._ref.tell(message, delay=delay)
 
     def destroy(self):
         return self._ref.destroy_actor(self)
