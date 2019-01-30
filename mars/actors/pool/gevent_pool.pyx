@@ -378,8 +378,6 @@ class Connections(object):
                 lock.acquire()
                 try:
                     conn = gevent.socket.create_connection(self.address)
-                except ConnectionRefusedError:
-                    raise
                 except socket.error as exc:  # pragma: no cover
                     if exc.errno == errno.ECONNREFUSED:
                         raise ConnectionRefusedError
@@ -496,7 +494,7 @@ cdef class ActorRemoteHelper:
         def on_success(g):
             actor_ref = g.value
             actor_ref.ctx = ActorContext(self)
-            if callback:
+            if callback is not None:
                 callback(actor_ref)
             future.set_result(actor_ref)
 
@@ -520,7 +518,7 @@ cdef class ActorRemoteHelper:
 
         def on_success(g):
             ret = g.value
-            if callback:
+            if callback is not None:
                 callback(ret)
             future.set_result(ret)
 
@@ -646,12 +644,13 @@ cdef class Communicator(AsyncHandler):
         }
 
     cpdef _dispatch(self, local_func, redirect_func, remote_func, ActorRef actor_ref, args, kwargs):
+        cdef int send_to_index
         if actor_ref.address is None or actor_ref.address == self.cluster_info.address:
             if self.cluster_info.n_process == 1:
-                send_to_index = self.pool.index
+                send_to_index = self.index
             else:
                 send_to_index = self.distributor.distribute(actor_ref.uid)
-            if send_to_index == self.pool.index:
+            if send_to_index == self.index:
                 # send to local actor_pool
                 return local_func(*args, **kwargs)
             else:
@@ -688,7 +687,7 @@ cdef class Communicator(AsyncHandler):
             # send, not wait
             def on_success(g):
                 ret = g.value
-                if callback:
+                if callback is not None:
                     callback(ret)
                 future.set_result(ret)
 
@@ -702,7 +701,7 @@ cdef class Communicator(AsyncHandler):
             p.link_value(on_success)
             p.link_exception(on_failure)
         else:
-            if callback:
+            if callback is not None:
                 callback(None)
             # tell, directly set future result None
             future.set_result(None)
@@ -777,7 +776,7 @@ cdef class Communicator(AsyncHandler):
         future = gevent.event.AsyncResult()
         try:
             res = self.pool.create_actor(actor_cls, actor_ref.uid, *args, **kwargs)
-            if callback:
+            if callback is not None:
                 callback(res)
             future.set_result(res)
         except:
@@ -845,7 +844,7 @@ cdef class Communicator(AsyncHandler):
         future = gevent.event.AsyncResult()
         try:
             res = self.pool.destroy_actor(actor_ref.uid)
-            if callback:
+            if callback is not None:
                 callback(res)
             future.set_result(res)
         except:
@@ -886,7 +885,7 @@ cdef class Communicator(AsyncHandler):
         future = gevent.event.AsyncResult()
         try:
             ret = self.pool.has_actor(actor_ref.uid)
-            if callback:
+            if callback is not None:
                 callback(ret)
             future.set_result(ret)
         except:

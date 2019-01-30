@@ -18,6 +18,7 @@ import unittest
 
 import mars.tensor as mt
 from mars.cluster_info import ClusterInfoActor
+from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
     AssignerActor, GraphState
 from mars.utils import serialize_graph, get_next_port
@@ -50,7 +51,7 @@ class Test(unittest.TestCase):
             self.assertIsNotNone(fetched_graph)
             self.assertEqual(len(chunked_graph), len(fetched_graph))
 
-            graph_ref.scan_node()
+            graph_ref.analyze_graph(do_placement=False)
             op_infos = graph_ref.get_operand_info()
             for n in fetched_graph:
                 depth = op_infos[n.op.key]['optimize']['depth']
@@ -63,7 +64,7 @@ class Test(unittest.TestCase):
             resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
             resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
 
-            graph_ref.place_initial_chunks()
+            graph_ref.analyze_graph()
             op_infos = graph_ref.get_operand_info()
 
             for n in fetched_graph:
@@ -222,7 +223,8 @@ class Test(unittest.TestCase):
             def _mock_cancels(*_):
                 graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
                 graph_meta_ref.set_state(GraphState.CANCELLING)
+                return dict()
 
-            with patch_method(GraphActor.place_initial_chunks, new=_mock_cancels):
+            with patch_method(GraphAnalyzer.calc_initial_assignments, new=_mock_cancels):
                 graph_ref.execute_graph()
             self.assertEqual(graph_ref.get_state(), GraphState.CANCELLED)

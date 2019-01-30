@@ -82,7 +82,7 @@ class Test(unittest.TestCase):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
-        graph = arr2.build_graph()
+        graph = arr2.build_graph(compose=False, tiled=True)
 
         dot = str(graph.to_dot(trunc_key=5))
         self.assertTrue(str(n.op.key)[5] in dot for n in graph)

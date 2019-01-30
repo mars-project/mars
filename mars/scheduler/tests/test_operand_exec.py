@@ -200,8 +200,7 @@ class Test(unittest.TestCase):
                 graph_ref.prepare_graph()
                 fetched_graph = graph_ref.get_chunk_graph()
 
-                graph_ref.scan_node()
-                graph_ref.place_initial_chunks()
+                graph_ref.analyze_graph()
 
                 final_keys = set()
                 for c in fetched_graph:
@@ -273,7 +272,7 @@ class Test(unittest.TestCase):
         try:
             options.scheduler.retry_delay = 0
             self._run_operand_case(session_id, graph_key, arr2,
-                                   lambda pool: pool.create_actor(FakeExecutionActor, fail_count=4))
+                                   lambda pool: pool.create_actor(FakeExecutionActor, fail_count=5))
         finally:
             options.scheduler.retry_delay = 60
 
@@ -325,8 +324,7 @@ class Test(unittest.TestCase):
                 graph_ref.prepare_graph()
                 fetched_graph = graph_ref.get_chunk_graph()
 
-                graph_ref.scan_node()
-                graph_ref.place_initial_chunks()
+                graph_ref.analyze_graph()
 
                 final_keys = set()
                 for c in fetched_graph:

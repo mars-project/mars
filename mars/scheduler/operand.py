@@ -551,12 +551,7 @@ class OperandActor(SchedulerActor):
                 self.free_data(OperandState.CANCELLED)
                 return
 
-            if exc and issubclass(exc[0], ResourceInsufficient):
-                # resource insufficient: just set to READY and continue
-                self.worker = None
-                self.state = OperandState.READY
-                self.ref().start_operand(_tell=True)
-            elif exc and issubclass(exc[0], ExecutionInterrupted):
+            if exc and issubclass(exc[0], ExecutionInterrupted):
                 # job cancelled: switch to cancelled
                 logger.warning('Execution of operand %s interrupted.', self._op_key)
                 self.free_data(OperandState.CANCELLED)

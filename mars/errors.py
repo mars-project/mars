@@ -29,16 +29,6 @@ class MarsError(RuntimeError):
         return message or ''
 
 
-class ResourceInsufficient(MarsError):
-    def __init__(self, msg=None, **kwargs):
-        super(ResourceInsufficient, self).__init__(msg)
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def __getattr__(self, item):
-        return None
-
-
 class StartArgumentError(MarsError):
     pass
 
