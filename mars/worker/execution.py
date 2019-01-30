@@ -244,7 +244,7 @@ class ExecutionActor(WorkerActor):
                 continue
 
             missing_keys = [c.key for c in succ_rec.graph if c.key not in succ_rec.data_sizes
-                            and isinstance(c.op, TensorFetchChunk)]
+                            and isinstance(c.op, TensorFetch)]
             if missing_keys:
                 sizes = self.get_meta_ref(session_id, graph_key, local=False) \
                     .batch_get_chunk_size(session_id, missing_keys)
@@ -608,10 +608,7 @@ class ExecutionActor(WorkerActor):
                         if alloc_key in graph_record.mem_request:
                             target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
                 elif chunk.key in graph_record.targets:
-                    try:
-                        target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
-                    except KeyError:
-                        raise
+                    target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
 
             logger.debug('Start calculation for graph %s in actor %s', graph_key, calc_uid)
 

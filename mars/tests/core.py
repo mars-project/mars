@@ -34,7 +34,7 @@ from mars.serialize import serializes, deserializes, \
 
 if compat.PY27:
     try:
-        import mock
+        import mock  # noqa F821
     except ImportError:
         mock = None
 else:

@@ -78,10 +78,13 @@ class OperandActor(SchedulerActor):
         self._execution_ref = None
         # set of finished predecessors, used to decide whether we should move the operand to ready
         self._finish_preds = set()
-        # set of running predecessors, used to decide whether to push to a worker
-        self._pred_workers = dict()
         # set of finished successors, used to detect whether we can do clean up
         self._finish_succs = set()
+
+        # set of running predecessors and workers of predecessors,
+        # used to decide whether to pre-push to a worker
+        self._running_preds = set()
+        self._pred_workers = set()
 
         self._input_worker_scores = dict()
         self._worker_scores = dict()
@@ -174,25 +177,35 @@ class OperandActor(SchedulerActor):
         [f.result() for f in futures]
 
     def add_running_predecessor(self, op_key, worker):
-        self._pred_workers[op_key] = worker
+        self._running_preds.add(op_key)
+        self._pred_workers.add(worker)
+        if len(self._pred_workers) > 1:
+            # we do not push when multiple workers in input
+            self._pred_workers = set()
+            self._running_preds = set()
+            return
+
         if self.state != OperandState.UNSCHEDULED:
             return
-        if all(k in self._pred_workers for k in self._pred_keys):
-            if len(set(self._pred_workers.values())) == 1:
+
+        if all(k in self._running_preds for k in self._pred_keys):
+            try:
                 if worker in self._assigned_workers:
                     return
-
                 serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
-                try:
-                    self._get_execution_ref(address=worker).enqueue_graph(
-                        self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                        dict(), self._info['optimize'], succ_keys=self._succ_keys,
-                        pred_keys=self._pred_keys, _promise=True) \
-                        .then(functools.partial(self._handle_worker_accept, worker))
-                    self._assigned_workers.add(worker)
-                    logger.debug('Pre-push operand %s into worker %s.', self._op_key, worker)
-                except:
-                    pass
+
+                self._get_execution_ref(address=worker).enqueue_graph(
+                    self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                    dict(), self._info['optimize'], succ_keys=self._succ_keys,
+                    pred_keys=self._pred_keys, _promise=True) \
+                    .then(functools.partial(self._handle_worker_accept, worker))
+                self._assigned_workers.add(worker)
+                logger.debug('Pre-push operand %s into worker %s.', self._op_key, worker)
+            except:  # noqa: E722
+                logger.exception('Failed to pre-push operand %s', self._op_key)
+            finally:
+                self._pred_workers = set()
+                self._running_preds = set()
 
     def add_finished_predecessor(self, op_key):
         self._finish_preds.add(op_key)
@@ -499,7 +512,6 @@ class OperandActor(SchedulerActor):
                            self._op_key)
             self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             return
-        data_sizes = dict(zip(self._input_chunks, chunk_sizes))
 
         new_assignment = [a for a in new_assignment if a not in self._assigned_workers]
         self._assigned_workers.update(new_assignment)
