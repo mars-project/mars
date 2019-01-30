@@ -24,7 +24,7 @@ from .. import promise
 from ..compat import Enum
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
-from ..tensor.expressions.datasource import TensorFetchChunk
+from ..tensor.expressions.datasource import TensorFetch
 from ..utils import deserialize_graph, log_unhandled
 from .chunkholder import ensure_chunk
 from .spill import spill_exists
@@ -222,7 +222,7 @@ class ExecutionActor(WorkerActor):
 
         # collect potential allocation sizes
         for chunk in graph:
-            if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in graph_record.targets:
+            if not isinstance(chunk.op, TensorFetch) and chunk.key in graph_record.targets:
                 # use estimated size as potential allocation size
                 alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
                 alloc_cache_batch[chunk.key] = chunk.rough_nbytes
@@ -332,7 +332,7 @@ class ExecutionActor(WorkerActor):
         graph_record = self._graph_records[session_graph_key]
         graph = graph_record.graph
 
-        ops = set(type(c.op).__name__ for c in graph if not isinstance(c.op, TensorFetchChunk))
+        ops = set(type(c.op).__name__ for c in graph if not isinstance(c.op, TensorFetch))
         op_calc_key = ('calc_speed.' + list(ops)[0]) if len(ops) == 1 else None
 
         stats = defaultdict(lambda: dict(count=0))
@@ -354,7 +354,7 @@ class ExecutionActor(WorkerActor):
 
         if calc_fetch:
             for c in graph:
-                if not isinstance(c.op, TensorFetchChunk):
+                if not isinstance(c.op, TensorFetch):
                     break
                 input_size += c.nbytes
                 if self._chunk_holder_ref.is_stored(c.key):
@@ -468,7 +468,7 @@ class ExecutionActor(WorkerActor):
 
         handled_keys = set()
         for chunk in graph_record.graph:
-            if not isinstance(chunk.op, TensorFetchChunk):
+            if not isinstance(chunk.op, TensorFetch):
                 continue
             if chunk.key in handled_keys:
                 continue
@@ -538,7 +538,7 @@ class ExecutionActor(WorkerActor):
             # get allocation for calc, in case that memory exhausts
             target_allocs = dict()
             for chunk in graph_record.graph:
-                if isinstance(chunk.op, TensorFetchChunk):
+                if isinstance(chunk.op, TensorFetch):
                     if not self._chunk_holder_ref.is_stored(chunk.key):
                         alloc_key = self._build_load_key(graph_key, chunk.key)
                         if alloc_key in graph_record.mem_request:

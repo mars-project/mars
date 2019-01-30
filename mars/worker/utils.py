@@ -118,10 +118,10 @@ class ExpiringCache(dict):
 
 
 def concat_operand_keys(graph, sep=','):
-    from ..tensor.expressions.datasource import TensorFetchChunk
+    from ..tensor.expressions.datasource import TensorFetch
     graph_op_dict = OrderedDict()
     for c in graph:
-        if isinstance(c.op, TensorFetchChunk):
+        if isinstance(c.op, TensorFetch):
             continue
         graph_op_dict[c.op.key] = type(c.op).__name__
     keys = sep.join(graph_op_dict.keys())

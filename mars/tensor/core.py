@@ -354,7 +354,10 @@ class _TensorCleaner(object):
 
     def register(self, tensor, session):
         with build_mode():
-            self._tensor_to_sessions[tensor] = _TensorSession(tensor, session)
+            if tensor in self._tensor_to_sessions:
+                self._tensor_to_sessions[tensor].append(_TensorSession(tensor, session))
+            else:
+                self._tensor_to_sessions[tensor] = [_TensorSession(tensor, session)]
 
 
 # we don't use __del__ to decref because a tensor holds an op,

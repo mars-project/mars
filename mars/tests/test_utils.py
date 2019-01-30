@@ -23,6 +23,8 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars import utils
+from mars.tensor.expressions.datasource.core import TensorFetch
+import mars.tensor as mt
 
 try:
     unicode  # noqa F821
@@ -97,3 +99,58 @@ class Test(unittest.TestCase):
                               index=['a'], columns=['中文', 'data'])
             v = [df, df.index, df.columns, df['data']]
             self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+
+    def testBuildGraph(self):
+        a = mt.ones((10, 10), chunk_size=8)
+        b = mt.ones((10, 10), chunk_size=8)
+        c = (a + 1) * 2 + b
+
+        graph = utils.build_graph([c])
+        self.assertEqual(len(graph), 5)
+        self.assertIn(a.data, graph)
+        self.assertIn(b.data, graph)
+        self.assertEqual(graph.count_successors(a.data), 1)
+        self.assertEqual(graph.count_predecessors(a.data), 0)
+        self.assertEqual(graph.count_successors(c.data), 0)
+        self.assertEqual(graph.count_predecessors(c.data), 2)
+
+        graph = utils.build_graph([a, b, c])
+        self.assertEqual(len(graph), 5)
+
+        graph = utils.build_graph([a, b, c], graph=graph)
+        self.assertEqual(len(graph), 5)
+
+        graph = utils.build_graph([c], tiled=True, compose=False)
+        self.assertEqual(len(graph), 20)
+
+        graph = utils.build_graph([c], tiled=True)
+        self.assertEqual(len(graph), 12)
+
+        # test fetch replacement
+        a = mt.ones((10, 10), chunk_size=8)
+        b = mt.ones((10, 10), chunk_size=8)
+        c = (a + 1) * 2 + b
+        executed_keys = [a.key, b.key]
+
+        graph = utils.build_graph([c], executed_keys=executed_keys)
+        self.assertEqual(len(graph), 5)
+        self.assertNotIn(a.data, graph)
+        self.assertNotIn(b.data, graph)
+        self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
+        self.assertEqual(graph.count_successors(c.data), 0)
+        self.assertEqual(graph.count_predecessors(c.data), 1)
+
+        executed_keys = [(a + 1).key]
+        graph = utils.build_graph([c], executed_keys=executed_keys)
+        self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
+        self.assertEqual(len(graph), 4)
+
+        executed_keys = [((a + 1) * 2).key]
+        graph = utils.build_graph([c], executed_keys=executed_keys)
+        self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
+        self.assertEqual(len(graph), 3)
+
+        executed_keys = [c.key]
+        graph = utils.build_graph([c], executed_keys=executed_keys)
+        self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
+        self.assertEqual(len(graph), 1)

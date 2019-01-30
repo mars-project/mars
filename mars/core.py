@@ -369,7 +369,10 @@ class TilesableData(SerializableWithKey, Tilesable):
     def single_tiles(self):
         return handler.single_tiles(self)
 
-    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True):
+    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
+        from .tensor.expressions.utils import convert_to_fetch
+
+        executed_keys = executed_keys or []
         if tiled and self.is_coarse():
             self.tiles()
 
@@ -384,11 +387,18 @@ class TilesableData(SerializableWithKey, Tilesable):
         visited = set()
         while len(nodes) > 0:
             node = nodes.pop()
+
+            # replace executed tensor/chunk by tensor/chunk with fetch op
+            if node.key in executed_keys:
+                node = convert_to_fetch(node)
+
             visited.add(node)
             if not graph.contains(node):
                 graph.add_node(node)
             children = node.inputs or []
             for c in children:
+                if c.key in executed_keys:
+                    continue
                 if not graph.contains(c):
                     graph.add_node(c)
                 if not graph.has_successor(c, node):

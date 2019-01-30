@@ -23,6 +23,7 @@ from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
+from .session import SessionActor
 from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
 from ..compat import six, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
@@ -30,6 +31,8 @@ from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
+from ..tensor.expressions.datasource.core import TensorFetch
+from ..tensor.core import ChunkData
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +51,13 @@ class ResultReceiverActor(SchedulerActor):
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
     def fetch_tensor(self, session_id, graph_key, tensor_key):
-        from ..tensor.expressions.datasource import TensorFetchChunk
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
         fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
 
-        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetchChunk):
+        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetch):
             c = next(fetch_graph.iter_nodes())
             worker_ip = self._chunk_meta_ref.get_workers(session_id, c.key)[-1]
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
@@ -65,7 +67,7 @@ class ResultReceiverActor(SchedulerActor):
             ctx = dict()
             target_keys = set()
             for c in fetch_graph:
-                if isinstance(c.op, TensorFetchChunk):
+                if isinstance(c.op, TensorFetch):
                     if c.key in ctx:
                         continue
                     endpoints = self._chunk_meta_ref.get_workers(session_id, c.key)
@@ -152,6 +154,7 @@ class GraphActor(SchedulerActor):
         self._kv_store_ref = None
         self._chunk_meta_ref = None
         self._graph_meta_ref = None
+        self._session_ref = None
 
         self._tensor_graph_cache = None
         self._chunk_graph_cache = None
@@ -179,6 +182,7 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
+        self._session_ref = self.ctx.actor_ref(SessionActor.gen_name(self._session_id))
 
         uid = GraphMetaActor.gen_name(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
@@ -255,6 +259,9 @@ class GraphActor(SchedulerActor):
             self.stop_graph()
             self.state = GraphState.FAILED
             raise
+
+        if len(self._chunk_graph_cache) == 0:
+            self.state = GraphState.SUCCEEDED
 
     def stop_graph(self):
         """
@@ -362,7 +369,10 @@ class GraphActor(SchedulerActor):
                 # replace inputs with tiled ones
                 if not total_tiled:
                     try:
-                        td = handler.dispatch(to_tile)
+                        if isinstance(to_tile.op, TensorFetch):
+                            td = self.tile_fetch_tensor(tensor)
+                        else:
+                            td = handler.dispatch(to_tile)
                     except DataNotReady:
                         continue
 
@@ -375,7 +385,7 @@ class GraphActor(SchedulerActor):
                 tensor_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
-                q = deque([tiled_c.data for tiled_c in tiled.chunks])
+                q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data for tiled_c in tiled.chunks])
                 input_chunk_keys = set(itertools.chain(*([(it.key, it.id) for it in input.chunks]
                                                          for input in to_tile.inputs)))
                 while len(q) > 0:
@@ -414,6 +424,8 @@ class GraphActor(SchedulerActor):
         for n in list(chunk_graph.iter_nodes()):
             if n not in reserve_chunk:
                 chunk_graph.remove_node(n)
+            elif isinstance(n.op, TensorFetch):
+                chunk_graph.remove_node(n)
 
         if compose:
             chunk_graph.compose(keys=result_chunk_keys)
@@ -441,6 +453,9 @@ class GraphActor(SchedulerActor):
         chunk_graph = self.get_chunk_graph()
         depth_cache = dict()
 
+        if len(chunk_graph) == 0:
+            return
+
         for n in chunk_graph.topological_iter():
             key = n.op.key
             if key not in operand_infos:
@@ -448,18 +463,18 @@ class GraphActor(SchedulerActor):
                     optimize=dict(depth=0, demand_depths=(), successor_size=0, descendant_size=0)
                 )
             operand_infos[key]['optimize']['successor_size'] += chunk_graph.count_successors(n)
-            if not n.inputs:
+            if not chunk_graph.predecessors(n):
                 depth_cache[key] = 0
             else:
-                depth = depth_cache[key] = 1 + max(depth_cache[ni.op.key] for ni in n.inputs)
+                depth = depth_cache[key] = 1 + max(depth_cache[ni.op.key] for ni in chunk_graph.predecessors(n))
                 # record operand information
                 operand_infos[key]['optimize']['depth'] = depth
 
         for n in chunk_graph.topological_iter(reverse=True):
             operand_infos[n.op.key]['optimize']['descendant_size'] += 1
-            if not n.inputs:
+            if not chunk_graph.predecessors(n):
                 continue
-            for ni in set(n.inputs):
+            for ni in set(chunk_graph.predecessors(n)):
                 operand_infos[ni.op.key]['optimize']['descendant_size'] += \
                     operand_infos[n.op.key]['optimize']['descendant_size']
 
@@ -561,13 +576,13 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param serialize: whether to return serialized dag
         """
-        from ..tensor.expressions.datasource import TensorFetchChunk
+        from ..tensor.expressions.datasource import TensorFetch
         graph = DAG()
 
         inputs_to_copied = dict()
         for c in self._op_key_to_chunk[op_key]:
             for inp in set(c.inputs or ()):
-                op = TensorFetchChunk(dtype=inp.dtype, to_fetch_key=inp.key)
+                op = TensorFetch(dtype=inp.dtype)
                 inp_chunk = op.new_chunk(None, inp.shape, _key=inp.key).data
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
@@ -755,7 +770,9 @@ class GraphActor(SchedulerActor):
             transposed[state] = list()
             for op in ops:
                 transposed[state].append(data_src[op][sid])
-        return ops, transposed, finished * 100.0 / total_count
+
+        percentage = finished * 100.0 / total_count if total_count != 0 else 1
+        return ops, transposed, percentage
 
     def _get_tensor_by_key(self, key):
         tid = self._tensor_key_to_opid[key]
@@ -763,6 +780,7 @@ class GraphActor(SchedulerActor):
 
     def free_tensor_data(self, tensor_key):
         from .operand import OperandActor
+
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         for chunk in tiled_tensor.chunks:
             op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
@@ -775,20 +793,20 @@ class GraphActor(SchedulerActor):
 
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
-        from ..tensor.expressions.datasource import TensorFetchChunk
+        from ..tensor.expressions.datasource import TensorFetch
 
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         graph = DAG()
         if len(tiled_tensor.chunks) == 1:
             # only one chunk, just trigger fetch
             c = tiled_tensor.chunks[0]
-            op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+            op = TensorFetch(dtype=c.dtype)
             fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
             graph.add_node(fetch_chunk)
         else:
             fetch_chunks = []
             for c in tiled_tensor.chunks:
-                op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+                op = TensorFetch(dtype=c.dtype)
                 fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
                 graph.add_node(fetch_chunk)
                 fetch_chunks.append(fetch_chunk)
@@ -798,6 +816,35 @@ class GraphActor(SchedulerActor):
             [graph.add_edge(fetch_chunk, chunk) for fetch_chunk in fetch_chunks]
 
         return serialize_graph(graph)
+
+    def build_fetch_graph(self, tensor_key):
+        """
+        Convert single tensor to tiled fetch tensor and put into a graph which only contains one tensor
+        :param tensor_key: the key of tensor
+        """
+        tiled_tensor = self._get_tensor_by_key(tensor_key)
+        graph = DAG()
+
+        chunks = []
+        for c in tiled_tensor.chunks:
+            fetch_op = TensorFetch(dtype=c.dtype)
+            fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key)
+            chunks.append(fetch_chunk)
+
+        new_op = TensorFetch(dtype=tiled_tensor.dtype)
+        new_tensor = new_op.new_tensor(None, tiled_tensor.shape, chunks=chunks,
+                                       nsplits=tiled_tensor.nsplits, _key=tiled_tensor.key)
+        graph.add_node(new_tensor)
+        return serialize_graph(graph)
+
+    def tile_fetch_tensor(self, tensor):
+        """
+        Find the owner of the input tensor and ask for tiling.
+        """
+        tensor_key = tensor.key
+        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tensor_key(tensor_key))
+        fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
+        return list(fetch_graph)[0]
 
     def fetch_tensor_result(self, tensor_key):
         from ..worker.transfer import ResultSenderActor

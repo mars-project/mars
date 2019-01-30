@@ -36,7 +36,9 @@ class Executor(object):
 
         # only record the executed tensor
         self.tensor_to_tiled = weakref.WeakKeyDictionary()
-        self.tensor_key_to_chunk_keys = dict()
+        # dict structure: {tensor_key -> chunk_keys, tensor_ids}
+        # dict value is a tuple object which records chunk keys and tensor id
+        self.stored_tensors = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
 
@@ -69,7 +71,9 @@ class Executor(object):
         with build_mode():
             optimized_graph = self._preprocess(graph, keys)
 
-        return execute_graph(optimized_graph, keys, self, n_parallel=n_parallel or n_thread,
+        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
+        return execute_graph(optimized_graph, keys, self, executed_keys=executed_keys,
+                             n_parallel=n_parallel or n_thread,
                              show_progress=show_progress, mock=mock,
                              sparse_mock_percent=sparse_mock_percent,
                              prefetch=self._prefetch, retval=True)
@@ -104,9 +108,12 @@ class Executor(object):
         for tensor in tensors:
             tensor.tiles()
             chunk_keys = [c.key for c in tensor.chunks]
-            self.tensor_key_to_chunk_keys[(tensor.key, tensor.id)] = chunk_keys
             result_keys.extend(chunk_keys)
 
+            if tensor.key in self.stored_tensors:
+                self.stored_tensors[tensor.key][0].add(tensor.id)
+            else:
+                self.stored_tensors[tensor.key] = tuple([{tensor.id}, set(chunk_keys)])
             if not fetch:
                 # no need to generate concat keys
                 pass
@@ -126,7 +133,7 @@ class Executor(object):
             else:
                 concat_keys.append(tensor.chunks[0].key)
 
-            tensor.build_graph(graph=graph, tiled=True)
+            tensor.build_graph(graph=graph, tiled=True, executed_keys=list(self._chunk_result.keys()))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
                            show_progress=show_progress, mock=mock,
@@ -143,13 +150,13 @@ class Executor(object):
                 del results[k]
 
     def fetch_tensors(self, tensors, **kw):
-        from .tensor.expressions.datasource import TensorFetchChunk
+        from .tensor.expressions.datasource import TensorFetch
 
         results = []
         to_concat_tensors = OrderedDict()
 
         for i, tensor in enumerate(tensors):
-            if (tensor.key, tensor.id) not in self.tensor_key_to_chunk_keys:
+            if tensor.key not in self.stored_tensors:
                 # check if the tensor is executed before
                 raise ValueError(
                     'Tensor to fetch must be executed before, got {0}'.format(tensor))
@@ -159,16 +166,17 @@ class Executor(object):
                 results.append(result)
                 continue
 
-            # generate TensorFetchChunk op for each chunk
+            # generate TensorFetch op for each chunk
             chunks = []
             for c in tensor.chunks:
-                op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+                op = TensorFetch(dtype=c.dtype)
                 chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
                 chunks.append(chunk)
 
             new_op = tensor.op.copy()
-            tensor = new_op.new_tensor([None], tensor.shape, chunks=chunks,
-                                       nsplits=tensor.nsplits)
+            # copy key and id to ensure that fetch tensor won't add the count of executed tensor
+            tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
+                                       nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
 
             # add this concat tensor into the list which shall be executed later
             to_concat_tensors[i] = tensor
@@ -199,9 +207,19 @@ class Executor(object):
 
     def decref(self, *keys):
         for key in keys:
-            for chunk_key in self.tensor_key_to_chunk_keys.get(key, []):
-                if chunk_key in self.chunk_result:
-                    del self.chunk_result[chunk_key]
+            tensor_key, tensor_id = key
+            if key[0] not in self.stored_tensors:
+                continue
+            ids, chunk_keys = self.stored_tensors[key[0]]
+            if tensor_id in ids:
+                ids.remove(tensor_id)
+                # for those same key tensors, do decref only when all those tensors are garbage collected
+                if len(ids) != 0:
+                    continue
+                for chunk_key in chunk_keys:
+                    if chunk_key in self.chunk_result:
+                        del self.chunk_result[chunk_key]
+                del self.stored_tensors[tensor_key]
 
 
 def execute_chunk(chunk, executor=None,
@@ -277,7 +295,7 @@ def _order_starts(graph):
             stack.appendleft(starts.popleft())
 
 
-def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
+def execute_graph(graph, keys, executor, executed_keys=None, n_parallel=None, show_progress=False,
                   mock=False, sparse_mock_percent=1.0, prefetch=False, retval=True):
     pool_executor = futures.ThreadPoolExecutor(n_parallel or 1)
     prefetch_executor = futures.ThreadPoolExecutor(n_parallel or 1) if prefetch else None
@@ -303,7 +321,7 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
     visited = set()
     fs = dict()
     ref_counts = dict()
-    key_set = set(keys)
+    key_set = set(keys).union(set(executed_keys or []))
     for chunk in graph:
         if chunk.key not in key_set:
             ref_counts[chunk.key] = ref_counts.get(chunk.key, 0) + len(graph[chunk])
@@ -367,6 +385,8 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
 
 def ignore(*_):
     pass
+
+
 Executor._op_runners[Fetch] = ignore
 
 

@@ -194,3 +194,63 @@ class Test(unittest.TestCase):
         res2 = sess2.run(arr)
 
         np.testing.assert_array_equal(res1, res2)
+
+    def testFetch(self):
+        sess = new_session()
+
+        arr1 = mt.ones((10, 5), chunk_size=3)
+
+        r1 = sess.run(arr1)
+        r2 = sess.run(arr1)
+        np.testing.assert_array_equal(r1, r2)
+
+        executor = sess._sess._executor
+        executor.chunk_result[arr1.chunks[0].key] = np.ones((3, 3)) * 2
+        r3 = sess.run(arr1 + 1)
+        np.testing.assert_array_equal(r3[:3, :3], np.ones((3, 3)) * 3)
+
+        # rerun to ensure arr1's chunk results still exist
+        r4 = sess.run(arr1 + 1)
+        np.testing.assert_array_equal(r4[:3, :3], np.ones((3, 3)) * 3)
+
+        arr2 = mt.ones((10, 5), chunk_size=3)
+        r5 = sess.run(arr2)
+        np.testing.assert_array_equal(r5[:3, :3], np.ones((3, 3)) * 2)
+
+        r6 = sess.run(arr2 + 1)
+        np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
+
+        # test fetch multiple tensors
+        raw = np.random.rand(5, 10)
+        arr1 = mt.ones((5, 10), chunk_size=5)
+        arr2 = mt.tensor(raw, chunk_size=3)
+        arr3 = mt.sum(arr2)
+
+        sess.run(arr1, arr2, arr3)
+
+        fetch1, fetch2, fetch3 = sess.fetch(arr1, arr2, arr3)
+        np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
+        np.testing.assert_array_equal(fetch2, raw)
+        np.testing.assert_almost_equal(fetch3, raw.sum())
+
+        fetch1, fetch2, fetch3 = sess.fetch([arr1, arr2, arr3])
+        np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
+        np.testing.assert_array_equal(fetch2, raw)
+        np.testing.assert_almost_equal(fetch3, raw.sum())
+
+    def testDecref(self):
+        sess = new_session()
+
+        arr1 = mt.ones((10, 5), chunk_size=3)
+        arr2 = mt.ones((10, 5), chunk_size=3)
+        sess.run(arr1)
+        sess.run(arr2)
+        sess.fetch(arr1)
+
+        executor = sess._sess._executor
+
+        self.assertEqual(len(executor.chunk_result), 8)
+        del arr1
+        self.assertEqual(len(executor.chunk_result), 8)
+        del arr2
+        self.assertEqual(len(executor.chunk_result), 0)

@@ -25,6 +25,7 @@ from .session import SessionManagerActor
 from .resource import ResourceActor
 from .chunkmeta import ChunkMetaActor
 from .kvstore import KVStoreActor
+from .graph import ResultReceiverActor
 from ..node_info import NodeInfoActor
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class SchedulerService(object):
         self._chunk_meta_ref = None
         self._kv_store_ref = None
         self._node_info_ref = None
+        self._result_receiver_ref = None
 
     def start(self, endpoint, schedulers, pool):
         """
@@ -83,6 +85,8 @@ class SchedulerService(object):
         self._node_info_ref = pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_name())
         kv_store.write('/schedulers/%s/meta' % endpoint,
                        json.dumps(self._resource_ref.get_workers_meta()))
+        # create ResultReceiverActor
+        self._result_receiver_ref = pool.create_actor(ResultReceiverActor, uid=ResultReceiverActor.default_name())
 
     def stop(self, pool):
         pool.destroy_actor(self._resource_ref)

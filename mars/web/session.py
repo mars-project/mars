@@ -23,7 +23,7 @@ from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..graph import DirectedGraph
+from ..utils import build_graph
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,9 @@ class Session(object):
     def __init__(self, endpoint, args=None):
         self._endpoint = endpoint
         self._args = args
-        self._tensor_to_graph = dict()
+        # dict structure: {tensor_key -> graph_key, tensor_ids}
+        # dict value is a tuple object which records graph key and tensor id
+        self._executed_tensors = dict()
 
         self._req_session = requests.Session()
 
@@ -59,8 +61,16 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
-    def _get_graph_key(self, tensor_key):
-        return self._tensor_to_graph[tensor_key]
+    def _get_tensor_graph_key(self, tensor_key):
+        return self._executed_tensors[tensor_key][0]
+
+    def _set_tensor_graph_key(self, tensor, graph_key):
+        tensor_key = tensor.key
+        tensor_id = tensor.id
+        if tensor_key in self._executed_tensors:
+            self._executed_tensors[tensor_key][1].add(tensor_id)
+        else:
+            self._executed_tensors[tensor_key] = graph_key, {tensor_id}
 
     def _check_response_finished(self, graph_url):
         try:
@@ -109,10 +119,12 @@ class Session(object):
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
-        graph = DirectedGraph()
-        for t in tensors:
-            graph = t.build_graph(graph=graph, tiled=False, compose=compose)
-        targets = [t.key for t in tensors]
+        # those executed tensors should fetch data directly, submit the others
+        run_tensors = [t for t in tensors if t.key not in self._executed_tensors]
+
+        graph = build_graph(run_tensors, compose=compose,
+                            executed_keys=list(self._executed_tensors.keys()))
+        targets = [t.key for t in run_tensors]
 
         targets_join = ','.join(targets)
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -123,7 +135,7 @@ class Session(object):
         graph_url = session_url + '/graph/' + graph_key
 
         for t in tensors:
-            self._tensor_to_graph[t.key] = graph_key
+            self._set_tensor_graph_key(t, graph_key)
 
         exec_start_time = time.time()
         while timeout <= 0 or time.time() - exec_start_time <= timeout:
@@ -137,17 +149,13 @@ class Session(object):
                     raise ExecutionNotStopped(
                         'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                         (resp.status_code, resp.reason, resp.text))
+
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
         if not fetch:
             return
-        data_list = []
-        for tk in targets:
-            resp = self._req_session.get(session_url + '/graph/' + graph_key + '/data/' + tk)
-            if resp.status_code >= 400:
-                continue
-            data_list.append(dataserializer.loads(resp.content))
-        return data_list
+        else:
+            return self.fetch(*tensors)
 
     def fetch(self, *tensors, **kw):
         timeout = kw.pop('timeout', None)
@@ -157,8 +165,12 @@ class Session(object):
         results = list()
         for tensor in tensors:
             key = tensor.key
+
+            if key not in self._executed_tensors:
+                raise ValueError('Cannot fetch the unexecuted tensor')
+
             session_url = self._endpoint + '/api/session/' + self._session_id
-            data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(key), key)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_tensor_graph_key(key), key)
             resp = self._req_session.get(data_url, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -169,7 +181,7 @@ class Session(object):
     def _update_tensor_shape(self, tensor):
         tensor_key = tensor.key
         session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_graph_key(tensor_key), tensor_key)
+        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_tensor_graph_key(tensor_key), tensor_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
         tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
@@ -177,11 +189,19 @@ class Session(object):
 
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id
-        for k in keys:
-            if k not in self._tensor_to_graph:
+        for tensor_key, tensor_id in keys:
+            if tensor_key not in self._executed_tensors:
                 continue
-            data_url = session_url + '/graph/%s/data/%s' % (self._get_graph_key(k), k)
-            self._req_session.delete(data_url)
+            graph_key, ids = self._executed_tensors[tensor_key]
+
+            if tensor_id in ids:
+                ids.remove(tensor_id)
+                # for those same key tensors, do decref only when all those tensors are garbage collected
+                if len(ids) != 0:
+                    continue
+                data_url = session_url + '/graph/%s/data/%s' % (graph_key, tensor_key)
+                self._req_session.delete(data_url)
+                del self._executed_tensors[tensor_key]
 
     def stop(self, graph_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -215,8 +235,11 @@ class Session(object):
         return resp_json
 
     def close(self):
-        self.decref(*list(self._tensor_to_graph.keys()))
-
+        executed_keys = []
+        for key, value in self._executed_tensors.items():
+            for tid in value[1]:
+                executed_keys.append((key, tid))
+        self.decref(*executed_keys)
         resp = self._req_session.delete(self._endpoint + '/api/session/' + self._session_id)
         if resp.status_code >= 400:
             raise SystemError('Failed to close mars session.')
