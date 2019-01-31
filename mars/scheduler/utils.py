@@ -14,14 +14,13 @@
 
 import array
 
-from .. import compat
-from ..compat import six
+from ..compat import six, Enum
 from ..cluster_info import HasClusterInfoActor
 from ..utils import classproperty
 from ..promise import PromiseActor
 
 
-class OperandState(compat.Enum):
+class OperandState(Enum):
     UNSCHEDULED = 'unscheduled'
     READY = 'ready'
     RUNNING = 'running'
@@ -54,7 +53,12 @@ class OperandState(compat.Enum):
         return self.FINISHED, self.CACHED, self.FREED, self.FATAL, self.CANCELLED
 
 
-class GraphState(compat.Enum):
+class OperandPosition(Enum):
+    INITIAL = 'initial'
+    TERMINAL = 'terminal'
+
+
+class GraphState(Enum):
     UNSCHEDULED = 'unscheduled'
     PREPARING = 'preparing'
     RUNNING = 'running'

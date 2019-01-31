@@ -73,6 +73,7 @@ class FakeExecutionActor(promise.PromiseActor):
             self._finish_callbacks[graph_key].append(callback)
 
 
+@patch_method(ResourceActor._broadcast_sessions)
 class Test(unittest.TestCase):
     @contextlib.contextmanager
     def _prepare_test_graph(self, session_id, graph_key, mock_workers):
@@ -132,7 +133,7 @@ class Test(unittest.TestCase):
             [c.key for c in graph if isinstance(c.op, TensorIndex)],
         )
 
-    def testReadyState(self):
+    def testReadyState(self, *_):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
         mock_workers = ['localhost:12345', 'localhost:23456']
@@ -173,7 +174,7 @@ class Test(unittest.TestCase):
             # test successful entering state
             test_entering_state(OperandState.READY)
 
-    def testOperandPrepush(self):
+    def testOperandPrepush(self, *_):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
         mock_workers = ['localhost:12345']

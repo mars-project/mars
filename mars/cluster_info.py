@@ -125,6 +125,9 @@ class HasClusterInfoActor(PromiseActor):
 
         self._cluster_info_ref = None
 
+    def get_schedulers(self):
+        return self._schedulers
+
     def set_schedulers(self, schedulers):
         self._schedulers = schedulers
         if len(schedulers) > 1:

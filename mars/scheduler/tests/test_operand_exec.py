@@ -160,6 +160,7 @@ class FakeExecutionActor(promise.PromiseActor):
         self._cancels.add(graph_key)
 
 
+@patch_method(ResourceActor._broadcast_sessions)
 class Test(unittest.TestCase):
     @staticmethod
     def _run_operand_case(session_id, graph_key, tensor, execution_creator):

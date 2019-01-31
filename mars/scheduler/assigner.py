@@ -57,6 +57,10 @@ class AssignerActor(SchedulerActor):
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
+    def mark_metrics_expired(self):
+        logger.debug('Metrics cache marked as expired.')
+        self._worker_metric_time = 0
+
     @log_unhandled
     def get_worker_assignments(self, session_id, op_info):
         """

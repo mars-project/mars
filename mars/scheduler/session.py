@@ -16,6 +16,8 @@ import logging
 import os
 
 from .utils import SchedulerActor
+from ..compat import six
+from ..utils import log_unhandled
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class SessionActor(SchedulerActor):
         self._args = kwargs
 
         self._cluster_info_ref = None
-        self._assigner_ref = None
+        self._manager_ref = None
         self._graph_refs = dict()
         self._tensor_to_graph = dict()
 
@@ -45,13 +47,18 @@ class SessionActor(SchedulerActor):
         return self._tensor_to_graph[tensor_key]
 
     def post_create(self):
+        super(SessionActor, self).post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         self.set_cluster_info_ref()
+        self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_name())
 
     def pre_destroy(self):
+        super(SessionActor, self).pre_destroy()
+        self._manager_ref.delete_session(self._session_id, _tell=True)
         for graph_ref in self._graph_refs.values():
             self.ctx.destroy_actor(graph_ref)
 
+    @log_unhandled
     def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None):
         from .graph import GraphActor
 
@@ -73,11 +80,38 @@ class SessionActor(SchedulerActor):
         graph_ref = self._graph_refs[graph_key]
         return graph_ref.fetch_tensor_result(tensor_key)
 
+    @log_unhandled
+    def handle_worker_change(self, adds, removes):
+        logger.debug('Worker change detected. adds: %r, removes: %r', adds, removes)
+
+        from .chunkmeta import LocalChunkMetaActor
+
+        # collect affected chunks
+        futures = []
+        if removes:
+            lost_chunks = set()
+            for scheduler in self.get_schedulers():
+                ref = self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=scheduler)
+                futures.append(ref.remove_workers_in_session(self._session_id, removes, _wait=False))
+
+            for f in futures:
+                lost_chunks.update(f.result())
+            lost_chunks = list(lost_chunks)
+            logger.debug('Meta collection done, %d chunks lost.', len(lost_chunks))
+        else:
+            lost_chunks = []
+
+        # notify every graph to handle failures
+        futures = []
+        for ref in self._graph_refs.values():
+            futures.append(ref.handle_worker_change(adds, removes, lost_chunks, _wait=False, _tell=True))
+        [f.result() for f in futures]
+
 
 class SessionManagerActor(SchedulerActor):
     def __init__(self):
         super(SessionManagerActor, self).__init__()
-        self._sessions = dict()
+        self._session_refs = dict()
 
     @classmethod
     def default_name(cls):
@@ -89,18 +123,28 @@ class SessionManagerActor(SchedulerActor):
         self.set_cluster_info_ref()
 
     def get_sessions(self):
-        return self._sessions
+        return self._session_refs
 
+    @log_unhandled
     def create_session(self, session_id, **kwargs):
         uid = SessionActor.gen_name(session_id)
         scheduler_address = self.get_scheduler(uid)
         session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
                                             session_id=session_id, **kwargs)
-        self._sessions[session_id] = session_ref
+        self._session_refs[session_id] = session_ref
         return session_ref
 
+    @log_unhandled
     def delete_session(self, session_id):
-        if session_id in self._sessions:
-            session_ref = self._sessions[session_id]
+        if session_id in self._session_refs:
+            session_ref = self._session_refs[session_id]
             session_ref.destroy()
-            del self._sessions[session_id]
+            del self._session_refs[session_id]
+
+    @log_unhandled
+    def broadcast_sessions(self, handler, *args, **kwargs):
+        futures = []
+        for ref in self._session_refs.values():
+            kwargs.update(dict(_wait=False, _tell=True))
+            futures.append(getattr(ref, handler)(*args, **kwargs))
+        [f.result() for f in futures]

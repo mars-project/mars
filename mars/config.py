@@ -302,18 +302,19 @@ default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), val
 default_options.register_option('tensor.combine_size', 4, validator=is_integer, serialize=True)
 
 # Scheduler
-default_options.register_option('scheduler.enable_failover', True, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.assign_chunk_workers', False, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.enable_active_push', True, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.enable_chunk_relocation', False, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.check_interval', 1, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_integer, is_float), serialize=True)
-default_options.register_option('scheduler.heartbeat_timeout', 1200, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
-default_options.register_option('scheduler.status_timeout', 60, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_delay', 60, validator=is_integer, serialize=True)
+
+default_options.register_option('scheduler.enable_failover', True, validator=is_bool, serialize=True)
+default_options.register_option('scheduler.status_timeout', 30, validator=is_integer, serialize=True)
+default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_integer, serialize=True)
 
 # Worker
 default_options.register_option('worker.spill_directory', None, validator=(is_null, is_string, is_list))

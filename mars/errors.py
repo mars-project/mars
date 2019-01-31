@@ -37,10 +37,6 @@ class StorageExhausted(MarsError):
     pass
 
 
-class WorkerDead(MarsError):
-    pass
-
-
 class DependencyMissing(MarsError):
     pass
 

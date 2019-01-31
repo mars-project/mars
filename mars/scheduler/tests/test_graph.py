@@ -21,11 +21,13 @@ from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
     AssignerActor, GraphState
+from mars.tests.core import mock
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
 from mars.tests.core import patch_method
 
 
+@mock.patch(ResourceActor.__module__ + '.ResourceActor._broadcast_sessions')
 class Test(unittest.TestCase):
     @contextlib.contextmanager
     def prepare_graph_in_pool(self, expr, clean_io_meta=True, compose=False):
@@ -154,7 +156,7 @@ class Test(unittest.TestCase):
                 if not isinstance(c.op, TensorAddConstant):
                     continue
                 self.assertNotEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
-                graph_ref.mark_terminal_finished(c.op.key)
+                graph_ref.add_finished_terminal(c.op.key)
 
             self.assertEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
 
@@ -166,7 +168,7 @@ class Test(unittest.TestCase):
                 if not isinstance(c.op, TensorAddConstant):
                     continue
                 self.assertNotEqual(graph_ref.get_state(), GraphState.FAILED)
-                graph_ref.mark_terminal_finished(c.op.key, GraphState.FAILED)
+                graph_ref.add_finished_terminal(c.op.key, GraphState.FAILED)
 
             self.assertEqual(graph_ref.get_state(), GraphState.FAILED)
 

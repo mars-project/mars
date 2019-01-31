@@ -21,9 +21,10 @@ from functools import partial
 from collections import defaultdict
 
 from .. import promise
-from ..compat import Enum
+from ..compat import Enum, BrokenPipeError, ConnectionRefusedError
 from ..config import options
-from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
+from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
+    DependencyMissing
 from ..tensor.expressions.datasource import TensorFetch
 from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
@@ -126,6 +127,8 @@ class ExecutionActor(WorkerActor):
         self._status_ref = None
         self._daemon_ref = None
 
+        self._resource_ref = None
+
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
         self._result_cache = ExpiringCache()  # type: dict[tuple, GraphResultRecord]
 
@@ -138,6 +141,8 @@ class ExecutionActor(WorkerActor):
         from .taskqueue import TaskQueueActor
 
         super(ExecutionActor, self).post_create()
+        self.set_cluster_info_ref()
+
         self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._task_queue_ref = self.promise_ref(TaskQueueActor.default_name())
@@ -152,6 +157,11 @@ class ExecutionActor(WorkerActor):
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
+
+        from ..scheduler import ResourceActor
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        if not self.ctx.has_actor(self._resource_ref):
+            self._resource_ref = None
 
         self.periodical_dump()
 
@@ -373,10 +383,17 @@ class ExecutionActor(WorkerActor):
 
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
             logger.debug('Request for chunk %s transferring from %s', chunk_key, remote_addr)
-            return sender_ref.send_data(
-                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
-                timeout=options.worker.prepare_data_timeout, _promise=True
-            ).then(_finish_fetch)
+            try:
+                return sender_ref.send_data(
+                    session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                    timeout=options.worker.prepare_data_timeout, _promise=True
+                ).then(_finish_fetch)
+            except (BrokenPipeError, ConnectionRefusedError) as exc:
+                logger.warning('Communicating to %s encountered %s when fetching %s, '
+                               'reporting to the scheduler.', remote_addr, type(exc).__name__, chunk_key)
+                if self._resource_ref:
+                    self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
+                raise DependencyMissing
 
         return promise.Promise(done=True) \
             .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True)) \

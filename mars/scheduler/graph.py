@@ -26,7 +26,7 @@ from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .session import SessionActor
-from .utils import SchedulerActor, GraphState, OperandState
+from .utils import SchedulerActor, OperandPosition, GraphState, OperandState
 from ..compat import six, functools32, reduce, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
@@ -250,6 +250,11 @@ class GraphActor(SchedulerActor):
         try:
             self.prepare_graph()
             _detect_cancel()
+
+            with open('graph-%s.log' % self._graph_key, 'w') as outf:
+                graph = self.get_chunk_graph()
+                for n in graph:
+                    outf.write('%s -> %r\n' % (n.op.key, [succ.op.key for succ in graph.iter_successors(n)]))
 
             self.analyze_graph()
             _detect_cancel()
@@ -608,13 +613,17 @@ class GraphActor(SchedulerActor):
             op_info['retries'] = 0
             op_info['state'] = state
 
+            position = None
+            if op_key in self._terminal_chunk_op_tensor:
+                position = OperandPosition.TERMINAL
+            elif not predecessor_keys:
+                position = OperandPosition.INITIAL
+
             op_uid = OperandActor.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
             op_refs[op_key] = self.ctx.create_actor(
                 OperandActor, self._session_id, self._graph_key, op_key, op_info,
-                is_terminal=op_key in self._terminal_chunk_op_tensor,
-                uid=op_uid, address=scheduler_addr,
-                wait=False
+                position=position, uid=op_uid, address=scheduler_addr, wait=False
             )
             op_info['state'] = getattr(OperandState, state.upper())
             if _clean_io_meta:
@@ -629,7 +638,7 @@ class GraphActor(SchedulerActor):
             [future.result() for future in start_futures]
 
     @log_unhandled
-    def mark_terminal_finished(self, op_key, final_state=None):
+    def add_finished_terminal(self, op_key, final_state=None):
         """
         Mark terminal operand as finished. Calling this method will change graph state
         if all terminals are in finished states.
@@ -650,14 +659,27 @@ class GraphActor(SchedulerActor):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                     self._end_time = time.time()
 
+    @log_unhandled
+    def remove_finished_terminal(self, op_key):
+        tensor_keys = self._terminal_chunk_op_tensor[op_key]
+        for tensor_key in tensor_keys:
+            self._target_tensor_finished[tensor_key].difference_update([op_key])
+            self._terminated_tensors.difference_update([tensor_key])
+
     def get_state(self):
         return self.state
 
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._operand_infos)
 
+    def get_operand_states(self, op_keys):
+        return [self._operand_infos[k]['state'] for k in op_keys]
+
     def set_operand_state(self, op_key, state):
         self._operand_infos[op_key]['state'] = OperandState(state)
+
+    def get_operand_target_worker(self, op_key):
+        return self._operand_infos[op_key]['target_worker']
 
     def get_operand_info(self):
         return self._operand_infos
@@ -801,3 +823,73 @@ class GraphActor(SchedulerActor):
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
             ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
+
+    @log_unhandled
+    def handle_worker_change(self, adds, removes, lost_chunks):
+        if not adds and not removes:
+            return
+        if self._state in GraphState.TERMINATED_STATES:
+            return
+
+        with open('lost-chunks-%s-%d.log' % (self._graph_key, int(time.time())), 'w') as outf:
+            for c in lost_chunks:
+                outf.write(c + '\n')
+
+        worker_slots = self._get_worker_slots()
+        removes_set = set(removes)
+
+        # collect operand states
+        operand_infos = self._operand_infos
+        fixed_assigns = dict()
+        graph_states = dict()
+        for key, op_info in operand_infos.items():
+            op_state = graph_states[key] = op_info['state']
+            op_worker = op_info.get('worker')
+
+            # RUNNING nodes on dead workers can be moved to READY first
+            if op_state == OperandState.RUNNING and op_worker in removes_set:
+                graph_states[key] = OperandState.READY
+
+            if op_worker and op_worker in worker_slots:
+                fixed_assigns[key] = op_info['worker']
+
+        graph = self.get_chunk_graph()
+        new_states = dict()
+        analyzer = GraphAnalyzer(graph, worker_slots, fixed_assigns, graph_states, lost_chunks)
+        if lost_chunks:
+            new_states = analyzer.apply_state_changes()
+            logger.debug('%d chunks lost. %d operands changed state.', len(lost_chunks),
+                         len(new_states))
+
+        logger.debug('Start reallocating initial operands')
+        new_targets = analyzer.calc_initial_assignments()
+
+        futures = []
+        # make sure that all readies and runnings are included to be checked
+        for key, state in graph_states.items():
+            if key in new_states:
+                continue
+            if state == OperandState.RUNNING and \
+                    operand_infos[key]['worker'] not in removes_set:
+                continue
+            if state in (OperandState.READY, OperandState.RUNNING):
+                new_states[key] = state
+
+        with open('new-states-%s-%d.log' % (self._graph_key, int(time.time())), 'w') as outf:
+            for key, state in new_states.items():
+                outf.write('%s -> %s\n' % (key, state.name))
+
+        for key, state in new_states.items():
+            if key in new_targets:
+                new_target = operand_infos[key]['target_worker'] = new_targets[key]
+            else:
+                new_target = None
+
+            op_info = operand_infos[key]
+            from_state = op_info['state']
+
+            op_ref = self._get_operand_ref(key)
+            futures.append(op_ref.move_failover_state(
+                from_state, state, new_target, removes, _tell=True, _wait=False))
+
+        [f.result() for f in futures]
