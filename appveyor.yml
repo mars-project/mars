@@ -51,7 +51,7 @@ after_test:
   - echo index-servers =                             >> %USERPROFILE%\\.pypirc
   - echo     pypi                                    >> %USERPROFILE%\\.pypirc
   - echo [pypi]                                      >> %USERPROFILE%\\.pypirc
-  - echo repository=https://test.pypi.org/legacy/    >> %USERPROFILE%\\.pypirc
+  - echo repository=https://upload.pypi.org/legacy/  >> %USERPROFILE%\\.pypirc
   - echo username=pyodps                             >> %USERPROFILE%\\.pypirc
   - echo password=%SECUREPSD%                        >> %USERPROFILE%\\.pypirc
 
