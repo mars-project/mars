@@ -68,7 +68,7 @@ class SessionActor(SchedulerActor):
                                           uid=graph_uid, address=self.get_scheduler(graph_uid))
         graph_ref.execute_graph(_tell=True)
         self._graph_refs[graph_key] = graph_ref
-        for tensor_key in target_tensors:
+        for tensor_key in target_tensors or ():
             if tensor_key not in self._tensor_to_graph:
                 self._tensor_to_graph[tensor_key] = graph_ref
 

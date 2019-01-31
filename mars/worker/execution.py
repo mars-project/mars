@@ -21,7 +21,7 @@ from functools import partial
 from collections import defaultdict
 
 from .. import promise
-from ..compat import Enum, BrokenPipeError, ConnectionRefusedError
+from ..compat import six, Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
     DependencyMissing
@@ -376,6 +376,17 @@ class ExecutionActor(WorkerActor):
                 self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk_key))
 
         @log_unhandled
+        def _handle_network_error(*exc):
+            if issubclass(exc[0], (BrokenPipeError, ConnectionRefusedError, TimeoutError)):
+                logger.warning('Communicating to %s encountered %s when fetching %s, '
+                               'reporting to the scheduler.', remote_addr, type(exc).__name__, chunk_key)
+                if self._resource_ref:
+                    self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
+                raise DependencyMissing
+            else:
+                six.reraise(*exc)
+
+        @log_unhandled
         def _fetch_step(sender_uid):
             if self._graph_records[(session_id, graph_key)].stop_requested:
                 self._dispatch_ref.register_free_slot(sender_uid, 'sender')
@@ -388,16 +399,13 @@ class ExecutionActor(WorkerActor):
                     session_id, chunk_key, self.address, ensure_cached=ensure_cached,
                     timeout=options.worker.prepare_data_timeout, _promise=True
                 ).then(_finish_fetch)
-            except (BrokenPipeError, ConnectionRefusedError) as exc:
-                logger.warning('Communicating to %s encountered %s when fetching %s, '
-                               'reporting to the scheduler.', remote_addr, type(exc).__name__, chunk_key)
-                if self._resource_ref:
-                    self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
-                raise DependencyMissing
+            except:  # noqa: E722
+                _handle_network_error(*sys.exc_info())
 
         return promise.Promise(done=True) \
             .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True)) \
-            .then(_fetch_step)
+            .then(_fetch_step) \
+            .catch(_handle_network_error)
 
     def estimate_graph_finish_time(self, session_id, graph_key, calc_fetch=True, base_time=None):
         """

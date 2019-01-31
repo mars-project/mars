@@ -72,12 +72,10 @@ class ResourceActor(SchedulerActor):
         check_time = time.time()
         for worker in list(self._meta_cache.keys()):
             worker_meta = self._meta_cache[worker]
-            if 'update_time' not in worker_meta:
-                continue
             try:
                 if check_time - worker_meta['update_time'] > timeout:
                     dead_workers.append(worker)
-            except (TypeError, ValueError):
+            except (KeyError, TypeError, ValueError):
                 pass
 
         self.detach_dead_workers(dead_workers)

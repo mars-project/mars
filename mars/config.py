@@ -277,6 +277,7 @@ is_null = functools.partial(operator.is_, None)
 is_bool = functools.partial(_instance_check, bool)
 is_integer = functools.partial(_instance_check, six.integer_types)
 is_float = functools.partial(_instance_check, float)
+is_numeric = functools.partial(_instance_check, (float, six.integer_types))
 is_string = functools.partial(_instance_check, six.string_types)
 is_dict = functools.partial(_instance_check, dict)
 is_list = functools.partial(_instance_check, list)
@@ -296,7 +297,7 @@ default_options.register_option('kv_store', ':inproc:', validator=is_string)
 
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))
+default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 default_options.register_option('tensor.combine_size', 4, validator=is_integer, serialize=True)
@@ -313,8 +314,8 @@ default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validat
 default_options.register_option('scheduler.retry_delay', 60, validator=is_integer, serialize=True)
 
 default_options.register_option('scheduler.enable_failover', True, validator=is_bool, serialize=True)
-default_options.register_option('scheduler.status_timeout', 30, validator=is_integer, serialize=True)
-default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_integer, serialize=True)
+default_options.register_option('scheduler.status_timeout', 30, validator=is_numeric, serialize=True)
+default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
 # Worker
 default_options.register_option('worker.spill_directory', None, validator=(is_null, is_string, is_list))
