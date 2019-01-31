@@ -31,7 +31,7 @@ install:
   - "python -m pip install --disable-pip-version-check --user --upgrade pip"
 
   # Install the build dependencies of the project.
-  - "pip install --upgrade wheel twine setuptools coveralls"
+  - "pip install --upgrade wheel twine setuptools virtualenv coveralls"
   - "pip install -r requirements-dev.txt"
   - "pip install -r requirements-extra.txt"
 
@@ -51,7 +51,7 @@ after_test:
   - echo index-servers =                             >> %USERPROFILE%\\.pypirc
   - echo     pypi                                    >> %USERPROFILE%\\.pypirc
   - echo [pypi]                                      >> %USERPROFILE%\\.pypirc
-  - echo repository=https://upload.pypi.org/legacy/  >> %USERPROFILE%\\.pypirc
+  - echo repository=https://test.pypi.org/legacy/    >> %USERPROFILE%\\.pypirc
   - echo username=pyodps                             >> %USERPROFILE%\\.pypirc
   - echo password=%SECUREPSD%                        >> %USERPROFILE%\\.pypirc
 
@@ -59,15 +59,20 @@ on_success:
   - echo %APPVEYOR_REPO_TAG%
   - echo %APPVEYOR_REPO_TAG_NAME%
   - echo %APPVEYOR_REPO_BRANCH%
+  - git clean -f -x
   - ps: >-
-      If ($env:APPVEYOR_REPO_TAG -eq "true"){
+      If ($env:APPVEYOR_REPO_TAG -eq "true") {
+          Invoke-Expression "virtualenv wheelenv"
+          Invoke-Expression "wheelenv\Scripts\activate"
+          Invoke-Expression "pip install -r requirements-wheel.txt"
           Invoke-Expression "python setup.py bdist_wheel"
           if ($env:PYTHON_VERSION -eq "3.6.x" -and $env:PYTHON_ARCH -eq "64")
           {
               Invoke-Expression "python setup.py sdist --formats=gztar"
           }
+          Invoke-Expression "deactivate"
 
           Invoke-Expression "twine upload --skip-existing dist/*"
-      }Else {
+      } Else {
           write-output "Not on a tag commit, won't deploy to pypi"
       }
