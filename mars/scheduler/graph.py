@@ -26,7 +26,7 @@ from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState, OperandState
-from ..compat import six, OrderedDict
+from ..compat import six, functools32, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
@@ -614,6 +614,7 @@ class GraphActor(SchedulerActor):
                              for op_key in initial_keys]
             [future.result() for future in start_futures]
 
+    @log_unhandled
     def mark_terminal_finished(self, op_key, final_state=None):
         """
         Mark terminal operand as finished. Calling this method will change graph state
@@ -657,6 +658,14 @@ class GraphActor(SchedulerActor):
             except KeyError:
                 pass
 
+    @functools32.lru_cache(1000)
+    def _get_operand_ref(self, key):
+        from .operand import OperandActor
+        op_uid = OperandActor.gen_uid(self._session_id, key)
+        scheduler_addr = self.get_scheduler(op_uid)
+        return self.ctx.actor_ref(op_uid, address=scheduler_addr)
+
+    @log_unhandled
     def calc_stats(self):
         states = list(OperandState.__members__.values())
         state_mapping = OrderedDict((v, idx) for idx, v in enumerate(states))
@@ -665,7 +674,7 @@ class GraphActor(SchedulerActor):
         op_stats = OrderedDict()
         finished = 0
         total_count = len(self._operand_infos)
-        for operand_info in six.itervalues(self._operand_infos):
+        for operand_info in self._operand_infos.values():
             op_name = operand_info['op_name']
             state = operand_info['state']
             if state in (OperandState.FINISHED, OperandState.FREED):
@@ -676,7 +685,7 @@ class GraphActor(SchedulerActor):
             stats_list[state_mapping[state]] += 1
 
         data_src = OrderedDict([('states', state_names), ])
-        for op, state_stats in six.iteritems(op_stats):
+        for op, state_stats in op_stats.items():
             sum_chunks = sum(state_stats)
             data_src[op] = [v * 100.0 / sum_chunks for v in state_stats]
 
@@ -696,19 +705,16 @@ class GraphActor(SchedulerActor):
         tid = self._tensor_key_to_opid[key]
         return self._tensor_key_opid_to_tiled[(key, tid)][-1]
 
+    @log_unhandled
     def free_tensor_data(self, tensor_key):
-        from .operand import OperandActor
-
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         for chunk in tiled_tensor.chunks:
-            op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
-            scheduler_addr = self.get_scheduler(op_uid)
-            op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
-            op_ref.free_data(_tell=True)
+            self._get_operand_ref(chunk.op.key).free_data(_tell=True)
 
     def get_tensor_chunk_indexes(self, tensor_key):
         return OrderedDict((c.key, c.index) for c in self._get_tensor_by_key(tensor_key).chunks)
 
+    @log_unhandled
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
         from ..tensor.expressions.datasource import TensorFetch
@@ -764,6 +770,7 @@ class GraphActor(SchedulerActor):
         fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
         return list(fetch_graph)[0]
 
+    @log_unhandled
     def fetch_tensor_result(self, tensor_key):
         from ..worker.transfer import ResultSenderActor
 

@@ -38,6 +38,11 @@ class Test(unittest.TestCase):
         dag.add_edge(5, 6)
         dag.add_edge(3, 5)
 
+        with self.assertRaises(KeyError):
+            dag.add_edge(1, 10)
+        with self.assertRaises(KeyError):
+            dag.add_edge(10, 1)
+
         self.assertEqual(set(dag[2]), set([5, 6]))
         self.assertEqual(list(dag.topological_iter()), [3, 2, 5, 6, 1, 4])
 

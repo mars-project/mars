@@ -42,3 +42,8 @@ class Test(unittest.TestCase):
             self.assertEqual(store_ref.read('/node/v1').value, 'value1')
             self.assertListEqual([v.value for v in store_ref.read_batch(['/node/v2', '/node/v3'])],
                                  ['value2', 'value3'])
+
+            store_ref.delete('/node', dir=True, recursive=True)
+            with self.assertRaises(KeyError):
+                store_ref.delete('/node', dir=True, recursive=True)
+            store_ref.delete('/node', dir=True, recursive=True, silent=True)

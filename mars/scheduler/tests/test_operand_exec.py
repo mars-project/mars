@@ -19,8 +19,6 @@ import unittest
 import uuid
 from collections import defaultdict
 
-import gevent
-
 from mars import promise, tensor as mt
 from mars.config import options
 from mars.cluster_info import ClusterInfoActor
@@ -39,12 +37,12 @@ logger = logging.getLogger(__name__)
 class FakeExecutionActor(promise.PromiseActor):
     _retries = defaultdict(lambda: 0)
 
-    def __init__(self, sleep=0.1, fail_count=0):
+    def __init__(self, exec_delay=0.1, fail_count=0):
         super(FakeExecutionActor, self).__init__()
 
         self._chunk_meta_ref = None
         self._fail_count = fail_count
-        self._sleep = sleep
+        self._exec_delay = exec_delay
 
         self._results = dict()
         self._cancels = set()
@@ -108,7 +106,7 @@ class FakeExecutionActor(promise.PromiseActor):
     def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
         rec = self._graph_records[(session_id, graph_key)]
         rec.finish_callbacks.append(callback)
-        self.ref().actual_exec(session_id, graph_key, _tell=True, _delay=self._sleep)
+        self.ref().actual_exec(session_id, graph_key, _tell=True, _delay=self._exec_delay)
 
     @log_unhandled
     def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
@@ -168,58 +166,50 @@ class Test(unittest.TestCase):
         graph = tensor.build_graph(compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            def execute_case():
-                pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                                  uid=ClusterInfoActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
-                graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                              uid=GraphActor.gen_name(session_id, graph_key))
-                addr_dict = dict()
+            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
+                              uid=ClusterInfoActor.default_name())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
+                                          uid=GraphActor.gen_name(session_id, graph_key))
+            addr_dict = dict()
 
-                def _build_mock_ref(uid=None, address=None):
-                    if address in addr_dict:
-                        return addr_dict[address]
-                    else:
-                        r = addr_dict[address] = execution_creator(pool)
-                        return r
+            def _build_mock_ref(uid=None, address=None):
+                if address in addr_dict:
+                    return addr_dict[address]
+                else:
+                    r = addr_dict[address] = execution_creator(pool)
+                    return r
 
-                # handle mock objects
-                OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref
+            # handle mock objects
+            OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref
 
-                mock_resource = dict(hardware=dict(cpu=4, cpu_total=4, memory=512))
+            mock_resource = dict(hardware=dict(cpu=4, cpu_total=4, memory=512))
 
-                def write_mock_meta():
-                    resource_ref.set_worker_meta('localhost:12345', mock_resource)
-                    resource_ref.set_worker_meta('localhost:23456', mock_resource)
+            resource_ref.set_worker_meta('localhost:12345', mock_resource)
+            resource_ref.set_worker_meta('localhost:23456', mock_resource)
 
-                v = gevent.spawn(write_mock_meta)
-                v.join()
+            graph_ref.prepare_graph()
+            fetched_graph = graph_ref.get_chunk_graph()
 
-                graph_ref.prepare_graph()
-                fetched_graph = graph_ref.get_chunk_graph()
+            graph_ref.analyze_graph()
 
-                graph_ref.analyze_graph()
+            final_keys = set()
+            for c in fetched_graph:
+                if fetched_graph.count_successors(c) == 0:
+                    final_keys.add(c.op.key)
 
-                final_keys = set()
-                for c in fetched_graph:
-                    if fetched_graph.count_successors(c) == 0:
-                        final_keys.add(c.op.key)
+            graph_ref.create_operand_actors()
 
-                graph_ref.create_operand_actors()
-
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
-                start_time = time.time()
-                while True:
-                    gevent.sleep(0.1)
-                    if time.time() - start_time > 30:
-                        raise SystemError('Wait for execution finish timeout')
-                    if graph_meta_ref.get_state() in (GraphState.SUCCEEDED, GraphState.FAILED, GraphState.CANCELLED):
-                        break
-
-            v = gevent.spawn(execute_case)
-            v.get()
+            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+            start_time = time.time()
+            while True:
+                pool.sleep(0.1)
+                if time.time() - start_time > 30:
+                    raise SystemError('Wait for execution finish timeout')
+                if graph_meta_ref.get_state() in (GraphState.SUCCEEDED, GraphState.FAILED, GraphState.CANCELLED):
+                    break
 
     @patch_method(OperandActor._get_raw_execution_ref)
     @patch_method(OperandActor._free_worker_data)
@@ -292,58 +282,52 @@ class Test(unittest.TestCase):
         graph = arr2.build_graph(compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            def execute_case():
-                pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                                  uid=ClusterInfoActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
-                graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                              uid=GraphActor.gen_name(session_id, graph_key))
-                addr_dict = dict()
+            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
+                              uid=ClusterInfoActor.default_name())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
+                                          uid=GraphActor.gen_name(session_id, graph_key))
+            addr_dict = dict()
 
-                def _build_mock_ref(uid=None, address=None):
-                    if address in addr_dict:
-                        return addr_dict[address]
-                    else:
-                        r = addr_dict[address] = pool.create_actor(FakeExecutionActor, sleep=1)
-                        return r
+            def _build_mock_ref(uid=None, address=None):
+                if address in addr_dict:
+                    return addr_dict[address]
+                else:
+                    r = addr_dict[address] = pool.create_actor(
+                        FakeExecutionActor, exec_delay=0.2)
+                    return r
 
-                # handle mock objects
-                OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref
+            # handle mock objects
+            OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref
 
-                mock_resource = dict(hardware=dict(cpu=4, cpu_total=4, memory=512))
+            mock_resource = dict(hardware=dict(cpu=4, cpu_total=4, memory=512))
 
-                def write_mock_meta():
-                    resource_ref.set_worker_meta('localhost:12345', mock_resource)
-                    resource_ref.set_worker_meta('localhost:23456', mock_resource)
+            for idx in range(20):
+                resource_ref.set_worker_meta('localhost:%d' % (idx + 12345), mock_resource)
 
-                v = gevent.spawn(write_mock_meta)
-                v.join()
+            graph_ref.prepare_graph(compose=False)
+            fetched_graph = graph_ref.get_chunk_graph()
 
-                graph_ref.prepare_graph()
-                fetched_graph = graph_ref.get_chunk_graph()
+            graph_ref.analyze_graph()
 
-                graph_ref.analyze_graph()
+            final_keys = set()
+            for c in fetched_graph:
+                if fetched_graph.count_successors(c) == 0:
+                    final_keys.add(c.op.key)
 
-                final_keys = set()
-                for c in fetched_graph:
-                    if fetched_graph.count_successors(c) == 0:
-                        final_keys.add(c.op.key)
-
-                graph_ref.create_operand_actors()
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
-                start_time = time.time()
-                cancel_called = False
-                while True:
-                    gevent.sleep(0.1)
-                    if not cancel_called and time.time() > start_time + 0.8:
-                        cancel_called = True
-                        graph_ref.stop_graph(_tell=True)
-                    if time.time() - start_time > 30:
-                        raise SystemError('Wait for execution finish timeout')
-                    if graph_meta_ref.get_state() in (GraphState.SUCCEEDED, GraphState.FAILED, GraphState.CANCELLED):
-                        break
-
-            v = gevent.spawn(execute_case)
-            v.get()
+            graph_ref.create_operand_actors()
+            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+            start_time = time.time()
+            cancel_called = False
+            while True:
+                pool.sleep(0.05)
+                if not cancel_called and time.time() > start_time + 0.3:
+                    cancel_called = True
+                    graph_ref.stop_graph(_tell=True)
+                if time.time() - start_time > 30:
+                    raise SystemError('Wait for execution finish timeout')
+                if graph_meta_ref.get_state() in (GraphState.SUCCEEDED, GraphState.FAILED, GraphState.CANCELLED):
+                    break
+            self.assertEqual(graph_meta_ref.get_state(), GraphState.CANCELLED)
