@@ -50,11 +50,11 @@ install:
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
   - pip install virtualenv coveralls flake8 etcd-gevent
-  - virtualenv venv && source venv/bin/activate
+  - virtualenv testenv && source testenv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
-  - python setup.py build_ext --force --inplace --define CYTHON_TRACE
+  - python setup.py build_ext --force --inplace
   - source bin/download-etcd.sh
 
 before_script:
@@ -72,7 +72,7 @@ script:
   mv .coverage build/.coverage.main.file &&
   coverage combine build/ && coverage report --fail-under=80 &&
   export DEFAULT_VENV=$VIRTUAL_ENV &&
-  source venv/bin/activate &&
+  source testenv/bin/activate &&
   pytest --timeout=1500 mars/tests/test_session.py &&
   if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
 

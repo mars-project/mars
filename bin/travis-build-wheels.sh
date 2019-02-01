@@ -6,8 +6,7 @@ yum install -y atlas-devel
 
 # Compile wheels
 PYBIN=/opt/python/${PYVER}/bin
-"${PYBIN}/pip" install -r /io/requirements-dev.txt
-"${PYBIN}/pip" install -r /io/requirements-extra.txt
+"${PYBIN}/pip" install -r /io/requirements-wheel.txt
 
 cd /io
 "${PYBIN}/python" setup.py bdist_wheel
