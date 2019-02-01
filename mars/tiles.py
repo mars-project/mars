@@ -104,20 +104,23 @@ class OperandTilesHandler(object):
         self._handlers[self._get_op_cls(op)] = handler
 
     def _dispatch(self, op):
-        op_cls = self._get_op_cls(op)
-        try:
-            handler = self._handlers[op_cls]
-            return handler(op)
-        except KeyError as e:
-            if hasattr(op_cls, 'tile'):
-                # has tile implementation
-                return op_cls.tile(op)
-            for op_clz in self._handlers.keys():
-                if issubclass(op_cls, op_clz):
-                    self._handlers[op_cls] = self._handlers[op_clz]
-                    return self._handlers[op_cls](op)
+        from .core import kernel_mode
 
-            raise e
+        with kernel_mode():
+            op_cls = self._get_op_cls(op)
+            try:
+                handler = self._handlers[op_cls]
+                return handler(op)
+            except KeyError as e:
+                if hasattr(op_cls, 'tile'):
+                    # has tile implementation
+                    return op_cls.tile(op)
+                for op_clz in self._handlers.keys():
+                    if issubclass(op_cls, op_clz):
+                        self._handlers[op_cls] = self._handlers[op_clz]
+                        return self._handlers[op_cls](op)
+
+                raise e
 
     def dispatch(self, to_tiles):
         return self._dispatch(to_tiles.op)
@@ -131,7 +134,7 @@ class OperandTilesHandler(object):
 
     def tiles(self, tiles_obj):
         graph = DirectedGraph()
-        visited = set([id(tiles_obj)])
+        visited = {id(tiles_obj)}
         loose_requires = set()
         q = deque([tiles_obj])
 

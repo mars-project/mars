@@ -16,6 +16,7 @@
 
 from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
 from ...core import TilesableOperandMixin
+from .utils import execute_in_eager_mode
 
 
 class TensorOperandMixin(TilesableOperandMixin):
@@ -41,6 +42,7 @@ class TensorOperandMixin(TilesableOperandMixin):
         data = TensorData(_shape=shape, _dtype=dt, _op=self, _chunks=chunks, **kw)
         return tensor_cls(data)
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
         return self.new_entities(inputs, shape, chunks=chunks, nsplits=nsplits,

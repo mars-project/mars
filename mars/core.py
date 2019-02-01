@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from operator import attrgetter, mul
+from contextlib import contextmanager
 import threading
 import itertools
 
@@ -26,6 +27,7 @@ from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tilesable, handler
 from .graph import DAG
+from .config import options
 
 
 class Base(object):
@@ -523,3 +525,22 @@ class TilesableOperandMixin(object):
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_chunks(inputs, shape, index=index, **kw)[0]
+
+
+_kernel_mode = threading.local()
+_kernel_mode.enable_eager_mode = None
+
+
+def is_eager_mode():
+    if _kernel_mode.enable_eager_mode is None:
+        return options.eager_mode
+    return _kernel_mode.enable_eager_mode
+
+
+@contextmanager
+def kernel_mode():
+    try:
+        _kernel_mode.enable_eager_mode = False
+        yield
+    finally:
+        _kernel_mode.enable_eager_mode = None

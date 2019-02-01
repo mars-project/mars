@@ -23,7 +23,7 @@ import numpy as np
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import futures, OrderedDict
-from .core import build_mode
+from .core import build_mode, kernel_mode
 
 
 class Executor(object):
@@ -88,8 +88,9 @@ class Executor(object):
 
                 op = TensorConcatenate(dtype=tensor.op.dtype)
                 chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
-                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                       nsplits=[(s,) for s in tensor.shape])
+                with kernel_mode():
+                    tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                                           nsplits=[(s,) for s in tensor.shape])
 
         graph = tensor.build_graph(cls=DirectedGraph, tiled=True)
 
@@ -128,8 +129,9 @@ class Executor(object):
                 concat_keys.append(chunk.key)
                 # after return the data to user, we release the reference
                 to_release_keys.append(chunk.key)
-                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                       nsplits=[(s,) for s in tensor.shape])
+                with kernel_mode():
+                    tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                                           nsplits=[(s,) for s in tensor.shape])
             else:
                 concat_keys.append(tensor.chunks[0].key)
 
@@ -173,10 +175,11 @@ class Executor(object):
                 chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
                 chunks.append(chunk)
 
-            new_op = tensor.op.copy()
+            new_op = TensorFetch(dtype=tensor.dtype)
             # copy key and id to ensure that fetch tensor won't add the count of executed tensor
-            tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
-                                       nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
+            with kernel_mode():
+                tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
+                                           nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
 
             # add this concat tensor into the list which shall be executed later
             to_concat_tensors[i] = tensor

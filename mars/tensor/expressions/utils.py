@@ -24,6 +24,7 @@ from functools import wraps
 import numpy as np
 
 from ...compat import zip_longest, izip, six, reduce, lkeys
+from ...core import is_eager_mode
 
 
 def normalize_shape(shape):
@@ -486,3 +487,28 @@ def convert_to_fetch(entity):
         return new_op.new_tensor(None, entity.shape, _key=entity.key, _id=entity.id)
     else:
         raise ValueError('Now only support tensor or chunk type.')
+
+
+# TODO: Support Dataframe
+def execute_in_eager_mode(func):
+    """
+    Decorator on `new_tensors` function.
+    Expressions will be executed by default session once created in eager mode.
+    :param func: function to be annotated.
+    :return: A decorator that will execute the expressions created by `func` immediately
+    if eager mode is on.
+    """
+    from ..core import ExecutableTuple
+
+    def _wrapped(*args, **kwargs):
+
+        executable = kwargs.pop('executable', True)
+        expressions = func(*args, **kwargs)
+        if is_eager_mode() and executable:
+            if isinstance(expressions, (tuple, list)):
+                ExecutableTuple(expressions).execute(fetch=False)
+            else:
+                expressions.execute(fetch=False)
+        return expressions
+
+    return _wrapped

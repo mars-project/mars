@@ -25,6 +25,7 @@ from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..core import TensorOperandMixin
 from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
+from ..utils import execute_in_eager_mode
 
 
 class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
@@ -55,10 +56,12 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         if isinstance(self._value, (BaseWithKey, Entity)):
             self._value = next(inputs_iter)
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape, **kw):
         indexes = kw.pop('indexes', None)
         value = kw.pop('value', None)
         with self._handle_params(inputs, indexes, value) as mix_inputs:
+            kw['executable'] = False
             return super(TensorIndexSetValue, self).new_tensors(mix_inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):

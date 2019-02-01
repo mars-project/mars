@@ -20,7 +20,7 @@ import contextlib
 import numpy as np
 
 from ....compat import lrange
-from ..utils import unify_chunks, broadcast_shape, check_out_param
+from ..utils import unify_chunks, broadcast_shape, check_out_param, execute_in_eager_mode
 from ...core import Tensor, ExecutableTuple
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -135,8 +135,10 @@ class TensorBinOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
+            kw['executable'] = False
             return super(TensorBinOp, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
@@ -218,8 +220,10 @@ class TensorConstant(TensorElementWise):
         if not rhs_scalar:
             setattr(self, '_rhs', next(inputs_iter))
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
+            kw['executable'] = False
             return super(TensorConstant, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
@@ -314,8 +318,10 @@ class TensorUnaryOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape,**kw):
         with self._handle_params(inputs) as inputs:
+            kw['executable'] = False
             return super(TensorUnaryOp, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
@@ -443,8 +449,10 @@ class TensorOutBinOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
+    @execute_in_eager_mode
     def new_tensors(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
+            kw['executable'] = False
             return super(TensorOutBinOp, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):

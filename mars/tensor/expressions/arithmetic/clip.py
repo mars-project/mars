@@ -21,7 +21,7 @@ import numpy as np
 
 from .... import operands
 from ...core import TENSOR_TYPE, CHUNK_TYPE, Tensor
-from ..utils import broadcast_shape
+from ..utils import broadcast_shape, execute_in_eager_mode
 from ..datasource import tensor as astensor
 from .core import TensorElementWise
 
@@ -94,8 +94,10 @@ class TensorClip(operands.Clip, TensorElementWise):
         if has_out:
             setattr(self, '_out', next(inputs_iter))
 
-    def new_tensors(self, inputs, shape,**kw):
+    @execute_in_eager_mode
+    def new_tensors(self, inputs, shape, **kw):
         with self._handle_params(inputs) as inputs:
+            kw['executable'] = False
             return super(TensorClip, self).new_tensors(inputs, shape, **kw)
 
     def new_chunks(self, inputs, shape, **kw):
