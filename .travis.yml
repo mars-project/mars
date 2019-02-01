@@ -54,7 +54,7 @@ install:
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
-  - python setup.py build_ext --force --inplace --define CYTHON_TRACE
+  - python setup.py build_ext --force --inplace
   - source bin/download-etcd.sh
 
 before_script:
