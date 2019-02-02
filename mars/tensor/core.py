@@ -20,10 +20,10 @@ from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode
+from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField
-from .expressions.utils import get_chunk_slices, calc_rough_shape, is_eager_mode
+from .expressions.utils import get_chunk_slices, calc_rough_shape
 
 
 class TensorChunkData(ChunkData):

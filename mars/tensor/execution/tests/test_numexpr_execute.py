@@ -48,7 +48,7 @@ class Test(unittest.TestCase):
     def testUnaryExecution(self):
         from mars.tensor.expressions.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
 
-        _sp_unary_ufunc = set([arccosh, invert, conj])
+        _sp_unary_ufunc = {arccosh, invert, conj}
         _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)
         executor_numexpr = Executor()
 
@@ -78,7 +78,7 @@ class Test(unittest.TestCase):
             bitand, bitor, bitxor, lshift, rshift, ldexp
 
         _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
-        _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - set([ldexp]))
+        _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
         executor_numexpr = Executor()
 
         for i, j in itertools.permutations(range(len(_new_bin_ufunc)), 2):

@@ -89,13 +89,13 @@ class TensorReduction(TensorOperandMixin):
         out.data = t.data
         return out
 
-    def new_chunks(self, inputs, shape, **kw):
-        chunks = super(TensorReduction, self).new_chunks(inputs, shape, **kw)
+    def _new_chunks(self, inputs, shape, **kw):
+        chunks = super(TensorReduction, self)._new_chunks(inputs, shape, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return chunks
 
-    def new_tensors(self, inputs, shape, **kw):
-        tensors = super(TensorReduction, self).new_tensors(inputs, shape, **kw)
+    def _new_entities(self, inputs, shape, **kw):
+        tensors = super(TensorReduction, self)._new_entities(inputs, shape, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return tensors
 

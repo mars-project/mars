@@ -176,8 +176,8 @@ class Executor(object):
                 chunks.append(chunk)
 
             new_op = TensorFetch(dtype=tensor.dtype)
-            # copy key and id to ensure that fetch tensor won't add the count of executed tensor
             with kernel_mode():
+                # copy key and id to ensure that fetch tensor won't add the count of executed tensor
                 tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
                                            nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
 

@@ -26,7 +26,7 @@ from ....core import BaseWithKey, Entity
 from ....compat import reduce, irange, izip
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
-    slice_split, calc_sliced_size, execute_in_eager_mode
+    slice_split, calc_sliced_size
 from ..core import TensorOperandMixin
 from .core import process_index, get_index_and_shape
 
@@ -80,17 +80,16 @@ class TensorIndex(Index, TensorOperandMixin):
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    @execute_in_eager_mode
-    def new_tensors(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
             kw['executable'] = False
-            return super(TensorIndex, self).new_tensors(mix_inputs, shape, **kw)
+            return super(TensorIndex, self)._new_entities(mix_inputs, shape, **kw)
 
-    def new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self).new_chunks(mix_inputs, shape, **kw)
+            return super(TensorIndex, self)._new_chunks(mix_inputs, shape, **kw)
 
     def __call__(self, a, index, shape):
         return self.new_tensor([a], shape, indexes=index)

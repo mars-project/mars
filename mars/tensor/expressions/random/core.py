@@ -24,7 +24,7 @@ from ....config import options
 from ....compat import irange, izip
 from ....operands.random import State
 from ...core import TENSOR_TYPE, CHUNK_TYPE
-from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape, execute_in_eager_mode
+from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
@@ -208,13 +208,12 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             if field in field_to_obj:
                 setattr(self, field, next(inputs_iter))
 
-    @execute_in_eager_mode
-    def new_tensors(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, **kw):
         raw_chunk_size = kw.get('chunk_size', None)
         with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunk_size, True) as (inputs, shape):
             kw['executable'] = False
-            return super(TensorRandomOperandMixin, self).new_tensors(inputs, shape, **kw)
+            return super(TensorRandomOperandMixin, self)._new_entities(inputs, shape, **kw)
 
-    def new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, **kw):
         with self._get_inputs_shape_by_given_fields(inputs, shape, None, False) as (inputs, shape):
-            return super(TensorRandomOperandMixin, self).new_chunks(inputs, shape, **kw)
+            return super(TensorRandomOperandMixin, self)._new_chunks(inputs, shape, **kw)
