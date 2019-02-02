@@ -69,29 +69,29 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(result3.fetch(), expected[2])
 
     def testMixedConfig(self):
-        a = mt.ones((8, 10), chunk_size=3)
+        a = mt.ones((10, 10), chunk_size=3)
         with self.assertRaises(ValueError):
             a.fetch()
 
         with option_context({'eager_mode': True}):
-            b = mt.ones((8, 10), chunk_size=(3, 4))
-            np.testing.assert_array_equal(b.fetch(), np.ones((8, 10)))
+            b = mt.ones((10, 10), chunk_size=(3, 4))
+            np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
 
             r = b + 1
-            np.testing.assert_array_equal(r.fetch(), np.ones((8, 10)) * 2)
+            np.testing.assert_array_equal(r.fetch(), np.ones((10, 10)) * 2)
 
-            r2 = b.T.dot(b)
-            np.testing.assert_array_equal(r2.fetch(), np.ones((10, 10)) * 8)
+            r2 = b.dot(b)
+            np.testing.assert_array_equal(r2.fetch(), np.ones((10, 10)) * 10)
 
-        c = mt.ones((8, 10), chunk_size=3)
+        c = mt.ones((10, 10), chunk_size=3)
         with self.assertRaises(ValueError):
             c.fetch()
-        np.testing.assert_array_equal(c.execute(), np.ones((8, 10)))
+        np.testing.assert_array_equal(c.execute(), np.ones((10, 10)))
 
-        r = c.T.dot(c)
+        r = c.dot(c)
         with self.assertRaises(ValueError):
             r.fetch()
-        np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 8)
+        np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
     def testIndex(self):
         with option_context({'eager_mode': True}):
