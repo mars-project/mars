@@ -30,8 +30,19 @@ class Base(object):
             object.__setattr__(self, key, val)
 
     @property
+    def _keys_(self):
+        cls = type(self)
+        member = '__keys_' + cls.__name__
+        try:
+            return getattr(cls, member)
+        except AttributeError:
+            slots = sorted(self.__slots__)
+            setattr(cls, member, slots)
+            return slots
+
+    @property
     def _values_(self):
-        return [getattr(self, k, None) for k in self.__slots__
+        return [getattr(self, k, None) for k in self._keys_
                 if k not in self._no_copy_attrs_]
 
 

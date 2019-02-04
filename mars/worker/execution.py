@@ -24,7 +24,7 @@ from .. import promise
 from ..config import options
 from ..compat import six
 from ..errors import *
-from ..utils import deserialize_graph, log_unhandled
+from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
 from .spill import spill_exists
 from .utils import WorkerActor
@@ -253,7 +253,7 @@ class ExecutionActor(WorkerActor):
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
 
-        calc_keys = list(calc_keys)
+        calc_keys = [to_str(k) for k in calc_keys]
 
         keys_to_pin = list(input_chunk_keys.keys())
         try:
@@ -318,25 +318,26 @@ class ExecutionActor(WorkerActor):
                     continue
 
                 # load data from another worker
-                chunk_meta = self.get_meta_ref(session_id, chunk.key) \
-                    .get_chunk_meta(session_id, chunk.key)
+                chunk_key = to_str(chunk.key)
+                chunk_meta = self.get_meta_ref(session_id, chunk_key) \
+                    .get_chunk_meta(session_id, chunk_key)
                 if chunk_meta is None:
-                    raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
+                    raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
 
                 worker_priorities = []
                 for w in chunk_meta.workers:
                     # todo sort workers by speed of network and other possible factors
                     worker_priorities.append((w, (0, )))
 
-                transfer_keys.append(chunk.key)
+                transfer_keys.append(chunk_key)
 
                 # fetch data from other workers, if one fails, try another
                 sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-                p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
-                                            ensure_cached=chunk.key not in chunks_use_once)
+                p = self._fetch_remote_data(session_id, graph_key, chunk_key, sorted_workers[0][0],
+                                            ensure_cached=chunk_key not in chunks_use_once)
                 for wp in sorted_workers[1:]:
-                    p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
-                                                  ensure_cached=chunk.key not in chunks_use_once))
+                    p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk_key, wp[0],
+                                                  ensure_cached=chunk_key not in chunks_use_once))
                 prepare_promises.append(p)
 
             logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
