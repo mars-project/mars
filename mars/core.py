@@ -27,8 +27,6 @@ from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
 from .tiles import Tilesable, handler
 from .graph import DAG
 
-_sorted_slots = dict()
-
 
 class Base(object):
     __slots__ = ()
@@ -43,10 +41,13 @@ class Base(object):
 
     @property
     def _keys_(self):
+        cls = type(self)
+        member = '__keys_' + cls.__name__
         try:
-            return _sorted_slots[type(self)]
-        except KeyError:
-            slots = _sorted_slots[type(self)] = sorted(self.__slots__)
+            return getattr(cls, member)
+        except AttributeError:
+            slots = sorted(self.__slots__)
+            setattr(cls, member, slots)
             return slots
 
     @property
