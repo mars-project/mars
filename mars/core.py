@@ -27,6 +27,8 @@ from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
 from .tiles import Tilesable, handler
 from .graph import DAG
 
+_sorted_slots = dict()
+
 
 class Base(object):
     __slots__ = ()
@@ -40,8 +42,16 @@ class Base(object):
             object.__setattr__(self, key, val)
 
     @property
+    def _keys_(self):
+        try:
+            return _sorted_slots[type(self)]
+        except KeyError:
+            slots = _sorted_slots[type(self)] = sorted(self.__slots__)
+            return slots
+
+    @property
     def _values_(self):
-        return [getattr(self, k, None) for k in self.__slots__
+        return [getattr(self, k, None) for k in self._keys_
                 if k not in self._no_copy_attrs_]
 
 
@@ -256,7 +266,7 @@ class ChunkData(SerializableWithKey):
 
     def update_key(self):
         object.__setattr__(self, '_key', tokenize(
-            type(self), *(getattr(self, k, None) for k in self.__slots__ if k != '_index')))
+            type(self), *(getattr(self, k, None) for k in self._keys_ if k != '_index')))
 
 
 class Chunk(Entity):

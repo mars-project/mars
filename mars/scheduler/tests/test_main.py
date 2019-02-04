@@ -24,6 +24,7 @@ import uuid
 
 import numpy as np
 from numpy.testing import assert_array_equal
+import gevent
 
 from mars import tensor as mt
 from mars.cluster_info import ClusterInfoActor
@@ -79,6 +80,9 @@ class Test(unittest.TestCase):
             self.etcd_helper.stop()
 
     def start_processes(self, n_schedulers=1, n_workers=2, etcd=False, modules=None):
+        old_not_errors = gevent.hub.Hub.NOT_ERROR
+        gevent.hub.Hub.NOT_ERROR = (Exception,)
+
         scheduler_ports = [str(get_next_port()) for _ in range(n_schedulers)]
         self.scheduler_endpoints = ['127.0.0.1:' + p for p in scheduler_ports]
 
@@ -142,6 +146,8 @@ class Test(unittest.TestCase):
                 if time.time() - check_time > 20:
                     raise
                 time.sleep(0.1)
+
+        gevent.hub.Hub.NOT_ERROR = old_not_errors
 
     def check_process_statuses(self):
         for scheduler_proc in self.proc_schedulers:
