@@ -253,7 +253,7 @@ class ExecutionActor(WorkerActor):
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
 
-        calc_keys = list(calc_keys)
+        calc_keys = [to_str(k) for k in calc_keys]
 
         keys_to_pin = list(input_chunk_keys.keys())
         try:
@@ -329,15 +329,15 @@ class ExecutionActor(WorkerActor):
                     # todo sort workers by speed of network and other possible factors
                     worker_priorities.append((w, (0, )))
 
-                transfer_keys.append(chunk.key)
+                transfer_keys.append(chunk_key)
 
                 # fetch data from other workers, if one fails, try another
                 sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-                p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
-                                            ensure_cached=chunk.key not in chunks_use_once)
+                p = self._fetch_remote_data(session_id, graph_key, chunk_key, sorted_workers[0][0],
+                                            ensure_cached=chunk_key not in chunks_use_once)
                 for wp in sorted_workers[1:]:
-                    p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
-                                                  ensure_cached=chunk.key not in chunks_use_once))
+                    p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk_key, wp[0],
+                                                  ensure_cached=chunk_key not in chunks_use_once))
                 prepare_promises.append(p)
 
             logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
