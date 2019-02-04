@@ -87,7 +87,6 @@ class BaseApplication(object):
         parser.add_argument('--log_conf', help='log config file')
         parser.add_argument('--inspect', help='inspection endpoint')
         parser.add_argument('--load-modules', nargs='*', help='modules to import')
-        parser.add_argument('--profile', nargs='?', default=-1, help='profile application')
         self.config_args(parser)
         args = parser.parse_args(argv)
         self.args = args
@@ -106,8 +105,7 @@ class BaseApplication(object):
                 load_modules = load_module_str.split(',')
         load_modules.append('mars.tensor')
         [__import__(m, globals(), locals(), []) for m in load_modules]
-        if load_modules:
-            self.service_logger.info('Modules %s loaded', ','.join(load_modules))
+        self.service_logger.info('Modules %s loaded', ','.join(load_modules))
 
         self.n_process = 1
 
@@ -185,16 +183,7 @@ class BaseApplication(object):
         return create_actor_pool(*args, **kwargs)
 
     def main_loop(self):
-        if self.args.profile == -1:
-            profile_file = None
-        else:
-            profile_file = self.args.profile or ('mars_' + self.__class__.__name__ + '.prof')
         try:
-            if profile_file:
-                import yappi
-                yappi.set_clock_type('wall')
-                yappi.start(builtins=False, profile_threads=False)
-
             with self.pool:
                 try:
                     self.start()
@@ -212,14 +201,6 @@ class BaseApplication(object):
                     self.stop()
         finally:
             self._running = False
-            if profile_file:
-                import yappi
-                yappi.logger = logging.getLogger(__name__)
-                p = yappi.convert2pstats(yappi.get_func_stats())
-                p.strip_dirs()
-                p.sort_stats('time')
-                p.print_stats(40)
-                p.dump_stats(profile_file)
 
     def handle_process_down(self, proc_indices):
         """

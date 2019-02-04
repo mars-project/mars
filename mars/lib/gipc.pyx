@@ -1156,4 +1156,8 @@ else:
         exec("""exec _code_ in _globs_, _locs_""")
 
     __exec("""def _reraise(tp, value, tb=None):
-    raise tp, value, tb""")
+    try:
+        raise tp, value, tb
+    finally:
+        tb = None
+""")

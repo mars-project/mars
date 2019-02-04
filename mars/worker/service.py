@@ -141,7 +141,7 @@ class WorkerService(object):
     def start(self, endpoint, pool, distributed=True, schedulers=None, process_start_index=0):
         if schedulers:
             if isinstance(schedulers, six.string_types):
-                schedulers = [schedulers]
+                schedulers = schedulers.split(',')
             service_discover_addr = None
         else:
             schedulers = None

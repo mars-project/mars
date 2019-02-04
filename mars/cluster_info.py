@@ -21,6 +21,7 @@ from . import kvstore
 from .actors import FunctionActor
 from .promise import PromiseActor
 from .lib.uhashring import HashRing
+from .utils import to_str
 
 
 SCHEDULER_PATH = '/schedulers'
@@ -49,7 +50,7 @@ class _ClusterInfoWatchActor(FunctionActor):
     def _get_schedulers(self):
         schedulers = [s.key.rsplit('/', 1)[1] for s in self._client.read(SCHEDULER_PATH).children]
         logger.debug('Schedulers obtained. Results: %r', schedulers)
-        return schedulers
+        return [to_str(s) for s in schedulers]
 
     def get_schedulers(self):
         try:
@@ -60,7 +61,7 @@ class _ClusterInfoWatchActor(FunctionActor):
 
     def watch(self):
         for new_schedulers in self._client.eternal_watch(SCHEDULER_PATH):
-            self._cluster_info_ref.set_schedulers(new_schedulers)
+            self._cluster_info_ref.set_schedulers([to_str(s) for s in new_schedulers])
 
 
 class ClusterInfoActor(FunctionActor):
