@@ -18,6 +18,7 @@ import json
 import logging
 
 from .. import kvstore
+from ..compat import six
 from ..config import options
 from ..cluster_info import ClusterInfoActor
 from .session import SessionManagerActor
@@ -61,6 +62,8 @@ class SchedulerService(object):
             logger.info('Mars Scheduler started in standalone mode.')
             service_discover_addr = None
             all_schedulers = {endpoint}
+            if isinstance(schedulers, six.string_types):
+                schedulers = schedulers.split(',')
             if schedulers:
                 all_schedulers.update(schedulers)
             all_schedulers = list(all_schedulers)

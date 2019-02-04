@@ -24,7 +24,7 @@ from .. import promise
 from ..config import options
 from ..compat import six
 from ..errors import *
-from ..utils import deserialize_graph, log_unhandled
+from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
 from .spill import spill_exists
 from .utils import WorkerActor
@@ -318,10 +318,11 @@ class ExecutionActor(WorkerActor):
                     continue
 
                 # load data from another worker
-                chunk_meta = self.get_meta_ref(session_id, chunk.key) \
-                    .get_chunk_meta(session_id, chunk.key)
+                chunk_key = to_str(chunk.key)
+                chunk_meta = self.get_meta_ref(session_id, chunk_key) \
+                    .get_chunk_meta(session_id, chunk_key)
                 if chunk_meta is None:
-                    raise DependencyMissing('Dependency %s not met on sending.' % chunk.key)
+                    raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
 
                 worker_priorities = []
                 for w in chunk_meta.workers:

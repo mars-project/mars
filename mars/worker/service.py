@@ -93,7 +93,7 @@ class WorkerService(object):
     def start(self, endpoint, schedulers, pool, total_mem=None, ignore_avail_mem=False):
         if schedulers:
             if isinstance(schedulers, six.string_types):
-                schedulers = [schedulers]
+                schedulers = schedulers.split(',')
             service_discover_addr = None
         else:
             schedulers = None
