@@ -33,6 +33,7 @@ class MockStorage(object):
             if k not in self._data1 and k in self._data2:
                 self._data1[k] = self._data2[k]
                 del self._data2[k]
+                self._set.set()
         return self._data1.get(k)
 
     def __contains__(self, item):
@@ -40,6 +41,7 @@ class MockStorage(object):
             return item in self._data1
 
     def __getitem__(self, item):
+        self._set.wait(10)
         with self._lock:
             return self._data1[item]
 
@@ -47,7 +49,6 @@ class MockStorage(object):
         with self._lock:
             if not self._set.is_set():
                 self._data2[key] = value
-                self._set.set()
             else:
                 self._data1[key] = value
 
