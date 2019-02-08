@@ -442,7 +442,10 @@ def all_(promises):
         kw['_accept'] = False
         new_promise.step_next(*args, **kw)
 
-    [p.then(_build_then(p), _handle_reject) for p in promises if isinstance(p, Promise)]
+    for p in promises:
+        if isinstance(p, Promise):
+            p.then(_build_then(p), _handle_reject)
+
     if promises:
         return new_promise
     else:

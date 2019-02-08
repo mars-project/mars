@@ -105,7 +105,8 @@ def validate_fftn(tensor, s=None, axes=None, norm=None):
         else:
             axes = tuple(range(len(s)))
     else:
-        [validate_axis(tensor.ndim, axis) for axis in axes]
+        for axis in axes:
+            validate_axis(tensor.ndim, axis)
         if len(set(axes)) < len(axes):
             raise ValueError('Duplicate axes not allowed')
 

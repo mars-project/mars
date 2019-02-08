@@ -102,7 +102,8 @@ def roll(a, shift, axis=None):
     else:
         axis = tuple(axis)
 
-    [validate_axis(a.ndim, ax) for ax in axis]
+    for ax in axis:
+        validate_axis(a.ndim, ax)
     broadcasted = np.broadcast(shift, axis)
     if broadcasted.ndim > 1:
         raise ValueError(
