@@ -135,14 +135,16 @@ class TensorBinOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
-    def _new_entities(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            kw['executable'] = False
-            return super(TensorBinOp, self)._new_entities(inputs, shape, **kw)
+            return super(TensorBinOp, self)._new_entities(
+                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorBinOp, self)._new_chunks(inputs, shape, **kw)
+            return super(TensorBinOp, self)._new_chunks(
+                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def calc_shape(self, *inputs_shape):
         return broadcast_shape(*inputs_shape)
@@ -219,14 +221,16 @@ class TensorConstant(TensorElementWise):
         if not rhs_scalar:
             setattr(self, '_rhs', next(inputs_iter))
 
-    def _new_entities(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            kw['executable'] = False
-            return super(TensorConstant, self)._new_entities(inputs, shape, **kw)
+            return super(TensorConstant, self)._new_entities(
+                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorConstant, self)._new_chunks(inputs, shape, **kw)
+            return super(TensorConstant, self)._new_chunks(
+                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def calc_shape(self, *inputs_shape):
         if not inputs_shape:
@@ -316,14 +320,16 @@ class TensorUnaryOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
-    def _new_entities(self, inputs, shape,**kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            kw['executable'] = False
-            return super(TensorUnaryOp, self)._new_entities(inputs, shape, **kw)
+            return super(TensorUnaryOp, self)._new_entities(
+                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorUnaryOp, self)._new_chunks(inputs, shape, **kw)
+            return super(TensorUnaryOp, self)._new_chunks(
+                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def calc_shape(self, *inputs_shape):
         return inputs_shape[0]
@@ -446,14 +452,16 @@ class TensorOutBinOp(TensorElementWise):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
-    def _new_entities(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            kw['executable'] = False
-            return super(TensorOutBinOp, self)._new_entities(inputs, shape, **kw)
+            return super(TensorOutBinOp, self)._new_entities(
+                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorOutBinOp, self)._new_chunks(inputs, shape, **kw)
+            return super(TensorOutBinOp, self)._new_chunks(
+                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     @property
     def _fun(self):

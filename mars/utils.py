@@ -29,7 +29,6 @@ import time
 import zlib
 import threading
 from hashlib import md5
-from contextlib import contextmanager
 
 import numpy as np
 
