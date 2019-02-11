@@ -35,8 +35,8 @@ class TensorDirichlet(operands.Dirichlet, TensorRandomOperandMixin):
         super(TensorDirichlet, self).__init__(_alpha=alpha, _state=state, _size=size,
                                               _dtype=dtype, _gpu=gpu, **kw)
 
-    def _get_shape(self, inputs):
-        shape = super(TensorDirichlet, self)._get_shape(inputs)
+    def _get_shape(self, shapes):
+        shape = super(TensorDirichlet, self)._get_shape(shapes)
         return shape + (len(self._alpha),)
 
     def __call__(self, chunk_size=None):

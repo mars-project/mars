@@ -1127,6 +1127,7 @@ def _reset_signal_handlers():
         if s < signal.NSIG:
             signal.signal(s, signal.SIG_DFL)
     cleanup_on_sigterm()
+    signal.signal(signal.SIGINT, signal.default_int_handler)
 
 
 PY3 = sys.version_info[0] == 3

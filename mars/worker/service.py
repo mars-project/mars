@@ -233,19 +233,20 @@ class WorkerService(object):
         self._daemon_ref.handle_process_down(proc_indices, _tell=True)
 
     def stop(self):
-        if self._result_sender_ref:
-            self._result_sender_ref.destroy()
-        if self._status_ref:
-            self._status_ref.destroy()
-        if self._chunk_holder_ref:
-            self._chunk_holder_ref.destroy()
-        if self._dispatch_ref:
-            self._dispatch_ref.destroy()
-        if self._execution_ref:
-            self._execution_ref.destroy()
+        try:
+            if self._result_sender_ref:
+                self._result_sender_ref.destroy()
+            if self._status_ref:
+                self._status_ref.destroy()
+            if self._chunk_holder_ref:
+                self._chunk_holder_ref.destroy()
+            if self._dispatch_ref:
+                self._dispatch_ref.destroy()
+            if self._execution_ref:
+                self._execution_ref.destroy()
 
-        for actor in (self._cpu_calc_actors + self._sender_actors
-                      + self._receiver_actors + self._spill_actors + self._process_helper_actors):
-            actor.destroy()
-
-        self._plasma_store.__exit__(None, None, None)
+            for actor in (self._cpu_calc_actors + self._sender_actors
+                          + self._receiver_actors + self._spill_actors + self._process_helper_actors):
+                actor.destroy()
+        finally:
+            self._plasma_store.__exit__(None, None, None)
