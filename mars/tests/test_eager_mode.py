@@ -19,6 +19,7 @@ import numpy as np
 
 import mars.tensor as mt
 from mars.config import option_context
+from mars.session import Session
 
 
 class Test(unittest.TestCase):

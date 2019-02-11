@@ -23,7 +23,8 @@ import numpy as np
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import futures, OrderedDict
-from .core import build_mode, kernel_mode
+from .core import build_mode
+from .utils import kernel_mode
 
 
 class Executor(object):
@@ -78,6 +79,7 @@ class Executor(object):
                              sparse_mock_percent=sparse_mock_percent,
                              prefetch=self._prefetch, retval=True)
 
+    @kernel_mode
     def execute_tensor(self, tensor, n_parallel=None, n_thread=None, concat=False,
                        show_progress=False, mock=False, sparse_mock_percent=1.0):
         if concat:
@@ -88,9 +90,8 @@ class Executor(object):
 
                 op = TensorConcatenate(dtype=tensor.op.dtype)
                 chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
-                with kernel_mode():
-                    tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                           nsplits=[(s,) for s in tensor.shape])
+                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                                        nsplits=[(s,) for s in tensor.shape])
 
         graph = tensor.build_graph(cls=DirectedGraph, tiled=True)
 
@@ -99,6 +100,7 @@ class Executor(object):
                                   show_progress=show_progress, mock=mock,
                                   sparse_mock_percent=sparse_mock_percent)
 
+    @kernel_mode
     def execute_tensors(self, tensors, fetch=True, n_parallel=None, n_thread=None,
                         show_progress=False, mock=False, sparse_mock_percent=1.0):
         graph = DirectedGraph()
@@ -129,9 +131,8 @@ class Executor(object):
                 concat_keys.append(chunk.key)
                 # after return the data to user, we release the reference
                 to_release_keys.append(chunk.key)
-                with kernel_mode():
-                    tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                           nsplits=[(s,) for s in tensor.shape])
+                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                                       nsplits=[(s,) for s in tensor.shape])
             else:
                 concat_keys.append(tensor.chunks[0].key)
 
@@ -151,6 +152,7 @@ class Executor(object):
             for k in to_release_keys:
                 del results[k]
 
+    @kernel_mode
     def fetch_tensors(self, tensors, **kw):
         from .tensor.expressions.datasource import TensorFetch
 
@@ -176,10 +178,9 @@ class Executor(object):
                 chunks.append(chunk)
 
             new_op = TensorFetch(dtype=tensor.dtype)
-            with kernel_mode():
-                # copy key and id to ensure that fetch tensor won't add the count of executed tensor
-                tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
-                                           nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
+            # copy key and id to ensure that fetch tensor won't add the count of executed tensor
+            tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
+                                       nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
 
             # add this concat tensor into the list which shall be executed later
             to_concat_tensors[i] = tensor
