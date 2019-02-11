@@ -244,17 +244,31 @@ class LocalDistributedClusterClient(object):
     def __exit__(self, *_):
         self.stop()
 
+    @staticmethod
+    def _ensure_process_finish(proc):
+        if proc is None or not proc.is_alive():
+            return
+        proc.join(3)
+
+        # in case the process does not finish
+        if proc.is_alive():  # pragma: no cover
+            try:
+                import psutil
+                for subproc in psutil.Process(proc.pid).children(recursive=True):
+                    subproc.kill()
+            except ImportError:
+                pass
+            finally:
+                proc.terminate()
+
     def stop(self):
         if self._cluster_process.is_alive():
             os.kill(self._cluster_process.pid, signal.SIGINT)
-            self._cluster_process.join(3)
-            if self._cluster_process.is_alive():
-                self._cluster_process.terminate()
         if self._web_process is not None and self._web_process.is_alive():
             os.kill(self._web_process.pid, signal.SIGINT)
-            self._web_process.join(3)
-            if self._web_process.is_alive():
-                self._web_process.terminate()
+
+        self._ensure_process_finish(self._cluster_process)
+        self._ensure_process_finish(self._web_process)
 
 
 def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None, **kw):

@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import functools
+import logging
 import sys
 import time
 import unittest
@@ -31,6 +32,8 @@ from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
+
+logger = logging.getLogger(__name__)
 
 
 def _on_deserialize_fail(x):
@@ -74,9 +77,8 @@ class Test(unittest.TestCase):
                          shared_memory='20M', web=True) as cluster:
             cluster_proc = psutil.Process(cluster._cluster_process.pid)
             web_proc = psutil.Process(cluster._web_process.pid)
-            processes = [cluster_proc, web_proc] + \
-                        list(cluster_proc.children(recursive=True)) + \
-                        list(web_proc.children(recursive=True))
+            processes = list(cluster_proc.children(recursive=True)) + \
+                list(web_proc.children(recursive=True))
 
             with cluster.session as session:
                 t = mt.ones((3, 3), chunk_size=2)
@@ -91,10 +93,12 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
         check_time = time.time()
-        while not all(not p.is_running() for p in processes):
+        while any(p.is_running() for p in processes):
             time.sleep(0.1)
             if check_time + 10 < time.time():
-                self.assertTrue(all(not p.is_running() for p in processes))
+                logger.error('Processes still running: %r',
+                             [' '.join(p.cmdline()) for p in processes if p.is_running()])
+                self.assertFalse(any(p.is_running() for p in processes))
 
     def testNSchedulersNWorkers(self):
         calc_cpu_cnt = functools.partial(lambda: 4)
