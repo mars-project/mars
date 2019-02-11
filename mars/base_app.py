@@ -195,8 +195,7 @@ class BaseApplication(object):
                                 stopped.append(idx)
                         if stopped:
                             self.handle_process_down(stopped)
-                except:
-                    self._running = False
+                finally:
                     self.stop_service()
         finally:
             self._running = False

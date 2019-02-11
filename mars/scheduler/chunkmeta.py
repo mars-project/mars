@@ -140,12 +140,12 @@ class ChunkMetaCache(ChunkMetaStore):
         self._chunk_metas.move_to_end(item)
         return super(ChunkMetaCache, self).__getitem__(item)
 
-    def get(self, key, default=None):
+    def get(self, chunk_key, default=None):
         try:
-            self._chunk_metas.move_to_end(key)
+            self._chunk_metas.move_to_end(chunk_key)
         except KeyError:
             pass
-        return super(ChunkMetaCache, self).get(key, default)
+        return super(ChunkMetaCache, self).get(chunk_key, default)
 
     def __setitem__(self, key, value):
         limit = self._limit

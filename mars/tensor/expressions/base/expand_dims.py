@@ -78,8 +78,8 @@ def expand_dims(a, axis):
     a = astensor(a)
 
     if axis > a.ndim or axis < -a.ndim - 1:
-        raise np.AxisError('Axis must be between -%d and %d, got %d'.format(
-            a.ndim + 1, a.ndim, axis))
+        raise np.AxisError('Axis must be between -%d and %d, got %d' %
+                           (a.ndim + 1, a.ndim, axis))
 
     axis = axis if axis >= 0 else axis + a.ndim + 1
     indexes = (slice(None),) * axis + (np.newaxis,) + (slice(None),) * (a.ndim - axis)
