@@ -15,3 +15,4 @@ Mars tensor - distributed tensor with NumPy-like API
    routines
    sparse
    execution
+   eager-mode

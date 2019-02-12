@@ -541,7 +541,7 @@ class TilesableOperandMixin(object):
         Create entities(Tensors or DataFrames).
         This is a base function for create entities like tensors or dataframes, it will be called
         inside the `new_tensors` and `new_dataframes`.
-        If eager mode is on, it will trigger the execution after entities are creates.
+        If eager mode is on, it will trigger the execution after entities are created.
         :param inputs: input entities
         :param shape: outputs' shapes
         :param kwargs: kwargs

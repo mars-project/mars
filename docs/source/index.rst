@@ -52,6 +52,7 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
    tensor/routines
    tensor/sparse
    tensor/execution
+   tensor/eager-mode
 
 .. toctree::
    :maxdepth: 2
