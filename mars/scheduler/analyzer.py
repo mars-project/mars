@@ -86,30 +86,36 @@ class GraphAnalyzer(object):
         return sizes
 
     def _iter_successor_assigns(self, start_assign):
+        """Iterate over all successors to get allocations of successor nodes"""
         graph = self._graph
 
         worker_assigns = start_assign.copy()
         for n in graph.topological_iter():
-            if not graph.predecessors(n):
+            if not graph.count_predecessors(n):
                 continue
             pred_sizes = defaultdict(lambda: 0)
             total_size = 0
             worker_involved = set()
+            # calculate ratios of every worker in predecessors
             for pred in graph.iter_predecessors(n):
                 op_key = pred.op.key
-                total_size += pred.nbytes
+                pred_bytes = pred.rough_nbytes
+                total_size += pred_bytes
                 if op_key in worker_assigns:
-                    pred_sizes[worker_assigns[op_key]] += pred.nbytes
+                    pred_sizes[worker_assigns[op_key]] += pred_bytes
                     worker_involved.add(worker_assigns[op_key])
                 else:
                     worker_involved.add(None)
+            # get the worker occupying most of the data
             max_worker = None
             max_size = 0
             for w, size in pred_sizes.items():
                 if size > max_size:
                     max_size = size
                     max_worker = w
-            if max_size > total_size / max(2, len(worker_involved)):
+            # if there is a dominant worker, return it
+            if max_size > total_size / max(2, len(worker_involved)) and \
+                    max_worker is not None:
                 worker_assigns[n.op.key] = max_worker
                 yield n.op.key, max_worker
 
@@ -123,11 +129,13 @@ class GraphAnalyzer(object):
         endpoints = [t[0] for t in endpoint_res]
         endpoint_cores = np.array([t[1] for t in endpoint_res]).astype(np.float32)
 
+        # remove assigned nodes from limitations
         counts = initial_count * endpoint_cores / endpoint_cores.sum()
         for idx, ep in enumerate(endpoints):
             counts[idx] = max(0, counts[idx] - occupied.get(ep, 0))
         counts = (actual_count * counts / counts.sum()).astype(np.int32)
 
+        # assign remaining nodes
         pos = 0
         rest = actual_count - counts.sum()
         while rest > 0:
@@ -137,6 +145,7 @@ class GraphAnalyzer(object):
         return dict(zip(endpoints, counts))
 
     def _collect_zero_degrees(self):
+        """Collect unassigned initial nodes"""
         if not self._descendant_sizes:
             self.calc_descendant_sizes()
 
@@ -159,10 +168,14 @@ class GraphAnalyzer(object):
         for worker in descendant_readies.values():
             assigned_initials[worker] += 1
 
-        # note that different sort orders can contribute to different efficiency
+        # note that different orders can contribute to different efficiency
         return sorted(zero_degrees, key=lambda n: descendant_sizes[n.op.key])
 
     def _assign_by_bfs(self, start, worker, initial_sizes, spread_limits, assigned_record):
+        """
+        Assign initial nodes using Breadth-first Search given initial sizes and
+        limitations of spread range.
+        """
         graph = self._graph
         if self._undigraph is None:
             undigraph = self._undigraph = graph.build_undirected()
@@ -208,6 +221,7 @@ class GraphAnalyzer(object):
         assigned_initial_counts = defaultdict(lambda: 0)
         worker_op_keys = defaultdict(list)
         if cur_assigns:
+            # calculate ranges of nodes already assigned
             for op_key, worker in self._iter_successor_assigns(cur_assigns):
                 if op_states.get(op_key) == OperandState.READY:
                     descendant_readies.add(op_key)
@@ -215,11 +229,15 @@ class GraphAnalyzer(object):
                 cur_assigns[op_key] = worker
                 worker_op_keys[worker].append(op_key)
 
+        # calculate the number of initial nodes to be assigned to every worker
+        # given number of workers and existing assignments
         worker_quotas = self._calc_worker_initial_limits(
             len(zero_degrees) + len(descendant_readies), assigned_initial_counts)
 
         logger.debug('Worker initial quotas: %r', worker_quotas)
 
+        # calculate expected descendant count (spread range) of
+        # every worker and subtract assigned number from it
         average_spread_range = len(graph) * 1.0 / len(self._worker_slots)
         spread_ranges = defaultdict(lambda: average_spread_range)
         for worker in cur_assigns.values():
