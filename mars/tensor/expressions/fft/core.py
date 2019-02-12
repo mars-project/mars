@@ -16,11 +16,12 @@
 
 from collections import Iterable
 
+from ....compat import izip
 from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
 from ..core import TensorOperandMixin
 
 
-class TensorFFTMixin(TensorOperandMixin):
+class TensorFFTBaseMixin(TensorOperandMixin):
     __slots__ = ()
 
     def calc_shape(self, *inputs_shape):
@@ -31,13 +32,12 @@ class TensorFFTMixin(TensorOperandMixin):
         raise NotImplementedError
 
     @classmethod
-    def tile(cls, op):
+    def _tile_fft(cls, op, axes):
         in_tensor = op.inputs[0]
-        axis = op.axis
 
-        if in_tensor.chunk_shape[axis] != 1:
+        if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
-            chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis]}
+            chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes}
             new_chunks = decide_chunk_sizes(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
             in_tensor = in_tensor.rechunk(new_chunks).single_tiles()
 
@@ -55,6 +55,27 @@ class TensorFFTMixin(TensorOperandMixin):
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=out_chunks, nsplits=nsplits)
 
+    def __call__(self, a):
+        shape = self._get_shape(self, a.shape)
+        return self.new_tensor([a], shape)
+
+
+class TensorFFTMixin(TensorFFTBaseMixin):
+    __slots__ = ()
+
+    @classmethod
+    def tile(cls, op):
+        return cls._tile_fft(op, [op.axis])
+
+
+class TensorComplexFFTMixin(TensorFFTMixin):
+    @classmethod
+    def _get_shape(cls, op, shape):
+        new_shape = list(shape)
+        if op.n is not None:
+            new_shape[op.axis] = op.n
+        return tuple(new_shape)
+
 
 def validate_fft(tensor, axis=-1, norm=None):
     validate_axis(tensor.ndim, axis)
@@ -62,40 +83,42 @@ def validate_fft(tensor, axis=-1, norm=None):
         raise ValueError('Invalid norm value {0}, should be None or "ortho"'.format(norm))
 
 
-class TensorFFTNMixin(TensorOperandMixin):
-    __slots__ = ()
-
-    def calc_shape(self, *inputs_shape):
-        return self._get_shape(self, inputs_shape[0])
-
-    @classmethod
-    def _get_shape(cls, op, shape):
-        raise NotImplementedError
-
+class TensorFFTNMixin(TensorFFTBaseMixin):
     @classmethod
     def tile(cls, op):
-        in_tensor = op.inputs[0]
-        axes = op.axes
+        return cls._tile_fft(op, op.axes)
 
-        if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
-            new_chunks = decide_chunk_sizes(
-                in_tensor.shape, {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes},
-                in_tensor.dtype.itemsize)
-            in_tensor = in_tensor.rechunk(new_chunks).single_tiles()
 
-        out_chunks = []
-        for c in in_tensor.chunks:
-            chunk_op = op.copy().reset_key()
-            chunk_shape = cls._get_shape(op, c.shape)
-            out_chunk = chunk_op.new_chunk([c], chunk_shape, index=c.index)
-            out_chunks.append(out_chunk)
+class TensorComplexFFTNMixin(TensorFFTNMixin):
+    @classmethod
+    def _get_shape(cls, op, shape):
+        new_shape = list(shape)
+        if op.shape is not None:
+            for ss, axis in izip(op.shape, op.axes):
+                new_shape[axis] = ss
+        return tuple(new_shape)
 
-        nsplits = [tuple(c.shape[i] for c in out_chunks
-                         if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
-                   for i in range(len(out_chunks[0].shape))]
-        new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
-                                  chunks=out_chunks, nsplits=nsplits)
+
+class TensorRealFFTNMixin(TensorFFTNMixin):
+    @classmethod
+    def _get_shape(cls, op, shape):
+        new_shape = list(shape)
+        if op.shape is not None:
+            for ss, axis in izip(op.shape, op.axes):
+                new_shape[axis] = ss
+        new_shape[op.axes[-1]] = new_shape[op.axes[-1]] // 2 + 1
+        return tuple(new_shape)
+
+
+class TensorRealIFFTNMixin(TensorFFTNMixin):
+    @classmethod
+    def _get_shape(cls, op, shape):
+        new_shape = list(shape)
+        new_shape[op.axes[-1]] = 2 * (new_shape[op.axes[-1]] - 1)
+        if op.shape is not None:
+            for ss, axis in izip(op.shape, op.axes):
+                new_shape[axis] = ss
+        return tuple(new_shape)
 
 
 def validate_fftn(tensor, s=None, axes=None, norm=None):
