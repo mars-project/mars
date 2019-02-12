@@ -49,11 +49,23 @@ class Test(unittest.TestCase):
         options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
         cls._kv_store = kvstore.get(options.kv_store)
 
+        if sys.platform == 'win32':
+            os.system('del *.log')
+        else:
+            os.system('rm *.log')
+
     @classmethod
     def tearDownClass(cls):
         import shutil
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
+
+        try:
+            delay_state_file = os.environ.get('DELAY_STATE_FILE')
+            if delay_state_file:
+                os.unlink(delay_state_file)
+        except OSError:
+            pass
 
     def setUp(self):
         self.scheduler_endpoints = []
@@ -80,7 +92,8 @@ class Test(unittest.TestCase):
             self.etcd_helper.stop()
         options.kv_store = ':inproc:'
 
-    def start_processes(self, n_schedulers=1, n_workers=2, etcd=False, modules=None):
+    def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
+                        log_scheduler=True, log_worker=True):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -103,7 +116,7 @@ class Test(unittest.TestCase):
         self.proc_schedulers = [
             subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                               '-H', '127.0.0.1',
-                              '--level', 'debug',
+                              '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
                               '--format', '%(asctime)-15s %(message)s']
                              + append_args)
@@ -112,7 +125,7 @@ class Test(unittest.TestCase):
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
                               '--cpu-procs', '1',
-                              '--level', 'debug',
+                              '--level', 'debug' if log_worker else 'warning',
                               '--cache-mem', '16m',
                               '--ignore-avail-mem']
                              + append_args)
@@ -169,7 +182,7 @@ class Test(unittest.TestCase):
                 return session_ref.graph_state(graph_key)
 
     def testMainWithoutEtcd(self):
-        self.start_processes(n_schedulers=2)
+        self.start_processes()
 
         session_id = uuid.uuid1()
         actor_client = new_client()
@@ -231,7 +244,7 @@ class Test(unittest.TestCase):
         assert_array_equal(loads(result), expected)
 
     def testMainWithEtcd(self):
-        self.start_processes(n_schedulers=2, etcd=True)
+        self.start_processes(etcd=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
@@ -246,6 +259,48 @@ class Test(unittest.TestCase):
         graph_key = uuid.uuid1()
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
+
+        state = self.wait_for_termination(session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, c.key)
+        expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
+        assert_array_equal(loads(result), expected.sum())
+
+    def testWorkerFailOver(self):
+        def kill_process_tree(p):
+            import psutil
+            proc = psutil.Process(p.pid)
+            for p in proc.children(recursive=True):
+                p.kill()
+            proc.kill()
+
+        import tempfile
+        delay_file = os.path.join(tempfile.gettempdir(),
+                                  'test-main-delay-%d-%d' % (os.getpid(), id(self)))
+        with open(delay_file, 'w'):
+            pass
+        os.environ['DELAY_STATE_FILE'] = delay_file
+
+        self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=False)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+        b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+        c = (a * b * 2 + 1).sum()
+        graph = c.build_graph()
+        targets = [c.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
+                                        graph_key, target_tensors=targets)
+
+        actor_client.sleep(1.2)
+        kill_process_tree(self.proc_workers[0])
+        self.proc_workers = self.proc_workers[1:]
+        os.unlink(delay_file)
 
         state = self.wait_for_termination(session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)

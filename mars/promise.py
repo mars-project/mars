@@ -91,7 +91,10 @@ class Promise(object):
                     result._bind_item = self
                     if result._accepted is not None:
                         # promise already done, we move next
-                        result.step_next(_accept=result._accepted)
+                        args = result._args or ()
+                        kwargs = result._kwargs or {}
+                        kwargs['_accept'] = result._accepted
+                        result.step_next(*args, **kwargs)
                 else:
                     # return non-promise result, we just step next
                     self.step_next(result)

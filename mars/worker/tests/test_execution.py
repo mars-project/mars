@@ -583,6 +583,18 @@ class Test(WorkerCase):
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
 
+            with self.run_actor_test(pool) as test_actor:
+                graph_key = str(uuid.uuid4())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            with self.assertRaises(DependencyMissing):
+                self.get_result()
+
             chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
                                           shape=mock_data.shape, workers=('0.0.0.0:1234',))
             with self.run_actor_test(pool) as test_actor:

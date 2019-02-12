@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+import contextlib
 import copy
 import functools
 import logging
@@ -25,14 +26,22 @@ from .kvstore import KVStoreActor
 from .resource import ResourceActor
 from .utils import SchedulerActor, OperandState, OperandPosition, GraphState, array_to_bytes
 from ..actors import ActorNotExist
-from ..compat import BrokenPipeError, ConnectionRefusedError
+from ..compat import BrokenPipeError, ConnectionRefusedError  # pylint: disable=W0622
 from ..config import options
 from ..errors import ExecutionInterrupted, DependencyMissing
 from ..utils import log_unhandled
 
 logger = logging.getLogger(__name__)
+_WorkerDeadError = type('WorkerDeadError', (Exception,), {})
 
-WORKER_DEAD_ERRORS = (BrokenPipeError, ConnectionRefusedError, ActorNotExist)
+
+@contextlib.contextmanager
+def _rewrite_worker_errors(ignore_error=False):
+    try:
+        yield
+    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist):
+        if not ignore_error:
+            raise _WorkerDeadError
 
 
 class OperandActor(SchedulerActor):
@@ -233,7 +242,7 @@ class OperandActor(SchedulerActor):
             # make sure that all prior states are terminated (in case of failover)
             states = self._graph_ref.get_operand_states(self._succ_keys)
             # non-terminal operand with all successors done, the data can be freed
-            if all(k in OperandState.TERMINATED_STATES for k in states):
+            if all(k in OperandState.TERMINATED_STATES for k in states) and self._is_worker_alive():
                 self.ref().free_data(_tell=True)
 
     def remove_finished_successor(self, op_key):
@@ -281,8 +290,9 @@ class OperandActor(SchedulerActor):
         dead_workers = set()
         for w, f in zip(self._assigned_workers, futures):
             try:
-                f.result()
-            except WORKER_DEAD_ERRORS:
+                with _rewrite_worker_errors():
+                    f.result()
+            except _WorkerDeadError:
                 dead_workers.add(w)
         if dead_workers:
             self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
@@ -355,11 +365,14 @@ class OperandActor(SchedulerActor):
             return
         self.start_operand(OperandState.CANCELLING)
 
-    def move_failover_state(self, from_state, state, new_target, dead_workers):
+    def _is_worker_alive(self):
+        return self._assigner_ref.is_worker_alive(self.worker)
+
+    def move_failover_state(self, from_states, state, new_target, dead_workers):
         dead_workers = set(dead_workers)
-        if from_state != self.state:
-            logger.debug('From state not matching (%s != %s), operand %s skips failover step',
-                         from_state.name, self.state.name, self._op_key)
+        if self.state not in from_states:
+            logger.debug('From state not matching (%s not in %r), operand %s skips failover step',
+                         self.state.name, [s.name for s in from_states], self._op_key)
             return
         if self.state in (OperandState.RUNNING, OperandState.FINISHED):
             if self.worker not in dead_workers:
@@ -378,14 +391,16 @@ class OperandActor(SchedulerActor):
             target_updated = False
 
         if self.state == state == OperandState.READY:
-            if not self._target_worker and (self._assigned_workers - dead_workers):
-                logger.debug('Operand %s still have alive workers assigned %r, skip failover step',
-                             self._op_key, list(self._assigned_workers - dead_workers))
-                return
-            if not target_updated and self._target_worker not in dead_workers:
-                logger.debug('Target of operand %s (%s) not dead, skip failover step',
-                             self._op_key, self._target_worker)
-                return
+            if not self._target_worker:
+                if self._assigned_workers - dead_workers:
+                    logger.debug('Operand %s still have alive workers assigned %r, skip failover step',
+                                 self._op_key, list(self._assigned_workers - dead_workers))
+                    return
+            else:
+                if not target_updated and self._target_worker not in dead_workers:
+                    logger.debug('Target of operand %s (%s) not dead, skip failover step',
+                                 self._op_key, self._target_worker)
+                    return
 
         if dead_workers:
             futures = []
@@ -410,7 +425,7 @@ class OperandActor(SchedulerActor):
         """
         from ..worker.chunkholder import ChunkHolderActor
 
-        worker_cache_ref = self.ctx.actor_ref(ep, ChunkHolderActor.default_name())
+        worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
         return worker_cache_ref.unregister_chunk(self._session_id, chunk_key,
                                                  _tell=True, _wait=False)
 
@@ -421,17 +436,30 @@ class OperandActor(SchedulerActor):
         """
         if self.state == OperandState.FREED:
             return
+
+        self.start_operand(state)
+
         endpoint_lists = self._chunk_meta_ref.batch_get_workers(self._session_id, self._chunks)
         futures = []
         for chunk_key, endpoints in zip(self._chunks, endpoint_lists):
             if endpoints is None:
                 continue
             for ep in endpoints:
-                futures.append(self._free_worker_data(ep, chunk_key))
-        futures.append(self._chunk_meta_ref.batch_delete_meta(
-            self._session_id, self._chunks, _tell=True, _wait=False))
-        [f.result() for f in futures]
-        self.start_operand(state)
+                futures.append((self._free_worker_data(ep, chunk_key), ep))
+
+        dead_workers = []
+        for f, ep in futures:
+            try:
+                with _rewrite_worker_errors():
+                    f.result()
+            except _WorkerDeadError:
+                dead_workers.append(ep)
+
+        if dead_workers:
+            self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
+            self._assigned_workers.difference_update(dead_workers)
+
+        self._chunk_meta_ref.batch_delete_meta(self._session_id, self._chunks, _tell=True)
 
     def propagate_state(self, state):
         """
@@ -500,29 +528,27 @@ class OperandActor(SchedulerActor):
 
     @log_unhandled
     def _handle_worker_accept(self, worker):
+        def _dequeue_worker(endpoint, wait=True):
+            try:
+                with _rewrite_worker_errors():
+                    return self._get_execution_ref(address=endpoint).dequeue_graph(
+                        self._session_id, self._op_key, _tell=True, _wait=wait)
+            finally:
+                self._assigned_workers.difference_update((worker,))
+
         if self._position == OperandPosition.INITIAL:
             new_worker = self._graph_ref.get_operand_target_worker(self._op_key)
             if new_worker and new_worker != self._target_worker:
                 logger.debug('Cancelling running operand %s on %s, new_target %s',
                              self._op_key, worker, new_worker)
-                self._assigned_workers.difference_update((worker,))
-                try:
-                    self._get_execution_ref(address=worker).dequeue_graph(
-                        self._session_id, self._op_key)
-                except WORKER_DEAD_ERRORS:
-                    pass
+                _dequeue_worker(worker)
                 return
 
         if (self.worker and self.worker != worker) or \
                 (self._target_worker and worker != self._target_worker):
             logger.debug('Cancelling running operand %s on %s, op_worker %s, op_target %s',
                          self._op_key, worker, self.worker, self._target_worker)
-            try:
-                self._get_execution_ref(address=worker).dequeue_graph(
-                    self._session_id, self._op_key)
-            except WORKER_DEAD_ERRORS:
-                pass
-            self._assigned_workers.difference_update((worker,))
+            _dequeue_worker(worker)
             return
         elif self.worker is not None:
             logger.debug('Worker for operand %s already assigned', self._op_key)
@@ -537,18 +563,15 @@ class OperandActor(SchedulerActor):
             self._execution_ref = None
         self.worker = worker
         cancel_futures = []
-        for w in self._assigned_workers:
+        for w in list(self._assigned_workers):
             if w != worker:
                 logger.debug('Cancelling running operand %s on %s, when deciding to run on %s',
                              self._op_key, w, worker)
-                cancel_futures.append(self._get_execution_ref(address=w).dequeue_graph(
-                    self._session_id, self._op_key, _wait=False))
+                cancel_futures.append(_dequeue_worker(w, wait=False))
 
         for f in cancel_futures:
-            try:
+            with _rewrite_worker_errors(ignore_error=True):
                 f.result()
-            except WORKER_DEAD_ERRORS:
-                pass
         self._assigned_workers = set()
 
         target_predicts = self._get_target_predicts(worker)
@@ -572,9 +595,10 @@ class OperandActor(SchedulerActor):
         logger.debug('Start running operand %s on %s', self._op_key, worker)
         self._execution_ref = self._get_execution_ref()
         try:
-            self._execution_ref.start_execution(
-                self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
-        except WORKER_DEAD_ERRORS:
+            with _rewrite_worker_errors():
+                self._execution_ref.start_execution(
+                    self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
+        except _WorkerDeadError:
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
             return
         # here we start running immediately to avoid accidental state change
@@ -595,6 +619,7 @@ class OperandActor(SchedulerActor):
         except DependencyMissing:
             logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
                            self._op_key)
+            self._assigned_workers = set()
             self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             return
 
@@ -602,6 +627,7 @@ class OperandActor(SchedulerActor):
         if any(v is None for v in chunk_sizes):
             logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
                            self._op_key)
+            self._assigned_workers = set()
             self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             return
 
@@ -616,17 +642,15 @@ class OperandActor(SchedulerActor):
         serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
         for worker_ep in new_assignment:
             try:
-                self._get_execution_ref(address=worker_ep).enqueue_graph(
-                    self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
-                    data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
-                    _delay=delay, _promise=True) \
-                    .then(functools.partial(self._handle_worker_accept, worker_ep))
-            except WORKER_DEAD_ERRORS:
+                with _rewrite_worker_errors():
+                    self._get_execution_ref(address=worker_ep).enqueue_graph(
+                        self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                        data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
+                        _delay=delay, _promise=True) \
+                        .then(functools.partial(self._handle_worker_accept, worker_ep))
+            except _WorkerDeadError:
                 dead_workers.add(worker_ep)
                 self._assigned_workers.difference_update([worker_ep])
-            except:
-                self._assigned_workers.difference_update([worker_ep])
-                raise
         if dead_workers:
             self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
             if not self._assigned_workers:
@@ -638,6 +662,8 @@ class OperandActor(SchedulerActor):
 
         @log_unhandled
         def _acceptor(*_):
+            if not self._is_worker_alive():
+                return
             # handling success of operand execution
             self.start_operand(OperandState.FINISHED)
 
@@ -678,9 +704,10 @@ class OperandActor(SchedulerActor):
                 self.ref().start_operand(_tell=True)
 
         try:
-            self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
-                .then(_acceptor, _rejecter)
-        except WORKER_DEAD_ERRORS:
+            with _rewrite_worker_errors():
+                self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
+                    .then(_acceptor, _rejecter)
+        except _WorkerDeadError:
             self.state = OperandState.READY
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
 
@@ -738,10 +765,9 @@ class OperandActor(SchedulerActor):
             # send stop to worker
             self._execution_ref = self._get_execution_ref()
             logger.debug('Sending stop on operand %s to %s', self._op_key, self.worker)
-            try:
-                self._execution_ref.stop_execution(self._session_id, self._op_key, _tell=True)
-            except WORKER_DEAD_ERRORS:
-                pass
+            with _rewrite_worker_errors(ignore_error=True):
+                self._execution_ref.stop_execution(
+                    self._session_id, self._op_key, _tell=True)
         elif self._last_state == OperandState.FINISHED:
             # delete data on cancelled
             self.ref().free_data(state=OperandState.CANCELLED, _tell=True)

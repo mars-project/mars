@@ -21,7 +21,7 @@ from functools import partial
 from collections import defaultdict
 
 from .. import promise
-from ..compat import six, Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError
+from ..compat import six, Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
     DependencyMissing
@@ -530,7 +530,8 @@ class ExecutionActor(WorkerActor):
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
             self._invoke_finish_callbacks(session_id, graph_key)
 
-        self._prepare_graph_inputs(session_id, graph_key) \
+        promise.Promise(done=True) \
+            .then(lambda: self._prepare_graph_inputs(session_id, graph_key)) \
             .then(_wait_free_slot) \
             .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
             .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
@@ -586,7 +587,7 @@ class ExecutionActor(WorkerActor):
             chunk_key = to_str(chunk.key)
             chunk_meta = self.get_meta_ref(session_id, chunk_key) \
                 .get_chunk_meta(session_id, chunk_key)
-            if chunk_meta is None:
+            if chunk_meta is None or not chunk_meta.workers:
                 raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
             worker_results = chunk_meta.workers
 
@@ -595,20 +596,21 @@ class ExecutionActor(WorkerActor):
                 # todo sort workers by speed of network and other possible factors
                 worker_priorities.append((worker_ip, (0, )))
 
-            transfer_keys.append(chunk.key)
+            transfer_keys.append(chunk_key)
 
             # fetch data from other workers, if one fails, try another
             sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-            p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
-                                        ensure_cached=chunk.key not in chunks_use_once)
+            p = self._fetch_remote_data(session_id, graph_key, chunk_key, sorted_workers[0][0],
+                                        ensure_cached=chunk_key not in chunks_use_once)
             for wp in sorted_workers[1:]:
-                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
-                                              ensure_cached=chunk.key not in chunks_use_once))
+                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk_key, wp[0],
+                                              ensure_cached=chunk_key not in chunks_use_once))
             prepare_promises.append(p)
 
         logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
                      graph_key, graph_record.targets, unspill_keys, transfer_keys)
-        return promise.all_(prepare_promises)
+        p = promise.all_(prepare_promises)
+        return p
 
     @log_unhandled
     def _send_calc_request(self, session_id, graph_key, calc_uid):
@@ -821,8 +823,8 @@ class ExecutionActor(WorkerActor):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             cur_time = time.time()
             states = dict((k[1], (cur_time - v.state_time, v.state.name))
-                          for k, v in self._graph_records.items()
-                          if show_unrun or v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
+                          for k, v in self._graph_records.items())
+                          # if show_unrun or v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
             logger.debug('Executing states: %r', states)
 
     def handle_process_down(self, halt_refs):

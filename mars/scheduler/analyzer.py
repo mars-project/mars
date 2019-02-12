@@ -398,7 +398,7 @@ class GraphAnalyzer(object):
                 pred_op_key = pred.op.key
                 # mark affected, if
                 # 1. data of the operand is lost
-                # 2. state does not hold data, or is calculating,
+                # 2. state does not hold data, or data is lost,
                 #    for instance, operand is freed.
                 if pred.key in lost_chunks or op_states.get(pred_op_key) not in stop_spread_states:
                     affected_op_keys.add(pred_op_key)

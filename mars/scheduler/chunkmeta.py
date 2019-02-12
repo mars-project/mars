@@ -80,9 +80,10 @@ class ChunkMetaStore(object):
         """
         Delete chunk keys from worker
         """
-        worker_to_chunks = self._worker_to_chunk_keys
+        worker_to_chunk_keys = self._worker_to_chunk_keys
         for w in workers:
-            worker_to_chunks[w].remove(chunk_key)
+            if w in worker_to_chunk_keys:
+                worker_to_chunk_keys[w].remove(chunk_key)
 
     def get(self, chunk_key, default=None):
         return self._chunk_metas.get(chunk_key, default)
@@ -224,17 +225,14 @@ class LocalChunkMetaActor(SchedulerActor):
         :param broadcast: broadcast meta into registered destinations
         """
         query_key = (session_id, chunk_key)
+        workers = workers or ()
         # update input with existing value
         if query_key in self._meta_store:
             old_meta = self._meta_store[query_key]  # type: WorkerMeta
-            stored_size = old_meta.chunk_size
-            stored_shape = old_meta.chunk_shape
-            stored_workers = old_meta.workers
 
-            size = size if size is not None else stored_size
-            shape = shape if shape is not None else stored_shape
-            if workers is not None:
-                workers = set(tuple(workers) + stored_workers)
+            size = size if size is not None else old_meta.chunk_size
+            shape = shape if shape is not None else old_meta.chunk_shape
+            workers = set(tuple(workers) + old_meta.workers)
 
         # sync to external kv store
         if self._kv_store_ref is not None:
@@ -243,11 +241,11 @@ class LocalChunkMetaActor(SchedulerActor):
                 self._kv_store_ref.write(path + '/data_size', size, _tell=True, _wait=False)
             if shape is not None:
                 self._kv_store_ref.write(path + '/data_shape', shape, _tell=True, _wait=False)
-            if workers is not None:
-                for w in workers:
-                    self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
+            for w in workers:
+                self._kv_store_ref.write(path + '/workers/%s' % w, '', _tell=True, _wait=False)
 
-        meta = self._meta_store[query_key] = WorkerMeta(size, shape, tuple(workers or ()))
+        meta = self._meta_store[query_key] = WorkerMeta(size, shape, tuple(workers))
+        logger.debug('Set chunk meta for %s: %r', chunk_key, meta)
 
         # broadcast into pre-determined destinations
         futures = []
@@ -332,6 +330,7 @@ class LocalChunkMetaActor(SchedulerActor):
             del self._meta_cache[query_key]
         except KeyError:
             pass
+        logger.debug('Delete chunk meta %s', chunk_key)
 
         # broadcast deletion into pre-determined destinations
         if query_key in self._meta_broadcasts:
