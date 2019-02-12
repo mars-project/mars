@@ -91,7 +91,7 @@ class Executor(object):
                 op = TensorConcatenate(dtype=tensor.op.dtype)
                 chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
                 tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                        nsplits=[(s,) for s in tensor.shape])
+                                       nsplits=[(s,) for s in tensor.shape])
 
         graph = tensor.build_graph(cls=DirectedGraph, tiled=True)
 

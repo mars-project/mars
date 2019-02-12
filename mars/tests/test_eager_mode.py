@@ -140,6 +140,26 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
         np.testing.assert_array_equal(result[4:8, :4], np.zeros((4, 4)))
 
+    def testKernelMode(self):
+        from mars.session import Session
+
+        t1 = mt.random.rand(10, 10, chunk_size=3)
+        t2 = mt.ones((8, 8), chunk_size=6)
+
+        with option_context({'eager_mode': True}):
+            sess = Session()
+            executor = sess._sess._executor
+
+            t_tiled = t1.tiles()
+
+            with self.assertRaises(ValueError):
+                t_tiled.fetch()
+            self.assertEqual(0, len(executor.chunk_result))
+
+            result = sess.run(t2)
+            self.assertEqual(4, len(executor.chunk_result))
+            np.testing.assert_array_equal(result, np.ones((8, 8)))
+
     def testRepr(self):
         a = mt.ones((10, 10), chunk_size=3)
         self.assertIn(a.key, repr(a))

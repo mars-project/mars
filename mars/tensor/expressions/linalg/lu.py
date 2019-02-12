@@ -18,7 +18,7 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from .... import operands
-from ...core import ExecutableTuple
+from ....core import ExecutableTuple
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 

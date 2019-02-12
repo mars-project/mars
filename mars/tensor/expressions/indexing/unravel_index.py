@@ -19,7 +19,7 @@ from collections import Iterable
 import numpy as np
 
 from ....operands import UnravelIndex
-from ...core import ExecutableTuple
+from ....core import ExecutableTuple
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 

@@ -482,7 +482,18 @@ class TilesableOperandMixin(object):
 
     def new_chunks(self, inputs, shape, **kwargs):
         """
-        A final method, do not override.
+        Create chunks.
+        A chunk is a node in a fine grained graph, all the chunk objects are created by
+        calling this function, it happens mostly in tiles.
+        The generated chunks will be set as this operand's outputs and each chunk will
+        hold this operand as it's op.
+        :param inputs: input chunks
+        :param shape: output chunks' shapes
+        :param kwargs: kwargs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_chunks` if needed.
         """
         return self._new_chunks(inputs, shape, **kwargs)
 
@@ -527,9 +538,18 @@ class TilesableOperandMixin(object):
 
     def new_entities(self, inputs, shape, **kwargs):
         """
-        A final method, do not override.
+        Create entities(Tensors or DataFrames).
+        This is a base function for create entities like tensors or dataframes, it will be called
+        inside the `new_tensors` and `new_dataframes`.
+        If eager mode is on, it will trigger the execution after entities are creates.
+        :param inputs: input entities
+        :param shape: outputs' shapes
+        :param kwargs: kwargs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_entities` if needed.
         """
-        from .tensor.core import ExecutableTuple
 
         entities = self._new_entities(inputs, shape, **kwargs)
         if is_eager_mode():
@@ -541,3 +561,12 @@ class TilesableOperandMixin(object):
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_chunks(inputs, shape, index=index, **kw)[0]
+
+
+class ExecutableTuple(tuple):
+    def execute(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.run(*self, **kw)

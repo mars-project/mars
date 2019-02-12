@@ -17,8 +17,8 @@
 import numpy as np
 
 from ....operands import Nonzero
-from ...core import ExecutableTuple
 from ..utils import recursive_tile
+from ....core import ExecutableTuple
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 from .unravel_index import unravel_index

@@ -289,15 +289,6 @@ class TensorData(TilesableData):
     _execute_session = property(fset=_set_execute_session)
 
 
-class ExecutableTuple(tuple):
-    def execute(self, session=None, **kw):
-        from ..session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.run(*self, **kw)
-
-
 class Tensor(Entity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)

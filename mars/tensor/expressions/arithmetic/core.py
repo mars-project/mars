@@ -21,7 +21,8 @@ import numpy as np
 
 from ....compat import lrange
 from ..utils import unify_chunks, broadcast_shape, check_out_param
-from ...core import Tensor, ExecutableTuple
+from ....core import ExecutableTuple
+from ...core import Tensor
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 

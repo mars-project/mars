@@ -18,7 +18,8 @@ import numpy as np
 
 from ....operands import Split
 from ....lib.sparse.core import get_array_module
-from ...core import Tensor, ExecutableTuple
+from ....core import ExecutableTuple
+from ...core import Tensor
 from ..utils import calc_sliced_size
 from ..core import TensorOperandMixin
 

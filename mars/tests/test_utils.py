@@ -154,3 +154,17 @@ class Test(unittest.TestCase):
         graph = utils.build_graph([c], executed_keys=executed_keys)
         self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
         self.assertEqual(len(graph), 1)
+
+    def testKernelMode(self):
+        from mars.config import option_context, options
+
+        @utils.kernel_mode
+        def wrapped():
+            return utils.is_eager_mode()
+
+        self.assertFalse(options.eager_mode)
+        self.assertFalse(wrapped())
+
+        with option_context({'eager_mode': True}):
+            self.assertTrue(options.eager_mode)
+            self.assertFalse(wrapped())
