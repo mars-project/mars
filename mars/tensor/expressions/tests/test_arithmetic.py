@@ -390,6 +390,7 @@ class Test(unittest.TestCase):
 
         t = around(t1, decimals=3)
 
+        self.assertFalse(t.issparse())
         self.assertEqual(t.op.decimals, 3)
         self.assertEqual(calc_shape(t), t.shape)
 
