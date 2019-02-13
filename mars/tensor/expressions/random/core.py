@@ -189,7 +189,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                     setattr(self, field, val)
             else:
                 inputs_iter = iter(inputs)
-                for i, field in enumerate(fields):
+                for field in fields:
                     if isinstance(getattr(self, field), TENSOR_TYPE + CHUNK_TYPE):
                         field_to_obj[field] = next(inputs_iter)
 
