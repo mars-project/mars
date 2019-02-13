@@ -21,7 +21,8 @@ import itertools
 import numpy as np
 
 from .compat import six, izip, builtins, reduce
-from .utils import tokenize, AttributeDict, on_serialize_shape, on_deserialize_shape
+from .utils import tokenize, AttributeDict, on_serialize_shape, \
+    on_deserialize_shape, is_eager_mode
 from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tilesable, handler
@@ -462,7 +463,7 @@ class TilesableOperandMixin(object):
     def _create_chunk(self, output_idx, index, shape, **kw):
         raise NotImplementedError
 
-    def new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
 
         self.check_inputs(inputs)
@@ -490,11 +491,28 @@ class TilesableOperandMixin(object):
         setattr(self, 'outputs', chunks)
         return chunks
 
+    def new_chunks(self, inputs, shape, **kwargs):
+        """
+        Create chunks.
+        A chunk is a node in a fine grained graph, all the chunk objects are created by
+        calling this function, it happens mostly in tiles.
+        The generated chunks will be set as this operand's outputs and each chunk will
+        hold this operand as it's op.
+        :param inputs: input chunks
+        :param shape: output chunks' shapes
+        :param kwargs: kwargs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_chunks` if needed.
+        """
+        return self._new_chunks(inputs, shape, **kwargs)
+
     def _create_entity(self, output_idx, shape, nsplits, chunks, **kw):
         raise NotImplementedError
 
-    def new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                     kws=None, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
 
         self.check_inputs(inputs)
@@ -529,8 +547,37 @@ class TilesableOperandMixin(object):
                 t.data._siblings = [tensor.data for tensor in entities[:j] + entities[j+1:]]
         return entities
 
+    def new_entities(self, inputs, shape, **kwargs):
+        """
+        Create entities(Tensors or DataFrames).
+        This is a base function for create entities like tensors or dataframes, it will be called
+        inside the `new_tensors` and `new_dataframes`.
+        If eager mode is on, it will trigger the execution after entities are created.
+        :param inputs: input entities
+        :param shape: outputs' shapes
+        :param kwargs: kwargs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_entities` if needed.
+        """
+
+        entities = self._new_entities(inputs, shape, **kwargs)
+        if is_eager_mode():
+            ExecutableTuple(entities).execute(fetch=False)
+        return entities
+
     def new_chunk(self, inputs, shape, index=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_chunks(inputs, shape, index=index, **kw)[0]
+
+
+class ExecutableTuple(tuple):
+    def execute(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.run(*self, **kw)

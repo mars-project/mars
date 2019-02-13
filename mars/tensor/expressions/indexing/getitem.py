@@ -80,15 +80,18 @@ class TensorIndex(Index, TensorOperandMixin):
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    def new_tensors(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self).new_tensors(mix_inputs, shape, **kw)
+            return super(TensorIndex, self)._new_entities(
+                mix_inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self).new_chunks(mix_inputs, shape, **kw)
+            return super(TensorIndex, self)._new_chunks(
+                mix_inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def __call__(self, a, index, shape):
         return self.new_tensor([a], shape, indexes=index)

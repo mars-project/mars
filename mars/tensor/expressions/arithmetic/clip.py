@@ -94,13 +94,16 @@ class TensorClip(operands.Clip, TensorElementWise):
         if has_out:
             setattr(self, '_out', next(inputs_iter))
 
-    def new_tensors(self, inputs, shape,**kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorClip, self).new_tensors(inputs, shape, **kw)
+            return super(TensorClip, self)._new_entities(
+                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
-    def new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorClip, self).new_chunks(inputs, shape, **kw)
+            return super(TensorClip, self)._new_chunks(
+                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def __call__(self, a, a_min, a_max, out=None):
         a = astensor(a)

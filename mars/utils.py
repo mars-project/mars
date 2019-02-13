@@ -27,12 +27,14 @@ import struct
 import sys
 import time
 import zlib
+import threading
 from hashlib import md5
 
 import numpy as np
 
 from .compat import irange, functools32, getargspec
 from .utils_c import to_binary, to_str, to_text, tokenize
+from .config import options
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
@@ -317,3 +319,31 @@ def build_graph(tensors, graph=None, executed_keys=None, tiled=False, compose=Tr
         graph = t.build_graph(graph=graph, tiled=tiled, compose=compose,
                               executed_keys=executed_keys)
     return graph
+
+
+_kernel_mode = threading.local()
+_kernel_mode.eager = None
+
+
+def is_eager_mode():
+    if _kernel_mode.eager is None:
+        return options.eager_mode
+    return _kernel_mode.eager
+
+
+def kernel_mode(func):
+    """
+    A decorator for kernel functions.
+
+    When eager mode is on, expressions will be executed after `new_entities`, however
+    `new_entities` is also called in `Executor` and `OperandTilesHandler`, this decorator
+    provides an options context for kernel functions to avoid execution.
+    """
+
+    def _wrapped(*args, **kwargs):
+        _kernel_mode.eager = False
+        return_value = func(*args, **kwargs)
+        _kernel_mode.eager = None
+        return return_value
+
+    return _wrapped

@@ -241,7 +241,10 @@ def option_context(config=None):
         config = config or dict()
         local_options = Config(deepcopy(global_options._config))
         for option, value in six.iteritems(config):
-            local_options.register_option(option, value)
+            try:
+                local_options.register_option(option, value)
+            except AttributeError:
+                setattr(local_options, option, value)
         _options_local.default_options = local_options
         yield local_options
     finally:
@@ -333,6 +336,9 @@ default_options.register_option('worker.advertise_addr', '127.0.0.1', validator=
 default_options.register_option('optimize.min_stats_count', 10, validator=is_integer)
 default_options.register_option('optimize.stats_sufficient_ratio', 0.9, validator=is_float, serialize=True)
 default_options.register_option('optimize.default_disk_io_speed', 10 * 1024 ** 2, validator=is_integer)
+
+# eager mode
+default_options.register_option('eager_mode', False, validator=is_bool)
 
 
 _options_local = threading.local()

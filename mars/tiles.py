@@ -17,6 +17,7 @@
 from collections import deque
 
 from .graph import DirectedGraph
+from .utils import kernel_mode
 
 
 class Tilesable(object):
@@ -103,6 +104,7 @@ class OperandTilesHandler(object):
     def register(self, op, handler):
         self._handlers[self._get_op_cls(op)] = handler
 
+    @kernel_mode
     def _dispatch(self, op):
         op_cls = self._get_op_cls(op)
         try:
@@ -131,7 +133,7 @@ class OperandTilesHandler(object):
 
     def tiles(self, tiles_obj):
         graph = DirectedGraph()
-        visited = set([id(tiles_obj)])
+        visited = {id(tiles_obj)}
         loose_requires = set()
         q = deque([tiles_obj])
 

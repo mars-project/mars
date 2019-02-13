@@ -20,7 +20,7 @@ from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode
+from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField
 from .expressions.utils import get_chunk_slices, calc_rough_shape
@@ -71,8 +71,21 @@ class TensorData(TilesableData):
             return TensorDef
         return super(TensorData, cls).cls(provider)
 
+    def __str__(self):
+        if is_eager_mode():
+            return 'Tensor(op={0}, shape={1}, data=\n{2})'.format(self.op.__class__.__name__,
+                                                                  self.shape, str(self.fetch()))
+        else:
+            return 'Tensor(op={0}, shape={1})'.format(self.op.__class__.__name__, self.shape)
+
     def __repr__(self):
-        return 'Tensor <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
+        if is_eager_mode():
+            return 'Tensor <op={0}, shape={1}, key={2}, data=\n{3}>'.format(self.op.__class__.__name__,
+                                                                            self.shape, self.key,
+                                                                            repr(self.fetch()))
+        else:
+            return 'Tensor <op={0}, shape={1}, key={2}>'.format(self.op.__class__.__name__,
+                                                                self.shape, self.key)
 
     @property
     def real(self):
@@ -263,24 +276,28 @@ class TensorData(TilesableData):
             session = Session.default_or_local()
         return session.run(self, **kw)
 
+    def fetch(self, session=None, **kw):
+        from ..session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.fetch(self, **kw)
+
     def _set_execute_session(self, session):
         _cleaner.register(self, session)
 
     _execute_session = property(fset=_set_execute_session)
 
 
-class ExecutableTuple(tuple):
-    def execute(self, session=None, **kw):
-        from ..session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.run(*self, **kw)
-
-
 class Tensor(Entity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
+
+    def __str__(self):
+        return self._data.__str__()
+
+    def __repr__(self):
+        return self._data.__repr__()
 
     def __len__(self):
         return len(self._data)
@@ -326,7 +343,10 @@ class Tensor(Entity):
         self._data = set_imag(self._data, new_imag).data
 
     def __array__(self, dtype=None):
-        return np.asarray(self.execute(), dtype=dtype)
+        if is_eager_mode():
+            return np.asarray(self.fetch(), dtype=dtype)
+        else:
+            return np.asarray(self.execute(), dtype=dtype)
 
 
 class SparseTensor(Tensor):
@@ -363,4 +383,3 @@ class _TensorCleaner(object):
 # we don't use __del__ to decref because a tensor holds an op,
 # and op's outputs contains the tensor, so a circular references exists
 _cleaner = _TensorCleaner()
-

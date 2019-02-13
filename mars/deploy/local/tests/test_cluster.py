@@ -28,10 +28,13 @@ from mars.tensor.expressions.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
+from mars.deploy.local.session import LocalClusterSession
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import SessionManagerActor
 from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
+from mars.config import option_context
+from mars.web.session import Session as WebSession
 
 logger = logging.getLogger(__name__)
 
@@ -384,3 +387,54 @@ class Test(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 web_session.fetch(b)
+
+    def testEagerMode(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+
+            self.assertIsInstance(Session.default_or_local()._sess, LocalClusterSession)
+
+            with option_context({'eager_mode': True}):
+                a_data = np.random.rand(10, 10)
+
+                a = mt.tensor(a_data, chunk_size=3)
+                np.testing.assert_array_equal(a, a_data)
+
+                r1 = a + 1
+                expected1 = a_data + 1
+                np.testing.assert_array_equal(r1, expected1)
+
+                r2 = r1.dot(r1)
+                expected2 = expected1.dot(expected1)
+                np.testing.assert_array_almost_equal(r2, expected2)
+
+            a = mt.ones((10, 10), chunk_size=3)
+            with self.assertRaises(ValueError):
+                a.fetch()
+
+            r = a.dot(a)
+            np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
+
+            with new_session('http://' + cluster._web_endpoint).as_default():
+                self.assertIsInstance(Session.default_or_local()._sess, WebSession)
+
+                with option_context({'eager_mode': True}):
+                    a_data = np.random.rand(10, 10)
+
+                    a = mt.tensor(a_data, chunk_size=3)
+                    np.testing.assert_array_equal(a, a_data)
+
+                    r1 = a + 1
+                    expected1 = a_data + 1
+                    np.testing.assert_array_equal(r1, expected1)
+
+                    r2 = r1.dot(r1)
+                    expected2 = expected1.dot(expected1)
+                    np.testing.assert_array_almost_equal(r2, expected2)
+
+                a = mt.ones((10, 10), chunk_size=3)
+                with self.assertRaises(ValueError):
+                    a.fetch()
+
+                r = a.dot(a)
+                np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)

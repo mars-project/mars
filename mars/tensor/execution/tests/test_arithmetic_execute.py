@@ -65,8 +65,8 @@ class Test(unittest.TestCase):
             invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
         from mars.tensor.execution.arithmetic import OP_TO_HANDLER
 
-        _sp_unary_ufunc = set([arccosh, invert])
-        _sp_bin_ufunc = set([mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp])
+        _sp_unary_ufunc = {arccosh, invert}
+        _sp_bin_ufunc = {mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp}
 
         data1 = np.random.random((5, 9, 4))
         data2 = np.random.random((5, 9, 4))
@@ -158,8 +158,8 @@ class Test(unittest.TestCase):
             invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
         from mars.tensor.execution.arithmetic import OP_TO_HANDLER
 
-        _sp_unary_ufunc = set([arccosh, invert])
-        _sp_bin_ufunc = set([mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp])
+        _sp_unary_ufunc = {arccosh, invert}
+        _sp_bin_ufunc = {mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp}
 
         data1 = sps.random(5, 9, density=.1)
         data2 = sps.random(5, 9, density=.2)

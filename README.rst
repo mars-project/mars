@@ -83,6 +83,41 @@ Any contribution from community is sincerely welcomed. The main feature not impl
 - Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` etc,
   because the iteration or loops over a large tensor is very inefficient.
 
+Eager Mode
+```````````
+
+Mars supports eager mode which makes it friendly for developing and easy to debug.
+
+Users can enable the eager mode by options, set options at the beginning of the program or console session.
+
+.. code-block:: python
+
+    >>> from mars.config import options
+    >>> options.eager_mode = True
+
+Or use a context.
+
+.. code-block:: python
+
+    >>> from mars.config import option_context
+    >>> with option_context() as options:
+    >>>     options.eager_mode = True
+    >>>     # the eager mode is on only for the with statement
+    >>>     ...
+
+If eager mode is on, tensor will be executed immediately by default session once it is created.
+
+.. code-block:: python
+
+    >>> import mars.tensor as mt
+    >>> from mars.config import options
+    >>> options.eager_mode = True
+    >>> t = mt.arange(6).reshape((2, 3))
+    >>> print(t)
+    Tensor(op=TensorRand, shape=(2, 3), data=
+    [[0 1 2]
+    [3 4 5]])
+
 
 Easy to scale in and scale out
 ------------------------------
@@ -103,24 +138,21 @@ Threaded
 
 .. code-block:: python
 
-    import mars.tensor as mt
-
-    a = mt.ones((10, 10))
-    a.execute()
+    >>> import mars.tensor as mt
+    >>> a = mt.ones((10, 10))
+    >>> a.execute()
 
 Users can create a session explicitly.
 
 .. code-block:: python
 
-    from mars.session import new_session
-
-    session = new_session()
-    session.run(a + 1)
-    (a * 2).execute(session=session)
-
-    # session will be released when out of with statement
-    with new_session() as session2:
-        session2.run(a / 3)
+    >>> from mars.session import new_session
+    >>> session = new_session()
+    >>> session.run(a + 1)
+    >>> (a * 2).execute(session=session)
+    >>> # session will be released when out of with statement
+    >>> with new_session() as session2:
+    >>>     session2.run(a / 3)
 
 
 Local cluster
@@ -131,17 +163,17 @@ Local cluster mode requires mars distributed version.
 
 .. code-block:: python
 
-    from mars.deploy.local import new_cluster
+    >>> from mars.deploy.local import new_cluster
 
-    # cluster will create a session and set it as default
-    cluster = new_cluster()
+    >>> # cluster will create a session and set it as default
+    >>> cluster = new_cluster()
 
-    # run on the local cluster
-    (a + 1).execute()
+    >>> # run on the local cluster
+    >>> (a + 1).execute()
 
-    # create a session explicitly by specifying the cluster's endpoint
-    session = new_session(cluster.endpoint)
-    session.run(a * 3)
+    >>> # create a session explicitly by specifying the cluster's endpoint
+    >>> session = new_session(cluster.endpoint)
+    >>> session.run(a * 3)
 
 
 Distributed
@@ -171,10 +203,10 @@ After all mars processes are started, users can run
 
 .. code-block:: python
 
-    sess = new_session('http://<web_ip>:<ui_port>')
-    a = mt.ones((2000, 2000), chunk_size=200)
-    b = mt.inner(a, a)
-    sess.run(b)
+    >>> sess = new_session('http://<web_ip>:<ui_port>')
+    >>> a = mt.ones((2000, 2000), chunk_size=200)
+    >>> b = mt.inner(a, a)
+    >>> sess.run(b)
 
 
 Getting involved
