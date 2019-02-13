@@ -29,6 +29,14 @@ class TensorOnes(TensorNoInput):
         dtype = np.dtype(dtype or 'f8')
         super(TensorOnes, self).__init__(_dtype=dtype, _gpu=gpu, **kw)
 
+    def _new_chunks(self, inputs, shape, **kw):
+        self.params['shape'] = shape  # set shape to make the operand key different
+        return super(TensorOnes, self)._new_chunks(inputs, shape, **kw)
+
+    def _new_entities(self, inputs, shape, **kw):
+        self.params['shape'] = shape  # set shape to make the operand key different
+        return super(TensorOnes, self)._new_entities(inputs, shape, **kw)
+
 
 def ones(shape, dtype=None, chunk_size=None, gpu=False):
     """
