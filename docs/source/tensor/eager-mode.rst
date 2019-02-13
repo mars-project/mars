@@ -33,7 +33,7 @@ If eager mode is on, tensor will be executed immediately by default session once
     >>> options.eager_mode = True
     >>> t = mt.arange(6).reshape((2, 3))
     >>> print(t)
-    Tensor(op=TensorRand, shape=(4, 4), data=
+    Tensor(op=TensorRand, shape=(2, 3), data=
     [[0 1 2]
     [3 4 5]])
 
