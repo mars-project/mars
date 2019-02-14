@@ -19,6 +19,10 @@ import itertools
 from collections import deque, defaultdict
 
 import numpy as np
+try:
+    import gevent
+except ImportError:  # pragma: no cover
+    gevent = None
 
 from .operands import Fetch
 from .graph import DirectedGraph
@@ -70,11 +74,41 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
         return threading.Event()
 
 
+if gevent:
+    import gevent.threadpool
+    import gevent.event
+
+    class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
+        @staticmethod
+        def _wrap_watch(fn):
+            # Each time a function is submitted, a gevent greenlet may be created,
+            # this is common especially for Mars actor,
+            # but there would be no other greenlet to switch to,
+            # LoopExit will be raised, in order to prevent from this,
+            # we create a greenlet to watch the result
+
+            def check(event):
+                while not event.is_set():
+                    event.wait(0.01)
+
+            def inner(*args, **kwargs):
+                event = gevent.event.Event()
+                gevent.spawn(check, event)
+                result = fn(*args, **kwargs)
+                event.set()
+                return result
+
+            return inner
+
+        def submit(self, fn, *args, **kwargs):
+            wrapped_fn = self._wrap_watch(fn)
+            return super(GeventThreadPoolExecutor, self).submit(wrapped_fn, *args, **kwargs)
+
+
 class GeventExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def thread_pool_executor(cls, n_workers):
-        import gevent.threadpool
-        return gevent.threadpool.ThreadPoolExecutor(n_workers)
+        return GeventThreadPoolExecutor(n_workers)
 
     @classmethod
     def semaphore(cls, value):
