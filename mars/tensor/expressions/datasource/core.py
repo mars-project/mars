@@ -23,6 +23,7 @@ from ....operands import DataSource
 from ....compat import izip
 from ....config import options
 from ....serialize import StringField
+from ....utils import to_str
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
 
@@ -142,7 +143,7 @@ class TensorLike(TensorHasInput):
 class TensorFetch(TensorNoInput):
     _op_type_ = OperandDef.FETCH
 
-    _to_fetch_key = StringField('to_fetch_key')
+    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
 
     def __init__(self, dtype=None, to_fetch_key=None, **kw):
         super(TensorFetch, self).__init__(
