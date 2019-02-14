@@ -448,7 +448,7 @@ class Executor(object):
             # generate TensorFetch op for each chunk
             chunks = []
             for c in tensor.chunks:
-                op = TensorFetch(dtype=c.dtype)
+                op = TensorFetch(dtype=c.dtype, to_fetch_key=c.key)
                 chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
                 chunks.append(chunk)
 

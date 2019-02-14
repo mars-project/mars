@@ -415,7 +415,7 @@ class TilesableData(SerializableWithKey, Tilesable):
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
-                node = convert_to_fetch(node)
+                node = convert_to_fetch(node).data
 
             visited.add(node)
             if not graph.contains(node):
