@@ -112,23 +112,23 @@ class GeventExecutorSyncProvider(ExecutorSyncProvider):
 
     @classmethod
     def semaphore(cls, value):
-        import gevent.lock
-        return gevent.lock.Semaphore(value)
+        # as gevent threadpool is the **real** thread, so use threading.Semaphore
+        return threading.Semaphore(value)
 
     @classmethod
     def lock(cls):
-        import gevent.lock
-        return gevent.lock.Semaphore(1)
+        # as gevent threadpool is the **real** thread, so use threading.Lock
+        return threading.Lock()
 
     @classmethod
     def rlock(cls):
-        import gevent.lock
-        return gevent.lock.RLock()
+        # as gevent threadpool is the **real** thread, so use threading.RLock
+        return threading.RLock()
 
     @classmethod
     def event(cls):
-        import gevent.event
-        return gevent.event.Event()
+        # as gevent threadpool is the **real** thread, so use threading.Event
+        return threading.Event()
 
 
 class GraphExecution(object):

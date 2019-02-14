@@ -71,9 +71,9 @@ class Test(unittest.TestCase):
     def testExecutorWithGeventProvider(self):
         executor = Executor(sync_provider_type=Executor.SyncProviderType.GEVENT)
 
-        a = mt.ones((2, 2), chunk_size=2)
-        res = executor.execute_tensor(a)[0]
-        np.testing.assert_array_equal(res, np.ones((2, 2)))
+        a = mt.ones((10, 10), chunk_size=2)
+        res = executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(res, np.ones((10, 10)))
 
     def testActorInExecutor(self):
         with create_actor_pool(n_process=2) as pool:
