@@ -28,7 +28,8 @@ from mars.tensor.expressions.datasource.fromdense import DenseToSparse
 from mars.tensor.expressions.datasource.array import CSRMatrixDataSource
 from mars.tensor.expressions.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
-from mars.tensor.core import Tensor, SparseTensor, TensorChunk, build_mode
+from mars.tensor.core import Tensor, SparseTensor, TensorChunk
+from mars.core import build_mode
 from mars.graph import DAG
 from mars.serialize.protos.operand_pb2 import OperandDef
 from mars.tests.core import TestBase, calc_shape

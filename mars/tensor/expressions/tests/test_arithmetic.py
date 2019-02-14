@@ -24,7 +24,8 @@ from mars.tensor.expressions.datasource.core import TensorFetch
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \
     isclose, isfinite, negative, cos
 from mars.tensor.expressions.linalg import matmul
-from mars.tensor.core import build_mode, Tensor, SparseTensor
+from mars.tensor.core import Tensor, SparseTensor
+from mars.core import build_mode
 from mars.operands import Add, AddConstant, SubConstant, Log, IscloseConstant, Isclose
 from mars.tests.core import calc_shape
 

@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import operands
-from ...core import build_mode
+from ....core import build_mode
 from ..utils import inject_dtype
 from ..datasource import tensor as astensor
 from .core import TensorCompare, TensorCompareConstant
