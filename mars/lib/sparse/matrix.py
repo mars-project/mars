@@ -74,6 +74,26 @@ def where(cond, x, y):
     return cond * x + (cond * (-y) + y)
 
 
+def lu_sparse_matrix(a):
+    # TODO: implement scipy.sparse.linalg.splu
+    # As the different behaviors between `scipy.linalg.lu` and `scipy.sparse.linalg.splu`,
+    # just convert the results to sparse matrix. If implement `scipy.sparse.linalg.splu`,
+    # the tiles logic will be changed.
+    import scipy.linalg
+
+    p, l, u = scipy.linalg.lu(a)
+    return SparseMatrix(sps.csr_matrix(p)), SparseMatrix(sps.csr_matrix(l)), SparseMatrix(sps.csr_matrix(u)),
+
+
+def solve_triangular_sparse_matrix(a, b, lower=False):
+    from scipy.sparse.linalg import spsolve_triangular
+
+    a = naked(a)
+    b = b.toarray() if isinstance(b, SparseMatrix) else b
+
+    return spsolve_triangular(a, b, lower=lower)
+
+
 class SparseMatrix(SparseNDArray):
     __slots__ = 'spmatrix',
 

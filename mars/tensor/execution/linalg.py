@@ -68,22 +68,30 @@ def _solve_triangular(ctx, chunk):
         [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
 
     with device(device_id):
-        if xp is not np:
-            raise NotImplementedError
+        if xp is np:
+            import scipy.linalg
 
-        import scipy.linalg
-        ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
+            ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
+        else:
+            ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
 
 
 def _lu(ctx, chunk):
-    import scipy.linalg
-
     (a,), device_id, xp = as_same_device(
         [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
 
     with device(device_id):
-        p, l, u = scipy.linalg.lu(a)
+        if chunk.is_sparse():
+            from .array import sparse
+
+            p, l, u = sparse.lu(a)
+        else:
+            import scipy.linalg
+
+            p, l, u = scipy.linalg.lu(a)
+
         pc, lc, uc = chunk.op.outputs
+
         ctx[pc.key] = p
         ctx[lc.key] = l
         ctx[uc.key] = u

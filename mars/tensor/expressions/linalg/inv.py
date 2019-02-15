@@ -54,6 +54,7 @@ def inv(a):
     array([[ -2. ,  1. ],
            [ 1.5, -0.5]])
     """
+    # TODO: using some parallel algorithm for matrix inversion.
     from ..datasource import eye
 
     a = astensor(a)

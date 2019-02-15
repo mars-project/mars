@@ -438,7 +438,7 @@ def tensordot(a, b, axes=2, sparse=True):
     else:
         b_axes = (b_axes,)
 
-    if a_axes == (a.ndim - 1,) and b_axes == (b.ndim - 2,):
+    if a_axes == (a.ndim - 1,) and (b_axes == (b.ndim - 2,) or b_axes == (0,)):
         return dot(a, b, sparse=sparse)
 
     if a.ndim == b.ndim == 2:
@@ -454,6 +454,12 @@ def matmul(a, b, sparse=True, **_):
 
 
 def concatenate(tensors, axis=0):
+    has_sparse = any(issparse(t) for t in tensors)
+    if has_sparse:
+        import scipy.sparse as sps
+
+        tensors = [asarray(sps.csr_matrix(t)) for t in tensors]
+
     return reduce(lambda a, b: _call_bin('concatenate', a, b, axis=axis), tensors)
 
 
@@ -673,6 +679,7 @@ def where(cond, x, y):
     from .matrix import where as matrix_where
     return matrix_where(cond, x, y)
 
+
 def digitize(x, bins, right=False):
     return _call_unary('digitize', x, bins, right)
 
@@ -729,3 +736,15 @@ def tril(m, k=0, gpu=False):
         return tril_sparse_matrix(m, k=k, gpu=gpu)
 
     raise NotImplementedError
+
+
+def lu(m):
+    from .matrix import lu_sparse_matrix
+
+    return lu_sparse_matrix(m)
+
+
+def solve_triangular(a, b, lower=False):
+    from .matrix import solve_triangular_sparse_matrix
+
+    return solve_triangular_sparse_matrix(a, b, lower=lower)
