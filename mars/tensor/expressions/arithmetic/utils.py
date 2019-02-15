@@ -18,7 +18,7 @@
 from ....config import options
 
 
-def tree_add(dtype, chunks, idx, shape):
+def tree_add(dtype, chunks, idx, shape, sparse=False):
     """
     Generate tree add plan.
 
@@ -37,6 +37,7 @@ def tree_add(dtype, chunks, idx, shape):
     :param chunks: input chunks
     :param idx: index of result chunk
     :param shape: shape of result chunk
+    :param sparse: return value is sparse or dense
     :return: result chunk
     """
     from .add import TensorTreeAdd
@@ -50,10 +51,10 @@ def tree_add(dtype, chunks, idx, shape):
             if len(chks) == 1:
                 chk = chks[0]
             else:
-                chk_op = TensorTreeAdd(dtype=dtype)
+                chk_op = TensorTreeAdd(dtype=dtype, sparse=sparse)
                 chk = chk_op.new_chunk(chks, shape)
             new_chunks.append(chk)
         chunks = new_chunks
 
-    op = TensorTreeAdd(dtype=dtype)
+    op = TensorTreeAdd(dtype=dtype, sparse=sparse)
     return op.new_chunk(chunks, shape, index=idx)
