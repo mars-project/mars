@@ -38,6 +38,11 @@ class Test(unittest.TestCase):
         dag.add_edge(5, 6)
         dag.add_edge(3, 5)
 
+        with self.assertRaises(KeyError):
+            dag.add_edge(1, 10)
+        with self.assertRaises(KeyError):
+            dag.add_edge(10, 1)
+
         self.assertEqual(set(dag[2]), set([5, 6]))
         self.assertEqual(list(dag.topological_iter()), [3, 2, 5, 6, 1, 4])
 
@@ -82,7 +87,7 @@ class Test(unittest.TestCase):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add
-        graph = arr2.build_graph()
+        graph = arr2.build_graph(compose=False, tiled=True)
 
         dot = str(graph.to_dot(trunc_key=5))
         self.assertTrue(str(n.op.key)[5] in dot for n in graph)

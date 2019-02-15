@@ -94,16 +94,16 @@ mean = keepdims_wrapper(np.mean)
 
 def _handle_reduction(op):
     def _handle(ctx, chunk):
-        (input,), device_id, _ = as_same_device(
+        (input_chunk,), device_id, _ = as_same_device(
             [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
         axis = _get_axis(chunk.op.axis)
         with device(device_id):
             if "dtype" in getargspec(op).args:
-                ctx[chunk.key] = op(input, axis=axis,
+                ctx[chunk.key] = op(input_chunk, axis=axis,
                                     dtype=chunk.op.dtype,
                                     keepdims=bool(chunk.op.keepdims))
             else:
-                ctx[chunk.key] = op(input, axis=axis,
+                ctx[chunk.key] = op(input_chunk, axis=axis,
                                     keepdims=bool(chunk.op.keepdims))
     return _handle
 

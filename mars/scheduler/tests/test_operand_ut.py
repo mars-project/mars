@@ -99,8 +99,7 @@ class Test(unittest.TestCase):
                 resource_ref.set_worker_meta(w, dict(hardware=dict(cpu_total=4)))
 
             graph_ref.prepare_graph()
-            graph_ref.scan_node()
-            graph_ref.place_initial_chunks()
+            graph_ref.analyze_graph()
             graph_ref.create_operand_actors(_start=False)
 
             yield pool, graph_ref

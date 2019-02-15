@@ -17,31 +17,14 @@
 import numpy as np
 
 from ....operands import fft as fftop
-from ....compat import izip
 from ..datasource import tensor as astensor
-from .core import TensorFFTNMixin, validate_fftn
+from .core import TensorComplexFFTNMixin, validate_fftn
 
 
-class TensorFFTN(fftop.FFTN, TensorFFTNMixin):
+class TensorFFTN(fftop.FFTN, TensorComplexFFTNMixin):
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
         super(TensorFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
                                          _dtype=dtype, **kw)
-
-    @classmethod
-    def _get_shape(cls, op, shape):
-        new_shape = list(shape)
-        if op.shape is not None:
-            for ss, axis in izip(op.shape, op.axes):
-                new_shape[axis] = ss
-        return tuple(new_shape)
-
-    def _set_inputs(self, inputs):
-        super(TensorFFTN, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    def __call__(self, a):
-        shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
 
 
 def fftn(a, s=None, axes=None, norm=None):

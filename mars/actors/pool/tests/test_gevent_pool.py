@@ -25,7 +25,8 @@ import sys
 import gevent
 
 from mars.compat import six, BrokenPipeError
-from mars.actors import create_actor_pool as new_actor_pool, Actor, ActorNotExist, Distributor, new_client
+from mars.actors import create_actor_pool as new_actor_pool, Actor, \
+    ActorAlreadyExist, ActorNotExist, Distributor, new_client
 from mars.actors.pool.gevent_pool import Dispatcher, Connections
 from mars.utils import to_binary
 
@@ -223,6 +224,11 @@ class Test(unittest.TestCase):
 
     def testLocalCreateActorError(self):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
+            ref1 = pool.create_actor(DummyActor, 1, uid='dummy1')
+            with self.assertRaises(ActorAlreadyExist):
+                pool.create_actor(DummyActor, 1, uid='dummy1')
+            pool.destroy_actor(ref1)
+
             with self.assertRaises(ValueError):
                 pool.create_actor(DummyActor, -1)
             ref1 = pool.create_actor(DummyActor, 1)
@@ -290,6 +296,11 @@ class Test(unittest.TestCase):
             self.assertTrue(pool.has_actor(ref1))
 
             pool.destroy_actor(ref1)
+            self.assertFalse(pool.has_actor(ref1))
+
+            ref1 = pool.create_actor(DummyActor, 1)
+            future = pool.destroy_actor(ref1, wait=False)
+            future.result()
             self.assertFalse(pool.has_actor(ref1))
 
             ref1 = pool.create_actor(DummyActor, 1)

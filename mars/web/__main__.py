@@ -59,7 +59,7 @@ class WebApplication(BaseApplication):
             scheduler_ip = self.args.schedulers or None
             if isinstance(scheduler_ip, six.string_types):
                 schedulers = scheduler_ip.split(',')
-                scheduler_ip = schedulers[random.randint(0, len(schedulers) - 1)]
+                scheduler_ip = random.choice(schedulers)
             self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ip)
             self.mars_web.start()
 

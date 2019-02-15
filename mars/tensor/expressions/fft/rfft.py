@@ -34,14 +34,6 @@ class TensorRFFT(fftop.RFFT, TensorFFTMixin):
         new_shape[op.axis] = new_shape[op.axis] // 2 + 1
         return tuple(new_shape)
 
-    def _set_inputs(self, inputs):
-        super(TensorRFFT, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    def __call__(self, a):
-        shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
-
 
 def rfft(a, n=None, axis=-1, norm=None):
     """

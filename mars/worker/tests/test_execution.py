@@ -264,7 +264,7 @@ class Test(WorkerCase):
         graph_add = DAG()
         input_chunks = []
         for a in arr_inputs:
-            fetch_op = TensorFetch(dtype=a.dtype, to_fetch_key=a.chunks[0].key)
+            fetch_op = TensorFetch(dtype=a.dtype)
             inp_chunk = fetch_op.new_chunk(None, a.shape, _key=a.chunks[0].key).data
             input_chunks.append(inp_chunk)
 

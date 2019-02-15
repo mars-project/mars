@@ -19,13 +19,14 @@ import time
 import os
 from collections import deque, defaultdict
 
+from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .session import SessionActor
-from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
-from ..compat import six, OrderedDict
+from .utils import SchedulerActor, GraphState, OperandState
+from ..compat import six, functools32, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
@@ -47,6 +48,8 @@ class ResultReceiverActor(SchedulerActor):
         return 's:%s' % cls.__name__
 
     def post_create(self):
+        super(ResultReceiverActor, self).post_create()
+
         self.set_cluster_info_ref()
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
@@ -175,6 +178,7 @@ class GraphActor(SchedulerActor):
             self._target_tensor_finished = dict()
 
     def post_create(self):
+        super(GraphActor, self).post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
         random.seed(int(time.time()))
@@ -207,6 +211,7 @@ class GraphActor(SchedulerActor):
         self._state = value
         self._graph_meta_ref.set_state(value, _tell=True)
 
+    @log_unhandled
     def reload_state(self):
         result = self._graph_meta_ref.get_state()
         if result is None:
@@ -223,6 +228,7 @@ class GraphActor(SchedulerActor):
         self._final_state = value
         self._graph_meta_ref.set_final_state(value, _tell=True)
 
+    @log_unhandled
     def execute_graph(self):
         """
         Start graph execution
@@ -244,10 +250,7 @@ class GraphActor(SchedulerActor):
             self.prepare_graph()
             _detect_cancel()
 
-            self.scan_node()
-            _detect_cancel()
-
-            self.place_initial_chunks()
+            self.analyze_graph()
             _detect_cancel()
 
             self.create_operand_actors()
@@ -263,6 +266,7 @@ class GraphActor(SchedulerActor):
         if len(self._chunk_graph_cache) == 0:
             self.state = GraphState.SUCCEEDED
 
+    @log_unhandled
     def stop_graph(self):
         """
         Stop graph execution
@@ -293,6 +297,7 @@ class GraphActor(SchedulerActor):
         if not has_stopping:
             self.state = GraphState.CANCELLED
 
+    @log_unhandled
     def reload_chunk_graph(self):
         """
         Reload chunk graph from kv store
@@ -309,11 +314,13 @@ class GraphActor(SchedulerActor):
             op_key_to_chunk[n.op.key].append(n)
         self._op_key_to_chunk = op_key_to_chunk
 
+    @log_unhandled
     def get_chunk_graph(self):
         if self._chunk_graph_cache is None:
             self.reload_chunk_graph()
         return self._chunk_graph_cache
 
+    @log_unhandled
     def prepare_graph(self, compose=True):
         """
         Tile and compose tensor graph into chunk graph
@@ -448,114 +455,42 @@ class GraphActor(SchedulerActor):
         for n in self._chunk_graph_cache:
             self._op_key_to_chunk[n.op.key].append(n)
 
-    def scan_node(self):
+    def _get_worker_slots(self):
+        metrics = self._resource_actor_ref.get_workers_meta()
+        return dict((ep, int(metrics[ep]['hardware']['cpu_total'])) for ep in metrics)
+
+    @log_unhandled
+    def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
         chunk_graph = self.get_chunk_graph()
-        depth_cache = dict()
 
         if len(chunk_graph) == 0:
             return
 
-        for n in chunk_graph.topological_iter():
-            key = n.op.key
-            if key not in operand_infos:
-                operand_infos[key] = dict(
-                    optimize=dict(depth=0, demand_depths=(), successor_size=0, descendant_size=0)
+        for n in chunk_graph:
+            k = n.op.key
+            succ_size = chunk_graph.count_successors(n)
+            if k not in operand_infos:
+                operand_infos[k] = dict(
+                    optimize=dict(depth=0, demand_depths=(), successor_size=succ_size, descendant_size=0)
                 )
-            operand_infos[key]['optimize']['successor_size'] += chunk_graph.count_successors(n)
-            if not chunk_graph.predecessors(n):
-                depth_cache[key] = 0
             else:
-                depth = depth_cache[key] = 1 + max(depth_cache[ni.op.key] for ni in chunk_graph.predecessors(n))
-                # record operand information
-                operand_infos[key]['optimize']['depth'] = depth
+                operand_infos[k]['optimize']['successor_size'] = succ_size
 
-        for n in chunk_graph.topological_iter(reverse=True):
-            operand_infos[n.op.key]['optimize']['descendant_size'] += 1
-            if not chunk_graph.predecessors(n):
-                continue
-            for ni in set(chunk_graph.predecessors(n)):
-                operand_infos[ni.op.key]['optimize']['descendant_size'] += \
-                    operand_infos[n.op.key]['optimize']['descendant_size']
+        analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
 
-    def place_initial_chunks(self):
-        """
-        Decide target worker for initial chunks
-        """
-        logger.debug('Placing initial chunks for graph %s', self._graph_key)
+        for k, v in analyzer.calc_depths().items():
+            operand_infos[k]['optimize']['depth'] = v
 
-        import numpy as np
-        graph = self.get_chunk_graph()
-        undigraph = graph.build_undirected()
-        operand_infos = self._operand_infos
+        for k, v in analyzer.calc_descendant_sizes().items():
+            operand_infos[k]['optimize']['descendant_size'] = v
 
-        metrics = self._resource_actor_ref.get_workers_meta()
+        if kwargs.get('do_placement', True):
+            logger.debug('Placing initial chunks for graph %s', self._graph_key)
+            for k, v in analyzer.calc_initial_assignments().items():
+                operand_infos[k]['target_worker'] = v
 
-        def _successor_fun(n):
-            return remove_shuffle_chunks(undigraph.iter_successors(n))
-
-        key_to_chunks = defaultdict(list)
-        for n in graph:
-            key_to_chunks[n.op.key].append(n)
-
-        # collect chunks with no inputs, or all inputs from shuffle
-        zero_degree_key_chunks = dict()
-        zero_degrees = []
-        for chunk in graph:
-            if not remove_shuffle_chunks(graph.predecessors(chunk)) and chunk.op.key not in zero_degree_key_chunks:
-                zero_degree_key_chunks[chunk.op.key] = key_to_chunks[chunk.op.key]
-        for op_key in zero_degree_key_chunks:
-            zero_degrees.append(key_to_chunks[op_key][0])
-        random.shuffle(zero_degrees)
-
-        # sort initials by descendant size
-        descendant_counts = dict()
-        for key, chunks in zero_degree_key_chunks.items():
-            descendant_counts[key] = operand_infos[key]['optimize']['descendant_size']
-        # note that different sort orders can contribute to different efficiency
-        zero_degrees = sorted(zero_degrees, key=lambda n: descendant_counts[n.op.key])
-
-        endpoint_res = [(ep, int(metrics[ep]['hardware']['cpu_total'])) for ep in metrics]
-        endpoint_res.sort(key=lambda t: t[1], reverse=True)
-
-        endpoints = [t[0] for t in endpoint_res]
-        endpoint_cores = np.array([t[1] for t in endpoint_res])
-
-        splited_initial_counts = (endpoint_cores / endpoint_cores.sum() * len(zero_degrees)).astype(np.int64)
-        if splited_initial_counts.sum() < len(zero_degrees):
-            pos = 0
-            rest = len(zero_degrees) - splited_initial_counts.sum()
-            while rest > 0:
-                splited_initial_counts[pos] += 1
-                rest -= 1
-                pos = (pos + 1) % len(splited_initial_counts)
-
-        full_assigns = dict()
-        sorted_initials = [v for v in zero_degrees]
-        while splited_initial_counts.max():
-            slot_id = splited_initial_counts.argmax()
-            cur = sorted_initials.pop()
-            while cur.op.key in full_assigns:
-                cur = sorted_initials.pop()
-            assigned = 0
-            spread_range = 0
-            for v in undigraph.bfs(start=key_to_chunks[cur.op.key], visit_predicate='all',
-                                   successors=_successor_fun):
-                if v.op.key in full_assigns:
-                    continue
-                spread_range += 1
-                if graph.predecessors(v):
-                    continue
-                full_assigns[v.op.key] = endpoints[slot_id]
-                assigned += 1
-                if spread_range >= len(graph) * 1.0 / len(metrics) \
-                        or assigned >= splited_initial_counts[slot_id]:
-                    break
-            splited_initial_counts[slot_id] -= assigned
-
-        for v in zero_degrees:
-            operand_infos[v.op.key]['target_worker'] = full_assigns[v.op.key]
-
+    @log_unhandled
     def get_executable_operand_dag(self, op_key, serialize=True):
         """
         Make an operand into a worker-executable dag
@@ -577,11 +512,7 @@ class GraphActor(SchedulerActor):
             new_op = c.op.copy()
             kws = []
             for o in c.op.outputs:
-                kw = {
-                    '_key': o.key,
-                    'dtype': o.dtype,
-                    'index': o.index,
-                }
+                kw = dict(_key=o.key, dtype=o.dtype, index=o.index)
                 composed = []
                 # copy composed
                 for j, com in enumerate(o.composed or []):
@@ -609,6 +540,7 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
+    @log_unhandled
     def create_operand_actors(self, _clean_io_meta=True, _start=True):
         """
         Create operand actors for all operands
@@ -682,6 +614,7 @@ class GraphActor(SchedulerActor):
                              for op_key in initial_keys]
             [future.result() for future in start_futures]
 
+    @log_unhandled
     def mark_terminal_finished(self, op_key, final_state=None):
         """
         Mark terminal operand as finished. Calling this method will change graph state
@@ -725,6 +658,14 @@ class GraphActor(SchedulerActor):
             except KeyError:
                 pass
 
+    @functools32.lru_cache(1000)
+    def _get_operand_ref(self, key):
+        from .operand import OperandActor
+        op_uid = OperandActor.gen_uid(self._session_id, key)
+        scheduler_addr = self.get_scheduler(op_uid)
+        return self.ctx.actor_ref(op_uid, address=scheduler_addr)
+
+    @log_unhandled
     def calc_stats(self):
         states = list(OperandState.__members__.values())
         state_mapping = OrderedDict((v, idx) for idx, v in enumerate(states))
@@ -733,7 +674,7 @@ class GraphActor(SchedulerActor):
         op_stats = OrderedDict()
         finished = 0
         total_count = len(self._operand_infos)
-        for operand_info in six.itervalues(self._operand_infos):
+        for operand_info in self._operand_infos.values():
             op_name = operand_info['op_name']
             state = operand_info['state']
             if state in (OperandState.FINISHED, OperandState.FREED):
@@ -744,7 +685,7 @@ class GraphActor(SchedulerActor):
             stats_list[state_mapping[state]] += 1
 
         data_src = OrderedDict([('states', state_names), ])
-        for op, state_stats in six.iteritems(op_stats):
+        for op, state_stats in op_stats.items():
             sum_chunks = sum(state_stats)
             data_src[op] = [v * 100.0 / sum_chunks for v in state_stats]
 
@@ -764,19 +705,16 @@ class GraphActor(SchedulerActor):
         tid = self._tensor_key_to_opid[key]
         return self._tensor_key_opid_to_tiled[(key, tid)][-1]
 
+    @log_unhandled
     def free_tensor_data(self, tensor_key):
-        from .operand import OperandActor
-
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         for chunk in tiled_tensor.chunks:
-            op_uid = OperandActor.gen_uid(self._session_id, chunk.op.key)
-            scheduler_addr = self.get_scheduler(op_uid)
-            op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
-            op_ref.free_data(_tell=True)
+            self._get_operand_ref(chunk.op.key).free_data(_tell=True)
 
     def get_tensor_chunk_indexes(self, tensor_key):
         return OrderedDict((c.key, c.index) for c in self._get_tensor_by_key(tensor_key).chunks)
 
+    @log_unhandled
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
         from ..tensor.expressions.datasource import TensorFetch
@@ -832,6 +770,7 @@ class GraphActor(SchedulerActor):
         fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
         return list(fetch_graph)[0]
 
+    @log_unhandled
     def fetch_tensor_result(self, tensor_key):
         from ..worker.transfer import ResultSenderActor
 

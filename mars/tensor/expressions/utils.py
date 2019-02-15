@@ -145,7 +145,7 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
             try:
                 with np.errstate(all='ignore'):
                     dtype = np_func(*args, **np_kw).dtype
-            except:
+            except:  # noqa: E722
                 dtype = None
 
             if usr_dtype and dtype:

@@ -20,10 +20,9 @@ from ....operands import fft as fftop
 from ....tiles import NotSupportTile
 from ..core import TensorOperandMixin
 from ..datasource import arange
-from .core import TensorFFTMixin
 
 
-class TensorFFTFreq(fftop.FFTFreq, TensorFFTMixin):
+class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
         super(TensorFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
 

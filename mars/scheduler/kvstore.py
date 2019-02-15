@@ -52,5 +52,9 @@ class KVStoreActor(SchedulerActor):
         wrap = lambda x: (x,) if not isinstance(x, tuple) else x
         [self.write(*wrap(it)) for it in items]
 
-    def delete(self, key, dir=False, recursive=False):
-        return self._store.delete(key, dir=dir, recursive=recursive)
+    def delete(self, key, dir=False, recursive=False, silent=False):
+        try:
+            return self._store.delete(key, dir=dir, recursive=recursive)
+        except KeyError:
+            if not silent:
+                raise

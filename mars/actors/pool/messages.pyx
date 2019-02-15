@@ -62,11 +62,14 @@ cdef BYTE_t PICKLE = MessageSerialType.pickle
 cdef int DEFAULT_PROTOCOL = 0
 
 
-cdef class CREATE_ACTOR_MESSAGE:
+cdef class _BASE_ACTOR_MESSAGE:
     cdef public int message_type
     cdef public bytes message_id
     cdef public INT32_t from_index
     cdef public INT32_t to_index
+
+
+cdef class CREATE_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
     cdef public object actor_cls
     cdef public tuple args
@@ -85,11 +88,7 @@ cdef class CREATE_ACTOR_MESSAGE:
         self.kwargs = kwargs
 
 
-cdef class DESTROY_ACTOR_MESSAGE:
-    cdef public int message_type
-    cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+cdef class DESTROY_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
 
     def __init__(self, int message_type=-1, bytes message_id=None,
@@ -101,11 +100,7 @@ cdef class DESTROY_ACTOR_MESSAGE:
         self.actor_ref = actor_ref
 
 
-cdef class HAS_ACTOR_MESSAGE:
-    cdef public int message_type
-    cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+cdef class HAS_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
 
     def __init__(self, int message_type=-1, bytes message_id=None,
@@ -117,11 +112,7 @@ cdef class HAS_ACTOR_MESSAGE:
         self.actor_ref = actor_ref
 
 
-cdef class RESULT_MESSAGE:
-    cdef public int message_type
-    cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+cdef class RESULT_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public object result
 
     def __init__(self, int message_type=-1, bytes message_id=None,
@@ -133,11 +124,7 @@ cdef class RESULT_MESSAGE:
         self.result = result
 
 
-cdef class ERROR_MESSAGE:
-    cdef public int message_type
-    cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+cdef class ERROR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public object error_type
     cdef public object error
     cdef public object traceback
@@ -154,11 +141,7 @@ cdef class ERROR_MESSAGE:
         self.traceback = traceback
 
 
-cdef class SEND_MESSAGE:
-    cdef public object message_type
-    cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+cdef class SEND_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
     cdef public object message
 

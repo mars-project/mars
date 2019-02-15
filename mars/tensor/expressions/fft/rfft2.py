@@ -17,32 +17,14 @@
 import numpy as np
 
 from ....operands import fft as fftop
-from ....compat import izip
 from ..datasource import tensor as astensor
-from .core import TensorFFTNMixin, validate_fftn
+from .core import TensorRealFFTNMixin, validate_fftn
 
 
-class TensorRFFT2(fftop.RFFT2, TensorFFTNMixin):
+class TensorRFFT2(fftop.RFFT2, TensorRealFFTNMixin):
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
         super(TensorRFFT2, self).__init__(_shape=shape, _axes=axes, _norm=norm,
                                           _dtype=dtype, **kw)
-
-    @classmethod
-    def _get_shape(cls, op, shape):
-        new_shape = list(shape)
-        if op.shape is not None:
-            for ss, axis in izip(op.shape, op.axes):
-                new_shape[axis] = ss
-        new_shape[op.axes[-1]] = new_shape[op.axes[-1]] // 2 + 1
-        return tuple(new_shape)
-
-    def _set_inputs(self, inputs):
-        super(TensorRFFT2, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    def __call__(self, a):
-        shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
 
 
 def rfft2(a, s=None, axes=(-2, -1), norm=None):
