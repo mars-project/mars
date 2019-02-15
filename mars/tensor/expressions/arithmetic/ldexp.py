@@ -20,14 +20,11 @@ from .... import operands
 from ..utils import infer_dtype
 from ..datasource import tensor as astensor
 from .core import TensorBinOp, TensorConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand
 class TensorLdexp(operands.Ldexp, TensorBinOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorLdexp, self).__init__(_casting=casting, _err=err,
-                                          _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         return x1.issparse()
@@ -37,12 +34,8 @@ class TensorLdexp(operands.Ldexp, TensorBinOp):
         return TensorLdexpConstant
 
 
+@arithmetic_operand
 class TensorLdexpConstant(operands.LdexpConstant, TensorConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorLdexpConstant, self).__init__(_casting=casting, _err=err,
-                                                  _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():

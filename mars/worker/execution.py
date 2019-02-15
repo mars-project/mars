@@ -625,7 +625,7 @@ class ExecutionActor(WorkerActor):
                     raise WorkerProcessStopped
 
             self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
-        except:
+        except:  # noqa: E722
             self._dispatch_ref.register_free_slot(calc_uid, 'cpu')
             raise
 
@@ -769,7 +769,7 @@ class ExecutionActor(WorkerActor):
         if graph_record.state == ExecutionState.ALLOCATING:
             try:
                 raise ExecutionInterrupted
-            except:
+            except:  # noqa: E722
                 exc_info = sys.exc_info()
             if graph_record.mem_request:
                 self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), exc_info, _tell=True)

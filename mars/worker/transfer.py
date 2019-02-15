@@ -494,7 +494,7 @@ class ReceiverActor(WorkerActor):
                 six.reraise(*data_meta.callback_args)
                 return  # pragma: no cover
             self._serialize_pool.submit(self._data_writers[session_chunk_key].write, data_part).result()
-        except:
+        except:  # noqa: E722
             self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
 
     @log_unhandled
@@ -539,7 +539,7 @@ class ReceiverActor(WorkerActor):
 
             data_meta.status = ReceiveStatus.RECEIVED
             self._invoke_finish_callbacks(session_id, chunk_key)
-        except:
+        except:  # noqa: E722
             self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
 
     @log_unhandled

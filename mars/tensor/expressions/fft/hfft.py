@@ -35,14 +35,6 @@ class TensorHFFT(fftop.HFFT, TensorFFTMixin):
             new_shape[op.axis] = 2 * (shape[op.axis] - 1)
         return tuple(new_shape)
 
-    def _set_inputs(self, inputs):
-        super(TensorHFFT, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    def __call__(self, a):
-        shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
-
 
 def hfft(a, n=None, axis=-1, norm=None):
     """

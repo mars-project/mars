@@ -94,7 +94,7 @@ class TensorSplit(Split, TensorOperandMixin):
 
         acc_shapes = np.cumsum([s.shape[axis] for s in splits])
         out_kws = [dict() for _ in splits]
-        for i, s in enumerate(splits):
+        for i in range(len(splits)):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
             new_s = in_tensor[(slice(None),) * axis + (slc,)].single_tiles()
             out_kws[i]['chunks'] = new_s.chunks

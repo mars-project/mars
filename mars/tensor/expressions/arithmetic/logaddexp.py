@@ -19,32 +19,19 @@ import numpy as np
 from .... import operands
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand(sparse_mode='always_false')
 class TensorLogAddExp(operands.LogAddExp, TensorBinOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorLogAddExp, self).__init__(_casting=casting, _err=err,
-                                              _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        return False
-
     @classmethod
     def constant_cls(cls):
         return TensorLAEConstant
 
 
+@arithmetic_operand(sparse_mode='always_false')
 class TensorLAEConstant(operands.LAEConstant, TensorConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorLAEConstant, self).__init__(_casting=casting, _err=err,
-                                                _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        return False
+    pass
 
 
 @infer_dtype(np.logaddexp)

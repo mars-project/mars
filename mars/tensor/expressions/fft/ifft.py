@@ -18,28 +18,13 @@ import numpy as np
 
 from ....operands import fft as fftop
 from ..datasource import tensor as astensor
-from .core import TensorFFTMixin, validate_fft
+from .core import TensorComplexFFTMixin, validate_fft
 
 
-class TensorIFFT(fftop.IFFT, TensorFFTMixin):
+class TensorIFFT(fftop.IFFT, TensorComplexFFTMixin):
     def __init__(self, n=None, axis=-1, norm=None, dtype=None, **kw):
         super(TensorIFFT, self).__init__(_n=n, _axis=axis, _norm=norm,
                                          _dtype=dtype, **kw)
-
-    @classmethod
-    def _get_shape(cls, op, shape):
-        new_shape = list(shape)
-        if op.n is not None:
-            new_shape[op.axis] = op.n
-        return tuple(new_shape)
-
-    def _set_inputs(self, inputs):
-        super(TensorIFFT, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
-
-    def __call__(self, a):
-        shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
 
 
 def ifft(a, n=None, axis=-1, norm=None):
