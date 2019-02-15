@@ -548,7 +548,7 @@ class ExecutionActor(WorkerActor):
         if self._graph_stages[graph_key][0] == 'allocate_resource':
             try:
                 raise ExecutionInterrupted
-            except:
+            except:  # noqa: E722
                 exc_info = sys.exc_info()
             if graph_key in self._mem_requests:
                 self._mem_quota_ref.cancel_requests(self._mem_requests[graph_key], exc_info, _tell=True)

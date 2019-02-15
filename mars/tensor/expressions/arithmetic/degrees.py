@@ -19,17 +19,12 @@ import numpy as np
 from .... import operands
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand(sparse_mode='unary')
 class TensorDegrees(operands.Degrees, TensorUnaryOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorDegrees, self).__init__(_casting=casting, _err=err,
-                                            _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x):
-        return x.issparse()
+    pass
 
 
 @infer_dtype(np.degrees)

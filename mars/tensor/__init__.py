@@ -28,7 +28,7 @@ from .expressions.arithmetic import add, subtract, multiply, divide, truediv as 
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
     absolute, fabs, absolute as abs, rint, sign, degrees, radians, conj, conjugate, exp, exp2, \
-    log, log2, log10, expm1, log1p, sqrt, square, cbrt, reciprocal, \
+    log, log2, log10, expm1, log1p, square, cbrt, reciprocal, \
     equal, not_equal, less, less_equal, greater, greater_equal, sin, cos, tan, \
     arcsin, arccos, arctan, arctan2, hypot, sinh, cosh, tanh, arcsinh, arccosh, arctanh, \
     deg2rad, rad2deg, bitand as bitwise_and, bitor as bitwise_or, bitxor as bitwise_xor, \

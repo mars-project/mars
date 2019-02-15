@@ -21,24 +21,19 @@ from ...core import build_mode
 from ..utils import inject_dtype
 from ..datasource import tensor as astensor
 from .core import TensorCompare, TensorCompareConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand
 class TensorEqual(operands.Equal, TensorCompare):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorEqual, self).__init__(_casting=casting, _err=err,
-                                          _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def constant_cls(cls):
         return TensorEqConstant
 
 
+@arithmetic_operand
 class TensorEqConstant(operands.EqConstant, TensorCompareConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorEqConstant, self).__init__(_casting=casting, _err=err,
-                                               _dtype=dtype, _sparse=sparse, **kw)
+    pass
 
 
 @inject_dtype(np.bool_)

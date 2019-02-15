@@ -43,7 +43,8 @@ class ProcessHelperActor(WorkerActor):
         else:
             self._daemon_ref = None
 
-    def free_mkl_buffers(self):
+    @staticmethod
+    def free_mkl_buffers():
         """
         Free MKL buffer
         """

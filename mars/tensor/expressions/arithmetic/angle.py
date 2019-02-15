@@ -19,17 +19,15 @@ import numpy as np
 from .... import operands
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand(init=False, sparse_mode='unary')
 class TensorAngle(operands.Angle, TensorUnaryOp):
     def __init__(self, deg=None, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
         super(TensorAngle, self).__init__(_deg=deg, _casting=casting, _err=err,
                                           _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x):
-        return x.issparse()
 
 
 @infer_dtype(np.angle)

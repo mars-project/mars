@@ -14,21 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from .... import operands
 from .core import TensorUnaryOp
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand(sparse_mode='unary')
 class TensorFabs(operands.Fabs, TensorUnaryOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorFabs, self).__init__(_casting=casting, _err=err,
-                                         _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x):
-        return x.issparse()
+    pass
 
 
 def fabs(x, out=None, where=None, **kwargs):

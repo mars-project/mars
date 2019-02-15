@@ -38,11 +38,6 @@ except ImportError:  # pragma: no cover
     cp = None
 
 logger = logging.getLogger(__name__)
-_collectors = dict()
-
-
-def register_collector(collector):
-    _collectors[id(collector)] = collector
 
 
 def gather_node_info():
@@ -60,9 +55,6 @@ def gather_node_info():
         'memory_total': mem_stats.total,
         'update_time': time.time(),
     }
-
-    for collector in _collectors.values():
-        node_info.update(collector())
 
     if np is None:
         node_info['numpy_info'] = 'Not installed'

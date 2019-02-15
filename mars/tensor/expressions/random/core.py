@@ -176,7 +176,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         if fields:
             if getattr(self, fields[0], None) is None:
                 # create from beginning
-                for i, field, val in zip(itertools.count(0), fields, inputs):
+                for field, val in zip(fields, inputs):
                     if field not in to_one_chunk_fields:
                         if isinstance(val, list):
                             val = np.asarray(val)
@@ -189,7 +189,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                     setattr(self, field, val)
             else:
                 inputs_iter = iter(inputs)
-                for i, field in enumerate(fields):
+                for field in fields:
                     if isinstance(getattr(self, field), TENSOR_TYPE + CHUNK_TYPE):
                         field_to_obj[field] = next(inputs_iter)
 

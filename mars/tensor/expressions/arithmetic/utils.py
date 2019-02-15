@@ -14,8 +14,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 
 from ....config import options
+
+
+def arithmetic_operand(cls=None, init=True, sparse_mode=None):
+    def _decorator(cls):
+        def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
+            err = err if err is not None else np.geterr()
+            super(cls, self).__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
+
+        def _is_sparse_binary_and_const(x1, x2):
+            if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2) and x2 == 0:
+                return True
+            if hasattr(x2, 'issparse') and x2.issparse() and np.isscalar(x1) and x1 == 0:
+                return True
+            return False
+
+        def _is_sparse_binary_or_const(x1, x2):
+            if (hasattr(x1, 'issparse') and x1.issparse()) or \
+                    (hasattr(x2, 'issparse') and x2.issparse()):
+                return True
+            return False
+
+        _is_sparse_dict = dict(
+            always_false=lambda *_: False,
+            unary=lambda x: x.issparse(),
+            binary_and=lambda x1, x2: x1.issparse() and x2.issparse(),
+            binary_or=lambda x1, x2: x1.issparse() or x2.issparse(),
+            binary_and_const=_is_sparse_binary_and_const,
+            binary_or_const=_is_sparse_binary_or_const,
+        )
+        for v in _is_sparse_dict.values():
+            v.__name__ = '_is_sparse'
+
+        if init:
+            cls.__init__ = __init__
+
+        if sparse_mode in _is_sparse_dict:
+            cls._is_sparse = staticmethod(_is_sparse_dict[sparse_mode])
+        elif sparse_mode is not None:  # pragma: no cover
+            raise ValueError('Unsupported sparse mode: %s' % sparse_mode)
+
+        return cls
+
+    if cls is not None:
+        return _decorator(cls)
+    else:
+        return _decorator
 
 
 def tree_add(dtype, chunks, idx, shape, sparse=False):
