@@ -249,8 +249,8 @@ class Test(unittest.TestCase):
 
         executor = sess._sess._executor
 
-        self.assertEqual(len(executor.chunk_result), 8)
+        self.assertEqual(len(executor.chunk_result), 4)  # 4 kinds of shapes
         del arr1
-        self.assertEqual(len(executor.chunk_result), 8)
+        self.assertEqual(len(executor.chunk_result), 4)
         del arr2
         self.assertEqual(len(executor.chunk_result), 0)
