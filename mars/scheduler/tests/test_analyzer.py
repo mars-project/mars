@@ -241,7 +241,7 @@ class Test(unittest.TestCase):
 
         worker_metrics = dict(w2=24, w3=24)
         analyzer = GraphAnalyzer(graph, worker_metrics, fixed_assigns, op_states, lost_chunks)
-        changed_states = analyzer.apply_state_changes()
+        changed_states = analyzer.analyze_state_changes()
 
         self.assertEqual(len(changed_states), 8)
         self.assertTrue(all(changed_states[c.op.key] == OperandState.READY

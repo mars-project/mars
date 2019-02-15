@@ -85,11 +85,11 @@ class GraphAnalyzer(object):
                 sizes[ni.op.key] += sizes[n.op.key]
         return sizes
 
-    def _iter_successor_assigns(self, start_assign):
+    def _iter_successor_assigns(self, existing_assigns):
         """Iterate over all successors to get allocations of successor nodes"""
         graph = self._graph
 
-        worker_assigns = start_assign.copy()
+        worker_assigns = existing_assigns.copy()
         for n in graph.topological_iter():
             if not graph.count_predecessors(n):
                 continue
@@ -123,8 +123,8 @@ class GraphAnalyzer(object):
         occupied = occupied or dict()
         actual_count = initial_count - sum(occupied.values())
 
-        endpoint_res = list(self._worker_slots.items())
-        endpoint_res.sort(key=lambda t: t[1], reverse=True)
+        endpoint_res = sorted(self._worker_slots.items(), key=operator.itemgetter(1),
+                              reverse=True)
 
         endpoints = [t[0] for t in endpoint_res]
         endpoint_cores = np.array([t[1] for t in endpoint_res]).astype(np.float32)
@@ -266,7 +266,7 @@ class GraphAnalyzer(object):
 
         return dict((n.op.key, cur_assigns[n.op.key]) for n in zero_degrees)
 
-    def apply_state_changes(self):
+    def analyze_state_changes(self):
         """
         Update operand states when some chunks are lost.
         :return: dict mapping operand keys into changed states
