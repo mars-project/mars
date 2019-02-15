@@ -16,6 +16,7 @@ import datetime
 import threading
 import weakref
 import itertools
+import logging
 from collections import deque, defaultdict
 
 import numpy as np
@@ -28,6 +29,8 @@ from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import futures, OrderedDict, enum
 from .utils import kernel_mode
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutorSyncProvider(object):
@@ -88,8 +91,10 @@ if gevent:
             # we create a greenlet to watch the result
 
             def check(event):
+                delay = 0.0005
                 while not event.is_set():
-                    event.wait(0.01)
+                    event.wait(delay)
+                    delay = min(delay * 2, .05)
 
             def inner(*args, **kwargs):
                 event = gevent.event.Event()
@@ -163,7 +168,8 @@ class GraphExecution(object):
         self._has_error = sync_provider.event()
         self._queue = list(self._order_starts()) if len(graph) > 0 else []
         assert len(self._queue) == graph.count_indep()
-        self._chunk_key_ref_counts, self._op_key_to_ops = self._calc_info()
+        self._chunk_key_ref_counts = self._calc_ref_counts()
+        self._op_key_to_ops = self._calc_op_key_to_ops()
         self._submitted_op_keys = set()
         self._executed_op_keys = set()
 
@@ -188,18 +194,26 @@ class GraphExecution(object):
             if not stack and starts:
                 stack.appendleft(starts.popleft())
 
-    def _calc_info(self):
+    def _calc_ref_counts(self):
         ref_counts = dict()
-        op_key_to_ops = defaultdict(set)
+
         for chunk in self._graph:
             if chunk.key not in self._key_set:
                 # only record ref count for those not in results
                 ref_counts[chunk.key] = \
                     ref_counts.get(chunk.key, 0) + len(self._graph[chunk])
 
+
+        return ref_counts
+
+    def _calc_op_key_to_ops(self):
+        op_key_to_ops = defaultdict(set)
+
+        for chunk in self._graph:
             # operand
             op_key_to_ops[chunk.op.key].add(chunk.op)
-        return ref_counts, op_key_to_ops
+
+        return op_key_to_ops
 
     def _execute_operand(self, op):
         results = self._chunk_results
@@ -250,6 +264,12 @@ class GraphExecution(object):
             self._semaphore.release()
 
     def _fetch_chunks(self, chunks):
+        """
+        Iterate all the successors of given chunks,
+        if the successor's predecessors except that in the chunks have all finished,
+        we will try to load the successor's all predecessors into memory in advance.
+        """
+
         for chunk in chunks:
             with self._lock:
                 to_fetch_chunk = None
@@ -287,7 +307,7 @@ class GraphExecution(object):
         if self._print_progress:
             i, n = len(self._submitted_op_keys), len(self._op_key_to_ops)
             if i % 30 or i >= n:
-                print('[{0}] {1:.2f}% percent of graph has been submitted'.format(
+                logger.info('[{0}] {1:.2f}% percent of graph has been submitted'.format(
                     str(datetime.datetime.now()), float(i) * 100 / n))
 
         if self._prefetch:
