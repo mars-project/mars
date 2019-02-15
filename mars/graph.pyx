@@ -49,7 +49,7 @@ cdef class DirectedGraph:
         return self._successors[n]
 
     def contains(self, node):
-        return node in self
+        return node in self._nodes
 
     def add_node(self, node, node_attr=None, **node_attrs):
         if node_attr is None:
@@ -98,11 +98,14 @@ cdef class DirectedGraph:
     cdef inline _add_edge(self, u, v, edge_attr=None):
         cdef:
             dict u_succ, v_pred
+
+        if u not in self._nodes:
+            raise KeyError('Node %s does not exist in the directed graph' % u)
+        if v not in self._nodes:
+            raise KeyError('Node %s does not exist in the directed graph' % v)
+
         if edge_attr is None:
             edge_attr = dict()
-        for n in (u, v):
-            if n not in self:
-                raise KeyError('Node %s does not exist in the directed graph' % n)
 
         u_succ = self._successors[u]
         if v in u_succ:
@@ -275,10 +278,10 @@ cdef class DirectedGraph:
     def build_undirected(self):
         cdef DirectedGraph graph = DirectedGraph()
         for n in self:
-            if n not in graph:
+            if n not in graph._nodes:
                 graph._add_node(n)
-            for succ in self.iter_successors(n):
-                if succ not in graph:
+            for succ in self._successors[n]:
+                if succ not in graph._nodes:
                     graph._add_node(succ)
                 graph._add_edge(n, succ)
                 graph._add_edge(succ, n)
@@ -287,10 +290,10 @@ cdef class DirectedGraph:
     def build_reversed(self):
         cdef DirectedGraph graph = type(self)()
         for n in self:
-            if n not in graph:
+            if n not in graph._nodes:
                 graph._add_node(n)
-            for succ in self.iter_successors(n):
-                if succ not in graph:
+            for succ in self._successors[n]:
+                if succ not in graph._nodes:
                     graph._add_node(succ)
                 graph._add_edge(succ, n)
         return graph
