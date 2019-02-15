@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -75,6 +76,7 @@ class Test(unittest.TestCase):
         res = executor.execute_tensor(a, concat=True)[0]
         np.testing.assert_array_equal(res, np.ones((10, 10)))
 
+    @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
     def testActorInExecutor(self):
         with create_actor_pool(n_process=2) as pool:
             actor = pool.create_actor(ExecutorActor, uid='0-executor')
