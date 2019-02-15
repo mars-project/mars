@@ -74,6 +74,20 @@ class TensorNoInput(TensorDataSource):
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape
 
+    def new_chunks(self, inputs, shape, index=None, output_limit=None,
+                   kws=None, dtype=None, **kw):
+        self.params['shape'] = shape  # set shape to make the operand key different
+        return super(TensorNoInput, self).new_chunks(
+            inputs, shape, index=index, output_limit=output_limit,
+            kws=kws, dtype=dtype, **kw)
+
+    def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,
+                    output_limit=None, kws=None, **kw):
+        self.params['shape'] = shape  # set shape to make the operand key different
+        return super(TensorNoInput, self).new_tensors(
+            inputs, shape, dtype=dtype, chunks=chunks, nsplits=nsplits,
+            output_limit=output_limit, kws=kws, **kw)
+
     def __call__(self, shape, chunk_size=None):
         shape = normalize_shape(shape)
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)

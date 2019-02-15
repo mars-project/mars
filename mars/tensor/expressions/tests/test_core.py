@@ -20,13 +20,13 @@ from weakref import ReferenceType
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor import ones, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
+from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
 from mars.tensor.expressions.datasource import fromdense
 from mars.tensor.expressions.datasource.tri import TensorTriu, TensorTril
 from mars.tensor.expressions.datasource.zeros import TensorZeros
 from mars.tensor.expressions.datasource.fromdense import DenseToSparse
 from mars.tensor.expressions.datasource.array import CSRMatrixDataSource
-from mars.tensor.expressions.datasource.ones import TensorOnesLike
+from mars.tensor.expressions.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
 from mars.tensor.core import Tensor, SparseTensor, build_mode
 from mars.graph import DAG
@@ -213,6 +213,44 @@ class Test(TestBase):
 
         tensor = ones((2, 3, 4))
         self.assertEqual(len(list(tensor)), 2)
+
+        tensor2 = ones((2, 3, 4), chunk_size=1)
+        # tensor's op key must be equal to tensor2
+        self.assertEqual(tensor.op.key, tensor2.op.key)
+        self.assertNotEqual(tensor.key, tensor2.key)
+
+        tensor3 = ones((2, 3, 3))
+        self.assertNotEqual(tensor.op.key, tensor3.op.key)
+        self.assertNotEqual(tensor.key, tensor3.key)
+
+        # test create chunk op of ones manually
+        chunk_op1 = TensorOnes(dtype=tensor.dtype)
+        chunk1 = chunk_op1.new_chunk(None, (3, 3), index=(0, 0))
+        chunk_op2 = TensorOnes(dtype=tensor.dtype)
+        chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
+        self.assertNotEqual(chunk1.op.key, chunk2.op.key)
+        self.assertNotEqual(chunk1.key, chunk2.key)
+
+    def testZeros(self):
+        tensor = zeros((2, 3, 4))
+        self.assertEqual(len(list(tensor)), 2)
+
+        tensor2 = zeros((2, 3, 4), chunk_size=1)
+        # tensor's op key must be equal to tensor2
+        self.assertEqual(tensor.op.key, tensor2.op.key)
+        self.assertNotEqual(tensor.key, tensor2.key)
+
+        tensor3 = zeros((2, 3, 3))
+        self.assertNotEqual(tensor.op.key, tensor3.op.key)
+        self.assertNotEqual(tensor.key, tensor3.key)
+
+        # test create chunk op of zeros manually
+        chunk_op1 = TensorZeros(dtype=tensor.dtype)
+        chunk1 = chunk_op1.new_chunk(None, (3, 3), index=(0, 0))
+        chunk_op2 = TensorZeros(dtype=tensor.dtype)
+        chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
+        self.assertNotEqual(chunk1.op.key, chunk2.op.key)
+        self.assertNotEqual(chunk1.key, chunk2.key)
 
     def testDataSource(self):
         from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
@@ -424,6 +462,13 @@ class Test(TestBase):
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
         self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
+
+        # test tiled zeros' keys
+        a = arange(5, chunk_size=2)
+        t = diag(a)
+        t.tiles()
+        # 1 and 2 of t.chunks is ones, they have different shapes
+        self.assertNotEqual(t.chunks[1].op.key, t.chunks[2].op.key)
 
     def testLinspace(self):
         a = linspace(2.0, 3.0, num=5, chunk_size=2)
