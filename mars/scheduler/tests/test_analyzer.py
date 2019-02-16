@@ -42,8 +42,8 @@ class Test(unittest.TestCase):
                 self.assertLessEqual(2, depths[n.op.key])
 
     def testDescendantSize(self):
-        arr = mt.ones((10, 10), chunk_size=4)
-        arr2 = mt.zeros((10, 10), chunk_size=4)
+        arr = mt.random.rand(10, 10, chunk_size=4)
+        arr2 = mt.random.rand(10, 10, chunk_size=4)
         arr_dot = arr.dot(arr2)
 
         graph = arr_dot.build_graph(compose=False, tiled=True)
