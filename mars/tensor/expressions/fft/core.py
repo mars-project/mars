@@ -88,24 +88,25 @@ class TensorFFTNMixin(TensorFFTBaseMixin):
     def tile(cls, op):
         return cls._tile_fft(op, op.axes)
 
-
-class TensorComplexFFTNMixin(TensorFFTNMixin):
-    @classmethod
-    def _get_shape(cls, op, shape):
+    @staticmethod
+    def _merge_shape(op, shape):
         new_shape = list(shape)
         if op.shape is not None:
             for ss, axis in izip(op.shape, op.axes):
                 new_shape[axis] = ss
-        return tuple(new_shape)
+        return new_shape
+
+
+class TensorComplexFFTNMixin(TensorFFTNMixin):
+    @classmethod
+    def _get_shape(cls, op, shape):
+        return tuple(cls._merge_shape(op, shape))
 
 
 class TensorRealFFTNMixin(TensorFFTNMixin):
     @classmethod
     def _get_shape(cls, op, shape):
-        new_shape = list(shape)
-        if op.shape is not None:
-            for ss, axis in izip(op.shape, op.axes):
-                new_shape[axis] = ss
+        new_shape = cls._merge_shape(op, shape)
         new_shape[op.axes[-1]] = new_shape[op.axes[-1]] // 2 + 1
         return tuple(new_shape)
 
@@ -115,10 +116,7 @@ class TensorRealIFFTNMixin(TensorFFTNMixin):
     def _get_shape(cls, op, shape):
         new_shape = list(shape)
         new_shape[op.axes[-1]] = 2 * (new_shape[op.axes[-1]] - 1)
-        if op.shape is not None:
-            for ss, axis in izip(op.shape, op.axes):
-                new_shape[axis] = ss
-        return tuple(new_shape)
+        return tuple(cls._merge_shape(op, new_shape))
 
 
 def validate_fftn(tensor, s=None, axes=None, norm=None):
