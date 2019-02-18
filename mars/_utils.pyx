@@ -75,7 +75,7 @@ def tokenize(*args, **kwargs):
     return md5(str([h(arg) for arg in args]).encode('utf-8')).hexdigest()
 
 
-cdef object h(object ob):
+cdef inline object h(object ob):
     if isinstance(ob, dict):
         return h_iterative(sorted(list(ob.items()), key=str))
     elif isinstance(ob, set):
@@ -85,7 +85,7 @@ cdef object h(object ob):
     return h_non_iterative(ob)
 
 
-cdef list h_iterative(object ob):
+cdef inline list h_iterative(object ob):
     nested = deque(ob)
     h_list = []
     dq = deque()
@@ -117,11 +117,8 @@ cdef inline object h_non_iterative(object ob):
         return h_pandas_series(ob)
     elif pd is not None and isinstance(ob, pd.DataFrame):
         return h_pandas_dataframe(ob)
-
-    from .dataframe.core import IndexValue
-
-    if isinstance(ob, IndexValue):
-        return h_index_value(ob)
+    elif hasattr(ob, '__mars_tokenize__'):
+        return h(ob.__mars_tokenize__())
 
     raise TypeError('Cannot generate token for %s, type: %s' % (ob, type(ob)))
 
@@ -157,11 +154,6 @@ cdef h_numpy(ob):
         except (BufferError, AttributeError, ValueError):
             data = md5(ob.copy().ravel().view('i1').data).hexdigest()
     return data, ob.dtype, ob.shape, ob.strides
-
-
-cdef h_index_value(ob):
-    v = ob._index_value
-    return h_iterative([type(v).__name__] + [getattr(v, f, None) for f in v.__slots__])
 
 
 cdef h_pandas_index(ob):

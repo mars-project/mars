@@ -28,7 +28,7 @@ except ImportError:  # pragma: no cover
 
 from ..compat import six, OrderedDict, izip
 from ..core import BaseWithKey
-from ..utils_c cimport to_str
+from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField

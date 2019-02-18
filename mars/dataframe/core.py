@@ -108,6 +108,11 @@ class IndexValue(Serializable):
                               int64_index=Int64Field, uint64_index=UInt64Index,
                               float64_index=Float64Index, multi_index=MultiIndex)
 
+    def __mars_tokenize__(self):
+        # return object for tokenize
+        v = self._index_value
+        return [type(v).__name__] + [getattr(v, f, None) for f in v.__slots__]
+
 
 class IndexChunkData(ChunkData):
     __slots__ = ()
