@@ -33,7 +33,7 @@ from hashlib import md5
 import numpy as np
 
 from .compat import irange, functools32, getargspec
-from .utils_c import to_binary, to_str, to_text, tokenize
+from ._utils import to_binary, to_str, to_text, tokenize
 from .config import options
 
 logger = logging.getLogger(__name__)

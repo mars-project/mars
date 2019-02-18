@@ -29,7 +29,7 @@ from cpython.version cimport PY_MAJOR_VERSION
 
 from ..compat import six, OrderedDict
 from ..core import BaseWithKey
-from ..utils_c cimport to_str
+from .._utils cimport to_str
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
     OneOfField, ReferenceField, IdentityField, \

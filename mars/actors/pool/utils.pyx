@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ...utils_c cimport to_str
+from ..._utils cimport to_str
 
 
 cpdef bytes new_actor_id():
