@@ -55,6 +55,15 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(result, expected)
 
+        # test multiple outputs, but only execute 1
+        data = np.random.randint(0, 10, (5, 5))
+        arr3 = mt.tensor(data)
+        arrs = mt.linalg.qr(arr3)
+        result = arrs[0].execute()
+        expected = np.linalg.qr(data)[0]
+
+        np.testing.assert_array_almost_equal(result, expected)
+
     def testReExecuteSame(self):
         data = np.random.random((5, 9))
 
