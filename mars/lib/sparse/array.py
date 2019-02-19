@@ -23,6 +23,11 @@ class SparseNDArray(object):
 
     def __new__(cls, *args, **kwargs):
 
+        shape = kwargs.pop('shape', None)
+        if shape is not None and len(shape) == 1:
+            from .vector import SparseVector
+
+            return object.__new__(SparseVector)
         if len(args) == 1 and issparse(args[0]) and args[0].ndim == 2:
             from .matrix import SparseMatrix
 

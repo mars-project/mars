@@ -296,7 +296,7 @@ def _deserialize_sparse_csr_list(data):
     target_csr = sps.coo_matrix((empty_arr, (empty_arr,) * 2), shape=shape,
                                 dtype=data_parts[0].dtype).tocsr()
     target_csr.data, target_csr.indices, target_csr.indptr = data_parts
-    return SparseNDArray(target_csr)
+    return SparseNDArray(target_csr, shape=shape)
 
 
 _serialize_context = None

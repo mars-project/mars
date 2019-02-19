@@ -75,13 +75,15 @@ def where(cond, x, y):
 
 
 def lu_sparse_matrix(a):
-    # TODO: implement scipy.sparse.linalg.splu
-    # As the different behaviors between `scipy.linalg.lu` and `scipy.sparse.linalg.splu`,
-    # just convert the results to sparse matrix. If implement `scipy.sparse.linalg.splu`,
-    # the tiles logic will be changed.
-    import scipy.linalg
+    from scipy.sparse.linalg import splu
+    from scipy.sparse import csc_matrix
 
-    p, l, u = scipy.linalg.lu(a)
+    a = naked(a)
+    super_lu = splu(a, permc_spec="NATURAL", diag_pivot_thresh=0, options={"SymmetricMode": True})
+    l = super_lu.L
+    u = super_lu.U
+    p = csc_matrix(a.shape)
+    p[super_lu.perm_r, np.arange(a.shape[1])] = 1
     return SparseMatrix(sps.csr_matrix(p)), SparseMatrix(sps.csr_matrix(l)), SparseMatrix(sps.csr_matrix(u)),
 
 
@@ -967,13 +969,17 @@ class SparseMatrix(SparseNDArray):
         return SparseMatrix(x)
 
     def dot(self, other, sparse=True):
+        other_ndim = other.ndim
         try:
             other = naked(other)
         except TypeError:
             return NotImplemented
 
         if sparse:
-            x = self.spmatrix.dot(other)
+            if other_ndim == 1 and other.shape[0] == 1:
+                x = self.spmatrix.dot(other.T)
+            else:
+                x = self.spmatrix.dot(other)
         else:
             a = self.spmatrix.toarray()
             if issparse(other):

@@ -438,13 +438,16 @@ def tensordot(a, b, axes=2, sparse=True):
     else:
         b_axes = (b_axes,)
 
-    if a_axes == (a.ndim - 1,) and (b_axes == (b.ndim - 2,) or b_axes == (0,)):
+    if a_axes == (a.ndim - 1,) and b_axes == (b.ndim - 2,):
         return dot(a, b, sparse=sparse)
 
     if a.ndim == b.ndim == 2:
         if a_axes == (a.ndim - 1,) and b_axes == (b.ndim - 1,):
             # inner product of multiple dims
             return dot(a, b.T, sparse=sparse)
+
+    if a.ndim == 1 or b.ndim == 1:
+        return dot(a, b, sparse=sparse)
 
     raise NotImplementedError
 

@@ -21,6 +21,7 @@ except ImportError:  # pragma: no cover
     cps = None
 try:
     import scipy.sparse as sps
+    import scipy.sparse.linalg as splinalg
 except ImportError:  # pragma: no cover
     sps = None
 try:
@@ -85,6 +86,8 @@ def is_cupy(x):
 def naked(x):
     if hasattr(x, 'spmatrix'):
         return x.spmatrix
+    if hasattr(x, 'spvector'):
+        return x.spvector
     if not is_sparse_or_dense(x):
         raise TypeError('only sparse matrix or ndarray accepted')
     return x

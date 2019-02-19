@@ -309,7 +309,7 @@ class Test(unittest.TestCase):
         x = solve_triangular(A, b)
 
         result_x = self.executor.execute_tensor(x, concat=True)[0]
-        result_b = A.dot(result_x)
+        result_b = data1.dot(result_x)
 
         np.testing.assert_allclose(result_b, data2)
 
@@ -322,7 +322,7 @@ class Test(unittest.TestCase):
         x = solve_triangular(A, b)
 
         result_x = self.executor.execute_tensor(x, concat=True)[0]
-        result_b = A.dot(result_x)
+        result_b = data1.dot(result_x)
 
         np.testing.assert_allclose(result_b, data2)
 
@@ -376,8 +376,8 @@ class Test(unittest.TestCase):
 
         x = solve(A, b)
 
-        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
-        np.testing.assert_allclose(res, data2)
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        np.testing.assert_allclose(data1.dot(res), data2)
 
         data2 = np.random.randint(1, 10, (20, 5))
 
@@ -386,7 +386,7 @@ class Test(unittest.TestCase):
 
         x = solve(A, b)
 
-        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        res = self.executor.execute_tensor(A.dot(x, sparse=False), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
         data2 = np.random.randint(1, 10, (20, 20))
@@ -396,7 +396,7 @@ class Test(unittest.TestCase):
 
         x = solve(A, b)
 
-        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        res = self.executor.execute_tensor(A.dot(x, sparse=False), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
     def testSolveSymPos(self):

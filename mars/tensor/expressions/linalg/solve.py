@@ -63,6 +63,6 @@ def solve(a, b, sym_pos=False):
         u = l.T
     else:
         p, l, u = lu(a)
-        b = p.T.dot(b, sparse=a.issparse())
+        b = p.T.dot(b, sparse=False)
     uy = solve_triangular(l, b, lower=True)
     return solve_triangular(u, uy)
