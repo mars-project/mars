@@ -23,7 +23,7 @@ class SparseNDArray(object):
 
     def __new__(cls, *args, **kwargs):
 
-        shape = kwargs.pop('shape', None)
+        shape = kwargs.get('shape', None)
         if shape is not None and len(shape) == 1:
             from .vector import SparseVector
 

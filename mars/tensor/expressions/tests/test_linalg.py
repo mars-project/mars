@@ -206,7 +206,7 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(u.chunks[0]), u.chunks[0].shape)
 
         # test sparse
-        t = mt.tensor([[1, 2, 0], [0, 2, 0], [2, 0, 3]], chunk_size=2).tosparse()
+        t = mt.tensor([[1, 2, 0], [0, 2, 0], [2, 0, 3]], chunk_size=1).tosparse()
         p, l, u = mt.linalg.lu(t)
 
         self.assertTrue(p.op.sparse)

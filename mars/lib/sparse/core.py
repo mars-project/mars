@@ -24,6 +24,7 @@ try:
     import scipy.sparse.linalg as splinalg
 except ImportError:  # pragma: no cover
     sps = None
+    splinalg = None
 try:
     import cupy as cp
 except ImportError:  # pragma: no cover

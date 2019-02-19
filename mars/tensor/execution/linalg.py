@@ -72,8 +72,10 @@ def _solve_triangular(ctx, chunk):
             import scipy.linalg
 
             ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
-        else:
+        elif is_sparse_module(xp):
             ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
+        else:
+            raise NotImplementedError
 
 
 def _lu(ctx, chunk):
@@ -81,15 +83,14 @@ def _lu(ctx, chunk):
         [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
 
     with device(device_id):
-        if chunk.is_sparse():
-            from .array import sparse
-
-            p, l, u = sparse.lu(a)
-        else:
+        if xp is np:
             import scipy.linalg
 
             p, l, u = scipy.linalg.lu(a)
-
+        elif is_sparse_module(xp):
+            p, l, u = xp.lu(a)
+        else:
+            raise NotImplementedError
         pc, lc, uc = chunk.op.outputs
 
         ctx[pc.key] = p

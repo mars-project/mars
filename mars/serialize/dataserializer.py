@@ -293,7 +293,11 @@ def _deserialize_sparse_csr_list(data):
         pos += size
 
     empty_arr = np.zeros(0, dtype=data_parts[0].dtype)
-    target_csr = sps.coo_matrix((empty_arr, (empty_arr,) * 2), shape=shape,
+    if len(shape) == 1:
+        sps_shape = (1, shape[0])
+    else:
+        sps_shape = shape
+    target_csr = sps.coo_matrix((empty_arr, (empty_arr,) * 2), shape=sps_shape,
                                 dtype=data_parts[0].dtype).tocsr()
     target_csr.data, target_csr.indices, target_csr.indptr = data_parts
     return SparseNDArray(target_csr, shape=shape)

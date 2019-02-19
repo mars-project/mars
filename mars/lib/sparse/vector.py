@@ -21,7 +21,9 @@ from .core import get_array_module, cp, cps, naked, issparse
 class SparseVector(SparseNDArray):
     __slots__ = 'spvector',
 
-    def __init__(self, spvector):
+    def __init__(self, spvector, shape=()):
+        if shape and len(shape) != 1:
+            raise ValueError('Only accept 1-d array')
         if isinstance(spvector, SparseVector):
             self.spvector = spvector.spvector
         else:
@@ -32,10 +34,10 @@ class SparseVector(SparseNDArray):
         return 1
 
     def toarray(self):
-        return self.spvector.toarray()
+        return self.spvector.toarray().reshape(self.shape)
 
     def todense(self):
-        return self.spvector.toarray()
+        return self.spvector.toarray().reshape(self.shape)
 
     def ascupy(self):
         is_cp = get_array_module(self.spvector) is cp
@@ -83,7 +85,11 @@ class SparseVector(SparseNDArray):
 
     @property
     def shape(self):
-        return self.spvector.shape[1],
+        v_shape = self.spvector.shape
+        if v_shape[0] != 1:
+            return v_shape[0],
+        else:
+            return v_shape[1],
 
     @property
     def dtype(self):
@@ -97,15 +103,17 @@ class SparseVector(SparseNDArray):
             return NotImplemented
 
         if not sparse:
-            a = self.spvector.toarray()
+            a = self.toarray()
             if issparse(other):
                 other = other.toarray()
             x = a.dot(other)
         else:
+            v = self.spvector.T if self.spvector.shape[1] == 1 else self.spvector
             if other_ndim == 1 and other.shape[0] == 1:
-                x = self.spvector.dot(other.T)
+                x = v.dot(other.T)
             else:
-                x = self.spvector.dot(other)
+                x = v.dot(other)
         if issparse(x):
-            return SparseNDArray(x)
+            shape = (other.shape[1],)
+            return SparseNDArray(x, shape=shape)
         return get_array_module(x).asarray(x)

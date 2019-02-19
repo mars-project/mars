@@ -82,7 +82,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape, sparse=op.sparse)
-                        target_b = TensorSubtract(dtype=op.dtype, sparse=op.sparse).new_chunk(
+                        target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                             [target_b, s, None, None], target_b.shape)
                     out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
                         [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
@@ -105,7 +105,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape, sparse=op.sparse)
-                        target_b = TensorSubtract(dtype=op.dtype, sparse=op.sparse).new_chunk(
+                        target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                             [target_b, s, None, None], target_b.shape)
                     out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
                         [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)

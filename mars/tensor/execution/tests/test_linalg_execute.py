@@ -303,8 +303,8 @@ class Test(unittest.TestCase):
         data1 = sps.csr_matrix(np.triu(np.random.randint(1, 10, (10, 10))))
         data2 = np.random.random((10,))
 
-        A = tensor(data1, chunk_size=3)
-        b = tensor(data2, chunk_size=3)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve_triangular(A, b)
 
@@ -316,8 +316,8 @@ class Test(unittest.TestCase):
         data1 = sps.csr_matrix(np.triu(np.random.randint(1, 10, (10, 10))))
         data2 = np.random.random((10, 2))
 
-        A = tensor(data1, chunk_size=3)
-        b = tensor(data2, chunk_size=3)
+        A = tensor(data1, chunk_size=5)
+        b = tensor(data2, chunk_size=5)
 
         x = solve_triangular(A, b)
 
