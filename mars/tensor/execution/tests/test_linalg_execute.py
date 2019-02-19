@@ -532,6 +532,12 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[0], expected[:500, :]))
         self.assertTrue(np.array_equal(res[1], expected[500:, :]))
 
+        a = ones((100, 100), chunk_size=30)
+        b = ones((100, 100), chunk_size=30)
+        c = a.dot(b)
+        res = self.executor.execute_tensor(c, concat=True)[0]
+        np.testing.assert_array_equal(res, np.ones((100, 100)) * 100)
+
     def testSparseDotExecution(self):
         a_data = sps.random(5, 9, density=.1)
         b_data = sps.random(9, 10, density=.2)

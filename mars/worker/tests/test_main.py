@@ -43,8 +43,8 @@ class WorkerProcessTestActor(PromiseActor):
 
         session_id = str(uuid.uuid4())
 
-        a = mt.ones((100, 50), chunk_size=30)
-        b = mt.ones((50, 200), chunk_size=30)
+        a = mt.random.rand(100, 50, chunk_size=30)
+        b = mt.random.rand(50, 200, chunk_size=30)
         result = a.dot(b)
 
         graph = result.build_graph(tiled=True)

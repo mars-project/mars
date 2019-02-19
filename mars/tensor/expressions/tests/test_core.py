@@ -23,12 +23,13 @@ import scipy.sparse as sps
 from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
 from mars.tensor.expressions.datasource import fromdense
 from mars.tensor.expressions.datasource.tri import TensorTriu, TensorTril
-from mars.tensor.expressions.datasource.zeros import TensorZeros
+from mars.tensor.expressions.datasource.zeros import zeros, TensorZeros
 from mars.tensor.expressions.datasource.fromdense import DenseToSparse
 from mars.tensor.expressions.datasource.array import CSRMatrixDataSource
 from mars.tensor.expressions.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
-from mars.tensor.core import Tensor, SparseTensor, TensorChunk, build_mode
+from mars.tensor.core import Tensor, SparseTensor, TensorChunk
+from mars.core import build_mode
 from mars.graph import DAG
 from mars.serialize.protos.operand_pb2 import OperandDef
 from mars.tests.core import TestBase, calc_shape
@@ -231,6 +232,11 @@ class Test(TestBase):
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
 
+        tensor = ones((100, 100), chunk_size=50)
+        tensor.tiles()
+        self.assertEqual(len({c.op.key for c in tensor.chunks}), 1)
+        self.assertEqual(len({c.key for c in tensor.chunks}), 1)
+
     def testZeros(self):
         tensor = zeros((2, 3, 4))
         self.assertEqual(len(list(tensor)), 2)
@@ -251,6 +257,11 @@ class Test(TestBase):
         chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
+
+        tensor = zeros((100, 100), chunk_size=50)
+        tensor.tiles()
+        self.assertEqual(len({c.op.key for c in tensor.chunks}), 1)
+        self.assertEqual(len({c.key for c in tensor.chunks}), 1)
 
     def testDataSource(self):
         from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
@@ -356,7 +367,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
 
-        t = ones((10, 3), chunk_size=(5, 2)) + 2
+        t = ones((10, 3), chunk_size=((3, 5, 2), 2)) + 2
         graph = t.build_graph(tiled=True)
 
         pb = graph.to_pb()

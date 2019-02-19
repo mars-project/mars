@@ -103,7 +103,7 @@ class NeOptimizer(object):
             tail_node = c[-1]
 
             op = TensorNeFuseChunk(dtype=tail_node.dtype)
-            composed_chunk = op(c)
+            composed_chunk = op(c).data
             graph.add_node(composed_chunk)
             for node in graph.iter_successors(tail_node):
                 graph.add_edge(composed_chunk, node)

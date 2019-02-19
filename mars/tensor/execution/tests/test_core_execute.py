@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
 
         b.execute(session=self.session)
 
-        self.assertEqual(len(self.executor.chunk_result), 8)
+        self.assertEqual(len(self.executor.chunk_result), 1)
 
         del b
         # decref called

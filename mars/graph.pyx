@@ -142,9 +142,6 @@ cdef class DirectedGraph:
         except KeyError:
             raise KeyError('Node %s does not exist in the directed graph' % n)
 
-    def iter_successor_items(self):
-        return self._successors.items()
-
     cpdef list successors(self, n):
         return list(self._successors[n])
 
@@ -153,9 +150,6 @@ cdef class DirectedGraph:
             return iter(self._predecessors[n])
         except KeyError:
             raise KeyError('Node %s does not exist in the directed graph' % n)
-
-    def iter_predecessor_items(self):
-        return self._predecessors.items()
 
     cpdef list predecessors(self, n):
         return list(self._predecessors[n])
@@ -172,6 +166,16 @@ cdef class DirectedGraph:
         for n, p in preds.items():
             if len(p) == 0:
                 yield n
+
+    cpdef int count_indep(self, reverse=False):
+        cdef:
+            dict preds
+            int result = 0
+        preds = self._predecessors if not reverse else self._successors
+        for n, p in preds.items():
+            if len(p) == 0:
+                result += 1
+        return result
 
     def traverse(self, visit_predicate=None):
         cdef:

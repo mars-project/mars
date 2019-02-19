@@ -22,6 +22,8 @@ from .... import opcodes as OperandDef
 from ....operands import DataSource
 from ....compat import izip
 from ....config import options
+from ....serialize import StringField
+from ....utils import to_str
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
 
@@ -35,9 +37,9 @@ class TensorDataSource(DataSource, TensorOperandMixin):
     __slots__ = ()
 
     def to_chunk_op(self, *args):
-        chunk_shape, idx, chunk_size = args
+        chunk_shape, _, chunk_size = args
         chunk_op = self.copy().reset_key()
-        chunk_op.params = {'size': chunk_shape, 'index': idx}  # to make op key different
+        chunk_op.params = {'size': chunk_shape}  # to make op key different
         return chunk_op
 
     @classmethod
@@ -72,13 +74,17 @@ class TensorNoInput(TensorDataSource):
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape
 
-    def _new_chunks(self, inputs, shape, **kw):
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         self.params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_chunks(inputs, shape, **kw)
+        return super(TensorNoInput, self)._new_chunks(
+            inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_entities(self, inputs, shape, **kw):
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
         self.params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_entities(inputs, shape, **kw)
+        return super(TensorNoInput, self)._new_entities(
+            inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit,
+            kws=kws, **kw)
 
     def __call__(self, shape, chunk_size=None):
         shape = normalize_shape(shape)
@@ -137,8 +143,25 @@ class TensorLike(TensorHasInput):
 class TensorFetch(TensorNoInput):
     _op_type_ = OperandDef.FETCH
 
-    def __init__(self, dtype=None, **kw):
-        super(TensorFetch, self).__init__(_dtype=dtype, **kw)
+    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
+
+    def __init__(self, dtype=None, to_fetch_key=None, **kw):
+        super(TensorFetch, self).__init__(
+            _dtype=dtype, _to_fetch_key=to_fetch_key, **kw)
+
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+        if '_key' in kw and self._to_fetch_key is None:
+            self._to_fetch_key = kw['_key']
+        return super(TensorFetch, self)._new_chunks(
+            inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
+
+    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                      kws=None, **kw):
+        if '_key' in kw and self._to_fetch_key is None:
+            self._to_fetch_key = kw['_key']
+        return super(TensorFetch, self)._new_entities(
+            inputs, shape, chunks=chunks, nsplits=nsplits,
+            output_limit=output_limit, kws=kws, **kw)
 
     @classmethod
     def tile(cls, op):

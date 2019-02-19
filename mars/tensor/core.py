@@ -20,7 +20,7 @@ from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TilesableData, build_mode, is_eager_mode
+from ..core import Entity, ChunkData, Chunk, TilesableData, enter_build_mode, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField
 from .expressions.utils import get_chunk_slices, calc_rough_shape
@@ -372,12 +372,12 @@ class _TensorCleaner(object):
     def __init__(self):
         self._tensor_to_sessions = WeakKeyDictionary()
 
+    @enter_build_mode
     def register(self, tensor, session):
-        with build_mode():
-            if tensor in self._tensor_to_sessions:
-                self._tensor_to_sessions[tensor].append(_TensorSession(tensor, session))
-            else:
-                self._tensor_to_sessions[tensor] = [_TensorSession(tensor, session)]
+        if tensor in self._tensor_to_sessions:
+            self._tensor_to_sessions[tensor].append(_TensorSession(tensor, session))
+        else:
+            self._tensor_to_sessions[tensor] = [_TensorSession(tensor, session)]
 
 
 # we don't use __del__ to decref because a tensor holds an op,

@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 
 import mars.tensor as mt
@@ -129,7 +130,7 @@ class Test(unittest.TestCase):
             arr2 = mt.ones((10, 5), chunk_size=4) - 1
             result = arr2.fetch()
             np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
-            np.testing.assert_array_equal(result[4:8, :4], np.zeros((4, 4)))
+            np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
 
         arr3 = mt.ones((10, 5), chunk_size=4) - 1
 
@@ -138,7 +139,7 @@ class Test(unittest.TestCase):
 
         result = arr3.execute()
         np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
-        np.testing.assert_array_equal(result[4:8, :4], np.zeros((4, 4)))
+        np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
 
     def testKernelMode(self):
         from mars.session import Session

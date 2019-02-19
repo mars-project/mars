@@ -185,6 +185,19 @@ def build_mode():
     return ret
 
 
+def enter_build_mode(func):
+    """
+    Decorator version of build_mode.
+
+    :param func: function
+    :return: the result of function
+    """
+    def inner(*args, **kwargs):
+        with build_mode():
+            return func(*args, **kwargs)
+    return inner
+
+
 class SerializableWithKey(BaseWithKey, Serializable):
     _key = StringField('key')
     _id = StringField('id')
@@ -402,7 +415,7 @@ class TilesableData(SerializableWithKey, Tilesable):
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
-                node = convert_to_fetch(node)
+                node = convert_to_fetch(node).data
 
             visited.add(node)
             if not graph.contains(node):
