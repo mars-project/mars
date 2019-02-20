@@ -966,24 +966,24 @@ class SparseMatrix(SparseNDArray):
         return SparseMatrix(x)
 
     def dot(self, other, sparse=True):
-        other_ndim = other.ndim
+        other_shape = other.shape
         try:
             other = naked(other)
         except TypeError:
             return NotImplemented
 
         if sparse:
-            if other_ndim == 1 and other.shape[0] == 1:
+            if len(other_shape) == 1 and other.shape[0] == 1:
                 x = self.spmatrix.dot(other.T)
             else:
                 x = self.spmatrix.dot(other)
         else:
             a = self.spmatrix.toarray()
             if issparse(other):
-                other = other.toarray()
+                other = other.toarray().reshape(other_shape)
             x = a.dot(other)
         if issparse(x):
-            shape = (x.shape[0],) if other_ndim == 1 else x.shape
+            shape = (x.shape[0],) if len(other_shape) == 1 else x.shape
             return SparseNDArray(x, shape=shape)
         return get_array_module(x).asarray(x)
 

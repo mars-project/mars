@@ -413,11 +413,11 @@ class Test(unittest.TestCase):
 
             vector = sparse.SparseVector(sps.csr_matrix(np.random.rand(2)), shape=(2,))
             des_vector = dataserializer.loads(dataserializer.dumps(vector))
-            self.assertTrue((vector.spvector != des_vector.spvector).nnz == 0)
+            self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
             des_vector = dataserializer.loads(dataserializer.dumps(
                 vector, compress=dataserializer.COMPRESS_FLAG_LZ4))
-            self.assertTrue((vector.spvector != des_vector.spvector).nnz == 0)
+            self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):

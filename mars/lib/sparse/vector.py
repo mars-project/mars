@@ -19,38 +19,38 @@ from .core import get_array_module, cp, cps, naked, issparse
 
 
 class SparseVector(SparseNDArray):
-    __slots__ = 'spvector',
+    __slots__ = 'spmatrix',
 
     def __init__(self, spvector, shape=()):
         if shape and len(shape) != 1:
             raise ValueError('Only accept 1-d array')
         if isinstance(spvector, SparseVector):
-            self.spvector = spvector.spvector
+            self.spmatrix = spvector.spmatrix
         else:
-            self.spvector = spvector.tocsr()
-            
+            self.spmatrix = spvector.tocsr()
+
     @property
     def ndim(self):
         return 1
 
     def toarray(self):
-        return self.spvector.toarray().reshape(self.shape)
+        return self.spmatrix.toarray().reshape(self.shape)
 
     def todense(self):
-        return self.spvector.toarray().reshape(self.shape)
+        return self.spmatrix.toarray().reshape(self.shape)
 
     def ascupy(self):
-        is_cp = get_array_module(self.spvector) is cp
+        is_cp = get_array_module(self.spmatrix) is cp
         if is_cp:
             return self
         mat_tuple = (cp.asarray(self.data), cp.asarray(self.indices), cp.asarray(self.indptr))
-        return SparseVector(cps.csr_matrix(mat_tuple, shape=self.shape))
+        return SparseVector(cps.csr_matrix(mat_tuple, shape=self.spmatrix.shape))
 
     def asscipy(self):
-        is_cp = get_array_module(self.spvector) is cp
+        is_cp = get_array_module(self.spmatrix) is cp
         if not is_cp:
             return self
-        return SparseVector(self.spvector.get())
+        return SparseVector(self.spmatrix.get())
 
     def __array__(self, dtype=None):
         x = self.toarray()
@@ -60,32 +60,32 @@ class SparseVector(SparseNDArray):
 
     @property
     def nbytes(self):
-        return self.spvector.data.nbytes + self.spvector.indptr.nbytes \
-               + self.spvector.indices.nbytes
+        return self.spmatrix.data.nbytes + self.spmatrix.indptr.nbytes \
+               + self.spmatrix.indices.nbytes
 
     @property
     def raw(self):
-        return self.spvector
+        return self.spmatrix
 
     @property
     def data(self):
-        return self.spvector.data
+        return self.spmatrix.data
 
     @property
     def indptr(self):
-        return self.spvector.indptr
+        return self.spmatrix.indptr
 
     @property
     def indices(self):
-        return self.spvector.indices
+        return self.spmatrix.indices
 
     @property
     def nnz(self):
-        return self.spvector.nnz
+        return self.spmatrix.nnz
 
     @property
     def shape(self):
-        v_shape = self.spvector.shape
+        v_shape = self.spmatrix.shape
         if v_shape[0] != 1:
             return v_shape[0],
         else:
@@ -93,10 +93,10 @@ class SparseVector(SparseNDArray):
 
     @property
     def dtype(self):
-        return self.spvector.dtype
+        return self.spmatrix.dtype
 
     def dot(self, other, sparse=True):
-        other_ndim = other.ndim
+        other_shape = other.shape
         try:
             other = naked(other)
         except TypeError:
@@ -105,11 +105,12 @@ class SparseVector(SparseNDArray):
         if not sparse:
             a = self.toarray()
             if issparse(other):
-                other = other.toarray()
+                other = other.toarray().reshape(other_shape)
+
             x = a.dot(other)
         else:
-            v = self.spvector.T if self.spvector.shape[1] == 1 else self.spvector
-            if other_ndim == 1 and other.shape[0] == 1:
+            v = self.spmatrix.T if self.spmatrix.shape[1] == 1 else self.spmatrix
+            if len(other_shape) == 1 and other.shape[0] == 1:
                 x = v.dot(other.T)
             else:
                 x = v.dot(other)

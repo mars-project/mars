@@ -72,10 +72,8 @@ def _solve_triangular(ctx, chunk):
             import scipy.linalg
 
             ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
-        elif is_sparse_module(xp):
-            ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
         else:
-            raise NotImplementedError
+            ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
 
 
 def _lu(ctx, chunk):

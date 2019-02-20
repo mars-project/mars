@@ -39,11 +39,16 @@ class Test(TestBase):
         s = SparseNDArray(self.s1)
         self.assertEqual(s.ndim, 2)
         self.assertIsInstance(s, SparseMatrix)
+        self.assertArrayEqual(s.toarray(), self.s1.A)
+        self.assertArrayEqual(s.todense(), self.s1.A)
 
         v = SparseNDArray(self.v1, shape=(3,))
         self.assertTrue(s.ndim, 1)
         self.assertIsInstance(v, SparseVector)
         self.assertEqual(v.shape, (3,))
+        self.assertArrayEqual(v.todense(), self.v1_data)
+        self.assertArrayEqual(v.toarray(), self.v1_data)
+        self.assertArrayEqual(v, self.v1_data)
 
     def _nan_equal(self, a, b):
         try:
@@ -177,6 +182,9 @@ class Test(TestBase):
         self.assertArrayEqual(mls.dot(v2, s2), self.v2_data.dot(self.s2.A))
         self.assertArrayEqual(mls.dot(v1, v1), self.v1_data.dot(self.v1_data))
         self.assertArrayEqual(mls.dot(v2, v2), self.v2_data.dot(self.v2_data))
+
+        self.assertArrayEqual(mls.dot(v2, s1, sparse=False), self.v2_data.dot(self.s1.A))
+        self.assertArrayEqual(mls.dot(v1, v1, sparse=False), self.v1_data.dot(self.v1_data))
 
     def testSparseSum(self):
         s1 = SparseNDArray(self.s1)
