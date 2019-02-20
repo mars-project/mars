@@ -84,7 +84,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                                          None, prev_chunks[0].shape, sparse=op.sparse)
                         target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                             [target_b, s, None, None], target_b.shape)
-                    out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
+                    out_chunk = TensorSolveTriangular(lower=lower, sparse=target_a.op.sparse, dtype=op.dtype).new_chunk(
                         [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
                     out_chunks[out_chunk.index] = out_chunk
         else:
@@ -107,7 +107,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                                          None, prev_chunks[0].shape, sparse=op.sparse)
                         target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                             [target_b, s, None, None], target_b.shape)
-                    out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
+                    out_chunk = TensorSolveTriangular(lower=lower, sparse=target_a.op.sparse, dtype=op.dtype).new_chunk(
                         [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
                     out_chunks[out_chunk.index] = out_chunk
         new_op = op.copy()
