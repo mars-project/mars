@@ -100,6 +100,8 @@ class TensorBinOp(TensorElementWise):
         inps = inputs[:2]  # lhs, rhs
         inputs_iter = iter(inputs[2:])
 
+        setattr(self, '_sparse', self._is_sparse(inps[0], inps[1]))
+
         if getattr(self, '_lhs', None) is None:
             # create binop from beginning
             has_out = False
@@ -159,7 +161,6 @@ class TensorBinOp(TensorElementWise):
         # check broadcast
         shape = broadcast_shape(x1.shape, x2.shape)
 
-        setattr(self, '_sparse', self._is_sparse(x1, x2))
         t = self.new_tensor([x1, x2, out, where], shape)
 
         if out is None:
@@ -193,6 +194,7 @@ class TensorConstant(TensorElementWise):
     @contextlib.contextmanager
     def _handle_params(self, inputs):
         inps = []
+
         if getattr(self, '_lhs', None) is None:
             # create a constant op from beginning
             assert len(inputs) == 2
@@ -212,6 +214,11 @@ class TensorConstant(TensorElementWise):
             lhs_scalar = np.isscalar(getattr(self, '_lhs'))
             rhs_scalar = np.isscalar(getattr(self, '_rhs'))
             inps.extend(inp for inp in inputs if not np.isscalar(inp))
+
+        if len(inputs) == 2:
+            setattr(self, '_sparse', self._is_sparse(*inputs))
+        else:
+            setattr(self, '_sparse', self._is_sparse(getattr(self, '_lhs'), getattr(self, '_rhs')))
 
         yield inps
 
@@ -251,7 +258,6 @@ class TensorConstant(TensorElementWise):
             x1 = astensor(x1)
             shape = x1.shape
 
-        setattr(self, '_sparse', self._is_sparse(x1, x2))
         return self.new_tensor([x1, x2], shape)
 
     def __call__(self, x1, x2):
@@ -285,6 +291,8 @@ class TensorUnaryOp(TensorElementWise):
     def _handle_params(self, inputs):
         inps = inputs[:1]
         inputs_iter = iter(inputs[1:])
+
+        setattr(self, '_sparse', self._is_sparse(inputs[0]))
 
         if getattr(self, '_input', None) is None:
             # create unaryop from beginning
@@ -339,7 +347,6 @@ class TensorUnaryOp(TensorElementWise):
         x, out, where = self._process_inputs(x, out, where)
         shape = x.shape
 
-        setattr(self, '_sparse', self._is_sparse(x))
         t = self.new_tensor([x, out, where], shape)
 
         if out is None:
@@ -404,6 +411,8 @@ class TensorOutBinOp(TensorElementWise):
     def _handle_params(self, inputs):
         inps = inputs[:1]
         inputs_iter = iter(inputs[1:])
+
+        setattr(self, '_sparse', self._is_sparse(inputs[0]))
 
         if getattr(self, '_input', None) is None:
             # create op from biginning,
@@ -492,7 +501,6 @@ class TensorOutBinOp(TensorElementWise):
         x, out1, out2, where = self._process_inputs(x, out1, out2, where)
         shape = x.shape
 
-        setattr(self, '_sparse', self._is_sparse(x))
         t1, t2 = self.new_tensors([x, out1, out2, where], shape, dtype=dtype)
 
         if out1 is None and out2 is None:

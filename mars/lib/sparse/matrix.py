@@ -17,7 +17,7 @@
 import numpy as np
 
 from .core import issparse, get_array_module, is_cupy, cp, cps, \
-    get_sparse_module, naked, sps
+    get_sparse_module, naked, sps, splinalg
 from .array import SparseNDArray
 
 
@@ -74,10 +74,29 @@ def where(cond, x, y):
     return cond * x + (cond * (-y) + y)
 
 
+def lu_sparse_matrix(a):
+    a = naked(a)
+    super_lu = splinalg.splu(a, permc_spec="NATURAL", diag_pivot_thresh=0, options={"SymmetricMode": True})
+    l = super_lu.L
+    u = super_lu.U
+    p = sps.csc_matrix(a.shape)
+    p[super_lu.perm_r, np.arange(a.shape[1])] = 1
+    return SparseMatrix(p), SparseMatrix(l), SparseMatrix(u),
+
+
+def solve_triangular_sparse_matrix(a, b, lower=False):
+    a = naked(a)
+    b = b.toarray() if issparse(b) else b
+
+    return splinalg.spsolve_triangular(a, b, lower=lower)
+
+
 class SparseMatrix(SparseNDArray):
     __slots__ = 'spmatrix',
 
-    def __init__(self, spmatrix):
+    def __init__(self, spmatrix, shape=()):
+        if shape and len(shape) != 2:
+            raise ValueError('Only accept 2-d array')
         if isinstance(spmatrix, SparseMatrix):
             self.spmatrix = spmatrix.spmatrix
         else:
@@ -947,20 +966,25 @@ class SparseMatrix(SparseNDArray):
         return SparseMatrix(x)
 
     def dot(self, other, sparse=True):
+        other_shape = other.shape
         try:
             other = naked(other)
         except TypeError:
             return NotImplemented
 
         if sparse:
-            x = self.spmatrix.dot(other)
+            if len(other_shape) == 1 and other.shape[0] == 1:
+                x = self.spmatrix.dot(other.T)
+            else:
+                x = self.spmatrix.dot(other)
         else:
             a = self.spmatrix.toarray()
             if issparse(other):
-                other = other.toarray()
+                other = other.toarray().reshape(other_shape)
             x = a.dot(other)
         if issparse(x):
-            return SparseMatrix(x)
+            shape = (x.shape[0],) if len(other_shape) == 1 else x.shape
+            return SparseNDArray(x, shape=shape)
         return get_array_module(x).asarray(x)
 
     def concatenate(self, other, axis=0):

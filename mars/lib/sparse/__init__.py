@@ -20,7 +20,8 @@ from collections import Iterable
 from ...compat import reduce, builtins
 from .array import SparseNDArray
 from .matrix import SparseMatrix
-from .core import issparse
+from .vector import SparseVector
+from .core import issparse, get_sparse_module
 
 from .coo import COONDArray
 
@@ -446,6 +447,9 @@ def tensordot(a, b, axes=2, sparse=True):
             # inner product of multiple dims
             return dot(a, b.T, sparse=sparse)
 
+    if a.ndim == 1 or b.ndim == 1:
+        return dot(a, b, sparse=sparse)
+
     raise NotImplementedError
 
 
@@ -454,6 +458,10 @@ def matmul(a, b, sparse=True, **_):
 
 
 def concatenate(tensors, axis=0):
+    has_sparse = any(issparse(t) for t in tensors)
+    if has_sparse:
+        tensors = [asarray(get_sparse_module(t).csr_matrix(t)) for t in tensors]
+
     return reduce(lambda a, b: _call_bin('concatenate', a, b, axis=axis), tensors)
 
 
@@ -673,6 +681,7 @@ def where(cond, x, y):
     from .matrix import where as matrix_where
     return matrix_where(cond, x, y)
 
+
 def digitize(x, bins, right=False):
     return _call_unary('digitize', x, bins, right)
 
@@ -729,3 +738,15 @@ def tril(m, k=0, gpu=False):
         return tril_sparse_matrix(m, k=k, gpu=gpu)
 
     raise NotImplementedError
+
+
+def lu(m):
+    from .matrix import lu_sparse_matrix
+
+    return lu_sparse_matrix(m)
+
+
+def solve_triangular(a, b, lower=False):
+    from .matrix import solve_triangular_sparse_matrix
+
+    return solve_triangular_sparse_matrix(a, b, lower=lower)

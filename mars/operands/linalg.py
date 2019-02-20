@@ -83,7 +83,7 @@ class SolveTriangular(Operand):
 
 
 class LU(HasInput):
-    _pb_op_type = OperandDef.LU
+    _op_type_ = OperandDef.LU
 
     _input = KeyField('input')
 

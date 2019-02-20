@@ -17,9 +17,11 @@
 import unittest
 
 import numpy as np
+import scipy.sparse as sps
 
 import mars.tensor as mt
 from mars.graph import DirectedGraph
+from mars.tensor.core import SparseTensor
 from mars.tests.core import calc_shape
 
 
@@ -203,6 +205,28 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(l.chunks[0]), l.chunks[0].shape)
         self.assertEqual(calc_shape(u.chunks[0]), u.chunks[0].shape)
 
+        # test sparse
+        data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
+                               [0, 6, 1, 0, 0, 6],
+                               [8, 0, 9, 0, 0, 2],
+                               [0, 6, 0, 8, 7, 3],
+                               [7, 0, 6, 1, 7, 0],
+                               [0, 0, 0, 7, 0, 8]])
+        t = mt.tensor(data, chunk_size=3)
+        p, l, u = mt.linalg.lu(t)
+
+        self.assertTrue(p.op.sparse)
+        self.assertIsInstance(p, SparseTensor)
+        self.assertTrue(l.op.sparse)
+        self.assertIsInstance(l, SparseTensor)
+        self.assertTrue(u.op.sparse)
+        self.assertIsInstance(u, SparseTensor)
+
+        p.tiles()
+        self.assertTrue(all(c.is_sparse() for c in p.chunks))
+        self.assertTrue(all(c.is_sparse() for c in l.chunks))
+        self.assertTrue(all(c.is_sparse() for c in u.chunks))
+
     def testSolve(self):
         a = mt.random.randint(1, 10, (20, 20))
         b = mt.random.randint(1, 10, (20, ))
@@ -219,6 +243,16 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(x), x.shape)
         self.assertEqual(calc_shape(x.chunks[0]), x.chunks[0].shape)
 
+        # test solve
+        a = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
+        b = mt.random.randint(1, 10, (20, ), chunk_size=3)
+        x = mt.linalg.solve(a, b).tiles()
+
+        self.assertEqual(x.shape, (20, ))
+        self.assertEqual(calc_shape(x), x.shape)
+        self.assertTrue(x.op.sparse)
+        self.assertTrue(x.chunks[0].op.sparse)
+
     def testInv(self):
         a = mt.random.randint(1, 10, (20, 20), chunk_size=4)
         a_inv = mt.linalg.inv(a).tiles()
@@ -226,3 +260,16 @@ class Test(unittest.TestCase):
         self.assertEqual(a_inv.shape, (20, 20))
         self.assertEqual(calc_shape(a_inv), a_inv.shape)
         self.assertEqual(calc_shape(a_inv.chunks[0]), a_inv.chunks[0].shape)
+
+        # test sparse
+        data = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
+        a = mt.tensor(data, chunk_size=5)
+        a_inv = mt.linalg.inv(a).tiles()
+
+        self.assertEqual(a_inv.shape, (20, 20))
+        self.assertEqual(calc_shape(a_inv), a_inv.shape)
+        self.assertEqual(calc_shape(a_inv.chunks[0]), a_inv.chunks[0].shape)
+
+        self.assertTrue(a_inv.op.sparse)
+        self.assertIsInstance(a_inv, SparseTensor)
+        self.assertTrue(all(c.is_sparse() for c in a_inv.chunks))
