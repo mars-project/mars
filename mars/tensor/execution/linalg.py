@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from .array import as_same_device, device, is_sparse_module
+from .array import as_same_device, device, is_sparse_module, cp
 
 
 def _qr(ctx, chunk):
@@ -72,6 +72,10 @@ def _solve_triangular(ctx, chunk):
             import scipy.linalg
 
             ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
+        elif xp is cp:
+            import cupyx
+
+            ctx[chunk.key] = cupyx.scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
         else:
             ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
 
