@@ -239,6 +239,9 @@ class GraphExecution(object):
 
             with self._lock:
                 for output in itertools.chain(*[op.outputs for op in ops]):
+                    # the output not in the graph will be skipped
+                    if output not in self._graph:
+                        continue
                     # in case that operand has multiple outputs
                     # and some of the output not in result keys, delete them
                     if ref_counts.get(output.key) == 0:
