@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from .datasource import register_data_source_handler
+from .datastore import register_data_store_handler
 from .random import register_random_handler
 from .base import register_basic_handler
 from .arithmetic import register_arithmetic_handler
@@ -48,6 +49,7 @@ def register_tensor_execution_handler():
         from .cp import register_cp_handler
         register_cp_handler()
     register_data_source_handler()
+    register_data_store_handler()
     register_random_handler()
     register_basic_handler()
     register_arithmetic_handler()

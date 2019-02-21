@@ -30,7 +30,8 @@ def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
         dims.append(tiledb.Dim(ctx, "", domain, tile=tile, dtype=np.int64))
     dom = tiledb.Domain(ctx, *dims)
     att = tiledb.Attr(ctx, dtype=tensor.dtype)
-    return tiledb.ArraySchema(ctx, domain=dom, attrs=(att,), **kw)
+    return tiledb.ArraySchema(ctx, domain=dom, attrs=(att,),
+                              sparse=tensor.issparse(), **kw)
 
 
 def check_tiledb_array_with_tensor(tensor, tiledb_array):

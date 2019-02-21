@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .... import opcodes as OperandDef
-from ....serialize import DictField, StringField, Int64Field, KeyField
+from ....serialize import ValueType, DictField, TupleField, StringField, Int64Field, KeyField
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
 from .utils import check_tiledb_array_with_tensor, get_tiledb_schema_from_tensor
@@ -30,6 +30,7 @@ class TensorTileDBDataStore(TensorDataStore):
     _tiledb_key = StringField('tiledb_key')
     # open array at a given timestamp if provided
     _tiledb_timestamp = Int64Field('tiledb_timestamp')
+    _axis_offsets = TupleField('axis_offsets', ValueType.int64)
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
                  tiledb_timestamp=None, dtype=None, sparse=None, **kw):
@@ -52,6 +53,22 @@ class TensorTileDBDataStore(TensorDataStore):
     @property
     def tiledb_timestamp(self):
         return self._tiledb_timestamp
+
+    @property
+    def axis_offsets(self):
+        return self._axis_offsets
+
+    @classmethod
+    def _get_out_chunk(cls, op, in_chunk):
+        chunk_op = op.copy().reset_key()
+        nsplits = op.input.nsplits
+        axis_offsets = []
+        for axis, idx in enumerate(in_chunk.index):
+            axis_offsets.append(sum(nsplits[axis][:idx]))
+        chunk_op._axis_offsets = tuple(axis_offsets)
+        out_chunk_shape = (0,) * in_chunk.ndim
+        return chunk_op.new_chunk([in_chunk], out_chunk_shape,
+                                  index=in_chunk.index)
 
     @classmethod
     def tile(cls, op):

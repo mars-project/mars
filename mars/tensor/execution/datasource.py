@@ -21,6 +21,7 @@ from ...lib import sparse
 from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, naked
 from ...lib.sparse import SparseNDArray
 from ..expressions import datasource
+from .utils import get_tiledb_ctx
 
 logger = logging.getLogger(__name__)
 
@@ -155,11 +156,6 @@ def _tensor_dense_to_sparse(ctx, chunk):
     ctx[chunk.key] = SparseNDArray(xps.csr_matrix(in_data))
 
 
-# As TileDB is a bit time-consuming,
-# we just create a dict to hold a config to tiledb context
-_tiledb_ctx = dict()
-
-
 def _tensor_tiledb(ctx, chunk):
     import tiledb
 
@@ -167,16 +163,12 @@ def _tensor_tiledb(ctx, chunk):
 
     xp = array_module(chunk.op.gpu)
 
-    conf = chunk.op.tiledb_config
     axis_offsets = [offset + dim_start for offset, dim_start
                     in zip(chunk.op.axis_offsets, chunk.op.tiledb_dim_starts)]
-    if conf is None:
-        key = None
-    else:
-        key = tuple(conf.keys()), tuple(conf.values())
-    if key not in _tiledb_ctx:
-        _tiledb_ctx[key] = tiledb.Ctx(conf)
-    tiledb_ctx = _tiledb_ctx[key]
+    tiledb_ctx = get_tiledb_ctx(chunk.op.tiledb_config)
+    uri = chunk.op.tiledb_uri
+    key = chunk.op.tiledb_key
+    timestamp = chunk.op.tiledb_timestamp
 
     slcs = []
     for axis in range(chunk.ndim):
@@ -186,11 +178,11 @@ def _tensor_tiledb(ctx, chunk):
 
     if not chunk.issparse():
         # read dense array from tiledb
-        with tiledb.DenseArray(tiledb_ctx, chunk.op.tiledb_uri) as tiledb_arr:
+        with tiledb.DenseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
             ctx[chunk.key] = tiledb_arr[tuple(slcs)]
     else:
         # read sparse array from tiledb
-        with tiledb.SparseArray(tiledb_ctx, chunk.op.tiledb_uri) as tiledb_arr:
+        with tiledb.SparseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
             if tiledb_arr.ndim > 2:
                 raise NotImplementedError(
                     'Does not support to read array with more than 2 dimensions')

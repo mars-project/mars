@@ -662,10 +662,11 @@ class Test(TestBase):
 
     @unittest.skipIf(tiledb is None, 'tiledb not installed')
     def testReadTileDBExecution(self):
-        tempdir = tempfile.mkdtemp()
         ctx = tiledb.Ctx()
+
+        tempdir = tempfile.mkdtemp()
         try:
-            # create dense TileDB dense array
+            # create TileDB dense array
             dom = tiledb.Domain(ctx,
                                 tiledb.Dim(ctx, domain=(1, 100), tile=30, dtype=np.int32),
                                 tiledb.Dim(ctx, domain=(0, 90), tile=22, dtype=np.int32),
@@ -722,7 +723,7 @@ class Test(TestBase):
             expected = sps.rand(1, 100, density=0.05)
             with tiledb.SparseArray(ctx, tempdir, mode='w') as arr:
                 I= expected.col + 1
-                arr[I] = {arr.attr(0).name: expected.data}
+                arr[I] = expected.data
 
             a = fromtiledb(tempdir, ctx=ctx)
             result = self.executor.execute_tensor(a, concat=True)[0]

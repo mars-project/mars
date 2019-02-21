@@ -90,6 +90,12 @@ class Test(TestBase):
             # no error
             tiledb.DenseArray(ctx, tempdir)
 
+            self.assertEqual(saved.chunks[0].op.axis_offsets, (0, 0))
+            self.assertEqual(saved.chunks[1].op.axis_offsets, (0, 13))
+            self.assertEqual(saved.cix[0, 2].op.axis_offsets, (0, 26))
+            self.assertEqual(saved.cix[1, 2].op.axis_offsets, (13, 26))
+            self.assertEqual(saved.cix[3, 2].op.axis_offsets, (39, 26))
+
             with self.assertRaises(ValueError):
                 t3 = random.rand(30, 50)
                 totiledb(tempdir, t3, ctx=ctx)  # shape incompatible

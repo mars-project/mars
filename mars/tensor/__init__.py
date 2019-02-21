@@ -19,6 +19,7 @@ from .expressions.datasource import tensor, array, asarray, scalar, \
     empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb
+from .expressions.datastore import totiledb
 from .expressions.base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \

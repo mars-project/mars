@@ -39,6 +39,9 @@ class SparseVector(SparseNDArray):
     def todense(self):
         return self.spmatrix.toarray().reshape(self.shape)
 
+    def tocsr(self):
+        return self
+
     def ascupy(self):
         is_cp = get_array_module(self.spmatrix) is cp
         if is_cp:
