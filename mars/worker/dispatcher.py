@@ -53,7 +53,8 @@ class DispatchActor(WorkerActor):
         if not self._free_slots[queue_name]:
             # no slots free, we queue the callback
             self._free_slot_requests[queue_name].append(callback)
-            logger.debug('No valid slots available. slot dump: %r', self._dump_free_slots())
+            logger.debug('Slots not enough for queue %s. slot dump: %r',
+                         queue_name, self._dump_free_slots())
             return
         self.tell_promise(callback, self._free_slots[queue_name].popitem()[0])
 

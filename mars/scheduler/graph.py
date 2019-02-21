@@ -842,7 +842,7 @@ class GraphActor(SchedulerActor):
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
 
     @log_unhandled
-    def handle_worker_change(self, _adds, removes, lost_chunks):
+    def handle_worker_change(self, adds, removes, lost_chunks):
         if self._state in GraphState.TERMINATED_STATES:
             return
 
@@ -871,7 +871,7 @@ class GraphActor(SchedulerActor):
         new_states = dict()
         analyzer = GraphAnalyzer(graph, worker_slots, fixed_assigns, graph_states, lost_chunks)
         if removes or lost_chunks:
-            new_states = analyzer.apply_state_changes()
+            new_states = analyzer.analyze_state_changes()
             logger.debug('%d chunks lost. %d operands changed state.', len(lost_chunks),
                          len(new_states))
 
@@ -900,7 +900,11 @@ class GraphActor(SchedulerActor):
             from_state = op_info['state']
 
             op_ref = self._get_operand_ref(key)
-            if from_state == OperandState.FINISHED:
+            if from_state == OperandState.READY:
+                from_states = [from_state, OperandState.RUNNING]
+            elif from_state == OperandState.RUNNING:
+                from_states = [from_state, OperandState.FINISHED]
+            elif from_state == OperandState.FINISHED:
                 from_states = [from_state, OperandState.FREED]
             else:
                 from_states = [from_state]
@@ -909,7 +913,13 @@ class GraphActor(SchedulerActor):
         [f.result() for f in futures]
 
         with self._open_dump_file('failover-record') as outf:  # pragma: no cover
-            outf.write('LOST CHUNKS:\n')
+            outf.write('ADDED WORKERS:\n')
+            for c in adds:
+                outf.write(c + '\n')
+            outf.write('REMOVED WORKERS:\n')
+            for c in removes:
+                outf.write(c + '\n')
+            outf.write('\n\nLOST CHUNKS:\n')
             for c in lost_chunks:
                 outf.write(c + '\n')
             outf.write('\n\nOPERAND SNAPSHOT:\n')

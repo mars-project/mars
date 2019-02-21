@@ -28,7 +28,7 @@ from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted,
 from ..tensor.expressions.datasource import TensorFetch
 from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
-from .spill import spill_exists
+from .spill import spill_exists, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys
 
 logger = logging.getLogger(__name__)
@@ -389,7 +389,7 @@ class ExecutionActor(WorkerActor):
         @log_unhandled
         def _fetch_step(sender_uid):
             if self._graph_records[(session_id, graph_key)].stop_requested:
-                self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
@@ -530,12 +530,24 @@ class ExecutionActor(WorkerActor):
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
             self._invoke_finish_callbacks(session_id, graph_key)
 
-        promise.Promise(done=True) \
-            .then(lambda: self._prepare_graph_inputs(session_id, graph_key)) \
-            .then(_wait_free_slot) \
-            .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
-            .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
-            .then(_handle_success, _handle_rejection)
+        save_sizes = dict()
+        for target_key in graph_record.targets:
+            if self._chunk_store.contains(session_id, target_key):
+                save_sizes[target_key] = self._chunk_store.get_actual_size(session_id, target_key)
+            elif spill_exists(target_key):
+                save_sizes[target_key] = get_spill_data_size(target_key)
+
+        if all(k in save_sizes for k in graph_record.targets):
+            logger.debug('All predecessors of graph %s already computed, call finish directly.', graph_key)
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
+            _handle_success()
+        else:
+            promise.Promise(done=True) \
+                .then(lambda: self._prepare_graph_inputs(session_id, graph_key)) \
+                .then(_wait_free_slot) \
+                .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
+                .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
+                .then(_handle_success, _handle_rejection)
 
     @log_unhandled
     def _prepare_graph_inputs(self, session_id, graph_key):
@@ -653,7 +665,7 @@ class ExecutionActor(WorkerActor):
 
             self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
         except:  # noqa: E722
-            self._dispatch_ref.register_free_slot(calc_uid, 'cpu')
+            self._dispatch_ref.register_free_slot(calc_uid, 'cpu', _tell=True)
             raise
 
         # make sure that memory suffices before actually run execution
@@ -679,7 +691,7 @@ class ExecutionActor(WorkerActor):
             @log_unhandled
             def _send_chunk(sender_uid, chunk_key, target_addrs):
                 if graph_record.stop_requested:
-                    self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                    self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                     raise ExecutionInterrupted
 
                 sender_ref = self.promise_ref(sender_uid)
@@ -693,7 +705,8 @@ class ExecutionActor(WorkerActor):
 
             promises = []
             for key, targets in send_addresses.items():
-                promises.append(self._dispatch_ref.get_free_slot('sender', _promise=True)
+                promises.append(promise.Promise(done=True)
+                                .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
                                 .then(partial(_send_chunk, chunk_key=key, target_addrs=targets))
                                 .catch(lambda *_: None))
             return promise.all_(promises)
@@ -784,6 +797,7 @@ class ExecutionActor(WorkerActor):
     def stop_execution(self, session_id, graph_key):
         """
         Mark graph for stopping
+        :param session_id: session id
         :param graph_key: graph key
         """
         logger.debug('Receive stop for graph %s', graph_key)

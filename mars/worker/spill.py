@@ -108,6 +108,16 @@ def spill_exists(chunk_key):
     return os.path.exists(file_name)
 
 
+def get_spill_data_size(chunk_key):
+    file_name = build_spill_file_name(chunk_key)
+    if not file_name:
+        raise SpillNotConfigured('Spill not configured')
+    if not os.path.exists(file_name):
+        raise KeyError
+    with open(file_name, 'rb') as inf:
+        return dataserializer.peek_serialized_size(inf)
+
+
 class SpillActor(WorkerActor):
     """
     Actor handling spill read and write in single disk partition

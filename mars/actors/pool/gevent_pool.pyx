@@ -58,8 +58,6 @@ cdef int UNKNOWN_TO_INDEX = -1
 cpdef int REMOTE_DEFAULT_PARALLEL = 50  # parallel connection at most
 cpdef int REMOTE_MAX_CONNECTION = 200  # most connections
 
-cdef int _default_timeout = -1
-
 _inaction_encoder = _inaction_decoder = None
 
 

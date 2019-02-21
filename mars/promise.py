@@ -315,8 +315,8 @@ class PromiseActor(FunctionActor):
         """
         if not hasattr(self, '_promises'):
             self._promises = dict()
-            self._promise_uids = dict()
-            self._uid_promises = dict()
+            self._promise_ref_keys = dict()
+            self._ref_key_promises = dict()
 
         if not args and not kwargs:
             ref = self.ref()
@@ -340,10 +340,11 @@ class PromiseActor(FunctionActor):
 
         self._promises[promise_id] = weakref.ref(promise, _weak_callback)
         ref_key = (ref.uid, ref.address)
-        self._promise_uids[promise_id] = ref_key
-        if ref_key not in self._uid_promises:
-            self._uid_promises[ref_key] = set()
-        self._uid_promises[ref_key].add(promise_id)
+        self._promise_ref_keys[promise_id] = ref_key
+        try:
+            self._ref_key_promises[ref_key].add(promise_id)
+        except KeyError:
+            self._ref_key_promises[ref_key] = {promise_id}
 
     def get_promise(self, promise_id):
         """
@@ -357,10 +358,10 @@ class PromiseActor(FunctionActor):
     def delete_promise(self, promise_id):
         if promise_id not in self._promises:
             return
-        ref_key = self._promise_uids[promise_id]
-        self._uid_promises[ref_key].remove(promise_id)
+        ref_key = self._promise_ref_keys[promise_id]
+        self._ref_key_promises[ref_key].remove(promise_id)
         del self._promises[promise_id]
-        del self._promise_uids[promise_id]
+        del self._promise_ref_keys[promise_id]
 
     def reject_promise_ref(self, ref, *args, **kwargs):
         """
@@ -369,9 +370,9 @@ class PromiseActor(FunctionActor):
         """
         kwargs['_accept'] = False
         ref_key = (ref.uid, ref.address)
-        if ref_key not in self._uid_promises:
+        if ref_key not in self._ref_key_promises:
             return
-        for promise_id in list(self._uid_promises[ref_key]):
+        for promise_id in list(self._ref_key_promises[ref_key]):
             p = self.get_promise(promise_id)
             if p is None:
                 continue

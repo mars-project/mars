@@ -649,6 +649,8 @@ class OperandActor(SchedulerActor):
                         _delay=delay, _promise=True) \
                         .then(functools.partial(self._handle_worker_accept, worker_ep))
             except _WorkerDeadError:
+                logger.debug('Worker %s dead when submitting operand %s into queue',
+                             worker_ep, self._op_key)
                 dead_workers.add(worker_ep)
                 self._assigned_workers.difference_update([worker_ep])
         if dead_workers:
@@ -708,8 +710,10 @@ class OperandActor(SchedulerActor):
                 self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
                     .then(_acceptor, _rejecter)
         except _WorkerDeadError:
-            self.state = OperandState.READY
+            logger.debug('Worker %s dead when adding callback for operand %s',
+                         self.worker, self._op_key)
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
+            self.start_operand(OperandState.READY)
 
         futures = []
         for out_key in self._succ_keys:

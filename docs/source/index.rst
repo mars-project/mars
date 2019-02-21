@@ -64,6 +64,7 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
    distributed/schedule-policy
    distributed/states
    distributed/worker-schedule
+   distributed/fault-tolerance
 
 .. toctree::
    :maxdepth: 2

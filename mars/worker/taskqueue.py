@@ -91,6 +91,8 @@ class TaskQueueActor(WorkerActor):
         self._parallel_num = parallel_num or resource.cpu_count()
 
     def post_create(self):
+        super(TaskQueueActor, self).post_create()
+
         self._allocator_ref = self.ctx.create_actor(
             TaskQueueAllocatorActor, self.ref(), self._parallel_num,
             uid=TaskQueueAllocatorActor.default_name())

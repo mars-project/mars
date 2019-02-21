@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 import os
 import sys
@@ -25,7 +26,7 @@ from ..config import options
 from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled
-from .spill import build_spill_file_name
+from .spill import build_spill_file_name, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache
 
 logger = logging.getLogger(__name__)
@@ -73,13 +74,10 @@ class SenderActor(WorkerActor):
         except KeyError:
             pass
         if nbytes is None:
-            file_name = build_spill_file_name(chunk_key)
-            if not file_name:
-                raise SpillNotConfigured('Spill not configured')
-            if not os.path.exists(file_name):
+            try:
+                nbytes = self._serialize_pool.submit(get_spill_data_size, chunk_key).result()
+            except KeyError:
                 raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
-            with open(file_name, 'rb') as inf:
-                nbytes = self._serialize_pool.submit(dataserializer.peek_serialized_size, inf).result()
         return nbytes
 
     def _filter_targets(self, session_id, chunk_key, target_endpoints):
@@ -159,36 +157,53 @@ class SenderActor(WorkerActor):
 
         @log_unhandled
         def _handle_rejection(*exc):
+            logger.exception('Transfer chunk %s to %r failed', chunk_key, target_endpoints, exc_info=exc)
             for ref in filtered_refs:
-                ref.cancel_receive(session_id, chunk_key, _tell=True)
+                try:
+                    ref.cancel_receive(session_id, chunk_key, _tell=True)
+                except:  # noqa: E722
+                    logger.exception('Failed to cancel transfer for %s on %s', chunk_key, ref.address)
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
             self.tell_promise(callback, *exc, **dict(_accept=False))
 
-        create_write_promises = []
-        finish_promises = []
-        for ref in filtered_refs:
-            # register transfer actions
-            create_write_promises.append(
-                ref.create_data_writer(
-                    session_id, chunk_key, data_size, self.ref(), ensure_cached=ensure_cached,
-                    _timeout=timeout, _promise=True
-                ).then(_handle_created)
-            )
-            # register finish listeners
-            finish_promises.append(ref.register_finish_callback(session_id, chunk_key, _promise=True))
-        # register wait-only listeners
-        for ref in wait_refs:
-            finish_promises.append(ref.register_finish_callback(session_id, chunk_key, _promise=True))
+        try:
+            create_write_promises = []
+            finish_promises = []
+            for ref in filtered_refs:
+                # register transfer actions
+                create_write_promises.append(
+                    ref.create_data_writer(
+                        session_id, chunk_key, data_size, self.ref(), ensure_cached=ensure_cached,
+                        _promise=True
+                    ).then(_handle_created)
+                )
+                # register finish listeners
+                finish_promises.append(
+                    promise.Promise(done=True)
+                    .then(functools.partial(ref.register_finish_callback, session_id, chunk_key,
+                                            _timeout=timeout, _promise=True))
+                )
+            # register wait-only listeners
+            for ref in wait_refs:
+                finish_promises.append(
+                    promise.Promise(done=True)
+                    .then(functools.partial(ref.register_finish_callback, session_id, chunk_key,
+                                            _timeout=timeout, _promise=True))
+                )
 
-        if create_write_promises:
-            promise.all_(create_write_promises) \
-                .then(lambda *_: self._compress_and_send(
-                    session_id, chunk_key,
-                    [ref for ref in filtered_refs if ref.address not in already_started])) \
-                .catch(_handle_rejection)
-        else:
-            # nothing to send, the slot can be released
-            self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
+            if create_write_promises:
+                promise.all_(create_write_promises) \
+                    .then(lambda *_: self._compress_and_send(
+                        session_id, chunk_key,
+                        [ref for ref in filtered_refs if ref.address not in already_started])) \
+                    .catch(_handle_rejection)
+            else:
+                # nothing to send, the slot can be released
+                self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
+        except:  # noqa: E722
+            _handle_rejection(*sys.exc_info())
+            return
+
         # wait for all finish listeners returned
         promise.all_(finish_promises).then(_finalize).catch(_handle_rejection)
 
@@ -234,7 +249,7 @@ class SenderActor(WorkerActor):
                 # read a data part from reader we defined above
                 next_chunk = self._serialize_pool.submit(reader.read, min_chunk_size).result()
                 # make sure all previous transfers finished
-                [f.result() for f in futures]
+                [f.result(timeout=10) for f in futures]
                 if not next_chunk:
                     # no further data to read, we close and finish the transfer
                     reader.close()
@@ -249,7 +264,10 @@ class SenderActor(WorkerActor):
                         session_id, chunk_key, next_chunk, checksum, _wait=False))
         except:  # noqa: E722
             for ref in target_refs:
-                ref.cancel_receive(session_id, chunk_key)
+                try:
+                    ref.cancel_receive(session_id, chunk_key, _tell=True)
+                except:  # noqa: E722
+                    logger.exception('Failed to cancel transfer for %s on %s', chunk_key, ref.address)
             raise
         finally:
             if reader:

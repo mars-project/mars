@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import logging
 import operator
 import os
 import signal
@@ -23,7 +24,7 @@ import unittest
 import uuid
 
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose
 import gevent
 
 from mars import tensor as mt
@@ -36,6 +37,8 @@ from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.scheduler import SessionManagerActor, ResourceActor
 from mars.scheduler.graph import GraphState
+
+logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
@@ -127,7 +130,8 @@ class Test(unittest.TestCase):
                               '--cpu-procs', '1',
                               '--level', 'debug' if log_worker else 'warning',
                               '--cache-mem', '16m',
-                              '--ignore-avail-mem']
+                              '--ignore-avail-mem',
+                              '-Dworker.prepare_data_timeout=5']
                              + append_args)
             for _ in range(n_workers)
         ]
@@ -176,7 +180,7 @@ class Test(unittest.TestCase):
         while True:
             time.sleep(0.1)
             self.check_process_statuses()
-            if time.time() - check_time > 60:
+            if time.time() - check_time > 6000:
                 raise SystemError('Check graph status timeout')
             if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
                 return session_ref.graph_state(graph_key)
@@ -203,7 +207,7 @@ class Test(unittest.TestCase):
 
         result = session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(loads(result), expected.sum())
+        assert_allclose(loads(result), expected.sum())
 
         graph_key = uuid.uuid1()
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
@@ -225,7 +229,7 @@ class Test(unittest.TestCase):
         state = self.wait_for_termination(session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
         result = session_ref.fetch_result(graph_key, c.key)
-        assert_array_equal(loads(result), np.ones((100, 200)) * 450)
+        assert_allclose(loads(result), np.ones((100, 200)) * 450)
 
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)
@@ -241,7 +245,7 @@ class Test(unittest.TestCase):
 
         expected = reduce(operator.add, [base_arr[:10, :10] for _ in range(10)])
         result = session_ref.fetch_result(graph_key, sumv.key)
-        assert_array_equal(loads(result), expected)
+        assert_allclose(loads(result), expected)
 
     def testMainWithEtcd(self):
         self.start_processes(etcd=True)
@@ -265,7 +269,7 @@ class Test(unittest.TestCase):
 
         result = session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(loads(result), expected.sum())
+        assert_allclose(loads(result), expected.sum())
 
     def testWorkerFailOver(self):
         def kill_process_tree(p):
@@ -282,15 +286,18 @@ class Test(unittest.TestCase):
             pass
         os.environ['DELAY_STATE_FILE'] = delay_file
 
-        self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=False)
+        self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
         session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
 
-        a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-        b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-        c = (a * b * 2 + 1).sum()
+        np_a = np.random.random((100, 100))
+        np_b = np.random.random((100, 100))
+
+        a = mt.array(np_a, chunk_size=30) * 2 + 1
+        b = mt.array(np_b, chunk_size=30) * 2 + 1
+        c = a.dot(b) * 2 + 1
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
@@ -299,6 +306,7 @@ class Test(unittest.TestCase):
 
         actor_client.sleep(1.2)
         kill_process_tree(self.proc_workers[0])
+        logger.warning('Worker %s KILLED!', self.proc_workers[0])
         self.proc_workers = self.proc_workers[1:]
         os.unlink(delay_file)
 
@@ -306,5 +314,5 @@ class Test(unittest.TestCase):
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)
-        expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(loads(result), expected.sum())
+        expected = (np_a * 2 + 1).dot(np_b * 2 + 1) * 2 + 1
+        assert_allclose(loads(result), expected)

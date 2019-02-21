@@ -207,7 +207,7 @@ class CpuCalcActor(WorkerActor):
             if absent_keys:
                 raise ObjectNotInPlasma(absent_keys)
 
-            # collect results from greenlets
+            # collect results from futures
             if spill_load_futures:
                 for k, future in spill_load_futures.items():
                     context_dict[k] = future.result()

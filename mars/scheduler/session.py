@@ -16,7 +16,6 @@ import logging
 import os
 
 from .utils import SchedulerActor
-from ..compat import six
 from ..utils import log_unhandled
 
 logger = logging.getLogger(__name__)
