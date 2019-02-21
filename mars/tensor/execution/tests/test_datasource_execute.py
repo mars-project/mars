@@ -14,14 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
+import shutil
+import unittest
+
 import numpy as np
 import scipy.sparse as sps
+try:
+    import tiledb
+except ImportError:  # pragma: no cover
+    pass
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.tensor.expressions.datasource import tensor, ones_like, zeros, zeros_like, full, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
-    triu, tril
+    triu, tril, fromtiledb
 from mars.lib.sparse import SparseNDArray
 from mars.tensor.expressions.lib import nd_grid
 
@@ -652,3 +660,73 @@ class Test(TestBase):
         expected = np.lib.index_tricks.nd_grid(sparse=True)[0:5, 0:5]
         [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
+    @unittest.skipIf(tiledb is None, 'tiledb not installed')
+    def testReadTileDBExecution(self):
+        tempdir = tempfile.mkdtemp()
+        ctx = tiledb.Ctx()
+        try:
+            # create dense TileDB dense array
+            dom = tiledb.Domain(ctx,
+                                tiledb.Dim(ctx, domain=(1, 100), tile=30, dtype=np.int32),
+                                tiledb.Dim(ctx, domain=(0, 90), tile=22, dtype=np.int32),
+                                tiledb.Dim(ctx, domain=(0, 9), tile=8, dtype=np.int32),
+            )
+            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
+                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            tiledb.DenseArray.create(tempdir, schema)
+
+            expected = np.random.rand(100, 91, 10)
+            with tiledb.DenseArray(ctx, tempdir, mode='w') as arr:
+                arr.write_direct(expected)
+
+            a = fromtiledb(tempdir, ctx=ctx)
+            result = self.executor.execute_tensor(a, concat=True)[0]
+
+            np.testing.assert_allclose(expected, result)
+        finally:
+            shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            # create 2-d TileDB sparse array
+            dom = tiledb.Domain(ctx,
+                                tiledb.Dim(ctx, domain=(0, 99), tile=30, dtype=np.int32),
+                                tiledb.Dim(ctx, domain=(2, 11), tile=8, dtype=np.int32),
+            )
+            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            tiledb.SparseArray.create(tempdir, schema)
+
+            expected = sps.rand(100, 10, density=0.01)
+            with tiledb.SparseArray(ctx, tempdir, mode='w') as arr:
+                I, J = expected.row, expected.col + 2
+                arr[I, J] = {arr.attr(0).name: expected.data}
+
+            a = fromtiledb(tempdir, ctx=ctx)
+            result = self.executor.execute_tensor(a, concat=True)[0]
+
+            np.testing.assert_allclose(expected.toarray(), result.toarray())
+        finally:
+            shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            # create 1-d TileDB sparse array
+            dom = tiledb.Domain(ctx,
+                                tiledb.Dim(ctx, domain=(1, 100), tile=30, dtype=np.int32),
+            )
+            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            tiledb.SparseArray.create(tempdir, schema)
+
+            expected = sps.rand(1, 100, density=0.05)
+            with tiledb.SparseArray(ctx, tempdir, mode='w') as arr:
+                I= expected.col + 1
+                arr[I] = {arr.attr(0).name: expected.data}
+
+            a = fromtiledb(tempdir, ctx=ctx)
+            result = self.executor.execute_tensor(a, concat=True)[0]
+
+            np.testing.assert_allclose(expected.toarray()[0], result.toarray())
+        finally:
+            shutil.rmtree(tempdir)

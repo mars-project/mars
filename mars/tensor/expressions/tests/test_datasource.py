@@ -66,6 +66,14 @@ class Test(TestBase):
                 self.assertEqual(tensor.chunks[0].op.tiledb_uri, tempdir)
                 self.assertIsNone(tensor.chunks[0].op.tiledb_key)
                 self.assertIsNone(tensor.chunks[0].op.tiledb_timestamp)
+                self.assertEqual(tensor.chunks[0].op.tiledb_dim_starts, (1, 1, 1))
+
+                # test axis_offsets of chunk op
+                self.assertEqual(tensor.chunks[0].op.axis_offsets, (0, 0, 0))
+                self.assertEqual(tensor.chunks[1].op.axis_offsets, (0, 0, 4))
+                self.assertEqual(tensor.cix[0, 2, 2].op.axis_offsets, (0, 6, 8))
+                self.assertEqual(tensor.cix[0, 6, 2].op.axis_offsets, (0, 18, 8))
+                self.assertEqual(tensor.cix[4, 6, 2].op.axis_offsets, (28, 18, 8))
 
                 tensor2 = fromtiledb(tempdir, ctx=ctx)
                 self.assertEqual(tensor2.op.tiledb_config, ctx.config().dict())
@@ -75,3 +83,24 @@ class Test(TestBase):
                 self.assertEqual(tensor2.chunks[0].op.tiledb_config, ctx.config().dict())
             finally:
                 shutil.rmtree(tempdir)
+
+    @unittest.skipIf(tiledb is None, 'TileDB not installed')
+    def testDimStartFloat(self):
+        ctx = tiledb.Ctx()
+
+        dom = tiledb.Domain(
+            ctx,
+            tiledb.Dim(ctx, name="i", domain=(0.0, 6.0), tile=6, dtype=np.float64),
+        )
+        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
+                                    attrs=[tiledb.Attr(ctx, name='a', dtype=np.float32)])
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            # create tiledb array
+            tiledb.SparseArray.create(tempdir, schema)
+
+            with self.assertRaises(ValueError):
+                fromtiledb(tempdir, ctx=ctx)
+        finally:
+            shutil.rmtree(tempdir)

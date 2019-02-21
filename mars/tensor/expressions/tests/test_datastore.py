@@ -15,7 +15,6 @@
 import unittest
 import shutil
 import tempfile
-import os
 
 import numpy as np
 try:
