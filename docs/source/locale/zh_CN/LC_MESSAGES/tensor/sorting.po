@@ -113,6 +113,3 @@ msgstr ""
 msgid "Counts the number of non-zero values in the tensor ``a``."
 msgstr ""
 
-#~ msgid ":obj:`count_nonzero <count_nonzero>`"
-#~ msgstr ""
-

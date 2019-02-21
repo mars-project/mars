@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,11 +21,11 @@ msgstr ""
 msgid "mars.tensor.random.dirichlet"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:1 of
+#: ../../docstring mars.tensor.random.dirichlet:1 of
 msgid "Draw samples from the Dirichlet distribution."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:3 of
+#: ../../docstring mars.tensor.random.dirichlet:3 of
 msgid ""
 "Draw `size` samples of dimension k from a Dirichlet distribution. A "
 "Dirichlet-distributed random variable can be seen as a multivariate "
@@ -33,105 +33,114 @@ msgid ""
 "prior of a multinomial in Bayesian inference."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:11 of
+#: ../../docstring mars.tensor.random.dirichlet:11 of
 msgid "alpha"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:10 of
-msgid "tensor"
+#: ../../docstring mars.tensor.random.dirichlet:10 of
+msgid "array"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:11 of
+#: ../../docstring mars.tensor.random.dirichlet:11 of
 msgid "Parameter of the distribution (k dimension for sample of dimension k)."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:15 of
+#: ../../docstring mars.tensor.random.dirichlet:15 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:14 of
+#: ../../docstring mars.tensor.random.dirichlet:14 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:14 of
+#: ../../docstring mars.tensor.random.dirichlet:14 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  Default is None, in which case a single value is"
 " returned."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:17 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.dirichlet:17 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:16 of
+#: ../../docstring mars.tensor.random.dirichlet:16 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:18 of
+#: ../../docstring mars.tensor.random.dirichlet:18 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:20 of
+#: ../../docstring mars.tensor.random.dirichlet:19 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:19 of
+#: ../../docstring mars.tensor.random.dirichlet:18 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:20 of
+#: ../../docstring mars.tensor.random.dirichlet:20 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:25 of
+#: ../../docstring mars.tensor.random.dirichlet:22 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.dirichlet:21 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.dirichlet:22 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.dirichlet:27 of
 msgid "samples"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:24 of
+#: ../../docstring mars.tensor.random.dirichlet:26 of
 msgid "Tensor"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:25 of
+#: ../../docstring mars.tensor.random.dirichlet:27 of
 msgid "The drawn samples, of shape (size, alpha.ndim)."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:30 of
+#: ../../docstring mars.tensor.random.dirichlet:32 of
 msgid "ValueError"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:30 of
+#: ../../docstring mars.tensor.random.dirichlet:32 of
 msgid "If any value in alpha is less than or equal to zero"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:36 of
+#: ../../docstring mars.tensor.random.dirichlet:36 of
+msgid "X \\approx \\prod_{i=1}^{k}{x^{\\alpha_i-1}_i}"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.dirichlet:38 of
 msgid ""
 "Uses the following property for computation: for each dimension, draw a "
 "random sample y_i from a standard gamma generator of shape `alpha_i`, "
-"then :math:`X ="
+"then :math:`X = \\frac{1}{\\sum_{i=1}^k{y_i}} (y_1, \\ldots, y_n)` is "
+"Dirichlet distributed."
 msgstr ""
 
-#: mars.tensor.random.dirichlet:67 of
-msgid "rac{1}{\\sum_{i=1}^k{y_i}} (y_1, \\ldots, y_n)` is"
-msgstr ""
-
-#: mars.tensor.random.dirichlet:41 of
-msgid "Dirichlet distributed."
-msgstr ""
-
-#: mars.tensor.random.dirichlet:45 of
+#: ../../docstring mars.tensor.random.dirichlet:46 of
 msgid ""
 "David McKay, \"Information Theory, Inference and Learning Algorithms,\" "
 "chapter 23, http://www.inference.phy.cam.ac.uk/mackay/"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:48 of
+#: ../../docstring mars.tensor.random.dirichlet:49 of
 msgid ""
 "Wikipedia, \"Dirichlet distribution\", "
 "http://en.wikipedia.org/wiki/Dirichlet_distribution"
 msgstr ""
 
-#: mars.tensor.random.dirichlet:53 of
+#: ../../docstring mars.tensor.random.dirichlet:54 of
 msgid ""
 "Taking an example cited in Wikipedia, this distribution can be used if "
 "one wanted to cut strings (each of initial length 1.0) into K pieces with"

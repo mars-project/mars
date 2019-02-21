@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,18 +21,18 @@ msgstr ""
 msgid "mars.tensor.random.wald"
 msgstr ""
 
-#: mars.tensor.random.wald:1 of
+#: ../../docstring mars.tensor.random.wald:1 of
 msgid "Draw samples from a Wald, or inverse Gaussian, distribution."
 msgstr ""
 
-#: mars.tensor.random.wald:3 of
+#: ../../docstring mars.tensor.random.wald:3 of
 msgid ""
 "As the scale approaches infinity, the distribution becomes more like a "
 "Gaussian. Some references claim that the Wald is an inverse Gaussian with"
 " mean equal to 1, but this is by no means universal."
 msgstr ""
 
-#: mars.tensor.random.wald:7 of
+#: ../../docstring mars.tensor.random.wald:7 of
 msgid ""
 "The inverse Gaussian distribution was first studied in relationship to "
 "Brownian motion. In 1956 M.C.K. Tweedie used the name inverse Gaussian "
@@ -40,35 +40,35 @@ msgid ""
 " distance and distance covered in unit time."
 msgstr ""
 
-#: mars.tensor.random.wald:14 of
+#: ../../docstring mars.tensor.random.wald:14 of
 msgid "mean"
 msgstr ""
 
-#: mars.tensor.random.wald:13 mars.tensor.random.wald:15 of
+#: ../../docstring mars.tensor.random.wald:13 mars.tensor.random.wald:15 of
 msgid "float or array_like of floats"
 msgstr ""
 
-#: mars.tensor.random.wald:15 of
+#: ../../docstring mars.tensor.random.wald:15 of
 msgid "Distribution mean, should be > 0."
 msgstr ""
 
-#: mars.tensor.random.wald:16 of
+#: ../../docstring mars.tensor.random.wald:16 of
 msgid "scale"
 msgstr ""
 
-#: mars.tensor.random.wald:17 of
+#: ../../docstring mars.tensor.random.wald:17 of
 msgid "Scale parameter, should be >= 0."
 msgstr ""
 
-#: mars.tensor.random.wald:21 of
+#: ../../docstring mars.tensor.random.wald:21 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.wald:20 of
+#: ../../docstring mars.tensor.random.wald:20 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.wald:19 of
+#: ../../docstring mars.tensor.random.wald:19 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -76,55 +76,65 @@ msgid ""
 "``np.broadcast(mean, scale).size`` samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.wald:23 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.wald:23 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.wald:22 of
+#: ../../docstring mars.tensor.random.wald:22 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.wald:24 of
+#: ../../docstring mars.tensor.random.wald:24 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.wald:26 of
+#: ../../docstring mars.tensor.random.wald:25 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.wald:25 of
+#: ../../docstring mars.tensor.random.wald:24 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.wald:26 of
+#: ../../docstring mars.tensor.random.wald:26 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.wald:31 of
+#: ../../docstring mars.tensor.random.wald:28 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.wald:27 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.wald:28 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.wald:33 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.wald:30 of
+#: ../../docstring mars.tensor.random.wald:32 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.wald:31 of
+#: ../../docstring mars.tensor.random.wald:33 of
 msgid "Drawn samples from the parameterized Wald distribution."
 msgstr ""
 
-#: mars.tensor.random.wald:35 of
+#: ../../docstring mars.tensor.random.wald:37 of
 msgid "The probability density function for the Wald distribution is"
 msgstr ""
 
-#: mars.tensor.random.wald:38 of
-msgid "rac{scale}{2\\pi x^3}}e^"
+#: ../../docstring mars.tensor.random.wald:39 of
+msgid ""
+"P(x;mean,scale) = \\sqrt{\\frac{scale}{2\\pi x^3}}e^ "
+"\\frac{-scale(x-mean)^2}{2\\cdotp mean^2x}"
 msgstr ""
 
-#: mars.tensor.random.wald:40 of
-msgid "rac{-scale(x-mean)^2}{2\\cdotp mean^2x}"
-msgstr ""
-
-#: mars.tensor.random.wald:42 of
+#: ../../docstring mars.tensor.random.wald:42 of
 msgid ""
 "As noted above the inverse Gaussian distribution first arise from "
 "attempts to model Brownian motion. It is also a competitor to the Weibull"
@@ -132,25 +142,25 @@ msgid ""
 "rate processes."
 msgstr ""
 
-#: mars.tensor.random.wald:49 of
+#: ../../docstring mars.tensor.random.wald:49 of
 msgid ""
 "Brighton Webs Ltd., Wald Distribution, http://www.brighton-"
 "webs.co.uk/distributions/wald.asp"
 msgstr ""
 
-#: mars.tensor.random.wald:51 of
+#: ../../docstring mars.tensor.random.wald:51 of
 msgid ""
 "Chhikara, Raj S., and Folks, J. Leroy, \"The Inverse Gaussian "
 "Distribution: Theory : Methodology, and Applications\", CRC Press, 1988."
 msgstr ""
 
-#: mars.tensor.random.wald:54 of
+#: ../../docstring mars.tensor.random.wald:54 of
 msgid ""
 "Wikipedia, \"Wald distribution\" "
 "http://en.wikipedia.org/wiki/Wald_distribution"
 msgstr ""
 
-#: mars.tensor.random.wald:59 of
+#: ../../docstring mars.tensor.random.wald:59 of
 msgid "Draw values from the distribution and plot the histogram:"
 msgstr ""
 

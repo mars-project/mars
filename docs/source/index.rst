@@ -68,5 +68,6 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
 .. toctree::
    :maxdepth: 2
    :caption: Contribution Guide
+   :hidden:
 
    contributing

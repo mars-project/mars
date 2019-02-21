@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,57 +21,57 @@ msgstr ""
 msgid "mars.tensor.random.f"
 msgstr ""
 
-#: mars.tensor.random.f:1 of
+#: ../../docstring mars.tensor.random.f:1 of
 msgid "Draw samples from an F distribution."
 msgstr ""
 
-#: mars.tensor.random.f:3 of
+#: ../../docstring mars.tensor.random.f:3 of
 msgid ""
 "Samples are drawn from an F distribution with specified parameters, "
 "`dfnum` (degrees of freedom in numerator) and `dfden` (degrees of freedom"
 " in denominator), where both parameters should be greater than zero."
 msgstr ""
 
-#: mars.tensor.random.f:8 of
+#: ../../docstring mars.tensor.random.f:8 of
 msgid ""
 "The random variate of the F distribution (also known as the Fisher "
 "distribution) is a continuous probability distribution that arises in "
 "ANOVA tests, and is the ratio of two chi-square variates."
 msgstr ""
 
-#: mars.tensor.random.f:15 of
+#: ../../docstring mars.tensor.random.f:15 of
 msgid "dfnum"
 msgstr ""
 
-#: mars.tensor.random.f:14 of
+#: ../../docstring mars.tensor.random.f:14 of
 msgid "float or array_like of floats"
 msgstr ""
 
-#: mars.tensor.random.f:16 of
+#: ../../docstring mars.tensor.random.f:16 of
 msgid "Degrees of freedom in numerator, should be > 0."
 msgstr ""
 
-#: mars.tensor.random.f:17 of
+#: ../../docstring mars.tensor.random.f:17 of
 msgid "dfden"
 msgstr ""
 
-#: mars.tensor.random.f:16 of
+#: ../../docstring mars.tensor.random.f:16 of
 msgid "float or array_like of float"
 msgstr ""
 
-#: mars.tensor.random.f:18 of
+#: ../../docstring mars.tensor.random.f:18 of
 msgid "Degrees of freedom in denominator, should be > 0."
 msgstr ""
 
-#: mars.tensor.random.f:22 of
+#: ../../docstring mars.tensor.random.f:22 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.f:21 of
+#: ../../docstring mars.tensor.random.f:21 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.f:20 of
+#: ../../docstring mars.tensor.random.f:20 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -79,55 +79,67 @@ msgid ""
 "``np.broadcast(dfnum, dfden).size`` samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.f:24 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.f:24 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.f:23 of
+#: ../../docstring mars.tensor.random.f:23 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.f:25 of
+#: ../../docstring mars.tensor.random.f:25 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.f:27 of
+#: ../../docstring mars.tensor.random.f:26 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.f:26 of
+#: ../../docstring mars.tensor.random.f:25 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.f:27 of
+#: ../../docstring mars.tensor.random.f:27 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.f:32 of
+#: ../../docstring mars.tensor.random.f:29 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.f:28 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.f:29 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.f:34 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.f:31 of
+#: ../../docstring mars.tensor.random.f:33 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.f:32 of
+#: ../../docstring mars.tensor.random.f:34 of
 msgid "Drawn samples from the parameterized Fisher distribution."
 msgstr ""
 
-#: mars.tensor.random.f:37 of
+#: ../../docstring mars.tensor.random.f:39 of
 msgid "scipy.stats.f"
 msgstr ""
 
-#: mars.tensor.random.f:36 of
+#: ../../docstring mars.tensor.random.f:38 of
 msgid "probability density function, distribution or"
 msgstr ""
 
-#: mars.tensor.random.f:37 of
+#: ../../docstring mars.tensor.random.f:39 of
 msgid "cumulative density function, etc."
 msgstr ""
 
-#: mars.tensor.random.f:41 of
+#: ../../docstring mars.tensor.random.f:43 of
 msgid ""
 "The F statistic is used to compare in-group variances to between-group "
 "variances. Calculating the distribution depends on the sampling, and so "
@@ -138,21 +150,21 @@ msgid ""
 "of groups."
 msgstr ""
 
-#: mars.tensor.random.f:51 of
+#: ../../docstring mars.tensor.random.f:53 of
 msgid ""
 "Glantz, Stanton A. \"Primer of Biostatistics.\", McGraw-Hill, Fifth "
 "Edition, 2002."
 msgstr ""
 
-#: mars.tensor.random.f:53 of
+#: ../../docstring mars.tensor.random.f:55 of
 msgid "Wikipedia, \"F-distribution\", http://en.wikipedia.org/wiki/F-distribution"
 msgstr ""
 
-#: mars.tensor.random.f:58 of
+#: ../../docstring mars.tensor.random.f:60 of
 msgid "An example from Glantz[1], pp 47-40:"
 msgstr ""
 
-#: mars.tensor.random.f:60 of
+#: ../../docstring mars.tensor.random.f:62 of
 msgid ""
 "Two groups, children of diabetics (25 people) and children from people "
 "without diabetes (25 controls). Fasting blood glucose was measured, case "
@@ -163,16 +175,16 @@ msgid ""
 "statistic from the data gives a value of 36.01."
 msgstr ""
 
-#: mars.tensor.random.f:68 of
+#: ../../docstring mars.tensor.random.f:70 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: mars.tensor.random.f:76 of
+#: ../../docstring mars.tensor.random.f:78 of
 #, python-format
 msgid "The lower bound for the top 1% of the samples is :"
 msgstr ""
 
-#: mars.tensor.random.f:81 of
+#: ../../docstring mars.tensor.random.f:83 of
 #, python-format
 msgid ""
 "So there is about a 1% chance that the F statistic will exceed 7.62, the "

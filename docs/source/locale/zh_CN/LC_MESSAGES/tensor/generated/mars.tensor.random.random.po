@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,71 +21,83 @@ msgstr ""
 msgid "mars.tensor.random.random"
 msgstr ""
 
-#: mars.tensor.random.random:1 of
+#: ../../docstring mars.tensor.random.random:1 of
 msgid "Return random floats in the half-open interval [0.0, 1.0)."
 msgstr ""
 
-#: mars.tensor.random.random:3 of
+#: ../../docstring mars.tensor.random.random:3 of
 msgid ""
 "Results are from the \"continuous uniform\" distribution over the stated "
 "interval.  To sample :math:`Unif[a, b), b > a` multiply the output of "
 "`random_sample` by `(b-a)` and add `a`::"
 msgstr ""
 
-#: mars.tensor.random.random:13 of
+#: ../../docstring mars.tensor.random.random:13 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.random:12 of
+#: ../../docstring mars.tensor.random.random:12 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.random:12 of
+#: ../../docstring mars.tensor.random.random:12 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  Default is None, in which case a single value is"
 " returned."
 msgstr ""
 
-#: mars.tensor.random.random:15 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.random:15 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.random:14 of
+#: ../../docstring mars.tensor.random.random:14 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.random:16 of
+#: ../../docstring mars.tensor.random.random:16 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.random:18 of
+#: ../../docstring mars.tensor.random.random:17 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.random:17 of
+#: ../../docstring mars.tensor.random.random:16 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.random:18 of
+#: ../../docstring mars.tensor.random.random:18 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.random:24 of
+#: ../../docstring mars.tensor.random.random:20 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.random:19 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.random:20 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.random:26 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.random:23 of
+#: ../../docstring mars.tensor.random.random:25 of
 msgid "float or Tensor of floats"
 msgstr ""
 
-#: mars.tensor.random.random:23 of
+#: ../../docstring mars.tensor.random.random:25 of
 msgid ""
 "Array of random floats of shape `size` (unless ``size=None``, in which "
 "case a single float is returned)."
 msgstr ""
 
-#: mars.tensor.random.random:37 of
+#: ../../docstring mars.tensor.random.random:39 of
 msgid "Three-by-two array of random numbers from [-5, 0):"
 msgstr ""
 

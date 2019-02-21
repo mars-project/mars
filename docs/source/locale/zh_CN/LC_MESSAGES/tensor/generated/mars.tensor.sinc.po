@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:39+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,7 +26,7 @@ msgid "Return the sinc function."
 msgstr ""
 
 #: mars.tensor.sinc:3 of
-msgid "The sinc function is :math:`\\sin(\\pi x)/(\\pi x)`."
+msgid "The sinc function is :math:`\\\\sin(\\\\pi x)/(\\\\pi x)`."
 msgstr ""
 
 #: mars.tensor.sinc:9 of

@@ -658,8 +658,3 @@ msgstr ""
 msgid "Return the truncated value of the input, element-wise."
 msgstr ""
 
-#~ msgid ""
-#~ ":obj:`mars.tensormars.tensor.bitwise_and "
-#~ "<mars.tensormars.tensor.bitwise_and>`"
-#~ msgstr ""
-

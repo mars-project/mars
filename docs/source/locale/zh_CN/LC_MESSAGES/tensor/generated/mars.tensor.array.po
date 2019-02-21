@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-03 16:55+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -87,7 +87,7 @@ msgid ""
 msgstr ""
 
 #: mars.tensor.array:23 of
-msgid "chunks: int, tuple, optional"
+msgid "chunk_size: int, tuple, optional"
 msgstr ""
 
 #: mars.tensor.array:23 of
@@ -125,7 +125,4 @@ msgstr ""
 #: mars.tensor.array:57 of
 msgid "Type provided:"
 msgstr ""
-
-#~ msgid "Create an array."
-#~ msgstr ""
 

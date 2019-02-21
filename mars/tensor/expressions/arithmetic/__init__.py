@@ -115,7 +115,7 @@ from .setimag import TensorSetImag, TensorSetImagConstant
 
 
 def _install():
-    from ...core import TENSOR_TYPE, TensorData
+    from ...core import TENSOR_TYPE, Tensor, TensorData
     from .add import add, radd
     from .subtract import subtract, rsubtract
     from .multiply import multiply, rmultiply
@@ -169,6 +169,9 @@ def _install():
         setattr(cls, '__pos__', positive)
         setattr(cls, '__abs__', abs)
 
+    setattr(Tensor, 'round', round_)
+    setattr(Tensor, 'conj', conj)
+    setattr(Tensor, 'conjugate', conjugate)
     setattr(TensorData, 'round', round_)
     setattr(TensorData, 'conj', conj)
     setattr(TensorData, 'conjugate', conjugate)

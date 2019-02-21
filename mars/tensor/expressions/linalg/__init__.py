@@ -33,6 +33,7 @@ def _install():
     from ...core import Tensor, TensorData
 
     setattr(Tensor, '__matmul__', matmul)
+    setattr(Tensor, 'dot', dot)
     setattr(TensorData, '__matmul__', matmul)
     setattr(TensorData, 'dot', dot)
 

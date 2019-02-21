@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,46 +21,46 @@ msgstr ""
 msgid "mars.tensor.random.gumbel"
 msgstr ""
 
-#: mars.tensor.random.gumbel:1 of
+#: ../../docstring mars.tensor.random.gumbel:1 of
 msgid "Draw samples from a Gumbel distribution."
 msgstr ""
 
-#: mars.tensor.random.gumbel:3 of
+#: ../../docstring mars.tensor.random.gumbel:3 of
 msgid ""
 "Draw samples from a Gumbel distribution with specified location and "
 "scale.  For more information on the Gumbel distribution, see Notes and "
 "References below."
 msgstr ""
 
-#: mars.tensor.random.gumbel:9 of
+#: ../../docstring mars.tensor.random.gumbel:9 of
 msgid "loc"
 msgstr ""
 
-#: mars.tensor.random.gumbel:8 mars.tensor.random.gumbel:10 of
+#: ../../docstring mars.tensor.random.gumbel:8 mars.tensor.random.gumbel:10 of
 msgid "float or array_like of floats, optional"
 msgstr ""
 
-#: mars.tensor.random.gumbel:10 of
+#: ../../docstring mars.tensor.random.gumbel:10 of
 msgid "The location of the mode of the distribution. Default is 0."
 msgstr ""
 
-#: mars.tensor.random.gumbel:11 of
+#: ../../docstring mars.tensor.random.gumbel:11 of
 msgid "scale"
 msgstr ""
 
-#: mars.tensor.random.gumbel:12 of
+#: ../../docstring mars.tensor.random.gumbel:12 of
 msgid "The scale parameter of the distribution. Default is 1."
 msgstr ""
 
-#: mars.tensor.random.gumbel:16 of
+#: ../../docstring mars.tensor.random.gumbel:16 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.gumbel:15 of
+#: ../../docstring mars.tensor.random.gumbel:15 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.gumbel:14 of
+#: ../../docstring mars.tensor.random.gumbel:14 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -68,47 +68,59 @@ msgid ""
 "``np.broadcast(loc, scale).size`` samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.gumbel:18 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.gumbel:18 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.gumbel:17 of
+#: ../../docstring mars.tensor.random.gumbel:17 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.gumbel:19 of
+#: ../../docstring mars.tensor.random.gumbel:19 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.gumbel:21 of
+#: ../../docstring mars.tensor.random.gumbel:20 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.gumbel:20 of
+#: ../../docstring mars.tensor.random.gumbel:19 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.gumbel:21 of
+#: ../../docstring mars.tensor.random.gumbel:21 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.gumbel:26 of
+#: ../../docstring mars.tensor.random.gumbel:23 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.gumbel:22 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.gumbel:23 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.gumbel:28 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.gumbel:25 of
+#: ../../docstring mars.tensor.random.gumbel:27 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.gumbel:26 of
+#: ../../docstring mars.tensor.random.gumbel:28 of
 msgid "Drawn samples from the parameterized Gumbel distribution."
 msgstr ""
 
-#: mars.tensor.random.gumbel:30 of
+#: ../../docstring mars.tensor.random.gumbel:32 of
 msgid "scipy.stats.gumbel_l scipy.stats.gumbel_r scipy.stats.genextreme weibull"
 msgstr ""
 
-#: mars.tensor.random.gumbel:37 of
+#: ../../docstring mars.tensor.random.gumbel:39 of
 msgid ""
 "The Gumbel (or Smallest Extreme Value (SEV) or the Smallest Extreme Value"
 " Type I) distribution is one of a class of Generalized Extreme Value "
@@ -117,25 +129,23 @@ msgid ""
 "from distributions with \"exponential-like\" tails."
 msgstr ""
 
-#: mars.tensor.random.gumbel:43 of
+#: ../../docstring mars.tensor.random.gumbel:45 of
 msgid "The probability density for the Gumbel distribution is"
 msgstr ""
 
-#: mars.tensor.random.gumbel:65 of
-msgid "rac{e^{-(x - \\mu)/ eta}}{eta} e^{ -e^{-(x - \\mu)/"
-msgstr ""
-
-#: mars.tensor.random.gumbel:47 of
-msgid "eta}},"
-msgstr ""
-
-#: mars.tensor.random.gumbel:49 of
+#: ../../docstring mars.tensor.random.gumbel:47 of
 msgid ""
-"where :math:`\\mu` is the mode, a location parameter, and :math:`eta` is"
-" the scale parameter."
+"p(x) = \\frac{e^{-(x - \\mu)/ \\beta}}{\\beta} e^{ -e^{-(x - \\mu)/ "
+"\\beta}},"
 msgstr ""
 
-#: mars.tensor.random.gumbel:52 of
+#: ../../docstring mars.tensor.random.gumbel:50 of
+msgid ""
+"where :math:`\\mu` is the mode, a location parameter, and :math:`\\beta` "
+"is the scale parameter."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.gumbel:53 of
 msgid ""
 "The Gumbel (named for German mathematician Emil Julius Gumbel) was used "
 "very early in the hydrology literature, for modeling the occurrence of "
@@ -147,47 +157,43 @@ msgid ""
 " the frequency of extreme events."
 msgstr ""
 
-#: mars.tensor.random.gumbel:61 of
+#: ../../docstring mars.tensor.random.gumbel:62 of
 msgid ""
 "It is one of a class of extreme value distributions, the Generalized "
 "Extreme Value (GEV) distributions, which also includes the Weibull and "
 "Frechet."
 msgstr ""
 
-#: mars.tensor.random.gumbel:65 of
+#: ../../docstring mars.tensor.random.gumbel:66 of
 msgid ""
-"The function has a mean of :math:`\\mu + 0.57721eta` and a variance of "
-":math:`"
+"The function has a mean of :math:`\\mu + 0.57721\\beta` and a variance of"
+" :math:`\\frac{\\pi^2}{6}\\beta^2`."
 msgstr ""
 
-#: mars.tensor.random.gumbel:67 of
-msgid "rac{\\pi^2}{6}eta^2`."
-msgstr ""
-
-#: mars.tensor.random.gumbel:71 of
+#: ../../docstring mars.tensor.random.gumbel:71 of
 msgid ""
 "Gumbel, E. J., \"Statistics of Extremes,\" New York: Columbia University "
 "Press, 1958."
 msgstr ""
 
-#: mars.tensor.random.gumbel:73 of
+#: ../../docstring mars.tensor.random.gumbel:73 of
 msgid ""
 "Reiss, R.-D. and Thomas, M., \"Statistical Analysis of Extreme Values "
 "from Insurance, Finance, Hydrology and Other Fields,\" Basel: Birkhauser "
 "Verlag, 2001."
 msgstr ""
 
-#: mars.tensor.random.gumbel:79 of
+#: ../../docstring mars.tensor.random.gumbel:79 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: mars.tensor.random.gumbel:86 of
+#: ../../docstring mars.tensor.random.gumbel:86 of
 msgid ""
 "Display the histogram of the samples, along with the probability density "
 "function:"
 msgstr ""
 
-#: mars.tensor.random.gumbel:97 of
+#: ../../docstring mars.tensor.random.gumbel:97 of
 msgid ""
 "Show how an extreme value distribution can arise from a Gaussian process "
 "and compare to a Gaussian:"

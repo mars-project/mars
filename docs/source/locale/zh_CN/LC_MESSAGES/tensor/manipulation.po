@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-11-28 19:54+0800\n"
+"POT-Creation-Date: 2019-02-21 15:10+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -85,6 +85,10 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:38:<autosummary>:1
 msgid ":obj:`mars.tensor.core.Tensor.T <mars.tensor.core.Tensor.T>`"
+msgstr ""
+
+#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+msgid "Same as self.transpose(), except that self is returned if self.ndim < 2."
 msgstr ""
 
 #: ../../source/tensor/manipulation.rst:38:<autosummary>:1

@@ -124,8 +124,8 @@ msgstr ""
 ">`_ 管理的共享内存。当 Mars Worker 启动，它将默认使用当前可用内存的 50% "
 "作为共享内存，将剩余部分作为各进程私有内存使用。与此同时，Mars 为内存分配"
 "提供了软限制和硬限制，分别默认为 75% 和 90%。如果这些选项不满足你的需要，"
-"你可以使用 ``--cache-mem`` 参数配置共享内存的大小，使用 ``--phy-mem`` 参数"
-"配置总内存大小，软限制和硬限制将从这些数值计算。"
+"你可以使用 ``--cache-mem`` 参数配置共享内存的大小，使用 ``--phy-mem`` "
+"参数配置总内存大小，软限制和硬限制将从这些数值计算。"
 
 #: ../../source/install.rst:129
 msgid "For instance, by using"
@@ -136,6 +136,5 @@ msgstr "例如，使用"
 msgid ""
 "We limit the size of shared memory as 512MB and the worker can use up to "
 "90% of total physical memory."
-msgstr ""
-"可将共享内存限制为 512MB，总内存限制为物理内存的 90%。"
+msgstr "可将共享内存限制为 512MB，总内存限制为物理内存的 90%。"
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,17 +21,17 @@ msgstr ""
 msgid "mars.tensor.random.vonmises"
 msgstr ""
 
-#: mars.tensor.random.vonmises:1 of
+#: ../../docstring mars.tensor.random.vonmises:1 of
 msgid "Draw samples from a von Mises distribution."
 msgstr ""
 
-#: mars.tensor.random.vonmises:3 of
+#: ../../docstring mars.tensor.random.vonmises:3 of
 msgid ""
 "Samples are drawn from a von Mises distribution with specified mode (mu) "
 "and dispersion (kappa), on the interval [-pi, pi]."
 msgstr ""
 
-#: mars.tensor.random.vonmises:6 of
+#: ../../docstring mars.tensor.random.vonmises:6 of
 msgid ""
 "The von Mises distribution (also known as the circular normal "
 "distribution) is a continuous probability distribution on the unit "
@@ -39,35 +39,36 @@ msgid ""
 "distribution."
 msgstr ""
 
-#: mars.tensor.random.vonmises:13 of
+#: ../../docstring mars.tensor.random.vonmises:13 of
 msgid "mu"
 msgstr ""
 
-#: mars.tensor.random.vonmises:12 mars.tensor.random.vonmises:14 of
+#: ../../docstring mars.tensor.random.vonmises:12
+#: mars.tensor.random.vonmises:14 of
 msgid "float or array_like of floats"
 msgstr ""
 
-#: mars.tensor.random.vonmises:14 of
+#: ../../docstring mars.tensor.random.vonmises:14 of
 msgid "Mode (\"center\") of the distribution."
 msgstr ""
 
-#: mars.tensor.random.vonmises:15 of
+#: ../../docstring mars.tensor.random.vonmises:15 of
 msgid "kappa"
 msgstr ""
 
-#: mars.tensor.random.vonmises:16 of
+#: ../../docstring mars.tensor.random.vonmises:16 of
 msgid "Dispersion of the distribution, has to be >=0."
 msgstr ""
 
-#: mars.tensor.random.vonmises:20 of
+#: ../../docstring mars.tensor.random.vonmises:20 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.vonmises:19 of
+#: ../../docstring mars.tensor.random.vonmises:19 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.vonmises:18 of
+#: ../../docstring mars.tensor.random.vonmises:18 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -75,69 +76,81 @@ msgid ""
 "``np.broadcast(mu, kappa).size`` samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.vonmises:22 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.vonmises:22 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.vonmises:21 of
+#: ../../docstring mars.tensor.random.vonmises:21 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.vonmises:23 of
+#: ../../docstring mars.tensor.random.vonmises:23 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.vonmises:25 of
+#: ../../docstring mars.tensor.random.vonmises:24 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.vonmises:24 of
+#: ../../docstring mars.tensor.random.vonmises:23 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.vonmises:25 of
+#: ../../docstring mars.tensor.random.vonmises:25 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.vonmises:30 of
+#: ../../docstring mars.tensor.random.vonmises:27 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.vonmises:26 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.vonmises:27 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.vonmises:32 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.vonmises:29 of
+#: ../../docstring mars.tensor.random.vonmises:31 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.vonmises:30 of
+#: ../../docstring mars.tensor.random.vonmises:32 of
 msgid "Drawn samples from the parameterized von Mises distribution."
 msgstr ""
 
-#: mars.tensor.random.vonmises:35 of
+#: ../../docstring mars.tensor.random.vonmises:37 of
 msgid "scipy.stats.vonmises"
 msgstr ""
 
-#: mars.tensor.random.vonmises:34 of
+#: ../../docstring mars.tensor.random.vonmises:36 of
 msgid "probability density function, distribution, or"
 msgstr ""
 
-#: mars.tensor.random.vonmises:35 of
+#: ../../docstring mars.tensor.random.vonmises:37 of
 msgid "cumulative density function, etc."
 msgstr ""
 
-#: mars.tensor.random.vonmises:39 of
+#: ../../docstring mars.tensor.random.vonmises:41 of
 msgid "The probability density for the von Mises distribution is"
 msgstr ""
 
-#: mars.tensor.random.vonmises:42 of
-msgid "rac{e^{\\kappa cos(x-\\mu)}}{2\\pi I_0(\\kappa)},"
+#: ../../docstring mars.tensor.random.vonmises:43 of
+msgid "p(x) = \\frac{e^{\\kappa cos(x-\\mu)}}{2\\pi I_0(\\kappa)},"
 msgstr ""
 
-#: mars.tensor.random.vonmises:44 of
+#: ../../docstring mars.tensor.random.vonmises:45 of
 msgid ""
 "where :math:`\\mu` is the mode and :math:`\\kappa` the dispersion, and "
 ":math:`I_0(\\kappa)` is the modified Bessel function of order 0."
 msgstr ""
 
-#: mars.tensor.random.vonmises:47 of
+#: ../../docstring mars.tensor.random.vonmises:48 of
 msgid ""
 "The von Mises is named for Richard Edler von Mises, who was born in "
 "Austria-Hungary, in what is now the Ukraine.  He fled to the United "
@@ -146,24 +159,24 @@ msgid ""
 "science."
 msgstr ""
 
-#: mars.tensor.random.vonmises:55 of
+#: ../../docstring mars.tensor.random.vonmises:56 of
 msgid ""
 "Abramowitz, M. and Stegun, I. A. (Eds.). \"Handbook of Mathematical "
 "Functions with Formulas, Graphs, and Mathematical Tables, 9th printing,\""
 " New York: Dover, 1972."
 msgstr ""
 
-#: mars.tensor.random.vonmises:58 of
+#: ../../docstring mars.tensor.random.vonmises:59 of
 msgid ""
 "von Mises, R., \"Mathematical Theory of Probability and Statistics\", New"
 " York: Academic Press, 1964."
 msgstr ""
 
-#: mars.tensor.random.vonmises:63 of
+#: ../../docstring mars.tensor.random.vonmises:64 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: mars.tensor.random.vonmises:70 of
+#: ../../docstring mars.tensor.random.vonmises:71 of
 msgid ""
 "Display the histogram of the samples, along with the probability density "
 "function:"

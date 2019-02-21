@@ -1,0 +1,53 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-02-15 23:02+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.6.0\n"
+
+#: ../../source/tensor/eager-mode.rst:2
+msgid "Eager Mode"
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:4
+msgid "New in version 0.2.0a2"
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:6
+msgid ""
+"Mars supports eager mode which makes it friendly for developing and easy "
+"to debug."
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:9
+msgid ""
+"Users can enable the eager mode by options, set options at the beginning "
+"of the program or console session."
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:18
+msgid "Or use a context."
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:29
+msgid ""
+"If eager mode is on, tensor will be executed immediately by default "
+"session once it is created."
+msgstr ""
+
+#: ../../source/tensor/eager-mode.rst:43
+msgid "Use ``fetch`` to obtain numpy value from a tensor:"
+msgstr ""
+

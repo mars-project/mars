@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,39 +21,39 @@ msgstr ""
 msgid "mars.tensor.random.poisson"
 msgstr ""
 
-#: mars.tensor.random.poisson:1 of
+#: ../../docstring mars.tensor.random.poisson:1 of
 msgid "Draw samples from a Poisson distribution."
 msgstr ""
 
-#: mars.tensor.random.poisson:3 of
+#: ../../docstring mars.tensor.random.poisson:3 of
 msgid ""
 "The Poisson distribution is the limit of the binomial distribution for "
 "large N."
 msgstr ""
 
-#: mars.tensor.random.poisson:9 of
+#: ../../docstring mars.tensor.random.poisson:9 of
 msgid "lam"
 msgstr ""
 
-#: mars.tensor.random.poisson:8 of
+#: ../../docstring mars.tensor.random.poisson:8 of
 msgid "float or array_like of floats"
 msgstr ""
 
-#: mars.tensor.random.poisson:9 of
+#: ../../docstring mars.tensor.random.poisson:9 of
 msgid ""
 "Expectation of interval, should be >= 0. A sequence of expectation "
 "intervals must be broadcastable over the requested size."
 msgstr ""
 
-#: mars.tensor.random.poisson:14 of
+#: ../../docstring mars.tensor.random.poisson:14 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.poisson:13 of
+#: ../../docstring mars.tensor.random.poisson:13 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.poisson:12 of
+#: ../../docstring mars.tensor.random.poisson:12 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -61,85 +61,97 @@ msgid ""
 "samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.poisson:16 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.poisson:16 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.poisson:15 of
+#: ../../docstring mars.tensor.random.poisson:15 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.poisson:17 of
+#: ../../docstring mars.tensor.random.poisson:17 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.poisson:20 of
+#: ../../docstring mars.tensor.random.poisson:18 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.poisson:19 of
+#: ../../docstring mars.tensor.random.poisson:17 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.poisson:19 of
+#: ../../docstring mars.tensor.random.poisson:19 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.poisson:25 of
+#: ../../docstring mars.tensor.random.poisson:21 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.poisson:20 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.poisson:21 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.poisson:26 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.poisson:24 of
+#: ../../docstring mars.tensor.random.poisson:25 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.poisson:25 of
+#: ../../docstring mars.tensor.random.poisson:26 of
 msgid "Drawn samples from the parameterized Poisson distribution."
 msgstr ""
 
-#: mars.tensor.random.poisson:29 of
+#: ../../docstring mars.tensor.random.poisson:30 of
 msgid "The Poisson distribution"
 msgstr ""
 
-#: mars.tensor.random.poisson:32 of
-msgid "rac{\\lambda^k e^{-\\lambda}}{k!}"
+#: ../../docstring mars.tensor.random.poisson:32 of
+msgid "f(k; \\lambda)=\\frac{\\lambda^k e^{-\\lambda}}{k!}"
 msgstr ""
 
-#: mars.tensor.random.poisson:34 of
+#: ../../docstring mars.tensor.random.poisson:34 of
 msgid ""
 "For events with an expected separation :math:`\\lambda` the Poisson "
 "distribution :math:`f(k; \\lambda)` describes the probability of "
 ":math:`k` events occurring within the observed interval :math:`\\lambda`."
 msgstr ""
 
-#: mars.tensor.random.poisson:39 of
+#: ../../docstring mars.tensor.random.poisson:39 of
 msgid ""
 "Because the output is limited to the range of the C long type, a "
 "ValueError is raised when `lam` is within 10 sigma of the maximum "
 "representable value."
 msgstr ""
 
-#: mars.tensor.random.poisson:45 of
+#: ../../docstring mars.tensor.random.poisson:45 of
 msgid ""
 "Weisstein, Eric W. \"Poisson Distribution.\" From MathWorld--A Wolfram "
 "Web Resource. http://mathworld.wolfram.com/PoissonDistribution.html"
 msgstr ""
 
-#: mars.tensor.random.poisson:48 of
+#: ../../docstring mars.tensor.random.poisson:48 of
 msgid ""
 "Wikipedia, \"Poisson distribution\", "
 "http://en.wikipedia.org/wiki/Poisson_distribution"
 msgstr ""
 
-#: mars.tensor.random.poisson:53 of
+#: ../../docstring mars.tensor.random.poisson:53 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: mars.tensor.random.poisson:58 of
+#: ../../docstring mars.tensor.random.poisson:58 of
 msgid "Display histogram of the sample:"
 msgstr ""
 
-#: mars.tensor.random.poisson:64 of
+#: ../../docstring mars.tensor.random.poisson:64 of
 msgid "Draw each 100 values for lambda 100 and 500:"
 msgstr ""
 
