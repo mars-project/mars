@@ -63,7 +63,7 @@ msgstr "基本步骤"
 
 #: ../../source/install.rst:73
 msgid "Mars can be deployed on a cluster. First, yu need to run"
-msgstr "Mars 可在集群中部署。首先，你需要喜爱集群中的每个节点运行"
+msgstr "Mars 可在集群中部署。首先，你需要在集群中的每个节点运行"
 
 #: ../../source/install.rst:79
 msgid ""
@@ -119,7 +119,7 @@ msgid ""
 "configure total memory size, from which the soft and hard limits are "
 "computed."
 msgstr ""
-"Mars Worker 管理两个不同部分的内存，第一部分为每个进程的似有内存，第二"
+"Mars Worker 管理两个不同部分的内存，第一部分为每个进程的私有内存，第二"
 "部分是使用 Apache Arrow <https://arrow.apache.org/docs/python/plasma.html"
 ">`_ 管理的共享内存。当 Mars Worker 启动，它将默认使用当前可用内存的 50% "
 "作为共享内存，将剩余部分作为各进程私有内存使用。与此同时，Mars 为内存分配"
