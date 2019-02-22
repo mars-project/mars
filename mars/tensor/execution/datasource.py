@@ -159,8 +159,6 @@ def _tensor_dense_to_sparse(ctx, chunk):
 def _tensor_tiledb(ctx, chunk):
     import tiledb
 
-    global _tiledb_ctx
-
     xp = array_module(chunk.op.gpu)
 
     axis_offsets = [offset + dim_start for offset, dim_start
