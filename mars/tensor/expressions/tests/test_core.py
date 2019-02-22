@@ -231,6 +231,11 @@ class Test(TestBase):
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
 
+        tensor = ones((100, 100), chunk_size=50)
+        tensor.tiles()
+        self.assertEqual(len({c.op.key for c in tensor.chunks}), 1)
+        self.assertEqual(len({c.key for c in tensor.chunks}), 1)
+
     def testZeros(self):
         tensor = zeros((2, 3, 4))
         self.assertEqual(len(list(tensor)), 2)
@@ -251,6 +256,11 @@ class Test(TestBase):
         chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
+
+        tensor = zeros((100, 100), chunk_size=50)
+        tensor.tiles()
+        self.assertEqual(len({c.op.key for c in tensor.chunks}), 1)
+        self.assertEqual(len({c.key for c in tensor.chunks}), 1)
 
     def testDataSource(self):
         from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
@@ -309,6 +319,22 @@ class Test(TestBase):
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
 
+        t = ones((10, 3), chunk_size=((3, 5, 2), 2)) + 2
+        graph = t.build_graph(tiled=True)
+
+        pb = graph.to_pb()
+        graph2 = DAG.from_pb(pb)
+        chunk = next(c for c in graph)
+        chunk2 = next(c for c in graph2 if c.key == chunk.key)
+        self.assertBaseEqual(chunk.op, chunk2.op)
+        self.assertEqual(sorted(i.key for i in chunk.composed), sorted(i.key for i in chunk2.composed))
+        jsn = graph.to_json()
+        graph2 = DAG.from_json(jsn)
+        chunk = next(c for c in graph)
+        chunk2 = next(c for c in graph2 if c.key == chunk.key)
+        self.assertBaseEqual(chunk.op, chunk2.op)
+        self.assertEqual(sorted(i.key for i in chunk.composed), sorted(i.key for i in chunk2.composed))
+
     def testTensorGraphTiledSerialize(self):
         t = ones((10, 3), chunk_size=(5, 2)) + tensor(np.random.random((10, 3)), chunk_size=(5, 2))
         graph = t.build_graph(tiled=True)
@@ -333,7 +359,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
 
-        t = ones((10, 3), chunk_size=(5, 2)) + 2
+        t = ones((10, 3), chunk_size=((3, 5, 2), 2)) + 2
         graph = t.build_graph(tiled=True)
 
         pb = graph.to_pb()
