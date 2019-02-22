@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 12:01+0800\n"
+"POT-Creation-Date: 2019-02-21 15:10+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,475 +29,676 @@ msgstr ""
 msgid "Methods"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`__init__ <mars.tensor.core.Tensor.__init__>`\\ \\(\\*args\\, "
-"\\*\\*kwargs\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`__init__ <mars.tensor.core.Tensor.__init__>`\\ \\(data\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Initialize self."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`all <mars.tensor.core.Tensor.all>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Test whether all array elements along a given axis evaluate to True."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`any <mars.tensor.core.Tensor.any>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Test whether any tensor element along a given axis evaluates to True."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`argmax <mars.tensor.core.Tensor.argmax>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Returns the indices of the maximum values along an axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`argmin <mars.tensor.core.Tensor.argmin>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Returns the indices of the minimum values along an axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`astype <mars.tensor.core.Tensor.astype>`\\ \\(dtype\\[\\, "
 "casting\\, copy\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Copy of the tensor, cast to a specified type."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`build_graph <mars.tensor.core.Tensor.build_graph>`\\ \\(\\[graph\\,"
-" cls\\, tiled\\, compose\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.build_graph <Tensor.build_graph>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`choose <mars.tensor.core.Tensor.choose>`\\ \\(choices\\[\\, "
 "mode\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 "Construct a tensor from an index tensor and a set of tensors to choose "
 "from."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`cls <mars.tensor.core.Tensor.cls>`\\ \\(provider\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.cls <Tensor.cls>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`compress <mars.tensor.core.Tensor.compress>`\\ \\(condition\\[\\, "
 "axis\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`conj <mars.tensor.core.Tensor.conj>`\\ \\(\\[out\\, where\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the complex conjugate, element-wise."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`conjugate <mars.tensor.core.Tensor.conjugate>`\\ \\(\\[out\\, "
 "where\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`copy <mars.tensor.core.Tensor.copy>`\\ \\(\\*\\*kw\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`copy <mars.tensor.core.Tensor.copy>`\\ \\(\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`copy_from <mars.tensor.core.Tensor.copy_from>`\\ \\(obj\\[\\, "
-"attrs\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`copy_from <mars.tensor.core.Tensor.copy_from>`\\ \\(obj\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`copy_to <mars.tensor.core.Tensor.copy_to>`\\ \\(obj\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`copy_to <mars.tensor.core.Tensor.copy_to>`\\ \\(target\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`copyto <mars.tensor.core.Tensor.copyto>`\\ \\(obj\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.copyto <Tensor.copyto>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`cumprod <mars.tensor.core.Tensor.cumprod>`\\ \\(\\[axis\\, dtype\\,"
 " out\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the cumulative product of elements along a given axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`cumsum <mars.tensor.core.Tensor.cumsum>`\\ \\(\\[axis\\, dtype\\, "
 "out\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the cumulative sum of the elements along a given axis."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`deserialize <mars.tensor.core.Tensor.deserialize>`\\ \\(provider\\,"
-" obj\\[\\, callbacks\\, ...\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.deserialize <Tensor.deserialize>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`dot <mars.tensor.core.Tensor.dot>`\\ \\(b\\[\\, out\\, sparse\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Dot product of two arrays."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`execute <mars.tensor.core.Tensor.execute>`\\ \\(\\[session\\, "
-"n\\_parallel\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.execute <Tensor.execute>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`flatten <mars.tensor.core.Tensor.flatten>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.flatten <Tensor.flatten>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid "Return a flattened tensor."
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.from_json <Tensor.from_json>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`from_json <mars.tensor.core.Tensor.from_json>`\\ \\(obj\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.from_pb <Tensor.from_pb>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`from_pb <mars.tensor.core.Tensor.from_pb>`\\ \\(obj\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.get_chunk_slices <Tensor.get_chunk_slices>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`get_chunk_slices <mars.tensor.core.Tensor.get_chunk_slices>`\\ "
-"\\(idx\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.is_coarse <Tensor.is_coarse>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`is_coarse <mars.tensor.core.Tensor.is_coarse>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.is_scalar <Tensor.is_scalar>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`is_scalar <mars.tensor.core.Tensor.is_scalar>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.is_sparse <Tensor.is_sparse>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`is_sparse <mars.tensor.core.Tensor.is_sparse>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.isscalar <Tensor.isscalar>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`isscalar <mars.tensor.core.Tensor.isscalar>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.issparse <Tensor.issparse>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`issparse <mars.tensor.core.Tensor.issparse>`\\ \\(\\)"
-msgstr ""
-
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`max <mars.tensor.core.Tensor.max>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the maximum of an array or maximum along an axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`mean <mars.tensor.core.Tensor.mean>`\\ \\(\\[axis\\, dtype\\, "
 "out\\, keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Compute the arithmetic mean along the specified axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`min <mars.tensor.core.Tensor.min>`\\ \\(\\[axis\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the minimum of a tensor or minimum along an axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`nonzero <mars.tensor.core.Tensor.nonzero>`\\ \\(\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the indices of the elements that are non-zero."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`prod <mars.tensor.core.Tensor.prod>`\\ \\(\\[axis\\, dtype\\, "
 "out\\, keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Return the product of tensor elements over a given axis."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.ravel <Tensor.ravel>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
-":obj:`rechunk <mars.tensor.core.Tensor.rechunk>`\\ \\(chunks\\[\\, "
-"threshold\\, chunk\\_size\\_limit\\]\\)"
+":obj:`rechunk <mars.tensor.core.Tensor.rechunk>`\\ \\(chunk\\_size\\[\\, "
+"threshold\\, ...\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`repeat <mars.tensor.core.Tensor.repeat>`\\ \\(repeats\\[\\, "
 "axis\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Repeat elements of a tensor."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ \\(shape\\, "
-"\\*shapes\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.reshape <Tensor.reshape>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid "Returns a tensor containing the same data with a new shape."
-msgstr ""
-
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`round <mars.tensor.core.Tensor.round>`\\ \\(\\[decimals\\, out\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Evenly round to the given number of decimals."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`serialize <mars.tensor.core.Tensor.serialize>`\\ \\(provider\\[\\, "
-"obj\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.serialize <Tensor.serialize>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`single_tiles <mars.tensor.core.Tensor.single_tiles>`\\ \\(\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`squeeze <mars.tensor.core.Tensor.squeeze>`\\ \\(\\[axis\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Remove single-dimensional entries from the shape of a tensor."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`std <mars.tensor.core.Tensor.std>`\\ \\(\\[axis\\, dtype\\, out\\, "
 "ddof\\, keepdims\\, ...\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Compute the standard deviation along the specified axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`sum <mars.tensor.core.Tensor.sum>`\\ \\(\\[axis\\, dtype\\, out\\, "
 "keepdims\\, combine\\_size\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Sum of tensor elements over a given axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`swapaxes <mars.tensor.core.Tensor.swapaxes>`\\ \\(axis1\\, axis2\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Interchange two axes of a tensor."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`take <mars.tensor.core.Tensor.take>`\\ \\(indices\\[\\, axis\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Take elements from a tensor along an axis."
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ":obj:`tiles <mars.tensor.core.Tensor.tiles>`\\ \\(\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`to_graph <mars.tensor.core.Tensor.to_graph>`\\ \\(\\[graph\\, "
-"graph\\_cls\\, substitutes\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.to_graph <Tensor.to_graph>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`to_json <mars.tensor.core.Tensor.to_json>`\\ \\(\\[obj\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.to_json <Tensor.to_json>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`to_pb <mars.tensor.core.Tensor.to_pb>`\\ \\(\\[obj\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.to_pb <Tensor.to_pb>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`todense <mars.tensor.core.Tensor.todense>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.todense <Tensor.todense>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`tosparse <mars.tensor.core.Tensor.tosparse>`\\ \\(\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.tosparse <Tensor.tosparse>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`transpose <mars.tensor.core.Tensor.transpose>`\\ \\(\\*axes\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.transpose <Tensor.transpose>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid "Returns a view of the tensor with axes transposed."
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.update_key <Tensor.update_key>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`update_key <mars.tensor.core.Tensor.update_key>`\\ \\(\\)"
-msgstr ""
-
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid ""
 ":obj:`var <mars.tensor.core.Tensor.var>`\\ \\(\\[axis\\, dtype\\, out\\, "
 "ddof\\, keepdims\\, ...\\]\\)"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
 msgid "Compute the variance along the specified axis."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ""
-":obj:`visualize <mars.tensor.core.Tensor.visualize>`\\ "
-"\\(\\[graph\\_attrs\\, node\\_attrs\\]\\)"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid ":obj:`Tensor.visualize <Tensor.visualize>`\\"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:79
 msgid "Attributes"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid ":obj:`T <mars.tensor.core.Tensor.T>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid "Same as self.transpose(), except that self is returned if self.ndim < 2."
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`chunk_shape <mars.tensor.core.Tensor.chunk_shape>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.chunk_shape <Tensor.chunk_shape>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`chunks <mars.tensor.core.Tensor.chunks>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.chunks <Tensor.chunks>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`cix <mars.tensor.core.Tensor.cix>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.cix <Tensor.cix>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`dtype <mars.tensor.core.Tensor.dtype>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.dtype <Tensor.dtype>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`id <mars.tensor.core.Tensor.id>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.id <Tensor.id>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid ":obj:`imag <mars.tensor.core.Tensor.imag>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`inputs <mars.tensor.core.Tensor.inputs>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.inputs <Tensor.inputs>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`key <mars.tensor.core.Tensor.key>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.key <Tensor.key>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`nbytes <mars.tensor.core.Tensor.nbytes>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.nbytes <Tensor.nbytes>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`ndim <mars.tensor.core.Tensor.ndim>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.ndim <Tensor.ndim>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`nsplits <mars.tensor.core.Tensor.nsplits>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.nsplits <Tensor.nsplits>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`op <mars.tensor.core.Tensor.op>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.op <Tensor.op>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`params <mars.tensor.core.Tensor.params>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.params <Tensor.params>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid ":obj:`real <mars.tensor.core.Tensor.real>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid ":obj:`shape <mars.tensor.core.Tensor.shape>`\\"
 msgstr ""
 
-#: ../../<autosummary>:1
-msgid ":obj:`size <mars.tensor.core.Tensor.size>`\\"
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
+msgid ":obj:`Tensor.size <Tensor.size>`\\"
 msgstr ""
+
+#~ msgid ""
+#~ ":obj:`__init__ <mars.tensor.core.Tensor.__init__>`\\ "
+#~ "\\(\\*args\\, \\*\\*kwargs\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`build_graph <mars.tensor.core.Tensor.build_graph>`\\ "
+#~ "\\(\\[graph\\, cls\\, tiled\\, compose\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`cls <mars.tensor.core.Tensor.cls>`\\ \\(provider\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`conj <mars.tensor.core.Tensor.conj>`\\ \\(\\[out\\, where\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Return the complex conjugate, element-wise."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`conjugate <mars.tensor.core.Tensor.conjugate>`\\ "
+#~ "\\(\\[out\\, where\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`copy <mars.tensor.core.Tensor.copy>`\\ \\(\\*\\*kw\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`copy_from <mars.tensor.core.Tensor.copy_from>`\\ "
+#~ "\\(obj\\[\\, attrs\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`copy_to <mars.tensor.core.Tensor.copy_to>`\\ \\(obj\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`copyto <mars.tensor.core.Tensor.copyto>`\\ \\(obj\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`deserialize <mars.tensor.core.Tensor.deserialize>`\\ "
+#~ "\\(provider\\, obj\\[\\, callbacks\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`dot <mars.tensor.core.Tensor.dot>`\\ \\(b\\[\\, "
+#~ "out\\, sparse\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Dot product of two arrays."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`execute <mars.tensor.core.Tensor.execute>`\\ "
+#~ "\\(\\[session\\, n\\_parallel\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`flatten <mars.tensor.core.Tensor.flatten>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid "Return a flattened tensor."
+#~ msgstr ""
+
+#~ msgid ":obj:`from_json <mars.tensor.core.Tensor.from_json>`\\ \\(obj\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`from_pb <mars.tensor.core.Tensor.from_pb>`\\ \\(obj\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`get_chunk_slices "
+#~ "<mars.tensor.core.Tensor.get_chunk_slices>`\\ \\(idx\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`is_coarse <mars.tensor.core.Tensor.is_coarse>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`is_scalar <mars.tensor.core.Tensor.is_scalar>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`is_sparse <mars.tensor.core.Tensor.is_sparse>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`isscalar <mars.tensor.core.Tensor.isscalar>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`issparse <mars.tensor.core.Tensor.issparse>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`rechunk <mars.tensor.core.Tensor.rechunk>`\\ "
+#~ "\\(chunks\\[\\, threshold\\, chunk\\_size\\_limit\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`repeat <mars.tensor.core.Tensor.repeat>`\\ "
+#~ "\\(repeats\\[\\, axis\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Repeat elements of a tensor."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ "
+#~ "\\(shape\\, \\*shapes\\)"
+#~ msgstr ""
+
+#~ msgid "Returns a tensor containing the same data with a new shape."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`round <mars.tensor.core.Tensor.round>`\\ "
+#~ "\\(\\[decimals\\, out\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Evenly round to the given number of decimals."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`serialize <mars.tensor.core.Tensor.serialize>`\\ "
+#~ "\\(provider\\[\\, obj\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`squeeze <mars.tensor.core.Tensor.squeeze>`\\ \\(\\[axis\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Remove single-dimensional entries from the shape of a tensor."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`swapaxes <mars.tensor.core.Tensor.swapaxes>`\\ "
+#~ "\\(axis1\\, axis2\\)"
+#~ msgstr ""
+
+#~ msgid "Interchange two axes of a tensor."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`to_graph <mars.tensor.core.Tensor.to_graph>`\\ "
+#~ "\\(\\[graph\\, graph\\_cls\\, substitutes\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`to_json <mars.tensor.core.Tensor.to_json>`\\ \\(\\[obj\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`to_pb <mars.tensor.core.Tensor.to_pb>`\\ \\(\\[obj\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`todense <mars.tensor.core.Tensor.todense>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`tosparse <mars.tensor.core.Tensor.tosparse>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`transpose <mars.tensor.core.Tensor.transpose>`\\ \\(\\*axes\\)"
+#~ msgstr ""
+
+#~ msgid "Returns a view of the tensor with axes transposed."
+#~ msgstr ""
+
+#~ msgid ":obj:`update_key <mars.tensor.core.Tensor.update_key>`\\ \\(\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`visualize <mars.tensor.core.Tensor.visualize>`\\ "
+#~ "\\(\\[graph\\_attrs\\, node\\_attrs\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`chunk_shape <mars.tensor.core.Tensor.chunk_shape>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`chunks <mars.tensor.core.Tensor.chunks>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`cix <mars.tensor.core.Tensor.cix>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`dtype <mars.tensor.core.Tensor.dtype>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`id <mars.tensor.core.Tensor.id>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`inputs <mars.tensor.core.Tensor.inputs>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`key <mars.tensor.core.Tensor.key>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`nbytes <mars.tensor.core.Tensor.nbytes>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`ndim <mars.tensor.core.Tensor.ndim>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`nsplits <mars.tensor.core.Tensor.nsplits>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`op <mars.tensor.core.Tensor.op>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`params <mars.tensor.core.Tensor.params>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`size <mars.tensor.core.Tensor.size>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.conj <Tensor.conj>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.conjugate <Tensor.conjugate>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.dot <Tensor.dot>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.rechunk <Tensor.rechunk>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.repeat <Tensor.repeat>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.round <Tensor.round>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.squeeze <Tensor.squeeze>`\\"
+#~ msgstr ""
+
+#~ msgid ":obj:`Tensor.swapaxes <Tensor.swapaxes>`\\"
+#~ msgstr ""
 

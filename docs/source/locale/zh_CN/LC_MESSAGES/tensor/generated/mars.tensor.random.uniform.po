@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,54 +21,54 @@ msgstr ""
 msgid "mars.tensor.random.uniform"
 msgstr ""
 
-#: mars.tensor.random.uniform:1 of
+#: ../../docstring mars.tensor.random.uniform:1 of
 msgid "Draw samples from a uniform distribution."
 msgstr ""
 
-#: mars.tensor.random.uniform:3 of
+#: ../../docstring mars.tensor.random.uniform:3 of
 msgid ""
 "Samples are uniformly distributed over the half-open interval ``[low, "
 "high)`` (includes low, but excludes high).  In other words, any value "
 "within the given interval is equally likely to be drawn by `uniform`."
 msgstr ""
 
-#: mars.tensor.random.uniform:11 of
+#: ../../docstring mars.tensor.random.uniform:11 of
 msgid "low"
 msgstr ""
 
-#: mars.tensor.random.uniform:10 of
+#: ../../docstring mars.tensor.random.uniform:10 of
 msgid "float or array_like of floats, optional"
 msgstr ""
 
-#: mars.tensor.random.uniform:11 of
+#: ../../docstring mars.tensor.random.uniform:11 of
 msgid ""
 "Lower boundary of the output interval.  All values generated will be "
 "greater than or equal to low.  The default value is 0."
 msgstr ""
 
-#: mars.tensor.random.uniform:14 of
+#: ../../docstring mars.tensor.random.uniform:14 of
 msgid "high"
 msgstr ""
 
-#: mars.tensor.random.uniform:13 of
+#: ../../docstring mars.tensor.random.uniform:13 of
 msgid "float or array_like of floats"
 msgstr ""
 
-#: mars.tensor.random.uniform:14 of
+#: ../../docstring mars.tensor.random.uniform:14 of
 msgid ""
 "Upper boundary of the output interval.  All values generated will be less"
 " than high.  The default value is 1.0."
 msgstr ""
 
-#: mars.tensor.random.uniform:19 of
+#: ../../docstring mars.tensor.random.uniform:19 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.uniform:18 of
+#: ../../docstring mars.tensor.random.uniform:18 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.uniform:17 of
+#: ../../docstring mars.tensor.random.uniform:17 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  If size is ``None`` (default), a single value is"
@@ -76,78 +76,90 @@ msgid ""
 "``mt.broadcast(low, high).size`` samples are drawn."
 msgstr ""
 
-#: mars.tensor.random.uniform:21 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.uniform:21 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.uniform:20 of
+#: ../../docstring mars.tensor.random.uniform:20 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.uniform:22 of
+#: ../../docstring mars.tensor.random.uniform:22 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.uniform:24 of
+#: ../../docstring mars.tensor.random.uniform:23 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.uniform:23 of
+#: ../../docstring mars.tensor.random.uniform:22 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.uniform:24 of
+#: ../../docstring mars.tensor.random.uniform:24 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.uniform:29 of
+#: ../../docstring mars.tensor.random.uniform:26 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.uniform:25 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.uniform:26 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.uniform:31 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.uniform:28 of
+#: ../../docstring mars.tensor.random.uniform:30 of
 msgid "Tensor or scalar"
 msgstr ""
 
-#: mars.tensor.random.uniform:29 of
+#: ../../docstring mars.tensor.random.uniform:31 of
 msgid "Drawn samples from the parameterized uniform distribution."
 msgstr ""
 
-#: mars.tensor.random.uniform:33 of
+#: ../../docstring mars.tensor.random.uniform:35 of
 msgid ""
 "randint : Discrete uniform distribution, yielding integers. "
 "random_integers : Discrete uniform distribution over the closed"
 msgstr ""
 
-#: mars.tensor.random.uniform:35 of
+#: ../../docstring mars.tensor.random.uniform:37 of
 msgid "interval ``[low, high]``."
 msgstr ""
 
-#: mars.tensor.random.uniform:36 of
+#: ../../docstring mars.tensor.random.uniform:38 of
 msgid ""
 "random_sample : Floats uniformly distributed over ``[0, 1)``. random : "
 "Alias for `random_sample`. rand : Convenience function that accepts "
 "dimensions as input, e.g.,"
 msgstr ""
 
-#: mars.tensor.random.uniform:39 of
+#: ../../docstring mars.tensor.random.uniform:41 of
 msgid ""
 "``rand(2,2)`` would generate a 2-by-2 array of floats, uniformly "
 "distributed over ``[0, 1)``."
 msgstr ""
 
-#: mars.tensor.random.uniform:44 of
+#: ../../docstring mars.tensor.random.uniform:46 of
 msgid "The probability density function of the uniform distribution is"
 msgstr ""
 
-#: mars.tensor.random.uniform:47 of
-msgid "rac{1}{b - a}"
+#: ../../docstring mars.tensor.random.uniform:48 of
+msgid "p(x) = \\frac{1}{b - a}"
 msgstr ""
 
-#: mars.tensor.random.uniform:49 of
+#: ../../docstring mars.tensor.random.uniform:50 of
 msgid "anywhere within the interval ``[a, b)``, and zero elsewhere."
 msgstr ""
 
-#: mars.tensor.random.uniform:51 of
+#: ../../docstring mars.tensor.random.uniform:52 of
 msgid ""
 "When ``high`` == ``low``, values of ``low`` will be returned. If ``high``"
 " < ``low``, the results are officially undefined and may eventually raise"
@@ -155,15 +167,15 @@ msgid ""
 "arguments satisfying that inequality condition."
 msgstr ""
 
-#: mars.tensor.random.uniform:59 of
+#: ../../docstring mars.tensor.random.uniform:60 of
 msgid "Draw samples from the distribution:"
 msgstr ""
 
-#: mars.tensor.random.uniform:65 of
+#: ../../docstring mars.tensor.random.uniform:66 of
 msgid "All values are within the given interval:"
 msgstr ""
 
-#: mars.tensor.random.uniform:72 of
+#: ../../docstring mars.tensor.random.uniform:73 of
 msgid ""
 "Display the histogram of the samples, along with the probability density "
 "function:"

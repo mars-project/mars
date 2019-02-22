@@ -141,56 +141,6 @@ class TensorData(TilesableData):
         return fromsparse(self)
 
     def transpose(self, *axes):
-        """
-        Returns a view of the tensor with axes transposed.
-
-        For a 1-D tensor, this has no effect. (To change between column and
-        row vectors, first cast the 1-D tensor into a matrix object.)
-        For a 2-D tensor, this is the usual matrix transpose.
-        For an n-D tensor, if axes are given, their order indicates how the
-        axes are permuted (see Examples). If axes are not provided and
-        ``a.shape = (i[0], i[1], ... i[n-2], i[n-1])``, then
-        ``a.transpose().shape = (i[n-1], i[n-2], ... i[1], i[0])``.
-
-        Parameters
-        ----------
-        axes : None, tuple of ints, or `n` ints
-
-         * None or no argument: reverses the order of the axes.
-
-         * tuple of ints: `i` in the `j`-th place in the tuple means `a`'s
-           `i`-th axis becomes `a.transpose()`'s `j`-th axis.
-
-         * `n` ints: same as an n-tuple of the same ints (this form is
-           intended simply as a "convenience" alternative to the tuple form)
-
-        Returns
-        -------
-        out : Tensor
-            View of `a`, with axes suitably permuted.
-
-        See Also
-        --------
-        Tensor.T : Tensor property returning the tensor transposed.
-
-        Examples
-        --------
-        >>> import mars.tensor as mt
-
-        >>> a = mt.array([[1, 2], [3, 4]])
-        >>> a.execute()
-        array([[1, 2],
-               [3, 4]])
-        >>> a.transpose().execute()
-        array([[1, 3],
-               [2, 4]])
-        >>> a.transpose((1, 0))
-        array([[1, 3],
-               [2, 4]])
-        >>> a.transpose(1, 0).execute()
-        array([[1, 3],
-               [2, 4]])
-        """
         from .expressions.base import transpose
 
         if len(axes) == 1 and isinstance(axes[0], Iterable):
@@ -200,46 +150,9 @@ class TensorData(TilesableData):
 
     @property
     def T(self):
-        """
-        Same as self.transpose(), except that self is returned if
-        self.ndim < 2.
-
-        Examples
-        --------
-        >>> import mars.tensor as mt
-
-        >>> x = mt.array([[1.,2.],[3.,4.]])
-        >>> x.execute()
-        array([[ 1.,  2.],
-               [ 3.,  4.]])
-        >>> x.T.execute()
-        array([[ 1.,  3.],
-               [ 2.,  4.]])
-        >>> x = mt.array([1.,2.,3.,4.])
-        >>> x.execute()
-        array([ 1.,  2.,  3.,  4.])
-        >>> x.T.execute()
-        array([ 1.,  2.,  3.,  4.])
-        """
         return self.transpose()
 
     def reshape(self, shape, *shapes):
-        """
-        Returns a tensor containing the same data with a new shape.
-
-        Refer to `mt.reshape` for full documentation.
-
-        See Also
-        --------
-        mt.reshape : equivalent function
-
-        Notes
-        -----
-        Unlike the free function `mt.reshape`, this method on `Tensor` allows
-        the elements of the shape parameter to be passed in as separate arguments.
-        For example, ``a.reshape(10, 11)`` is equivalent to
-        ``a.reshape((10, 11))``.
-        """
         from .expressions.reshape import reshape
 
         if isinstance(shape, Iterable):
@@ -251,15 +164,6 @@ class TensorData(TilesableData):
         return reshape(self, shape)
 
     def ravel(self):
-        """
-        Return a flattened tensor.
-
-        Refer to `mt.ravel` for full documentation.
-
-        See Also
-        --------
-        mt.ravel : equivalent function
-        """
         from .expressions.base import ravel
 
         return ravel(self)
@@ -347,6 +251,115 @@ class Tensor(Entity):
             return np.asarray(self.fetch(), dtype=dtype)
         else:
             return np.asarray(self.execute(), dtype=dtype)
+
+    def transpose(self, *axes):
+        """
+        Returns a view of the tensor with axes transposed.
+
+        For a 1-D tensor, this has no effect. (To change between column and
+        row vectors, first cast the 1-D tensor into a matrix object.)
+        For a 2-D tensor, this is the usual matrix transpose.
+        For an n-D tensor, if axes are given, their order indicates how the
+        axes are permuted (see Examples). If axes are not provided and
+        ``a.shape = (i[0], i[1], ... i[n-2], i[n-1])``, then
+        ``a.transpose().shape = (i[n-1], i[n-2], ... i[1], i[0])``.
+
+        Parameters
+        ----------
+        axes : None, tuple of ints, or `n` ints
+
+         * None or no argument: reverses the order of the axes.
+
+         * tuple of ints: `i` in the `j`-th place in the tuple means `a`'s
+           `i`-th axis becomes `a.transpose()`'s `j`-th axis.
+
+         * `n` ints: same as an n-tuple of the same ints (this form is
+           intended simply as a "convenience" alternative to the tuple form)
+
+        Returns
+        -------
+        out : Tensor
+            View of `a`, with axes suitably permuted.
+
+        See Also
+        --------
+        Tensor.T : Tensor property returning the tensor transposed.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+
+        >>> a = mt.array([[1, 2], [3, 4]])
+        >>> a.execute()
+        array([[1, 2],
+               [3, 4]])
+        >>> a.transpose().execute()
+        array([[1, 3],
+               [2, 4]])
+        >>> a.transpose((1, 0))
+        array([[1, 3],
+               [2, 4]])
+        >>> a.transpose(1, 0).execute()
+        array([[1, 3],
+               [2, 4]])
+        """
+        return self._data.transpose(*axes)
+
+    @property
+    def T(self):
+        """
+        Same as self.transpose(), except that self is returned if
+        self.ndim < 2.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+
+        >>> x = mt.array([[1.,2.],[3.,4.]])
+        >>> x.execute()
+        array([[ 1.,  2.],
+               [ 3.,  4.]])
+        >>> x.T.execute()
+        array([[ 1.,  3.],
+               [ 2.,  4.]])
+        >>> x = mt.array([1.,2.,3.,4.])
+        >>> x.execute()
+        array([ 1.,  2.,  3.,  4.])
+        >>> x.T.execute()
+        array([ 1.,  2.,  3.,  4.])
+        """
+        return self._data.T
+
+    def ravel(self):
+        """
+        Return a flattened tensor.
+
+        Refer to `mt.ravel` for full documentation.
+
+        See Also
+        --------
+        mt.ravel : equivalent function
+        """
+        return self._data.ravel()
+
+    def reshape(self, shape, *shapes):
+        """
+        Returns a tensor containing the same data with a new shape.
+
+        Refer to `mt.reshape` for full documentation.
+
+        See Also
+        --------
+        mt.reshape : equivalent function
+
+        Notes
+        -----
+        Unlike the free function `mt.reshape`, this method on `Tensor` allows
+        the elements of the shape parameter to be passed in as separate arguments.
+        For example, ``a.reshape(10, 11)`` is equivalent to
+        ``a.reshape((10, 11))``.
+        """
+        return self._data.reshape(shape, *shapes)
 
 
 class SparseTensor(Tensor):

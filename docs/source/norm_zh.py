@@ -19,6 +19,7 @@ This file folds Chinese po files by hacking babel.messages.pofile.normalize
 using jieba text segment library instead of regex
 """
 
+import datetime
 import os
 
 from babel.messages import pofile
@@ -126,6 +127,12 @@ def main():
             if not f.endswith('.po'):
                 continue
             path = os.path.join(root, f)
+
+            # only modify recent-changed files
+            modify_time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+            if (datetime.datetime.now() - modify_time).total_seconds() > 1800:
+                continue
+
             with open(path, 'rb') as inpf:
                 catalog = pofile.read_po(inpf)
             with open(path, 'wb') as outf:

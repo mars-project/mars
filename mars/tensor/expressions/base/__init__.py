@@ -56,6 +56,9 @@ def _install():
     from .astype import _astype
 
     setattr(Tensor, 'astype', _astype)
+    setattr(Tensor, 'swapaxes', swapaxes)
+    setattr(Tensor, 'squeeze', squeeze)
+    setattr(Tensor, 'repeat', repeat)
     setattr(TensorData, 'astype', _astype)
     setattr(TensorData, 'swapaxes', swapaxes)
     setattr(TensorData, 'squeeze', squeeze)

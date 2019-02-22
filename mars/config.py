@@ -294,12 +294,6 @@ default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('persist_compression', 1, validator=(is_null, is_integer), serialize=True)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 
-# GRPC Options
-default_options.register_option('grpc.channel_options', {
-    'grpc.max_send_message_length': 1024 * 1024 * 1024,
-    'grpc.max_receive_message_length': 1024 * 1024 * 1024,
-})
-
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
 default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=(is_integer, is_float))

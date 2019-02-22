@@ -24,11 +24,18 @@ class DiscreteFourierTransform(HasInput):
     __slots__ = ()
 
 
-class StandardFFT(DiscreteFourierTransform):
+class BaseFFT(DiscreteFourierTransform):
     _input = KeyField('input')
+    _norm = StringField('norm')
+
+    @property
+    def norm(self):
+        return getattr(self, '_norm', None)
+
+
+class BaseSingleDimensionFFT(BaseFFT):
     _n = Int64Field('n')
     _axis = Int32Field('axis')
-    _norm = StringField('norm')
 
     @property
     def n(self):
@@ -38,9 +45,22 @@ class StandardFFT(DiscreteFourierTransform):
     def axis(self):
         return self._axis
 
+
+class BaseMultipleDimensionFFT(BaseFFT):
+    _shape = ListField('shape', ValueType.int64)
+    _axes = ListField('axes', ValueType.int32)
+
     @property
-    def norm(self):
-        return getattr(self, '_norm', None)
+    def shape(self):
+        return self._shape
+
+    @property
+    def axes(self):
+        return self._axes
+
+
+class StandardFFT(BaseSingleDimensionFFT):
+    pass
 
 
 class FFT(StandardFFT):
@@ -51,23 +71,8 @@ class IFFT(StandardFFT):
     _op_type_ = OperandDef.IFFT
 
 
-class StandardFFTN(DiscreteFourierTransform):
-    _input = KeyField('input')
-    _shape = ListField('shape', ValueType.int64)
-    _axes = ListField('axes', ValueType.int32)
-    _norm = StringField('norm')
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def axes(self):
-        return self._axes
-
-    @property
-    def norm(self):
-        return getattr(self, '_norm', None)
+class StandardFFTN(BaseMultipleDimensionFFT):
+    pass
 
 
 class FFT2(StandardFFTN):
@@ -86,23 +91,8 @@ class IFFTN(StandardFFTN):
     _op_type_ = OperandDef.IFFTN
 
 
-class RealFFT(DiscreteFourierTransform):
-    _input = KeyField('input')
-    _n = Int64Field('n')
-    _axis = Int32Field('axis')
-    _norm = StringField('norm')
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def norm(self):
-        return getattr(self, '_norm', None)
+class RealFFT(BaseSingleDimensionFFT):
+    pass
 
 
 class RFFT(RealFFT):
@@ -113,23 +103,8 @@ class IRFFT(RealFFT):
     _op_type_ = OperandDef.IRFFT
 
 
-class RealFFTN(DiscreteFourierTransform):
-    _input = KeyField('input')
-    _shape = ListField('shape', ValueType.int64)
-    _axes = ListField('axes', ValueType.int32)
-    _norm = StringField('norm')
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def axes(self):
-        return self._axes
-
-    @property
-    def norm(self):
-        return getattr(self, '_norm', None)
+class RealFFTN(BaseMultipleDimensionFFT):
+    pass
 
 
 class RFFT2(RealFFTN):
@@ -148,23 +123,8 @@ class IRFFTN(RealFFTN):
     _op_type_ = OperandDef.IRFFTN
 
 
-class HermitianFFT(DiscreteFourierTransform):
-    _input = KeyField('input')
-    _n = Int64Field('n')
-    _axis = Int32Field('axis')
-    _norm = StringField('norm')
-
-    @property
-    def n(self):
-        return self._n
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def norm(self):
-        return getattr(self, '_norm', None)
+class HermitianFFT(BaseSingleDimensionFFT):
+    pass
 
 
 class HFFT(HermitianFFT):

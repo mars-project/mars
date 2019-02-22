@@ -3,9 +3,11 @@ Eager Mode
 
 .. Note:: New in version 0.2.0a2
 
-Mars supports eager mode which makes it friendly for developing and easy to debug.
+Mars supports eager mode which makes it friendly for developing and easy to
+debug.
 
-Users can enable the eager mode by options, set options at the beginning of the program or console session.
+Users can enable the eager mode by options, set options at the beginning of the
+program or console session.
 
 .. code-block:: python
 
@@ -24,7 +26,8 @@ Or use a context.
     >>>     # the eager mode is on only for the with statement
     >>>     ...
 
-If eager mode is on, tensor will be executed immediately by default session once it is created.
+If eager mode is on, tensor will be executed immediately by default session
+once it is created.
 
 .. code-block:: python
 

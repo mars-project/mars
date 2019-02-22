@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -43,8 +43,8 @@ msgstr ""
 msgid "Matrix to be factored."
 msgstr ""
 
-#: mars.tensor.linalg.qr:19 of
-msgid "method: {'tsqr'}, optional"
+#: mars.tensor.linalg.qr:23 of
+msgid "method: {'tsqr', 'sfqr'}, optional"
 msgstr ""
 
 #: mars.tensor.linalg.qr:11 of
@@ -62,38 +62,48 @@ msgid ""
 "Conference on Big Data, 2013. http://arxiv.org/abs/1301.1071"
 msgstr ""
 
-#: mars.tensor.linalg.qr:26 of
+#: mars.tensor.linalg.qr:23 of
+msgid "FSQR is a QR decomposition for fat and short matrix:"
+msgstr ""
+
+#: mars.tensor.linalg.qr:22 of
+msgid ""
+"A = [A1, A2, A3, ...], A1 may be decomposed as A1 = Q1 * R1, for A = Q * "
+"R, Q = Q1, R = [R1, R2, R3, ...] where A2 = Q1 * R2, A3 = Q1 * R3, ..."
+msgstr ""
+
+#: mars.tensor.linalg.qr:30 of
 msgid "q"
 msgstr ""
 
-#: mars.tensor.linalg.qr:25 mars.tensor.linalg.qr:28 of
+#: mars.tensor.linalg.qr:29 mars.tensor.linalg.qr:32 of
 msgid "Tensor of float or complex, optional"
 msgstr ""
 
-#: mars.tensor.linalg.qr:24 of
+#: mars.tensor.linalg.qr:28 of
 msgid ""
 "A matrix with orthonormal columns. When mode = 'complete' the result is "
 "an orthogonal/unitary matrix depending on whether or not a is "
 "real/complex. The determinant may be either +/- 1 in that case."
 msgstr ""
 
-#: mars.tensor.linalg.qr:29 of
+#: mars.tensor.linalg.qr:33 of
 msgid "r"
 msgstr ""
 
-#: mars.tensor.linalg.qr:29 of
+#: mars.tensor.linalg.qr:33 of
 msgid "The upper-triangular matrix."
 msgstr ""
 
-#: mars.tensor.linalg.qr:34 of
+#: mars.tensor.linalg.qr:38 of
 msgid "LinAlgError"
 msgstr ""
 
-#: mars.tensor.linalg.qr:34 of
+#: mars.tensor.linalg.qr:38 of
 msgid "If factoring fails."
 msgstr ""
 
-#: mars.tensor.linalg.qr:38 of
+#: mars.tensor.linalg.qr:42 of
 msgid ""
 "For more information on the qr factorization, see for example: "
 "http://en.wikipedia.org/wiki/QR_factorization"

@@ -32,25 +32,3 @@ msgstr ""
 msgid ":obj:`mars.tensor.core.Tensor <mars.tensor.core.Tensor>`"
 msgstr ""
 
-#~ msgid ""
-#~ ":class:`mars.tensor.Tensor` is the Mars "
-#~ "counterpart of Numpy :class:`numpy.ndarray`. "
-#~ "The multidimensional tensor can run on"
-#~ " either out of cores or distributed"
-#~ " cluster."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":class:`mt.Tensor` is the Mars counterpart "
-#~ "of Numpy :class:`numpy.ndarray`. The "
-#~ "multidimensional tensor can run on "
-#~ "either out of cores or distributed "
-#~ "cluster."
-#~ msgstr ""
-
-#~ msgid ":obj:`mt.Tensor <mt.Tensor>`"
-#~ msgstr ""
-
-#~ msgid ":obj:`mars.tensor.Tensor <mars.tensor.Tensor>`"
-#~ msgstr ""
-

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,58 +21,70 @@ msgstr ""
 msgid "mars.tensor.random.standard\\_normal"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:1 of
+#: ../../docstring mars.tensor.random.standard_normal:1 of
 msgid "Draw samples from a standard Normal distribution (mean=0, stdev=1)."
 msgstr ""
 
-#: mars.tensor.random.standard_normal:7 of
+#: ../../docstring mars.tensor.random.standard_normal:7 of
 msgid "size"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:6 of
+#: ../../docstring mars.tensor.random.standard_normal:6 of
 msgid "int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:6 of
+#: ../../docstring mars.tensor.random.standard_normal:6 of
 msgid ""
 "Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
 " k`` samples are drawn.  Default is None, in which case a single value is"
 " returned."
 msgstr ""
 
-#: mars.tensor.random.standard_normal:9 of
-msgid "chunks"
+#: ../../docstring mars.tensor.random.standard_normal:9 of
+msgid "chunk_size"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:8 of
+#: ../../docstring mars.tensor.random.standard_normal:8 of
 msgid "int or tuple of int or tuple of ints, optional"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:10 of
+#: ../../docstring mars.tensor.random.standard_normal:10 of
 msgid "Desired chunk size on each dimension"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:12 of
+#: ../../docstring mars.tensor.random.standard_normal:11 of
 msgid "gpu"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:11 of
+#: ../../docstring mars.tensor.random.standard_normal:10 of
 msgid "bool, optional"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:12 of
+#: ../../docstring mars.tensor.random.standard_normal:12 of
 msgid "Allocate the tensor on GPU if True, False as default"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:17 of
+#: ../../docstring mars.tensor.random.standard_normal:14 of
+msgid "dtype"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.standard_normal:13 of
+msgid "data-type, optional"
+msgstr ""
+
+#: ../../docstring mars.tensor.random.standard_normal:14 of
+msgid "Data-type of the returned tensor."
+msgstr ""
+
+#: ../../docstring mars.tensor.random.standard_normal:19 of
 msgid "out"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:16 of
+#: ../../docstring mars.tensor.random.standard_normal:18 of
 msgid "float or Tensor"
 msgstr ""
 
-#: mars.tensor.random.standard_normal:17 of
+#: ../../docstring mars.tensor.random.standard_normal:19 of
 msgid "Drawn samples."
 msgstr ""
 

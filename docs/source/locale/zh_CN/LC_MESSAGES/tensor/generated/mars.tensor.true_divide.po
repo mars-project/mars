@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 10:39+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -41,7 +41,7 @@ msgid "array_like"
 msgstr ""
 
 #: mars.tensor.true_divide:10 of
-msgid "Dividend array."
+msgid "Dividend tensor."
 msgstr ""
 
 #: mars.tensor.true_divide:11 of
@@ -49,7 +49,7 @@ msgid "x2"
 msgstr ""
 
 #: mars.tensor.true_divide:12 of
-msgid "Divisor array."
+msgid "Divisor tensor."
 msgstr ""
 
 #: mars.tensor.true_divide:16 mars.tensor.true_divide:26 of

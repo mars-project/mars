@@ -97,6 +97,3 @@ msgstr ""
 msgid "Matrix or vector norm."
 msgstr ""
 
-#~ msgid "Linear Algebra"
-#~ msgstr ""
-

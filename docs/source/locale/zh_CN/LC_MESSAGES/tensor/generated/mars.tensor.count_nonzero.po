@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 22:16+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -49,11 +49,11 @@ msgstr ""
 msgid "The tensor for which to count non-zeros."
 msgstr ""
 
-#: mars.tensor.count_nonzero:20 of
+#: mars.tensor.count_nonzero:19 of
 msgid "axis"
 msgstr ""
 
-#: mars.tensor.count_nonzero:19 of
+#: mars.tensor.count_nonzero:18 of
 msgid "int or tuple, optional"
 msgstr ""
 
@@ -64,24 +64,29 @@ msgid ""
 "``a``."
 msgstr ""
 
-#: mars.tensor.count_nonzero:27 of
+#: mars.tensor.count_nonzero:22 of
+msgid "combine_size: int, optional"
+msgstr ""
+
+#: mars.tensor.count_nonzero:22 of
+msgid "The number of chunks to combine."
+msgstr ""
+
+#: mars.tensor.count_nonzero:29 of
 msgid "count"
 msgstr ""
 
-#: mars.tensor.count_nonzero:26 of
+#: mars.tensor.count_nonzero:28 of
 msgid "int or tensor of int"
 msgstr ""
 
-#: mars.tensor.count_nonzero:25 of
+#: mars.tensor.count_nonzero:27 of
 msgid ""
 "Number of non-zero values in the array along a given axis. Otherwise, the"
 " total number of non-zero values in the tensor is returned."
 msgstr ""
 
-#: mars.tensor.count_nonzero:31 of
+#: mars.tensor.count_nonzero:33 of
 msgid "nonzero : Return the coordinates of all the non-zero values."
 msgstr ""
-
-#~ msgid "The array for which to count non-zeros."
-#~ msgstr ""
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -232,7 +232,7 @@ msgid "The Frobenius norm is given by [1]_:"
 msgstr ""
 
 #: mars.tensor.linalg.norm:56 of
-msgid ":math:`||A||_F = [\\sum_{i,j} abs(a_{i,j})^2]^{1/2}`"
+msgid ":math:`||A||_F = [\\\\sum_{i,j} abs(a_{i,j})^2]^{1/2}`"
 msgstr ""
 
 #: mars.tensor.linalg.norm:58 of

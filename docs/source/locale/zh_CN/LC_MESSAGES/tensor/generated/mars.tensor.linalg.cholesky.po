@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 16:11+0800\n"
+"POT-Creation-Date: 2019-02-21 13:32+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -86,6 +86,10 @@ msgstr ""
 msgid "The Cholesky decomposition is often used as a fast way of solving"
 msgstr ""
 
+#: mars.tensor.linalg.cholesky:37 of
+msgid "A \\mathbf{x} = \\mathbf{b}"
+msgstr ""
+
 #: mars.tensor.linalg.cholesky:39 of
 msgid "(when `A` is both Hermitian/symmetric and positive-definite)."
 msgstr ""
@@ -94,7 +98,15 @@ msgstr ""
 msgid "First, we solve for :math:`\\mathbf{y}` in"
 msgstr ""
 
+#: mars.tensor.linalg.cholesky:43 of
+msgid "L \\mathbf{y} = \\mathbf{b},"
+msgstr ""
+
 #: mars.tensor.linalg.cholesky:45 of
 msgid "and then for :math:`\\mathbf{x}` in"
+msgstr ""
+
+#: mars.tensor.linalg.cholesky:47 of
+msgid "L.H \\mathbf{x} = \\mathbf{y}."
 msgstr ""
 

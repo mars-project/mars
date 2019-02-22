@@ -1,0 +1,211 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-02-15 19:14+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.6.0\n"
+
+#: ../../source/contributing.rst:2
+msgid "Contributing to Mars"
+msgstr "为 Mars 贡献代码"
+
+#: ../../source/contributing.rst:4
+msgid ""
+"Mars is an open-sourced project released under Apache License 2.0. We "
+"welcome and thanks for your contributions. Here are some guidelines you "
+"may find useful when you want to make some change of Mars."
+msgstr ""
+"Mars 是使用 Apache License 2.0 协议的开源项目，我们欢迎和感谢您的贡献。"
+"下面是一些你在尝试改变 Mars 实现时可能觉得有用的指引。"
+
+#: ../../source/contributing.rst:9
+msgid "General Guidelines"
+msgstr "通用指引"
+
+#: ../../source/contributing.rst:10
+msgid ""
+"Mars hosts and maintains its code on `Github <https://github.com/mars-"
+"project/mars>`_. We provide a `generalized guide <https://github.com"
+"/mars-project/mars/blob/master/CONTRIBUTING.rst>`_ for opening issues and"
+" pull requests."
+msgstr ""
+"Mars 使用 `Github <https://github.com/mars-project/mars>`_ 管理和维护代码"
+"。我们对提出 Issue 及 Pull Request 提供了一套 `通用指引 <https://github."
+"com/mars-project/mars/blob/master/CONTRIBUTING.rst>`_ 。"
+
+#: ../../source/contributing.rst:16
+msgid "Setting Up a Development Environment"
+msgstr "配置开发环境"
+
+#: ../../source/contributing.rst:17
+msgid ""
+"Unless you want to develop or debug Mars under Windows, it is strongly "
+"recommended to develop Mars under MacOS or Linux, where you can test all "
+"functions of Mars. The steps listed below are applicable on MacOS and "
+"Linux."
+msgstr ""
+"因为你无法在 Windows 下使用 Mars 的全部功能，除非你希望在 Windows 下部署"
+"或者调试 Mars，我们强烈建议开发者在 MacOS 或者 Linux 下开发 Mars。下面"
+"列出的步骤仅针对 MacOS 和 Linux。"
+
+#: ../../source/contributing.rst:22
+msgid "Install in Conda"
+msgstr "在 Conda 中安装"
+
+#: ../../source/contributing.rst:23
+msgid ""
+"It is recommended to develop Mars with conda. When you want ot install "
+"Mars for development, use the following steps to create an environment "
+"and install Mars inside it:"
+msgstr ""
+"我们推荐使用 Conda 开发 Mars。当你希望在 Conda 中安装 Mars 用于开发，你"
+"可以使用下面的步骤创建一个 Conda 环境，并在其中安装 Mars："
+
+#: ../../source/contributing.rst:35
+msgid ""
+"Change ``3.7`` into the version of Python you want to install, and "
+"``mars-dev`` into your preferred environment name."
+msgstr ""
+"将 ``3.7`` 替换为你希望安装的 Python 版本，将 ``mars-dev`` 替换为你喜欢的"
+"环境名。"
+
+#: ../../source/contributing.rst:39
+msgid "Other Python Distributions"
+msgstr "其他 Python 发行版本"
+
+#: ../../source/contributing.rst:40
+msgid ""
+"Mars has a ``dev`` option for installation. When you want to install Mars"
+" for development, use the following steps:"
+msgstr ""
+"Mars 拥有一个 ``dev`` 安装选项。当你希望安装 Mars 用于开发，可以使用下面"
+"的步骤："
+
+#: ../../source/contributing.rst:50
+msgid ""
+"If you are using a system-wide Python installation and you only want to "
+"install Mars for you, you can add ``--user`` to the ``pip install`` "
+"commands."
+msgstr ""
+
+#: ../../source/contributing.rst:54
+msgid "Verification"
+msgstr "验证安装"
+
+#: ../../source/contributing.rst:55
+msgid ""
+"After installing Mars, you can check if Mars is installed correctly by "
+"running"
+msgstr "当 Mars 安装完成，你可以使用下面的步骤验证 Mars 是否正确安装："
+
+#: ../../source/contributing.rst:61
+msgid ""
+"If this command correctly outputs your Mars version, Mars is correctly "
+"installed."
+msgstr "如果此命令正确输出了你的 Mars 版本，说明 Mars 已经成功安装。"
+
+#: ../../source/contributing.rst:65
+msgid "Rebuilding Cython Code"
+msgstr "重新编译 Cython 代码"
+
+#: ../../source/contributing.rst:66
+msgid ""
+"Mars uses Cython to accelerate part of its code. After you change Cython "
+"source code, you need to compile them into binaries by executing the "
+"command below on the root of Mars project:"
+msgstr ""
+"Mars 使用 Cython 加速代码执行。当你改变了 Cython 代码，你需要使用下面的"
+"命令将它们重新编译为二进制文件："
+
+#: ../../source/contributing.rst:75
+msgid "Running Tests"
+msgstr "运行测试用例"
+
+#: ../../source/contributing.rst:76
+msgid ""
+"It is recommended to use ``pytest`` to run Mars tests. A simple command "
+"below will run all the tests of Mars:"
+msgstr ""
+"我们推荐使用 ``pytest`` 运行 Mars 测试用例。只需要一行命令即可运行 Mars "
+"的所有用例："
+
+#: ../../source/contributing.rst:83
+msgid "If you want to generate a coverage report as well, you can run:"
+msgstr "如果你希望在运行的同时生成代码覆盖报告，可以运行："
+
+#: ../../source/contributing.rst:89
+msgid "Coverage report will be put into the directory ``htmlcov``."
+msgstr "代码覆盖报告将会被放在 ``htmlcov`` 目录下。"
+
+#: ../../source/contributing.rst:91
+msgid ""
+"The command above does not contain coverage data for Cython files by "
+"default. To obtain coverage data about Cython files, you can run"
+msgstr ""
+"上面的命令默认不包含 Cython 文件的覆盖率。为获得 Cython 文件的覆盖数据，"
+"可以运行"
+
+#: ../../source/contributing.rst:98
+msgid ""
+"before running the pytest command mentioned above. After report is "
+"generated, it it recommended to remove all generated C files and binaries"
+" and rebuild without ``CYTHON_TRACE``, as this option will reduce the "
+"performance of Mars."
+msgstr ""
+"上述命令需要在前面提到的 pytest 命令之前运行。在报告生成后，建议删除所有"
+"生成的 C 文件和二进制文件，此后重新使用不带 ``CYTHON_TRACE`` 环境变量的"
+"命令编译，因为该选项会降低 Mars 的性能。"
+
+#: ../../source/contributing.rst:103
+msgid "Building Documentations"
+msgstr "编译文档"
+
+#: ../../source/contributing.rst:104
+msgid ""
+"Mars uses ``sphinx`` to build documents. You need to install necessary "
+"packages with the command below to install these dependencies and build "
+"your documents into HTML."
+msgstr ""
+"Mars 使用 ``sphinx`` 编译文档。在编译 HTML 格式的文档前，你需要使用下面的"
+"命令安装必要的依赖包"
+
+#: ../../source/contributing.rst:114
+msgid "The built documents are in ``docs/build/html`` directory."
+msgstr "编译完成的 HTML 文档位于 ``docs/build/html`` 目录下。"
+
+#: ../../source/contributing.rst:116
+msgid ""
+"When you want to create translations of Mars documents, you may append "
+"``-l <locale>`` after the ``I18NSPHINXLANGS`` variable in ``Makefile``. "
+"Currently only simplified Chinese is supported. After that, run the "
+"command below to generate portable files (``*.po``) for the documents, "
+"which are in ``docs/source/locale/<locale>/LC_MESSAGES``:"
+msgstr ""
+"当你希望创建 Mars 文档的翻译，你可以在 ``Makefile`` 的 ``I18NSPHINXLANGS`"
+"` 变量末尾追加新的 ``-l <locale>``，目前仅支持简体中文。此后，执行下面的"
+"命令为文档生成翻译文件（``*.po``），生成后的文件位于 ``docs/source/locale"
+"/<locale>/LC_MESSAGES`` 下："
+
+#: ../../source/contributing.rst:127
+msgid ""
+"After that you can translate Mars documents into your language. Note that"
+" when you run ``make gettext`` again, translations will be broken into a "
+"fixed-width text. For Chinese translators, you need to install ``jieba`` "
+"to get this effect."
+msgstr ""
+"此后你可以在 po 文件中将 Mars 文档翻译成你所需的语言。注意当你再次运行 ``"
+"make gettext``，翻译后的文字将被转为固定宽度文字。对于中文译者，为达到该"
+"效果，需要安装 ``jieba`` 分词包。"
+
