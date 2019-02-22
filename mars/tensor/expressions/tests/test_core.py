@@ -359,7 +359,7 @@ class Test(TestBase):
         self.assertEqual(chunk.shape, chunk2.shape)
         self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
 
-        t = ones((10, 3), chunk_size=(5, 2)) + 2
+        t = ones((10, 3), chunk_size=((3, 5, 2), 2)) + 2
         graph = t.build_graph(tiled=True)
 
         pb = graph.to_pb()
