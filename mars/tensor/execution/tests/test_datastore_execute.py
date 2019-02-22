@@ -25,7 +25,6 @@ except ImportError:  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.lib.sparse import SparseNDArray
 from mars.tensor import tensor, totiledb
 
 
