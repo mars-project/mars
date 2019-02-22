@@ -23,7 +23,7 @@ import scipy.sparse as sps
 try:
     import tiledb
 except ImportError:  # pragma: no cover
-    pass
+    tiledb = None
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
