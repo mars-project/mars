@@ -37,7 +37,7 @@ from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.worker import SenderActor, ReceiverActor, DispatchActor, QuotaActor, \
     MemQuotaActor, ChunkHolderActor, SpillActor, StatusActor
-from mars.worker.chunkstore import PlasmaChunkStore
+from mars.worker.chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 from mars.worker.spill import build_spill_file_name, write_spill_file
 from mars.worker.tests.base import WorkerCase
 from mars.worker.transfer import ReceiveStatus, ReceiverDataMeta
@@ -127,6 +127,7 @@ def start_transfer_test_pool(**kwargs):
     address = kwargs.pop('address')
     plasma_size = kwargs.pop('plasma_size')
     with create_actor_pool(n_process=1, backend='gevent', address=address, **kwargs) as pool:
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
         pool.create_actor(ClusterInfoActor, schedulers=[address],
                           uid=ClusterInfoActor.default_name())
         pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
@@ -150,10 +151,11 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     with plasma.start_plasma_store(plasma_size) as store_args:
         options.worker.plasma_socket = plasma_socket = store_args[0]
         plasma_client = plasma.connect(plasma_socket, '', 0)
-        plasma_store = PlasmaChunkStore(plasma_client)
 
         with start_transfer_test_pool(address=pool_address, plasma_size=plasma_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
+            mapper_ref = pool.actor_ref(PlasmaKeyMapActor.default_name())
+            plasma_store = PlasmaChunkStore(plasma_client, mapper_ref)
 
             for _ in range(2):
                 pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
@@ -202,7 +204,6 @@ class Test(WorkerCase):
         options.worker.spill_directory = os.path.join(
             tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
         session_id = str(uuid.uuid4())
-        store = PlasmaChunkStore(self._plasma_client)
 
         mock_data = np.array([1, 2, 3, 4])
         chunk_key1 = str(uuid.uuid4())
@@ -222,6 +223,10 @@ class Test(WorkerCase):
             chunk_holder_ref = send_pool.actor_ref(ChunkHolderActor.default_name())
             sender_ref = send_pool.actor_ref(SenderActor.default_name())
             receiver_ref = recv_pool.actor_ref(ReceiverActor.default_name())
+
+            sender_mapper_ref = send_pool.actor_ref(PlasmaKeyMapActor.default_name())
+            store = PlasmaChunkStore(self._plasma_client, sender_mapper_ref)
+
             with self.run_actor_test(send_pool) as test_actor:
                 # send when data missing
                 sender_ref_p = test_actor.promise_ref(sender_ref)
@@ -291,7 +296,6 @@ class Test(WorkerCase):
         options.worker.spill_directory = os.path.join(
             tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
         session_id = str(uuid.uuid4())
-        store = PlasmaChunkStore(self._plasma_client)
 
         mock_data = np.array([1, 2, 3, 4])
         serialized_mock_data = dataserializer.dumps(mock_data)
@@ -305,7 +309,10 @@ class Test(WorkerCase):
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
+            mapper_ref = pool.actor_ref(PlasmaKeyMapActor.default_name())
             receiver_ref = pool.create_actor(ReceiverActor, uid=str(uuid.uuid4()))
+
+            store = PlasmaChunkStore(self._plasma_client, mapper_ref)
 
             # check_status on receiving and received
             self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
@@ -498,8 +505,10 @@ class Test(WorkerCase):
                     with self.run_actor_test(pool) as test_actor:
                         remote_dispatch_ref = test_actor.promise_ref(
                             DispatchActor.default_name(), address=remote_pool_addr)
+                        remote_mapper_ref = pool.actor_ref(
+                            PlasmaKeyMapActor.default_name(), address=remote_pool_addr)
                         remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
-                        remote_store = PlasmaChunkStore(remote_plasma_client)
+                        remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):
                             sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)

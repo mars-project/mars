@@ -147,6 +147,10 @@ class WorkerService(object):
             schedulers = None
             service_discover_addr = options.kv_store
 
+        # create plasma key mapper
+        from .chunkstore import PlasmaKeyMapActor
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+
         if distributed:
             # create ClusterInfoActor
             self._cluster_info_ref = pool.create_actor(

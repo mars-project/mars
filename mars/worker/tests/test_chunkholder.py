@@ -16,8 +16,6 @@ import uuid
 import numpy as np
 from functools import partial
 
-import gevent
-
 from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.config import options
@@ -29,6 +27,7 @@ from mars.scheduler.kvstore import KVStoreActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
+from mars.worker.chunkstore import PlasmaKeyMapActor
 from mars.worker.utils import WorkerActor
 
 
@@ -59,7 +58,7 @@ class CacheTestActor(WorkerActor):
             try:
                 ref = chunk_store.put(session_id, data_key, data)
                 chunk_holder_ref.register_chunk(session_id, data_key)
-                gevent.sleep(0.5)
+                self.ctx.sleep(0.5)
                 del ref
             except StoreFull:
                 return chunk_holder_ref.spill_size(calc_data_size(data) * 2, _promise=True) \
@@ -119,6 +118,7 @@ class Test(WorkerCase):
     def testHolder(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
@@ -132,7 +132,7 @@ class Test(WorkerCase):
                 test_ref = pool.create_actor(CacheTestActor)
                 test_ref.run_test_cache()
                 while not test_ref.get_exc_info()[0]:
-                    gevent.sleep(0.1)
+                    pool.sleep(0.1)
                 exc_info = test_ref.get_exc_info()[1]
                 if exc_info:
                     six.reraise(*exc_info)
@@ -145,6 +145,7 @@ class Test(WorkerCase):
 
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
@@ -159,7 +160,7 @@ class Test(WorkerCase):
                 test_ref = pool.create_actor(CacheTestActor)
                 test_ref.run_test_ensure_timeout()
                 while not test_ref.get_exc_info()[0]:
-                    gevent.sleep(0.1)
+                    pool.sleep(0.1)
                 exc_info = test_ref.get_exc_info()[1]
                 self.assertIsNotNone(exc_info)
                 self.assertIsInstance(exc_info[1], PromiseTimeout)

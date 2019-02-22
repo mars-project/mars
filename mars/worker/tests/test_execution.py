@@ -34,6 +34,7 @@ from mars.scheduler import ChunkMetaActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
+from mars.worker.chunkstore import PlasmaKeyMapActor
 from mars.worker.distributor import WorkerDistributor
 from mars.worker.prochelper import ProcessHelperActor
 from mars.worker.utils import WorkerActor
@@ -157,6 +158,7 @@ class Test(WorkerCase):
     def create_standard_actors(cls, pool, address, quota_size=None, with_daemon=True,
                                with_status=True):
         quota_size = quota_size or (1024 * 1024)
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
         pool.create_actor(ClusterInfoActor, schedulers=[address],
                           uid=ClusterInfoActor.default_name())
 

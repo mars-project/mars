@@ -13,26 +13,51 @@
 # limitations under the License.
 
 import logging
-import hashlib
 
-from ..utils import to_binary, calc_data_size
-from ..compat import functools32
+from ..actors import FunctionActor
 from ..errors import StoreFull, StoreKeyExists
-
+from ..utils import calc_data_size
 
 logger = logging.getLogger(__name__)
+
+
+class PlasmaKeyMapActor(FunctionActor):
+    @classmethod
+    def default_name(cls):
+        return 'w:' + cls.__name__
+
+    def __init__(self):
+        super(PlasmaKeyMapActor, self).__init__()
+        self._mapping = dict()
+
+    def put(self, session_id, chunk_key, obj_id):
+        session_chunk_key = (session_id, chunk_key)
+        if session_chunk_key in self._mapping:
+            raise StoreKeyExists
+        self._mapping[session_chunk_key] = obj_id
+
+    def get(self, session_id, chunk_key):
+        return self._mapping.get((session_id, chunk_key))
+
+    def delete(self, session_id, chunk_key):
+        try:
+            del self._mapping[(session_id, chunk_key)]
+        except KeyError:
+            pass
 
 
 class PlasmaChunkStore(object):
     """
     Wrapper of plasma client for Mars objects
     """
-    def __init__(self, plasma_client):
+    def __init__(self, plasma_client, mapper_ref):
         from ..serialize.dataserializer import mars_serialize_context
 
         self._plasma_client = plasma_client
         self._actual_size = None
         self._serialize_context = mars_serialize_context()
+
+        self._mapper_ref = mapper_ref
 
     def get_actual_capacity(self):
         """
@@ -58,21 +83,28 @@ class PlasmaChunkStore(object):
             self._actual_size = total_size
         return self._actual_size
 
-    @staticmethod
-    @functools32.lru_cache(100)
-    def _calc_object_id(session_id, chunk_key):
+    def _new_object_id(self, session_id, chunk_key):
         """
         Calc unique object id for chunks
         """
         from pyarrow.plasma import ObjectID
-        key = '%s#%s' % (session_id, chunk_key)
-        digest = hashlib.md5(to_binary(key)).digest()
-        return ObjectID(digest + digest[:4])
+        while True:
+            new_id = ObjectID.from_random()
+            if not self._plasma_client.contains(new_id):
+                break
+        self._mapper_ref.put(session_id, chunk_key, new_id)
+        return new_id
+
+    def _get_object_id(self, session_id, chunk_key):
+        obj_id = self._mapper_ref.get(session_id, chunk_key)
+        if obj_id is None:
+            raise KeyError
+        return obj_id
 
     def create(self, session_id, chunk_key, size):
-        from pyarrow.lib import PlasmaStoreFull, PlasmaObjectExists
+        from pyarrow.lib import PlasmaStoreFull
+        obj_id = self._new_object_id(session_id, chunk_key)
 
-        obj_id = self._calc_object_id(session_id, chunk_key)
         try:
             self._plasma_client.evict(size)
             buffer = self._plasma_client.create(obj_id, size)
@@ -81,24 +113,13 @@ class PlasmaChunkStore(object):
             exc_type = PlasmaStoreFull
             logger.warning('Chunk %s(%d) failed to store to plasma due to StoreFullError',
                            chunk_key, size)
-        except PlasmaObjectExists:
-            exc_type = PlasmaObjectExists
-            logger.warning('Chunk %s(%d) already exists in plasma store', chunk_key, size)
 
         if exc_type is PlasmaStoreFull:
             raise StoreFull
-        elif exc_type is PlasmaObjectExists:
-            raise StoreKeyExists
-
-    def evict(self, size):
-        """
-        Evict some size form store
-        """
-        self._plasma_client.evict(size)
 
     def seal(self, session_id, chunk_key):
         from pyarrow.lib import PlasmaObjectNonexistent
-        obj_id = self._calc_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, chunk_key)
         try:
             self._plasma_client.seal(obj_id)
         except PlasmaObjectNonexistent:
@@ -110,7 +131,7 @@ class PlasmaChunkStore(object):
         """
         from pyarrow.plasma import ObjectNotAvailable
 
-        obj_id = self._calc_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, chunk_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
         if obj is ObjectNotAvailable:
             raise KeyError((session_id, chunk_key))
@@ -120,7 +141,7 @@ class PlasmaChunkStore(object):
         """
         Get raw buffer from plasma store
         """
-        obj_id = self._calc_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, chunk_key)
         [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
         if buf is None:
             raise KeyError((session_id, chunk_key))
@@ -132,7 +153,7 @@ class PlasmaChunkStore(object):
         """
         buf = None
         try:
-            obj_id = self._calc_object_id(session_id, chunk_key)
+            obj_id = self._get_object_id(session_id, chunk_key)
             [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
             if buf is None:
                 raise KeyError((session_id, chunk_key))
@@ -149,11 +170,16 @@ class PlasmaChunkStore(object):
         :param value: Mars object to be put
         """
         import pyarrow
-        from pyarrow.lib import PlasmaStoreFull, PlasmaObjectExists
+        from pyarrow.lib import PlasmaStoreFull
 
         data_size = calc_data_size(value)
 
-        obj_id = self._calc_object_id(session_id, chunk_key)
+        try:
+            obj_id = self._new_object_id(session_id, chunk_key)
+        except StoreKeyExists:
+            obj_id = self._get_object_id(session_id, chunk_key)
+            [buffer] = self._plasma_client.get_buffers([obj_id])
+            return buffer
 
         try:
             serialized = pyarrow.serialize(value, self._serialize_context)
@@ -163,12 +189,11 @@ class PlasmaChunkStore(object):
                 stream.set_memcopy_threads(6)
                 serialized.write_to(stream)
                 self._plasma_client.seal(obj_id)
-            except PlasmaObjectExists:
-                [buffer] = self._plasma_client.get_buffers([obj_id])
             finally:
                 del serialized
             return buffer
         except PlasmaStoreFull:
+            self._mapper_ref.delete(session_id, chunk_key)
             logger.warning('Chunk %s(%d) failed to store to plasma due to StoreFullError',
                            chunk_key, data_size)
             exc = PlasmaStoreFull
@@ -180,7 +205,10 @@ class PlasmaChunkStore(object):
         Check if given chunk key exists in current plasma store
         """
         try:
-            obj_id = self._calc_object_id(session_id, chunk_key)
+            obj_id = self._get_object_id(session_id, chunk_key)
             return self._plasma_client.contains(obj_id)
         except KeyError:
             return False
+
+    def delete(self, session_id, chunk_key):
+        self._mapper_ref.delete(session_id, chunk_key)
