@@ -40,7 +40,7 @@ def _store_tiledb(ctx, chunk):
         for axis in range(chunk.ndim):
             axis_offset = axis_offsets[axis]
             axis_length = chunk.op.input.shape[axis]
-            slcs.append(slice(axis_offset, axis_offset+axis_length))
+            slcs.append(slice(axis_offset, axis_offset + axis_length))
         with tiledb.DenseArray(tiledb_ctx, uri, mode='w',
                                key=key, timestamp=timestamp) as arr:
             arr[tuple(slcs)] = to_store

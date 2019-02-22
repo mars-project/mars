@@ -17,17 +17,19 @@ try:
 except ImportError:  # pragma: no cover
     tildb = None
 
+from ...compat import functools32
 
-# As TileDB is a bit time-consuming,
-# we just create a dict to hold a config to tiledb context
-_tiledb_ctx = dict()
+
+# As TileDB Ctx's creation is a bit time-consuming,
+# we just cache the Ctx
+# also remember the arguments should be hashable
+@functools32.lru_cache(10)
+def _create_tiledb_ctx(conf_tuple):
+    if conf_tuple is not None:
+        return tiledb.Ctx(dict(conf_tuple))
+    return tiledb.Ctx()
 
 
 def get_tiledb_ctx(conf):
-    if conf is None:
-        key = None
-    else:
-        key = tuple(conf.keys()), tuple(conf.values())
-    if key not in _tiledb_ctx:
-        _tiledb_ctx[key] = tiledb.Ctx(conf)
-    return _tiledb_ctx[key]
+    key = tuple(conf.items()) if conf is not None else None
+    return _create_tiledb_ctx(key)

@@ -172,7 +172,7 @@ def _tensor_tiledb(ctx, chunk):
     for axis in range(chunk.ndim):
         axis_offset = axis_offsets[axis]
         axis_length = chunk.shape[axis]
-        slcs.append(slice(axis_offset, axis_offset+axis_length))
+        slcs.append(slice(axis_offset, axis_offset + axis_length))
 
     if not chunk.issparse():
         # read dense array from tiledb

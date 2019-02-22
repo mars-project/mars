@@ -366,6 +366,11 @@ class Tensor(Entity):
         """
         return self._data.reshape(shape, *shapes)
 
+    def totiledb(self, uri, ctx=None, key=None, timestamp=None):
+        from .expressions.datastore import totiledb
+
+        return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
+
 
 class SparseTensor(Tensor):
     __slots__ = ()
