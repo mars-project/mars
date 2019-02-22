@@ -17,7 +17,7 @@
 import unittest
 
 from mars.tensor.execution.core import Executor
-from mars.tensor import ones
+from mars.tensor import random
 from mars.session import LocalSession, Session
 
 
@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
         self.session._sess = local_session
 
     def testDecref(self):
-        a = ones((10, 20), chunk_size=5)
+        a = random.rand(10, 20, chunk_size=5)
         b = a + 1
 
         b.execute(session=self.session)
