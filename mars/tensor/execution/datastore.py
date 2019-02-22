@@ -58,7 +58,7 @@ def _store_tiledb(ctx, chunk):
                 else:
                     i, j = to_store.row + axis_offsets[0], to_store.col + axis_offsets[1]
                     arr[i, j] = to_store.data
-        ctx[chunk.key] = SparseNDArray(sps.rand(0, 0).astype(chunk.dtype),
+        ctx[chunk.key] = SparseNDArray(sps.csr_matrix((0, 0), dtype=chunk.dtype),
                                        shape=chunk.shape)
 
 
