@@ -26,6 +26,9 @@ message OperandDef {
         TENSOR_LINSPACE = 14;
         TENSOR_TRIU = 15;
         TENSOR_TRIL = 16;
+        // external storage
+        TENSOR_FROM_TILEDB = 18;
+        TENSOR_STORE_TILEDB = 19;
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
 

@@ -21,6 +21,7 @@ from ...lib import sparse
 from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, naked
 from ...lib.sparse import SparseNDArray
 from ..expressions import datasource
+from .utils import get_tiledb_ctx
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +156,52 @@ def _tensor_dense_to_sparse(ctx, chunk):
     ctx[chunk.key] = SparseNDArray(xps.csr_matrix(in_data))
 
 
+def _tensor_tiledb(ctx, chunk):
+    import tiledb
+
+    xp = array_module(chunk.op.gpu)
+
+    axis_offsets = [offset + dim_start for offset, dim_start
+                    in zip(chunk.op.axis_offsets, chunk.op.tiledb_dim_starts)]
+    tiledb_ctx = get_tiledb_ctx(chunk.op.tiledb_config)
+    uri = chunk.op.tiledb_uri
+    key = chunk.op.tiledb_key
+    timestamp = chunk.op.tiledb_timestamp
+
+    slcs = []
+    for axis in range(chunk.ndim):
+        axis_offset = axis_offsets[axis]
+        axis_length = chunk.shape[axis]
+        slcs.append(slice(axis_offset, axis_offset + axis_length))
+
+    if not chunk.issparse():
+        # read dense array from tiledb
+        with tiledb.DenseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
+            ctx[chunk.key] = tiledb_arr[tuple(slcs)]
+    else:
+        # read sparse array from tiledb
+        with tiledb.SparseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
+            if tiledb_arr.ndim > 2:
+                raise NotImplementedError(
+                    'Does not support to read array with more than 2 dimensions')
+
+            data = tiledb_arr[tuple(slcs)]
+            coords = data['coords']
+            value = data[tiledb_arr.attr(0).name]
+            if tiledb_arr.ndim == 2:
+                # 2-d
+                ij = tuple(coords[tiledb_arr.domain.dim(k).name] - axis_offsets[k]
+                           for k in range(tiledb_arr.ndim))
+                spmatrix = sps.coo_matrix((value, ij), shape=chunk.shape)
+                ctx[chunk.key] = SparseNDArray(spmatrix)
+            else:
+                # 1-d
+                ij = xp.zeros(coords.shape), \
+                     coords[tiledb_arr.domain.dim(0).name] - axis_offsets[0]
+                spmatrix = sps.coo_matrix((value, ij), shape=(1,) + chunk.shape)
+                ctx[chunk.key] = SparseNDArray(spmatrix, shape=chunk.shape)
+
+
 def _tensor_fetch_chunk(ctx, chunk):
     # nothing need to do
     return
@@ -187,5 +234,7 @@ def register_data_source_handler():
     register(datasource.CSRMatrixDataSource, _tensor_csr_matrix_data_source)
     register(datasource.SparseToDense, _tensor_sparse_to_dense)
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
+    register(datasource.TensorTileDBDataSource, _tensor_tiledb)
     register(datasource.TensorFetch, _tensor_fetch_chunk)
     register(datasource.Scalar, _scalar)
+

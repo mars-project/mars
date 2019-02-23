@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import Operand
+from .base import HasInput
 
 
-class DataStore(Operand):
+class DataStore(HasInput):
     __slots__ = ()
