@@ -373,6 +373,7 @@ def register(op, handler):
 
 
 from .datasource import register_data_source_handler
+from .datastore import register_data_store_handler
 from .random import register_random_handler
 from .base import register_basic_handler
 from .arithmetic import register_arithmetic_handler
@@ -382,13 +383,14 @@ from .merge import register_merge_handler
 from .fft import register_fft_handler
 from .linalg import register_linalg_handler
 
+
 NUMEXPR_INSTALLED = False
 try:
     import numexpr  # noqa: F401
     NUMEXPR_INSTALLED = True
     from .ne import register_numexpr_handler
     register_numexpr_handler()
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 CP_INSTALLED = False
@@ -397,10 +399,11 @@ try:
     CP_INSTALLED = True
     from .cp import register_cp_handler
     register_cp_handler()
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 
 register_data_source_handler()
+register_data_store_handler()
 register_random_handler()
 register_basic_handler()
 register_arithmetic_handler()

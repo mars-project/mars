@@ -458,6 +458,11 @@ class TensorData(SerializableWithKey, Tilesable):
 
     flatten = ravel
 
+    def totiledb(self, uri, ctx=None, key=None, timestamp=None):
+        from .expressions.datastore import totiledb
+
+        return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
+
     def _equals(self, o):
         return self is o
 

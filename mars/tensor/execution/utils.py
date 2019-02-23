@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,4 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .totiledb import totiledb, TensorTileDBDataStore
+try:
+    import tiledb
+except ImportError:  # pragma: no cover
+    tildb = None
+
+from ...compat import functools32
+
+
+# As TileDB Ctx's creation is a bit time-consuming,
+# we just cache the Ctx
+# also remember the arguments should be hashable
+@functools32.lru_cache(10)
+def _create_tiledb_ctx(conf_tuple):
+    if conf_tuple is not None:
+        return tiledb.Ctx(dict(conf_tuple))
+    return tiledb.Ctx()
+
+
+def get_tiledb_ctx(conf):
+    key = tuple(conf.items()) if conf is not None else None
+    return _create_tiledb_ctx(key)
