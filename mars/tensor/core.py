@@ -374,9 +374,7 @@ class Tensor(Entity):
         return self._data.reshape(shape, *shapes)
 
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
-        from .expressions.datastore import totiledb
-
-        return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
+        return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)

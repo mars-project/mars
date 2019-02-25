@@ -33,7 +33,7 @@ class PlasmaKeyMapActor(FunctionActor):
     def put(self, session_id, chunk_key, obj_id):
         session_chunk_key = (session_id, chunk_key)
         if session_chunk_key in self._mapping:
-            raise StoreKeyExists
+            raise StoreKeyExists(session_chunk_key)
         self._mapping[session_chunk_key] = obj_id
 
     def get(self, session_id, chunk_key):
@@ -98,7 +98,7 @@ class PlasmaChunkStore(object):
     def _get_object_id(self, session_id, chunk_key):
         obj_id = self._mapper_ref.get(session_id, chunk_key)
         if obj_id is None:
-            raise KeyError
+            raise KeyError((session_id, chunk_key))
         return obj_id
 
     def create(self, session_id, chunk_key, size):
