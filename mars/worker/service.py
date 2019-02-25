@@ -99,6 +99,10 @@ class WorkerService(object):
             schedulers = None
             service_discover_addr = options.kv_store
 
+        # create plasma key mapper
+        from .chunkstore import PlasmaKeyMapActor
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(ClusterInfoActor, schedulers=schedulers,
                                                    service_discover_addr=service_discover_addr,
@@ -207,6 +211,10 @@ class WorkerService(object):
             spill_directory = parse_spill_dirs(spill_dir)
         else:
             spill_directory = None
+
+        # create plasma key mapper
+        from .chunkstore import PlasmaKeyMapActor
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
 
         # create StatusActor
         self._status_ref = pool.create_actor(

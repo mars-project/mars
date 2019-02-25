@@ -29,7 +29,7 @@ from mars.scheduler import ChunkMetaActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
 from mars.worker.distributor import WorkerDistributor
-from mars.worker.chunkstore import PlasmaChunkStore
+from mars.worker.chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker.utils import WorkerActor
 from pyarrow import plasma
@@ -93,6 +93,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
         with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
                                address=pool_address) as pool:
             try:
+                pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
                 pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                                   uid=ClusterInfoActor.default_name())
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
@@ -165,6 +166,7 @@ class Test(WorkerCase):
 
         with create_actor_pool(n_process=1, distributor=WorkerDistributor(1),
                                backend='gevent', address=local_pool_addr) as pool:
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
             pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
                               uid=ClusterInfoActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
@@ -198,7 +200,9 @@ class Test(WorkerCase):
                         remote_dispatch_ref = test_actor.promise_ref(
                             DispatchActor.default_name(), address=remote_pool_addr)
                         remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
-                        remote_store = PlasmaChunkStore(remote_plasma_client)
+                        remote_mapper_ref = pool.actor_ref(
+                            PlasmaKeyMapActor.default_name(), address=remote_pool_addr)
+                        remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):
                             sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)

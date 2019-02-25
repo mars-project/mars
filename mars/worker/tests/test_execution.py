@@ -26,6 +26,7 @@ from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ChunkMetaActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
+from mars.worker.chunkstore import PlasmaKeyMapActor
 from mars.worker.utils import WorkerActor
 
 
@@ -81,6 +82,7 @@ class Test(WorkerCase):
     def testExecute(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
             pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
                               uid=ClusterInfoActor.default_name())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
