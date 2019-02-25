@@ -68,7 +68,7 @@ class Test(unittest.TestCase):
 
         check_time = time.time()
         while any(p.poll() is None for p in procs):
-            time.sleep(1)
+            time.sleep(0.1)
             if time.time() - check_time > 5:
                 break
 
@@ -78,6 +78,7 @@ class Test(unittest.TestCase):
 
         if self.etcd_helper:
             self.etcd_helper.stop()
+        options.kv_store = ':inproc:'
 
     def start_processes(self, n_schedulers=1, n_workers=2, etcd=False, modules=None):
         old_not_errors = gevent.hub.Hub.NOT_ERROR

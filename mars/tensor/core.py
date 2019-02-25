@@ -519,6 +519,13 @@ class Tensor(Entity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
 
+    def __dir__(self):
+        from ..lib.lib_utils import dir2
+        obj_dir = dir2(self)
+        if self._data is not None:
+            obj_dir = sorted(set(dir(self._data) + obj_dir))
+        return obj_dir
+
     def __len__(self):
         return len(self._data)
 
@@ -564,6 +571,9 @@ class Tensor(Entity):
 
     def __array__(self, dtype=None):
         return np.asarray(self.execute(), dtype=dtype)
+
+    def execute(self, session=None, **kw):
+        return self._data.execute(session, **kw)
 
 
 class SparseTensor(Tensor):
