@@ -35,6 +35,12 @@ class Test(unittest.TestCase):
         c = asarray(a)
         self.assertIs(a, c)
 
+    def testDir(self):
+        a = tensor([0, 1, 2], chunk_size=2)
+        tensor_dir = dir(a)
+        for attr in dir(a.data):
+            self.assertIn(attr, tensor_dir)
+
     def testCopyto(self):
         a = ones((10, 20), chunk_size=3)
         b = ones(10, chunk_size=4)

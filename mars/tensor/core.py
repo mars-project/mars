@@ -202,6 +202,13 @@ class Tensor(Entity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
 
+    def __dir__(self):
+        from ..lib.lib_utils import dir2
+        obj_dir = dir2(self)
+        if self._data is not None:
+            obj_dir = sorted(set(dir(self._data) + obj_dir))
+        return obj_dir
+
     def __str__(self):
         return self._data.__str__()
 
@@ -367,9 +374,10 @@ class Tensor(Entity):
         return self._data.reshape(shape, *shapes)
 
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
-        from .expressions.datastore import totiledb
+        return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
-        return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
+    def execute(self, session=None, **kw):
+        return self._data.execute(session, **kw)
 
 
 class SparseTensor(Tensor):
