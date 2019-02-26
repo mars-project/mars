@@ -70,6 +70,7 @@ class SessionActor(SchedulerActor):
         for tensor_key in target_tensors or ():
             if tensor_key not in self._tensor_to_graph:
                 self._tensor_to_graph[tensor_key] = graph_ref
+        return graph_ref
 
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()

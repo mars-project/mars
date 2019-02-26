@@ -34,7 +34,7 @@ class Promise(object):
     """
     Object representing a promised result
     """
-    def __init__(self, resolve=None, reject=None, done=False):
+    def __init__(self, resolve=None, reject=None, done=False, failed=False):
         # use random promise id
         self._id = struct.pack('<Q', id(self)) + np.random.bytes(32)
         # register in global pool to reject gc collection
@@ -55,7 +55,12 @@ class Promise(object):
         self._next_item = None  # type: Promise
 
         # promise results
-        self._accepted = None if not done else True
+        if done:
+            self._accepted = True
+        elif failed:
+            self._accepted = False
+        else:
+            self._accepted = None
         self._args = ()
         self._kwargs = {}
 
@@ -264,7 +269,7 @@ class PromiseRefWrapper(object):
             kwargs['_tell'] = True
             ref_fun(*args, **kwargs)
 
-            if timeout > 0:
+            if timeout and timeout > 0:
                 # add a callback that triggers some times later to deal with timeout
                 self._caller.ref().handle_promise_timeout(p.id, _tell=True, _delay=timeout)
 

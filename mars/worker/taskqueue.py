@@ -105,7 +105,7 @@ class TaskQueueActor(WorkerActor):
         :param priority_data: priority data
         :param callback: callback to invoke when the resources are allocated
         """
-        logger.debug('Operand task %s enqueued.', op_key)
+        logger.debug('Operand task %s enqueued in %s.', op_key, self.address)
         item = ChunkPriorityItem(session_id, op_key, priority_data, callback)
         self._requests[(session_id, op_key)] = item
         heapq.heappush(self._req_heap, item)
@@ -119,7 +119,7 @@ class TaskQueueActor(WorkerActor):
         :param op_key: operand key
         :param priority_data: new priority data
         """
-        logger.debug('Priority data for operand task %s updated.', op_key)
+        logger.debug('Priority data for operand task %s updated in %s.', op_key, self.address)
         query_key = (session_id, op_key)
         if query_key not in self._requests:
             return
@@ -144,7 +144,7 @@ class TaskQueueActor(WorkerActor):
         :param op_key: operand key
         :param callback: callback to invoke
         """
-        logger.debug('Operand task %s allocated.', op_key)
+        logger.debug('Operand task %s allocated in %s.', op_key, self.address)
         query_key = (session_id, op_key)
         self.tell_promise(callback, *args, **kwargs)
         try:
@@ -159,7 +159,7 @@ class TaskQueueActor(WorkerActor):
         :param session_id: session id
         :param op_key: operand key
         """
-        logger.debug('Operand task %s released.', op_key)
+        logger.debug('Operand task %s released in %s.', op_key, self.address)
         query_key = (session_id, op_key)
         try:
             del self._requests[(session_id, op_key)]
@@ -256,7 +256,7 @@ class TaskQueueAllocatorActor(WorkerActor):
 
             # obtain quota sizes for operands
             quota_request = self._execution_ref.prepare_quota_request(item.session_id, item.op_key)
-            logger.debug('Quota request for %s: %r', item.op_key, quota_request)
+            logger.debug('Quota request for %s in %s: %r', item.op_key, self.address, quota_request)
             if quota_request:
                 local_cb = ((self._queue_ref.uid, self._queue_ref.address),
                             TaskQueueActor.handle_allocated.__name__,

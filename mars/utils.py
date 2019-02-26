@@ -149,6 +149,7 @@ def _get_ports_from_netstat():
     import subprocess
     while True:
         p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
+        # in python 2, subprocess does not support waiting for fixed seconds
         ps_proc = psutil.Process(p.pid)
         try:
             ps_proc.wait(5)

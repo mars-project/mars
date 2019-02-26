@@ -48,7 +48,7 @@ msgstr ""
 
 #: ../../source/distributed/fault-tolerance.rst:16
 msgid "Worker-level Fault Tolerance"
-msgstr "工作站级别容错"
+msgstr "Worker 容错"
 
 #: ../../source/distributed/fault-tolerance.rst:20
 msgid "New in version 0.2.0a3"

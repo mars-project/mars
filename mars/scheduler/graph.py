@@ -150,6 +150,8 @@ class GraphActor(SchedulerActor):
         self._state = state
         self._final_state = final_state
 
+        self._operand_free_paused = False
+
         self._start_time = None
         self._end_time = None
         self._nodes_num = None
@@ -683,6 +685,15 @@ class GraphActor(SchedulerActor):
             self._target_tensor_finished[tensor_key].difference_update([op_key])
             self._terminated_tensors.difference_update([tensor_key])
 
+    def dump_unfinished_terminals(self):  # pragma: no cover
+        unfinished_dict = dict()
+        for tensor_key, chunk_ops in self._target_tensor_chunk_ops.items():
+            executed_ops = self._target_tensor_finished.get(tensor_key, ())
+            unfinished = sorted(set(chunk_ops) - set(executed_ops))
+            if unfinished:
+                unfinished_dict[tensor_key] = unfinished
+        logger.debug('Unfinished terminal chunks: %r', unfinished_dict)
+
     def get_state(self):
         return self.state
 
@@ -693,7 +704,12 @@ class GraphActor(SchedulerActor):
         return [self._operand_infos[k]['state'] for k in op_keys]
 
     def set_operand_state(self, op_key, state):
-        self._operand_infos[op_key]['state'] = OperandState(state)
+        op_info = self._operand_infos[op_key]
+        op_info['state'] = OperandState(state)
+        try:
+            del op_info['failover_state']
+        except KeyError:
+            pass
 
     def get_operand_target_worker(self, op_key):
         return self._operand_infos[op_key]['target_worker']
@@ -842,9 +858,32 @@ class GraphActor(SchedulerActor):
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
 
     @log_unhandled
-    def handle_worker_change(self, adds, removes, lost_chunks):
+    def check_operand_can_be_freed(self, succ_op_keys):
+        operand_infos = self._operand_infos
+        for k in succ_op_keys:
+            op_info = operand_infos[k]
+            op_state = op_info.get('state')
+            if op_state not in OperandState.SUCCESSFUL_STATES:
+                return False
+            failover_state = op_info.get('failover_state')
+            if failover_state and failover_state not in OperandState.SUCCESSFUL_STATES:
+                return False
+        if self._operand_free_paused:
+            return None
+        return True
+
+    @log_unhandled
+    def handle_worker_change(self, adds, removes, lost_chunks, handle_later=True):
         if self._state in GraphState.TERMINATED_STATES:
             return
+
+        if handle_later:
+            self._operand_free_paused = True
+            self.ref().handle_worker_change(adds, removes, lost_chunks,
+                                            handle_later=False, _delay=0.5, _tell=True)
+            return
+        else:
+            self._operand_free_paused = False
 
         worker_slots = self._get_worker_slots()
         removes_set = set(removes)
@@ -898,6 +937,7 @@ class GraphActor(SchedulerActor):
 
             op_info = operand_infos[key]
             from_state = op_info['state']
+            op_info['failover_state'] = state
 
             op_ref = self._get_operand_ref(key)
             if from_state == OperandState.READY:
@@ -912,7 +952,12 @@ class GraphActor(SchedulerActor):
                 from_states, state, new_target, removes, _tell=True, _wait=False))
         [f.result() for f in futures]
 
-        with self._open_dump_file('failover-record') as outf:  # pragma: no cover
+        self._dump_failover_info(adds, removes, lost_chunks, new_states)
+
+    def _dump_failover_info(self, adds, removes, lost_chunks, new_states):  # pragma: no cover
+        if not options.scheduler.dump_graph_data:
+            return
+        with self._open_dump_file('failover-record') as outf:
             outf.write('ADDED WORKERS:\n')
             for c in adds:
                 outf.write(c + '\n')
@@ -923,7 +968,7 @@ class GraphActor(SchedulerActor):
             for c in lost_chunks:
                 outf.write(c + '\n')
             outf.write('\n\nOPERAND SNAPSHOT:\n')
-            for key, op_info in operand_infos.items():
+            for key, op_info in self._operand_infos.items():
                 outf.write('Chunk: %s Worker: %r State: %s\n' %
                            (key, op_info.get('worker'), op_info['state'].value))
             outf.write('\n\nSTATE TRANSITIONS:\n')

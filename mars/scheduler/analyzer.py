@@ -378,9 +378,7 @@ class GraphAnalyzer(object):
         # check data on finished operands. when data lost, mark the operand
         # and its successors as affected.
         affected_op_keys = set()
-        for op_key, state in op_states.items():
-            if state != OperandState.FINISHED or op_key not in lost_ops:
-                continue
+        for op_key in lost_ops:
             affected_op_keys.add(op_key)
             for n in op_key_to_chunks[op_key]:
                 affected_op_keys.update(succ.op.key for succ in graph.iter_successors(n))

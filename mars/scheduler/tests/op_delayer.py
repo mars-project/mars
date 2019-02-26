@@ -14,9 +14,10 @@
 
 import os
 
-from mars.scheduler.operand import OperandActor
+from mars.scheduler.operand import OperandActor, OperandPosition
 
 _old_on_running = OperandActor._on_running
+_old_on_finished = OperandActor._on_finished
 
 
 def _on_running(self):
@@ -25,4 +26,14 @@ def _on_running(self):
         self.ctx.sleep(1)
 
 
+def _on_finished(self):
+    _old_on_finished(self)
+    if self._position == OperandPosition.TERMINAL and 'TERMINATE_STATE_FILE' in os.environ:
+        try:
+            open(os.environ['TERMINATE_STATE_FILE'], 'w').close()
+        except OSError:
+            pass
+
+
 OperandActor._on_running = _on_running
+OperandActor._on_finished = _on_finished

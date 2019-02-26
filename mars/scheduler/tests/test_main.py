@@ -52,11 +52,6 @@ class Test(unittest.TestCase):
         options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
         cls._kv_store = kvstore.get(options.kv_store)
 
-        if sys.platform == 'win32':
-            os.system('del *.log')
-        else:
-            os.system('rm *.log')
-
     @classmethod
     def tearDownClass(cls):
         import shutil
@@ -116,12 +111,16 @@ class Test(unittest.TestCase):
         else:
             append_args.extend(['--schedulers', ','.join(self.scheduler_endpoints)])
 
+        if 'DUMP_GRAPH_DATA' in os.environ:
+            append_args += ['-Dscheduler.dump_graph_data=true']
+
         self.proc_schedulers = [
             subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                               '-H', '127.0.0.1',
                               '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
-                              '--format', '%(asctime)-15s %(message)s']
+                              '--format', '%(asctime)-15s %(message)s',
+                              '-Dscheduler.retry_delay=5']
                              + append_args)
             for p in scheduler_ports]
         self.proc_workers = [
@@ -175,13 +174,23 @@ class Test(unittest.TestCase):
             if worker_proc.poll() is not None:
                 raise SystemError('Worker not started. exit code %s' % worker_proc.poll())
 
-    def wait_for_termination(self, session_ref, graph_key):
+    def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()
+        dump_time = time.time()
+        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 60))
         while True:
             time.sleep(0.1)
             self.check_process_statuses()
-            if time.time() - check_time > 6000:
+            if time.time() - check_time > check_timeout:
                 raise SystemError('Check graph status timeout')
+            if time.time() - dump_time > 10:
+                dump_time = time.time()
+                graph_refs = session_ref.get_graph_refs()
+                try:
+                    graph_ref = actor_client.actor_ref(graph_refs[graph_key])
+                    graph_ref.dump_unfinished_terminals()
+                except KeyError:
+                    pass
             if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
                 return session_ref.graph_state(graph_key)
 
@@ -202,7 +211,7 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)
@@ -214,7 +223,7 @@ class Test(unittest.TestCase):
                                         graph_key, target_tensors=targets)
 
         # todo this behavior may change when eager mode is introduced
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.FAILED)
 
         a = mt.ones((100, 50), chunk_size=35) * 2 + 1
@@ -226,7 +235,7 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
         result = session_ref.fetch_result(graph_key, c.key)
         assert_allclose(loads(result), np.ones((100, 200)) * 450)
@@ -240,7 +249,7 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = reduce(operator.add, [base_arr[:10, :10] for _ in range(10)])
@@ -264,7 +273,7 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)
@@ -280,11 +289,12 @@ class Test(unittest.TestCase):
             proc.kill()
 
         import tempfile
-        delay_file = os.path.join(tempfile.gettempdir(),
-                                  'test-main-delay-%d-%d' % (os.getpid(), id(self)))
-        with open(delay_file, 'w'):
-            pass
-        os.environ['DELAY_STATE_FILE'] = delay_file
+        delay_file = os.environ['DELAY_STATE_FILE'] = os.path.join(
+            tempfile.gettempdir(), 'test-main-delay-%d-%d' % (os.getpid(), id(self)))
+        open(delay_file, 'w').close()
+
+        terminate_file = os.environ['TERMINATE_STATE_FILE'] = os.path.join(
+            tempfile.gettempdir(), 'test-main-terminate-%d-%d' % (os.getpid(), id(self)))
 
         self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=True)
 
@@ -301,16 +311,20 @@ class Test(unittest.TestCase):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tensor_graph(
+            json.dumps(graph.to_json()), graph_key, target_tensors=targets)
 
-        actor_client.sleep(1.2)
+        while not os.path.exists(terminate_file):
+            actor_client.sleep(0.05)
+        os.unlink(terminate_file)
+        # actor_client.sleep(1.2)
+
         kill_process_tree(self.proc_workers[0])
-        logger.warning('Worker %s KILLED!', self.proc_workers[0])
+        logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
         self.proc_workers = self.proc_workers[1:]
         os.unlink(delay_file)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)

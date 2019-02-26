@@ -660,3 +660,47 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
             self.get_result()
+
+    def testReExecuteExisting(self):
+        pool_address = '127.0.0.1:%d' % get_next_port()
+        session_id = str(uuid.uuid4())
+        mock_data = np.array([1, 2, 3, 4])
+        with create_actor_pool(n_process=1, backend='gevent',
+                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
+            pool.create_actor(CpuCalcActor)
+
+            import mars.tensor as mt
+            arr = mt.ones((4,), chunk_size=4)
+            arr_add = mt.array(mock_data)
+            result_tensor = arr + arr_add
+            graph = result_tensor.build_graph(compose=False, tiled=True)
+
+            pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
+
+            def _validate(_):
+                data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                assert_array_equal(data, mock_data + np.ones((4,)))
+
+            with self.run_actor_test(pool) as test_actor:
+                graph_key = str(uuid.uuid4())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            self.get_result()
+
+            with self.run_actor_test(pool) as test_actor:
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            self.get_result()

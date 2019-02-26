@@ -26,22 +26,23 @@ from .kvstore import KVStoreActor
 from .resource import ResourceActor
 from .utils import SchedulerActor, OperandState, OperandPosition, GraphState, array_to_bytes
 from ..actors import ActorNotExist
-from ..compat import BrokenPipeError, ConnectionRefusedError  # pylint: disable=W0622
+from ..compat import BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..errors import ExecutionInterrupted, DependencyMissing
+from ..errors import ExecutionInterrupted, DependencyMissing, WorkerDead
 from ..utils import log_unhandled
 
 logger = logging.getLogger(__name__)
-_WorkerDeadError = type('WorkerDeadError', (Exception,), {})
 
 
 @contextlib.contextmanager
 def _rewrite_worker_errors(ignore_error=False):
+    rewrite = False
     try:
         yield
-    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist):
-        if not ignore_error:
-            raise _WorkerDeadError
+    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist, TimeoutError):
+        rewrite = not ignore_error
+    if rewrite:
+        raise WorkerDead
 
 
 class OperandActor(SchedulerActor):
@@ -292,7 +293,7 @@ class OperandActor(SchedulerActor):
             try:
                 with _rewrite_worker_errors():
                     f.result()
-            except _WorkerDeadError:
+            except WorkerDead:
                 dead_workers.add(w)
         if dead_workers:
             self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
@@ -375,7 +376,7 @@ class OperandActor(SchedulerActor):
                          self.state.name, [s.name for s in from_states], self._op_key)
             return
         if self.state in (OperandState.RUNNING, OperandState.FINISHED):
-            if self.worker not in dead_workers:
+            if state != OperandState.UNSCHEDULED and self.worker not in dead_workers:
                 logger.debug('Worker %s of operand %s still alive, skip failover step',
                              self.worker, self._op_key)
                 return
@@ -436,6 +437,15 @@ class OperandActor(SchedulerActor):
         """
         if self.state == OperandState.FREED:
             return
+        if state == OperandState.CANCELLED:
+            can_be_freed = True
+        else:
+            can_be_freed = self._graph_ref.check_operand_can_be_freed(self._succ_keys)
+        if can_be_freed is None:
+            self.ref().free_data(state, _delay=1, _tell=True)
+            return
+        elif not can_be_freed:
+            return
 
         self.start_operand(state)
 
@@ -452,7 +462,7 @@ class OperandActor(SchedulerActor):
             try:
                 with _rewrite_worker_errors():
                     f.result()
-            except _WorkerDeadError:
+            except WorkerDead:
                 dead_workers.append(ep)
 
         if dead_workers:
@@ -598,7 +608,7 @@ class OperandActor(SchedulerActor):
             with _rewrite_worker_errors():
                 self._execution_ref.start_execution(
                     self._session_id, self._op_key, send_addresses=target_predicts, _promise=True)
-        except _WorkerDeadError:
+        except WorkerDead:
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
             return
         # here we start running immediately to avoid accidental state change
@@ -648,7 +658,7 @@ class OperandActor(SchedulerActor):
                         data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
                         _delay=delay, _promise=True) \
                         .then(functools.partial(self._handle_worker_accept, worker_ep))
-            except _WorkerDeadError:
+            except WorkerDead:
                 logger.debug('Worker %s dead when submitting operand %s into queue',
                              worker_ep, self._op_key)
                 dead_workers.add(worker_ep)
@@ -672,10 +682,7 @@ class OperandActor(SchedulerActor):
         @log_unhandled
         def _rejecter(*exc):
             # handling exception occurrence of operand execution
-            exc_type = exc[0] if exc else type(None)
-            if not isinstance(exc_type, type):
-                raise TypeError('Unidentified rejection args: %r', exc)
-
+            exc_type = exc[0]
             if self.state == OperandState.CANCELLING:
                 logger.warning('Execution of operand %s cancelled.', self._op_key)
                 self.free_data(OperandState.CANCELLED)
@@ -690,12 +697,8 @@ class OperandActor(SchedulerActor):
                                self._op_key)
                 self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
-                if exc:
-                    logger.exception('Attempt %d: Unexpected error occurred in executing operand %s in %s',
-                                     self.retries + 1, self._op_key, self.worker, exc_info=exc)
-                else:
-                    logger.error('Attempt %d: Unexpected error occurred in executing operand %s in %s '
-                                 'without details.', self.retries + 1, self._op_key, self.worker)
+                logger.exception('Attempt %d: Unexpected error %s occurred in executing operand %s in %s',
+                                 self.retries + 1, exc_type.__name__, self._op_key, self.worker, exc_info=exc)
                 # increase retry times
                 self.retries += 1
                 if self.retries >= options.scheduler.retry_num:
@@ -709,7 +712,7 @@ class OperandActor(SchedulerActor):
             with _rewrite_worker_errors():
                 self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
                     .then(_acceptor, _rejecter)
-        except _WorkerDeadError:
+        except WorkerDead:
             logger.debug('Worker %s dead when adding callback for operand %s',
                          self.worker, self._op_key)
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
