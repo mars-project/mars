@@ -20,7 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.tests.core import TestBase
-from mars.lib.sparse import SparseNDArray
+from mars.lib.sparse import SparseNDArray, SparseVector, SparseMatrix
 from mars.lib.sparse.core import issparse
 import mars.lib.sparse as mls
 
@@ -29,11 +29,26 @@ class Test(TestBase):
     def setUp(self):
         self.s1 = sps.csr_matrix([[1, 0, 1], [0, 0, 1]])
         self.s2 = sps.csr_matrix([[0, 1, 1], [1, 0, 1]])
+        self.v1_data = np.random.rand(3)
+        self.v1 = sps.csr_matrix(self.v1_data)
+        self.v2_data = np.random.rand(2)
+        self.v2 = sps.csr_matrix(self.v2_data)
         self.d1 = np.array([1, 2, 3])
 
     def testSparseCreation(self):
         s = SparseNDArray(self.s1)
         self.assertEqual(s.ndim, 2)
+        self.assertIsInstance(s, SparseMatrix)
+        self.assertArrayEqual(s.toarray(), self.s1.A)
+        self.assertArrayEqual(s.todense(), self.s1.A)
+
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertTrue(s.ndim, 1)
+        self.assertIsInstance(v, SparseVector)
+        self.assertEqual(v.shape, (3,))
+        self.assertArrayEqual(v.todense(), self.v1_data)
+        self.assertArrayEqual(v.toarray(), self.v1_data)
+        self.assertArrayEqual(v, self.v1_data)
 
     def _nan_equal(self, a, b):
         try:
@@ -150,6 +165,8 @@ class Test(TestBase):
     def testSparseDot(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
+        v1 = SparseNDArray(self.v1, shape=(3,))
+        v2 = SparseNDArray(self.v2, shape=(2,))
 
         self.assertArrayEqual(mls.dot(s1, s2.T), self.s1.dot(self.s2.T))
         self.assertArrayEqual(s1.dot(self.d1), self.s1.dot(self.d1))
@@ -158,6 +175,16 @@ class Test(TestBase):
         self.assertArrayEqual(mls.tensordot(s1, s2.T, axes=(1, 0)), self.s1.dot(self.s2.T))
         self.assertArrayEqual(mls.tensordot(s1, self.d1, axes=(1, -1)), self.s1.dot(self.d1))
         self.assertArrayEqual(mls.tensordot(self.d1, s1.T, axes=(0, 0)), self.d1.dot(self.s1.T.toarray()))
+
+        self.assertArrayEqual(mls.dot(s1, v1), self.s1.dot(self.v1_data))
+        self.assertArrayEqual(mls.dot(s2, v1), self.s2.dot(self.v1_data))
+        self.assertArrayEqual(mls.dot(v2, s1), self.v2_data.dot(self.s1.A))
+        self.assertArrayEqual(mls.dot(v2, s2), self.v2_data.dot(self.s2.A))
+        self.assertArrayEqual(mls.dot(v1, v1), self.v1_data.dot(self.v1_data))
+        self.assertArrayEqual(mls.dot(v2, v2), self.v2_data.dot(self.v2_data))
+
+        self.assertArrayEqual(mls.dot(v2, s1, sparse=False), self.v2_data.dot(self.s1.A))
+        self.assertArrayEqual(mls.dot(v1, v1, sparse=False), self.v1_data.dot(self.v1_data))
 
     def testSparseSum(self):
         s1 = SparseNDArray(self.s1)

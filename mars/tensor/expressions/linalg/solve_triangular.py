@@ -23,8 +23,8 @@ from ..datasource import tensor as astensor
 
 
 class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
-    def __init__(self, lower=None, dtype=None, **kw):
-        super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, **kw)
+    def __init__(self, lower=None, dtype=None, sparse=False, **kw):
+        super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, _sparse=sparse, **kw)
 
     def _set_inputs(self, inputs):
         super(TensorSolveTriangular, self)._set_inputs(inputs)
@@ -65,51 +65,36 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
         lower = op.lower
         out_chunks = {}
         if lower:
-            for i in range(a.chunk_shape[0]):
-                target_a = a.cix[i, i]
-                for j in range(b_hsplits):
-                    idx = (i, j) if b_multi_dim else (i,)
-                    target_b = b.cix[idx]
-                    if i > 0:
-                        prev_chunks = []
-                        for k in range(i):
-                            a_chunk, b_chunk = a.cix[i, k], out_chunks[(k, j) if b_multi_dim else (k,)]
-                            prev_chunk = TensorDot(dtype=op.dtype).new_chunk(
-                                [a_chunk, b_chunk], _dot_shape(a_chunk.shape, b_chunk.shape))
-                            prev_chunks.append(prev_chunk)
-                        if len(prev_chunks) == 1:
-                            s = prev_chunks[0]
-                        else:
-                            s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                         None, prev_chunks[0].shape)
-                        target_b = TensorSubtract(dtype=op.dtype).new_chunk(
-                            [target_b, s, None, None], target_b.shape)
-                    out_chunk = TensorSolveTriangular(lower=lower).new_chunk(
-                        [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
-                    out_chunks[out_chunk.index] = out_chunk
+            i_range = range(a.chunk_shape[0])
         else:
-            for i in range(a.chunk_shape[0] - 1, -1, -1):
-                target_a = a.cix[i, i]
-                for j in range(b_hsplits):
-                    idx = (i, j) if b_multi_dim else (i,)
-                    target_b = b.cix[idx]
-                    if i < a.chunk_shape[0] - 1:
-                        prev_chunks = []
-                        for k in range(i + 1, a.chunk_shape[0]):
-                            a_chunk, b_chunk = a.cix[i, k], out_chunks[(k, j) if b_multi_dim else (k,)]
-                            prev_chunk = TensorDot(dtype=op.dtype).new_chunk(
-                                [a_chunk, b_chunk], _dot_shape(a_chunk.shape, b_chunk.shape))
-                            prev_chunks.append(prev_chunk)
-                        if len(prev_chunks) == 1:
-                            s = prev_chunks[0]
-                        else:
-                            s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                         None, prev_chunks[0].shape)
-                        target_b = TensorSubtract(dtype=op.dtype).new_chunk(
-                            [target_b, s, None, None], target_b.shape)
-                    out_chunk = TensorSolveTriangular(lower=lower).new_chunk(
-                        [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
-                    out_chunks[out_chunk.index] = out_chunk
+            i_range = range(a.chunk_shape[0] - 1, -1, -1)
+        for i in i_range:
+            target_a = a.cix[i, i]
+            for j in range(b_hsplits):
+                idx = (i, j) if b_multi_dim else (i,)
+                target_b = b.cix[idx]
+                if (lower and i > 0) or (not lower and i < a.chunk_shape[0] - 1):
+                    prev_chunks = []
+                    if lower:
+                        k_range = range(i)
+                    else:
+                        k_range = range(i + 1, a.chunk_shape[0])
+                    for k in k_range:
+                        a_chunk, b_chunk = a.cix[i, k], out_chunks[(k, j) if b_multi_dim else (k,)]
+                        prev_chunk = TensorDot(dtype=op.dtype, sparse=op.sparse).new_chunk(
+                            [a_chunk, b_chunk], _dot_shape(a_chunk.shape, b_chunk.shape))
+                        prev_chunks.append(prev_chunk)
+                    if len(prev_chunks) == 1:
+                        s = prev_chunks[0]
+                    else:
+                        s = tree_add(prev_chunks[0].dtype, prev_chunks,
+                                     None, prev_chunks[0].shape, sparse=op.sparse)
+                    target_b = TensorSubtract(dtype=op.dtype).new_chunk(
+                        [target_b, s, None, None], target_b.shape)
+                out_chunk = TensorSolveTriangular(lower=lower, sparse=target_a.op.sparse, dtype=op.dtype).new_chunk(
+                    [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
+                out_chunks[out_chunk.index] = out_chunk
+
         new_op = op.copy()
         nsplits = (a.nsplits[0],) if b.ndim == 1 else (a.nsplits[0], b.nsplits[1])
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=list(out_chunks.values()), nsplits=nsplits)
@@ -164,5 +149,5 @@ def solve_triangular(a, b, lower=False):
 
     tiny_x = scipy.linalg.solve_triangular(np.array([[2, 0], [2, 1]], dtype=a.dtype),
                                            np.array([[2], [3]], dtype=b.dtype))
-    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype)
+    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype, sparse=a.is_sparse())
     return op(a, b)
