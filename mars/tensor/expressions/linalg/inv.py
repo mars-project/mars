@@ -87,6 +87,10 @@ def inv(a):
     -------
     ainv : (..., M, M) ndarray or matrix
         (Multiplicative) inverse of the matrix `a`.
+    Raises
+    ------
+    LinAlgError
+        If `a` is not square or inversion fails.
     Examples
     --------
     >>> import mars.tensor as mt
