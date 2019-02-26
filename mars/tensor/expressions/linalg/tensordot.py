@@ -93,7 +93,7 @@ class TensorTensorDot(operands.TensorDot, TensorOperandMixin):
                 chunk_op = c.op.copy()
                 chunk = chunk_op.new_chunk(c.inputs, c.shape, index=out_idx)
             else:
-                chunk = tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape)
+                chunk = tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
             out_chunks.append(chunk)
 
         get_nsplits = lambda t_idx, i: (a, b)[t_idx].nsplits[i]
