@@ -432,6 +432,13 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
         self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
 
+        B = A.T.dot(A)
+        inv_B = inv(B)
+        res = self.executor.execute_tensor(inv_B, concat=True)[0]
+        self.assertTrue(np.allclose(res, scipy.linalg.inv(data.T.dot(data))))
+        res = self.executor.execute_tensor(B.dot(inv_B), concat=True)[0]
+        self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
+
         # test sparse
         data = np.random.randint(1, 10, (20, 20))
         sp_data = sps.csr_matrix(data)
