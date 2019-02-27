@@ -14,8 +14,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+from numpy.linalg import LinAlgError
+
+from .... import operands
 from ..datasource import tensor as astensor
-from .solve import solve
+from ..core import TensorOperandMixin
+
+
+class TensorInv(operands.Inv, TensorOperandMixin):
+    def __init__(self, dtype=None, sparse=False, **kw):
+        super(TensorInv, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    def __call__(self, a):
+        a = astensor(a)
+        return self.new_tensor([a], a.shape)
+
+    def calc_shape(self, *inputs_shape):
+        return inputs_shape[0]
+
+    @classmethod
+    def tile(cls, op):
+        """
+        Use LU decomposition to compute inverse of matrix.
+        Given a square matrix A:
+        P, L, U = lu(A)
+        b_eye is an identity matrix with the same shape as matrix A, then,
+        (P * L * U) * A_inv = b_eye
+        L * (U * A_inv) = P.T * b_eye
+        use `solve_triangular` twice to compute the inverse of matrix A.
+        """
+        from .lu import lu
+        from ..datasource import eye
+        from ..base.transpose import TensorTranspose
+        from .tensordot import tensordot
+        from .solve_triangular import solve_triangular
+        in_tensor = op.input
+
+        b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.chunks[0].shape)
+        b_eye.single_tiles()
+
+        p, l, u = lu(in_tensor)
+        p.single_tiles()
+
+        # transposed p equals to inverse of p
+        p_transpose = TensorTranspose(
+            dtype=p.dtype, sparse=p.op.sparse, axes=list(range(in_tensor.ndim))[::-1]).new_tensor([p], p.shape)
+        p_transpose.single_tiles()
+
+        b = tensordot(p_transpose, b_eye, axes=((p_transpose.ndim - 1,), (b_eye.ndim - 2,)))
+        b.single_tiles()
+
+        # as `l` is a lower matrix, `lower=True` should be specified.
+        uy = solve_triangular(l, b, lower=True)
+        uy.single_tiles()
+
+        a_inv = solve_triangular(u, uy)
+        a_inv.single_tiles()
+        return [a_inv]
 
 
 def inv(a):
@@ -35,11 +91,6 @@ def inv(a):
     ------
     LinAlgError
         If `a` is not square or inversion fails.
-    Notes
-    -----
-    .. versionadded:: 1.8.0
-    Broadcasting rules apply, see the `numpy.linalg` documentation for
-    details.
     Examples
     --------
     >>> import mars.tensor as mt
@@ -54,8 +105,15 @@ def inv(a):
     array([[ -2. ,  1. ],
            [ 1.5, -0.5]])
     """
-    # TODO: using some parallel algorithm for matrix inversion.
-    from ..datasource import eye
 
+    # TODO: using some parallel algorithm for matrix inversion.
     a = astensor(a)
-    return solve(a, eye(a.shape[0], chunk_size=a.params.raw_chunk_size))
+    if a.ndim != 2:
+        raise LinAlgError('{0}-dimensional array given. '
+                          'Tensor must be two-dimensional'.format(a.ndim))
+    if a.shape[0] != a.shape[1]:
+        raise LinAlgError('Input must be square')
+
+    tiny_inv = np.linalg.inv(np.array([[1, 2], [2, 5]], dtype=a.dtype))
+    op = TensorInv(dtype=tiny_inv.dtype, sparse=a.is_sparse())
+    return op(a)

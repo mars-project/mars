@@ -261,6 +261,12 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(a_inv), a_inv.shape)
         self.assertEqual(calc_shape(a_inv.chunks[0]), a_inv.chunks[0].shape)
 
+        b = a.T.dot(a)
+        b_inv = mt.linalg.inv(b).tiles()
+        self.assertEqual(b_inv.shape, (20, 20))
+        self.assertEqual(calc_shape(b_inv), b_inv.shape)
+        self.assertEqual(calc_shape(b_inv.chunks[0]), b_inv.chunks[0].shape)
+
         # test sparse
         data = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
         a = mt.tensor(data, chunk_size=5)
@@ -273,3 +279,14 @@ class Test(unittest.TestCase):
         self.assertTrue(a_inv.op.sparse)
         self.assertIsInstance(a_inv, SparseTensor)
         self.assertTrue(all(c.is_sparse() for c in a_inv.chunks))
+
+        b = a.T.dot(a)
+        b_inv = mt.linalg.inv(b).tiles()
+        self.assertEqual(b_inv.shape, (20, 20))
+        self.assertEqual(calc_shape(b_inv), b_inv.shape)
+        self.assertEqual(calc_shape(b_inv.chunks[0]), b_inv.chunks[0].shape)
+
+        self.assertTrue(b_inv.op.sparse)
+        self.assertIsInstance(b_inv, SparseTensor)
+        self.assertTrue(all(c.is_sparse() for c in b_inv.chunks))
+
