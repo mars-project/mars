@@ -82,6 +82,12 @@ class SolveTriangular(Operand):
         return self._lower
 
 
+class Inv(HasInput):
+    _op_type_ = OperandDef.INV
+
+    _input = KeyField('input')
+
+
 class LU(HasInput):
     _op_type_ = OperandDef.LU
 

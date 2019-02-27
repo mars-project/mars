@@ -123,7 +123,7 @@ class TensorMatmul(operands.Matmul, TensorOperandMixin):
                 out_chunk_op = c.op.copy()
                 out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, c.shape, index=out_idx)
             else:
-                out_chunk = tree_add(tensor.op.dtype, chunks, out_idx, shape)
+                out_chunk = tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
 
             out_chunks.append(out_chunk)
 
