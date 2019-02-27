@@ -65,8 +65,11 @@ class Test(WorkerCase):
             self.assertEqual(dispatch_ref.get_hash_slot('g1', 'hash_str'),
                              dispatch_ref.get_hash_slot('g1', 'hash_str'))
 
+            dispatch_ref.get_free_slot('g1', callback=(('NonExist', mock_scheduler_addr), '_non_exist', {}))
+            self.assertEqual(dispatch_ref.get_free_slots_num().get('g1'), group_size)
+
             # tasks within [0, group_size - 1] will run almost simultaneously,
-            # while the last one will be delayed due to lack of
+            # while the last one will be delayed due to lack of slots
 
             with self.run_actor_test(pool) as test_actor:
                 from mars.promise import Promise
