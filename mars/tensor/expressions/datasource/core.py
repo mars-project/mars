@@ -20,9 +20,9 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ....operands import DataSource
-from ....compat import izip, six
+from ....compat import izip
 from ....config import options
-from ....serialize import AnyField
+from ....serialize import StringField
 from ....utils import to_str
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
@@ -140,19 +140,10 @@ class TensorLike(TensorHasInput):
             raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
 
 
-def _deserial_fetch_key(v):
-    if isinstance(v, six.string_types):
-        return to_str(v)
-    elif isinstance(v, tuple):
-        return tuple(_deserial_fetch_key(i) for i in v)
-    else:  # pragma: no cover
-        raise TypeError
-
-
 class TensorFetch(TensorNoInput):
     _op_type_ = OperandDef.FETCH
 
-    _to_fetch_key = AnyField('to_fetch_key', on_deserialize=_deserial_fetch_key)
+    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
 
     def __init__(self, dtype=None, to_fetch_key=None, **kw):
         super(TensorFetch, self).__init__(
