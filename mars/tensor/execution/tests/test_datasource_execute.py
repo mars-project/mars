@@ -81,12 +81,12 @@ class Test(TestBase):
         res = self.executor.execute_tensor(t, concat=True)
         self.assertEqual(res[0].shape, (20, 30))
         self.assertEqual(res[0].dtype, np.int64)
-        self.assertFalse(np.array_equal(res, np.zeros((20, 30))))
 
         t = empty((20, 30), chunk_size=5)
 
         res = self.executor.execute_tensor(t, concat=True)
-        self.assertFalse(np.allclose(res, np.zeros((20, 30))))
+        self.assertEqual(res[0].shape, (20, 30))
+        self.assertEqual(res[0].dtype, np.float64)
 
         t2 = empty_like(t)
         res = self.executor.execute_tensor(t2, concat=True)
