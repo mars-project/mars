@@ -43,8 +43,8 @@ class Test(WorkerCase):
                         .then(functools.partial(actual_exec, x))
 
             pool.sleep(2.5)
-            self.assertLess(abs(end_time[0] - end_time[1]), 0.1)
-            self.assertLess(abs(end_time[0] - end_time[2]), 0.1)
+            self.assertLess(abs(end_time[0] - end_time[1]), 0.5)
+            self.assertLess(abs(end_time[0] - end_time[2]), 0.5)
             self.assertGreater(abs(end_time[0] - end_time[3]), 0.9)
             self.assertEqual(quota_ref.get_allocated_size(), 0)
 
