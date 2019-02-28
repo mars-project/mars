@@ -86,6 +86,12 @@ class GraphAnalyzer(object):
         return sizes
 
     def collect_external_input_chunks(self, initial=True):
+        """
+        Collect keys of input chunks not in current graph, for instance,
+        chunks as inputs of initial operands in eager mode.
+        :param initial: collect initial chunks only
+        :return: dict mapping operand key to its input keys
+        """
         graph = self._graph
         chunk_keys = set(n.key for n in graph)
         visited = set()
@@ -105,6 +111,7 @@ class GraphAnalyzer(object):
 
     @staticmethod
     def _get_workers_with_max_size(worker_to_size):
+        """Get workers with maximal size"""
         max_workers = set()
         max_size = 0
         for w, size in worker_to_size.items():
@@ -146,6 +153,11 @@ class GraphAnalyzer(object):
                 yield n.op.key, max_worker
 
     def _calc_worker_initial_limits(self, initial_count, occupied=None):
+        """
+        Calculate limitation of number of initial operands for workers
+        :param initial_count: num of nodes in READY state
+        :param occupied: worker -> num of initials already assigned
+        """
         occupied = occupied or dict()
         actual_count = initial_count - sum(occupied.values())
 
@@ -298,12 +310,10 @@ class GraphAnalyzer(object):
         if not input_chunk_metas:
             worker_quotas = pre_worker_quotas
         else:
-            assigned_num = 0
             for op_key, worker in self._iter_assignments_by_transfer_sizes(
                     pre_worker_quotas, input_chunk_metas):
                 if op_key in cur_assigns:
                     continue
-                assigned_num += 1
                 assigned_initial_counts[worker] += 1
                 cur_assigns[op_key] = worker
                 worker_op_keys[worker].add(op_key)
