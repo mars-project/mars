@@ -24,6 +24,7 @@ from .reduction import register_reduction_handler
 from .merge import register_merge_handler
 from .fft import register_fft_handler
 from .linalg import register_linalg_handler
+from .reshape import register_reshape_handler
 
 
 NUMEXPR_INSTALLED = False
@@ -58,3 +59,4 @@ def register_tensor_execution_handler():
     register_merge_handler()
     register_fft_handler()
     register_linalg_handler()
+    register_reshape_handler()

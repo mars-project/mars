@@ -17,11 +17,14 @@
 import itertools
 
 import numpy as np
+from mars.tensor.expressions.utils import decide_chunk_sizes
 
-from ....operands import Reshape
+from .... import opcodes
 from ....compat import six, izip
+from ....serialize import KeyField, TupleField, ValueType
+from ....operands import Reshape, ShuffleMap, ShuffleReduce
 from ..datasource import tensor as astensor
-from ..core import TensorOperandMixin
+from ..core import TensorOperandMixin, TensorShuffleProxy
 
 
 class TensorReshape(Reshape, TensorOperandMixin):
@@ -154,6 +157,40 @@ class TensorReshape(Reshape, TensorOperandMixin):
                 out.append(good)
         return tuple(out)
 
+    @staticmethod
+    def _tile_as_shuffle(op):
+        in_tensor = op.input
+        tensor = op.outputs[0]
+        new_shape = op.newshape
+        shuffle_inputs, shuffle_outputs = [], []
+        axis_offsets = [[0] + np.cumsum(ns)[:-1].tolist() for ns in in_tensor.nsplits]
+
+        chunk_size_tuples = tuple((max(tp), len(tp)) for tp in in_tensor.nsplits)
+        max_chunk_size = max(tp[0] for tp in chunk_size_tuples)
+        chunk_size = tuple(tp[0] if tp[1] > 1 else max_chunk_size
+                           for tp in chunk_size_tuples)
+        out_nsplits = decide_chunk_sizes(new_shape, chunk_size, tensor.dtype.itemsize)
+        chunk_size_idxes = (range(len(size)) for size in out_nsplits)
+
+        for inp in in_tensor.chunks:
+            offset = tuple(axis_offsets[axis][idx] for axis, idx in enumerate(inp.index))
+            chunk_op = TensorReshapeMap(_input=inp, _axis_offsets=offset, _oldshape=in_tensor.shape,
+                                        _newshape=new_shape, _new_chunk_size=chunk_size, _dtype=inp.dtype)
+            shuffle_inputs.append(chunk_op.new_chunk([inp], (np.nan,), index=inp.index))
+
+        proxy_chunk = TensorShuffleProxy().new_chunk(shuffle_inputs, ())
+
+        for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
+                                           itertools.product(*chunk_size_idxes)):
+            shuffle_key = ','.join(str(o) for o in chunk_idx)
+            chunk_op = TensorReshapeReduce(_input=proxy_chunk, _dtype=tensor.dtype,
+                                           _shuffle_key=shuffle_key)
+            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], chunk_shape, index=chunk_idx))
+
+        new_op = op.copy()
+        return new_op.new_tensors(op.inputs, new_shape, chunks=shuffle_outputs,
+                                  nsplits=out_nsplits)
+
     @classmethod
     def tile(cls, op):
         in_tensor = op.input
@@ -178,12 +215,75 @@ class TensorReshape(Reshape, TensorOperandMixin):
             return new_op.new_tensors(op.inputs, tensor.shape,
                                       chunks=out_chunks, nsplits=reshape_nsplits)
         except ValueError:
+            if op.params._reshape_with_shuffle:
+                return cls._tile_as_shuffle(op)
+
             # shape incompatible, we will first do flatten, then reshape to the new shape
             # TODO(jisheng): try out shuffle if possible
             return [in_tensor.reshape(-1).single_tiles().reshape(tensor.shape).single_tiles()]
 
 
-def reshape(a, newshape):
+class TensorReshapeMap(ShuffleMap, TensorOperandMixin):
+    _op_type_ = opcodes.RESHAPE_MAP
+
+    _input = KeyField('input')
+    _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
+    _oldshape = TupleField('oldshape', ValueType.uint64)
+    _newshape = TupleField('newshape', ValueType.uint64)
+    _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
+
+    @property
+    def input(self):
+        return self._input
+
+    def _set_inputs(self, inputs):
+        super(TensorReshapeMap, self)._set_inputs(inputs)
+        self._input = self._inputs[0]
+
+    @property
+    def axis_offsets(self):
+        return self._axis_offsets
+
+    @property
+    def oldshape(self):
+        return self._oldshape
+
+    @property
+    def newshape(self):
+        return self._newshape
+
+    @property
+    def new_chunk_size(self):
+        return self._new_chunk_size
+
+    def calc_shape(self, *inputs_shape):
+        return np.nan,
+
+    def calc_rough_shape(self, *input_shapes):
+        inp_shape = input_shapes[0]
+        indices_overhead = np.int64().itemsize * (len(inp_shape) + 2)
+        scaled_original = 1 + int(np.ceil(indices_overhead / self.dtype.itemsize))
+        return (scaled_original,) + inp_shape
+
+
+class TensorReshapeReduce(ShuffleReduce, TensorOperandMixin):
+    _op_type_ = opcodes.RESHAPE_REDUCE
+
+    _input = KeyField('input')
+
+    @property
+    def input(self):
+        return self._input
+
+    def _set_inputs(self, inputs):
+        super(TensorReshapeReduce, self)._set_inputs(inputs)
+        self._input = self._inputs[0]
+
+    def calc_shape(self, *inputs_shape):
+        return self.shape
+
+
+def reshape(a, newshape, _reshape_with_shuffle=False):
     """
     Gives a new shape to a tensor without changing its data.
 
@@ -269,5 +369,5 @@ def reshape(a, newshape):
         # does not need to reshape
         return a
 
-    op = TensorReshape(newshape, dtype=a.dtype)
+    op = TensorReshape(newshape, dtype=a.dtype, _reshape_with_shuffle=_reshape_with_shuffle)
     return op(a)

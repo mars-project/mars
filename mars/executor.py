@@ -198,11 +198,11 @@ class GraphExecution(object):
         ref_counts = dict()
 
         for chunk in self._graph:
-            if chunk.key not in self._key_set:
-                # only record ref count for those not in results
-                ref_counts[chunk.key] = \
-                    ref_counts.get(chunk.key, 0) + len(self._graph[chunk])
-
+            for dep_key in chunk.op.get_dependent_data_keys():
+                if dep_key in self._key_set:
+                    # only record ref count for those not in results
+                    continue
+                ref_counts[dep_key] = ref_counts.get(dep_key, 0) + 1
 
         return ref_counts
 
@@ -257,11 +257,11 @@ class GraphExecution(object):
                             del results[output.key]
 
                     # clean the predecessors' results if ref counts equals 0
-                    for pred_chunk in self._graph.iter_predecessors(output):
-                        if pred_chunk.key in ref_counts:
-                            ref_counts[pred_chunk.key] -= 1
-                            if ref_counts[pred_chunk.key] == 0:
-                                del results[pred_chunk.key]
+                    for dep_key in output.op.get_dependent_data_keys():
+                        if dep_key in ref_counts:
+                            ref_counts[dep_key] -= 1
+                            if ref_counts[dep_key] == 0:
+                                del results[dep_key]
 
                     # add successors' operands to queue
                     for succ_chunk in self._graph.iter_successors(output):

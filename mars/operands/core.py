@@ -118,6 +118,9 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     def dtype(self):
         return getattr(self, '_dtype', None)
 
+    def get_dependent_data_keys(self):
+        return [chunk.key for chunk in self.inputs or ()]
+
     @property
     def gpu(self):
         return getattr(self, '_gpu', False)
