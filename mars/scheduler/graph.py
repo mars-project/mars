@@ -484,6 +484,17 @@ class GraphActor(SchedulerActor):
         metrics = self._resource_actor_ref.get_workers_meta()
         return dict((ep, int(metrics[ep]['hardware']['cpu_total'])) for ep in metrics)
 
+    def _collect_external_input_metas(self, ext_chunks_to_inputs):
+        ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
+        metas = dict(zip(ext_chunk_keys,
+                         self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
+        input_chunk_metas = defaultdict(dict)
+        for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
+            chunk_metas = input_chunk_metas[chunk_key]
+            for k in input_chunk_keys:
+                chunk_metas[k] = metas[k]
+        return input_chunk_metas
+
     @log_unhandled
     def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
@@ -515,15 +526,7 @@ class GraphActor(SchedulerActor):
 
             # collect external inputs for eager mode
             ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
-            ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
-            metas = dict(zip(ext_chunk_keys,
-                             self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
-            input_chunk_metas = defaultdict(dict)
-            for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
-                chunk_metas = input_chunk_metas[chunk_key]
-                for k in input_chunk_keys:
-                    chunk_metas[k] = metas[k]
-
+            input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
             # do placements
             for k, v in analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas).items():
                 operand_infos[k]['target_worker'] = v
@@ -915,7 +918,10 @@ class GraphActor(SchedulerActor):
                          len(new_states))
 
         logger.debug('Start reallocating initial operands')
-        new_targets = analyzer.calc_initial_assignments()
+        # collect external inputs for eager mode
+        ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
+        input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
+        new_targets = analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas)
 
         futures = []
         # make sure that all readies and runnings are included to be checked

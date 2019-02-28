@@ -297,7 +297,9 @@ class GraphAnalyzer(object):
         worker_op_keys = defaultdict(set)
         if cur_assigns:
             for op_key, state in op_states.items():
-                if op_key not in zero_degree_op_keys and state == OperandState.READY:
+                if op_key not in zero_degree_op_keys \
+                        and state == OperandState.READY \
+                        and op_key in cur_assigns:
                     descendant_readies.add(op_key)
                     assigned_initial_counts[cur_assigns[op_key]] += 1
 
