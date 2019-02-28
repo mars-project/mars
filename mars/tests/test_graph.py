@@ -43,7 +43,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(KeyError):
             dag.add_edge(10, 1)
 
-        self.assertEqual(set(dag[2]), set([5, 6]))
+        self.assertEqual(set(dag[2]), {5, 6})
         self.assertEqual(list(dag.topological_iter()), [3, 2, 5, 6, 1, 4])
 
         self.assertEqual(list(dag.dfs()), [3, 2, 5, 6, 1, 4])
@@ -80,6 +80,12 @@ class Test(unittest.TestCase):
                                 for pred in dag.predecessors(n)))
             self.assertTrue(all(undigraph.has_successor(n, pred)
                                 for pred in dag.predecessors(n)))
+
+        dag_copy = dag.copy()
+        for n in dag:
+            self.assertIn(n, dag_copy)
+            self.assertTrue(all(dag_copy.has_successor(pred, n)
+                                for pred in dag_copy.predecessors(n)))
 
     def testToDot(self):
         import mars.tensor as mt

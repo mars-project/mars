@@ -85,6 +85,37 @@ class GraphAnalyzer(object):
                 sizes[ni.op.key] += sizes[n.op.key]
         return sizes
 
+    def collect_external_input_chunks(self, initial=True):
+        graph = self._graph
+        chunk_keys = set(n.key for n in graph)
+        visited = set()
+        results = dict()
+        for n in graph:
+            op_key = n.op.key
+            if op_key in visited or not n.inputs:
+                continue
+            if initial and graph.count_predecessors(n):
+                continue
+            ext_keys = [c.key for c in n.inputs if c.key not in chunk_keys]
+            if not ext_keys:
+                continue
+            visited.add(op_key)
+            results[op_key] = ext_keys
+        return results
+
+    @staticmethod
+    def _get_workers_with_max_size(worker_to_size):
+        max_workers = set()
+        max_size = 0
+        for w, size in worker_to_size.items():
+            if size > max_size:
+                max_size = size
+                max_workers = {w}
+            elif size == max_size:
+                max_workers.add(w)
+        max_workers.difference_update([None])
+        return max_size, list(max_workers)
+
     def _iter_successor_assigns(self, existing_assigns):
         """Iterate over all successors to get allocations of successor nodes"""
         graph = self._graph
@@ -107,15 +138,10 @@ class GraphAnalyzer(object):
                 else:
                     worker_involved.add(None)
             # get the worker occupying most of the data
-            max_worker = None
-            max_size = 0
-            for w, size in pred_sizes.items():
-                if size > max_size:
-                    max_size = size
-                    max_worker = w
+            max_size, max_workers = self._get_workers_with_max_size(pred_sizes)
             # if there is a dominant worker, return it
-            if max_size > total_size / max(2, len(worker_involved)) and \
-                    max_worker is not None:
+            if max_size > total_size / max(2, len(worker_involved)) and max_workers:
+                max_worker = random.choice(max_workers)
                 worker_assigns[n.op.key] = max_worker
                 yield n.op.key, max_worker
 
@@ -133,6 +159,11 @@ class GraphAnalyzer(object):
         counts = initial_count * endpoint_cores / endpoint_cores.sum()
         for idx, ep in enumerate(endpoints):
             counts[idx] = max(0, counts[idx] - occupied.get(ep, 0))
+
+        # all assigned, nothing to do
+        if counts.sum() == 0:
+            return dict((ep, 0) for ep in endpoints)
+
         counts = (actual_count * counts / counts.sum()).astype(np.int32)
 
         # assign remaining nodes
@@ -171,11 +202,39 @@ class GraphAnalyzer(object):
         # note that different orders can contribute to different efficiency
         return sorted(zero_degrees, key=lambda n: descendant_sizes[n.op.key])
 
+    def _iter_assignments_by_transfer_sizes(self, worker_quotas, input_chunk_metas):
+        """
+        Assign chunks by input sizes
+        :type input_chunk_metas: dict[str, dict[str, mars.scheduler.chunkmeta.WorkerMeta]]
+        """
+        total_transfers = dict((k, sum(v.chunk_size for v in chunk_to_meta.values()))
+                               for k, chunk_to_meta in input_chunk_metas.items())
+        # operands with largest amount of data will be allocated first
+        sorted_chunks = sorted(total_transfers.keys(), reverse=True,
+                               key=lambda k: total_transfers[k])
+        for op_key in sorted_chunks:
+            # compute data amounts held in workers
+            worker_stores = defaultdict(lambda: 0)
+            for meta in input_chunk_metas[op_key].values():
+                for w in meta.workers:
+                    worker_stores[w] += meta.chunk_size
+
+            max_size, max_workers = self._get_workers_with_max_size(worker_stores)
+            if max_workers and max_size > 0.5 * total_transfers[op_key]:
+                max_worker = random.choice(max_workers)
+                if worker_quotas.get(max_worker, 0) <= 0:
+                    continue
+                worker_quotas[max_worker] -= 1
+                yield op_key, max_worker
+
     def _assign_by_bfs(self, start, worker, initial_sizes, spread_limits, assigned_record):
         """
         Assign initial nodes using Breadth-first Search given initial sizes and
         limitations of spread range.
         """
+        if initial_sizes[worker] <= 0:
+            return
+
         graph = self._graph
         if self._undigraph is None:
             undigraph = self._undigraph = graph.build_undirected()
@@ -203,10 +262,13 @@ class GraphAnalyzer(object):
                 break
         initial_sizes[worker] -= assigned
 
-    def calc_initial_assignments(self):
+    def calc_initial_assignments(self, input_chunk_metas=None):
         """
         Decide target worker for initial chunks. This function works when
         initializing a new graph, or recovering from worker losses.
+
+        :param input_chunk_metas: chunk metas for graph-level inputs, grouped by initial chunks
+        :type input_chunk_metas: dict[str, dict[str, mars.scheduler.chunkmeta.WorkerMeta]]
         :return: dict mapping operand keys into worker endpoints
         """
         graph = self._graph
@@ -215,24 +277,45 @@ class GraphAnalyzer(object):
 
         # collect chunks with no inputs or all inputs from shuffle, and nodes
         zero_degrees = self._collect_zero_degrees()
+        zero_degree_op_keys = set(n.op.key for n in zero_degrees)
 
         descendant_readies = set()
 
         assigned_initial_counts = defaultdict(lambda: 0)
-        worker_op_keys = defaultdict(list)
+        worker_op_keys = defaultdict(set)
         if cur_assigns:
-            # calculate ranges of nodes already assigned
-            for op_key, worker in self._iter_successor_assigns(cur_assigns):
-                if op_states.get(op_key) == OperandState.READY:
+            for op_key, state in op_states.items():
+                if op_key not in zero_degree_op_keys and state == OperandState.READY:
                     descendant_readies.add(op_key)
-                    assigned_initial_counts[worker] += 1
-                cur_assigns[op_key] = worker
-                worker_op_keys[worker].append(op_key)
+                    assigned_initial_counts[cur_assigns[op_key]] += 1
 
         # calculate the number of initial nodes to be assigned to every worker
         # given number of workers and existing assignments
-        worker_quotas = self._calc_worker_initial_limits(
+        pre_worker_quotas = self._calc_worker_initial_limits(
             len(zero_degrees) + len(descendant_readies), assigned_initial_counts)
+
+        # pre-assign nodes given pre-determined transfer sizes
+        if not input_chunk_metas:
+            worker_quotas = pre_worker_quotas
+        else:
+            assigned_num = 0
+            for op_key, worker in self._iter_assignments_by_transfer_sizes(
+                    pre_worker_quotas, input_chunk_metas):
+                if op_key in cur_assigns:
+                    continue
+                assigned_num += 1
+                assigned_initial_counts[worker] += 1
+                cur_assigns[op_key] = worker
+                worker_op_keys[worker].add(op_key)
+
+            worker_quotas = self._calc_worker_initial_limits(
+                len(zero_degrees) + len(descendant_readies), assigned_initial_counts)
+
+        if cur_assigns:
+            # calculate ranges of nodes already assigned
+            for op_key, worker in self._iter_successor_assigns(cur_assigns):
+                cur_assigns[op_key] = worker
+                worker_op_keys[worker].add(op_key)
 
         logger.debug('Worker initial quotas: %r', worker_quotas)
 
@@ -255,7 +338,7 @@ class GraphAnalyzer(object):
             start_chunks = reduce(operator.add, (key_to_chunks[op_key] for op_key in worker_op_keys[worker]))
             self._assign_by_bfs(start_chunks, worker, worker_quotas, spread_ranges, cur_assigns)
 
-        # assign pass 2: assign from initial nodes
+        # assign pass 2: assign from other initial nodes
         sorted_initials = [v for v in zero_degrees]
         while max(worker_quotas.values()):
             worker = max(worker_quotas, key=lambda k: worker_quotas[k])

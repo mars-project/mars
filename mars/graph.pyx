@@ -279,6 +279,17 @@ cdef class DirectedGraph:
                 queue.append(node)
                 queue.extend(n for n in preds if n not in visited)
 
+    def copy(self):
+        cdef DirectedGraph graph = type(self)()
+        for n in self:
+            if n not in graph._nodes:
+                graph._add_node(n)
+            for succ in self.iter_successors(n):
+                if succ not in graph._nodes:
+                    graph._add_node(succ)
+                graph._add_edge(n, succ)
+        return graph
+
     def build_undirected(self):
         cdef DirectedGraph graph = DirectedGraph()
         for n in self:

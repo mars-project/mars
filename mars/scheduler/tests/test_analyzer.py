@@ -56,6 +56,31 @@ class Test(unittest.TestCase):
             self.assertGreaterEqual(descendants[nodes[idx].op.key],
                                     descendants[nodes[idx + 1].op.key])
 
+    def testInitialWithInputs(self):
+        import numpy as np
+        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.expressions.arithmetic import TensorTreeAdd
+
+        n1 = TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10))
+        n2 = TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10))
+
+        n3 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10))
+        n3.op._inputs = [n1, n2]
+        n4 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10))
+        n4.op._inputs = [n3]
+
+        graph = DAG()
+        graph.add_node(n1)
+        graph.add_node(n3)
+        graph.add_node(n4)
+        graph.add_edge(n1, n3)
+        graph.add_edge(n3, n4)
+
+        analyzer = GraphAnalyzer(graph, {})
+        ext_chunks = analyzer.collect_external_input_chunks(initial=False)
+        self.assertListEqual(ext_chunks[n3.op.key], [n2.key])
+        self.assertEqual(len(analyzer.collect_external_input_chunks(initial=True)), 0)
+
     def testFullInitialAssign(self):
         import numpy as np
         from mars.tensor.expressions.random import TensorRandint
@@ -121,6 +146,83 @@ class Test(unittest.TestCase):
         assignments = analyzer.calc_initial_assignments()
         self.assertEqual(len(assignments), 6)
 
+    def testAssignWithPreviousData(self):
+        import numpy as np
+        from mars.scheduler.chunkmeta import WorkerMeta
+        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.expressions.arithmetic import TensorTreeAdd
+
+        graph = DAG()
+
+        r"""
+        Proper initial allocation should divide the graph like
+        
+         U   U  |  U   U  |  U   U
+          \ /   |   \ /   |   \ /
+           U    |    U    |    U
+        """
+
+        inputs = [
+            tuple(TensorRandint(_key=str(i * 2 + j), dtype=np.float32()).new_chunk(None, (10, 10)) for j in range(2))
+            for i in range(3)
+        ]
+        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(3)]
+        for inp, r in zip(inputs, results):
+            r.op._inputs = list(inp)
+
+            graph.add_node(r)
+            for n in inp:
+                graph.add_node(n)
+                graph.add_edge(n, r)
+
+        # assign with partial mismatch
+        data_dist = {
+            '0': dict(c00=WorkerMeta(chunk_size=5, workers=('w1',)),
+                      c01=WorkerMeta(chunk_size=5, workers=('w2',))),
+            '1': dict(c10=WorkerMeta(chunk_size=10, workers=('w1',))),
+            '2': dict(c20=WorkerMeta(chunk_size=10, workers=('w3',))),
+            '3': dict(c30=WorkerMeta(chunk_size=10, workers=('w3',))),
+            '4': dict(c40=WorkerMeta(chunk_size=7, workers=('w3',))),
+        }
+        analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
+        assignments = analyzer.calc_initial_assignments(input_chunk_metas=data_dist)
+
+        self.assertEqual(len(assignments), 6)
+
+        # explanation of the result:
+        # for '1', all data are in w1, hence assigned to w1
+        # '0' assigned to w1 according to connectivity
+        # '2' and '3' assigned to w3 according to connectivity
+        # '4' assigned to w2 because it has fewer data, and the slots of w3 is used up
+
+        self.assertEqual(assignments['0'], 'w1')
+        self.assertEqual(assignments['1'], 'w1')
+        self.assertEqual(assignments['2'], 'w3')
+        self.assertEqual(assignments['3'], 'w3')
+        self.assertEqual(assignments['4'], 'w2')
+        self.assertEqual(assignments['5'], 'w2')
+
+        # assign with full mismatch
+        data_dist = {
+            '0': dict(c00=WorkerMeta(chunk_size=5, workers=('w1',)),
+                      c01=WorkerMeta(chunk_size=5, workers=('w1', 'w2',))),
+            '1': dict(c10=WorkerMeta(chunk_size=10, workers=('w1',))),
+            '2': dict(c20=WorkerMeta(chunk_size=10, workers=('w3',))),
+            '3': dict(c30=WorkerMeta(chunk_size=10, workers=('w3',))),
+            '4': dict(c40=WorkerMeta(chunk_size=7, workers=('w2',))),
+            '5': dict(c50=WorkerMeta(chunk_size=7, workers=('w2',))),
+        }
+        analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
+        assignments = analyzer.calc_initial_assignments(input_chunk_metas=data_dist)
+
+        self.assertEqual(len(assignments), 6)
+        self.assertEqual(assignments['0'], 'w1')
+        self.assertEqual(assignments['1'], 'w1')
+        self.assertEqual(assignments['2'], 'w3')
+        self.assertEqual(assignments['3'], 'w3')
+        self.assertEqual(assignments['4'], 'w2')
+        self.assertEqual(assignments['5'], 'w2')
+
     def testAssignOnWorkerAdd(self):
         import numpy as np
         from mars.scheduler import OperandState
@@ -164,6 +266,7 @@ class Test(unittest.TestCase):
             for i in range(2):
                 fixed_assigns[inputs[idx][i].op.key] = 'w%d' % (idx + 1)
                 op_states[results[idx][i].op.key] = OperandState.READY
+                fixed_assigns[results[idx][i].op.key] = 'w%d' % (idx + 1)
 
         for inp in inputs:
             for n in inp:
@@ -229,6 +332,7 @@ class Test(unittest.TestCase):
             for i in range(2):
                 fixed_assigns[inputs[idx][i].op.key] = 'w%d' % (idx % 2 + 1)
                 op_states[inputs[idx][i].op.key] = OperandState.FINISHED
+                fixed_assigns[results[idx][i].op.key] = 'w%d' % (idx % 2 + 1)
                 op_states[results[idx][i].op.key] = OperandState.READY
 
         for inp in inputs:

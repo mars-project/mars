@@ -14,9 +14,10 @@
 
 import itertools
 import logging
+import operator
+import os
 import random
 import time
-import os
 from collections import deque, defaultdict
 
 from .analyzer import GraphAnalyzer
@@ -26,7 +27,7 @@ from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState, OperandState
-from ..compat import six, functools32, OrderedDict
+from ..compat import six, functools32, reduce, OrderedDict
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
@@ -487,7 +488,20 @@ class GraphActor(SchedulerActor):
 
         if kwargs.get('do_placement', True):
             logger.debug('Placing initial chunks for graph %s', self._graph_key)
-            for k, v in analyzer.calc_initial_assignments().items():
+
+            # collect external inputs for eager mode
+            ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
+            ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
+            metas = dict(zip(ext_chunk_keys,
+                             self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
+            input_chunk_metas = defaultdict(dict)
+            for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
+                chunk_metas = input_chunk_metas[chunk_key]
+                for k in input_chunk_keys:
+                    chunk_metas[k] = metas[k]
+
+            # do placements
+            for k, v in analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas).items():
                 operand_infos[k]['target_worker'] = v
 
     @log_unhandled

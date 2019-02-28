@@ -193,7 +193,7 @@ class Test(unittest.TestCase):
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
-            def _mock_raises(*_):
+            def _mock_raises(*_, **__):
                 raise RuntimeError
 
             with patch_method(GraphActor.create_operand_actors, new=_mock_raises):
@@ -207,7 +207,7 @@ class Test(unittest.TestCase):
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
-            def _mock_cancels(*_):
+            def _mock_cancels(*_, **__):
                 graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
                 graph_meta_ref.set_state(GraphState.CANCELLING)
 
@@ -220,7 +220,7 @@ class Test(unittest.TestCase):
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_name(session_id, graph_key))
 
-            def _mock_cancels(*_):
+            def _mock_cancels(*_, **__):
                 graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
                 graph_meta_ref.set_state(GraphState.CANCELLING)
                 return dict()
