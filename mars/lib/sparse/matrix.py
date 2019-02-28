@@ -106,6 +106,9 @@ class SparseMatrix(SparseNDArray):
     def ndim(self):
         return self.spmatrix.ndim
 
+    def tocsr(self):
+        return self
+
     def toarray(self):
         return self.spmatrix.toarray()
 

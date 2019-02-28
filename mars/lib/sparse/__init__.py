@@ -26,11 +26,11 @@ from .core import issparse, get_sparse_module
 from .coo import COONDArray
 
 
-def asarray(x):
+def asarray(x, shape=None):
     from .core import issparse
 
     if issparse(x):
-        return SparseNDArray(x)
+        return SparseNDArray(x, shape=shape)
 
     return x
 
@@ -460,7 +460,7 @@ def matmul(a, b, sparse=True, **_):
 def concatenate(tensors, axis=0):
     has_sparse = any(issparse(t) for t in tensors)
     if has_sparse:
-        tensors = [asarray(get_sparse_module(t).csr_matrix(t)) for t in tensors]
+        tensors = [asarray(get_sparse_module(t).csr_matrix(t), t.shape) for t in tensors]
 
     return reduce(lambda a, b: _call_bin('concatenate', a, b, axis=axis), tensors)
 

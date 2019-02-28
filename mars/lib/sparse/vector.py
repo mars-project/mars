@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from .array import SparseNDArray
-from .core import get_array_module, cp, cps, naked, issparse
+from .core import get_array_module, get_sparse_module, cp, cps, naked, issparse
 
 
 class SparseVector(SparseNDArray):
@@ -38,6 +38,9 @@ class SparseVector(SparseNDArray):
 
     def todense(self):
         return self.spmatrix.toarray().reshape(self.shape)
+
+    def tocsr(self):
+        return self
 
     def ascupy(self):
         is_cp = get_array_module(self.spmatrix) is cp
@@ -117,4 +120,23 @@ class SparseVector(SparseNDArray):
         if issparse(x):
             shape = (other.shape[1],)
             return SparseNDArray(x, shape=shape)
+        return get_array_module(x).asarray(x)
+
+    def concatenate(self, other, axis=0):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+
+        if issparse(other):
+            xps = get_sparse_module(self.spmatrix)
+            if axis != 0:
+                raise ValueError('axis can only be 0')
+            x = xps.hstack((self.spmatrix, other))
+        else:
+            xp = get_array_module(self.spmatrix)
+            x = xp.concatenate((self.spmatrix.toarray().reshape(self.shape), other), axis=axis)
+
+        if issparse(x):
+            return SparseNDArray(x, shape=(x.shape[1],))
         return get_array_module(x).asarray(x)

@@ -15,10 +15,17 @@
 # limitations under the License.
 
 import threading
+import time
 import unittest
 
 from mars.tensor.execution.core import Executor
-from mars.tensor.expressions.datasource import ones
+from mars.tensor.expressions.datasource import ones, TensorOnes
+from mars.tensor.execution.datasource import _tensor_ones
+
+
+def _slow_tensor_ones(ctx, chunk):
+    _tensor_ones(ctx, chunk)
+    time.sleep(.2)
 
 
 class MockStorage(object):
@@ -58,6 +65,11 @@ class MockStorage(object):
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = Executor('numpy', storage=MockStorage(), prefetch=True)
+        self._raw_tensor_ones = self.executor._op_runners[TensorOnes]
+        self.executor._op_runners[TensorOnes] = _slow_tensor_ones
+
+    def tearDown(self):
+        self.executor._op_runners[TensorOnes] = self._raw_tensor_ones
 
     def testPrefetch(self):
         t1 = ones((10, 8), chunk_size=10)
