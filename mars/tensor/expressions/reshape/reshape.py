@@ -232,10 +232,6 @@ class TensorReshapeMap(ShuffleMap, TensorOperandMixin):
     _newshape = TupleField('newshape', ValueType.uint64)
     _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
 
-    @property
-    def input(self):
-        return self._input
-
     def _set_inputs(self, inputs):
         super(TensorReshapeMap, self)._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -271,16 +267,12 @@ class TensorReshapeReduce(ShuffleReduce, TensorOperandMixin):
 
     _input = KeyField('input')
 
-    @property
-    def input(self):
-        return self._input
-
     def _set_inputs(self, inputs):
         super(TensorReshapeReduce, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
     def calc_shape(self, *inputs_shape):
-        return self.shape
+        return self.outputs[0].shape
 
 
 def reshape(a, newshape, _reshape_with_shuffle=False):

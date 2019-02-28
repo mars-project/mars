@@ -480,8 +480,12 @@ class Test(unittest.TestCase):
                                backend='gevent') as pool:
             ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
             self.assertTrue(pool.has_actor(ref1))
-
             pool.destroy_actor(ref1)
+            self.assertFalse(pool.has_actor(ref1))
+
+            ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
+            self.assertTrue(pool.has_actor(ref1, wait=False).result())
+            pool.destroy_actor(ref1, wait=False).result()
             self.assertFalse(pool.has_actor(ref1))
 
             ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
