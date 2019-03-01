@@ -40,6 +40,8 @@ def _rewrite_worker_errors(ignore_error=False):
     try:
         yield
     except (BrokenPipeError, ConnectionRefusedError, ActorNotExist, TimeoutError):
+        # we don't raise here, as we do not want
+        # the actual stack be dumped
         rewrite = not ignore_error
     if rewrite:
         raise WorkerDead
@@ -370,6 +372,14 @@ class OperandActor(SchedulerActor):
         return self._assigner_ref.is_worker_alive(self.worker)
 
     def move_failover_state(self, from_states, state, new_target, dead_workers):
+        """
+        Move the operand into new state when executing fail-over step
+        :param from_states: the source states the operand should be in, when not match, we stopped.
+        :param state: the target state to move
+        :param new_target: new target worker proposed for worker
+        :param dead_workers: list of dead workers
+        :return:
+        """
         dead_workers = set(dead_workers)
         if self.state not in from_states:
             logger.debug('From state not matching (%s not in %r), operand %s skips failover step',
@@ -381,6 +391,7 @@ class OperandActor(SchedulerActor):
                              self.worker, self._op_key)
                 return
             elif state == OperandState.RUNNING:
+                # move running operand in dead worker to ready
                 state = OperandState.READY
 
         if new_target and self._target_worker != new_target:
@@ -405,6 +416,7 @@ class OperandActor(SchedulerActor):
 
         if dead_workers:
             futures = []
+            # remove executed traces in neighbor operands
             for out_key in self._succ_keys:
                 futures.append(self._get_operand_actor(out_key).remove_finished_predecessor(
                     self._op_key, _tell=True, _wait=False))
@@ -416,6 +428,7 @@ class OperandActor(SchedulerActor):
                     self._op_key, _tell=True, _wait=False))
             [f.result() for f in futures]
 
+        # actual start the new state
         self.start_operand(state)
 
     def _free_worker_data(self, ep, chunk_key):

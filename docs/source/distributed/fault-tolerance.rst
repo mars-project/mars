@@ -17,7 +17,7 @@ Worker-level Fault Tolerance
 
 .. note::
 
-    New in version 0.2.0a3
+    New in version 0.2.0a2
 
 As Mars uses execution graphs to schedule tasks, when some workers fail,
 scheduler will find lost chunks and work out affected operands. After that the

@@ -545,6 +545,7 @@ class ExecutionActor(WorkerActor):
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
             self._invoke_finish_callbacks(session_id, graph_key)
 
+        # collect target data already computed
         save_sizes = dict()
         for target_key in graph_record.targets:
             if self._chunk_store.contains(session_id, target_key):
@@ -552,6 +553,7 @@ class ExecutionActor(WorkerActor):
             elif spill_exists(target_key):
                 save_sizes[target_key] = get_spill_data_size(target_key)
 
+        # when all target data are computed, report success directly
         if all(k in save_sizes for k in graph_record.targets):
             logger.debug('All predecessors of graph %s already computed, call finish directly.', graph_key)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)

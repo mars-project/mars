@@ -82,6 +82,13 @@ class SessionActor(SchedulerActor):
 
     @log_unhandled
     def handle_worker_change(self, adds, removes):
+        """
+        Receive changes in worker list, collect relevant data losses
+        and notify graphs to handle these changes.
+
+        :param adds: endpoints of workers newly added to the cluster
+        :param removes: endpoints of workers removed to the cluster
+        """
         logger.debug('Worker change detected. adds: %r, removes: %r', adds, removes)
 
         from .chunkmeta import LocalChunkMetaActor

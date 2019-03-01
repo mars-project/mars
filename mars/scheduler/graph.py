@@ -662,8 +662,8 @@ class GraphActor(SchedulerActor):
     @log_unhandled
     def add_finished_terminal(self, op_key, final_state=None):
         """
-        Mark terminal operand as finished. Calling this method will change graph state
-        if all terminals are in finished states.
+        Add a terminal operand to finished set. Calling this method
+        will change graph state if all terminals are in finished states.
         :param op_key: operand key
         :param final_state: state of the operand
         """
@@ -683,12 +683,19 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def remove_finished_terminal(self, op_key):
+        """
+        Remove a terminal operand from finished set as the data is lost.
+        :param op_key: operand key
+        """
         tensor_keys = self._terminal_chunk_op_tensor[op_key]
         for tensor_key in tensor_keys:
             self._target_tensor_finished[tensor_key].difference_update([op_key])
             self._terminated_tensors.difference_update([tensor_key])
 
     def dump_unfinished_terminals(self):  # pragma: no cover
+        """
+        Dump unfinished terminal chunks into logger, only for debug purposes.
+        """
         unfinished_dict = dict()
         for tensor_key, chunk_ops in self._target_tensor_chunk_ops.items():
             executed_ops = self._target_tensor_finished.get(tensor_key, ())
@@ -862,6 +869,13 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def check_operand_can_be_freed(self, succ_op_keys):
+        """
+        Check if the data of an operand can be freed.
+
+        :param succ_op_keys: keys of successor operands
+        :return: True if can be freed, False if cannot. None when the result
+                 is not determinant and we need to test later.
+        """
         operand_infos = self._operand_infos
         for k in succ_op_keys:
             op_info = operand_infos[k]
@@ -871,16 +885,31 @@ class GraphActor(SchedulerActor):
             failover_state = op_info.get('failover_state')
             if failover_state and failover_state not in OperandState.SUCCESSFUL_STATES:
                 return False
+        # if can be freed but blocked by an ongoing fail-over step,
+        # we try later.
         if self._operand_free_paused:
             return None
         return True
 
     @log_unhandled
     def handle_worker_change(self, adds, removes, lost_chunks, handle_later=True):
+        """
+        Calculate and propose changes of operand states given changes
+        in workers and lost chunks.
+
+        :param adds: endpoints of workers newly added to the cluster
+        :param removes: endpoints of workers removed to the cluster
+        :param lost_chunks: keys of lost chunks
+        :param handle_later: run the function later, only used in this actor
+        """
         if self._state in GraphState.TERMINATED_STATES:
             return
 
         if handle_later:
+            # Run the fail-over process later.
+            # This is the default behavior as we need to make sure that
+            # all crucial state changes are received by GraphActor.
+            # During the delay, no operands are allowed to be freed.
             self._operand_free_paused = True
             self.ref().handle_worker_change(adds, removes, lost_chunks,
                                             handle_later=False, _delay=0.5, _tell=True)
@@ -943,9 +972,14 @@ class GraphActor(SchedulerActor):
 
             op_info = operand_infos[key]
             from_state = op_info['state']
+            # record the target state in special info key
+            # in case of concurrency issues
             op_info['failover_state'] = state
 
             op_ref = self._get_operand_ref(key)
+            # states may easily slip into the next state when we are
+            # calculating fail-over states. Hence we need to include them
+            # into source states.
             if from_state == OperandState.READY:
                 from_states = [from_state, OperandState.RUNNING]
             elif from_state == OperandState.RUNNING:
