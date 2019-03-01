@@ -145,9 +145,18 @@ _local_occupied_ports = set()
 
 
 def _get_ports_from_netstat():
+    import psutil
     import subprocess
-    p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
-    p.wait()
+    while True:
+        p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
+        # in python 2, subprocess does not support waiting for fixed seconds
+        ps_proc = psutil.Process(p.pid)
+        try:
+            ps_proc.wait(5)
+            break
+        except:  # noqa: E721  # pragma: no cover
+            ps_proc.terminate()
+            continue
     occupied = set()
     for line in p.stdout:
         line = to_str(line)

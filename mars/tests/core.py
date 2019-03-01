@@ -26,8 +26,7 @@ from weakref import ReferenceType
 import numpy as np
 
 from mars import compat
-from mars.compat import zip_longest
-from mars.compat import six
+from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 

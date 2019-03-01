@@ -67,9 +67,9 @@ class InProcessCacheActor(WorkerActor):
                         raise KeyError('Data key %s not found in inproc cache', chunk_key)
                     return
 
-                ref = None
+                buf = None
                 try:
-                    ref = self._chunk_store.put(session_id, chunk_key, _calc_result_cache[chunk_key][1])
+                    buf = self._chunk_store.put(session_id, chunk_key, _calc_result_cache[chunk_key][1])
                     del _calc_result_cache[chunk_key]
                     self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
@@ -78,7 +78,7 @@ class InProcessCacheActor(WorkerActor):
                     self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
                         session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
                 finally:
-                    del ref
+                    del buf
 
             except StoreFull:
                 # if we cannot put data into shared cache, we store it into spill directly
@@ -205,9 +205,10 @@ class CpuCalcActor(WorkerActor):
                     else:
                         absent_keys.append(chunk.key)
             if absent_keys:
+                logger.error('Chunk requirements %r unmet.')
                 raise ObjectNotInPlasma(absent_keys)
 
-            # collect results from greenlets
+            # collect results from futures
             if spill_load_futures:
                 for k, future in spill_load_futures.items():
                     context_dict[k] = future.result()

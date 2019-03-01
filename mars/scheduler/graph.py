@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import itertools
 import logging
 import operator
@@ -26,8 +27,9 @@ from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .session import SessionActor
-from .utils import SchedulerActor, GraphState, OperandState
+from .utils import SchedulerActor, OperandPosition, GraphState, OperandState
 from ..compat import six, functools32, reduce, OrderedDict
+from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..tiles import handler, DataNotReady
@@ -148,6 +150,8 @@ class GraphActor(SchedulerActor):
         self._state = state
         self._final_state = final_state
 
+        self._operand_free_paused = False
+
         self._start_time = None
         self._end_time = None
         self._nodes_num = None
@@ -197,6 +201,17 @@ class GraphActor(SchedulerActor):
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
+
+    @contextlib.contextmanager
+    def _open_dump_file(self, prefix):  # pragma: no cover
+        if options.scheduler.dump_graph_data:
+            file_name = '%s-%s-%d.log' % (prefix, self._graph_key, int(time.time()))
+            yield open(file_name, 'w')
+        else:
+            try:
+                yield None
+            except AttributeError:
+                return
 
     @property
     def state(self):
@@ -250,6 +265,15 @@ class GraphActor(SchedulerActor):
         try:
             self.prepare_graph()
             _detect_cancel()
+
+            with self._open_dump_file('graph') as outf:  # pragma: no cover
+                graph = self.get_chunk_graph()
+                for n in graph:
+                    outf.write(
+                        '%s[%s] -> %s\n' % (
+                            n.op.key, n.key,
+                            ','.join(succ.op.key for succ in graph.iter_successors(n)))
+                    )
 
             self.analyze_graph()
             _detect_cancel()
@@ -460,6 +484,17 @@ class GraphActor(SchedulerActor):
         metrics = self._resource_actor_ref.get_workers_meta()
         return dict((ep, int(metrics[ep]['hardware']['cpu_total'])) for ep in metrics)
 
+    def _collect_external_input_metas(self, ext_chunks_to_inputs):
+        ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
+        metas = dict(zip(ext_chunk_keys,
+                         self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
+        input_chunk_metas = defaultdict(dict)
+        for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
+            chunk_metas = input_chunk_metas[chunk_key]
+            for k in input_chunk_keys:
+                chunk_metas[k] = metas[k]
+        return input_chunk_metas
+
     @log_unhandled
     def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
@@ -491,15 +526,7 @@ class GraphActor(SchedulerActor):
 
             # collect external inputs for eager mode
             ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
-            ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
-            metas = dict(zip(ext_chunk_keys,
-                             self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
-            input_chunk_metas = defaultdict(dict)
-            for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
-                chunk_metas = input_chunk_metas[chunk_key]
-                for k in input_chunk_keys:
-                    chunk_metas[k] = metas[k]
-
+            input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
             # do placements
             for k, v in analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas).items():
                 operand_infos[k]['target_worker'] = v
@@ -608,13 +635,17 @@ class GraphActor(SchedulerActor):
             op_info['retries'] = 0
             op_info['state'] = state
 
+            position = None
+            if op_key in self._terminal_chunk_op_tensor:
+                position = OperandPosition.TERMINAL
+            elif not predecessor_keys:
+                position = OperandPosition.INITIAL
+
             op_uid = OperandActor.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
             op_refs[op_key] = self.ctx.create_actor(
                 OperandActor, self._session_id, self._graph_key, op_key, op_info,
-                is_terminal=op_key in self._terminal_chunk_op_tensor,
-                uid=op_uid, address=scheduler_addr,
-                wait=False
+                position=position, uid=op_uid, address=scheduler_addr, wait=False
             )
             op_info['state'] = getattr(OperandState, state.upper())
             if _clean_io_meta:
@@ -629,10 +660,10 @@ class GraphActor(SchedulerActor):
             [future.result() for future in start_futures]
 
     @log_unhandled
-    def mark_terminal_finished(self, op_key, final_state=None):
+    def add_finished_terminal(self, op_key, final_state=None):
         """
-        Mark terminal operand as finished. Calling this method will change graph state
-        if all terminals are in finished states.
+        Add a terminal operand to finished set. Calling this method
+        will change graph state if all terminals are in finished states.
         :param op_key: operand key
         :param final_state: state of the operand
         """
@@ -650,14 +681,48 @@ class GraphActor(SchedulerActor):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                     self._end_time = time.time()
 
+    @log_unhandled
+    def remove_finished_terminal(self, op_key):
+        """
+        Remove a terminal operand from finished set as the data is lost.
+        :param op_key: operand key
+        """
+        tensor_keys = self._terminal_chunk_op_tensor[op_key]
+        for tensor_key in tensor_keys:
+            self._target_tensor_finished[tensor_key].difference_update([op_key])
+            self._terminated_tensors.difference_update([tensor_key])
+
+    def dump_unfinished_terminals(self):  # pragma: no cover
+        """
+        Dump unfinished terminal chunks into logger, only for debug purposes.
+        """
+        unfinished_dict = dict()
+        for tensor_key, chunk_ops in self._target_tensor_chunk_ops.items():
+            executed_ops = self._target_tensor_finished.get(tensor_key, ())
+            unfinished = sorted(set(chunk_ops) - set(executed_ops))
+            if unfinished:
+                unfinished_dict[tensor_key] = unfinished
+        logger.debug('Unfinished terminal chunks: %r', unfinished_dict)
+
     def get_state(self):
         return self.state
 
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._operand_infos)
 
+    def get_operand_states(self, op_keys):
+        return [self._operand_infos[k]['state'] for k in op_keys]
+
     def set_operand_state(self, op_key, state):
-        self._operand_infos[op_key]['state'] = OperandState(state)
+        op_info = self._operand_infos[op_key]
+        op_info['state'] = OperandState(state)
+        try:
+            del op_info['failover_state']
+        except KeyError:
+            pass
+
+    def get_operand_target_worker(self, op_key):
+        return self._operand_infos[op_key]['target_worker']
 
     def get_operand_info(self):
         return self._operand_infos
@@ -801,3 +866,151 @@ class GraphActor(SchedulerActor):
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
             ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dumps(merge_tensor_chunks(tiled_tensor, ctx))
+
+    @log_unhandled
+    def check_operand_can_be_freed(self, succ_op_keys):
+        """
+        Check if the data of an operand can be freed.
+
+        :param succ_op_keys: keys of successor operands
+        :return: True if can be freed, False if cannot. None when the result
+                 is not determinant and we need to test later.
+        """
+        operand_infos = self._operand_infos
+        for k in succ_op_keys:
+            op_info = operand_infos[k]
+            op_state = op_info.get('state')
+            if op_state not in OperandState.SUCCESSFUL_STATES:
+                return False
+            failover_state = op_info.get('failover_state')
+            if failover_state and failover_state not in OperandState.SUCCESSFUL_STATES:
+                return False
+        # if can be freed but blocked by an ongoing fail-over step,
+        # we try later.
+        if self._operand_free_paused:
+            return None
+        return True
+
+    @log_unhandled
+    def handle_worker_change(self, adds, removes, lost_chunks, handle_later=True):
+        """
+        Calculate and propose changes of operand states given changes
+        in workers and lost chunks.
+
+        :param adds: endpoints of workers newly added to the cluster
+        :param removes: endpoints of workers removed to the cluster
+        :param lost_chunks: keys of lost chunks
+        :param handle_later: run the function later, only used in this actor
+        """
+        if self._state in GraphState.TERMINATED_STATES:
+            return
+
+        if handle_later:
+            # Run the fail-over process later.
+            # This is the default behavior as we need to make sure that
+            # all crucial state changes are received by GraphActor.
+            # During the delay, no operands are allowed to be freed.
+            self._operand_free_paused = True
+            self.ref().handle_worker_change(adds, removes, lost_chunks,
+                                            handle_later=False, _delay=0.5, _tell=True)
+            return
+        else:
+            self._operand_free_paused = False
+
+        worker_slots = self._get_worker_slots()
+        removes_set = set(removes)
+
+        # collect operand states
+        operand_infos = self._operand_infos
+        fixed_assigns = dict()
+        graph_states = dict()
+        for key, op_info in operand_infos.items():
+            op_worker = op_info.get('worker')
+            if op_worker is None:
+                continue
+
+            op_state = graph_states[key] = op_info['state']
+
+            # RUNNING nodes on dead workers should be moved to READY first
+            if op_state == OperandState.RUNNING and op_worker in removes_set:
+                graph_states[key] = OperandState.READY
+
+            if op_worker in worker_slots:
+                fixed_assigns[key] = op_info['worker']
+
+        graph = self.get_chunk_graph()
+        new_states = dict()
+        analyzer = GraphAnalyzer(graph, worker_slots, fixed_assigns, graph_states, lost_chunks)
+        if removes or lost_chunks:
+            new_states = analyzer.analyze_state_changes()
+            logger.debug('%d chunks lost. %d operands changed state.', len(lost_chunks),
+                         len(new_states))
+
+        logger.debug('Start reallocating initial operands')
+        # collect external inputs for eager mode
+        ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
+        input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
+        new_targets = analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas)
+
+        futures = []
+        # make sure that all readies and runnings are included to be checked
+        for key, op_info in operand_infos.items():
+            if key in new_states:
+                continue
+            state = op_info['state']
+            if state == OperandState.RUNNING and \
+                    operand_infos[key]['worker'] not in removes_set:
+                continue
+            if state in (OperandState.READY, OperandState.RUNNING):
+                new_states[key] = state
+
+        for key, state in new_states.items():
+            if key in new_targets:
+                new_target = operand_infos[key]['target_worker'] = new_targets[key]
+            else:
+                new_target = None
+
+            op_info = operand_infos[key]
+            from_state = op_info['state']
+            # record the target state in special info key
+            # in case of concurrency issues
+            op_info['failover_state'] = state
+
+            op_ref = self._get_operand_ref(key)
+            # states may easily slip into the next state when we are
+            # calculating fail-over states. Hence we need to include them
+            # into source states.
+            if from_state == OperandState.READY:
+                from_states = [from_state, OperandState.RUNNING]
+            elif from_state == OperandState.RUNNING:
+                from_states = [from_state, OperandState.FINISHED]
+            elif from_state == OperandState.FINISHED:
+                from_states = [from_state, OperandState.FREED]
+            else:
+                from_states = [from_state]
+            futures.append(op_ref.move_failover_state(
+                from_states, state, new_target, removes, _tell=True, _wait=False))
+        [f.result() for f in futures]
+
+        self._dump_failover_info(adds, removes, lost_chunks, new_states)
+
+    def _dump_failover_info(self, adds, removes, lost_chunks, new_states):  # pragma: no cover
+        if not options.scheduler.dump_graph_data:
+            return
+        with self._open_dump_file('failover-record') as outf:
+            outf.write('ADDED WORKERS:\n')
+            for c in adds:
+                outf.write(c + '\n')
+            outf.write('REMOVED WORKERS:\n')
+            for c in removes:
+                outf.write(c + '\n')
+            outf.write('\n\nLOST CHUNKS:\n')
+            for c in lost_chunks:
+                outf.write(c + '\n')
+            outf.write('\n\nOPERAND SNAPSHOT:\n')
+            for key, op_info in self._operand_infos.items():
+                outf.write('Chunk: %s Worker: %r State: %s\n' %
+                           (key, op_info.get('worker'), op_info['state'].value))
+            outf.write('\n\nSTATE TRANSITIONS:\n')
+            for key, state in new_states.items():
+                outf.write('%s -> %s\n' % (key, state.name))

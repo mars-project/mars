@@ -57,6 +57,21 @@ class AssignerActor(SchedulerActor):
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
+    def _refresh_worker_metrics(self):
+        t = time.time()
+        if self._worker_metrics is None or self._worker_metric_time + 1 < time.time():
+            # update worker metrics from ResourceActor
+            self._worker_metrics = self._resource_ref.get_workers_meta()
+            self._worker_metric_time = t
+
+    def mark_metrics_expired(self):
+        logger.debug('Metrics cache marked as expired.')
+        self._worker_metric_time = 0
+
+    def is_worker_alive(self, worker):
+        self._refresh_worker_metrics()
+        return worker in self._worker_metrics
+
     @log_unhandled
     def get_worker_assignments(self, session_id, op_info):
         """
@@ -64,11 +79,7 @@ class AssignerActor(SchedulerActor):
         :param session_id: session id
         :param op_info: operand information, should be a dict
         """
-        t = time.time()
-        if self._worker_metrics is None or self._worker_metric_time + 1 < time.time():
-            # update worker metrics from ResourceActor
-            self._worker_metrics = self._resource_ref.get_workers_meta()
-            self._worker_metric_time = t
+        self._refresh_worker_metrics()
 
         target_worker = op_info.get('target_worker')
         if target_worker and target_worker not in self._worker_metrics:

@@ -27,7 +27,7 @@ from numpy.testing import assert_array_equal
 
 from mars.actors import create_actor_pool
 from mars.cluster_info import ClusterInfoActor
-from mars.compat import Empty, BrokenPipeError
+from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
     SpillNotConfigured, ExecutionInterrupted
@@ -91,7 +91,7 @@ class MockReceiverActor(WorkerActor):
             self._callbacks[query_key].append(callback)
 
     def create_data_writer(self, session_id, chunk_key, data_size, sender_ref,
-                           ensure_cached=True, callback=None):
+                           ensure_cached=True, timeout=0, callback=None):
         from mars.compat import BytesIO
         query_key = (session_id, chunk_key)
         if query_key in self._data_metas and \
@@ -306,6 +306,7 @@ class Test(WorkerCase):
         chunk_key3 = str(uuid.uuid4())
         chunk_key4 = str(uuid.uuid4())
         chunk_key5 = str(uuid.uuid4())
+        chunk_key6 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
@@ -468,6 +469,21 @@ class Test(WorkerCase):
 
                     with self.assertRaises(SpillNotConfigured):
                         self.get_result(5)
+
+                # test receive timeout
+                receiver_ref_p.register_finish_callback(session_id, chunk_key6, _promise=True) \
+                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+
+                receiver_ref_p.create_data_writer(session_id, chunk_key6, data_size, test_actor,
+                                                  timeout=2, _promise=True) \
+                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+                receiver_ref_p.receive_data_part(session_id, chunk_key6, serialized_mock_data[:64],
+                                                 zlib.crc32(serialized_mock_data[:64]))
+
+                with self.assertRaises(TimeoutError):
+                    self.get_result(5)
 
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())

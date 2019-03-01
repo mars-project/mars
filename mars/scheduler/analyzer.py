@@ -297,7 +297,9 @@ class GraphAnalyzer(object):
         worker_op_keys = defaultdict(set)
         if cur_assigns:
             for op_key, state in op_states.items():
-                if op_key not in zero_degree_op_keys and state == OperandState.READY:
+                if op_key not in zero_degree_op_keys \
+                        and state == OperandState.READY \
+                        and op_key in cur_assigns:
                     descendant_readies.add(op_key)
                     assigned_initial_counts[cur_assigns[op_key]] += 1
 
@@ -378,9 +380,7 @@ class GraphAnalyzer(object):
         # check data on finished operands. when data lost, mark the operand
         # and its successors as affected.
         affected_op_keys = set()
-        for op_key, state in op_states.items():
-            if state != OperandState.FINISHED or op_key not in lost_ops:
-                continue
+        for op_key in lost_ops:
             affected_op_keys.add(op_key)
             for n in op_key_to_chunks[op_key]:
                 affected_op_keys.update(succ.op.key for succ in graph.iter_successors(n))
@@ -398,7 +398,7 @@ class GraphAnalyzer(object):
                 pred_op_key = pred.op.key
                 # mark affected, if
                 # 1. data of the operand is lost
-                # 2. state does not hold data, or is calculating,
+                # 2. state does not hold data, or data is lost,
                 #    for instance, operand is freed.
                 if pred.key in lost_chunks or op_states.get(pred_op_key) not in stop_spread_states:
                     affected_op_keys.add(pred_op_key)

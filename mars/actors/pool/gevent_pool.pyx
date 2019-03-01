@@ -36,7 +36,7 @@ from gevent._tblib import _init as gevent_init_tblib
 from gevent.threadpool import ThreadPool as GThreadPool
 
 from ...lib import gipc
-from ...compat import six, OrderedDict, BrokenPipeError, ConnectionRefusedError
+from ...compat import six, OrderedDict, TimeoutError, BrokenPipeError, ConnectionRefusedError
 from ..errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from ..distributor cimport Distributor
 from ..core cimport ActorRef, Actor
@@ -381,6 +381,8 @@ class Connections(object):
                 except socket.error as exc:  # pragma: no cover
                     if exc.errno == errno.ECONNREFUSED:
                         raise ConnectionRefusedError
+                    elif exc.errno == errno.ETIMEDOUT:
+                        raise TimeoutError
                     else:
                         raise
 

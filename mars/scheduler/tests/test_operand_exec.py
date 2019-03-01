@@ -60,7 +60,7 @@ class FakeExecutionActor(promise.PromiseActor):
         if graph_key in self._cancels:
             try:
                 raise ExecutionInterrupted
-            except:
+            except ExecutionInterrupted:
                 exc = sys.exc_info()
 
             self._results[graph_key] = (exc, dict(_accept=False))
@@ -69,13 +69,18 @@ class FakeExecutionActor(promise.PromiseActor):
             rec.finish_callbacks = []
             return
         elif self._fail_count and self._retries[graph_key] < self._fail_count:
+            try:
+                raise ValueError
+            except ValueError:
+                exc = sys.exc_info()
+
             logger.debug('Key %r: %r', graph_key, self._retries.get(graph_key))
             self._retries[graph_key] += 1
 
             del self._graph_records[(session_id, graph_key)]
-            self._results[graph_key] = ((), dict(_accept=False))
+            self._results[graph_key] = (exc, dict(_accept=False))
             for cb in rec.finish_callbacks:
-                self.tell_promise(cb, _accept=False)
+                self.tell_promise(cb, *exc, **dict(_accept=False))
             rec.finish_callbacks = []
             return
 
@@ -160,6 +165,7 @@ class FakeExecutionActor(promise.PromiseActor):
         self._cancels.add(graph_key)
 
 
+@patch_method(ResourceActor._broadcast_sessions)
 class Test(unittest.TestCase):
     @staticmethod
     def _run_operand_case(session_id, graph_key, tensor, execution_creator):

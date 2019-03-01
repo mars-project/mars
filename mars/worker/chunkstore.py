@@ -177,8 +177,9 @@ class PlasmaChunkStore(object):
         try:
             obj_id = self._new_object_id(session_id, chunk_key)
         except StoreKeyExists:
+            logger.debug('Chunk %s already exists, returning existing', chunk_key)
             obj_id = self._get_object_id(session_id, chunk_key)
-            [buffer] = self._plasma_client.get_buffers([obj_id])
+            [buffer] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
             return buffer
 
         try:

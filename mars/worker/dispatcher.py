@@ -16,6 +16,9 @@ import logging
 from collections import deque, OrderedDict
 
 from .utils import WorkerActor
+from .. import promise
+from ..actors import ActorNotExist
+from ..compat import BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..utils import mod_hash, log_unhandled
 
 logger = logging.getLogger(__name__)
@@ -40,6 +43,16 @@ class DispatchActor(WorkerActor):
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
+    def _safe_tell_promise_slot(self, callback, queue_name, slot):
+        try:
+            self.tell_promise(callback, slot)
+        except (ActorNotExist, BrokenPipeError, ConnectionRefusedError,
+                TimeoutError, promise.PromiseTimeout):
+            logger.exception('Failed to tell slot %s of queue %s into promise %r',
+                             slot, queue_name, callback)
+            if slot is not None:
+                self.ref().register_free_slot(slot, queue_name, _tell=True)
+
     @log_unhandled
     def get_free_slot(self, queue_name, callback=None):
         """
@@ -48,14 +61,19 @@ class DispatchActor(WorkerActor):
         :param callback: promise callback
         """
         if queue_name not in self._free_slots:
-            self.tell_promise(callback, None)
+            self._safe_tell_promise_slot(callback, queue_name, None)
             return
         if not self._free_slots[queue_name]:
             # no slots free, we queue the callback
             self._free_slot_requests[queue_name].append(callback)
-            logger.debug('No valid slots available. slot dump: %r', self._dump_free_slots())
+            logger.debug('Slots not enough for queue %s on %s. slot dump: %r',
+                         queue_name, self.address, self.get_free_slots_num())
             return
-        self.tell_promise(callback, self._free_slots[queue_name].popitem()[0])
+
+        free_slot = self._free_slots[queue_name].popitem()[0]
+        logger.debug('Slot %s allocated for queue %s on %s. slot dump: %r',
+                     free_slot, queue_name, self.address, self.get_free_slots_num())
+        self._safe_tell_promise_slot(callback, queue_name, free_slot)
 
         if self._status_ref is not None:
             self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},
@@ -82,7 +100,10 @@ class DispatchActor(WorkerActor):
             return []
         return list(self._all_slots[queue_name].keys())
 
-    def _dump_free_slots(self):
+    def get_free_slots_num(self):
+        """
+        Get number of free slots of every queue
+        """
         return dict((k, len(v)) for k, v in self._free_slots.items())
 
     @log_unhandled
@@ -99,9 +120,13 @@ class DispatchActor(WorkerActor):
         self._free_slots[queue_name][uid] = ''
         self._all_slots[queue_name][uid] = ''
 
+        logger.debug('Slot %s registered for queue %s on %s', uid, queue_name, self.address)
+
         if self._free_slot_requests[queue_name]:
-            self.tell_promise(self._free_slot_requests[queue_name].popleft(),
-                              self._free_slots[queue_name].popitem()[0])
+            free_slot = self._free_slots[queue_name].popitem()[0]
+            logger.debug('Slot %s allocated for queue %s on %s. slot dump: %r',
+                         free_slot, queue_name, self.address, self.get_free_slots_num())
+            self._safe_tell_promise_slot(self._free_slot_requests[queue_name].popleft(), queue_name, free_slot)
 
         if self._status_ref is not None:
             self._status_ref.update_slots({queue_name: len(self._free_slots[queue_name])},

@@ -21,13 +21,14 @@ from functools import partial
 from collections import defaultdict
 
 from .. import promise
-from ..compat import Enum
+from ..compat import six, Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
+from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
+    DependencyMissing
 from ..tensor.expressions.datasource import TensorFetch
 from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
-from .spill import spill_exists
+from .spill import spill_exists, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,8 @@ class ExecutionActor(WorkerActor):
         self._status_ref = None
         self._daemon_ref = None
 
+        self._resource_ref = None
+
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
         self._result_cache = ExpiringCache()  # type: dict[tuple, GraphResultRecord]
 
@@ -138,6 +141,8 @@ class ExecutionActor(WorkerActor):
         from .taskqueue import TaskQueueActor
 
         super(ExecutionActor, self).post_create()
+        self.set_cluster_info_ref()
+
         self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
         self._task_queue_ref = self.promise_ref(TaskQueueActor.default_name())
@@ -152,6 +157,11 @@ class ExecutionActor(WorkerActor):
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
+
+        from ..scheduler import ResourceActor
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        if not self.ctx.has_actor(self._resource_ref):
+            self._resource_ref = None
 
         self.periodical_dump()
 
@@ -232,6 +242,8 @@ class ExecutionActor(WorkerActor):
                 succ_rec = self._graph_records[(session_id, succ_key)]
             except KeyError:
                 continue
+            if succ_rec.state != ExecutionState.PRE_PUSHED:
+                continue
 
             try:
                 succ_rec.data_sizes.update(result_rec.data_sizes)
@@ -294,6 +306,7 @@ class ExecutionActor(WorkerActor):
         try:
             graph_record.pin_request = set(self._chunk_holder_ref.pin_chunks(graph_key, keys_to_pin))
         except PinChunkFailed:
+            logger.debug('Failed to pin chunk for graph %s', graph_key)
             # cannot pin input chunks: retry later
             self.dequeue_graph(session_id, graph_key)
 
@@ -358,6 +371,7 @@ class ExecutionActor(WorkerActor):
         remote_disp_ref = self.promise_ref(uid=DispatchActor.default_name(),
                                            address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
+        timeout = options.worker.prepare_data_timeout
 
         @log_unhandled
         def _finish_fetch(*_):
@@ -366,21 +380,47 @@ class ExecutionActor(WorkerActor):
                 self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk_key))
 
         @log_unhandled
+        def _handle_network_error(*exc):
+            try:
+                logger.warning('Communicating to %s encountered %s when fetching %s',
+                               remote_addr, exc[0].__name__, chunk_key)
+
+                if not self._chunk_holder_ref.is_stored(chunk_key):
+                    logger.debug('Deleting chunk %s from worker because of failure of transfer', chunk_key)
+                    self._chunk_store.delete(session_id, chunk_key)
+                else:
+                    # as data already transferred, we can skip the error
+                    logger.debug('Chunk %s already transferred', chunk_key)
+                    _finish_fetch()
+                    return
+
+                six.reraise(*exc)
+            except (BrokenPipeError, ConnectionRefusedError, TimeoutError, promise.PromiseTimeout):
+                if self._resource_ref:
+                    self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
+                raise DependencyMissing
+
+        @log_unhandled
         def _fetch_step(sender_uid):
             if self._graph_records[(session_id, graph_key)].stop_requested:
-                self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
-            logger.debug('Request for chunk %s transferring from %s', chunk_key, remote_addr)
-            return sender_ref.send_data(
-                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
-                timeout=options.worker.prepare_data_timeout, _promise=True
-            ).then(_finish_fetch)
+            logger.debug('Fetching chunk %s in %s to %s with slot %s',
+                         chunk_key, remote_addr, self.address, sender_uid)
+            try:
+                return sender_ref.send_data(
+                    session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                    timeout=timeout, _timeout=timeout, _promise=True
+                ).then(_finish_fetch)
+            except:  # noqa: E722
+                _handle_network_error(*sys.exc_info())
 
         return promise.Promise(done=True) \
-            .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True)) \
-            .then(_fetch_step)
+            .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True, _timeout=timeout)) \
+            .then(_fetch_step) \
+            .catch(_handle_network_error)
 
     def estimate_graph_finish_time(self, session_id, graph_key, calc_fetch=True, base_time=None):
         """
@@ -500,16 +540,31 @@ class ExecutionActor(WorkerActor):
             if isinstance(exc[1], ExecutionInterrupted):
                 logger.warning('Execution of graph %s interrupted.', graph_key)
             else:
-                logger.exception('Unexpected error occurred in executing %s', graph_key, exc_info=exc)
+                logger.exception('Unexpected error occurred in executing graph %s', graph_key, exc_info=exc)
 
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
             self._invoke_finish_callbacks(session_id, graph_key)
 
-        self._prepare_graph_inputs(session_id, graph_key) \
-            .then(_wait_free_slot) \
-            .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
-            .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
-            .then(_handle_success, _handle_rejection)
+        # collect target data already computed
+        save_sizes = dict()
+        for target_key in graph_record.targets:
+            if self._chunk_store.contains(session_id, target_key):
+                save_sizes[target_key] = self._chunk_store.get_actual_size(session_id, target_key)
+            elif spill_exists(target_key):
+                save_sizes[target_key] = get_spill_data_size(target_key)
+
+        # when all target data are computed, report success directly
+        if all(k in save_sizes for k in graph_record.targets):
+            logger.debug('All predecessors of graph %s already computed, call finish directly.', graph_key)
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
+            _handle_success()
+        else:
+            promise.Promise(done=True) \
+                .then(lambda: self._prepare_graph_inputs(session_id, graph_key)) \
+                .then(_wait_free_slot) \
+                .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
+                .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
+                .then(_handle_success, _handle_rejection)
 
     @log_unhandled
     def _prepare_graph_inputs(self, session_id, graph_key):
@@ -561,7 +616,7 @@ class ExecutionActor(WorkerActor):
             chunk_key = to_str(chunk.key)
             chunk_meta = self.get_meta_ref(session_id, chunk_key) \
                 .get_chunk_meta(session_id, chunk_key)
-            if chunk_meta is None:
+            if chunk_meta is None or not chunk_meta.workers:
                 raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
             worker_results = chunk_meta.workers
 
@@ -570,20 +625,21 @@ class ExecutionActor(WorkerActor):
                 # todo sort workers by speed of network and other possible factors
                 worker_priorities.append((worker_ip, (0, )))
 
-            transfer_keys.append(chunk.key)
+            transfer_keys.append(chunk_key)
 
             # fetch data from other workers, if one fails, try another
             sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-            p = self._fetch_remote_data(session_id, graph_key, chunk.key, sorted_workers[0][0],
-                                        ensure_cached=chunk.key not in chunks_use_once)
-            for wp in sorted_workers[1:]:
-                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk.key, wp[0],
-                                              ensure_cached=chunk.key not in chunks_use_once))
+            p = promise.Promise(failed=True)
+            for wp in sorted_workers:
+                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, chunk_key, wp[0],
+                                              ensure_cached=chunk_key not in chunks_use_once))
             prepare_promises.append(p)
 
         logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
                      graph_key, graph_record.targets, unspill_keys, transfer_keys)
-        return promise.all_(prepare_promises)
+        p = promise.all_(prepare_promises) \
+            .then(lambda *_: logger.debug('Data preparation for graph %s finished', graph_key))
+        return p
 
     @log_unhandled
     def _send_calc_request(self, session_id, graph_key, calc_uid):
@@ -626,7 +682,7 @@ class ExecutionActor(WorkerActor):
 
             self.estimate_graph_finish_time(session_id, graph_key, calc_fetch=False)
         except:  # noqa: E722
-            self._dispatch_ref.register_free_slot(calc_uid, 'cpu')
+            self._dispatch_ref.register_free_slot(calc_uid, 'cpu', _tell=True)
             raise
 
         # make sure that memory suffices before actually run execution
@@ -648,17 +704,21 @@ class ExecutionActor(WorkerActor):
 
         @log_unhandled
         def _do_active_transfer(*_):
+            logger.debug('Start active transfer for graph %s', graph_key)
+
             # transfer the result chunk to expected endpoints
             @log_unhandled
             def _send_chunk(sender_uid, chunk_key, target_addrs):
                 if graph_record.stop_requested:
-                    self._dispatch_ref.register_free_slot(sender_uid, 'sender')
+                    self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                     raise ExecutionInterrupted
 
                 sender_ref = self.promise_ref(sender_uid)
-                logger.debug('Request for chunk %s sent to %s', chunk_key, target_addrs)
+                timeout = options.worker.prepare_data_timeout
+                logger.debug('Actively sending chunk %s to %s with slot %s',
+                             chunk_key, target_addrs, sender_uid)
                 return sender_ref.send_data(session_id, chunk_key, target_addrs, ensure_cached=False,
-                                            timeout=options.worker.prepare_data_timeout, _promise=True)
+                                            timeout=timeout, _timeout=timeout, _promise=True)
 
             if graph_record.mem_request:
                 self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
@@ -666,7 +726,8 @@ class ExecutionActor(WorkerActor):
 
             promises = []
             for key, targets in send_addresses.items():
-                promises.append(self._dispatch_ref.get_free_slot('sender', _promise=True)
+                promises.append(promise.Promise(done=True)
+                                .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
                                 .then(partial(_send_chunk, chunk_key=key, target_addrs=targets))
                                 .catch(lambda *_: None))
             return promise.all_(promises)
@@ -757,6 +818,7 @@ class ExecutionActor(WorkerActor):
     def stop_execution(self, session_id, graph_key):
         """
         Mark graph for stopping
+        :param session_id: session id
         :param graph_key: graph key
         """
         logger.debug('Receive stop for graph %s', graph_key)
@@ -792,12 +854,12 @@ class ExecutionActor(WorkerActor):
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)
 
-    def _dump_execution_states(self, show_unrun=False):
+    def _dump_execution_states(self):
         if logger.getEffectiveLevel() <= logging.DEBUG:
             cur_time = time.time()
             states = dict((k[1], (cur_time - v.state_time, v.state.name))
                           for k, v in self._graph_records.items()
-                          if show_unrun or v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
+                          if v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
             logger.debug('Executing states: %r', states)
 
     def handle_process_down(self, halt_refs):

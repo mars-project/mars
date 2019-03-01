@@ -30,7 +30,7 @@ from mars.config import options
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
 from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import ChunkMetaActor
+from mars.scheduler import ChunkMetaActor, ResourceActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
@@ -156,12 +156,14 @@ class Test(WorkerCase):
 
     @classmethod
     def create_standard_actors(cls, pool, address, quota_size=None, with_daemon=True,
-                               with_status=True):
+                               with_status=True, with_resource=False):
         quota_size = quota_size or (1024 * 1024)
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
         pool.create_actor(ClusterInfoActor, schedulers=[address],
                           uid=ClusterInfoActor.default_name())
 
+        if with_resource:
+            pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
         if with_daemon:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
         if with_status:
@@ -563,7 +565,8 @@ class Test(WorkerCase):
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
                                address=pool_address, distributor=WorkerDistributor(2)) as pool:
-            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
+            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False,
+                                        with_resource=True)
             pool.create_actor(CpuCalcActor)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
@@ -579,6 +582,32 @@ class Test(WorkerCase):
             arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
+
+            with self.run_actor_test(pool) as test_actor:
+                graph_key = str(uuid.uuid4())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            with self.assertRaises(DependencyMissing):
+                self.get_result()
+
+            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                          shape=mock_data.shape, workers=('0.0.0.0:1234',))
+            with self.run_actor_test(pool) as test_actor:
+                graph_key = str(uuid.uuid4())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            with self.assertRaises(DependencyMissing):
+                self.get_result()
 
             chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
                                           shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
@@ -625,6 +654,50 @@ class Test(WorkerCase):
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None,
                                             send_addresses={result_key: (pool_address,)}, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            self.get_result()
+
+    def testReExecuteExisting(self):
+        pool_address = '127.0.0.1:%d' % get_next_port()
+        session_id = str(uuid.uuid4())
+        mock_data = np.array([1, 2, 3, 4])
+        with create_actor_pool(n_process=1, backend='gevent',
+                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
+            pool.create_actor(CpuCalcActor)
+
+            import mars.tensor as mt
+            arr = mt.ones((4,), chunk_size=4)
+            arr_add = mt.array(mock_data)
+            result_tensor = arr + arr_add
+            graph = result_tensor.build_graph(compose=False, tiled=True)
+
+            pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
+
+            def _validate(_):
+                data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                assert_array_equal(data, mock_data + np.ones((4,)))
+
+            with self.run_actor_test(pool) as test_actor:
+                graph_key = str(uuid.uuid4())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                    .then(_validate) \
+                    .then(lambda *_: test_actor.set_result(None)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, False))
+
+            self.get_result()
+
+            with self.run_actor_test(pool) as test_actor:
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \

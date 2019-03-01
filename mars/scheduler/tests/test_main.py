@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import logging
 import operator
 import os
 import signal
@@ -23,7 +24,7 @@ import unittest
 import uuid
 
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose
 import gevent
 
 from mars import tensor as mt
@@ -36,6 +37,8 @@ from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.scheduler import SessionManagerActor, ResourceActor
 from mars.scheduler.graph import GraphState
+
+logger = logging.getLogger(__name__)
 
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
@@ -54,6 +57,13 @@ class Test(unittest.TestCase):
         import shutil
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
+
+        try:
+            delay_state_file = os.environ.get('DELAY_STATE_FILE')
+            if delay_state_file:
+                os.unlink(delay_state_file)
+        except OSError:
+            pass
 
     def setUp(self):
         self.scheduler_endpoints = []
@@ -80,7 +90,8 @@ class Test(unittest.TestCase):
             self.etcd_helper.stop()
         options.kv_store = ':inproc:'
 
-    def start_processes(self, n_schedulers=1, n_workers=2, etcd=False, modules=None):
+    def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
+                        log_scheduler=True, log_worker=True):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -100,21 +111,26 @@ class Test(unittest.TestCase):
         else:
             append_args.extend(['--schedulers', ','.join(self.scheduler_endpoints)])
 
+        if 'DUMP_GRAPH_DATA' in os.environ:
+            append_args += ['-Dscheduler.dump_graph_data=true']
+
         self.proc_schedulers = [
             subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                               '-H', '127.0.0.1',
-                              '--level', 'debug',
+                              '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
-                              '--format', '%(asctime)-15s %(message)s']
+                              '--format', '%(asctime)-15s %(message)s',
+                              '-Dscheduler.retry_delay=5']
                              + append_args)
             for p in scheduler_ports]
         self.proc_workers = [
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
                               '--cpu-procs', '1',
-                              '--level', 'debug',
+                              '--level', 'debug' if log_worker else 'warning',
                               '--cache-mem', '16m',
-                              '--ignore-avail-mem']
+                              '--ignore-avail-mem',
+                              '-Dworker.prepare_data_timeout=5']
                              + append_args)
             for _ in range(n_workers)
         ]
@@ -158,18 +174,28 @@ class Test(unittest.TestCase):
             if worker_proc.poll() is not None:
                 raise SystemError('Worker not started. exit code %s' % worker_proc.poll())
 
-    def wait_for_termination(self, session_ref, graph_key):
+    def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()
+        dump_time = time.time()
+        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 60))
         while True:
             time.sleep(0.1)
             self.check_process_statuses()
-            if time.time() - check_time > 60:
+            if time.time() - check_time > check_timeout:
                 raise SystemError('Check graph status timeout')
+            if time.time() - dump_time > 10:
+                dump_time = time.time()
+                graph_refs = session_ref.get_graph_refs()
+                try:
+                    graph_ref = actor_client.actor_ref(graph_refs[graph_key])
+                    graph_ref.dump_unfinished_terminals()
+                except KeyError:
+                    pass
             if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
                 return session_ref.graph_state(graph_key)
 
     def testMainWithoutEtcd(self):
-        self.start_processes(n_schedulers=2)
+        self.start_processes()
 
         session_id = uuid.uuid1()
         actor_client = new_client()
@@ -185,19 +211,19 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(loads(result), expected.sum())
+        assert_allclose(loads(result), expected.sum())
 
         graph_key = uuid.uuid1()
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
         # todo this behavior may change when eager mode is introduced
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.FAILED)
 
         a = mt.ones((100, 50), chunk_size=35) * 2 + 1
@@ -209,10 +235,10 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
         result = session_ref.fetch_result(graph_key, c.key)
-        assert_array_equal(loads(result), np.ones((100, 200)) * 450)
+        assert_allclose(loads(result), np.ones((100, 200)) * 450)
 
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)
@@ -223,15 +249,15 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         expected = reduce(operator.add, [base_arr[:10, :10] for _ in range(10)])
         result = session_ref.fetch_result(graph_key, sumv.key)
-        assert_array_equal(loads(result), expected)
+        assert_allclose(loads(result), expected)
 
     def testMainWithEtcd(self):
-        self.start_processes(n_schedulers=2, etcd=True)
+        self.start_processes(etcd=True)
 
         session_id = uuid.uuid1()
         actor_client = new_client()
@@ -247,9 +273,60 @@ class Test(unittest.TestCase):
         session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
                                         graph_key, target_tensors=targets)
 
-        state = self.wait_for_termination(session_ref, graph_key)
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
         result = session_ref.fetch_result(graph_key, c.key)
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(loads(result), expected.sum())
+        assert_allclose(loads(result), expected.sum())
+
+    def testWorkerFailOver(self):
+        def kill_process_tree(p):
+            import psutil
+            proc = psutil.Process(p.pid)
+            for p in proc.children(recursive=True):
+                p.kill()
+            proc.kill()
+
+        import tempfile
+        delay_file = os.environ['DELAY_STATE_FILE'] = os.path.join(
+            tempfile.gettempdir(), 'test-main-delay-%d-%d' % (os.getpid(), id(self)))
+        open(delay_file, 'w').close()
+
+        terminate_file = os.environ['TERMINATE_STATE_FILE'] = os.path.join(
+            tempfile.gettempdir(), 'test-main-terminate-%d-%d' % (os.getpid(), id(self)))
+
+        self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=True)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        np_a = np.random.random((100, 100))
+        np_b = np.random.random((100, 100))
+
+        a = mt.array(np_a, chunk_size=30) * 2 + 1
+        b = mt.array(np_b, chunk_size=30) * 2 + 1
+        c = a.dot(b) * 2 + 1
+        graph = c.build_graph()
+        targets = [c.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tensor_graph(
+            json.dumps(graph.to_json()), graph_key, target_tensors=targets)
+
+        while not os.path.exists(terminate_file):
+            actor_client.sleep(0.05)
+        os.unlink(terminate_file)
+        # actor_client.sleep(1.2)
+
+        kill_process_tree(self.proc_workers[0])
+        logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
+        self.proc_workers = self.proc_workers[1:]
+        os.unlink(delay_file)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, c.key)
+        expected = (np_a * 2 + 1).dot(np_b * 2 + 1) * 2 + 1
+        assert_allclose(loads(result), expected)

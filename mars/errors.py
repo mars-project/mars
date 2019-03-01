@@ -19,6 +19,8 @@ class MarsError(RuntimeError):
     """
     """
     def __init__(self, msg=None):
+        self._err_data = msg
+        msg = repr(msg) if msg is not None else None
         super(MarsError, self).__init__(msg)
 
     def __str__(self):

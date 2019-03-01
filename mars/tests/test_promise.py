@@ -219,13 +219,25 @@ class Test(unittest.TestCase):
                 [('gen_promise', 0), ('thread_body', 1)]
             )
 
+            # chained errors
+            value_list = []
+            p = promise.Promise(failed=True) \
+                .catch(lambda *_: 1 / 0) \
+                .catch(lambda *_: 2 / 0) \
+                .catch(lambda *_: gen_promise(0)) \
+                .catch(lambda *_: gen_promise(1))
+            p.wait()
+            self.assertListEqual(
+                value_list,
+                [('gen_promise', 0), ('thread_body', 1)]
+            )
+
             # continue error call
-            import gevent.event
             value_list = []
             p = gen_promise(0) \
                 .then(lambda *_: 5 / 0) \
-                .then(lambda *_: None)
-            gevent.sleep(0.5)
+                .then(lambda *_: gen_promise(2))
+            time.sleep(0.5)
             value_list = []
             p.catch(lambda *_: gen_promise(0)) \
                 .wait()

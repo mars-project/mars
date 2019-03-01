@@ -34,7 +34,7 @@ class Promise(object):
     """
     Object representing a promised result
     """
-    def __init__(self, resolve=None, reject=None, done=False):
+    def __init__(self, resolve=None, reject=None, done=False, failed=False):
         # use random promise id
         self._id = struct.pack('<Q', id(self)) + np.random.bytes(32)
         # register in global pool to reject gc collection
@@ -55,7 +55,12 @@ class Promise(object):
         self._next_item = None  # type: Promise
 
         # promise results
-        self._accepted = None if not done else True
+        if done:
+            self._accepted = True
+        elif failed:
+            self._accepted = False
+        else:
+            self._accepted = None
         self._args = ()
         self._kwargs = {}
 
@@ -91,7 +96,10 @@ class Promise(object):
                     result._bind_item = self
                     if result._accepted is not None:
                         # promise already done, we move next
-                        result.step_next(_accept=result._accepted)
+                        args = result._args or ()
+                        kwargs = result._kwargs or {}
+                        kwargs['_accept'] = result._accepted
+                        result.step_next(*args, **kwargs)
                 else:
                     # return non-promise result, we just step next
                     self.step_next(result)
@@ -261,7 +269,7 @@ class PromiseRefWrapper(object):
             kwargs['_tell'] = True
             ref_fun(*args, **kwargs)
 
-            if timeout > 0:
+            if timeout and timeout > 0:
                 # add a callback that triggers some times later to deal with timeout
                 self._caller.ref().handle_promise_timeout(p.id, _tell=True, _delay=timeout)
 
@@ -312,8 +320,8 @@ class PromiseActor(FunctionActor):
         """
         if not hasattr(self, '_promises'):
             self._promises = dict()
-            self._promise_uids = dict()
-            self._uid_promises = dict()
+            self._promise_ref_keys = dict()
+            self._ref_key_promises = dict()
 
         if not args and not kwargs:
             ref = self.ref()
@@ -337,10 +345,11 @@ class PromiseActor(FunctionActor):
 
         self._promises[promise_id] = weakref.ref(promise, _weak_callback)
         ref_key = (ref.uid, ref.address)
-        self._promise_uids[promise_id] = ref_key
-        if ref_key not in self._uid_promises:
-            self._uid_promises[ref_key] = set()
-        self._uid_promises[ref_key].add(promise_id)
+        self._promise_ref_keys[promise_id] = ref_key
+        try:
+            self._ref_key_promises[ref_key].add(promise_id)
+        except KeyError:
+            self._ref_key_promises[ref_key] = {promise_id}
 
     def get_promise(self, promise_id):
         """
@@ -354,10 +363,10 @@ class PromiseActor(FunctionActor):
     def delete_promise(self, promise_id):
         if promise_id not in self._promises:
             return
-        ref_key = self._promise_uids[promise_id]
-        self._uid_promises[ref_key].remove(promise_id)
+        ref_key = self._promise_ref_keys[promise_id]
+        self._ref_key_promises[ref_key].remove(promise_id)
         del self._promises[promise_id]
-        del self._promise_uids[promise_id]
+        del self._promise_ref_keys[promise_id]
 
     def reject_promise_ref(self, ref, *args, **kwargs):
         """
@@ -366,9 +375,9 @@ class PromiseActor(FunctionActor):
         """
         kwargs['_accept'] = False
         ref_key = (ref.uid, ref.address)
-        if ref_key not in self._uid_promises:
+        if ref_key not in self._ref_key_promises:
             return
-        for promise_id in list(self._uid_promises[ref_key]):
+        for promise_id in list(self._ref_key_promises[ref_key]):
             p = self.get_promise(promise_id)
             if p is None:
                 continue
