@@ -219,6 +219,8 @@ class GraphExecution(object):
         results = self._chunk_results
         ref_counts = self._chunk_key_ref_counts
         op_keys = self._executed_op_keys
+        executed_chunk_keys = set()
+        deleted_chunk_keys = set()
         try:
             ops = list(self._op_key_to_ops[op.key])
             if not self._mock:
@@ -227,11 +229,15 @@ class GraphExecution(object):
                 # so we pass the first operand's first output to Executor.handle
                 first_op = ops[0]
                 Executor.handle(first_op.outputs[0], results)
+                executed_chunk_keys.update([c.key for c in first_op.outputs])
                 op_keys.add(first_op.key)
                 # handle other operands
                 for rest_op in ops[1:]:
                     for op_output, rest_op_output in zip(first_op.outputs, rest_op.outputs):
-                        results[rest_op_output.key] = results[op_output.key]
+                        # if the op's outputs have been stored,
+                        # other same key ops' results will be the same
+                        if rest_op_output.key not in executed_chunk_keys:
+                            results[rest_op_output.key] = results[op_output.key]
             else:
                 sparse_percent = self._sparse_mock_percent if op.sparse else 1.0
                 for output in op.outputs:
@@ -245,7 +251,10 @@ class GraphExecution(object):
                     # in case that operand has multiple outputs
                     # and some of the output not in result keys, delete them
                     if ref_counts.get(output.key) == 0:
-                        del results[output.key]
+                        # if the result has been deleted, it should be skipped
+                        if output.key not in deleted_chunk_keys:
+                            deleted_chunk_keys.add(output.key)
+                            del results[output.key]
 
                     # clean the predecessors' results if ref counts equals 0
                     for pred_chunk in self._graph.iter_predecessors(output):
