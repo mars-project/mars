@@ -179,7 +179,7 @@ class CpuCalcActor(WorkerActor):
         :param targets: keys of target chunks
         :param callback: promise callback, returns the uid of InProcessCacheActor
         """
-        from ..tensor.expressions.datasource import TensorFetch
+        from ..operands import Fetch
         graph = deserialize_graph(ser_graph)
         op_key, op_name = concat_operand_keys(graph, '_')
 
@@ -191,7 +191,7 @@ class CpuCalcActor(WorkerActor):
             for chunk in graph.iter_nodes():
                 try:
                     # try load chunk from shared cache
-                    if isinstance(chunk.op, TensorFetch):
+                    if isinstance(chunk.op, Fetch):
                         context_dict[chunk.key] = self._chunk_store.get(session_id, chunk.key)
                         self._mem_quota_ref.release_quota(self._build_load_key(op_key, chunk.key))
                     else:

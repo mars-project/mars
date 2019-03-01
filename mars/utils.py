@@ -238,7 +238,7 @@ def deserialize_graph(graph_b64, graph_cls=None):
 
 def merge_tensor_chunks(input_tensor, ctx):
     from .executor import Executor
-    from .tensor.expressions.datasource import TensorFetch
+    from .tensor.expressions.fetch import TensorFetch
 
     if len(input_tensor.chunks) == 1:
         return ctx[input_tensor.chunks[0].key]

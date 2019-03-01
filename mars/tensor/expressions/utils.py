@@ -475,7 +475,7 @@ def calc_rough_shape(tensor):
 
 def convert_to_fetch(entity):
     from ..core import CHUNK_TYPE, TENSOR_TYPE
-    from .datasource import TensorFetch
+    from .fetch import TensorFetch
 
     if isinstance(entity, CHUNK_TYPE):
         new_op = TensorFetch(dtype=entity.dtype)

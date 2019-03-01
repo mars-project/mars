@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Copyright 1999-2017 Alibaba Group Holding Ltd.
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import Operand
-from .. import opcodes as OperandDef
-from ..serialize import StringField
-from ..utils import to_str
-
-
-class Fetch(Operand):
-    _op_type_ = OperandDef.FETCH
-
-    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
-
-    @property
-    def to_fetch_key(self):
-        return self._to_fetch_key
+from .core import TensorFetch

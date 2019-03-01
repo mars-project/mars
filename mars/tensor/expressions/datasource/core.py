@@ -18,12 +18,9 @@ import itertools
 
 import numpy as np
 
-from .... import opcodes as OperandDef
 from ....operands import DataSource
 from ....compat import izip
 from ....config import options
-from ....serialize import StringField
-from ....utils import to_str
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOperandMixin
 
@@ -138,31 +135,3 @@ class TensorLike(TensorHasInput):
         # FIXME: remove when cupy supports other dtypes
         if self._gpu and self._dtype not in (np.float32, np.float64):
             raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
-
-
-class TensorFetch(TensorNoInput):
-    _op_type_ = OperandDef.FETCH
-
-    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
-
-    def __init__(self, dtype=None, to_fetch_key=None, **kw):
-        super(TensorFetch, self).__init__(
-            _dtype=dtype, _to_fetch_key=to_fetch_key, **kw)
-
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
-        if '_key' in kw and self._to_fetch_key is None:
-            self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_chunks(
-            inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
-
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
-        if '_key' in kw and self._to_fetch_key is None:
-            self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_entities(
-            inputs, shape, chunks=chunks, nsplits=nsplits,
-            output_limit=output_limit, kws=kws, **kw)
-
-    @classmethod
-    def tile(cls, op):
-        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
