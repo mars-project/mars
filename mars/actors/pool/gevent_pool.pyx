@@ -1174,9 +1174,7 @@ cdef class Dispatcher(AsyncHandler):
         actor_ref = ActorRef(address, actor_id)
 
         if self._is_remote(actor_ref):
-            kwargs['address'] = address
-            kwargs['uid'] = uid
-            return self.remote_handler.create_actor(actor_cls, *args, **kwargs)
+            return self.remote_handler.create_actor(address, uid, actor_cls, *args, **kwargs)
 
         wait = kwargs.pop('wait', True)
         callback = kwargs.pop('callback', None)
@@ -1483,9 +1481,10 @@ cdef class ActorPool:
         self._comm_pipes = []
         self._pool_pipes = []
 
-    cdef void _check_started(self):
+    cdef int _check_started(self) except -1:
         if not self._started:
             raise ActorPoolNotStarted('Actor pool need to run first')
+        return 0
 
     def create_actor(self, object actor_cls, *args, **kwargs):
         cdef bint wait
@@ -1608,6 +1607,7 @@ cdef class ActorPool:
                 stop_func()
         finally:
             self._stopped.set()
+            self._started = False
 
     def __enter__(self):
         self.run()

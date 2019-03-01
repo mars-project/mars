@@ -26,7 +26,7 @@ import gevent
 
 from mars.compat import six, BrokenPipeError
 from mars.actors import create_actor_pool as new_actor_pool, Actor, \
-    ActorAlreadyExist, ActorNotExist, Distributor, new_client
+    ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client
 from mars.actors.pool.gevent_pool import Dispatcher, Connections
 from mars.utils import to_binary
 
@@ -344,6 +344,9 @@ class Test(unittest.TestCase):
             ref4 = pool.create_actor(DummyActor, 2)
             ref4.send(('destroy_async',))
             self.assertFalse(pool.has_actor(ref4))
+
+        with self.assertRaises(ActorPoolNotStarted):
+            pool.has_actor(ref1)
 
     def testSimpleMultiprocessActorPool(self):
         with create_actor_pool(n_process=2, backend='gevent') as pool:
@@ -1116,6 +1119,18 @@ class Test(unittest.TestCase):
             with create_actor_pool(address='127.0.0.1:12346', n_process=2, backend='gevent') as pool2:
                 addr2 = pool2.cluster_info.address
 
+                ref1 = pool2.create_actor(DummyActor, 1, address=addr1)
+                ref2 = pool2.actor_ref(ref1.send(('create', (DummyActor, 2), dict(address=addr2))))
+                self.assertIsNone(ref1.send(('tell', ref2, 'add', 3)))
+                self.assertEqual(ref2.send(('get',)), 5)
+
+                # tell message asynchronously
+                ref3 = pool2.actor_ref(ref1.send(('create', (DummyActor, 2), dict(address=addr1))))
+                future = ref3.tell(('add', 3), wait=False)
+                self.assertIsNone(future.result())
+                self.assertIsNone(ref1.send(('tell_async', ref3, 'add', 3)))
+                self.assertEqual(ref3.send(('get',)), 8)
+
                 client = new_client(backend='gevent')
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 ref2 = client.actor_ref(ref1.send(('create', (DummyActor, 2), dict(address=addr2))))
@@ -1193,7 +1208,6 @@ class Test(unittest.TestCase):
 
             ref1 = client.create_actor(DummyActor, 1, address=addr)
             self.assertTrue(client.has_actor(ref1))
-
             client.destroy_actor(ref1)
             self.assertFalse(client.has_actor(ref1))
 
@@ -1353,6 +1367,11 @@ class Test(unittest.TestCase):
             with create_actor_pool(address='127.0.0.1:12346', n_process=2, backend='gevent') as pool2:
                 addr2 = pool2.cluster_info.address
 
+                ref1 = pool2.create_actor(DummyActor, 1, address=addr1)
+                self.assertTrue(pool2.has_actor(ref1))
+                pool2.destroy_actor(ref1)
+                self.assertFalse(pool2.has_actor(ref1))
+
                 client = new_client(backend='gevent')
 
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
@@ -1409,7 +1428,6 @@ class Test(unittest.TestCase):
 
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 self.assertTrue(client.has_actor(ref1))
-
                 client.destroy_actor(ref1)
                 self.assertFalse(client.has_actor(ref1))
 
