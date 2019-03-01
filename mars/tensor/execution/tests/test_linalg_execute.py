@@ -112,6 +112,15 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         self.assertTrue(np.allclose(res, data))
 
+        # test for matrix of ones
+        data = np.ones((20, 10))
+
+        a = tensor(data, chunk_size=10)
+        s = svd(a)[1]
+        res = self.executor.execute_tensor(s, concat=True)[0]
+        expected = np.linalg.svd(a)[1]
+        np.testing.assert_array_almost_equal(res, expected)
+
     def testCholeskyExecution(self):
         data = np.array([[1, -2j], [2j, 5]])
 
