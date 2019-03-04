@@ -434,7 +434,7 @@ class Test(TestBase):
         self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ((2, 1, 1),))
-        # self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
+        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         # test 1-d, k == 0
         v = tensor(np.arange(3), chunk_size=2)
