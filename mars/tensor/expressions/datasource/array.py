@@ -77,15 +77,21 @@ class CSRMatrixDataSource(TensorNoInput):
         _, idx, chunk_size = args
 
         xps = cps if self._gpu else sps
+        if len(self._shape) == 1:
+            shape = (1, self._shape[0])
+        else:
+            shape = self._shape
         data = xps.csr_matrix(
-            (self._data, self._indices, self._indptr), self._shape)
+            (self._data, self._indices, self._indptr), shape)
         chunk_data = data[get_chunk_slices(chunk_size, idx)]
 
         chunk_op = self.copy().reset_key()
         chunk_op._data = chunk_data.data
         chunk_op._indices = chunk_data.indices
         chunk_op._indptr = chunk_data.indptr
-        chunk_op._shape = chunk_data.shape
+        chunk_shape = chunk_data.shape[1:] \
+            if len(self._shape) == 1 else chunk_data.shape
+        chunk_op._shape = chunk_shape
 
         return chunk_op
 

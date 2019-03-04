@@ -33,10 +33,21 @@ def diag_sparse_matrix(v, k=0, gpu=False):
     if not gpu and get_array_module(v) is not np:
         v = v.get()
 
-    sparse_m = sps if not gpu else cps
-    m = n = v.size + k
-    mat = sparse_m.spdiags(v[None], [k], m, n, format='csr')
-    return SparseMatrix(mat)
+    if v.ndim == 1:
+        sparse_m = sps if not gpu else cps
+        m = n = v.size + k
+        mat = sparse_m.spdiags(v[None], [k], m, n, format='csr')
+        return SparseMatrix(mat)
+    else:
+        assert v.ndim == 2
+        sparse_m = sps if not gpu else cps
+        sparse_eye = sparse_m.eye(v.shape[0], v.shape[1], k=k)
+        mat = sparse_eye.multiply(v).tocoo()
+        size = sparse_eye.nnz
+        col = mat.col - max(k, 0)
+        row = get_array_module(col).zeros((len(col),))
+        return SparseNDArray(sparse_m.csr_matrix((mat.data, (row, col)), shape=(1, size)),
+                             shape=(size,))
 
 
 def eye_sparse_matrix(N, M=None, k=0, dtype=float, gpu=False):
