@@ -203,11 +203,6 @@ def _tensor_tiledb(ctx, chunk):
                 ctx[chunk.key] = SparseNDArray(spmatrix, shape=chunk.shape)
 
 
-def _tensor_fetch_chunk(ctx, chunk):
-    # nothing need to do
-    return
-
-
 def _scalar(ctx, chunk):
     if chunk.ndim != 0:
         raise ValueError('Missing op for chunk')
@@ -236,6 +231,5 @@ def register_data_source_handler():
     register(datasource.SparseToDense, _tensor_sparse_to_dense)
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
     register(datasource.TensorTileDBDataSource, _tensor_tiledb)
-    register(datasource.TensorFetch, _tensor_fetch_chunk)
     register(datasource.Scalar, _scalar)
 

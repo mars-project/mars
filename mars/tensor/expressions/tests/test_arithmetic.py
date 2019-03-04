@@ -20,7 +20,7 @@ import numpy as np
 
 from mars import operands
 from mars.tensor.expressions.datasource import array, ones, tensor, empty
-from mars.tensor.expressions.datasource.core import TensorFetch
+from mars.tensor.expressions.fetch import TensorFetch
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \
     isclose, isfinite, negative, cos
 from mars.tensor.expressions.linalg import matmul
