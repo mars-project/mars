@@ -16,8 +16,6 @@
 
 from __future__ import absolute_import
 
-import random
-
 from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
 from ...core import TilesableOperandMixin
 from ...operands import ShuffleProxy
@@ -63,8 +61,6 @@ class TensorOperandMixin(TilesableOperandMixin):
 
 class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     def __init__(self, **kwargs):
-        if '_proxy_id' not in kwargs:
-            kwargs['_proxy_id'] = random.randint(0, 0x7fffffff)
         super(TensorShuffleProxy, self).__init__(**kwargs)
 
     def calc_shape(self, *inputs_shape):

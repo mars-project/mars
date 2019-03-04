@@ -30,6 +30,8 @@ def _reshape(ctx, chunk):
 
 
 def _reshape_map(ctx, chunk):
+    # todo this function is an experimental one making shuffle runnable.
+    # try elevate performance when needed.
     old_shape = chunk.op.oldshape
     new_shape = chunk.op.newshape
     new_chunk_size = chunk.op.new_chunk_size

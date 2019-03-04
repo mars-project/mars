@@ -51,9 +51,9 @@ class Test(unittest.TestCase):
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
 
     def testShuffleReshape(self):
-        from mars.tensor import reshape
         a = ones((31, 27), chunk_size=10)
-        b = reshape(a, (27, 31), _reshape_with_shuffle=True)
+        b = a.reshape(27, 31)
+        b.op.params['_reshape_with_shuffle'] = True
 
         b.tiles()
 

@@ -42,8 +42,6 @@ class ShuffleProxy(VirtualOperand):
     _op_type_ = OperandDef.SHUFFLE_PROXY
     _broadcaster = True
 
-    _proxy_id = Int64Field('proxy_id')
-
 
 class ShuffleMap(Operand):
     pass
