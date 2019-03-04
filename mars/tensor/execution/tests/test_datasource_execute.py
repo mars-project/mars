@@ -165,6 +165,63 @@ class Test(TestBase):
         expected = np.diag(np.arange(36).reshape(6, 6), k=-5)
         np.testing.assert_equal(res, expected)
 
+        # 2-d  6 * 6 sparse, no tensor
+        a = sps.rand(6, 6, density=.1)
+
+        d = diag(a)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray())
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=1)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=1)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=3)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=3)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-2)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=-2)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-5)
+        res = self.executor.execute_tensor(d)[0]
+        expected = np.diag(a.toarray(), k=-5)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        # 2-d  6 * 6 sparse, from tensor
+        raw_a = sps.rand(6, 6, density=.1)
+        a = tensor(raw_a, chunk_size=2)
+
+        d = diag(a)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray())
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=1)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=1)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=3)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=3)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-2)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=-2)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-5)
+        res = self.executor.execute_tensor(d)[0]
+        expected = np.diag(raw_a.toarray(), k=-5)
+        np.testing.assert_equal(res.toarray(), expected)
+
         # 2-d  4 * 9
         a = arange(36, chunk_size=2).reshape(4, 9)
 
@@ -192,6 +249,63 @@ class Test(TestBase):
         res = self.executor.execute_tensor(d)[0]
         expected = np.diag(np.arange(36).reshape(4, 9), k=-3)
         np.testing.assert_equal(res, expected)
+
+        # 2-d  4 * 9 sparse, no tensor
+        a = sps.rand(4, 9, density=.1)
+
+        d = diag(a)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray())
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=1)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=1)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=3)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=3)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-2)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(a.toarray(), k=-2)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-3)
+        res = self.executor.execute_tensor(d)[0]
+        expected = np.diag(a.toarray(), k=-3)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        # 2-d  4 * 9 sparse, from tensor
+        raw_a = sps.rand(4, 9, density=.1)
+        a = tensor(raw_a, chunk_size=2)
+
+        d = diag(a)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray())
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=1)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=1)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=3)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=3)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-2)
+        res = self.executor.execute_tensor(d, concat=True)[0]
+        expected = np.diag(raw_a.toarray(), k=-2)
+        np.testing.assert_equal(res.toarray(), expected)
+
+        d = diag(a, k=-3)
+        res = self.executor.execute_tensor(d)[0]
+        expected = np.diag(raw_a.toarray(), k=-3)
+        np.testing.assert_equal(res.toarray(), expected)
 
         # 1-d
         a = arange(5, chunk_size=2)

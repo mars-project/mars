@@ -35,7 +35,7 @@ from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
-from ..tensor.expressions.datasource.core import TensorFetch
+from ..tensor.expressions.fetch import TensorFetch
 from ..tensor.core import ChunkData
 
 logger = logging.getLogger(__name__)
@@ -538,7 +538,6 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param serialize: whether to return serialized dag
         """
-        from ..tensor.expressions.datasource import TensorFetch
         graph = DAG()
 
         inputs_to_copied = dict()
@@ -796,7 +795,6 @@ class GraphActor(SchedulerActor):
     @log_unhandled
     def build_tensor_merge_graph(self, tensor_key):
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
-        from ..tensor.expressions.datasource import TensorFetch
 
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         graph = DAG()

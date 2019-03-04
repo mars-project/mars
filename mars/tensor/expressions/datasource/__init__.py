@@ -33,4 +33,3 @@ from .tri import triu, tril, TensorTriu, TensorTril
 from .fromdense import fromdense, DenseToSparse
 from .fromsparse import fromsparse, SparseToDense
 from .fromtiledb import fromtiledb, TensorTileDBDataSource
-from .core import TensorFetch

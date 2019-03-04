@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars import utils
-from mars.tensor.expressions.datasource.core import TensorFetch
+from mars.tensor.expressions.fetch import TensorFetch
 import mars.tensor as mt
 
 try:

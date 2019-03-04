@@ -192,7 +192,8 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor, uid='w:1:calc-a')
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorOnes, TensorFetch
+            from mars.tensor.expressions.datasource import TensorOnes
+            from mars.tensor.expressions.fetch import TensorFetch
             arr = mt.ones((10, 8), chunk_size=10)
             arr_add = mt.ones((10, 8), chunk_size=10)
             arr2 = arr + arr_add
@@ -254,7 +255,7 @@ class Test(WorkerCase):
     def testPrepushGraph(self):
         import mars.tensor as mt
         from mars.graph import DAG
-        from mars.tensor.expressions.datasource import TensorFetch
+        from mars.tensor.expressions.fetch import TensorFetch
 
         data_inputs = [np.random.random((4,)) for _ in range(2)]
 
@@ -378,7 +379,7 @@ class Test(WorkerCase):
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetch
+            from mars.tensor.expressions.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
@@ -428,7 +429,7 @@ class Test(WorkerCase):
             pool.actor_ref(ChunkHolderActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetch
+            from mars.tensor.expressions.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
@@ -572,7 +573,7 @@ class Test(WorkerCase):
             chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorFetch
+            from mars.tensor.expressions.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add

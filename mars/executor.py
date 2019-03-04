@@ -495,7 +495,7 @@ class Executor(object):
 
     @kernel_mode
     def fetch_tensors(self, tensors, **kw):
-        from .tensor.expressions.datasource import TensorFetch
+        from .tensor.expressions.fetch import TensorFetch
 
         results = []
         to_concat_tensors = OrderedDict()

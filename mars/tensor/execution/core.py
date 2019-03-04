@@ -22,6 +22,7 @@ from .arithmetic import register_arithmetic_handler
 from .indexing import register_indexing_handler
 from .reduction import register_reduction_handler
 from .merge import register_merge_handler
+from .fetch import register_fetch_handler
 from .fft import register_fft_handler
 from .linalg import register_linalg_handler
 
@@ -56,5 +57,6 @@ def register_tensor_execution_handler():
     register_indexing_handler()
     register_reduction_handler()
     register_merge_handler()
+    register_fetch_handler()
     register_fft_handler()
     register_linalg_handler()
