@@ -50,8 +50,9 @@ class TensorInv(operands.Inv, TensorOperandMixin):
         from .tensordot import tensordot
         from .solve_triangular import solve_triangular
         in_tensor = op.input
+        is_sparse = in_tensor.is_sparse()
 
-        b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits)
+        b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits, sparse=is_sparse)
         b_eye.single_tiles()
 
         p, l, u = lu(in_tensor)
@@ -115,5 +116,5 @@ def inv(a):
         raise LinAlgError('Input must be square')
 
     tiny_inv = np.linalg.inv(np.array([[1, 2], [2, 5]], dtype=a.dtype))
-    op = TensorInv(dtype=tiny_inv.dtype, sparse=a.is_sparse())
+    op = TensorInv(dtype=tiny_inv.dtype)
     return op(a)

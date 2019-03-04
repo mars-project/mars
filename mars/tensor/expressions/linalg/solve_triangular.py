@@ -81,7 +81,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                         k_range = range(i + 1, a.chunk_shape[0])
                     for k in k_range:
                         a_chunk, b_chunk = a.cix[i, k], out_chunks[(k, j) if b_multi_dim else (k,)]
-                        prev_chunk = TensorDot(dtype=op.dtype, sparse=op.sparse).new_chunk(
+                        prev_chunk = TensorDot(dtype=op.dtype, sparse=a_chunk.issparse()).new_chunk(
                             [a_chunk, b_chunk], _dot_shape(a_chunk.shape, b_chunk.shape))
                         prev_chunks.append(prev_chunk)
                     if len(prev_chunks) == 1:
@@ -91,7 +91,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                                      None, prev_chunks[0].shape, sparse=op.sparse)
                     target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                         [target_b, s, None, None], target_b.shape)
-                out_chunk = TensorSolveTriangular(lower=lower, sparse=target_a.op.sparse, dtype=op.dtype).new_chunk(
+                out_chunk = TensorSolveTriangular(lower=lower, dtype=op.dtype).new_chunk(
                     [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
                 out_chunks[out_chunk.index] = out_chunk
 
@@ -149,5 +149,6 @@ def solve_triangular(a, b, lower=False):
 
     tiny_x = scipy.linalg.solve_triangular(np.array([[2, 0], [2, 1]], dtype=a.dtype),
                                            np.array([[2], [3]], dtype=b.dtype))
-    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype, sparse=a.is_sparse())
+    # solve triangular's return value is always dense whether the input matrix is sparse or not.
+    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype)
     return op(a, b)

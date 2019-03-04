@@ -24,7 +24,7 @@ from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul
 from mars.tensor.expressions.random import uniform
-from mars.lib.sparse.core import issparse
+from mars.lib.sparse import issparse, SparseMatrix
 
 
 class Test(unittest.TestCase):
@@ -207,6 +207,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
+        self.assertIsInstance(result_l, SparseMatrix)
+        self.assertIsInstance(result_u, SparseMatrix)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -220,6 +222,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
+        self.assertIsInstance(result_l, SparseMatrix)
+        self.assertIsInstance(result_u, SparseMatrix)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -233,6 +237,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
+        self.assertIsInstance(result_l, SparseMatrix)
+        self.assertIsInstance(result_u, SparseMatrix)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -395,7 +401,7 @@ class Test(unittest.TestCase):
 
         x = solve(A, b)
 
-        res = self.executor.execute_tensor(A.dot(x, sparse=False), concat=True)[0]
+        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
         data2 = np.random.randint(1, 10, (20, 20))
@@ -405,7 +411,7 @@ class Test(unittest.TestCase):
 
         x = solve(A, b)
 
-        res = self.executor.execute_tensor(A.dot(x, sparse=False), concat=True)[0]
+        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
     def testSolveSymPos(self):
