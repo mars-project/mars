@@ -51,7 +51,7 @@ class TensorInv(operands.Inv, TensorOperandMixin):
         from .solve_triangular import solve_triangular
         in_tensor = op.input
 
-        b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.chunks[0].shape)
+        b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits)
         b_eye.single_tiles()
 
         p, l, u = lu(in_tensor)
