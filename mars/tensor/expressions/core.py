@@ -14,8 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+
 from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
 from ...core import TilesableOperandMixin
+from ...operands import ShuffleProxy
 
 
 class TensorOperandMixin(TilesableOperandMixin):
@@ -54,3 +57,11 @@ class TensorOperandMixin(TilesableOperandMixin):
 
     def calc_shape(self, *inputs_shape):
         raise NotImplementedError
+
+
+class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
+    def __init__(self, **kwargs):
+        super(TensorShuffleProxy, self).__init__(**kwargs)
+
+    def calc_shape(self, *inputs_shape):
+        return ()

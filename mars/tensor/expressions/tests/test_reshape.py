@@ -18,6 +18,7 @@ import unittest
 
 from mars.tensor.expressions.datasource import ones
 from mars.tests.core import calc_shape
+from mars.tensor.expressions.reshape.reshape import TensorReshapeMap, TensorReshapeReduce
 
 
 class Test(unittest.TestCase):
@@ -48,3 +49,18 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(b), b.shape)
         self.assertEqual(calc_shape(b.chunks[0]), b.chunks[0].shape)
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
+
+    def testShuffleReshape(self):
+        a = ones((31, 27), chunk_size=10)
+        b = a.reshape(27, 31)
+        b.op.params['_reshape_with_shuffle'] = True
+
+        b.tiles()
+
+        self.assertEqual(tuple(sum(s) for s in b.nsplits), (27, 31))
+        self.assertIsInstance(b.chunks[0].op, TensorReshapeReduce)
+        self.assertEqual(calc_shape(b.chunks[0]), b.chunks[0].shape)
+
+        shuffle_map_sample = b.chunks[0].inputs[0].inputs[0]
+        self.assertIsInstance(shuffle_map_sample.op, TensorReshapeMap)
+        self.assertGreater(shuffle_map_sample.rough_nbytes, 0)

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
@@ -19,6 +18,10 @@ import numpy as np
 from ...compat import izip
 from ...compat.numpy_compat import broadcast_to
 from .array import as_same_device, device
+
+
+def _virtual(ctx, chunk):
+    ctx[chunk.key] = None
 
 
 def _copyto(ctx, chunk):
@@ -84,14 +87,6 @@ def _where(ctx, chunk):
         ctx[chunk.key] = xp.where(cond, x, y)
 
 
-def _reshape(ctx, chunk):
-    (x,), device_id, xp = as_same_device(
-        [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
-
-    with device(device_id):
-        ctx[chunk.key] = x.reshape(chunk.op.newshape)
-
-
 def _split(ctx, chunk):
     inputs, device_id, xp = as_same_device(
         [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
@@ -155,13 +150,14 @@ def register_basic_handler():
     from ... import operands
     from ...executor import register
 
+    register(operands.VirtualOperand, _virtual)
+
     register(operands.CopyTo, _copyto)
     register(operands.Astype, _astype)
     register(operands.Transpose, _transpose)
     register(operands.SwapAxes, _swapaxes)
     register(operands.BroadcastTo, _broadcast_to)
     register(operands.Where, _where)
-    register(operands.Reshape, _reshape)
     register(operands.Split, _split)
     register(operands.Squeeze, _squeeze)
     register(operands.Digitize, _digitize)
