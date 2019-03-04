@@ -226,6 +226,12 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(y3, concat=True)
         self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
 
+        y4 = x.reshape(60, 25, 40)
+        y4.op.params['_reshape_with_shuffle'] = True
+
+        res = self.executor.execute_tensor(y4, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+
     def testExpandDimsExecution(self):
         raw_data = np.random.rand(10, 20, 30)
         x = tensor(raw_data, chunk_size=6)

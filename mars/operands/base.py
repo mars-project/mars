@@ -21,6 +21,11 @@ from ..serialize import ValueType, AnyField, KeyField, ListField, TupleField, Da
     StringField, Int32Field, Int64Field, BoolField
 
 
+class VirtualOperand(Operand):
+    def get_dependent_data_keys(self):
+        return []
+
+
 class HasInput(Operand):
     __slots__ = ()
 
@@ -31,6 +36,29 @@ class HasInput(Operand):
     def _set_inputs(self, inputs):
         super(HasInput, self)._set_inputs(inputs)
         self._input = self._inputs[0]
+
+
+class ShuffleProxy(VirtualOperand):
+    _op_type_ = OperandDef.SHUFFLE_PROXY
+    _broadcaster = True
+
+
+class ShuffleMap(Operand):
+    pass
+
+
+class ShuffleReduce(Operand):
+    _shuffle_key = StringField('shuffle_key')
+    _rough_nbytes = Int64Field('rough_nbytes')
+
+    @property
+    def shuffle_key(self):
+        return getattr(self, '_shuffle_key', None)
+
+    def get_dependent_data_keys(self):
+        inputs = self.inputs or ()
+        return [(chunk.key, self._shuffle_key)
+                for proxy in inputs for chunk in proxy.inputs]
 
 
 class Reshape(HasInput):

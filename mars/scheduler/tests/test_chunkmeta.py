@@ -123,10 +123,10 @@ class Test(unittest.TestCase):
                 loc_ref1 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[0])
                 loc_ref2 = client.actor_ref(LocalChunkMetaActor.default_name(), address=endpoints[1])
 
-                key1 = str(uuid.uuid4())
+                key1 = (str(uuid.uuid4()), str(uuid.uuid4()))
                 key2 = str(uuid.uuid4())
                 key3 = str(uuid.uuid4())
-                key4 = str(uuid.uuid4())
+                key4 = (str(uuid.uuid4()), str(uuid.uuid4()))
                 keys = [key1, key2, key3, key4]
                 ref1.set_chunk_size(session1, key1, 512)
                 ref2.set_chunk_size(session1, key2, 1024)
