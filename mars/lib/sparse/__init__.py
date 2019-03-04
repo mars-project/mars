@@ -706,10 +706,7 @@ def ones_like(x):
 
 
 def diag(v, k=0, gpu=False):
-    if v.ndim == 2:
-        raise NotImplementedError
-
-    assert v.ndim == 1
+    assert v.ndim in {1, 2}
 
     from .matrix import diag_sparse_matrix
 
