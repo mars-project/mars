@@ -21,7 +21,8 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import KeyField, Int32Field
 from ...core import TENSOR_TYPE
-from ....lib.sparse.core import issparse, get_array_module
+from ....lib.sparse import diag as sparse_diag
+from ....lib.sparse.core import issparse, get_array_module, get_sparse_module
 from .core import TensorHasInput
 from .zeros import TensorZeros
 from .array import tensor
@@ -247,8 +248,15 @@ def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):
 
     """
     if not isinstance(v, TENSOR_TYPE):
-        v = tensor(v).op.data
-        diag_v = get_array_module(v).diag(v, k=k)
+        tensor_v = tensor(v)
+        if tensor_v.issparse():
+            xps = get_sparse_module(tensor_v.data)
+            v = xps.csr_matrix((tensor_v.op.data, tensor_v.op.indices, tensor_v.op.indptr),
+                               tensor_v.shape)
+            diag_v = sparse_diag(v, k=k)
+        else:
+            v = tensor(v).op.data
+            diag_v = get_array_module(v).diag(v, k=k)
         sparse = sparse if sparse is not None else issparse(v)
         return tensor(diag_v, gpu=gpu, sparse=sparse, chunk_size=chunk_size)
 

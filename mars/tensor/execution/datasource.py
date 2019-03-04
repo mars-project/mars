@@ -141,9 +141,10 @@ def _tensor_array_data_source(ctx, chunk):
 
 def _tensor_csr_matrix_data_source(ctx, chunk):
     xps = cps if chunk.op.gpu else sps
+    chunk_shape = (1, chunk.op.shape[0]) if chunk.ndim == 1 else chunk.op.shape
     ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
-        (chunk.op.data, chunk.op.indices, chunk.op.indptr), shape=chunk.op.shape
-    ))
+        (chunk.op.data, chunk.op.indices, chunk.op.indptr), shape=chunk_shape
+    ), shape=chunk.op.shape)
 
 
 def _tensor_sparse_to_dense(ctx, chunk):
