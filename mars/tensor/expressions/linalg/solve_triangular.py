@@ -91,7 +91,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                                      None, prev_chunks[0].shape, sparse=op.sparse)
                     target_b = TensorSubtract(dtype=op.dtype).new_chunk(
                         [target_b, s, None, None], target_b.shape)
-                out_chunk = TensorSolveTriangular(lower=lower, dtype=op.dtype).new_chunk(
+                out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
                     [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
                 out_chunks[out_chunk.index] = out_chunk
 
@@ -100,7 +100,7 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=list(out_chunks.values()), nsplits=nsplits)
 
 
-def solve_triangular(a, b, lower=False):
+def solve_triangular(a, b, lower=False, sparse=None):
     """
     Solve the equation `a x = b` for `x`, assuming a is a triangular matrix.
     Parameters
@@ -112,6 +112,8 @@ def solve_triangular(a, b, lower=False):
     lower : bool, optional
         Use only data contained in the lower triangle of `a`.
         Default is to use upper triangle.
+    sparse: bool, optional
+        Return sparse value or not.
 
     Returns
     -------
@@ -149,6 +151,6 @@ def solve_triangular(a, b, lower=False):
 
     tiny_x = scipy.linalg.solve_triangular(np.array([[2, 0], [2, 1]], dtype=a.dtype),
                                            np.array([[2], [3]], dtype=b.dtype))
-    # solve triangular's return value is always dense whether the input matrix is sparse or not.
-    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype)
+    sparse = sparse if sparse is not None else a.issparse()
+    op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype, sparse=sparse)
     return op(a, b)

@@ -24,7 +24,7 @@ from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul
 from mars.tensor.expressions.random import uniform
-from mars.lib.sparse import issparse, SparseMatrix
+from mars.lib.sparse import issparse, SparseNDArray
 
 
 class Test(unittest.TestCase):
@@ -207,8 +207,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
-        self.assertIsInstance(result_l, SparseMatrix)
-        self.assertIsInstance(result_u, SparseMatrix)
+        self.assertIsInstance(result_l, SparseNDArray)
+        self.assertIsInstance(result_u, SparseNDArray)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -222,8 +222,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
-        self.assertIsInstance(result_l, SparseMatrix)
-        self.assertIsInstance(result_u, SparseMatrix)
+        self.assertIsInstance(result_l, SparseNDArray)
+        self.assertIsInstance(result_u, SparseNDArray)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -237,8 +237,8 @@ class Test(unittest.TestCase):
         # check lower and upper triangular matrix
         np.testing.assert_allclose(np.tril(result_l), result_l)
         np.testing.assert_allclose(np.triu(result_u), result_u)
-        self.assertIsInstance(result_l, SparseMatrix)
-        self.assertIsInstance(result_u, SparseMatrix)
+        self.assertIsInstance(result_l, SparseNDArray)
+        self.assertIsInstance(result_u, SparseNDArray)
 
         t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
@@ -326,6 +326,7 @@ class Test(unittest.TestCase):
         result_x = self.executor.execute_tensor(x, concat=True)[0]
         result_b = data1.dot(result_x)
 
+        self.assertIsInstance(result_x, SparseNDArray)
         np.testing.assert_allclose(result_b, data2)
 
         data1 = sps.csr_matrix(np.triu(np.random.randint(1, 10, (10, 10))))
@@ -339,6 +340,7 @@ class Test(unittest.TestCase):
         result_x = self.executor.execute_tensor(x, concat=True)[0]
         result_b = data1.dot(result_x)
 
+        self.assertIsInstance(result_x, SparseNDArray)
         np.testing.assert_allclose(result_b, data2)
 
     def testSolve(self):
@@ -392,6 +394,7 @@ class Test(unittest.TestCase):
         x = solve(A, b)
 
         res = self.executor.execute_tensor(x, concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_allclose(data1.dot(res), data2)
 
         data2 = np.random.randint(1, 10, (20, 5))
@@ -402,6 +405,7 @@ class Test(unittest.TestCase):
         x = solve(A, b)
 
         res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_allclose(res, data2)
 
         data2 = np.random.randint(1, 10, (20, 20))
@@ -412,6 +416,7 @@ class Test(unittest.TestCase):
         x = solve(A, b)
 
         res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_allclose(res, data2)
 
     def testSolveSymPos(self):
@@ -470,6 +475,7 @@ class Test(unittest.TestCase):
         inv_A = inv(A)
 
         res = self.executor.execute_tensor(inv_A, concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
         self.assertTrue(np.allclose(res, scipy.linalg.inv(data)))
         res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
         self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))

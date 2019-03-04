@@ -225,8 +225,7 @@ class Test(unittest.TestCase):
         p.tiles()
         self.assertTrue(all(c.is_sparse() for c in p.chunks))
         self.assertTrue(all(c.is_sparse() for c in l.chunks))
-        # u's chunks contain TensorSolveTriangular whose output is always dense
-        self.assertEqual([True, False, True, True], [c.is_sparse() for c in u.chunks])
+        self.assertTrue(all(c.is_sparse() for c in u.chunks))
 
     def testSolve(self):
         a = mt.random.randint(1, 10, (20, 20))
@@ -251,9 +250,12 @@ class Test(unittest.TestCase):
 
         self.assertEqual(x.shape, (20, ))
         self.assertEqual(calc_shape(x), x.shape)
+        self.assertTrue(x.op.sparse)
+        self.assertTrue(x.chunks[0].op.sparse)
+
+        x = mt.linalg.solve(a, b, sparse=False).tiles()
         self.assertFalse(x.op.sparse)
         self.assertFalse(x.chunks[0].op.sparse)
-        self.assertTrue(x.chunks[0].inputs[0].is_sparse())
 
     def testInv(self):
         a = mt.random.randint(1, 10, (20, 20), chunk_size=4)
@@ -278,9 +280,9 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(a_inv), a_inv.shape)
         self.assertEqual(calc_shape(a_inv.chunks[0]), a_inv.chunks[0].shape)
 
-        self.assertFalse(a_inv.op.sparse)
-        self.assertTrue(all(not c.is_sparse() for c in a_inv.chunks))
-        self.assertTrue(a_inv.chunks[0].inputs[0].is_sparse())
+        self.assertTrue(a_inv.op.sparse)
+        self.assertIsInstance(a_inv, SparseTensor)
+        self.assertTrue(all(c.is_sparse() for c in a_inv.chunks))
 
         b = a.T.dot(a)
         b_inv = mt.linalg.inv(b).tiles()
@@ -288,6 +290,10 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(b_inv), b_inv.shape)
         self.assertEqual(calc_shape(b_inv.chunks[0]), b_inv.chunks[0].shape)
 
+        self.assertTrue(b_inv.op.sparse)
+        self.assertIsInstance(b_inv, SparseTensor)
+        self.assertTrue(all(c.is_sparse() for c in b_inv.chunks))
+
+        b_inv = mt.linalg.inv(b, sparse=False).tiles()
         self.assertFalse(b_inv.op.sparse)
-        self.assertTrue(all(not c.is_sparse() for c in b_inv.chunks))
-        self.assertTrue(b_inv.chunks[0].inputs[0].is_sparse())
+        self.assertTrue(not all(c.is_sparse() for c in b_inv.chunks))

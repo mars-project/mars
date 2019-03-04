@@ -100,7 +100,8 @@ class TensorLU(operands.LU, TensorOperandMixin):
                                          None, prev_chunks_u[0].shape, sparse=op.sparse)
                         target = TensorSubtract(dtype=U.dtype).new_chunk(
                             [target, s, None, None], target.shape)
-                    upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype).new_chunk(
+                    upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype,
+                                                        sparse=lower_chunks[i, i].op.sparse).new_chunk(
                         [lower_chunks[i, i], target], target.shape, index=(i, j))
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
@@ -170,7 +171,8 @@ class TensorLU(operands.LU, TensorOperandMixin):
                     a_transpose = TensorTranspose(dtype=u.dtype, sparse=op.sparse).new_chunk([u], u.shape)
                     target_transpose = TensorTranspose(dtype=target_l.dtype, sparse=op.sparse).new_chunk(
                         [target_l], target_l.shape)
-                    lower_permuted_chunk = TensorSolveTriangular(lower=True, dtype=L.dtype).new_chunk(
+                    lower_permuted_chunk = TensorSolveTriangular(
+                        lower=True, dtype=L.dtype, sparse=op.sparse).new_chunk(
                         [a_transpose, target_transpose], target_l.shape, index=(i, j))
                     lower_transpose = TensorTranspose(dtype=lower_permuted_chunk.dtype, sparse=op.sparse).new_chunk(
                         [lower_permuted_chunk], lower_permuted_chunk.shape, index=lower_permuted_chunk.index)

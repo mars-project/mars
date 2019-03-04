@@ -743,7 +743,7 @@ def lu(m):
     return lu_sparse_matrix(m)
 
 
-def solve_triangular(a, b, lower=False):
+def solve_triangular(a, b, lower=False, sparse=True):
     from .matrix import solve_triangular_sparse_matrix
 
-    return solve_triangular_sparse_matrix(a, b, lower=lower)
+    return solve_triangular_sparse_matrix(a, b, lower=lower, sparse=sparse)

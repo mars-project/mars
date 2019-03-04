@@ -67,15 +67,15 @@ class TensorInv(operands.Inv, TensorOperandMixin):
         b.single_tiles()
 
         # as `l` is a lower matrix, `lower=True` should be specified.
-        uy = solve_triangular(l, b, lower=True)
+        uy = solve_triangular(l, b, lower=True, sparse=op.sparse)
         uy.single_tiles()
 
-        a_inv = solve_triangular(u, uy)
+        a_inv = solve_triangular(u, uy, sparse=op.sparse)
         a_inv.single_tiles()
         return [a_inv]
 
 
-def inv(a):
+def inv(a, sparse=None):
     """
     Compute the (multiplicative) inverse of a matrix.
     Given a square matrix `a`, return the matrix `ainv` satisfying
@@ -84,6 +84,8 @@ def inv(a):
     ----------
     a : (..., M, M) array_like
         Matrix to be inverted.
+    sparse: bool, optional
+        Return sparse value or not.
     Returns
     -------
     ainv : (..., M, M) ndarray or matrix
@@ -116,5 +118,6 @@ def inv(a):
         raise LinAlgError('Input must be square')
 
     tiny_inv = np.linalg.inv(np.array([[1, 2], [2, 5]], dtype=a.dtype))
-    op = TensorInv(dtype=tiny_inv.dtype)
+    sparse = sparse if sparse is not None else a.issparse()
+    op = TensorInv(dtype=tiny_inv.dtype, sparse=sparse)
     return op(a)

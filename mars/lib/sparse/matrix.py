@@ -95,11 +95,16 @@ def lu_sparse_matrix(a):
     return SparseMatrix(p), SparseMatrix(l), SparseMatrix(u),
 
 
-def solve_triangular_sparse_matrix(a, b, lower=False):
+def solve_triangular_sparse_matrix(a, b, lower=False, sparse=True):
     a = naked(a)
     b = b.toarray() if issparse(b) else b
 
-    return splinalg.spsolve_triangular(a, b, lower=lower)
+    x = splinalg.spsolve_triangular(a, b, lower=lower)
+    if sparse:
+        spx = sps.csr_matrix(x).reshape(x.shape[0], 1) if len(x.shape) == 1 else sps.csr_matrix(x)
+        return SparseNDArray(spx, shape=x.shape)
+    else:
+        return x
 
 
 class SparseMatrix(SparseNDArray):
