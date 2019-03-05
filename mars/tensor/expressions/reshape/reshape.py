@@ -213,7 +213,7 @@ class TensorReshape(Reshape, TensorOperandMixin):
             return new_op.new_tensors(op.inputs, tensor.shape,
                                       chunks=out_chunks, nsplits=reshape_nsplits)
         except ValueError:
-            # TODO: make this as sefault when shuffle is mature
+            # TODO: make this as default when shuffle is mature
             if getattr(op.params, '_reshape_with_shuffle', False):
                 return cls._tile_as_shuffle(op)
 

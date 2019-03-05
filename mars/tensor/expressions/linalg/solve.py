@@ -20,7 +20,7 @@ from .lu import lu
 from .solve_triangular import solve_triangular
 
 
-def solve(a, b, sym_pos=False):
+def solve(a, b, sym_pos=False, sparse=None):
     """
     Solve the equation ``a x = b`` for ``x``.
     Parameters
@@ -32,6 +32,8 @@ def solve(a, b, sym_pos=False):
     sym_pos : bool
     Assume `a` is symmetric and positive definite. If ``True``, use Cholesky
     decomposition.
+    sparse: bool, optional
+        Return sparse value or not.
 
     Returns
     -------
@@ -64,5 +66,6 @@ def solve(a, b, sym_pos=False):
     else:
         p, l, u = lu(a)
         b = p.T.dot(b)
-    uy = solve_triangular(l, b, lower=True)
-    return solve_triangular(u, uy)
+    sparse = sparse if sparse is not None else a.issparse()
+    uy = solve_triangular(l, b, lower=True, sparse=sparse)
+    return solve_triangular(u, uy, sparse=sparse)

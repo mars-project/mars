@@ -78,6 +78,12 @@ class Test(TestBase):
         self.assertArrayEqual(s1 + 1, self.s1.toarray() + 1)
         self.assertArrayEqual(1 + s1, self.s1.toarray() + 1)
 
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v + v, self.v1_data + self.v1_data)
+        self.assertArrayEqual(v + self.d1, self.v1_data + self.d1)
+        self.assertArrayEqual(self.d1 + v, self.d1 + self.v1_data)
+
     def testSparseSubtract(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
@@ -87,6 +93,12 @@ class Test(TestBase):
         self.assertArrayEqual(self.d1 - s1, self.d1 - self.s1)
         self.assertArrayEqual(s1 - 1, self.s1.toarray() - 1)
         self.assertArrayEqual(1 - s1, 1 - self.s1.toarray())
+
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v - v, self.v1_data - self.v1_data)
+        self.assertArrayEqual(v - self.d1, self.v1_data - self.d1)
+        self.assertArrayEqual(self.d1 - v, self.d1 - self.v1_data)
 
     def testSparseMultiply(self):
         s1 = SparseNDArray(self.s1)
