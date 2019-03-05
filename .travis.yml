@@ -1,5 +1,10 @@
 language: python
-
+env:
+  global:
+    - COVERALLS_PARALLEL=true
+notifications:
+  webhooks:
+    - https://coveralls.io/webhook
 matrix:
   include:
     - os: linux
@@ -79,5 +84,3 @@ script:
 after_success:
   - coveralls
   - ./bin/travis-upload.sh
-# Add env var to detect it during build
-env: TRAVIS=True
