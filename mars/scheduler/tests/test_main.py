@@ -177,7 +177,7 @@ class Test(unittest.TestCase):
     def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()
         dump_time = time.time()
-        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 60))
+        check_timeout = int(os.environ.get('CHECK_TIMEOUT', 120))
         while True:
             time.sleep(0.1)
             self.check_process_statuses()
