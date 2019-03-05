@@ -29,6 +29,54 @@ class SparseVector(SparseNDArray):
         else:
             self.spmatrix = spvector.tocsr()
 
+    def __add__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+        if issparse(other):
+            x = self.spmatrix + other.reshape(self.spmatrix.shape)
+        else:
+            x = self.toarray() + other
+        if issparse(x):
+            return SparseVector(x, shape=self.shape)
+        return get_array_module(x).asarray(x)
+
+    def __radd__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+
+        x = other + self.toarray()
+        if issparse(x):
+            return SparseVector(x, shape=self.shape)
+        return get_array_module(x).asarray(x)
+
+    def __sub__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+        if issparse(other):
+            x = self.spmatrix - other.reshape(self.spmatrix.shape)
+        else:
+            x = self.toarray() - other
+        if issparse(x):
+            return SparseVector(x, shape=self.shape)
+        return get_array_module(x).asarray(x)
+
+    def __rsub__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+
+        x = other - self.toarray()
+        if issparse(x):
+            return SparseVector(x, shape=self.shape)
+        return get_array_module(x).asarray(x)
+
     @property
     def ndim(self):
         return 1

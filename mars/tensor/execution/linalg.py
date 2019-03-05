@@ -77,7 +77,7 @@ def _solve_triangular(ctx, chunk):
 
             ctx[chunk.key] = cupyx.scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
         else:
-            ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower)
+            ctx[chunk.key] = xp.solve_triangular(a, b, lower=chunk.op.lower, sparse=chunk.op.sparse)
 
 
 def _lu(ctx, chunk):
