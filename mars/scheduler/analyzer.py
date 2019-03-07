@@ -132,22 +132,21 @@ class GraphAnalyzer(object):
             if not graph.count_predecessors(n):
                 continue
             pred_sizes = defaultdict(lambda: 0)
-            total_size = 0
+            total_count = 0
             worker_involved = set()
             # calculate ratios of every worker in predecessors
             for pred in graph.iter_predecessors(n):
                 op_key = pred.op.key
-                pred_bytes = pred.rough_nbytes
-                total_size += pred_bytes
+                total_count += 1
                 if op_key in worker_assigns:
-                    pred_sizes[worker_assigns[op_key]] += pred_bytes
+                    pred_sizes[worker_assigns[op_key]] += 1
                     worker_involved.add(worker_assigns[op_key])
                 else:
                     worker_involved.add(None)
             # get the worker occupying most of the data
             max_size, max_workers = self._get_workers_with_max_size(pred_sizes)
             # if there is a dominant worker, return it
-            if max_size > total_size / max(2, len(worker_involved)) and max_workers:
+            if max_size > total_count / max(2, len(worker_involved)) and max_workers:
                 max_worker = random.choice(max_workers)
                 worker_assigns[n.op.key] = max_worker
                 yield n.op.key, max_worker

@@ -45,6 +45,22 @@ class Test(unittest.TestCase):
         res5_cmp = self.executor.execute_tensor((arr1 + arr1), concat=True)
         self.assertTrue(np.array_equal(res5[0], res5_cmp[0]))
 
+    def testFuseSizeExecution(self):
+        executor_size = Executor()
+        executor_numpy = Executor()
+
+        raw1 = np.random.randint(10, size=(10, 10, 10))
+        arr1 = tensor(raw1, chunk_size=3)
+        arr2 = arr1 + 10
+        arr3 = arr2 * 3
+        arr4 = arr3 + 5
+
+        res4_size = executor_size.execute_tensor(arr4, mock=True)
+        res4 = executor_numpy.execute_tensor(arr4, concat=True)
+        res4_cmp = self.executor.execute_tensor(arr4, concat=True)
+        self.assertEqual(sum(s[0] for s in res4_size), arr4.nbytes)
+        self.assertTrue(np.array_equal(res4[0], res4_cmp[0]))
+
     def testUnaryExecution(self):
         from mars.tensor.expressions.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
 

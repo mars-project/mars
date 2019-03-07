@@ -99,6 +99,14 @@ def _reshape_map(ctx, chunk):
         ctx[(chunk.key, group_key)] = group_indices + (group_data,)
 
 
+def _reshape_map_estimate_size(ctx, chunk):
+    inp_chunk = chunk.inputs[0]
+    inp_size, inp_calc = ctx[inp_chunk.key]
+    store_overhead = np.int64().itemsize * inp_chunk.ndim
+    calc_overhead = np.int64().itemsize * (inp_chunk.ndim + 2)
+    ctx[chunk.key] = (store_overhead + inp_size, calc_overhead + inp_calc)
+
+
 def _reshape_reduce(ctx, chunk):
     try:
         result_array = ctx[chunk.key]
@@ -115,10 +123,21 @@ def _reshape_reduce(ctx, chunk):
     ctx[chunk.key] = result_array
 
 
+def _reshape_reduce_estimate_size(ctx, chunk):
+    sum_size = 0
+    for shuffle_input in chunk.inputs[0].inputs:
+        key = (shuffle_input.key, chunk.op.shuffle_key)
+        if ctx.get(key) is not None:
+            sum_size += ctx[key][0]
+        else:
+            ctx[key] = None
+    ctx[chunk.key] = (chunk.nbytes, max(sum_size, chunk.nbytes))
+
+
 def register_reshape_handler():
     from ...executor import register
     from ..expressions.reshape.reshape import TensorReshape, TensorReshapeMap, TensorReshapeReduce
 
     register(TensorReshape, _reshape)
-    register(TensorReshapeMap, _reshape_map)
-    register(TensorReshapeReduce, _reshape_reduce)
+    register(TensorReshapeMap, _reshape_map, _reshape_map_estimate_size)
+    register(TensorReshapeReduce, _reshape_reduce, _reshape_reduce_estimate_size)

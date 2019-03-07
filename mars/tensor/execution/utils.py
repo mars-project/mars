@@ -33,3 +33,23 @@ def _create_tiledb_ctx(conf_tuple):
 def get_tiledb_ctx(conf):
     key = tuple(conf.items()) if conf is not None else None
     return _create_tiledb_ctx(key)
+
+
+def estimate_fuse_size(ctx, chunk):
+    from ...graph import DAG
+    from ...executor import Executor
+
+    dag = DAG()
+    keys = set(c.key for c in chunk.composed)
+    for c in chunk.composed:
+        dag.add_node(c)
+        for inp in c.inputs:
+            if inp.key not in keys:
+                continue
+            if inp not in dag:
+                dag.add_node(inp)
+            dag.add_edge(inp, c)
+
+    size_ctx = ctx.copy()
+    executor = Executor(storage=size_ctx)
+    ctx[chunk.key] = executor.execute_graph(dag, [chunk.key], mock=True)[0]

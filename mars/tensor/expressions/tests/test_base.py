@@ -236,8 +236,6 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indices.shape[0]))
         self.assertEqual(indices.shape[1], 2)
         self.assertEqual(calc_shape(indices), indices.shape)
-        self.assertEqual(indices.op.calc_rough_shape(tuple(t.rough_shape for t in indices.inputs)), (4, 2))
-        self.assertEqual(indices.rough_nbytes, 4 * 2 * indices.dtype.itemsize)
 
         indices.tiles()
 
@@ -246,7 +244,6 @@ class Test(unittest.TestCase):
         chunk = indices.chunks[0]
         self.assertTrue(np.isnan(calc_shape(chunk)[0]))
         self.assertEqual(calc_shape(chunk)[1], chunk.shape[1])
-        self.assertEqual(chunk.rough_shape, (2, 1))
 
     def testArraySplit(self):
         a = arange(8, chunk_size=2)
@@ -406,12 +403,10 @@ class Test(unittest.TestCase):
 
         t = repeat(a, b)
         self.assertEqual(calc_shape(t), t.shape)
-        self.assertEqual(t.rough_shape, (4,))
 
         t.tiles()
         self.assertTrue(np.isnan(t.nsplits[0]))
         self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
-        self.assertEqual(t.chunks[0].rough_shape, (4,))
 
     def testIsIn(self):
         element = 2 * arange(4, chunk_size=1).reshape(2, 2)

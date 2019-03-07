@@ -54,7 +54,6 @@ class Test(unittest.TestCase):
             op_info = {
                 'op_name': 'test_op',
                 'io_meta': dict(input_chunks=[chunk_key1, chunk_key2, chunk_key3]),
-                'output_size': 512,
                 'retries': 0,
                 'optimize': {
                     'depth': 0,

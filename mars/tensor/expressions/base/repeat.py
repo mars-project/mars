@@ -37,10 +37,6 @@ class TensorRepeat(Repeat, TensorOperandMixin):
         if len(inputs) > 1:
             self._repeats = self._inputs[1]
 
-    def calc_rough_shape(self, *inputs_shape):
-        input_shape = inputs_shape[0]
-        return tuple(s if not np.isnan(s) else input_shape[i] for i, s in enumerate(self.outputs[0].shape))
-
     def calc_shape(self, *inputs_shape):
         ax = self._axis or 0
         input_shape = (np.prod(inputs_shape[0]),) if self._axis is None else inputs_shape[0]

@@ -23,7 +23,7 @@ import numpy as np
 from ..core import Entity, ChunkData, Chunk, TilesableData, enter_build_mode, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField
-from .expressions.utils import get_chunk_slices, calc_rough_shape
+from .expressions.utils import get_chunk_slices
 
 
 class TensorChunkData(ChunkData):
@@ -40,14 +40,6 @@ class TensorChunkData(ChunkData):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
-
-    @property
-    def rough_nbytes(self):
-        return np.prod(self.rough_shape) * self.dtype.itemsize
-
-    @property
-    def rough_shape(self):
-        return calc_rough_shape(self)
 
 
 class TensorChunk(Chunk):
@@ -104,14 +96,6 @@ class TensorData(TilesableData):
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
-
-    @property
-    def rough_nbytes(self):
-        return np.prod(self.rough_shape) * self.dtype.itemsize
-
-    @property
-    def rough_shape(self):
-        return calc_rough_shape(self)
 
     def get_chunk_slices(self, idx):
         return get_chunk_slices(self.nsplits, idx)

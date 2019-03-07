@@ -603,7 +603,7 @@ class GraphActor(SchedulerActor):
             successor_keys = set()
             input_chunk_keys = set()
             shared_input_chunk_keys = set()
-            chunk_key_sizes = dict()
+            chunks = set()
 
             for c in self._op_key_to_chunk[op_key]:
                 for pn in chunk_graph.iter_predecessors(c):
@@ -612,19 +612,17 @@ class GraphActor(SchedulerActor):
                     if chunk_graph.count_successors(pn) > 1:
                         shared_input_chunk_keys.add(pn.key)
                 successor_keys.update(pn.op.key for pn in chunk_graph.iter_successors(c))
-                chunk_key_sizes.update((co.key, co.rough_nbytes) for co in c.op.outputs)
+                chunks.update(co.key for co in c.op.outputs)
 
             io_meta = dict(
                 predecessors=list(predecessor_keys),
                 successors=list(successor_keys),
                 input_chunks=list(input_chunk_keys),
                 shared_input_chunks=list(shared_input_chunk_keys),
-                chunks=list(chunk_key_sizes.keys()),
+                chunks=list(chunks),
             )
             op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
-            output_size = sum(chunk_key_sizes.values())
-            op_info['output_size'] = int(output_size)
 
             if predecessor_keys:
                 state = 'UNSCHEDULED'
