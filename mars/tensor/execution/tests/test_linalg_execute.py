@@ -152,34 +152,60 @@ class Test(unittest.TestCase):
         np.random.seed(1)
 
         data = np.random.randint(1, 10, (6, 6))
+
+        a = tensor(data)
+        P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, data)
+
         a = tensor(data, chunk_size=2)
-
         P, L, U = lu(a)
-        t = P.dot(L).dot(U)
 
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunk_size=1)
-
+        a = tensor(data, chunk_size=(2, 3))
         P, L, U = lu(a)
-        t = P.dot(L).dot(U)
 
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
-        a = tensor(data, chunk_size=(1, 2))
-
+        a = tensor(data, chunk_size=4)
         P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
         t = P.dot(L).dot(U)
-
-        res = self.executor.execute_tensor(t, concat=True)[0]
-        np.testing.assert_allclose(res, data)
-
-        a = tensor(data, chunk_size=3)
-        P, L, U = lu(a)
-        t = P.dot(L).dot(U)
-
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
@@ -190,6 +216,22 @@ class Test(unittest.TestCase):
                                [0, 6, 0, 8, 7, 3],
                                [7, 0, 6, 1, 7, 0],
                                [0, 0, 0, 7, 0, 8]])
+
+        a = tensor(data)
+        P, L, U = lu(a)
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        # check lower and upper triangular matrix
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+        self.assertIsInstance(result_l, SparseNDArray)
+        self.assertIsInstance(result_u, SparseNDArray)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_array_almost_equal(data.A, res)
+
         a = tensor(data, chunk_size=2)
         P, L, U = lu(a)
         result_l = self.executor.execute_tensor(L, concat=True)[0]
@@ -205,7 +247,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_array_almost_equal(data.A, res)
 
-        a = tensor(data, chunk_size=1)
+        a = tensor(data, chunk_size=(2, 3))
         P, L, U = lu(a)
         result_l = self.executor.execute_tensor(L, concat=True)[0]
         result_u = self.executor.execute_tensor(U, concat=True)[0]
@@ -220,7 +262,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_array_almost_equal(data.A, res)
 
-        a = tensor(data, chunk_size=6)
+        a = tensor(data, chunk_size=4)
         P, L, U = lu(a)
         result_l = self.executor.execute_tensor(L, concat=True)[0]
         result_u = self.executor.execute_tensor(U, concat=True)[0]
@@ -375,6 +417,29 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
+        # test for not all chunks are square in matrix A
+        data2 = np.random.randint(1, 10, (20,))
+
+        A = tensor(data1, chunk_size=6)
+        b = tensor(data2, chunk_size=6)
+
+        x = solve(A, b)
+
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        np.testing.assert_allclose(res, scipy.linalg.solve(data1, data2))
+        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        np.testing.assert_allclose(res, data2)
+
+        A = tensor(data1, chunk_size=(7, 6))
+        b = tensor(data2, chunk_size=6)
+
+        x = solve(A, b)
+
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        np.testing.assert_allclose(res, scipy.linalg.solve(data1, data2))
+        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
+        np.testing.assert_allclose(res, data2)
+
         # test sparse
         data1 = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
         data2 = np.random.randint(1, 10, (20, ))
@@ -408,6 +473,17 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
         self.assertIsInstance(res, SparseNDArray)
+        np.testing.assert_allclose(res, data2)
+
+        # test for not all chunks are square in matrix A
+        data2 = np.random.randint(1, 10, (20,))
+
+        A = tensor(data1, chunk_size=6)
+        b = tensor(data2, chunk_size=6)
+
+        x = solve(A, b)
+
+        res = self.executor.execute_tensor(A.dot(x), concat=True)[0]
         np.testing.assert_allclose(res, data2)
 
     def testSolveSymPos(self):
@@ -458,11 +534,30 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(B.dot(inv_B), concat=True)[0]
         self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
 
+        # test for not all chunks are square in matrix A
+        A = tensor(data, chunk_size=8)
+        inv_A = inv(A)
+
+        res = self.executor.execute_tensor(inv_A, concat=True)[0]
+        self.assertTrue(np.allclose(res, scipy.linalg.inv(data)))
+        res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
+        self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
+
         # test sparse
         data = np.random.randint(1, 10, (20, 20))
         sp_data = sps.csr_matrix(data)
 
         A = tensor(sp_data, chunk_size=5)
+        inv_A = inv(A)
+
+        res = self.executor.execute_tensor(inv_A, concat=True)[0]
+        self.assertIsInstance(res, SparseNDArray)
+        self.assertTrue(np.allclose(res, scipy.linalg.inv(data)))
+        res = self.executor.execute_tensor(A.dot(inv_A), concat=True)[0]
+        self.assertTrue(np.allclose(res, np.eye(data.shape[0], dtype=float)))
+
+        # test for not all chunks are square in matrix A
+        A = tensor(sp_data, chunk_size=8)
         inv_A = inv(A)
 
         res = self.executor.execute_tensor(inv_A, concat=True)[0]

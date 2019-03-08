@@ -205,6 +205,30 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(l.chunks[0]), l.chunks[0].shape)
         self.assertEqual(calc_shape(u.chunks[0]), u.chunks[0].shape)
 
+        a = mt.random.randint(1, 10, (6, 6), chunk_size=(3, 2))
+        p, l, u = mt.linalg.lu(a)
+        l.tiles()
+
+        self.assertEqual(l.shape, (6, 6))
+        self.assertEqual(u.shape, (6, 6))
+        self.assertEqual(p.shape, (6, 6))
+
+        self.assertEqual(p.nsplits, ((3, 3), (3, 3)))
+        self.assertEqual(l.nsplits, ((3, 3), (3, 3)))
+        self.assertEqual(u.nsplits, ((3, 3), (3, 3)))
+
+        a = mt.random.randint(1, 10, (7, 7), chunk_size=4)
+        p, l, u = mt.linalg.lu(a)
+        l.tiles()
+
+        self.assertEqual(l.shape, (7, 7))
+        self.assertEqual(u.shape, (7, 7))
+        self.assertEqual(p.shape, (7, 7))
+
+        self.assertEqual(p.nsplits, ((4, 3), (4, 3)))
+        self.assertEqual(l.nsplits, ((4, 3), (4, 3)))
+        self.assertEqual(u.nsplits, ((4, 3), (4, 3)))
+
         # test sparse
         data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
                                [0, 6, 1, 0, 0, 6],
@@ -243,6 +267,13 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(x), x.shape)
         self.assertEqual(calc_shape(x.chunks[0]), x.chunks[0].shape)
 
+        a = mt.random.randint(1, 10, (20, 20), chunk_size=12)
+        b = mt.random.randint(1, 10, (20, 3))
+        x = mt.linalg.solve(a, b).tiles()
+
+        self.assertEqual(x.shape, (20, 3))
+        self.assertEqual(x.nsplits, ((12, 8), (3, )))
+
         # test sparse
         a = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
         b = mt.random.randint(1, 10, (20, ), chunk_size=3)
@@ -252,6 +283,13 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(x), x.shape)
         self.assertTrue(x.op.sparse)
         self.assertTrue(x.chunks[0].op.sparse)
+
+        a = mt.tensor(a, chunk_size=7)
+        b = mt.random.randint(1, 10, (20,))
+        x = mt.linalg.solve(a, b).tiles()
+
+        self.assertEqual(x.shape, (20,))
+        self.assertEqual(x.nsplits, ((7, 7, 6),))
 
         x = mt.linalg.solve(a, b, sparse=False).tiles()
         self.assertFalse(x.op.sparse)
@@ -264,6 +302,12 @@ class Test(unittest.TestCase):
         self.assertEqual(a_inv.shape, (20, 20))
         self.assertEqual(calc_shape(a_inv), a_inv.shape)
         self.assertEqual(calc_shape(a_inv.chunks[0]), a_inv.chunks[0].shape)
+
+        a = mt.random.randint(1, 10, (20, 20), chunk_size=11)
+        a_inv = mt.linalg.inv(a).tiles()
+
+        self.assertEqual(a_inv.shape, (20, 20))
+        self.assertEqual(a_inv.nsplits, ((11, 9), (11, 9)))
 
         b = a.T.dot(a)
         b_inv = mt.linalg.inv(b).tiles()

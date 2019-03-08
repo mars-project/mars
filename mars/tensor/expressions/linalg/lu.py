@@ -65,12 +65,11 @@ class TensorLU(operands.LU, TensorOperandMixin):
 
         P, L, U = op.outputs
         in_tensor = op.input
-        if len(set(in_tensor.nsplits[0] + in_tensor.nsplits[1])) != 1:
-            nsplit = min(in_tensor.nsplits[0] + in_tensor.nsplits[1])
-            # input's chunks must be all square
-            in_tensor = in_tensor.rechunk([nsplit for _ in range(in_tensor.ndim)]).single_tiles()
-            if len(set(in_tensor.nsplits[0] + in_tensor.nsplits[1])) != 1:
-                raise LinAlgError('All chunks must be a square matrix to perform LU decomposition.')
+
+        if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
+            # all chunks on diagonal should be square
+            nsplits = in_tensor.nsplits[0]
+            in_tensor = in_tensor.rechunk([nsplits, nsplits]).single_tiles()
 
         p_chunks, p_invert_chunks, lower_chunks, l_permuted_chunks, upper_chunks = {}, {}, {}, {}, {}
         for i in range(in_tensor.chunk_shape[0]):
