@@ -172,3 +172,23 @@ class Test(unittest.TestCase):
 
         self.assertNotIn(repr(np.ones((10, 10))), repr(a))
         self.assertNotIn(str(np.ones((10, 10))), str(a))
+
+    def testRuntimeError(self):
+        from mars.utils import kernel_mode
+
+        @kernel_mode
+        def raise_error(*_):
+            raise ValueError
+
+        with option_context({'eager_mode': True}):
+            a = mt.zeros((10, 10))
+            with self.assertRaises(ValueError):
+                raise_error(a)
+
+            r = a + 1
+            self.assertIn(repr(np.zeros((10, 10)) + 1), repr(r))
+            np.testing.assert_array_equal(r.fetch(), np.zeros((10, 10)) + 1)
+
+        a = mt.zeros((10, 10))
+        with self.assertRaises(ValueError):
+            a.fetch()
