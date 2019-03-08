@@ -21,7 +21,6 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..config import options
 from ..utils import log_unhandled
 from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
@@ -286,37 +285,24 @@ class AssignEvaluationActor(SchedulerActor):
         input_chunk_keys = op_io_meta['input_chunks']
         metas = self._get_chunks_meta(session_id, input_chunk_keys)
         input_sizes = dict((k, meta.chunk_size) for k, meta in metas.items())
-        output_size = op_info['output_size']
 
         if target_worker is None:
-            op_name = op_info['op_name']
             who_has = dict((k, meta.workers) for k, meta in metas.items())
 
             candidate_workers = self._get_eps_by_worker_locality(input_chunk_keys, who_has, input_sizes)
-            locality_workers = set(candidate_workers)
-            if self._is_stats_sufficient(op_name):
-                ep = self._get_ep_by_worker_stats(input_chunk_keys, who_has, input_sizes, output_size, op_name)
-                if ep:
-                    candidate_workers.append(ep)
         else:
             candidate_workers = [target_worker]
-            locality_workers = {target_worker}
 
         candidate_workers = [w for w in candidate_workers if w not in reject_workers]
         if not candidate_workers:
             return None, []
 
         # todo make more detailed allocation plans
-        # alloc_dict = dict(cpu=1, memory=sum(six.itervalues(input_sizes)) + output_size)
-        alloc_dict = dict(cpu=1, memory=output_size)
+        alloc_dict = dict(cpu=1, memory=sum(input_sizes.values()))
         rejects = []
         for worker_ep in candidate_workers:
             if self._resource_actor_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
-                if worker_ep in locality_workers:
-                    logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
-                else:
-                    logger.debug('Operand %s(%s) allocated to run in %s given collected statistics',
-                                 op_key, op_info['op_name'], worker_ep)
+                logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
                 self.tell_promise(callback, worker_ep)
                 return worker_ep, rejects
@@ -325,49 +311,6 @@ class AssignEvaluationActor(SchedulerActor):
 
     def _get_chunks_meta(self, session_id, keys):
         return dict(zip(keys, self._chunk_meta_ref.batch_get_chunk_meta(session_id, keys)))
-
-    def _get_op_metric_item(self, ep, op_name, item):
-        return self._get_metric_item(ep, 'calc_speed.' + op_name, item)
-
-    def _get_metric_item(self, ep, metric, item):
-        return self._worker_metrics[ep].get('stats', {}).get(metric, {}).get(item, 0)
-
-    def _is_stats_sufficient(self, op_name):
-        if not options.scheduler.enable_chunk_relocation:
-            return False
-        if op_name is None:
-            return False
-
-        if op_name in self._sufficient_operands:
-            return True
-
-        t = time.time()
-        if self._operand_sufficient_time.get(op_name, 0) > t - 1:
-            return False
-
-        if any(self._worker_metrics[ep].get('stats', {}).get('max_est_finish_time') is None
-               for ep in self._worker_metrics):
-            self._operand_sufficient_time[op_name] = t
-            return False
-        minimal_stats = options.optimize.min_stats_count
-        minimal_workers = len(self._worker_metrics) * options.optimize.stats_sufficient_ratio - 1e-6
-        if sum(self._get_metric_item(ep, 'net_transfer_speed', 'count') >= minimal_stats
-               for ep in self._worker_metrics) < minimal_workers:
-            if all(self._get_metric_item(ep, 'net_transfer_speed', 'count') == 0 for ep in self._worker_metrics) or \
-                    all(self._worker_metrics[ep].get('submitted_count', 0) > 0 for ep in self._worker_metrics):
-                self._operand_sufficient_time[op_name] = t
-                return False
-        if any(self._get_op_metric_item(ep, op_name, 'count') < minimal_stats for ep in self._worker_metrics):
-            self._operand_sufficient_time[op_name] = t
-            return False
-        if any(abs(self._get_op_metric_item(ep, op_name, 'mean')) < 1e-6 for ep in self._worker_metrics):
-            self._operand_sufficient_time[op_name] = t
-            return False
-
-        if op_name in self._operand_sufficient_time:
-            del self._operand_sufficient_time[op_name]
-        self._sufficient_operands.add(op_name)
-        return True
 
     def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):
         locality_data = defaultdict(lambda: 0)
@@ -386,74 +329,3 @@ class AssignEvaluationActor(SchedulerActor):
             elif locality_data[ep] == max_locality:
                 max_eps.append(ep)
         return max_eps
-
-    def _get_ep_by_worker_stats(self, input_keys, chunk_workers, input_sizes, output_size, op_name):
-        ep_net_speeds = dict()
-        if any(self._get_metric_item(ep, 'net_transfer_speed', 'count') <= options.optimize.min_stats_count
-               for ep in self._worker_metrics):
-            sum_speeds, sum_records = 0, 0
-            for ep in self._worker_metrics.keys():
-                sum_speeds += self._get_metric_item(ep, 'net_transfer_speed', 'mean')
-                sum_records += self._get_metric_item(ep, 'net_transfer_speed', 'count')
-            avg_speed = sum_speeds * 1.0 / sum_records
-        else:
-            avg_speed = 0
-        for ep in self._worker_metrics:
-            if self._get_metric_item(ep, 'net_transfer_speed', 'count') > options.optimize.min_stats_count:
-                ep_net_speeds[ep] = self._get_metric_item(ep, 'net_transfer_speed', 'mean')
-            else:
-                ep_net_speeds[ep] = avg_speed
-
-        start_time = time.time()
-        ep_transmit_times = defaultdict(list)
-        ep_calc_time = defaultdict(lambda: 0)
-        locality_data = defaultdict(lambda: 0)
-        for key in input_keys:
-            contain_eps = chunk_workers.get(key, set())
-            for ep in self._worker_metrics:
-                if ep not in contain_eps:
-                    ep_transmit_times[ep].append(input_sizes[key] * 1.0 / ep_net_speeds[ep])
-                else:
-                    locality_data[ep] += input_sizes[key]
-
-        ep_transmit_time = dict()
-        for ep in self._worker_metrics:
-            if ep_transmit_times[ep]:
-                ep_transmit_time[ep] = sum(ep_transmit_times[ep])
-            else:
-                ep_transmit_time[ep] = 0
-
-        max_eps = []
-        max_locality = 0
-        for ep, locality in locality_data.items():
-            if locality == max_locality:
-                max_eps.append(ep)
-            elif locality > max_locality:
-                max_eps = [ep]
-                max_locality = locality
-        max_eps = set(max_eps)
-
-        for ep in self._worker_metrics:
-            ep_calc_time[ep] = sum(input_sizes.values()) * 1.0 / self._get_op_metric_item(ep, op_name, 'mean')
-
-        min_locality_exec_time = 0
-        for ep in max_eps:
-            finish_time = max(start_time, self._worker_metrics[ep].get('stats', {}).get('max_est_finish_time', 0.0)) + \
-                          ep_transmit_time[ep] + ep_calc_time[ep]
-            min_locality_exec_time = max(finish_time, min_locality_exec_time)
-
-        min_finish_time = None
-        min_ep = None
-        for ep in self._worker_metrics:
-            if ep_calc_time[ep] < 2 * ep_transmit_time[ep]:
-                continue
-            finish_time = max(start_time, self._worker_metrics[ep].get('stats', {}).get('min_est_finish_time', 0.0)) + \
-                          ep_transmit_time[ep] + ep_calc_time[ep]
-            if ep not in max_eps:
-                finish_time += output_size * 1.0 / ep_net_speeds[ep]
-            if finish_time - min_locality_exec_time > 1e-6:
-                continue
-            if min_finish_time is None or min_finish_time > finish_time:
-                min_finish_time = finish_time
-                min_ep = ep
-        return min_ep

@@ -101,8 +101,6 @@ class Test(unittest.TestCase):
                 self.assertSetEqual(set(io_meta['input_chunks']), set(orig_io_meta['input_chunks']))
                 self.assertSetEqual(set(io_meta['chunks']), set(orig_io_meta['chunks']))
 
-                self.assertEqual(op_infos[n.op.key]['output_size'], sum(ch.nbytes for ch in n.op.outputs))
-
         return fetched_graph
 
     def testGraphActor(self):

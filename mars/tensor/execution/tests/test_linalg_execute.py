@@ -505,6 +505,8 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(res, 3.14, delta=1)
 
     def testTensordotExecution(self):
+        size_executor = Executor()
+
         a_data = np.arange(60).reshape(3, 4, 5)
         a = tensor(a_data, chunk_size=2)
         b_data = np.arange(24).reshape(4, 3, 2)
@@ -512,8 +514,10 @@ class Test(unittest.TestCase):
 
         axes = ([1, 0], [0, 1])
         c = tensordot(a, b, axes=axes)
+        size_res = size_executor.execute_tensor(c, mock=True)
         res = self.executor.execute_tensor(c)
         expected = np.tensordot(a_data, b_data, axes=axes)
+        self.assertEqual(sum(s[0] for s in size_res), c.nbytes)
         self.assertTrue(np.array_equal(res[0], expected[:2, :]))
         self.assertTrue(np.array_equal(res[1], expected[2:4, :]))
         self.assertTrue(np.array_equal(res[2], expected[4:, :]))
@@ -560,6 +564,8 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[1], expected[500:, :]))
 
     def testSparseDotExecution(self):
+        size_executor = Executor()
+
         a_data = sps.random(5, 9, density=.1)
         b_data = sps.random(9, 10, density=.2)
         a = tensor(a_data, chunk_size=2)
@@ -567,7 +573,9 @@ class Test(unittest.TestCase):
 
         c = dot(a, b)
 
+        size_res = size_executor.execute_tensor(c, mock=True)
         res = self.executor.execute_tensor(c, concat=True)[0]
+        self.assertGreater(sum(s[0] for s in size_res), 0)
         self.assertTrue(issparse(res))
         np.testing.assert_allclose(res.toarray(), a_data.dot(b_data).toarray())
 
