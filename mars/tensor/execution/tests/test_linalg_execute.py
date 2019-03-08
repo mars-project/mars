@@ -514,7 +514,7 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(res, 3.14, delta=1)
 
     def testTensordotExecution(self):
-        size_executor = Executor()
+        size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
 
         a_data = np.arange(60).reshape(3, 4, 5)
         a = tensor(a_data, chunk_size=2)
@@ -579,7 +579,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, np.ones((100, 100)) * 100)
 
     def testSparseDotExecution(self):
-        size_executor = Executor()
+        size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
 
         a_data = sps.random(5, 9, density=.1)
         b_data = sps.random(9, 10, density=.2)

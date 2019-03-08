@@ -51,5 +51,5 @@ def estimate_fuse_size(ctx, chunk):
             dag.add_edge(inp, c)
 
     size_ctx = ctx.copy()
-    executor = Executor(storage=size_ctx)
+    executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
     ctx[chunk.key] = executor.execute_graph(dag, [chunk.key], mock=True)[0]

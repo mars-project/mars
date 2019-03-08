@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import datetime
-import threading
-import weakref
 import itertools
 import functools
 import logging
+import sys
+import threading
+import weakref
 from collections import deque, defaultdict
 
 import numpy as np
@@ -28,7 +29,7 @@ except ImportError:  # pragma: no cover
 
 from .operands import Fetch
 from .graph import DirectedGraph
-from .compat import futures, OrderedDict, enum
+from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,37 @@ class GeventExecutorSyncProvider(ExecutorSyncProvider):
     def event(cls):
         # as gevent threadpool is the **real** thread, so use threading.Event
         return threading.Event()
+
+
+class MockThreadPoolExecutor(object):
+    class _MockResult(object):
+        def __init__(self, result=None, exc_info=None):
+            self._result = result
+            self._exc_info = exc_info
+
+        def result(self, *_):
+            if self._exc_info is not None:
+                six.reraise(*self._exc_info)
+            else:
+                return self._result
+
+        def exception_info(self, *_):
+            return self._exc_info
+
+    def __init__(self, *_):
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        try:
+            return self._MockResult(fn(*args, **kwargs))
+        except:  # noqa: E722
+            return self._MockResult(None, sys.exc_info())
+
+
+class MockExecutorSyncProvider(ThreadExecutorSyncProvider):
+    @classmethod
+    def thread_pool_executor(cls, n_workers):
+        return MockThreadPoolExecutor(n_workers)
 
 
 class GraphExecution(object):
@@ -349,8 +381,10 @@ class Executor(object):
     class SyncProviderType(enum.Enum):
         THREAD = 0
         GEVENT = 1
+        MOCK = 2
 
     _sync_provider = {
+        SyncProviderType.MOCK: MockExecutorSyncProvider,
         SyncProviderType.THREAD: ThreadExecutorSyncProvider,
         SyncProviderType.GEVENT: GeventExecutorSyncProvider,
     }

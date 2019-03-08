@@ -274,7 +274,7 @@ class ExecutionActor(WorkerActor):
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
         size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
-        executor = Executor(storage=size_ctx)
+        executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.targets, mock=True)
         return dict(zip(graph_record.targets, res))
 
