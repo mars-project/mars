@@ -17,7 +17,7 @@ import numpy as np
 
 from mars.tests.core import TestBase, sps
 from mars.tensor import tensor
-from mars.tensor.expressions.arithmetic import abs, TensorAbs
+from mars.tensor.expressions.arithmetic import absolute, TensorAbsolute
 
 
 class Test(TestBase):
@@ -27,28 +27,28 @@ class Test(TestBase):
         self.raw_sparse_data = sps.random(7, 8)
 
     def testTensorSerialize(self):
-        t = abs(tensor(self.raw_data, chunk_size=(3, 4)))
+        t = absolute(tensor(self.raw_data, chunk_size=(3, 4)))
 
         serials = self._pb_serial(t)
         t2 = self._pb_deserial(serials)[t.data]
 
-        self.assertIsInstance(t2.op, TensorAbs)
+        self.assertIsInstance(t2.op, TensorAbsolute)
         self.assertEqual(t.issparse(), t2.issparse())
 
     def testChunkSerialize(self):
-        t = abs(tensor(self.raw_data, chunk_size=(3, 4)))
+        t = absolute(tensor(self.raw_data, chunk_size=(3, 4)))
         t.tiles()
         c = t.chunks[0]
 
         serials = self._pb_serial(c)
         c2 = self._pb_deserial(serials)[c.data]
 
-        self.assertIsInstance(c2.op, TensorAbs)
+        self.assertIsInstance(c2.op, TensorAbsolute)
         self.assertEqual(c.issparse(), c2.issparse())
 
     def testDenseExpr(self):
         t1 = tensor(self.raw_data, chunk_size=(3, 4))
-        t = abs(t1)
+        t = absolute(t1)
         t.tiles()
 
         self.assertEqual(t.shape, self.raw_data.shape)
@@ -70,7 +70,7 @@ class Test(TestBase):
 
     def testSparseExpr(self):
         t1 = tensor(self.raw_sparse_data, chunk_size=(3, 4))
-        t = abs(t1)
+        t = absolute(t1)
         t.tiles()
 
         self.assertEqual(t.shape, self.raw_sparse_data.shape)

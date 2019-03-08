@@ -32,7 +32,6 @@ from .negative import negative, TensorNegative
 from .positive import positive, TensorPositive
 from .absolute import absolute, TensorAbsolute
 from .fabs import fabs, TensorFabs
-from .abs import abs, TensorAbs
 from .rint import rint, TensorRint
 from .sign import sign, TensorSign
 from .degrees import degrees, TensorDegrees
