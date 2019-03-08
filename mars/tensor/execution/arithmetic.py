@@ -386,6 +386,20 @@ def _tree_multiply(ctx, chunk):
         ctx[chunk.key] = reduce(xp.multiply, inputs)
 
 
+def _tree_op_estimate_size(ctx, chunk):
+    sum_inputs = sum(ctx[inp.key][0] for inp in chunk.inputs)
+    if not chunk.is_sparse():
+        calc_size = chunk_size = chunk.nbytes
+        if np.isnan(calc_size):
+            chunk_size = calc_size = sum_inputs
+    else:
+        calc_size = sum_inputs
+        chunk_size = min(sum_inputs, chunk.nbytes + np.dtype(np.int64).itemsize * np.prod(chunk.shape) * chunk.ndim)
+        if np.isnan(chunk_size):
+            chunk_size = sum_inputs
+    ctx[chunk.key] = (chunk_size, calc_size)
+
+
 def register_arithmetic_handler():
     from ...executor import register
 
@@ -401,8 +415,8 @@ def register_arithmetic_handler():
     register(arithmetic.TensorSetImag, _set_imag)
     register(arithmetic.TensorSetImagConstant, _set_imag)
 
-    register(arithmetic.TensorTreeAdd, _tree_add)
-    register(arithmetic.TensorTreeMultiply, _tree_multiply)
+    register(arithmetic.TensorTreeAdd, _tree_add, _tree_op_estimate_size)
+    register(arithmetic.TensorTreeMultiply, _tree_multiply, _tree_op_estimate_size)
     register(arithmetic.TensorAround, _around)
     register(arithmetic.TensorAngle, _angle)
     register(arithmetic.TensorIsclose, _isclose)

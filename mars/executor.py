@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import datetime
+import itertools
+import functools
+import logging
+import sys
 import threading
 import weakref
-import itertools
-import logging
 from collections import deque, defaultdict
 
 import numpy as np
@@ -27,7 +29,7 @@ except ImportError:  # pragma: no cover
 
 from .operands import Fetch
 from .graph import DirectedGraph
-from .compat import futures, OrderedDict, enum
+from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode
 
 logger = logging.getLogger(__name__)
@@ -136,6 +138,37 @@ class GeventExecutorSyncProvider(ExecutorSyncProvider):
         return threading.Event()
 
 
+class MockThreadPoolExecutor(object):
+    class _MockResult(object):
+        def __init__(self, result=None, exc_info=None):
+            self._result = result
+            self._exc_info = exc_info
+
+        def result(self, *_):
+            if self._exc_info is not None:
+                six.reraise(*self._exc_info)
+            else:
+                return self._result
+
+        def exception_info(self, *_):
+            return self._exc_info
+
+    def __init__(self, *_):
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        try:
+            return self._MockResult(fn(*args, **kwargs))
+        except:  # noqa: E722
+            return self._MockResult(None, sys.exc_info())
+
+
+class MockExecutorSyncProvider(ThreadExecutorSyncProvider):
+    @classmethod
+    def thread_pool_executor(cls, n_workers):
+        return MockThreadPoolExecutor(n_workers)
+
+
 class GraphExecution(object):
     """
     Represent an execution for a specified graph.
@@ -223,25 +256,19 @@ class GraphExecution(object):
         deleted_chunk_keys = set()
         try:
             ops = list(self._op_key_to_ops[op.key])
-            if not self._mock:
-                # do real execution
-                # note that currently execution is the chunk-level
-                # so we pass the first operand's first output to Executor.handle
-                first_op = ops[0]
-                Executor.handle(first_op.outputs[0], results)
-                executed_chunk_keys.update([c.key for c in first_op.outputs])
-                op_keys.add(first_op.key)
-                # handle other operands
-                for rest_op in ops[1:]:
-                    for op_output, rest_op_output in zip(first_op.outputs, rest_op.outputs):
-                        # if the op's outputs have been stored,
-                        # other same key ops' results will be the same
-                        if rest_op_output.key not in executed_chunk_keys:
-                            results[rest_op_output.key] = results[op_output.key]
-            else:
-                sparse_percent = self._sparse_mock_percent if op.sparse else 1.0
-                for output in op.outputs:
-                    results[output.key] = output.nbytes * sparse_percent
+            # note that currently execution is the chunk-level
+            # so we pass the first operand's first output to Executor.handle
+            first_op = ops[0]
+            Executor.handle(first_op.outputs[0], results, self._mock)
+            executed_chunk_keys.update([c.key for c in first_op.outputs])
+            op_keys.add(first_op.key)
+            # handle other operands
+            for rest_op in ops[1:]:
+                for op_output, rest_op_output in zip(first_op.outputs, rest_op.outputs):
+                    # if the op's outputs have been stored,
+                    # other same key ops' results will be the same
+                    if rest_op_output.key not in executed_chunk_keys:
+                        results[rest_op_output.key] = results[op_output.key]
 
             with self._lock:
                 for output in itertools.chain(*[op.outputs for op in ops]):
@@ -330,16 +357,10 @@ class GraphExecution(object):
 
     def execute(self, retval=True):
         executed_futures = []
-        maximum_usage = 0
         while len(self._submitted_op_keys) < len(self._op_key_to_ops):
             if self._has_error.is_set():
                 # something wrong happened
                 break
-            if self._mock:
-                # if mock, the value in chunk_results is the data size
-                # just adding up to get the maximum memory usage
-                curr_usage = np.sum(list(self._chunk_results.values()))
-                maximum_usage = max(maximum_usage, curr_usage)
 
             future = self._submit_operand_to_execute()
             if future is not None:
@@ -349,20 +370,21 @@ class GraphExecution(object):
         for future in executed_futures:
             future.result()
 
-        if self._mock:
-            return maximum_usage
         if retval:
             return [self._chunk_results[key] for key in self._keys]
 
 
 class Executor(object):
     _op_runners = {}
+    _op_size_estimators = {}
 
     class SyncProviderType(enum.Enum):
         THREAD = 0
         GEVENT = 1
+        MOCK = 2
 
     _sync_provider = {
+        SyncProviderType.MOCK: MockExecutorSyncProvider,
         SyncProviderType.THREAD: ThreadExecutorSyncProvider,
         SyncProviderType.GEVENT: GeventExecutorSyncProvider,
     }
@@ -394,19 +416,25 @@ class Executor(object):
         Optimizer(graph, self._engine).optimize(keys=keys)
         return graph
 
-    @classmethod
-    def handle(cls, chunk, results):
+    @staticmethod
+    def _get_op_runner(chunk, mapper):
         try:
             op_cls = type(chunk.op)
-
-            return cls._op_runners[op_cls](results, chunk)
+            return mapper[op_cls]
         except KeyError:
-            for op_cls in cls._op_runners.keys():
+            for op_cls in mapper.keys():
                 if isinstance(chunk.op, op_cls):
-                    cls._op_runners[type(chunk.op)] = cls._op_runners[op_cls]
-                    return cls._op_runners[op_cls](results, chunk)
+                    mapper[type(chunk.op)] = mapper[op_cls]
+                    return mapper[op_cls]
 
             raise KeyError('No handler found for op: %s' % chunk.op)
+
+    @classmethod
+    def handle(cls, chunk, results, mock=False):
+        if not mock:
+            return cls._get_op_runner(chunk, cls._op_runners)(results, chunk)
+        else:
+            return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, sparse_mock_percent=1.0):
@@ -418,7 +446,10 @@ class Executor(object):
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
                                          sparse_mock_percent=sparse_mock_percent)
-        return graph_execution.execute(True)
+        res = graph_execution.execute(True)
+        if mock:
+            self._chunk_result.clear()
+        return res
 
     @kernel_mode
     def execute_tensor(self, tensor, n_parallel=None, n_thread=None, concat=False,
@@ -571,11 +602,44 @@ def ignore(*_):
     pass
 
 
+def default_size_estimator(ctx, chunk, multiplier=1):
+    exec_size = int(sum(ctx[inp.key][0] for inp in chunk.inputs or ()) * multiplier)
+
+    total_out_size = 0
+    chunk_sizes = dict()
+    outputs = chunk.op.outputs
+    for out in outputs:
+        try:
+            chunk_size = out.nbytes if not out.is_sparse() else exec_size
+            if np.isnan(chunk_size):
+                raise TypeError
+            chunk_sizes[out.key] = chunk_size
+            total_out_size += chunk_size
+        except (AttributeError, TypeError, ValueError):
+            pass
+    exec_size = max(exec_size, total_out_size)
+    for out in outputs:
+        if out.key in chunk_sizes:
+            store_size = chunk_sizes[out.key]
+        else:
+            store_size = max(exec_size // len(outputs),
+                             total_out_size // max(len(chunk_sizes), 1))
+        try:
+            max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+        except TypeError:  # pragma: no cover
+            max_sparse_size = np.nan
+        if not np.isnan(max_sparse_size):
+            store_size = min(store_size, max_sparse_size)
+        ctx[out.key] = (store_size, exec_size // len(outputs))
+
+
 Executor._op_runners[Fetch] = ignore
 
 
-def register(op, handler):
+def register(op, handler, size_estimator=None, size_multiplier=1):
     Executor._op_runners[op] = handler
+    Executor._op_size_estimators[op] = size_estimator or \
+        functools.partial(default_size_estimator, multiplier=size_multiplier)
 
 
 # register tensor and dataframe execution handler

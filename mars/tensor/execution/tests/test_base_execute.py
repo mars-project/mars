@@ -229,7 +229,9 @@ class Test(unittest.TestCase):
         y4 = x.reshape(60, 25, 40)
         y4.op.params['_reshape_with_shuffle'] = True
 
+        size_res = self.executor.execute_tensor(y4, mock=True)
         res = self.executor.execute_tensor(y4, concat=True)
+        self.assertEqual(res[0].nbytes, sum(v[0] for v in size_res))
         self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
 
     def testExpandDimsExecution(self):

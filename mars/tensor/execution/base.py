@@ -150,7 +150,7 @@ def register_basic_handler():
     from ... import operands
     from ...executor import register
 
-    register(operands.VirtualOperand, _virtual)
+    register(operands.VirtualOperand, _virtual, _virtual)
 
     register(operands.CopyTo, _copyto)
     register(operands.Astype, _astype)

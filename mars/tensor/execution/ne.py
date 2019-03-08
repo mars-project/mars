@@ -21,6 +21,7 @@ from ...compat import six, izip
 from ..expressions import arithmetic, reduction
 from ..expressions.fuse import TensorNeFuseChunk
 from .array import as_same_device
+from .utils import estimate_fuse_size
 
 _VAR_FLAG = 'V_'
 
@@ -180,4 +181,4 @@ def evaluate(ctx, chunk):
 def register_numexpr_handler():
     from ...executor import register
 
-    register(TensorNeFuseChunk, evaluate)
+    register(TensorNeFuseChunk, evaluate, estimate_fuse_size)

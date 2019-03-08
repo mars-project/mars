@@ -42,8 +42,10 @@ class Test(unittest.TestCase):
 
         index = arr < .5
         arr2 = arr[index]
+        size_res = self.executor.execute_tensor(arr2, mock=True)
         res = self.executor.execute_tensor(arr2)
 
+        self.assertEqual(sum(s[0] for s in size_res), arr.nbytes)
         self.assertTrue(np.array_equal(np.sort(np.concatenate(res)), np.sort(raw[raw < .5])))
 
         index2 = tensor(raw[:, :, 0, 0], chunk_size=3) < .5
@@ -98,8 +100,12 @@ class Test(unittest.TestCase):
         raw_cond = raw[0, :, 0, 0] < .5
         cond = tensor(raw[0, :, 0, 0], chunk_size=3) < .5
         arr2 = arr[10::-2, cond, None, ..., :5]
+        size_res = self.executor.execute_tensor(arr2, mock=True)
         res = self.executor.execute_tensor(arr2, concat=True)
 
+        new_shape = list(arr2.shape)
+        new_shape[1] = cond.shape[0]
+        self.assertEqual(sum(s[0] for s in size_res), int(np.prod(new_shape) * arr2.dtype.itemsize))
         self.assertTrue(np.array_equal(res[0], raw[10::-2, raw_cond, None, ..., :5]))
 
         b_raw = np.random.random(8)

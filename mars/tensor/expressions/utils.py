@@ -460,19 +460,6 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
     return tuple(dim_to_normalized[i] for i in range(len(dim_to_normalized)))
 
 
-def calc_rough_shape(tensor):
-    if np.nan in tensor.shape:
-        inputs = tensor.inputs or []
-        inputs_shape = tuple(t.rough_shape for t in inputs)
-        shape = tensor.op.calc_shape(*inputs_shape)
-        if np.nan in shape:
-            return tensor.op.calc_rough_shape(*inputs_shape)
-        else:
-            return shape
-    else:
-        return tensor.shape
-
-
 def convert_to_fetch(entity):
     from ..core import CHUNK_TYPE, TENSOR_TYPE
     from .fetch import TensorFetch

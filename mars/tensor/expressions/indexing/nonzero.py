@@ -32,10 +32,6 @@ class TensorNonzero(Nonzero, TensorOperandMixin):
         super(TensorNonzero, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    @staticmethod
-    def calc_rough_shape(*inputs_shape):
-        return np.prod(inputs_shape[0]),
-
     def calc_shape(self, *inputs_shape):
         return np.nan,
 

@@ -253,12 +253,6 @@ class TensorReshapeMap(ShuffleMap, TensorOperandMixin):
     def calc_shape(self, *inputs_shape):
         return np.nan,
 
-    def calc_rough_shape(self, *input_shapes):
-        inp_shape = input_shapes[0]
-        indices_overhead = np.int64().itemsize * (len(inp_shape) + 2)
-        scaled_original = 1 + int(np.ceil(indices_overhead / self.dtype.itemsize))
-        return (scaled_original,) + inp_shape
-
 
 class TensorReshapeReduce(ShuffleReduce, TensorOperandMixin):
     _op_type_ = opcodes.RESHAPE_REDUCE

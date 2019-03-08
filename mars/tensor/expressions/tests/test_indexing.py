@@ -34,7 +34,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(indexed.shape), 1)
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertTrue(np.isnan(calc_shape(indexed)[0]))
-        self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
         t2 = ones((100, 200))
         indexed = t[t2 < 2]
@@ -42,7 +41,6 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
         self.assertTrue(np.isnan(calc_shape(indexed)[0]))
-        self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
         t2 = ones((100, 200))
         indexed = t[t2 < 2] + 1
@@ -50,7 +48,6 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
         self.assertTrue(np.isnan(calc_shape(indexed)[0]))
-        self.assertEqual(indexed.rough_nbytes, t.nbytes)
 
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
@@ -117,7 +114,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t2.shape), 3)
         self.assertTrue(np.isnan(t2.shape[0]))
         self.assertEqual(calc_shape(t2), t2.shape)
-        self.assertEqual(t2.rough_nbytes, 100 * 200 * 3 * t.dtype.itemsize)
 
     def testBoolIndexingTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -131,8 +127,6 @@ class Test(unittest.TestCase):
         self.assertIs(indexed.chunks[20].inputs[1], indexed.op.indexes[0].cix[0, 2, 0].data)
         self.assertEqual(calc_shape(indexed.chunks[0]), indexed.chunks[0].shape)
         self.assertEqual(calc_shape(indexed.chunks[20]), indexed.chunks[20].shape)
-        self.assertEqual(indexed.chunks[0].rough_nbytes, t.chunks[0].nbytes)
-        self.assertEqual(indexed.chunks[20].rough_nbytes, t.chunks[20].nbytes)
 
         t2 = ones((100, 200), chunk_size=30)
         indexed2 = t[t2 < 2]
@@ -144,11 +138,8 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed2.chunks[0].shape[1], 30)
         self.assertEqual(indexed2.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertEqual(indexed2.chunks[20].inputs[1], indexed2.op.indexes[0].cix[0, 2].data)
-        self.assertEqual(indexed2.chunks[0].rough_nbytes, 30 * 30 * 30 * t2.dtype.itemsize)
         self.assertEqual(calc_shape(indexed2.chunks[0]), indexed2.chunks[0].shape)
         self.assertEqual(calc_shape(indexed2.chunks[20]), indexed2.chunks[20].shape)
-        self.assertEqual(indexed2.chunks[0].rough_nbytes, t.chunks[0].nbytes)
-        self.assertEqual(indexed2.chunks[20].rough_nbytes, t.chunks[20].nbytes)
 
     def testSliceTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -192,11 +183,9 @@ class Test(unittest.TestCase):
 
         self.assertEqual(t2.shape[:-1], (27, 300, 1))
         self.assertTrue(np.isnan(t2.shape[-1]))
-        self.assertEqual(t2.rough_nbytes, 27 * 300 * 400 * t.dtype.itemsize)
         self.assertEqual(t2.chunk_shape, (4, 13, 1, 17))
         self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0, ].data])
         self.assertEqual(calc_shape(t2.chunks[0]), t2.chunks[0].shape)
-        self.assertEqual(t2.chunks[0].rough_nbytes, 5 * 24 * 24 * t.dtype.itemsize)
 
         # multiple tensor type as indexes
         t3 = ones((100, 200, 300, 400), chunk_size=24)
@@ -209,11 +198,9 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(t4.shape[0]))
         self.assertTrue(np.isnan(t4.shape[-1]))
         self.assertEqual(calc_shape(t4), t4.shape)
-        self.assertEqual(t4.rough_nbytes, 100 * 200 * 400 * t.dtype.itemsize)
         self.assertEqual(t4.chunk_shape, (45, 1, 17))
         self.assertEqual(t4.chunks[0].op.indexes, [cmp2.cix[0, 0].data, 5, None, cmp3.cix[0, ].data])
         self.assertEqual(calc_shape(t4.chunks[0]), t4.chunks[0].shape)
-        self.assertEqual(t4.chunks[0].rough_nbytes, 24 * 24 * 24 * t3.dtype.itemsize)
 
     def testSetItem(self):
         shape = (10, 20, 30, 40)
@@ -283,14 +270,10 @@ class Test(unittest.TestCase):
         self.assertEqual(len(y), 2)
         self.assertEqual(calc_shape(y[0]), y[0].shape)
         self.assertEqual(calc_shape(y[1]), y[1].shape)
-        self.assertEqual(y[0].rough_nbytes, x.size * np.dtype(np.intp).itemsize)
-        self.assertEqual(y[1].rough_nbytes, x.size * np.dtype(np.intp).itemsize)
 
         y[0].tiles()
         self.assertEqual(calc_shape(y[0].chunks[0]), y[0].chunks[0].shape)
         self.assertEqual(calc_shape(y[1].chunks[0]), y[1].chunks[0].shape)
-        self.assertEqual(y[0].chunks[0].rough_nbytes, 3 * np.dtype(np.intp).itemsize)
-        self.assertEqual(y[1].chunks[0].rough_nbytes, 3 * np.dtype(np.intp).itemsize)
 
     def testOperandKey(self):
         t = ones((10, 2), chunk_size=5)

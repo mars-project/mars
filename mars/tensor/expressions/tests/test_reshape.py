@@ -63,4 +63,3 @@ class Test(unittest.TestCase):
 
         shuffle_map_sample = b.chunks[0].inputs[0].inputs[0]
         self.assertIsInstance(shuffle_map_sample.op, TensorReshapeMap)
-        self.assertGreater(shuffle_map_sample.rough_nbytes, 0)

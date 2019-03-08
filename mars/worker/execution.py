@@ -17,7 +17,6 @@ import logging
 import random
 import sys
 import time
-from functools import partial
 from collections import defaultdict
 
 from .. import promise
@@ -25,6 +24,7 @@ from ..compat import six, Enum, BrokenPipeError, ConnectionRefusedError, Timeout
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
     DependencyMissing
+from ..executor import Executor
 from ..operands import Fetch
 from ..utils import deserialize_graph, log_unhandled, to_str
 from .chunkholder import ensure_chunk
@@ -269,7 +269,14 @@ class ExecutionActor(WorkerActor):
             p = self._task_queue_ref.enqueue_task(
                 session_id, succ_key, succ_rec.priority_data, _promise=True)
             if enqueue_callback:
-                p.then(partial(self.tell_promise, enqueue_callback))
+                p.then(functools.partial(self.tell_promise, enqueue_callback))
+
+    def _estimate_calc_memory(self, session_id, graph_key):
+        graph_record = self._graph_records[(session_id, graph_key)]
+        size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
+        executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
+        res = executor.execute_graph(graph_record.graph, graph_record.targets, mock=True)
+        return dict(zip(graph_record.targets, res))
 
     @log_unhandled
     def prepare_quota_request(self, session_id, graph_key):
@@ -292,12 +299,13 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self.estimate_graph_finish_time(session_id, graph_key)
 
+        memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+
         # collect potential allocation sizes
         for chunk in graph:
             if not isinstance(chunk.op, Fetch) and chunk.key in graph_record.targets:
                 # use estimated size as potential allocation size
-                alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.rough_nbytes
+                alloc_cache_batch[chunk.key], alloc_mem_batch[chunk.key] = memory_estimations[chunk.key]
             else:
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = graph_record.data_sizes.get(chunk.key, chunk.nbytes)
@@ -605,8 +613,8 @@ class ExecutionActor(WorkerActor):
                     # input only use in current operand, we only need to load it into process memory
                     continue
                 self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
-                load_fun = partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
-                                   graph_key, chunk.key)
+                load_fun = functools.partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
+                                             graph_key, chunk.key)
                 unspill_keys.append(chunk.key)
                 prepare_promises.append(ensure_chunk(self, session_id, chunk.key, move_to_end=True) \
                                         .then(load_fun))
@@ -728,7 +736,7 @@ class ExecutionActor(WorkerActor):
             for key, targets in send_addresses.items():
                 promises.append(promise.Promise(done=True)
                                 .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
-                                .then(partial(_send_chunk, chunk_key=key, target_addrs=targets))
+                                .then(functools.partial(_send_chunk, chunk_key=key, target_addrs=targets))
                                 .catch(lambda *_: None))
             return promise.all_(promises)
 
