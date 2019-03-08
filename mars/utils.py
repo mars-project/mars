@@ -350,9 +350,10 @@ def kernel_mode(func):
     """
 
     def _wrapped(*args, **kwargs):
-        _kernel_mode.eager = False
-        return_value = func(*args, **kwargs)
-        _kernel_mode.eager = None
-        return return_value
+        try:
+            _kernel_mode.eager = False
+            return func(*args, **kwargs)
+        finally:
+            _kernel_mode.eager = None
 
     return _wrapped
