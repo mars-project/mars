@@ -24,6 +24,10 @@ from collections import Iterable
 from weakref import ReferenceType
 
 import numpy as np
+try:
+    import scipy.sparse as sps
+except ImportError:  # pragma: no cover
+    sps = None
 
 from mars import compat
 from mars.compat import six, zip_longest
