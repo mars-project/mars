@@ -389,8 +389,7 @@ def _tree_multiply(ctx, chunk):
 def _tree_op_estimate_size(ctx, chunk):
     sum_inputs = sum(ctx[inp.key][0] for inp in chunk.inputs)
     if not chunk.is_sparse():
-        calc_size = chunk.nbytes * 2
-        chunk_size = chunk.nbytes
+        calc_size = chunk_size = chunk.nbytes
         if np.isnan(calc_size):
             chunk_size = calc_size = sum_inputs
     else:
