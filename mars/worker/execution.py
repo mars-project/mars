@@ -17,7 +17,6 @@ import logging
 import random
 import sys
 import time
-from functools import partial
 from collections import defaultdict, OrderedDict
 
 from .. import promise
@@ -96,6 +95,14 @@ class ExecutionActor(WorkerActor):
             if self._graph_stages:
                 self._dump_execution_stages()
         self.ref().periodical_dump(_tell=True, _delay=10)
+
+    @staticmethod
+    def _estimate_calc_memory(graph, data_sizes, targets):
+        from ..tensor.execution.core import Executor
+        size_ctx = dict((k, (v, v)) for k, v in data_sizes.items())
+        executor = Executor(storage=size_ctx)
+        res = executor.execute_graph(graph, targets, mock=True)
+        return dict(zip(targets, res))
 
     @staticmethod
     def _build_load_key(graph_key, chunk_key):
@@ -242,13 +249,14 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self.estimate_graph_finish_time(graph_key, graph)
 
+        memory_estimations = self._estimate_calc_memory(graph, data_sizes, targets)
+
         # collect potential allocation sizes
         for chunk in graph:
             if not isinstance(chunk.op, TensorFetchChunk) and chunk.key in targets:
                 # use estimated size as potential allocation size
                 calc_keys.add(chunk.key)
-                alloc_mem_batch[chunk.key] = chunk.rough_nbytes * 2
-                alloc_cache_batch[chunk.key] = chunk.rough_nbytes
+                alloc_cache_batch[chunk.key], alloc_mem_batch[chunk.key] = memory_estimations[chunk.key]
             else:
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = data_sizes.get(chunk.key, chunk.nbytes)
@@ -310,7 +318,7 @@ class ExecutionActor(WorkerActor):
                         # input only use in current operand, we only need to load it into process memory
                         continue
                     self._mem_quota_ref.release_quota(self._build_load_key(graph_key, chunk.key))
-                    load_fun = partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
+                    load_fun = functools.partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
                                        graph_key, chunk.key)
                     unspill_keys.append(chunk.key)
                     prepare_promises.append(ensure_chunk(self, session_id, chunk.key, move_to_end=True) \
@@ -430,7 +438,7 @@ class ExecutionActor(WorkerActor):
             promises = []
             for key, targets in send_targets.items():
                 promises.append(self._dispatch_ref.get_free_slot('sender', _promise=True) \
-                                .then(partial(_send_chunk, chunk_key=key, target_addrs=targets)) \
+                                .then(functools.partial(_send_chunk, chunk_key=key, target_addrs=targets)) \
                                 .catch(lambda *_: None))
             return promise.all_(promises)
 

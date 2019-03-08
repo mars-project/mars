@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from .... import operands
 from ....tiles import NotSupportTile
 from ..core import TensorOperandMixin
@@ -24,18 +22,6 @@ from ..core import TensorOperandMixin
 class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
     def __init__(self, dtype=None, **kw):
         super(TensorFuseChunk, self).__init__(_dtype=dtype, **kw)
-
-    def calc_rough_shape(self, *inputs_shape):
-        in_shapes = inputs_shape
-        out_shape = None
-
-        # TODO: the logic will be changed when fusion is not only straight line
-        for c in self.outputs[0].composed:
-            out_shape = c.op.calc_shape(*in_shapes)
-            if np.nan in out_shape:
-                out_shape = c.op.calc_rough_shape(*inputs_shape)
-            in_shapes = [out_shape]
-        return out_shape
 
     def calc_shape(self, *inputs_shape):
         in_shapes = inputs_shape

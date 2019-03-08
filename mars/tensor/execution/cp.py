@@ -16,6 +16,7 @@
 
 from string import ascii_letters
 
+from .utils import estimate_fuse_size
 from ..expressions import arithmetic
 from ..expressions.fuse import TensorCpFuseChunk
 from ...utils import tokenize
@@ -71,4 +72,4 @@ def _execute_cp(ctx, chunk):
 def register_cp_handler():
     from .core import register
 
-    register(TensorCpFuseChunk, _execute_cp)
+    register(TensorCpFuseChunk, _execute_cp, estimate_fuse_size)
