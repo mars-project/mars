@@ -234,11 +234,12 @@ def merge_tensor_chunks(input_tensor, ctx):
 
     chunks = []
     for c in input_tensor.chunks:
-        op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key)
+        op = TensorFetchChunk(dtype=c.dtype, to_fetch_key=c.key, sparse=c.op.sparse)
         chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
         chunks.append(chunk)
 
-    new_op = TensorFetchChunk(dtype=input_tensor.dtype, to_fetch_key=input_tensor.key)
+    new_op = TensorFetchChunk(dtype=input_tensor.dtype, to_fetch_key=input_tensor.key,
+                              sparse=input_tensor.op.sparse)
     tensor = new_op.new_tensor(None, input_tensor.shape, chunks=chunks,
                                nsplits=input_tensor.nsplits)
 
