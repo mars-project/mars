@@ -545,11 +545,11 @@ class Executor(object):
             # generate TensorFetch op for each chunk
             chunks = []
             for c in tensor.chunks:
-                op = TensorFetch(dtype=c.dtype)
+                op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
                 chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
                 chunks.append(chunk)
 
-            new_op = TensorFetch(dtype=tensor.dtype)
+            new_op = TensorFetch(dtype=tensor.dtype, sparse=tensor.op.sparse)
             # copy key and id to ensure that fetch tensor won't add the count of executed tensor
             tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
                                        nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
@@ -619,6 +619,8 @@ def default_size_estimator(ctx, chunk, multiplier=1):
             pass
     exec_size = max(exec_size, total_out_size)
     for out in outputs:
+        if out.key in ctx:
+            continue
         if out.key in chunk_sizes:
             store_size = chunk_sizes[out.key]
         else:
