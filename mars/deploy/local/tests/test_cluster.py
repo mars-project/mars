@@ -309,3 +309,17 @@ class Test(unittest.TestCase):
         with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
             with self.assertRaises(SystemError):
                 cluster.session.run(tensor)
+
+    def testSparse(self):
+        import scipy.sparse as sps
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            # calculate sparse with no element in matrix
+            a = sps.csr_matrix((10000, 10000))
+            b = sps.csr_matrix((10000, 1))
+            t1 = mt.tensor(a)
+            t2 = mt.tensor(b)
+            session.run(t1 * t2)

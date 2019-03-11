@@ -147,8 +147,8 @@ class TensorFetchChunk(TensorNoInput, TensorOperandMixin):
 
     _to_fetch_key = StringField('to_fetch_key')
 
-    def __init__(self, dtype=None, to_fetch_key=None, **kw):
-        super(TensorFetchChunk, self).__init__(_dtype=dtype, _to_fetch_key=to_fetch_key,
+    def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
+        super(TensorFetchChunk, self).__init__(_dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse,
                                                **kw)
 
     @classmethod
