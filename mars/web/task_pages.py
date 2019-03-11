@@ -16,7 +16,7 @@ from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 
 from .server import register_ui_handler, get_jinja_env
-from ..scheduler.utils import OperandState
+from ..scheduler import OperandState
 from ..utils import to_str
 from ..actors import new_client
 from .server import MarsWebAPI

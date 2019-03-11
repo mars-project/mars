@@ -20,44 +20,6 @@ from ..utils import classproperty
 from ..promise import PromiseActor
 
 
-class OperandState(Enum):
-    UNSCHEDULED = 'unscheduled'
-    READY = 'ready'
-    RUNNING = 'running'
-    FINISHED = 'finished'
-    CACHED = 'cached'
-    FREED = 'freed'
-    FATAL = 'fatal'
-    CANCELLING = 'cancelling'
-    CANCELLED = 'cancelled'
-
-    @classproperty
-    def STORED_STATES(self):
-        """
-        States on which the data of the operand is stored
-        """
-        return self.FINISHED, self.CACHED
-
-    @classproperty
-    def SUCCESSFUL_STATES(self):
-        """
-        States on which the operand is executed successfully
-        """
-        return self.FINISHED, self.CACHED, self.FREED
-
-    @classproperty
-    def TERMINATED_STATES(self):
-        """
-        States on which the operand has already terminated
-        """
-        return self.FINISHED, self.CACHED, self.FREED, self.FATAL, self.CANCELLED
-
-
-class OperandPosition(Enum):
-    INITIAL = 'initial'
-    TERMINAL = 'terminal'
-
-
 class GraphState(Enum):
     UNSCHEDULED = 'unscheduled'
     PREPARING = 'preparing'
