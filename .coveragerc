@@ -22,6 +22,7 @@ omit =
 [report]
 exclude_lines =
     pragma: no cover
+    pass
     cdef public
     cpdef public
     def __repr__

@@ -14,7 +14,7 @@
 
 import os
 
-from mars.scheduler.operand import OperandActor, OperandPosition
+from mars.scheduler.operands import OperandActor, OperandPosition
 
 _old_on_running = OperandActor._on_running
 _old_on_finished = OperandActor._on_finished

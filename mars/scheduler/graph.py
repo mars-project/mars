@@ -24,10 +24,11 @@ from collections import deque, defaultdict
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
-from .resource import ResourceActor
 from .kvstore import KVStoreActor
+from .operands import get_operand_actor_class, OperandState, OperandPosition
+from .resource import ResourceActor
 from .session import SessionActor
-from .utils import SchedulerActor, OperandPosition, GraphState, OperandState
+from .utils import SchedulerActor, GraphState
 from ..compat import six, functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
@@ -296,7 +297,7 @@ class GraphActor(SchedulerActor):
         """
         Stop graph execution
         """
-        from .operand import OperandActor
+        from .operands import OperandActor
         if self.state == GraphState.CANCELLED:
             return
         self.state = GraphState.CANCELLING
@@ -580,13 +581,44 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
+    @staticmethod
+    def _collect_operand_io_meta(graph, chunks):
+        # collect operand i/o information
+        predecessor_keys = set()
+        successor_keys = set()
+        input_chunk_keys = set()
+        shared_input_chunk_keys = set()
+        chunk_keys = set()
+
+        for c in chunks:
+            # handling predecessor args
+            for pn in graph.iter_predecessors(c):
+                predecessor_keys.add(pn.op.key)
+                input_chunk_keys.add(pn.key)
+                if graph.count_successors(pn) > 1:
+                    shared_input_chunk_keys.add(pn.key)
+
+            # handling successor args
+            for sn in graph.iter_successors(c):
+                successor_keys.add(sn.op.key)
+
+            chunk_keys.update(co.key for co in c.op.outputs)
+
+        io_meta = dict(
+            predecessors=list(predecessor_keys),
+            successors=list(successor_keys),
+            input_chunks=list(input_chunk_keys),
+            shared_input_chunks=list(shared_input_chunk_keys),
+            chunks=list(chunk_keys),
+        )
+        return io_meta
+
     @log_unhandled
     def create_operand_actors(self, _clean_io_meta=True, _start=True):
         """
         Create operand actors for all operands
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
-        from .operand import OperandActor
 
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
@@ -594,37 +626,17 @@ class GraphActor(SchedulerActor):
         op_refs = dict()
         initial_keys = []
         for op_key in self._op_key_to_chunk:
-            op_name = type(self._op_key_to_chunk[op_key][0].op).__name__
+            chunks = self._op_key_to_chunk[op_key]
+            op = chunks[0].op
 
+            op_name = type(op).__name__
             op_info = operand_infos[op_key]
 
-            # collect operand i/o information
-            predecessor_keys = set()
-            successor_keys = set()
-            input_chunk_keys = set()
-            shared_input_chunk_keys = set()
-            chunks = set()
-
-            for c in self._op_key_to_chunk[op_key]:
-                for pn in chunk_graph.iter_predecessors(c):
-                    predecessor_keys.add(pn.op.key)
-                    input_chunk_keys.add(pn.key)
-                    if chunk_graph.count_successors(pn) > 1:
-                        shared_input_chunk_keys.add(pn.key)
-                successor_keys.update(pn.op.key for pn in chunk_graph.iter_successors(c))
-                chunks.update(co.key for co in c.op.outputs)
-
-            io_meta = dict(
-                predecessors=list(predecessor_keys),
-                successors=list(successor_keys),
-                input_chunks=list(input_chunk_keys),
-                shared_input_chunks=list(shared_input_chunk_keys),
-                chunks=list(chunks),
-            )
+            io_meta = self._collect_operand_io_meta(chunk_graph, chunks)
             op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
 
-            if predecessor_keys:
+            if io_meta['predecessors']:
                 state = 'UNSCHEDULED'
             else:
                 initial_keys.append(op_key)
@@ -635,13 +647,14 @@ class GraphActor(SchedulerActor):
             position = None
             if op_key in self._terminal_chunk_op_tensor:
                 position = OperandPosition.TERMINAL
-            elif not predecessor_keys:
+            elif not io_meta['predecessors']:
                 position = OperandPosition.INITIAL
 
-            op_uid = OperandActor.gen_uid(self._session_id, op_key)
+            op_cls = get_operand_actor_class(type(op))
+            op_uid = op_cls.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
             op_refs[op_key] = self.ctx.create_actor(
-                OperandActor, self._session_id, self._graph_key, op_key, op_info,
+                op_cls, self._session_id, self._graph_key, op_key, op_info,
                 position=position, uid=op_uid, address=scheduler_addr, wait=False
             )
             op_info['state'] = getattr(OperandState, state.upper())
@@ -736,7 +749,7 @@ class GraphActor(SchedulerActor):
 
     @functools32.lru_cache(1000)
     def _get_operand_ref(self, key):
-        from .operand import OperandActor
+        from .operands import OperandActor
         op_uid = OperandActor.gen_uid(self._session_id, key)
         scheduler_addr = self.get_scheduler(op_uid)
         return self.ctx.actor_ref(op_uid, address=scheduler_addr)

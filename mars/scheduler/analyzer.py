@@ -20,7 +20,8 @@ from collections import defaultdict, OrderedDict
 import numpy as np
 
 from ..compat import reduce
-from .utils import remove_shuffle_chunks, OperandState
+from .operands import OperandState
+from .utils import remove_shuffle_chunks
 
 logger = logging.getLogger(__name__)
 
