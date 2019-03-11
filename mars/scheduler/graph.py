@@ -543,7 +543,7 @@ class GraphActor(SchedulerActor):
         inputs_to_copied = dict()
         for c in self._op_key_to_chunk[op_key]:
             for inp in set(c.inputs or ()):
-                op = TensorFetch(dtype=inp.dtype)
+                op = TensorFetch(dtype=inp.dtype, sparse=inp.op.sparse)
                 inp_chunk = op.new_chunk(None, inp.shape, _key=inp.key).data
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
@@ -799,13 +799,13 @@ class GraphActor(SchedulerActor):
         if len(tiled_tensor.chunks) == 1:
             # only one chunk, just trigger fetch
             c = tiled_tensor.chunks[0]
-            op = TensorFetch(dtype=c.dtype)
+            op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
             fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
             graph.add_node(fetch_chunk)
         else:
             fetch_chunks = []
             for c in tiled_tensor.chunks:
-                op = TensorFetch(dtype=c.dtype)
+                op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
                 fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
                 graph.add_node(fetch_chunk)
                 fetch_chunks.append(fetch_chunk)
@@ -826,11 +826,11 @@ class GraphActor(SchedulerActor):
 
         chunks = []
         for c in tiled_tensor.chunks:
-            fetch_op = TensorFetch(dtype=c.dtype)
+            fetch_op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
             fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key)
             chunks.append(fetch_chunk)
 
-        new_op = TensorFetch(dtype=tiled_tensor.dtype)
+        new_op = TensorFetch(dtype=tiled_tensor.dtype, sparse=tiled_tensor.op.sparse)
         new_tensor = new_op.new_tensor(None, tiled_tensor.shape, chunks=chunks,
                                        nsplits=tiled_tensor.nsplits, _key=tiled_tensor.key)
         graph.add_node(new_tensor)
