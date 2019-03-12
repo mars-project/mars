@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/sorting.rst:2
 msgid "Sorting, Searching, and Counting"
-msgstr ""
+msgstr "排序、搜索和计算"
 
 #: ../../source/tensor/sorting.rst:5
 msgid "Searching"
@@ -102,7 +102,7 @@ msgid "Return the elements of a tensor that satisfy some condition."
 msgstr ""
 
 #: ../../source/tensor/sorting.rst:24
-msgid "Counting"
+msgid "计算"
 msgstr ""
 
 #: ../../<autosummary>:1
