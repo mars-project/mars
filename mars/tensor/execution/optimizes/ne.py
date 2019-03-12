@@ -27,7 +27,7 @@ SUPPORT_OP = {
     arithmetic.TensorPower, arithmetic.TensorPowConstant,
     arithmetic.TensorMod, arithmetic.TensorModConstant,
     arithmetic.TensorNegative,
-    arithmetic.TensorAbs,
+    arithmetic.TensorAbsolute,
     arithmetic.TensorConj,
     arithmetic.TensorExp,
     arithmetic.TensorLog,

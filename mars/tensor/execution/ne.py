@@ -27,7 +27,7 @@ _VAR_FLAG = 'V_'
 
 NE_UNARYOP_TO_STRING = {
     arithmetic.TensorNegative: '-',
-    arithmetic.TensorAbs: 'abs',
+    arithmetic.TensorAbsolute: 'abs',
     arithmetic.TensorConj: 'conj',
     arithmetic.TensorExp: 'exp',
     arithmetic.TensorLog: 'log',

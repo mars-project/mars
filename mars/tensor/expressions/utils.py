@@ -363,6 +363,11 @@ def check_out_param(out, t, casting):
     if not hasattr(out, 'shape'):
         raise TypeError('return arrays must be a tensor')
 
+    if out.issparse() != t.issparse():
+        raise ValueError('output is {0} tensor, but `out` is {1} tensor'.format(
+            'sparse' if t.issparse() else 'dense',
+            'sparse'if out.issparse() else 'dense'))
+
     try:
         broadcast_to(t, out.shape)
     except ValueError:
@@ -372,7 +377,7 @@ def check_out_param(out, t, casting):
 
     if not np.can_cast(t.dtype, out.dtype, casting):
         raise TypeError("output (typecode '{0}') could not be coerced "
-                        "to provided output paramter (typecode '{1}') "
+                        "to provided output parameter (typecode '{1}') "
                         "according to the casting rule ''{2}''".format(t.dtype.char, out.dtype.char, casting))
 
 

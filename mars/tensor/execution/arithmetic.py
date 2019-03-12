@@ -38,7 +38,6 @@ OP_TO_HANDLER = {
     arithmetic.TensorNegative: 'negative',
     arithmetic.TensorPositive: operator.pos,
     arithmetic.TensorAbsolute: 'absolute',
-    arithmetic.TensorAbs: 'abs',
     arithmetic.TensorFabs: 'fabs',
     arithmetic.TensorRint: 'rint',
     arithmetic.TensorSign: 'sign',
