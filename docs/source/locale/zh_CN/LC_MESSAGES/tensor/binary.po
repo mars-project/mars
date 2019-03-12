@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/binary.rst:2
 msgid "Binary Operations"
-msgstr "二目操作"
+msgstr "二元操作"
 
 #: ../../source/tensor/binary.rst:5
 msgid "Elementwise bit operations"
