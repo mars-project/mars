@@ -33,7 +33,7 @@ msgid ""
 "If no session is created explicitly, the ``execute`` will create a local "
 "session, and mark it as a default session."
 msgstr ""
-"如果未明确 ``execute`` 创建会话，则将创建本地会话，并将其标记为默认会话。"
+"如果没有显式创建回话， ``execute`` 方法会创建一个本地回话，并将其标记为默认会话。"
 
 #: ../../source/tensor/execution.rst:9
 msgid "Session"
@@ -51,7 +51,7 @@ msgid ""
 "By calling ``as_default`` of a session, the session will be marked as the"
 " default session."
 msgstr ""
-"通过调用 ``as_default`` 会话，会话将被标记为默认会话。"
+"通过调用会话的  ``as_default`` 方法，该会话将被标记为默认会话。"
 
 #: ../../source/tensor/execution.rst:29
 msgid ""
@@ -67,9 +67,9 @@ msgstr "执行张量"
 #: ../../source/tensor/execution.rst:51
 msgid "For a single tensor, ``execute`` can be called."
 msgstr ""
-"对于单个张量，``execute`` 可以调用。"
+"可以调用张量的 ``execute`` 方法来执行单个张量。"
 
 #: ../../source/tensor/execution.rst:59
 msgid "Session can be specified by the argument ``session=``."
 msgstr ""
-"会话可以由参数指定 ``session=``。"
+"会话可以由参数 ``session=`` 指定。"

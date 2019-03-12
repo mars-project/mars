@@ -30,8 +30,8 @@ msgid ""
 "directed graph. This lets us compute on tensors larger than memory and "
 "take advantage of the ability of multi-cores or distributed clusters."
 msgstr ""
-"Mars tensor是Numpy的对应物，``numpy.ndarray`` 它实现了Numpy ndarray接口的一个子集。"
-"它将一个大张量拼贴成小块，并用有向图描述内部计算。这使我们可以在大于内存的张量上进行计算，"
+"Mars tensor 对应 Numpy ndarray,它实现了Numpy ndarray接口的一个子集。"
+"它将一个大张量切分成很多小块，并用有向图描述块之间的计算。这使我们可以在大于内存的张量上进行计算，"
 "并利用多核或分布式集群的能力。"
 
 #: ../../source/tensor/overview.rst:9
@@ -50,7 +50,7 @@ msgstr ""
 #: ../../source/tensor/overview.rst:12
 msgid "Reduction along axes (``sum``, ``max``, ``argmax``, etc)."
 msgstr ""
-"沿轴线还原(``sum``, ``max``, ``argmax``, etc)"
+"沿轴线聚合(``sum``, ``max``, ``argmax``, 等)"
 
 #: ../../source/tensor/overview.rst:13
 msgid ""
@@ -60,9 +60,9 @@ msgid ""
 "Mars does not only support create array/tensor on GPU, but also support "
 "create sparse tensor."
 msgstr ""
-"大多数的 `阵列创建程序 "
+"大多数的 ` 数组创建程序 "
 "<https://docs.scipy.org/doc/numpy/reference/routines.array-"
-"creation.html>`_ (``empty``, ``ones_like``, ``diag``, etc)。"
+"creation.html>`_ (``empty``, ``ones_like``, ``diag``, 等)。"
 "更重要的是，Mars不仅支持在GPU上创建数组/张量，还支持创建稀疏张量。"
 
 
@@ -74,7 +74,7 @@ msgid ""
 msgstr ""
 "大部分的 `阵列操作例程 "
 "<https://docs.scipy.org/doc/numpy/reference/routines.array-"
-"manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, etc.)"
+"manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, 等)"
 
 #: ../../source/tensor/overview.rst:18
 msgid ""
@@ -84,14 +84,14 @@ msgid ""
 msgstr ""
 "`基础索引 "
 "<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
-"(通过整数，切片，newaxes和省略号进行索引)"
+"(通过整数，切片，添加新维度和省略号进行索引)"
 
 #: ../../source/tensor/overview.rst:20
 msgid ""
 "Fancy indexing along single axis with lists or numpy arrays, e.g. x[[1, "
 "4, 8], :5]"
 msgstr ""
-"使用列表或numpy数组沿单轴绘制索引，例如x [[1,4,8]，：5]"
+"使用列表或numpy数组沿单轴的花式索引，例如x [[1,4,8], :5]"
 
 #: ../../source/tensor/overview.rst:21
 msgid ""
@@ -111,7 +111,8 @@ msgid ""
 msgstr ""
 "`线性代数函数 "
 "<https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, "
-"包括乘积 (``dot``, ``matmul``, etc.)和分解"
+"包括乘积 (``dot``, ``matmul``, 等)和分解"
+"(``cholesky``, ``svd``, 等)。"
 
 #: ../../source/tensor/overview.rst:26
 msgid ""
@@ -120,8 +121,9 @@ msgid ""
 "community is sincerely welcomed. The main feature not implemented are "
 "listed below:"
 msgstr ""
-"然而，Mars还没有实现整个Numpy接口，无论是时间限制还是难度都是主要障碍。"
+"然而，Mars还没有实现整个Numpy接口，时间限制和难度是主要原因。"
 "我们真诚地欢迎社区的任何贡献。未实现的主要功能如下："
+
 #: ../../source/tensor/overview.rst:29
 msgid "Tensor with unknown shape does not support all operations."
 msgstr ""
@@ -137,7 +139,7 @@ msgid ""
 "Operations like ``sort`` which is hard to execute in parallel are not "
 "implemented."
 msgstr ""
-"操作就像 ``sort`` 这是很难并行执行不落实。"
+"像 ``sort`` 这些操作很难高效并行"
 
 #: ../../source/tensor/overview.rst:32
 msgid ""
@@ -145,5 +147,5 @@ msgid ""
 "etc, because the iteration or loops over a large tensor is very "
 "inefficient."
 msgstr ""
-"Mars张量没有实现类似的界面 ``tolist`` 和 ``nditer`` 等，"
+"Mars张量没有实现类似 ``tolist`` 和 ``nditer`` 等接口，"
 "因为迭代或者循环处理巨大的张量非常低效。"

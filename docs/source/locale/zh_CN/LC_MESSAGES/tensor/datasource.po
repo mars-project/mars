@@ -29,7 +29,7 @@ msgid ""
 "<routines/random>`."
 msgstr ""
 "您可以像对象一样从Python数组创建mars tensor，就像Numpy一样，"
-"或者直接从Numpy数组创建。关于 :doc:`阵列创建例程<routines/creation>` 和 :doc:`随机抽样<routines/random>` 的更多细节。
+"或者直接从Numpy数组创建。关于 :doc:`数组创建例程<routines/creation>` 和 :doc:`随机抽样<routines/random>` 的更多细节。
 
 #: ../../source/tensor/datasource.rst:14:<autosummary>:1
 msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"
@@ -63,7 +63,7 @@ msgid ""
 "Mars tensor can be sparse, unfortunately, only 2-D sparse tensors are "
 "supported for now, multi-dimensional tensor will be supported later soon."
 msgstr ""
-"不幸的是，Mars张量可能是稀疏的，现在只支持2-D稀疏张量，很快就会支持多维张量。"
+"不幸的是，Mars张量可能是稀疏的，然而，现在只支持二维稀疏张量，很快就会支持多维张量。"
 
 #: ../../source/tensor/datasource.rst:41
 msgid "Chunks"
@@ -80,7 +80,7 @@ msgid ""
 msgstr ""
 "Mars 张量中，我们将张量分块处理。"
 " ``chunk_size`` 不是必须的，对于默认设置，块的字节占用将为128M。"
-"但是，用户可以以更灵活的方式指定每个块的大小，这可以适应数据规模。"
+"但是，用户可以根据数据规模以更灵活的方式指定每个块的大小"
 "事实是，块的大小可能会严重影响执行的性能。"
 
 #: ../../source/tensor/datasource.rst:48
@@ -128,7 +128,7 @@ msgstr ""
 #: ../../source/tensor/datasource.rst:71
 msgid "We will show how different ``chunk_size=`` arguments will tile the tensor."
 msgstr ""
-"我们将展示不同的 ``chunk_size=`` 论证将如何平衡张量。"
+"我们将展示不同的  ``chunk_size=`` 将如何影响张量的分块。"
 
 #: ../../source/tensor/datasource.rst:73
 msgid "``chunk_size=3``:"

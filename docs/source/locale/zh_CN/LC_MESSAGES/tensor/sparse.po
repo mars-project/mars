@@ -28,7 +28,7 @@ msgid ""
 "tensors are available for now. Multi-dimensional sparse tensors will be "
 "supported later."
 msgstr ""
-"不幸的是，Mars张量支持稀疏张量，现在只有2-D稀疏张量可用。稍后将支持多维稀疏张量。"
+"Mars支持稀疏张量，但不幸的是，目前只支持二维稀疏张量，稍后将支持多维稀疏张量"
 
 #: ../../source/tensor/sparse.rst:8
 msgid "Functions to create sparse tensor"

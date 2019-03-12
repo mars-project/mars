@@ -20,7 +20,7 @@ msgstr ""
 #: ../../source/tensor/set.rst:2
 msgid "Set routines"
 msgstr ""
-"设置例程"
+"集合例程"
 
 #: ../../source/tensor/set.rst:5
 msgid "Boolean operations"

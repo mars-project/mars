@@ -36,7 +36,7 @@ msgstr ":doc:`文档 <tensor>`"
 
 #: ../../source/index.rst:16
 msgid "Mars tensor provides a familiar interface like Numpy."
-msgstr "Mars tensor 提供类似于 Numpy 的接口"
+msgstr "Mars tensor - 提供类似 Numpy API 的分布式张量库"
 
 #: ../../source/index.rst:19
 msgid "**Numpy**"

@@ -37,7 +37,7 @@ msgid ""
 "Users can enable the eager mode by options, set options at the beginning "
 "of the program or console session."
 msgstr ""
-"用户可以通过选项启用热切模式，在程序开头或控制台会话中设置选项。"
+"用户可以通过选项启用eager 模式，在程序开头或控制台会话中设置选项。"
 
 #: ../../source/tensor/eager-mode.rst:18
 msgid "Or use a context."
@@ -54,4 +54,4 @@ msgstr ""
 #: ../../source/tensor/eager-mode.rst:43
 msgid "Use ``fetch`` to obtain numpy value from a tensor:"
 msgstr ""
-"用于 ``fetch`` 从张量中获取numpy值："
+"使用 ``fetch`` 从张量中获取numpy值："

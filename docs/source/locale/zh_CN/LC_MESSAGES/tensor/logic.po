@@ -20,12 +20,12 @@ msgstr ""
 #: ../../source/tensor/logic.rst:2
 msgid "Logic Functions"
 msgstr ""
-"Logic函数"
+"逻辑函数"
 
 #: ../../source/tensor/logic.rst:5
 msgid "Truth value testing"
 msgstr ""
-"Truth value 测试"
+"真值测试"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.all <mars.tensor.all>`"
