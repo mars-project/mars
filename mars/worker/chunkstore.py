@@ -59,7 +59,7 @@ class PlasmaChunkStore(object):
 
         self._mapper_ref = mapper_ref
 
-    def get_actual_capacity(self):
+    def get_actual_capacity(self, store_limit):
         """
         Get actual capacity of plasma store
         :return: actual storage size in bytes
@@ -68,16 +68,25 @@ class PlasmaChunkStore(object):
             from pyarrow import plasma, lib
 
             bufs = []
+            left_size = store_limit
             total_size = 0
-            allocate_unit = 4 * 1024 * 1024
-            try:
-                while True:
+            alloc_fraction = 0.9
+            while left_size:
+                allocate_size = int(left_size * alloc_fraction)
+                if allocate_size < 1 * 1024 ** 2:
+                    break
+
+                try:
                     obj_id = plasma.ObjectID.from_random()
-                    bufs.append(self._plasma_client.create(obj_id, allocate_unit))
+                    bufs.append(self._plasma_client.create(obj_id, allocate_size))
                     self._plasma_client.seal(obj_id)
-                    total_size += allocate_unit
-            except lib.PlasmaStoreFull:
-                pass
+                    total_size += allocate_size
+                    left_size -= allocate_size
+                    alloc_fraction = 0.9
+                except lib.PlasmaStoreFull:
+                    alloc_fraction -= 0.1
+                    if alloc_fraction < 1e-6:
+                        break
             del bufs
             self._plasma_client.evict(total_size)
             self._actual_size = total_size

@@ -82,7 +82,7 @@ class ChunkHolderActor(WorkerActor):
         super(ChunkHolderActor, self).post_create()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
 
-        self._plasma_limit = self._chunk_store.get_actual_capacity()
+        self._plasma_limit = self._chunk_store.get_actual_capacity(self._plasma_limit)
         logger.info('Detected actual plasma store size: %s', readable_size(self._plasma_limit))
         self._total_size = self._plasma_limit
         parse_num, is_percent = parse_memory_limit(options.worker.min_spill_size)

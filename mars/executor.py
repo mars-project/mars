@@ -603,7 +603,13 @@ def ignore(*_):
 
 
 def default_size_estimator(ctx, chunk, multiplier=1):
-    exec_size = int(sum(ctx[inp.key][0] for inp in chunk.inputs or ()) * multiplier)
+    exec_size = 0
+    for inp in chunk.inputs or ():
+        if chunk.is_sparse() or np.isnan(inp.nbytes):
+            exec_size += ctx[inp.key][0]
+        else:
+            exec_size += inp.nbytes
+    exec_size = int(exec_size * multiplier)
 
     total_out_size = 0
     chunk_sizes = dict()
