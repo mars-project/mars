@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:18+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,35 +21,30 @@ msgstr ""
 msgid "mars.tensor.random.seed"
 msgstr ""
 
-#: mars.tensor.random.seed:1 of
-msgid "Seed the generator."
-msgstr ""
-
-#: mars.tensor.random.seed:3 of
-msgid ""
-"This method is called when `RandomState` is initialized. It can be called"
-" again to re-seed the generator. For details, see `RandomState`."
-msgstr ""
-
-#: mars.tensor.random.seed:10 of
-msgid "seed"
-msgstr ""
-
-#: mars.tensor.random.seed:9 of
-msgid "int or 1-d array_like, optional"
-msgstr ""
-
-#: mars.tensor.random.seed:9 of
-msgid "Seed for `RandomState`. Must be convertible to 32 bit unsigned integers."
-msgstr ""
-
-#: mars.tensor.random.seed:14 of
-msgid "RandomState"
-msgstr ""
-
 #~ msgid "RandomState"
 #~ msgstr ""
 
 #~ msgid "mars.tensor.random.RandomState"
+#~ msgstr ""
+
+#~ msgid "Seed the generator."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "This method is called when `RandomState`"
+#~ " is initialized. It can be called "
+#~ "again to re-seed the generator. "
+#~ "For details, see `RandomState`."
+#~ msgstr ""
+
+#~ msgid "seed"
+#~ msgstr ""
+
+#~ msgid "int or 1-d array_like, optional"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Seed for `RandomState`. Must be "
+#~ "convertible to 32 bit unsigned integers."
 #~ msgstr ""
 

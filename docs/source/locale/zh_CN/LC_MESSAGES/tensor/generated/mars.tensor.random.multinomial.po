@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,150 +21,138 @@ msgstr ""
 msgid "mars.tensor.random.multinomial"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:1 of
-msgid "Draw samples from a multinomial distribution."
-msgstr ""
+#~ msgid "Draw samples from a multinomial distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:3 of
-msgid ""
-"The multinomial distribution is a multivariate generalisation of the "
-"binomial distribution.  Take an experiment with one of ``p`` possible "
-"outcomes.  An example of such an experiment is throwing a dice, where the"
-" outcome can be 1 through 6.  Each sample drawn from the distribution "
-"represents `n` such experiments.  Its values, ``X_i = [X_0, X_1, ..., "
-"X_p]``, represent the number of times the outcome was ``i``."
-msgstr ""
+#~ msgid ""
+#~ "The multinomial distribution is a "
+#~ "multivariate generalisation of the binomial"
+#~ " distribution.  Take an experiment with "
+#~ "one of ``p`` possible outcomes.  An "
+#~ "example of such an experiment is "
+#~ "throwing a dice, where the outcome "
+#~ "can be 1 through 6.  Each sample"
+#~ " drawn from the distribution represents "
+#~ "`n` such experiments.  Its values, ``X_i"
+#~ " = [X_0, X_1, ..., X_p]``, represent"
+#~ " the number of times the outcome "
+#~ "was ``i``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:13 of
-msgid "n"
-msgstr ""
+#~ msgid "n"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:12 of
-msgid "int"
-msgstr ""
+#~ msgid "int"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:14 of
-msgid "Number of experiments."
-msgstr ""
+#~ msgid "Number of experiments."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:18 of
-msgid "pvals"
-msgstr ""
+#~ msgid "pvals"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:17 of
-msgid "sequence of floats, length p"
-msgstr ""
+#~ msgid "sequence of floats, length p"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:16 of
-msgid ""
-"Probabilities of each of the ``p`` different outcomes.  These should sum "
-"to 1 (however, the last element is always assumed to account for the "
-"remaining probability, as long as ``sum(pvals[:-1]) <= 1)``."
-msgstr ""
+#~ msgid ""
+#~ "Probabilities of each of the ``p`` "
+#~ "different outcomes.  These should sum to"
+#~ " 1 (however, the last element is "
+#~ "always assumed to account for the "
+#~ "remaining probability, as long as "
+#~ "``sum(pvals[:-1]) <= 1)``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:22 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:21 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:21 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  Default is None, in which case a single value is"
-" returned."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  Default is None, in which case "
+#~ "a single value is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:24 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:23 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:25 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:26 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:25 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:27 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:29 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:28 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:29 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:38 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:37 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:34 of
-msgid ""
-"The drawn samples, of shape *size*, if that was provided.  If not, the "
-"shape is ``(N,)``."
-msgstr ""
+#~ msgid ""
+#~ "The drawn samples, of shape *size*, "
+#~ "if that was provided.  If not, the"
+#~ " shape is ``(N,)``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:37 of
-msgid ""
-"In other words, each entry ``out[i,j,...,:]`` is an N-dimensional value "
-"drawn from the distribution."
-msgstr ""
+#~ msgid ""
+#~ "In other words, each entry "
+#~ "``out[i,j,...,:]`` is an N-dimensional value"
+#~ " drawn from the distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:42 of
-msgid "Throw a dice 20 times:"
-msgstr ""
+#~ msgid "Throw a dice 20 times:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:49 of
-msgid "It landed 4 times on 1, once on 2, etc."
-msgstr ""
+#~ msgid "It landed 4 times on 1, once on 2, etc."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:51 of
-msgid "Now, throw the dice 20 times, and 20 times again:"
-msgstr ""
+#~ msgid "Now, throw the dice 20 times, and 20 times again:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:57 of
-msgid ""
-"For the first run, we threw 3 times 1, 4 times 2, etc.  For the second, "
-"we threw 2 times 1, 4 times 2, etc."
-msgstr ""
+#~ msgid ""
+#~ "For the first run, we threw 3 "
+#~ "times 1, 4 times 2, etc.  For "
+#~ "the second, we threw 2 times 1,"
+#~ " 4 times 2, etc."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:60 of
-msgid "A loaded die is more likely to land on number 6:"
-msgstr ""
+#~ msgid "A loaded die is more likely to land on number 6:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:65 of
-msgid ""
-"The probability inputs should be normalized. As an implementation detail,"
-" the value of the last entry is ignored and assumed to take up any "
-"leftover probability mass, but this should not be relied on. A biased "
-"coin which has twice as much weight on one side as on the other should be"
-" sampled like so:"
-msgstr ""
+#~ msgid ""
+#~ "The probability inputs should be "
+#~ "normalized. As an implementation detail, "
+#~ "the value of the last entry is "
+#~ "ignored and assumed to take up any"
+#~ " leftover probability mass, but this "
+#~ "should not be relied on. A biased"
+#~ " coin which has twice as much "
+#~ "weight on one side as on the "
+#~ "other should be sampled like so:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multinomial:74 of
-msgid "not like:"
-msgstr ""
+#~ msgid "not like:"
+#~ msgstr ""
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,119 +21,121 @@ msgstr ""
 msgid "mars.tensor.fft.fft"
 msgstr ""
 
-#: mars.tensor.fft.fft:1 of
-msgid "Compute the one-dimensional discrete Fourier Transform."
-msgstr ""
+#~ msgid "Compute the one-dimensional discrete Fourier Transform."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:3 of
-msgid ""
-"This function computes the one-dimensional *n*-point discrete Fourier "
-"Transform (DFT) with the efficient Fast Fourier Transform (FFT) algorithm"
-" [CT]."
-msgstr ""
+#~ msgid ""
+#~ "This function computes the one-"
+#~ "dimensional *n*-point discrete Fourier "
+#~ "Transform (DFT) with the efficient Fast"
+#~ " Fourier Transform (FFT) algorithm [CT]."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:9 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:8 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:10 of
-msgid "Input tensor, can be complex."
-msgstr ""
+#~ msgid "Input tensor, can be complex."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:14 of
-msgid "n"
-msgstr ""
+#~ msgid "n"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:13 mars.tensor.fft.fft:16 of
-msgid "int, optional"
-msgstr ""
+#~ msgid "int, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:12 of
-msgid ""
-"Length of the transformed axis of the output. If `n` is smaller than the "
-"length of the input, the input is cropped. If it is larger, the input is "
-"padded with zeros.  If `n` is not given, the length of the input along "
-"the axis specified by `axis` is used."
-msgstr ""
+#~ msgid ""
+#~ "Length of the transformed axis of "
+#~ "the output. If `n` is smaller than"
+#~ " the length of the input, the "
+#~ "input is cropped. If it is larger,"
+#~ " the input is padded with zeros.  "
+#~ "If `n` is not given, the length"
+#~ " of the input along the axis "
+#~ "specified by `axis` is used."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:17 of
-msgid "axis"
-msgstr ""
+#~ msgid "axis"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:17 of
-msgid "Axis over which to compute the FFT.  If not given, the last axis is used."
-msgstr ""
+#~ msgid ""
+#~ "Axis over which to compute the "
+#~ "FFT.  If not given, the last axis"
+#~ " is used."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:20 of
-msgid "norm"
-msgstr ""
+#~ msgid "norm"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:19 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
+#~ msgid "{None, \"ortho\"}, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:20 of
-msgid "Normalization mode (see `mt.fft`). Default is None."
-msgstr ""
+#~ msgid "Normalization mode (see `mt.fft`). Default is None."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:26 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:25 of
-msgid "complex Tensor"
-msgstr ""
+#~ msgid "complex Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:25 of
-msgid ""
-"The truncated or zero-padded input, transformed along the axis indicated "
-"by `axis`, or the last one if `axis` is not specified."
-msgstr ""
+#~ msgid ""
+#~ "The truncated or zero-padded input, "
+#~ "transformed along the axis indicated by"
+#~ " `axis`, or the last one if "
+#~ "`axis` is not specified."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:31 of
-msgid "IndexError"
-msgstr ""
+#~ msgid "IndexError"
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:31 of
-msgid "if `axes` is larger than the last axis of `a`."
-msgstr ""
+#~ msgid "if `axes` is larger than the last axis of `a`."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:35 of
-msgid ""
-"mt.fft : for definition of the DFT and conventions used. ifft : The "
-"inverse of `fft`. fft2 : The two-dimensional FFT. fftn : The "
-"*n*-dimensional FFT. rfftn : The *n*-dimensional FFT of real input. "
-"fftfreq : Frequency bins for given FFT parameters."
-msgstr ""
+#~ msgid ""
+#~ "mt.fft : for definition of the DFT"
+#~ " and conventions used. ifft : The "
+#~ "inverse of `fft`. fft2 : The "
+#~ "two-dimensional FFT. fftn : The "
+#~ "*n*-dimensional FFT. rfftn : The "
+#~ "*n*-dimensional FFT of real input. "
+#~ "fftfreq : Frequency bins for given "
+#~ "FFT parameters."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:44 of
-msgid ""
-"FFT (Fast Fourier Transform) refers to a way the discrete Fourier "
-"Transform (DFT) can be calculated efficiently, by using symmetries in the"
-" calculated terms.  The symmetry is highest when `n` is a power of 2, and"
-" the transform is therefore most efficient for these sizes."
-msgstr ""
+#~ msgid ""
+#~ "FFT (Fast Fourier Transform) refers to"
+#~ " a way the discrete Fourier Transform"
+#~ " (DFT) can be calculated efficiently, "
+#~ "by using symmetries in the calculated"
+#~ " terms.  The symmetry is highest when"
+#~ " `n` is a power of 2, and "
+#~ "the transform is therefore most "
+#~ "efficient for these sizes."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:49 of
-msgid ""
-"The DFT is defined, with the conventions used in this implementation, in "
-"the documentation for the `numpy.fft` module."
-msgstr ""
+#~ msgid ""
+#~ "The DFT is defined, with the "
+#~ "conventions used in this implementation, "
+#~ "in the documentation for the `numpy.fft`"
+#~ " module."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:54 of
-msgid ""
-"Cooley, James W., and John W. Tukey, 1965, \"An algorithm for the machine"
-" calculation of complex Fourier series,\" *Math. Comput.* 19: 297-301."
-msgstr ""
+#~ msgid ""
+#~ "Cooley, James W., and John W. "
+#~ "Tukey, 1965, \"An algorithm for the "
+#~ "machine calculation of complex Fourier "
+#~ "series,\" *Math. Comput.* 19: 297-301."
+#~ msgstr ""
 
-#: mars.tensor.fft.fft:68 of
-msgid ""
-"In this example, real input has an FFT which is Hermitian, i.e., "
-"symmetric in the real part and anti-symmetric in the imaginary part, as "
-"described in the `numpy.fft` documentation:"
-msgstr ""
+#~ msgid ""
+#~ "In this example, real input has an"
+#~ " FFT which is Hermitian, i.e., "
+#~ "symmetric in the real part and "
+#~ "anti-symmetric in the imaginary part, "
+#~ "as described in the `numpy.fft` "
+#~ "documentation:"
+#~ msgstr ""
 

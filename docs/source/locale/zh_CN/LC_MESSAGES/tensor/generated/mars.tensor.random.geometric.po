@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,114 +21,98 @@ msgstr ""
 msgid "mars.tensor.random.geometric"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:1 of
-msgid "Draw samples from the geometric distribution."
-msgstr ""
+#~ msgid "Draw samples from the geometric distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:3 of
-msgid ""
-"Bernoulli trials are experiments with one of two outcomes: success or "
-"failure (an example of such an experiment is flipping a coin).  The "
-"geometric distribution models the number of trials that must be run in "
-"order to achieve success.  It is therefore supported on the positive "
-"integers, ``k = 1, 2, ...``."
-msgstr ""
+#~ msgid ""
+#~ "Bernoulli trials are experiments with "
+#~ "one of two outcomes: success or "
+#~ "failure (an example of such an "
+#~ "experiment is flipping a coin).  The "
+#~ "geometric distribution models the number "
+#~ "of trials that must be run in "
+#~ "order to achieve success.  It is "
+#~ "therefore supported on the positive "
+#~ "integers, ``k = 1, 2, ...``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:9 of
-msgid "The probability mass function of the geometric distribution is"
-msgstr ""
+#~ msgid "The probability mass function of the geometric distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:11 of
-msgid "f(k) = (1 - p)^{k - 1} p"
-msgstr ""
+#~ msgid "f(k) = (1 - p)^{k - 1} p"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:13 of
-msgid "where `p` is the probability of success of an individual trial."
-msgstr ""
+#~ msgid "where `p` is the probability of success of an individual trial."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:17 of
-msgid "p"
-msgstr ""
+#~ msgid "p"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:16 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:18 of
-msgid "The probability of success of an individual trial."
-msgstr ""
+#~ msgid "The probability of success of an individual trial."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:22 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:21 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:20 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``p`` is a scalar.  Otherwise, ``mt.array(p).size`` samples "
-"are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if ``p``"
+#~ " is a scalar.  Otherwise, "
+#~ "``mt.array(p).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:24 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:23 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:25 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:26 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:25 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:27 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:29 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:28 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:29 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:34 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:33 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:34 of
-msgid "Drawn samples from the parameterized geometric distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized geometric distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:38 of
-msgid ""
-"Draw ten thousand values from the geometric distribution, with the "
-"probability of an individual success equal to 0.35:"
-msgstr ""
+#~ msgid ""
+#~ "Draw ten thousand values from the "
+#~ "geometric distribution, with the probability"
+#~ " of an individual success equal to"
+#~ " 0.35:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.geometric:45 of
-msgid "How many trials succeeded after a single run?"
-msgstr ""
+#~ msgid "How many trials succeeded after a single run?"
+#~ msgstr ""
 

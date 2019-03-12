@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,125 +21,109 @@ msgstr ""
 msgid "mars.tensor.random.exponential"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:1 of
-msgid "Draw samples from an exponential distribution."
-msgstr ""
+#~ msgid "Draw samples from an exponential distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:3 of
-msgid "Its probability density function is"
-msgstr ""
+#~ msgid "Its probability density function is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:5 of
-msgid "f(x; \\frac{1}{\\beta}) = \\frac{1}{\\beta} \\exp(-\\frac{x}{\\beta}),"
-msgstr ""
+#~ msgid "f(x; \\frac{1}{\\beta}) = \\frac{1}{\\beta} \\exp(-\\frac{x}{\\beta}),"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:7 of
-msgid ""
-"for ``x > 0`` and 0 elsewhere. :math:`\\beta` is the scale parameter, "
-"which is the inverse of the rate parameter :math:`\\lambda = 1/\\beta`. "
-"The rate parameter is an alternative, widely used parameterization of the"
-" exponential distribution [3]_."
-msgstr ""
+#~ msgid ""
+#~ "for ``x > 0`` and 0 elsewhere. "
+#~ ":math:`\\beta` is the scale parameter, "
+#~ "which is the inverse of the rate"
+#~ " parameter :math:`\\lambda = 1/\\beta`. The"
+#~ " rate parameter is an alternative, "
+#~ "widely used parameterization of the "
+#~ "exponential distribution [3]_."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:12 of
-msgid ""
-"The exponential distribution is a continuous analogue of the geometric "
-"distribution.  It describes many common situations, such as the size of "
-"raindrops measured over many rainstorms [1]_, or the time between page "
-"requests to Wikipedia [2]_."
-msgstr ""
+#~ msgid ""
+#~ "The exponential distribution is a "
+#~ "continuous analogue of the geometric "
+#~ "distribution.  It describes many common "
+#~ "situations, such as the size of "
+#~ "raindrops measured over many rainstorms "
+#~ "[1]_, or the time between page "
+#~ "requests to Wikipedia [2]_."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:19 of
-msgid "scale"
-msgstr ""
+#~ msgid "scale"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:18 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:20 of
-msgid "The scale parameter, :math:`\\beta = 1/\\lambda`."
-msgstr ""
+#~ msgid "The scale parameter, :math:`\\beta = 1/\\lambda`."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:24 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:23 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:22 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``scale`` is a scalar.  Otherwise, ``np.array(scale).size`` "
-"samples are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if "
+#~ "``scale`` is a scalar.  Otherwise, "
+#~ "``np.array(scale).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:26 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:25 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:27 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:28 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:27 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:29 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:31 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:30 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:31 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:36 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:35 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:36 of
-msgid "Drawn samples from the parameterized exponential distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized exponential distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:40 of
-msgid ""
-"Peyton Z. Peebles Jr., \"Probability, Random Variables and Random Signal "
-"Principles\", 4th ed, 2001, p. 57."
-msgstr ""
+#~ msgid ""
+#~ "Peyton Z. Peebles Jr., \"Probability, "
+#~ "Random Variables and Random Signal "
+#~ "Principles\", 4th ed, 2001, p. 57."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:42 of
-msgid ""
-"Wikipedia, \"Poisson process\", "
-"http://en.wikipedia.org/wiki/Poisson_process"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Poisson process\", "
+#~ "http://en.wikipedia.org/wiki/Poisson_process"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.exponential:44 of
-msgid ""
-"Wikipedia, \"Exponential distribution\", "
-"http://en.wikipedia.org/wiki/Exponential_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Exponential distribution\", "
+#~ "http://en.wikipedia.org/wiki/Exponential_distribution"
+#~ msgstr ""
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,35 +21,27 @@ msgstr ""
 msgid "mars.tensor.random.bytes"
 msgstr ""
 
-#: mars.tensor.random.bytes:1 of
-msgid "Return random bytes."
-msgstr ""
+#~ msgid "Return random bytes."
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:6 of
-msgid "length"
-msgstr ""
+#~ msgid "length"
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:5 of
-msgid "int"
-msgstr ""
+#~ msgid "int"
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:6 of
-msgid "Number of random bytes."
-msgstr ""
+#~ msgid "Number of random bytes."
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:11 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:10 of
-msgid "str"
-msgstr ""
+#~ msgid "str"
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:11 of
-msgid "String of length `length`."
-msgstr ""
+#~ msgid "String of length `length`."
+#~ msgstr ""
 
-#: mars.tensor.random.bytes:19 of
-msgid "2SZ¿¤' #random"
-msgstr ""
+#~ msgid "2SZ¿¤' #random"
+#~ msgstr ""
 

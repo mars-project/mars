@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,131 +21,111 @@ msgstr ""
 msgid "mars.tensor.random.rayleigh"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:1 of
-msgid "Draw samples from a Rayleigh distribution."
-msgstr ""
+#~ msgid "Draw samples from a Rayleigh distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:3 of
-msgid ""
-"The :math:`\\chi` and Weibull distributions are generalizations of the "
-"Rayleigh."
-msgstr ""
+#~ msgid ""
+#~ "The :math:`\\chi` and Weibull distributions"
+#~ " are generalizations of the Rayleigh."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:8 of
-msgid "scale"
-msgstr ""
+#~ msgid "scale"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:7 of
-msgid "float or array_like of floats, optional"
-msgstr ""
+#~ msgid "float or array_like of floats, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:9 of
-msgid "Scale, also equals the mode. Should be >= 0. Default is 1."
-msgstr ""
+#~ msgid "Scale, also equals the mode. Should be >= 0. Default is 1."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:13 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:12 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:11 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``scale`` is a scalar.  Otherwise, ``mt.array(scale).size`` "
-"samples are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if "
+#~ "``scale`` is a scalar.  Otherwise, "
+#~ "``mt.array(scale).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:15 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:14 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:16 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:17 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:16 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:18 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:20 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:19 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:20 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:25 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:24 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:25 of
-msgid "Drawn samples from the parameterized Rayleigh distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized Rayleigh distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:29 of
-msgid "The probability density function for the Rayleigh distribution is"
-msgstr ""
+#~ msgid "The probability density function for the Rayleigh distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:31 of
-msgid "P(x;scale) = \\frac{x}{scale^2}e^{\\frac{-x^2}{2 \\cdotp scale^2}}"
-msgstr ""
+#~ msgid "P(x;scale) = \\frac{x}{scale^2}e^{\\frac{-x^2}{2 \\cdotp scale^2}}"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:33 of
-msgid ""
-"The Rayleigh distribution would arise, for example, if the East and North"
-" components of the wind velocity had identical zero-mean Gaussian "
-"distributions.  Then the wind speed would have a Rayleigh distribution."
-msgstr ""
+#~ msgid ""
+#~ "The Rayleigh distribution would arise, "
+#~ "for example, if the East and North"
+#~ " components of the wind velocity had"
+#~ " identical zero-mean Gaussian "
+#~ "distributions.  Then the wind speed "
+#~ "would have a Rayleigh distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:40 of
-msgid ""
-"Brighton Webs Ltd., \"Rayleigh Distribution,\" http://www.brighton-"
-"webs.co.uk/distributions/rayleigh.asp"
-msgstr ""
+#~ msgid ""
+#~ "Brighton Webs Ltd., \"Rayleigh Distribution,\""
+#~ " http://www.brighton-webs.co.uk/distributions/rayleigh.asp"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:42 of
-msgid ""
-"Wikipedia, \"Rayleigh distribution\" "
-"http://en.wikipedia.org/wiki/Rayleigh_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Rayleigh distribution\" "
+#~ "http://en.wikipedia.org/wiki/Rayleigh_distribution"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:47 of
-msgid "Draw values from the distribution and plot the histogram"
-msgstr ""
+#~ msgid "Draw values from the distribution and plot the histogram"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:54 of
-msgid ""
-"Wave heights tend to follow a Rayleigh distribution. If the mean wave "
-"height is 1 meter, what fraction of waves are likely to be larger than 3 "
-"meters?"
-msgstr ""
+#~ msgid ""
+#~ "Wave heights tend to follow a "
+#~ "Rayleigh distribution. If the mean wave"
+#~ " height is 1 meter, what fraction "
+#~ "of waves are likely to be larger"
+#~ " than 3 meters?"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rayleigh:62 of
-msgid "The percentage of waves larger than 3 meters is:"
-msgstr ""
+#~ msgid "The percentage of waves larger than 3 meters is:"
+#~ msgstr ""
 

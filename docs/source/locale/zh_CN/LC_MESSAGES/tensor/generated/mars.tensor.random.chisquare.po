@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,141 +21,118 @@ msgstr ""
 msgid "mars.tensor.random.chisquare"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:1 of
-msgid "Draw samples from a chi-square distribution."
-msgstr ""
+#~ msgid "Draw samples from a chi-square distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:3 of
-msgid ""
-"When `df` independent random variables, each with standard normal "
-"distributions (mean 0, variance 1), are squared and summed, the resulting"
-" distribution is chi-square (see Notes).  This distribution is often used"
-" in hypothesis testing."
-msgstr ""
+#~ msgid ""
+#~ "When `df` independent random variables, "
+#~ "each with standard normal distributions "
+#~ "(mean 0, variance 1), are squared "
+#~ "and summed, the resulting distribution "
+#~ "is chi-square (see Notes).  This "
+#~ "distribution is often used in hypothesis"
+#~ " testing."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:10 of
-msgid "df"
-msgstr ""
+#~ msgid "df"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:9 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:11 of
-msgid "Number of degrees of freedom, should be > 0."
-msgstr ""
+#~ msgid "Number of degrees of freedom, should be > 0."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:15 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:14 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:13 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``df`` is a scalar.  Otherwise, ``mt.array(df).size`` "
-"samples are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if ``df``"
+#~ " is a scalar.  Otherwise, "
+#~ "``mt.array(df).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:17 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:16 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:18 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:19 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:18 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:20 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:22 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:21 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:22 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:27 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:26 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:27 of
-msgid "Drawn samples from the parameterized chi-square distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized chi-square distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:33 of
-msgid "ValueError"
-msgstr ""
+#~ msgid "ValueError"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:32 of
-msgid ""
-"When `df` <= 0 or when an inappropriate `size` (e.g. ``size=-1``) is "
-"given."
-msgstr ""
+#~ msgid ""
+#~ "When `df` <= 0 or when an "
+#~ "inappropriate `size` (e.g. ``size=-1``) is "
+#~ "given."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:37 of
-msgid ""
-"The variable obtained by summing the squares of `df` independent, "
-"standard normally distributed random variables:"
-msgstr ""
+#~ msgid ""
+#~ "The variable obtained by summing the "
+#~ "squares of `df` independent, standard "
+#~ "normally distributed random variables:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:40 of
-msgid "Q = \\sum_{i=0}^{\\mathtt{df}} X^2_i"
-msgstr ""
+#~ msgid "Q = \\sum_{i=0}^{\\mathtt{df}} X^2_i"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:42 of
-msgid "is chi-square distributed, denoted"
-msgstr ""
+#~ msgid "is chi-square distributed, denoted"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:44 of
-msgid "Q \\sim \\chi^2_k."
-msgstr ""
+#~ msgid "Q \\sim \\chi^2_k."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:46 of
-msgid "The probability density function of the chi-squared distribution is"
-msgstr ""
+#~ msgid "The probability density function of the chi-squared distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:48 of
-msgid "p(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)} x^{k/2 - 1} e^{-x/2},"
-msgstr ""
+#~ msgid "p(x) = \\frac{(1/2)^{k/2}}{\\Gamma(k/2)} x^{k/2 - 1} e^{-x/2},"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:51 of
-msgid "where :math:`\\Gamma` is the gamma function,"
-msgstr ""
+#~ msgid "where :math:`\\Gamma` is the gamma function,"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:53 of
-msgid "\\Gamma(x) = \\int_0^{-\\infty} t^{x - 1} e^{-t} dt."
-msgstr ""
+#~ msgid "\\Gamma(x) = \\int_0^{-\\infty} t^{x - 1} e^{-t} dt."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.chisquare:57 of
-msgid ""
-"NIST \"Engineering Statistics Handbook\" "
-"http://www.itl.nist.gov/div898/handbook/eda/section3/eda3666.htm"
-msgstr ""
+#~ msgid ""
+#~ "NIST \"Engineering Statistics Handbook\" "
+#~ "http://www.itl.nist.gov/div898/handbook/eda/section3/eda3666.htm"
+#~ msgstr ""
 

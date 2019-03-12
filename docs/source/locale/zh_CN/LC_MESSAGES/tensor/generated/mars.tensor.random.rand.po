@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,49 +21,45 @@ msgstr ""
 msgid "mars.tensor.random.rand"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:1 of
-msgid "Random values in a given shape."
-msgstr ""
+#~ msgid "Random values in a given shape."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:3 of
-msgid ""
-"Create a tensor of the given shape and populate it with random samples "
-"from a uniform distributionc over ``[0, 1)``."
-msgstr ""
+#~ msgid ""
+#~ "Create a tensor of the given shape"
+#~ " and populate it with random samples"
+#~ " from a uniform distributionc over "
+#~ "``[0, 1)``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:11 of
-msgid "d0, d1, ..., dn"
-msgstr ""
+#~ msgid "d0, d1, ..., dn"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:10 of
-msgid "int, optional"
-msgstr ""
+#~ msgid "int, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:10 of
-msgid ""
-"The dimensions of the returned tensor, should all be positive. If no "
-"argument is given a single Python float is returned."
-msgstr ""
+#~ msgid ""
+#~ "The dimensions of the returned tensor,"
+#~ " should all be positive. If no "
+#~ "argument is given a single Python "
+#~ "float is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:16 of
-msgid "out : Tensor, shape ``(d0, d1, ..., dn)``"
-msgstr ""
+#~ msgid "out : Tensor, shape ``(d0, d1, ..., dn)``"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:15 of
-msgid "Tensor, shape (d0, d1, ..., dn)"
-msgstr ""
+#~ msgid "Tensor, shape (d0, d1, ..., dn)"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:16 of
-msgid "Random values."
-msgstr ""
+#~ msgid "Random values."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:20 of
-msgid "random"
-msgstr ""
+#~ msgid "random"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.rand:24 of
-msgid ""
-"This is a convenience function. If you want an interface that takes a "
-"shape-tuple as the first argument, refer to mt.random.random_sample ."
-msgstr ""
+#~ msgid ""
+#~ "This is a convenience function. If "
+#~ "you want an interface that takes a"
+#~ " shape-tuple as the first argument,"
+#~ " refer to mt.random.random_sample ."
+#~ msgstr ""
 

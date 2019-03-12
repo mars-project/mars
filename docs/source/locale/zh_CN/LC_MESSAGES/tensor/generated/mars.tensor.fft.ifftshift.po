@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,49 +21,43 @@ msgstr ""
 msgid "mars.tensor.fft.ifftshift"
 msgstr ""
 
-#: mars.tensor.fft.ifftshift:1 of
-msgid ""
-"The inverse of `fftshift`. Although identical for even-length `x`, the "
-"functions differ by one sample for odd-length `x`."
-msgstr ""
+#~ msgid ""
+#~ "The inverse of `fftshift`. Although "
+#~ "identical for even-length `x`, the "
+#~ "functions differ by one sample for "
+#~ "odd-length `x`."
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:6 of
-msgid "x"
-msgstr ""
+#~ msgid "x"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:5 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:7 of
-msgid "Input tensor."
-msgstr ""
+#~ msgid "Input tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:9 of
-msgid "axes"
-msgstr ""
+#~ msgid "axes"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:8 of
-msgid "int or shape tuple, optional"
-msgstr ""
+#~ msgid "int or shape tuple, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:9 of
-msgid "Axes over which to calculate.  Defaults to None, which shifts all axes."
-msgstr ""
+#~ msgid "Axes over which to calculate.  Defaults to None, which shifts all axes."
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:14 of
-msgid "y"
-msgstr ""
+#~ msgid "y"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:13 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:14 of
-msgid "The shifted tensor."
-msgstr ""
+#~ msgid "The shifted tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.ifftshift:18 of
-msgid "fftshift : Shift zero-frequency component to the center of the spectrum."
-msgstr ""
+#~ msgid ""
+#~ "fftshift : Shift zero-frequency "
+#~ "component to the center of the "
+#~ "spectrum."
+#~ msgstr ""
 

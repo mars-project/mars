@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,148 +21,128 @@ msgstr ""
 msgid "mars.tensor.random.zipf"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:1 of
-msgid "Draw samples from a Zipf distribution."
-msgstr ""
+#~ msgid "Draw samples from a Zipf distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:3 of
-msgid ""
-"Samples are drawn from a Zipf distribution with specified parameter `a` >"
-" 1."
-msgstr ""
+#~ msgid ""
+#~ "Samples are drawn from a Zipf "
+#~ "distribution with specified parameter `a` "
+#~ "> 1."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:6 of
-msgid ""
-"The Zipf distribution (also known as the zeta distribution) is a "
-"continuous probability distribution that satisfies Zipf's law: the "
-"frequency of an item is inversely proportional to its rank in a frequency"
-" table."
-msgstr ""
+#~ msgid ""
+#~ "The Zipf distribution (also known as "
+#~ "the zeta distribution) is a continuous"
+#~ " probability distribution that satisfies "
+#~ "Zipf's law: the frequency of an "
+#~ "item is inversely proportional to its"
+#~ " rank in a frequency table."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:13 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:12 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:14 of
-msgid "Distribution parameter. Should be greater than 1."
-msgstr ""
+#~ msgid "Distribution parameter. Should be greater than 1."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:18 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:17 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:16 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``a`` is a scalar. Otherwise, ``mt.array(a).size`` samples "
-"are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if ``a``"
+#~ " is a scalar. Otherwise, "
+#~ "``mt.array(a).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:20 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:19 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:21 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:22 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:21 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:23 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:25 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:24 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:25 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:30 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:29 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:30 of
-msgid "Drawn samples from the parameterized Zipf distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized Zipf distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:35 of
-msgid "scipy.stats.zipf"
-msgstr ""
+#~ msgid "scipy.stats.zipf"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:34 of
-msgid "probability density function, distribution, or"
-msgstr ""
+#~ msgid "probability density function, distribution, or"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:35 of
-msgid "cumulative density function, etc."
-msgstr ""
+#~ msgid "cumulative density function, etc."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:39 of
-msgid "The probability density for the Zipf distribution is"
-msgstr ""
+#~ msgid "The probability density for the Zipf distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:41 of
-msgid "p(x) = \\frac{x^{-a}}{\\zeta(a)},"
-msgstr ""
+#~ msgid "p(x) = \\frac{x^{-a}}{\\zeta(a)},"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:43 of
-msgid "where :math:`\\zeta` is the Riemann Zeta function."
-msgstr ""
+#~ msgid "where :math:`\\zeta` is the Riemann Zeta function."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:45 of
-msgid ""
-"It is named for the American linguist George Kingsley Zipf, who noted "
-"that the frequency of any word in a sample of a language is inversely "
-"proportional to its rank in the frequency table."
-msgstr ""
+#~ msgid ""
+#~ "It is named for the American "
+#~ "linguist George Kingsley Zipf, who noted"
+#~ " that the frequency of any word "
+#~ "in a sample of a language is "
+#~ "inversely proportional to its rank in"
+#~ " the frequency table."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:51 of
-msgid ""
-"Zipf, G. K., \"Selected Studies of the Principle of Relative Frequency in"
-" Language,\" Cambridge, MA: Harvard Univ. Press, 1932."
-msgstr ""
+#~ msgid ""
+#~ "Zipf, G. K., \"Selected Studies of "
+#~ "the Principle of Relative Frequency in"
+#~ " Language,\" Cambridge, MA: Harvard Univ."
+#~ " Press, 1932."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:57 of
-msgid "Draw samples from the distribution:"
-msgstr ""
+#~ msgid "Draw samples from the distribution:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:64 of
-msgid ""
-"Display the histogram of the samples, along with the probability density "
-"function:"
-msgstr ""
+#~ msgid ""
+#~ "Display the histogram of the samples,"
+#~ " along with the probability density "
+#~ "function:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.zipf:70 of
-msgid "Truncate s values at 50 so plot is interesting:"
-msgstr ""
+#~ msgid "Truncate s values at 50 so plot is interesting:"
+#~ msgstr ""
 

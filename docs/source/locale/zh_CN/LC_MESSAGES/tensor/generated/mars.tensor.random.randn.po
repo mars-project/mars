@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:09+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,68 +21,67 @@ msgstr ""
 msgid "mars.tensor.random.randn"
 msgstr ""
 
-#: mars.tensor.random.randn:1 of
-msgid "Return a sample (or samples) from the \"standard normal\" distribution."
-msgstr ""
+#~ msgid "Return a sample (or samples) from the \"standard normal\" distribution."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:3 of
-msgid ""
-"If positive, int_like or int-convertible arguments are provided, `randn` "
-"generates an array of shape ``(d0, d1, ..., dn)``, filled with random "
-"floats sampled from a univariate \"normal\" (Gaussian) distribution of "
-"mean 0 and variance 1 (if any of the :math:`d_i` are floats, they are "
-"first converted to integers by truncation). A single float randomly "
-"sampled from the distribution is returned if no argument is provided."
-msgstr ""
+#~ msgid ""
+#~ "If positive, int_like or int-convertible"
+#~ " arguments are provided, `randn` generates"
+#~ " an array of shape ``(d0, d1, "
+#~ "..., dn)``, filled with random floats"
+#~ " sampled from a univariate \"normal\" "
+#~ "(Gaussian) distribution of mean 0 and"
+#~ " variance 1 (if any of the "
+#~ ":math:`d_i` are floats, they are first"
+#~ " converted to integers by truncation). "
+#~ "A single float randomly sampled from "
+#~ "the distribution is returned if no "
+#~ "argument is provided."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:11 of
-msgid ""
-"This is a convenience function.  If you want an interface that takes a "
-"tuple as the first argument, use `numpy.random.standard_normal` instead."
-msgstr ""
+#~ msgid ""
+#~ "This is a convenience function.  If "
+#~ "you want an interface that takes a"
+#~ " tuple as the first argument, use "
+#~ "`numpy.random.standard_normal` instead."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:18 of
-msgid "d0, d1, ..., dn"
-msgstr ""
+#~ msgid "d0, d1, ..., dn"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:17 of
-msgid "int, optional"
-msgstr ""
+#~ msgid "int, optional"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:17 of
-msgid ""
-"The dimensions of the returned tensor, should be all positive. If no "
-"argument is given a single Python float is returned."
-msgstr ""
+#~ msgid ""
+#~ "The dimensions of the returned tensor,"
+#~ " should be all positive. If no "
+#~ "argument is given a single Python "
+#~ "float is returned."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:25 of
-msgid "Z"
-msgstr ""
+#~ msgid "Z"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:24 of
-msgid "Tensor or float"
-msgstr ""
+#~ msgid "Tensor or float"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:23 of
-msgid ""
-"A ``(d0, d1, ..., dn)``-shaped array of floating-point samples from the "
-"standard normal distribution, or a single such float if no parameters "
-"were supplied."
-msgstr ""
+#~ msgid ""
+#~ "A ``(d0, d1, ..., dn)``-shaped array "
+#~ "of floating-point samples from the "
+#~ "standard normal distribution, or a "
+#~ "single such float if no parameters "
+#~ "were supplied."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:29 of
-msgid "random.standard_normal : Similar, but takes a tuple as its argument."
-msgstr ""
+#~ msgid "random.standard_normal : Similar, but takes a tuple as its argument."
+#~ msgstr ""
 
-#: mars.tensor.random.randn:33 of
-msgid "For random samples from :math:`N(\\mu, \\sigma^2)`, use:"
-msgstr ""
+#~ msgid "For random samples from :math:`N(\\mu, \\sigma^2)`, use:"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:35 of
-msgid "``sigma * mt.random.randn(...) + mu``"
-msgstr ""
+#~ msgid "``sigma * mt.random.randn(...) + mu``"
+#~ msgstr ""
 
-#: mars.tensor.random.randn:44 of
-msgid "Two-by-four tensor of samples from N(3, 6.25):"
-msgstr ""
+#~ msgid "Two-by-four tensor of samples from N(3, 6.25):"
+#~ msgstr ""
 

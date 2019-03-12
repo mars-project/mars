@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,176 +21,169 @@ msgstr ""
 msgid "mars.tensor.random.pareto"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:1 of
-msgid "Draw samples from a Pareto II or Lomax distribution with specified shape."
-msgstr ""
+#~ msgid ""
+#~ "Draw samples from a Pareto II or"
+#~ " Lomax distribution with specified shape."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:4 of
-msgid ""
-"The Lomax or Pareto II distribution is a shifted Pareto distribution. The"
-" classical Pareto distribution can be obtained from the Lomax "
-"distribution by adding 1 and multiplying by the scale parameter ``m`` "
-"(see Notes).  The smallest value of the Lomax distribution is zero while "
-"for the classical Pareto distribution it is ``mu``, where the standard "
-"Pareto distribution has location ``mu = 1``.  Lomax can also be "
-"considered as a simplified version of the Generalized Pareto distribution"
-" (available in SciPy), with the scale set to one and the location set to "
-"zero."
-msgstr ""
+#~ msgid ""
+#~ "The Lomax or Pareto II distribution "
+#~ "is a shifted Pareto distribution. The"
+#~ " classical Pareto distribution can be "
+#~ "obtained from the Lomax distribution by"
+#~ " adding 1 and multiplying by the "
+#~ "scale parameter ``m`` (see Notes).  The"
+#~ " smallest value of the Lomax "
+#~ "distribution is zero while for the "
+#~ "classical Pareto distribution it is "
+#~ "``mu``, where the standard Pareto "
+#~ "distribution has location ``mu = 1``."
+#~ "  Lomax can also be considered as "
+#~ "a simplified version of the Generalized"
+#~ " Pareto distribution (available in SciPy),"
+#~ " with the scale set to one and"
+#~ " the location set to zero."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:15 of
-msgid ""
-"The Pareto distribution must be greater than zero, and is unbounded "
-"above.  It is also known as the \"80-20 rule\".  In this distribution, 80"
-" percent of the weights are in the lowest 20 percent of the range, while "
-"the other 20 percent fill the remaining 80 percent of the range."
-msgstr ""
+#~ msgid ""
+#~ "The Pareto distribution must be greater"
+#~ " than zero, and is unbounded above."
+#~ "  It is also known as the "
+#~ "\"80-20 rule\".  In this distribution, "
+#~ "80 percent of the weights are in"
+#~ " the lowest 20 percent of the "
+#~ "range, while the other 20 percent "
+#~ "fill the remaining 80 percent of "
+#~ "the range."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:23 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:22 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:24 of
-msgid "Shape of the distribution. Should be greater than zero."
-msgstr ""
+#~ msgid "Shape of the distribution. Should be greater than zero."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:28 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:27 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:26 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``a`` is a scalar.  Otherwise, ``mt.array(a).size`` samples "
-"are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if ``a``"
+#~ " is a scalar.  Otherwise, "
+#~ "``mt.array(a).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:30 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:29 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:31 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:32 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:31 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:33 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:35 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:34 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:35 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:40 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:39 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:40 of
-msgid "Drawn samples from the parameterized Pareto distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized Pareto distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:44 of
-msgid "scipy.stats.lomax"
-msgstr ""
+#~ msgid "scipy.stats.lomax"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:43 mars.tensor.random.pareto:46 of
-msgid "probability density function, distribution or"
-msgstr ""
+#~ msgid "probability density function, distribution or"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:45 mars.tensor.random.pareto:47 of
-msgid "cumulative density function, etc."
-msgstr ""
+#~ msgid "cumulative density function, etc."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:47 of
-msgid "scipy.stats.genpareto"
-msgstr ""
+#~ msgid "scipy.stats.genpareto"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:51 of
-msgid "The probability density for the Pareto distribution is"
-msgstr ""
+#~ msgid "The probability density for the Pareto distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:53 of
-msgid "p(x) = \\frac{am^a}{x^{a+1}}"
-msgstr ""
+#~ msgid "p(x) = \\frac{am^a}{x^{a+1}}"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:55 of
-msgid "where :math:`a` is the shape and :math:`m` the scale."
-msgstr ""
+#~ msgid "where :math:`a` is the shape and :math:`m` the scale."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:57 of
-msgid ""
-"The Pareto distribution, named after the Italian economist Vilfredo "
-"Pareto, is a power law probability distribution useful in many real world"
-" problems.  Outside the field of economics it is generally referred to as"
-" the Bradford distribution. Pareto developed the distribution to describe"
-" the distribution of wealth in an economy.  It has also found use in "
-"insurance, web page access statistics, oil field sizes, and many other "
-"problems, including the download frequency for projects in Sourceforge "
-"[1]_.  It is one of the so-called \"fat-tailed\" distributions."
-msgstr ""
+#~ msgid ""
+#~ "The Pareto distribution, named after the"
+#~ " Italian economist Vilfredo Pareto, is "
+#~ "a power law probability distribution "
+#~ "useful in many real world problems.  "
+#~ "Outside the field of economics it "
+#~ "is generally referred to as the "
+#~ "Bradford distribution. Pareto developed the"
+#~ " distribution to describe the distribution"
+#~ " of wealth in an economy.  It "
+#~ "has also found use in insurance, "
+#~ "web page access statistics, oil field"
+#~ " sizes, and many other problems, "
+#~ "including the download frequency for "
+#~ "projects in Sourceforge [1]_.  It is "
+#~ "one of the so-called \"fat-"
+#~ "tailed\" distributions."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:71 of
-msgid ""
-"Francis Hunt and Paul Johnson, On the Pareto Distribution of Sourceforge "
-"projects."
-msgstr ""
+#~ msgid ""
+#~ "Francis Hunt and Paul Johnson, On "
+#~ "the Pareto Distribution of Sourceforge "
+#~ "projects."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:73 of
-msgid "Pareto, V. (1896). Course of Political Economy. Lausanne."
-msgstr ""
+#~ msgid "Pareto, V. (1896). Course of Political Economy. Lausanne."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:74 of
-msgid ""
-"Reiss, R.D., Thomas, M.(2001), Statistical Analysis of Extreme Values, "
-"Birkhauser Verlag, Basel, pp 23-30."
-msgstr ""
+#~ msgid ""
+#~ "Reiss, R.D., Thomas, M.(2001), Statistical "
+#~ "Analysis of Extreme Values, Birkhauser "
+#~ "Verlag, Basel, pp 23-30."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:76 of
-msgid ""
-"Wikipedia, \"Pareto distribution\", "
-"http://en.wikipedia.org/wiki/Pareto_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Pareto distribution\", "
+#~ "http://en.wikipedia.org/wiki/Pareto_distribution"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:81 of
-msgid "Draw samples from the distribution:"
-msgstr ""
+#~ msgid "Draw samples from the distribution:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.pareto:88 of
-msgid ""
-"Display the histogram of the samples, along with the probability density "
-"function:"
-msgstr ""
+#~ msgid ""
+#~ "Display the histogram of the samples,"
+#~ " along with the probability density "
+#~ "function:"
+#~ msgstr ""
 

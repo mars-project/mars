@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,477 +21,426 @@ msgstr ""
 msgid "mars.tensor.random.RandomState"
 msgstr ""
 
-#: mars.tensor.random.RandomState.__init__:1 of
-msgid "Initialize self.  See help(type(self)) for accurate signature."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:13
-msgid "Methods"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`__init__ <mars.tensor.random.RandomState.__init__>`\\ "
-"\\(\\[seed\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Initialize self."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`beta <mars.tensor.random.RandomState.beta>`\\ \\(a\\, b\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Beta distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`binomial <mars.tensor.random.RandomState.binomial>`\\ \\(n\\, "
-"p\\[\\, size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a binomial distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ":obj:`bytes <mars.tensor.random.RandomState.bytes>`\\ \\(length\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Return random bytes."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`chisquare <mars.tensor.random.RandomState.chisquare>`\\ \\(df\\[\\,"
-" size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a chi-square distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`choice <mars.tensor.random.RandomState.choice>`\\ \\(a\\[\\, "
-"size\\, replace\\, p\\, chunk\\_size\\, gpu\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Generates a random sample from a given 1-D array"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`dirichlet <mars.tensor.random.RandomState.dirichlet>`\\ "
-"\\(alpha\\[\\, size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from the Dirichlet distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`exponential <mars.tensor.random.RandomState.exponential>`\\ "
-"\\(\\[scale\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from an exponential distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`f <mars.tensor.random.RandomState.f>`\\ \\(dfnum\\, dfden\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from an F distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`gamma <mars.tensor.random.RandomState.gamma>`\\ \\(shape\\[\\, "
-"scale\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Gamma distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`geometric <mars.tensor.random.RandomState.geometric>`\\ \\(p\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from the geometric distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`gumbel <mars.tensor.random.RandomState.gumbel>`\\ \\(\\[loc\\, "
-"scale\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Gumbel distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`hypergeometric <mars.tensor.random.RandomState.hypergeometric>`\\ "
-"\\(ngood\\, nbad\\, nsample\\[\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Hypergeometric distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`laplace <mars.tensor.random.RandomState.laplace>`\\ \\(\\[loc\\, "
-"scale\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-"Draw samples from the Laplace or double exponential distribution with "
-"specified location (or mean) and scale (decay)."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`logistic <mars.tensor.random.RandomState.logistic>`\\ \\(\\[loc\\, "
-"scale\\, size\\, chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a logistic distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`lognormal <mars.tensor.random.RandomState.lognormal>`\\ "
-"\\(\\[mean\\, sigma\\, size\\, chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a log-normal distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`logseries <mars.tensor.random.RandomState.logseries>`\\ \\(p\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a logarithmic series distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`multinomial <mars.tensor.random.RandomState.multinomial>`\\ \\(n\\,"
-" pvals\\[\\, size\\, chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a multinomial distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`multivariate_normal "
-"<mars.tensor.random.RandomState.multivariate_normal>`\\ \\(mean\\, "
-"cov\\[\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw random samples from a multivariate normal distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`negative_binomial "
-"<mars.tensor.random.RandomState.negative_binomial>`\\ \\(n\\, p\\[\\, "
-"size\\, chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a negative binomial distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`noncentral_chisquare "
-"<mars.tensor.random.RandomState.noncentral_chisquare>`\\ \\(df\\, "
-"nonc\\[\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a noncentral chi-square distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`noncentral_f <mars.tensor.random.RandomState.noncentral_f>`\\ "
-"\\(dfnum\\, dfden\\, nonc\\[\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from the noncentral F distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`normal <mars.tensor.random.RandomState.normal>`\\ \\(\\[loc\\, "
-"scale\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw random samples from a normal (Gaussian) distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`pareto <mars.tensor.random.RandomState.pareto>`\\ \\(a\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Pareto II or Lomax distribution with specified shape."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`poisson <mars.tensor.random.RandomState.poisson>`\\ \\(\\[lam\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Poisson distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`power <mars.tensor.random.RandomState.power>`\\ \\(a\\[\\, size\\, "
-"chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-"Draws samples in [0, 1] from a power distribution with positive exponent "
-"a - 1."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`rand <mars.tensor.random.RandomState.rand>`\\ \\(\\*dn\\, "
-"\\*\\*kw\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Random values in a given shape."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`randint <mars.tensor.random.RandomState.randint>`\\ \\(low\\[\\, "
-"high\\, size\\, dtype\\, density\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`randn <mars.tensor.random.RandomState.randn>`\\ \\(\\*dn\\, "
-"\\*\\*kw\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Return a sample (or samples) from the \"standard normal\" distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`random <mars.tensor.random.RandomState.random>`\\ \\(\\[size\\, "
-"chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Return random floats in the half-open interval [0.0, 1.0)."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`random_integers <mars.tensor.random.RandomState.random_integers>`\\"
-" \\(low\\[\\, high\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Random integers of type mt.int between `low` and `high`, inclusive."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`random_sample <mars.tensor.random.RandomState.random_sample>`\\ "
-"\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`ranf <mars.tensor.random.RandomState.ranf>`\\ \\(\\[size\\, "
-"chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`rayleigh <mars.tensor.random.RandomState.rayleigh>`\\ "
-"\\(\\[scale\\, size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Rayleigh distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`sample <mars.tensor.random.RandomState.sample>`\\ \\(\\[size\\, "
-"chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ":obj:`seed <mars.tensor.random.RandomState.seed>`\\ \\(\\[seed\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Seed the generator."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`standard_cauchy <mars.tensor.random.RandomState.standard_cauchy>`\\"
-" \\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a standard Cauchy distribution with mode = 0."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`standard_exponential "
-"<mars.tensor.random.RandomState.standard_exponential>`\\ \\(\\[size\\, "
-"chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from the standard exponential distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`standard_gamma <mars.tensor.random.RandomState.standard_gamma>`\\ "
-"\\(shape\\[\\, size\\, chunk\\_size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a standard Gamma distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`standard_normal <mars.tensor.random.RandomState.standard_normal>`\\"
-" \\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a standard Normal distribution (mean=0, stdev=1)."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`standard_t <mars.tensor.random.RandomState.standard_t>`\\ "
-"\\(df\\[\\, size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-"Draw samples from a standard Student's t distribution with `df` degrees "
-"of freedom."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`triangular <mars.tensor.random.RandomState.triangular>`\\ "
-"\\(left\\, mode\\, right\\[\\, size\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-"Draw samples from the triangular distribution over the interval ``[left, "
-"right]``."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`uniform <mars.tensor.random.RandomState.uniform>`\\ \\(\\[low\\, "
-"high\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a uniform distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`vonmises <mars.tensor.random.RandomState.vonmises>`\\ \\(mu\\, "
-"kappa\\[\\, size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a von Mises distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`wald <mars.tensor.random.RandomState.wald>`\\ \\(mean\\, "
-"scale\\[\\, size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Wald, or inverse Gaussian, distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`weibull <mars.tensor.random.RandomState.weibull>`\\ \\(a\\[\\, "
-"size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Weibull distribution."
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid ""
-":obj:`zipf <mars.tensor.random.RandomState.zipf>`\\ \\(a\\[\\, size\\, "
-"chunk\\_size\\, gpu\\, dtype\\]\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.random.RandomState.rst:62:<autosummary>:1
-msgid "Draw samples from a Zipf distribution."
-msgstr ""
+#~ msgid "Initialize self.  See help(type(self)) for accurate signature."
+#~ msgstr ""
+
+#~ msgid "Methods"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`__init__ <mars.tensor.random.RandomState.__init__>`\\ "
+#~ "\\(\\[seed\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Initialize self."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`beta <mars.tensor.random.RandomState.beta>`\\ "
+#~ "\\(a\\, b\\[\\, size\\, chunk\\_size\\, gpu\\,"
+#~ " dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Beta distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`binomial <mars.tensor.random.RandomState.binomial>`\\ "
+#~ "\\(n\\, p\\[\\, size\\, chunk\\_size\\, gpu\\,"
+#~ " dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a binomial distribution."
+#~ msgstr ""
+
+#~ msgid ":obj:`bytes <mars.tensor.random.RandomState.bytes>`\\ \\(length\\)"
+#~ msgstr ""
+
+#~ msgid "Return random bytes."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`chisquare <mars.tensor.random.RandomState.chisquare>`\\"
+#~ " \\(df\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a chi-square distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`choice <mars.tensor.random.RandomState.choice>`\\ "
+#~ "\\(a\\[\\, size\\, replace\\, p\\, "
+#~ "chunk\\_size\\, gpu\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Generates a random sample from a given 1-D array"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`dirichlet <mars.tensor.random.RandomState.dirichlet>`\\"
+#~ " \\(alpha\\[\\, size\\, chunk\\_size\\, gpu\\,"
+#~ " dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from the Dirichlet distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`exponential "
+#~ "<mars.tensor.random.RandomState.exponential>`\\ \\(\\[scale\\,"
+#~ " size\\, chunk\\_size\\, gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from an exponential distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`f <mars.tensor.random.RandomState.f>`\\ \\(dfnum\\,"
+#~ " dfden\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from an F distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`gamma <mars.tensor.random.RandomState.gamma>`\\ "
+#~ "\\(shape\\[\\, scale\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Gamma distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`geometric <mars.tensor.random.RandomState.geometric>`\\"
+#~ " \\(p\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from the geometric distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`gumbel <mars.tensor.random.RandomState.gumbel>`\\ "
+#~ "\\(\\[loc\\, scale\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Gumbel distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`hypergeometric "
+#~ "<mars.tensor.random.RandomState.hypergeometric>`\\ \\(ngood\\,"
+#~ " nbad\\, nsample\\[\\, size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Hypergeometric distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`laplace <mars.tensor.random.RandomState.laplace>`\\ "
+#~ "\\(\\[loc\\, scale\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Draw samples from the Laplace or "
+#~ "double exponential distribution with specified"
+#~ " location (or mean) and scale "
+#~ "(decay)."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`logistic <mars.tensor.random.RandomState.logistic>`\\ "
+#~ "\\(\\[loc\\, scale\\, size\\, chunk\\_size\\, "
+#~ "...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a logistic distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`lognormal <mars.tensor.random.RandomState.lognormal>`\\"
+#~ " \\(\\[mean\\, sigma\\, size\\, chunk\\_size\\,"
+#~ " ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a log-normal distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`logseries <mars.tensor.random.RandomState.logseries>`\\"
+#~ " \\(p\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a logarithmic series distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`multinomial "
+#~ "<mars.tensor.random.RandomState.multinomial>`\\ \\(n\\, "
+#~ "pvals\\[\\, size\\, chunk\\_size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a multinomial distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`multivariate_normal "
+#~ "<mars.tensor.random.RandomState.multivariate_normal>`\\ "
+#~ "\\(mean\\, cov\\[\\, size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw random samples from a multivariate normal distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`negative_binomial "
+#~ "<mars.tensor.random.RandomState.negative_binomial>`\\ \\(n\\,"
+#~ " p\\[\\, size\\, chunk\\_size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a negative binomial distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`noncentral_chisquare "
+#~ "<mars.tensor.random.RandomState.noncentral_chisquare>`\\ "
+#~ "\\(df\\, nonc\\[\\, size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a noncentral chi-square distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`noncentral_f "
+#~ "<mars.tensor.random.RandomState.noncentral_f>`\\ \\(dfnum\\, "
+#~ "dfden\\, nonc\\[\\, size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from the noncentral F distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`normal <mars.tensor.random.RandomState.normal>`\\ "
+#~ "\\(\\[loc\\, scale\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw random samples from a normal (Gaussian) distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`pareto <mars.tensor.random.RandomState.pareto>`\\ "
+#~ "\\(a\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Draw samples from a Pareto II or"
+#~ " Lomax distribution with specified shape."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`poisson <mars.tensor.random.RandomState.poisson>`\\ "
+#~ "\\(\\[lam\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Poisson distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`power <mars.tensor.random.RandomState.power>`\\ "
+#~ "\\(a\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Draws samples in [0, 1] from a "
+#~ "power distribution with positive exponent "
+#~ "a - 1."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`rand <mars.tensor.random.RandomState.rand>`\\ "
+#~ "\\(\\*dn\\, \\*\\*kw\\)"
+#~ msgstr ""
+
+#~ msgid "Random values in a given shape."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`randint <mars.tensor.random.RandomState.randint>`\\ "
+#~ "\\(low\\[\\, high\\, size\\, dtype\\, "
+#~ "density\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`randn <mars.tensor.random.RandomState.randn>`\\ "
+#~ "\\(\\*dn\\, \\*\\*kw\\)"
+#~ msgstr ""
+
+#~ msgid "Return a sample (or samples) from the \"standard normal\" distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`random <mars.tensor.random.RandomState.random>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Return random floats in the half-open interval [0.0, 1.0)."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`random_integers "
+#~ "<mars.tensor.random.RandomState.random_integers>`\\ \\(low\\[\\,"
+#~ " high\\, size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Random integers of type mt.int between `low` and `high`, inclusive."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`random_sample "
+#~ "<mars.tensor.random.RandomState.random_sample>`\\ \\(\\[size\\,"
+#~ " chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`ranf <mars.tensor.random.RandomState.ranf>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`rayleigh <mars.tensor.random.RandomState.rayleigh>`\\ "
+#~ "\\(\\[scale\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Rayleigh distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`sample <mars.tensor.random.RandomState.sample>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ":obj:`seed <mars.tensor.random.RandomState.seed>`\\ \\(\\[seed\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Seed the generator."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`standard_cauchy "
+#~ "<mars.tensor.random.RandomState.standard_cauchy>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a standard Cauchy distribution with mode = 0."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`standard_exponential "
+#~ "<mars.tensor.random.RandomState.standard_exponential>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from the standard exponential distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`standard_gamma "
+#~ "<mars.tensor.random.RandomState.standard_gamma>`\\ "
+#~ "\\(shape\\[\\, size\\, chunk\\_size\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a standard Gamma distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`standard_normal "
+#~ "<mars.tensor.random.RandomState.standard_normal>`\\ "
+#~ "\\(\\[size\\, chunk\\_size\\, gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a standard Normal distribution (mean=0, stdev=1)."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`standard_t <mars.tensor.random.RandomState.standard_t>`\\"
+#~ " \\(df\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Draw samples from a standard Student's"
+#~ " t distribution with `df` degrees of"
+#~ " freedom."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`triangular <mars.tensor.random.RandomState.triangular>`\\"
+#~ " \\(left\\, mode\\, right\\[\\, size\\, "
+#~ "...\\]\\)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Draw samples from the triangular "
+#~ "distribution over the interval ``[left, "
+#~ "right]``."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`uniform <mars.tensor.random.RandomState.uniform>`\\ "
+#~ "\\(\\[low\\, high\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a uniform distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`vonmises <mars.tensor.random.RandomState.vonmises>`\\ "
+#~ "\\(mu\\, kappa\\[\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, ...\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a von Mises distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`wald <mars.tensor.random.RandomState.wald>`\\ "
+#~ "\\(mean\\, scale\\[\\, size\\, chunk\\_size\\, "
+#~ "gpu\\, dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Wald, or inverse Gaussian, distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`weibull <mars.tensor.random.RandomState.weibull>`\\ "
+#~ "\\(a\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Weibull distribution."
+#~ msgstr ""
+
+#~ msgid ""
+#~ ":obj:`zipf <mars.tensor.random.RandomState.zipf>`\\ "
+#~ "\\(a\\[\\, size\\, chunk\\_size\\, gpu\\, "
+#~ "dtype\\]\\)"
+#~ msgstr ""
+
+#~ msgid "Draw samples from a Zipf distribution."
+#~ msgstr ""
 

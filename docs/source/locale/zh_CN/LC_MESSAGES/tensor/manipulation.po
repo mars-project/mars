@@ -8,28 +8,28 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 15:10+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.6.0\n"
+"Generated-By: Babel 2.5.3\n"
 
 #: ../../source/tensor/manipulation.rst:2
 msgid "Tensor Manipulation Routines"
-msgstr ""
+msgstr "Tensor操作例程"
 
 #: ../../source/tensor/manipulation.rst:5
 msgid "Basic manipulations"
-msgstr ""
+msgstr "基本操作"
 
-#: ../../source/tensor/manipulation.rst:13:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.copyto <mars.tensor.copyto>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:13:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Copies values from one array to another, broadcasting as necessary."
 msgstr ""
 
@@ -37,21 +37,19 @@ msgstr ""
 msgid "Shape manipulation"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
-#: ../../source/tensor/manipulation.rst:24:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.reshape <mars.tensor.reshape>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
-#: ../../source/tensor/manipulation.rst:24:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Gives a new shape to a tensor without changing its data."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:24:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.ravel <mars.tensor.ravel>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:24:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Return a contiguous flattened array."
 msgstr ""
 
@@ -59,43 +57,39 @@ msgstr ""
 msgid "Transposition"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.moveaxis <mars.tensor.moveaxis>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Move axes of a tensor to new positions."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.rollaxis <mars.tensor.rollaxis>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Roll the specified axis backwards, until it lies in a given position."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.swapaxes <mars.tensor.swapaxes>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Interchange two axes of a tensor."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.core.Tensor.T <mars.tensor.core.Tensor.T>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
-msgid "Same as self.transpose(), except that self is returned if self.ndim < 2."
-msgstr ""
-
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.transpose <mars.tensor.transpose>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:38:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Permute the dimensions of a tensor."
 msgstr ""
 
@@ -103,59 +97,59 @@ msgstr ""
 msgid "Edit dimensionalities"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.atleast_1d <mars.tensor.atleast_1d>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Convert inputs to tensors with at least one dimension."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.atleast_2d <mars.tensor.atleast_2d>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "View inputs as tensors with at least two dimensions."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.atleast_3d <mars.tensor.atleast_3d>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "View inputs as tensors with at least three dimensions."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.broadcast_to <mars.tensor.broadcast_to>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Broadcast an tensor to a new shape."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.broadcast_arrays <mars.tensor.broadcast_arrays>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Broadcast any number of arrays against each other."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.expand_dims <mars.tensor.expand_dims>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Expand the shape of a tensor."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.squeeze <mars.tensor.squeeze>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:54:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Remove single-dimensional entries from the shape of a tensor."
 msgstr ""
 
@@ -163,11 +157,11 @@ msgstr ""
 msgid "Changing kind of tensor"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:64:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.asarray <mars.tensor.asarray>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:64:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Convert the input to an array."
 msgstr ""
 
@@ -175,51 +169,51 @@ msgstr ""
 msgid "Joining tensors"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.concatenate <mars.tensor.concatenate>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Join a sequence of arrays along an existing axis."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.stack <mars.tensor.stack>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Join a sequence of tensors along a new axis."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.column_stack <mars.tensor.column_stack>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Stack 1-D tensors as columns into a 2-D tensor."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.dstack <mars.tensor.dstack>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Stack tensors in sequence depth wise (along third axis)."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.hstack <mars.tensor.hstack>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Stack tensors in sequence horizontally (column wise)."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.vstack <mars.tensor.vstack>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:79:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Stack tensors in sequence vertically (row wise)."
 msgstr ""
 
@@ -227,39 +221,39 @@ msgstr ""
 msgid "Splitting tensors"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.split <mars.tensor.split>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Split a tensor into multiple sub-tensors."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.array_split <mars.tensor.array_split>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.dsplit <mars.tensor.dsplit>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Split tensor into multiple sub-tensors along the 3rd axis (depth)."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.hsplit <mars.tensor.hsplit>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Split a tensor into multiple sub-tensors horizontally (column-wise)."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.vsplit <mars.tensor.vsplit>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:93:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Split a tensor into multiple sub-tensors vertically (row-wise)."
 msgstr ""
 
@@ -267,19 +261,19 @@ msgstr ""
 msgid "Tiling tensors"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:104:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.tile <mars.tensor.tile>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:104:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Construct a tensor by repeating A the number of times given by reps."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:104:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.repeat <mars.tensor.repeat>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:104:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Repeat elements of a tensor."
 msgstr ""
 
@@ -287,35 +281,40 @@ msgstr ""
 msgid "Rearranging elements"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.flip <mars.tensor.flip>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Reverse the order of elements in a tensor along the given axis."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fliplr <mars.tensor.fliplr>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Flip tensor in the left/right direction."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.flipud <mars.tensor.flipud>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Flip tensor in the up/down direction."
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.roll <mars.tensor.roll>`"
 msgstr ""
 
-#: ../../source/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../<autosummary>:1
 msgid "Roll tensor elements along a given axis."
 msgstr ""
+
+#~ msgid ""
+#~ "Same as self.transpose(), except that "
+#~ "self is returned if self.ndim < 2."
+#~ msgstr ""
 

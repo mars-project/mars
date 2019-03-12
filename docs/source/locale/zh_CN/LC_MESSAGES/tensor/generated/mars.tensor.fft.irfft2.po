@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,75 +21,60 @@ msgstr ""
 msgid "mars.tensor.fft.irfft2"
 msgstr ""
 
-#: mars.tensor.fft.irfft2:1 of
-msgid "Compute the 2-dimensional inverse FFT of a real array."
-msgstr ""
+#~ msgid "Compute the 2-dimensional inverse FFT of a real array."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:5 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:4 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:6 of
-msgid "The input tensor"
-msgstr ""
+#~ msgid "The input tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:7 of
-msgid "s"
-msgstr ""
+#~ msgid "s"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:6 mars.tensor.fft.irfft2:9 of
-msgid "sequence of ints, optional"
-msgstr ""
+#~ msgid "sequence of ints, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:8 of
-msgid "Shape of the inverse FFT."
-msgstr ""
+#~ msgid "Shape of the inverse FFT."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:10 of
-msgid "axes"
-msgstr ""
+#~ msgid "axes"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:10 of
-msgid ""
-"The axes over which to compute the inverse fft. Default is the last two "
-"axes."
-msgstr ""
+#~ msgid ""
+#~ "The axes over which to compute the"
+#~ " inverse fft. Default is the last "
+#~ "two axes."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:13 of
-msgid "norm"
-msgstr ""
+#~ msgid "norm"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:12 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
+#~ msgid "{None, \"ortho\"}, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:13 of
-msgid "Normalization mode (see `mt.fft`). Default is None."
-msgstr ""
+#~ msgid "Normalization mode (see `mt.fft`). Default is None."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:18 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:17 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:18 of
-msgid "The result of the inverse real 2-D FFT."
-msgstr ""
+#~ msgid "The result of the inverse real 2-D FFT."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:22 of
-msgid "irfftn : Compute the inverse of the N-dimensional FFT of real input."
-msgstr ""
+#~ msgid "irfftn : Compute the inverse of the N-dimensional FFT of real input."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfft2:26 of
-msgid ""
-"This is really `irfftn` with different defaults. For more details see "
-"`irfftn`."
-msgstr ""
+#~ msgid ""
+#~ "This is really `irfftn` with different"
+#~ " defaults. For more details see "
+#~ "`irfftn`."
+#~ msgstr ""
 

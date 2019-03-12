@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,148 +21,132 @@ msgstr ""
 msgid "mars.tensor.random.randint"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:1 of
-msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
-msgstr ""
+#~ msgid "Return random integers from `low` (inclusive) to `high` (exclusive)."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:3 of
-msgid ""
-"Return random integers from the \"discrete uniform\" distribution of the "
-"specified dtype in the \"half-open\" interval [`low`, `high`). If `high` "
-"is None (the default), then results are from [0, `low`)."
-msgstr ""
+#~ msgid ""
+#~ "Return random integers from the "
+#~ "\"discrete uniform\" distribution of the "
+#~ "specified dtype in the \"half-open\" "
+#~ "interval [`low`, `high`). If `high` is"
+#~ " None (the default), then results are"
+#~ " from [0, `low`)."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:11 of
-msgid "low"
-msgstr ""
+#~ msgid "low"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:10 of
-msgid "int"
-msgstr ""
+#~ msgid "int"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:10 of
-msgid ""
-"Lowest (signed) integer to be drawn from the distribution (unless "
-"``high=None``, in which case this parameter is one above the *highest* "
-"such integer)."
-msgstr ""
+#~ msgid ""
+#~ "Lowest (signed) integer to be drawn "
+#~ "from the distribution (unless ``high=None``,"
+#~ " in which case this parameter is "
+#~ "one above the *highest* such integer)."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:14 of
-msgid "high"
-msgstr ""
+#~ msgid "high"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:13 of
-msgid "int, optional"
-msgstr ""
+#~ msgid "int, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:14 of
-msgid ""
-"If provided, one above the largest (signed) integer to be drawn from the "
-"distribution (see above for behavior if ``high=None``)."
-msgstr ""
+#~ msgid ""
+#~ "If provided, one above the largest "
+#~ "(signed) integer to be drawn from "
+#~ "the distribution (see above for behavior"
+#~ " if ``high=None``)."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:18 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:17 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:17 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  Default is None, in which case a single value is"
-" returned."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  Default is None, in which case "
+#~ "a single value is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:23 mars.tensor.random.randint:32
-#: of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:22 of
-msgid "dtype, optional"
-msgstr ""
+#~ msgid "dtype, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:21 of
-msgid ""
-"Desired dtype of the result. All dtypes are determined by their name, "
-"i.e., 'int64', 'int', etc, so byteorder is not available and a specific "
-"precision may have different C types depending on the platform. The "
-"default value is 'np.int'."
-msgstr ""
+#~ msgid ""
+#~ "Desired dtype of the result. All "
+#~ "dtypes are determined by their name, "
+#~ "i.e., 'int64', 'int', etc, so byteorder"
+#~ " is not available and a specific "
+#~ "precision may have different C types "
+#~ "depending on the platform. The default"
+#~ " value is 'np.int'."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:25 of
-msgid "density: float, optional"
-msgstr ""
+#~ msgid "density: float, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:26 of
-msgid "if density specified, a sparse tensor will be created"
-msgstr ""
+#~ msgid "if density specified, a sparse tensor will be created"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:27 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:26 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:28 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:29 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:28 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:30 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:31 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:32 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:38 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:37 of
-msgid "int or Tensor of ints"
-msgstr ""
+#~ msgid "int or Tensor of ints"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:37 of
-msgid ""
-"`size`-shaped tensor of random integers from the appropriate "
-"distribution, or a single such random int if `size` not provided."
-msgstr ""
+#~ msgid ""
+#~ "`size`-shaped tensor of random integers "
+#~ "from the appropriate distribution, or a"
+#~ " single such random int if `size` "
+#~ "not provided."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:45 of
-msgid "random.random_integers : similar to `randint`, only for the closed"
-msgstr ""
+#~ msgid "random.random_integers : similar to `randint`, only for the closed"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:44 of
-msgid "similar to randint, only for the closed"
-msgstr ""
+#~ msgid "similar to randint, only for the closed"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:43 of
-msgid ""
-"interval [`low`, `high`], and 1 is the lowest value if `high` is omitted."
-" In particular, this other one is the one to use to generate uniformly "
-"distributed discrete non-integers."
-msgstr ""
+#~ msgid ""
+#~ "interval [`low`, `high`], and 1 is "
+#~ "the lowest value if `high` is "
+#~ "omitted. In particular, this other one"
+#~ " is the one to use to generate"
+#~ " uniformly distributed discrete non-"
+#~ "integers."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.randint:56 of
-msgid "Generate a 2 x 4 tensor of ints between 0 and 4, inclusive:"
-msgstr ""
+#~ msgid "Generate a 2 x 4 tensor of ints between 0 and 4, inclusive:"
+#~ msgstr ""
 

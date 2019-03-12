@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,139 +21,124 @@ msgstr ""
 msgid "mars.tensor.random.triangular"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:1 of
-msgid ""
-"Draw samples from the triangular distribution over the interval ``[left, "
-"right]``."
-msgstr ""
+#~ msgid ""
+#~ "Draw samples from the triangular "
+#~ "distribution over the interval ``[left, "
+#~ "right]``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:4 of
-msgid ""
-"The triangular distribution is a continuous probability distribution with"
-" lower limit left, peak at mode, and upper limit right. Unlike the other "
-"distributions, these parameters directly define the shape of the pdf."
-msgstr ""
+#~ msgid ""
+#~ "The triangular distribution is a "
+#~ "continuous probability distribution with lower"
+#~ " limit left, peak at mode, and "
+#~ "upper limit right. Unlike the other "
+#~ "distributions, these parameters directly "
+#~ "define the shape of the pdf."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:11 of
-msgid "left"
-msgstr ""
+#~ msgid "left"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:10
-#: mars.tensor.random.triangular:13 mars.tensor.random.triangular:15 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:12 of
-msgid "Lower limit."
-msgstr ""
+#~ msgid "Lower limit."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:14 of
-msgid "mode"
-msgstr ""
+#~ msgid "mode"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:14 of
-msgid ""
-"The value where the peak of the distribution occurs. The value should "
-"fulfill the condition ``left <= mode <= right``."
-msgstr ""
+#~ msgid ""
+#~ "The value where the peak of the"
+#~ " distribution occurs. The value should "
+#~ "fulfill the condition ``left <= mode "
+#~ "<= right``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:16 of
-msgid "right"
-msgstr ""
+#~ msgid "right"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:17 of
-msgid "Upper limit, should be larger than `left`."
-msgstr ""
+#~ msgid "Upper limit, should be larger than `left`."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:22 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:21 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:19 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``left``, ``mode``, and ``right`` are all scalars.  "
-"Otherwise, ``mt.broadcast(left, mode, right).size`` samples are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if "
+#~ "``left``, ``mode``, and ``right`` are "
+#~ "all scalars.  Otherwise, ``mt.broadcast(left, "
+#~ "mode, right).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:24 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:23 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:25 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:26 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:25 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:27 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:29 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:28 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:29 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:34 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:33 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:34 of
-msgid "Drawn samples from the parameterized triangular distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized triangular distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:38 of
-msgid "The probability density function for the triangular distribution is"
-msgstr ""
+#~ msgid "The probability density function for the triangular distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:40 of
-msgid ""
-"P(x;l, m, r) = \\begin{cases} \\frac{2(x-l)}{(r-l)(m-l)}& \\text{for $l "
-"\\leq x \\leq m$},\\\\ \\frac{2(r-x)}{(r-l)(r-m)}& \\text{for $m \\leq x "
-"\\leq r$},\\\\ 0& \\text{otherwise}. \\end{cases}"
-msgstr ""
+#~ msgid ""
+#~ "P(x;l, m, r) = \\begin{cases} "
+#~ "\\frac{2(x-l)}{(r-l)(m-l)}& \\text{for $l \\leq "
+#~ "x \\leq m$},\\\\ \\frac{2(r-x)}{(r-l)(r-m)}& "
+#~ "\\text{for $m \\leq x \\leq r$},\\\\ "
+#~ "0& \\text{otherwise}. \\end{cases}"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:46 of
-msgid ""
-"The triangular distribution is often used in ill-defined problems where "
-"the underlying distribution is not known, but some knowledge of the "
-"limits and mode exists. Often it is used in simulations."
-msgstr ""
+#~ msgid ""
+#~ "The triangular distribution is often "
+#~ "used in ill-defined problems where "
+#~ "the underlying distribution is not "
+#~ "known, but some knowledge of the "
+#~ "limits and mode exists. Often it "
+#~ "is used in simulations."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:53 of
-msgid ""
-"Wikipedia, \"Triangular distribution\" "
-"http://en.wikipedia.org/wiki/Triangular_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Triangular distribution\" "
+#~ "http://en.wikipedia.org/wiki/Triangular_distribution"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.triangular:58 of
-msgid "Draw values from the distribution and plot the histogram:"
-msgstr ""
+#~ msgid "Draw values from the distribution and plot the histogram:"
+#~ msgstr ""
 

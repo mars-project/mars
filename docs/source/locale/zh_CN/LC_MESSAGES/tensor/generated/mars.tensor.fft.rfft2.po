@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,81 +21,63 @@ msgstr ""
 msgid "mars.tensor.fft.rfft2"
 msgstr ""
 
-#: mars.tensor.fft.rfft2:1 of
-msgid "Compute the 2-dimensional FFT of a real tensor."
-msgstr ""
+#~ msgid "Compute the 2-dimensional FFT of a real tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:5 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:4 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:6 of
-msgid "Input tensor, taken to be real."
-msgstr ""
+#~ msgid "Input tensor, taken to be real."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:7 of
-msgid "s"
-msgstr ""
+#~ msgid "s"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:6 mars.tensor.fft.rfft2:8 of
-msgid "sequence of ints, optional"
-msgstr ""
+#~ msgid "sequence of ints, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:8 of
-msgid "Shape of the FFT."
-msgstr ""
+#~ msgid "Shape of the FFT."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:9 of
-msgid "axes"
-msgstr ""
+#~ msgid "axes"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:10 of
-msgid "Axes over which to compute the FFT."
-msgstr ""
+#~ msgid "Axes over which to compute the FFT."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:12 of
-msgid "norm"
-msgstr ""
+#~ msgid "norm"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:11 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
+#~ msgid "{None, \"ortho\"}, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:12 of
-msgid "Normalization mode (see `mt.fft`). Default is None."
-msgstr ""
+#~ msgid "Normalization mode (see `mt.fft`). Default is None."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:17 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:16 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:17 of
-msgid "The result of the real 2-D FFT."
-msgstr ""
+#~ msgid "The result of the real 2-D FFT."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:22 of
-msgid "rfftn"
-msgstr ""
+#~ msgid "rfftn"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:21 of
-msgid "Compute the N-dimensional discrete Fourier Transform for real"
-msgstr ""
+#~ msgid "Compute the N-dimensional discrete Fourier Transform for real"
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:22 of
-msgid "input."
-msgstr ""
+#~ msgid "input."
+#~ msgstr ""
 
-#: mars.tensor.fft.rfft2:26 of
-msgid ""
-"This is really just `rfftn` with different default behavior. For more "
-"details see `rfftn`."
-msgstr ""
+#~ msgid ""
+#~ "This is really just `rfftn` with "
+#~ "different default behavior. For more "
+#~ "details see `rfftn`."
+#~ msgstr ""
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,92 +21,81 @@ msgstr ""
 msgid "mars.tensor.linalg.cholesky"
 msgstr ""
 
-#: mars.tensor.linalg.cholesky:1 of
-msgid "Cholesky decomposition."
-msgstr ""
+#~ msgid "Cholesky decomposition."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:3 of
-msgid ""
-"Return the Cholesky decomposition, `L * L.H`, of the square matrix `a`, "
-"where `L` is lower-triangular and .H is the conjugate transpose operator "
-"(which is the ordinary transpose if `a` is real-valued).  `a` must be "
-"Hermitian (symmetric if real-valued) and positive-definite.  Only `L` is "
-"actually returned."
-msgstr ""
+#~ msgid ""
+#~ "Return the Cholesky decomposition, `L *"
+#~ " L.H`, of the square matrix `a`, "
+#~ "where `L` is lower-triangular and "
+#~ ".H is the conjugate transpose operator"
+#~ " (which is the ordinary transpose if"
+#~ " `a` is real-valued).  `a` must "
+#~ "be Hermitian (symmetric if real-valued)"
+#~ " and positive-definite.  Only `L` is"
+#~ " actually returned."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:12 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:11 mars.tensor.linalg.cholesky:20 of
-msgid "(..., M, M) array_like"
-msgstr ""
+#~ msgid "(..., M, M) array_like"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:12 of
-msgid ""
-"Hermitian (symmetric if all elements are real), positive-definite input "
-"matrix."
-msgstr ""
+#~ msgid ""
+#~ "Hermitian (symmetric if all elements are"
+#~ " real), positive-definite input matrix."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:16 of
-msgid "lower"
-msgstr ""
+#~ msgid "lower"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:15 of
-msgid "bool"
-msgstr ""
+#~ msgid "bool"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:15 of
-msgid ""
-"Whether to compute the upper or lower triangular Cholesky factorization."
-"  Default is upper-triangular."
-msgstr ""
+#~ msgid ""
+#~ "Whether to compute the upper or "
+#~ "lower triangular Cholesky factorization.  "
+#~ "Default is upper-triangular."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:21 of
-msgid "L"
-msgstr ""
+#~ msgid "L"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:21 of
-msgid "Upper or lower-triangular Cholesky factor of `a`."
-msgstr ""
+#~ msgid "Upper or lower-triangular Cholesky factor of `a`."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:27 of
-msgid "LinAlgError"
-msgstr ""
+#~ msgid "LinAlgError"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:26 of
-msgid "If the decomposition fails, for example, if `a` is not positive-definite."
-msgstr ""
+#~ msgid ""
+#~ "If the decomposition fails, for example,"
+#~ " if `a` is not positive-definite."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:32 of
-msgid "Broadcasting rules apply, see the `mt.linalg` documentation for details."
-msgstr ""
+#~ msgid ""
+#~ "Broadcasting rules apply, see the "
+#~ "`mt.linalg` documentation for details."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:35 of
-msgid "The Cholesky decomposition is often used as a fast way of solving"
-msgstr ""
+#~ msgid "The Cholesky decomposition is often used as a fast way of solving"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:37 of
-msgid "A \\mathbf{x} = \\mathbf{b}"
-msgstr ""
+#~ msgid "A \\mathbf{x} = \\mathbf{b}"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:39 of
-msgid "(when `A` is both Hermitian/symmetric and positive-definite)."
-msgstr ""
+#~ msgid "(when `A` is both Hermitian/symmetric and positive-definite)."
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:41 of
-msgid "First, we solve for :math:`\\mathbf{y}` in"
-msgstr ""
+#~ msgid "First, we solve for :math:`\\mathbf{y}` in"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:43 of
-msgid "L \\mathbf{y} = \\mathbf{b},"
-msgstr ""
+#~ msgid "L \\mathbf{y} = \\mathbf{b},"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:45 of
-msgid "and then for :math:`\\mathbf{x}` in"
-msgstr ""
+#~ msgid "and then for :math:`\\mathbf{x}` in"
+#~ msgstr ""
 
-#: mars.tensor.linalg.cholesky:47 of
-msgid "L.H \\mathbf{x} = \\mathbf{y}."
-msgstr ""
+#~ msgid "L.H \\mathbf{x} = \\mathbf{y}."
+#~ msgstr ""
 

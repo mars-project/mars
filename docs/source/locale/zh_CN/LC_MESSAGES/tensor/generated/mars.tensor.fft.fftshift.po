@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,57 +21,46 @@ msgstr ""
 msgid "mars.tensor.fft.fftshift"
 msgstr ""
 
-#: mars.tensor.fft.fftshift:1 of
-msgid "Shift the zero-frequency component to the center of the spectrum."
-msgstr ""
+#~ msgid "Shift the zero-frequency component to the center of the spectrum."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:3 of
-msgid ""
-"This function swaps half-spaces for all axes listed (defaults to all). "
-"Note that ``y[0]`` is the Nyquist component only if ``len(x)`` is even."
-msgstr ""
+#~ msgid ""
+#~ "This function swaps half-spaces for "
+#~ "all axes listed (defaults to all). "
+#~ "Note that ``y[0]`` is the Nyquist "
+#~ "component only if ``len(x)`` is even."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:8 of
-msgid "x"
-msgstr ""
+#~ msgid "x"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:7 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:9 of
-msgid "Input tensor."
-msgstr ""
+#~ msgid "Input tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:11 of
-msgid "axes"
-msgstr ""
+#~ msgid "axes"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:10 of
-msgid "int or shape tuple, optional"
-msgstr ""
+#~ msgid "int or shape tuple, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:11 of
-msgid "Axes over which to shift.  Default is None, which shifts all axes."
-msgstr ""
+#~ msgid "Axes over which to shift.  Default is None, which shifts all axes."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:16 of
-msgid "y"
-msgstr ""
+#~ msgid "y"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:15 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:16 of
-msgid "The shifted tensor."
-msgstr ""
+#~ msgid "The shifted tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:20 of
-msgid "ifftshift : The inverse of `fftshift`."
-msgstr ""
+#~ msgid "ifftshift : The inverse of `fftshift`."
+#~ msgstr ""
 
-#: mars.tensor.fft.fftshift:32 of
-msgid "Shift the zero-frequency component only along the second axis:"
-msgstr ""
+#~ msgid "Shift the zero-frequency component only along the second axis:"
+#~ msgstr ""
 

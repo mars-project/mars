@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,208 +21,193 @@ msgstr ""
 msgid "mars.tensor.random.multivariate\\_normal"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:1 of
-msgid "Draw random samples from a multivariate normal distribution."
-msgstr ""
+#~ msgid "Draw random samples from a multivariate normal distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:3 of
-msgid ""
-"The multivariate normal, multinormal or Gaussian distribution is a "
-"generalization of the one-dimensional normal distribution to higher "
-"dimensions.  Such a distribution is specified by its mean and covariance "
-"matrix.  These parameters are analogous to the mean (average or "
-"\"center\") and variance (standard deviation, or \"width,\" squared) of "
-"the one-dimensional normal distribution."
-msgstr ""
+#~ msgid ""
+#~ "The multivariate normal, multinormal or "
+#~ "Gaussian distribution is a generalization "
+#~ "of the one-dimensional normal "
+#~ "distribution to higher dimensions.  Such "
+#~ "a distribution is specified by its "
+#~ "mean and covariance matrix.  These "
+#~ "parameters are analogous to the mean "
+#~ "(average or \"center\") and variance "
+#~ "(standard deviation, or \"width,\" squared)"
+#~ " of the one-dimensional normal "
+#~ "distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:12 of
-msgid "mean"
-msgstr ""
+#~ msgid "mean"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:11 of
-msgid "1-D array_like, of length N"
-msgstr ""
+#~ msgid "1-D array_like, of length N"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:13 of
-msgid "Mean of the N-dimensional distribution."
-msgstr ""
+#~ msgid "Mean of the N-dimensional distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:15 of
-msgid "cov"
-msgstr ""
+#~ msgid "cov"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:14 of
-msgid "2-D array_like, of shape (N, N)"
-msgstr ""
+#~ msgid "2-D array_like, of shape (N, N)"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:15 of
-msgid ""
-"Covariance matrix of the distribution. It must be symmetric and positive-"
-"semidefinite for proper sampling."
-msgstr ""
+#~ msgid ""
+#~ "Covariance matrix of the distribution. "
+#~ "It must be symmetric and positive-"
+#~ "semidefinite for proper sampling."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:20 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:19 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:18 of
-msgid ""
-"Given a shape of, for example, ``(m,n,k)``, ``m*n*k`` samples are "
-"generated, and packed in an `m`-by-`n`-by-`k` arrangement.  Because each "
-"sample is `N`-dimensional, the output shape is ``(m,n,k,N)``. If no shape"
-" is specified, a single (`N`-D) sample is returned."
-msgstr ""
+#~ msgid ""
+#~ "Given a shape of, for example, "
+#~ "``(m,n,k)``, ``m*n*k`` samples are generated,"
+#~ " and packed in an `m`-by-`n`-by-`k` "
+#~ "arrangement.  Because each sample is "
+#~ "`N`-dimensional, the output shape is "
+#~ "``(m,n,k,N)``. If no shape is specified,"
+#~ " a single (`N`-D) sample is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:22 of
-msgid "check_valid"
-msgstr ""
+#~ msgid "check_valid"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:21 of
-msgid "{ 'warn', 'raise', 'ignore' }, optional"
-msgstr ""
+#~ msgid "{ 'warn', 'raise', 'ignore' }, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:23 of
-msgid "Behavior when the covariance matrix is not positive semidefinite."
-msgstr ""
+#~ msgid "Behavior when the covariance matrix is not positive semidefinite."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:24 of
-msgid "tol"
-msgstr ""
+#~ msgid "tol"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:23 of
-msgid "float, optional"
-msgstr ""
+#~ msgid "float, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:25 of
-msgid "Tolerance when checking the singular values in covariance matrix."
-msgstr ""
+#~ msgid "Tolerance when checking the singular values in covariance matrix."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:26 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:25 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:27 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:28 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:27 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:29 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:31 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:30 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:31 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:40 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:39 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:36 of
-msgid ""
-"The drawn samples, of shape *size*, if that was provided.  If not, the "
-"shape is ``(N,)``."
-msgstr ""
+#~ msgid ""
+#~ "The drawn samples, of shape *size*, "
+#~ "if that was provided.  If not, the"
+#~ " shape is ``(N,)``."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:39 of
-msgid ""
-"In other words, each entry ``out[i,j,...,:]`` is an N-dimensional value "
-"drawn from the distribution."
-msgstr ""
+#~ msgid ""
+#~ "In other words, each entry "
+#~ "``out[i,j,...,:]`` is an N-dimensional value"
+#~ " drawn from the distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:44 of
-msgid ""
-"The mean is a coordinate in N-dimensional space, which represents the "
-"location where samples are most likely to be generated.  This is "
-"analogous to the peak of the bell curve for the one-dimensional or "
-"univariate normal distribution."
-msgstr ""
+#~ msgid ""
+#~ "The mean is a coordinate in "
+#~ "N-dimensional space, which represents the "
+#~ "location where samples are most likely"
+#~ " to be generated.  This is analogous"
+#~ " to the peak of the bell curve"
+#~ " for the one-dimensional or "
+#~ "univariate normal distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:49 of
-msgid ""
-"Covariance indicates the level to which two variables vary together. From"
-" the multivariate normal distribution, we draw N-dimensional samples, "
-":math:`X = [x_1, x_2, ... x_N]`.  The covariance matrix element "
-":math:`C_{ij}` is the covariance of :math:`x_i` and :math:`x_j`. The "
-"element :math:`C_{ii}` is the variance of :math:`x_i` (i.e. its "
-"\"spread\")."
-msgstr ""
+#~ msgid ""
+#~ "Covariance indicates the level to which"
+#~ " two variables vary together. From "
+#~ "the multivariate normal distribution, we "
+#~ "draw N-dimensional samples, :math:`X = "
+#~ "[x_1, x_2, ... x_N]`.  The covariance"
+#~ " matrix element :math:`C_{ij}` is the "
+#~ "covariance of :math:`x_i` and :math:`x_j`. "
+#~ "The element :math:`C_{ii}` is the "
+#~ "variance of :math:`x_i` (i.e. its "
+#~ "\"spread\")."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:56 of
-msgid ""
-"Instead of specifying the full covariance matrix, popular approximations "
-"include:"
-msgstr ""
+#~ msgid ""
+#~ "Instead of specifying the full "
+#~ "covariance matrix, popular approximations "
+#~ "include:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:59 of
-msgid "Spherical covariance (`cov` is a multiple of the identity matrix)"
-msgstr ""
+#~ msgid "Spherical covariance (`cov` is a multiple of the identity matrix)"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:60 of
-msgid ""
-"Diagonal covariance (`cov` has non-negative elements, and only on the "
-"diagonal)"
-msgstr ""
+#~ msgid ""
+#~ "Diagonal covariance (`cov` has non-"
+#~ "negative elements, and only on the "
+#~ "diagonal)"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:63 of
-msgid ""
-"This geometrical property can be seen in two dimensions by plotting "
-"generated data-points:"
-msgstr ""
+#~ msgid ""
+#~ "This geometrical property can be seen"
+#~ " in two dimensions by plotting "
+#~ "generated data-points:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:69 of
-msgid "Diagonal covariance means that points are oriented along x or y-axis:"
-msgstr ""
+#~ msgid "Diagonal covariance means that points are oriented along x or y-axis:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:78 of
-msgid ""
-"Note that the covariance matrix must be positive semidefinite (a.k.a. "
-"nonnegative-definite). Otherwise, the behavior of this method is "
-"undefined and backwards compatibility is not guaranteed."
-msgstr ""
+#~ msgid ""
+#~ "Note that the covariance matrix must "
+#~ "be positive semidefinite (a.k.a. "
+#~ "nonnegative-definite). Otherwise, the behavior"
+#~ " of this method is undefined and "
+#~ "backwards compatibility is not guaranteed."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:84 of
-msgid ""
-"Papoulis, A., \"Probability, Random Variables, and Stochastic "
-"Processes,\" 3rd ed., New York: McGraw-Hill, 1991."
-msgstr ""
+#~ msgid ""
+#~ "Papoulis, A., \"Probability, Random Variables,"
+#~ " and Stochastic Processes,\" 3rd ed., "
+#~ "New York: McGraw-Hill, 1991."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:86 of
-msgid ""
-"Duda, R. O., Hart, P. E., and Stork, D. G., \"Pattern Classification,\" "
-"2nd ed., New York: Wiley, 2001."
-msgstr ""
+#~ msgid ""
+#~ "Duda, R. O., Hart, P. E., and "
+#~ "Stork, D. G., \"Pattern Classification,\" "
+#~ "2nd ed., New York: Wiley, 2001."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.multivariate_normal:97 of
-msgid ""
-"The following is probably true, given that 0.6 is roughly twice the "
-"standard deviation:"
-msgstr ""
+#~ msgid ""
+#~ "The following is probably true, given"
+#~ " that 0.6 is roughly twice the "
+#~ "standard deviation:"
+#~ msgstr ""
 

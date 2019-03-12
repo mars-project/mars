@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-04 13:30+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,143 +21,148 @@ msgstr ""
 msgid "mars.tensor.fft.irfftn"
 msgstr ""
 
-#: mars.tensor.fft.irfftn:1 of
-msgid "Compute the inverse of the N-dimensional FFT of real input."
-msgstr ""
+#~ msgid "Compute the inverse of the N-dimensional FFT of real input."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:3 of
-msgid ""
-"This function computes the inverse of the N-dimensional discrete Fourier "
-"Transform for real input over any number of axes in an M-dimensional "
-"tensor by means of the Fast Fourier Transform (FFT).  In other words, "
-"``irfftn(rfftn(a), a.shape) == a`` to within numerical accuracy. (The "
-"``a.shape`` is necessary like ``len(a)`` is for `irfft`, and for the same"
-" reason.)"
-msgstr ""
+#~ msgid ""
+#~ "This function computes the inverse of"
+#~ " the N-dimensional discrete Fourier "
+#~ "Transform for real input over any "
+#~ "number of axes in an M-dimensional "
+#~ "tensor by means of the Fast "
+#~ "Fourier Transform (FFT).  In other "
+#~ "words, ``irfftn(rfftn(a), a.shape) == a`` "
+#~ "to within numerical accuracy. (The "
+#~ "``a.shape`` is necessary like ``len(a)`` "
+#~ "is for `irfft`, and for the same"
+#~ " reason.)"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:10 of
-msgid ""
-"The input should be ordered in the same way as is returned by `rfftn`, "
-"i.e. as for `irfft` for the final transformation axis, and as for `ifftn`"
-" along all the other axes."
-msgstr ""
+#~ msgid ""
+#~ "The input should be ordered in the"
+#~ " same way as is returned by "
+#~ "`rfftn`, i.e. as for `irfft` for "
+#~ "the final transformation axis, and as"
+#~ " for `ifftn` along all the other "
+#~ "axes."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:16 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:15 of
-msgid "array_like"
-msgstr ""
+#~ msgid "array_like"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:17 of
-msgid "Input tensor."
-msgstr ""
+#~ msgid "Input tensor."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:25 of
-msgid "s"
-msgstr ""
+#~ msgid "s"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:24 mars.tensor.fft.irfftn:29 of
-msgid "sequence of ints, optional"
-msgstr ""
+#~ msgid "sequence of ints, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:19 of
-msgid ""
-"Shape (length of each transformed axis) of the output (``s[0]`` refers to"
-" axis 0, ``s[1]`` to axis 1, etc.). `s` is also the number of input "
-"points used along this axis, except for the last axis, where "
-"``s[-1]//2+1`` points of the input are used. Along any axis, if the shape"
-" indicated by `s` is smaller than that of the input, the input is "
-"cropped.  If it is larger, the input is padded with zeros. If `s` is not "
-"given, the shape of the input along the axes specified by `axes` is used."
-msgstr ""
+#~ msgid ""
+#~ "Shape (length of each transformed axis)"
+#~ " of the output (``s[0]`` refers to"
+#~ " axis 0, ``s[1]`` to axis 1, "
+#~ "etc.). `s` is also the number of"
+#~ " input points used along this axis,"
+#~ " except for the last axis, where "
+#~ "``s[-1]//2+1`` points of the input are"
+#~ " used. Along any axis, if the "
+#~ "shape indicated by `s` is smaller "
+#~ "than that of the input, the input"
+#~ " is cropped.  If it is larger, "
+#~ "the input is padded with zeros. If"
+#~ " `s` is not given, the shape of"
+#~ " the input along the axes specified"
+#~ " by `axes` is used."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:30 of
-msgid "axes"
-msgstr ""
+#~ msgid "axes"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:28 of
-msgid ""
-"Axes over which to compute the inverse FFT. If not given, the last "
-"`len(s)` axes are used, or all axes if `s` is also not specified. "
-"Repeated indices in `axes` means that the inverse transform over that "
-"axis is performed multiple times."
-msgstr ""
+#~ msgid ""
+#~ "Axes over which to compute the "
+#~ "inverse FFT. If not given, the "
+#~ "last `len(s)` axes are used, or "
+#~ "all axes if `s` is also not "
+#~ "specified. Repeated indices in `axes` "
+#~ "means that the inverse transform over"
+#~ " that axis is performed multiple "
+#~ "times."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:33 of
-msgid "norm"
-msgstr ""
+#~ msgid "norm"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:32 of
-msgid "{None, \"ortho\"}, optional"
-msgstr ""
+#~ msgid "{None, \"ortho\"}, optional"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:33 of
-msgid "Normalization mode (see `mt.fft`). Default is None."
-msgstr ""
+#~ msgid "Normalization mode (see `mt.fft`). Default is None."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:46 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:45 of
-msgid "Tensor"
-msgstr ""
+#~ msgid "Tensor"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:38 of
-msgid ""
-"The truncated or zero-padded input, transformed along the axes indicated "
-"by `axes`, or by a combination of `s` or `a`, as explained in the "
-"parameters section above. The length of each transformed axis is as given"
-" by the corresponding element of `s`, or the length of the input in every"
-" axis except for the last one if `s` is not given.  In the final "
-"transformed axis the length of the output when `s` is not given is "
-"``2*(m-1)`` where ``m`` is the length of the final transformed axis of "
-"the input.  To get an odd number of output points in the final axis, `s` "
-"must be specified."
-msgstr ""
+#~ msgid ""
+#~ "The truncated or zero-padded input, "
+#~ "transformed along the axes indicated by"
+#~ " `axes`, or by a combination of "
+#~ "`s` or `a`, as explained in the"
+#~ " parameters section above. The length "
+#~ "of each transformed axis is as "
+#~ "given by the corresponding element of"
+#~ " `s`, or the length of the "
+#~ "input in every axis except for the"
+#~ " last one if `s` is not given."
+#~ "  In the final transformed axis the"
+#~ " length of the output when `s` "
+#~ "is not given is ``2*(m-1)`` where "
+#~ "``m`` is the length of the final"
+#~ " transformed axis of the input.  To"
+#~ " get an odd number of output "
+#~ "points in the final axis, `s` must"
+#~ " be specified."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:50 of
-msgid "ValueError"
-msgstr ""
+#~ msgid "ValueError"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:51 of
-msgid "If `s` and `axes` have different length."
-msgstr ""
+#~ msgid "If `s` and `axes` have different length."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:53 of
-msgid "IndexError"
-msgstr ""
+#~ msgid "IndexError"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:53 of
-msgid "If an element of `axes` is larger than than the number of axes of `a`."
-msgstr ""
+#~ msgid "If an element of `axes` is larger than than the number of axes of `a`."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:57 of
-msgid "rfftn"
-msgstr ""
+#~ msgid "rfftn"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:56 of
-msgid "The forward n-dimensional FFT of real input,"
-msgstr ""
+#~ msgid "The forward n-dimensional FFT of real input,"
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:58 of
-msgid "of which `ifftn` is the inverse."
-msgstr ""
+#~ msgid "of which `ifftn` is the inverse."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:59 of
-msgid ""
-"fft : The one-dimensional FFT, with definitions and conventions used. "
-"irfft : The inverse of the one-dimensional FFT of real input. irfft2 : "
-"The inverse of the two-dimensional FFT of real input."
-msgstr ""
+#~ msgid ""
+#~ "fft : The one-dimensional FFT, "
+#~ "with definitions and conventions used. "
+#~ "irfft : The inverse of the one-"
+#~ "dimensional FFT of real input. irfft2"
+#~ " : The inverse of the two-"
+#~ "dimensional FFT of real input."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:65 of
-msgid "See `fft` for definitions and conventions used."
-msgstr ""
+#~ msgid "See `fft` for definitions and conventions used."
+#~ msgstr ""
 
-#: mars.tensor.fft.irfftn:67 of
-msgid "See `rfft` for definitions and conventions used for real input."
-msgstr ""
+#~ msgid "See `rfft` for definitions and conventions used for real input."
+#~ msgstr ""
 

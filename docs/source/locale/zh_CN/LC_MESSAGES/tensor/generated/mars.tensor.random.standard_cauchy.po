@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,128 +21,114 @@ msgstr ""
 msgid "mars.tensor.random.standard\\_cauchy"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:1 of
-msgid "Draw samples from a standard Cauchy distribution with mode = 0."
-msgstr ""
+#~ msgid "Draw samples from a standard Cauchy distribution with mode = 0."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:3 of
-msgid "Also known as the Lorentz distribution."
-msgstr ""
+#~ msgid "Also known as the Lorentz distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:9 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:8 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:8 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  Default is None, in which case a single value is"
-" returned."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  Default is None, in which case "
+#~ "a single value is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:11 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:10 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:12 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:13 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:12 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:14 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:16 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:15 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:16 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:21 of
-msgid "samples"
-msgstr ""
+#~ msgid "samples"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:20 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:21 of
-msgid "The drawn samples."
-msgstr ""
+#~ msgid "The drawn samples."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:25 of
-msgid "The probability density function for the full Cauchy distribution is"
-msgstr ""
+#~ msgid "The probability density function for the full Cauchy distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:27 of
-msgid ""
-"P(x; x_0, \\gamma) = \\frac{1}{\\pi \\gamma \\bigl[ 1+ "
-"(\\frac{x-x_0}{\\gamma})^2 \\bigr] }"
-msgstr ""
+#~ msgid ""
+#~ "P(x; x_0, \\gamma) = \\frac{1}{\\pi "
+#~ "\\gamma \\bigl[ 1+ (\\frac{x-x_0}{\\gamma})^2 "
+#~ "\\bigr] }"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:30 of
-msgid ""
-"and the Standard Cauchy distribution just sets :math:`x_0=0` and "
-":math:`\\gamma=1`"
-msgstr ""
+#~ msgid ""
+#~ "and the Standard Cauchy distribution "
+#~ "just sets :math:`x_0=0` and :math:`\\gamma=1`"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:33 of
-msgid ""
-"The Cauchy distribution arises in the solution to the driven harmonic "
-"oscillator problem, and also describes spectral line broadening. It also "
-"describes the distribution of values at which a line tilted at a random "
-"angle will cut the x axis."
-msgstr ""
+#~ msgid ""
+#~ "The Cauchy distribution arises in the"
+#~ " solution to the driven harmonic "
+#~ "oscillator problem, and also describes "
+#~ "spectral line broadening. It also "
+#~ "describes the distribution of values at"
+#~ " which a line tilted at a "
+#~ "random angle will cut the x axis."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:38 of
-msgid ""
-"When studying hypothesis tests that assume normality, seeing how the "
-"tests perform on data from a Cauchy distribution is a good indicator of "
-"their sensitivity to a heavy-tailed distribution, since the Cauchy looks "
-"very much like a Gaussian distribution, but with heavier tails."
-msgstr ""
+#~ msgid ""
+#~ "When studying hypothesis tests that "
+#~ "assume normality, seeing how the tests"
+#~ " perform on data from a Cauchy "
+#~ "distribution is a good indicator of "
+#~ "their sensitivity to a heavy-tailed "
+#~ "distribution, since the Cauchy looks "
+#~ "very much like a Gaussian distribution,"
+#~ " but with heavier tails."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:45 of
-msgid ""
-"NIST/SEMATECH e-Handbook of Statistical Methods, \"Cauchy Distribution\","
-" http://www.itl.nist.gov/div898/handbook/eda/section3/eda3663.htm"
-msgstr ""
+#~ msgid ""
+#~ "NIST/SEMATECH e-Handbook of Statistical "
+#~ "Methods, \"Cauchy Distribution\", "
+#~ "http://www.itl.nist.gov/div898/handbook/eda/section3/eda3663.htm"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:48 of
-msgid ""
-"Weisstein, Eric W. \"Cauchy Distribution.\" From MathWorld--A Wolfram Web"
-" Resource. http://mathworld.wolfram.com/CauchyDistribution.html"
-msgstr ""
+#~ msgid ""
+#~ "Weisstein, Eric W. \"Cauchy Distribution.\""
+#~ " From MathWorld--A Wolfram Web "
+#~ "Resource. http://mathworld.wolfram.com/CauchyDistribution.html"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:51 of
-msgid ""
-"Wikipedia, \"Cauchy distribution\" "
-"http://en.wikipedia.org/wiki/Cauchy_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Cauchy distribution\" "
+#~ "http://en.wikipedia.org/wiki/Cauchy_distribution"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_cauchy:56 of
-msgid "Draw samples and plot the distribution:"
-msgstr ""
+#~ msgid "Draw samples and plot the distribution:"
+#~ msgstr ""
 

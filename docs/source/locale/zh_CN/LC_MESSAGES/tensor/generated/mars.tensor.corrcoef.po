@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,10 +30,6 @@ msgid ""
 "Please refer to the documentation for `cov` for more detail.  The "
 "relationship between the correlation coefficient matrix, `R`, and the "
 "covariance matrix, `C`, is"
-msgstr ""
-
-#: mars.tensor.corrcoef:7 of
-msgid "R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }"
 msgstr ""
 
 #: mars.tensor.corrcoef:9 of
@@ -116,4 +112,7 @@ msgid ""
 "These arguments had no effect on the return values of the function and "
 "can be safely ignored in this and previous versions of numpy."
 msgstr ""
+
+#~ msgid "R_{ij} = \\frac{ C_{ij} } { \\sqrt{ C_{ii} * C_{jj} } }"
+#~ msgstr ""
 

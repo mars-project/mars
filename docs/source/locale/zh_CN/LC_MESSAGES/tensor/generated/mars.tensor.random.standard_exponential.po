@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,80 +21,65 @@ msgstr ""
 msgid "mars.tensor.random.standard\\_exponential"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:1 of
-msgid "Draw samples from the standard exponential distribution."
-msgstr ""
+#~ msgid "Draw samples from the standard exponential distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:3 of
-msgid ""
-"`standard_exponential` is identical to the exponential distribution with "
-"a scale parameter of 1."
-msgstr ""
+#~ msgid ""
+#~ "`standard_exponential` is identical to the "
+#~ "exponential distribution with a scale "
+#~ "parameter of 1."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:10 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:9 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:9 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  Default is None, in which case a single value is"
-" returned."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  Default is None, in which case "
+#~ "a single value is returned."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:12 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:11 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:13 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:14 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:13 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:15 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:17 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:16 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:17 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:22 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:21 of
-msgid "float or Tensor"
-msgstr ""
+#~ msgid "float or Tensor"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:22 of
-msgid "Drawn samples."
-msgstr ""
+#~ msgid "Drawn samples."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.standard_exponential:26 of
-msgid "Output a 3x8000 tensor:"
-msgstr ""
+#~ msgid "Output a 3x8000 tensor:"
+#~ msgstr ""
 

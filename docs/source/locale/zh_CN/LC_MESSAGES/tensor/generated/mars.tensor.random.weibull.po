@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 13:32+0800\n"
+"POT-Creation-Date: 2019-03-12 12:16+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,172 +21,154 @@ msgstr ""
 msgid "mars.tensor.random.weibull"
 msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:1 of
-msgid "Draw samples from a Weibull distribution."
-msgstr ""
+#~ msgid "Draw samples from a Weibull distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:3 of
-msgid ""
-"Draw samples from a 1-parameter Weibull distribution with the given shape"
-" parameter `a`."
-msgstr ""
+#~ msgid ""
+#~ "Draw samples from a 1-parameter Weibull"
+#~ " distribution with the given shape "
+#~ "parameter `a`."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:6 of
-msgid "X = (-ln(U))^{1/a}"
-msgstr ""
+#~ msgid "X = (-ln(U))^{1/a}"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:8 of
-msgid "Here, U is drawn from the uniform distribution over (0,1]."
-msgstr ""
+#~ msgid "Here, U is drawn from the uniform distribution over (0,1]."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:10 of
-msgid ""
-"The more common 2-parameter Weibull, including a scale parameter "
-":math:`\\lambda` is just :math:`X = \\lambda(-ln(U))^{1/a}`."
-msgstr ""
+#~ msgid ""
+#~ "The more common 2-parameter Weibull, "
+#~ "including a scale parameter :math:`\\lambda`"
+#~ " is just :math:`X = "
+#~ "\\lambda(-ln(U))^{1/a}`."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:15 of
-msgid "a"
-msgstr ""
+#~ msgid "a"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:14 of
-msgid "float or array_like of floats"
-msgstr ""
+#~ msgid "float or array_like of floats"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:16 of
-msgid "Shape of the distribution. Should be greater than zero."
-msgstr ""
+#~ msgid "Shape of the distribution. Should be greater than zero."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:20 of
-msgid "size"
-msgstr ""
+#~ msgid "size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:19 of
-msgid "int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:18 of
-msgid ""
-"Output shape.  If the given shape is, e.g., ``(m, n, k)``, then ``m * n *"
-" k`` samples are drawn.  If size is ``None`` (default), a single value is"
-" returned if ``a`` is a scalar.  Otherwise, ``mt.array(a).size`` samples "
-"are drawn."
-msgstr ""
+#~ msgid ""
+#~ "Output shape.  If the given shape "
+#~ "is, e.g., ``(m, n, k)``, then ``m"
+#~ " * n * k`` samples are drawn."
+#~ "  If size is ``None`` (default), a"
+#~ " single value is returned if ``a``"
+#~ " is a scalar.  Otherwise, "
+#~ "``mt.array(a).size`` samples are drawn."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:22 of
-msgid "chunk_size"
-msgstr ""
+#~ msgid "chunk_size"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:21 of
-msgid "int or tuple of int or tuple of ints, optional"
-msgstr ""
+#~ msgid "int or tuple of int or tuple of ints, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:23 of
-msgid "Desired chunk size on each dimension"
-msgstr ""
+#~ msgid "Desired chunk size on each dimension"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:24 of
-msgid "gpu"
-msgstr ""
+#~ msgid "gpu"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:23 of
-msgid "bool, optional"
-msgstr ""
+#~ msgid "bool, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:25 of
-msgid "Allocate the tensor on GPU if True, False as default"
-msgstr ""
+#~ msgid "Allocate the tensor on GPU if True, False as default"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:27 of
-msgid "dtype"
-msgstr ""
+#~ msgid "dtype"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:26 of
-msgid "data-type, optional"
-msgstr ""
+#~ msgid "data-type, optional"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:27 of
-msgid "Data-type of the returned tensor."
-msgstr ""
+#~ msgid "Data-type of the returned tensor."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:32 of
-msgid "out"
-msgstr ""
+#~ msgid "out"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:31 of
-msgid "Tensor or scalar"
-msgstr ""
+#~ msgid "Tensor or scalar"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:32 of
-msgid "Drawn samples from the parameterized Weibull distribution."
-msgstr ""
+#~ msgid "Drawn samples from the parameterized Weibull distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:36 of
-msgid ""
-"scipy.stats.weibull_max scipy.stats.weibull_min scipy.stats.genextreme "
-"gumbel"
-msgstr ""
+#~ msgid ""
+#~ "scipy.stats.weibull_max scipy.stats.weibull_min "
+#~ "scipy.stats.genextreme gumbel"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:43 of
-msgid ""
-"The Weibull (or Type III asymptotic extreme value distribution for "
-"smallest values, SEV Type III, or Rosin-Rammler distribution) is one of a"
-" class of Generalized Extreme Value (GEV) distributions used in modeling "
-"extreme value problems. This class includes the Gumbel and Frechet "
-"distributions."
-msgstr ""
+#~ msgid ""
+#~ "The Weibull (or Type III asymptotic "
+#~ "extreme value distribution for smallest "
+#~ "values, SEV Type III, or Rosin-"
+#~ "Rammler distribution) is one of a "
+#~ "class of Generalized Extreme Value (GEV)"
+#~ " distributions used in modeling extreme "
+#~ "value problems. This class includes the"
+#~ " Gumbel and Frechet distributions."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:49 of
-msgid "The probability density for the Weibull distribution is"
-msgstr ""
+#~ msgid "The probability density for the Weibull distribution is"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:51 of
-msgid "p(x) = \\frac{a} {\\lambda}(\\frac{x}{\\lambda})^{a-1}e^{-(x/\\lambda)^a},"
-msgstr ""
+#~ msgid ""
+#~ "p(x) = \\frac{a} "
+#~ "{\\lambda}(\\frac{x}{\\lambda})^{a-1}e^{-(x/\\lambda)^a},"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:54 of
-msgid "where :math:`a` is the shape and :math:`\\lambda` the scale."
-msgstr ""
+#~ msgid "where :math:`a` is the shape and :math:`\\lambda` the scale."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:56 of
-msgid ""
-"The function has its peak (the mode) at "
-":math:`\\lambda(\\frac{a-1}{a})^{1/a}`."
-msgstr ""
+#~ msgid ""
+#~ "The function has its peak (the "
+#~ "mode) at :math:`\\lambda(\\frac{a-1}{a})^{1/a}`."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:59 of
-msgid ""
-"When ``a = 1``, the Weibull distribution reduces to the exponential "
-"distribution."
-msgstr ""
+#~ msgid ""
+#~ "When ``a = 1``, the Weibull "
+#~ "distribution reduces to the exponential "
+#~ "distribution."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:64 of
-msgid ""
-"Waloddi Weibull, Royal Technical University, Stockholm, 1939 \"A "
-"Statistical Theory Of The Strength Of Materials\", "
-"Ingeniorsvetenskapsakademiens Handlingar Nr 151, 1939, Generalstabens "
-"Litografiska Anstalts Forlag, Stockholm."
-msgstr ""
+#~ msgid ""
+#~ "Waloddi Weibull, Royal Technical University,"
+#~ " Stockholm, 1939 \"A Statistical Theory "
+#~ "Of The Strength Of Materials\", "
+#~ "Ingeniorsvetenskapsakademiens Handlingar Nr 151, "
+#~ "1939, Generalstabens Litografiska Anstalts "
+#~ "Forlag, Stockholm."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:68 of
-msgid ""
-"Waloddi Weibull, \"A Statistical Distribution Function of Wide "
-"Applicability\", Journal Of Applied Mechanics ASME Paper 1951."
-msgstr ""
+#~ msgid ""
+#~ "Waloddi Weibull, \"A Statistical Distribution"
+#~ " Function of Wide Applicability\", Journal"
+#~ " Of Applied Mechanics ASME Paper "
+#~ "1951."
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:71 of
-msgid ""
-"Wikipedia, \"Weibull distribution\", "
-"http://en.wikipedia.org/wiki/Weibull_distribution"
-msgstr ""
+#~ msgid ""
+#~ "Wikipedia, \"Weibull distribution\", "
+#~ "http://en.wikipedia.org/wiki/Weibull_distribution"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:76 of
-msgid "Draw samples from the distribution:"
-msgstr ""
+#~ msgid "Draw samples from the distribution:"
+#~ msgstr ""
 
-#: ../../docstring mars.tensor.random.weibull:83 of
-msgid ""
-"Display the histogram of the samples, along with the probability density "
-"function:"
-msgstr ""
+#~ msgid ""
+#~ "Display the histogram of the samples,"
+#~ " along with the probability density "
+#~ "function:"
+#~ msgstr ""
 
