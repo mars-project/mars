@@ -19,51 +19,51 @@ msgstr ""
 
 #: ../../source/tensor/execution.rst:2
 msgid "Local Execution"
-msgstr ""
+msgstr "本地执行"
 
 #: ../../source/tensor/execution.rst:4
 msgid ""
 "Mars tensor will not be executed unless users call ``execute`` or "
 "``session.run`` methods."
-msgstr ""
+msgstr "除非用户调用``execute``或使用``session.run``方法，否则不会执行Mars张量。"
 
 #: ../../source/tensor/execution.rst:6
 msgid ""
 "If no session is created explicitly, the ``execute`` will create a local "
 "session, and mark it as a default session."
-msgstr ""
+msgstr "如果未明确``execute``创建会话，则将创建本地会话，并将其标记为默认会话。"
 
 #: ../../source/tensor/execution.rst:9
 msgid "Session"
-msgstr ""
+msgstr "会话"
 
 #: ../../source/tensor/execution.rst:11
 msgid ""
 "Users can create a new session by ``new_session`` method, if no argument "
 "is provided, a local session will be generated."
-msgstr ""
+msgstr "用户可以通过``new_session``方法创建新会话，如果未提供参数，则将生成本地会话。"
 
 #: ../../source/tensor/execution.rst:21
 msgid ""
 "By calling ``as_default`` of a session, the session will be marked as the"
 " default session."
-msgstr ""
+msgstr "通过调用``as_default``会话，会话将被标记为默认会话。"
 
 #: ../../source/tensor/execution.rst:29
 msgid ""
 "More than one mars tensors can be passed to ``session.run``, and "
 "calculate the results for each tensor."
-msgstr ""
+msgstr "可以传递多个mars张量给``session.run``，并计算每个张量的结果"
 
 #: ../../source/tensor/execution.rst:49
 msgid "Execute a tensor"
-msgstr ""
+msgstr "执行张量"
 
 #: ../../source/tensor/execution.rst:51
 msgid "For a single tensor, ``execute`` can be called."
-msgstr ""
+msgstr "对于单个张量，``execute``可以调用。"
 
 #: ../../source/tensor/execution.rst:59
 msgid "Session can be specified by the argument ``session=``."
-msgstr ""
+msgstr "会话可以由参数指定``session=``。"
 
