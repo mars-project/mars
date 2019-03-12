@@ -44,16 +44,23 @@ class Test(unittest.TestCase):
         t2 = mt.sum((t / 2) - 1, axis=0)
 
         g = t2.build_graph(tiled=True, compose=True)
-        graph_nodes = list(g)
+        graph_nodes = list(g.bfs())
         self.assertTrue(all(isinstance(n.op, TensorFuseChunk) for n in graph_nodes))
 
-        fuse_node = graph_nodes[0]
-        self.assertEqual(fuse_node.shape, (1, 3))
-        self.assertEqual(len(fuse_node.composed), 4)
-        self.assertIsInstance(fuse_node.composed[0].op, operands.Rand)
-        self.assertIsInstance(fuse_node.composed[1].op, operands.TDivConstant)
-        self.assertIsInstance(fuse_node.composed[2].op, operands.SubConstant)
-        self.assertIsInstance(fuse_node.composed[3].op, operands.Sum)
+        reduction_node = graph_nodes[-1]
+        self.assertEqual(reduction_node.shape, (3,))
+        self.assertEqual(len(reduction_node.composed), 2)
+        self.assertEqual(reduction_node.inputs, reduction_node.composed[0].inputs)
+        self.assertIsInstance(reduction_node.composed[0].op, operands.Concatenate)
+        self.assertIsInstance(reduction_node.composed[1].op, operands.Sum)
+
+        agg_node = graph_nodes[0]
+        self.assertEqual(agg_node.shape, (1, 3))
+        self.assertEqual(len(agg_node.composed), 4)
+        self.assertIsInstance(agg_node.composed[0].op, operands.Rand)
+        self.assertIsInstance(agg_node.composed[1].op, operands.TDivConstant)
+        self.assertIsInstance(agg_node.composed[2].op, operands.SubConstant)
+        self.assertIsInstance(agg_node.composed[3].op, operands.Sum)
 
     def testSparse(self):
         data = sps.rand(9, 9, density=0.1)
