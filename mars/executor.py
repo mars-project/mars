@@ -641,13 +641,24 @@ def default_size_estimator(ctx, chunk, multiplier=1):
         ctx[out.key] = (store_size, exec_size // len(outputs))
 
 
+def size_estimator_wrapper(ctx, chunk, original_estimator=None):
+    try:
+        return original_estimator(ctx, chunk)
+    except NotImplementedError:
+        return default_size_estimator(ctx, chunk)
+
+
 Executor._op_runners[Fetch] = ignore
 
 
 def register(op, handler, size_estimator=None, size_multiplier=1):
     Executor._op_runners[op] = handler
-    Executor._op_size_estimators[op] = size_estimator or \
-        functools.partial(default_size_estimator, multiplier=size_multiplier)
+    if size_estimator:
+        Executor._op_size_estimators[op] = \
+            functools.partial(size_estimator_wrapper, original_estimator=size_estimator)
+    else:
+        Executor._op_size_estimators[op] = size_estimator or \
+            functools.partial(default_size_estimator, multiplier=size_multiplier)
 
 
 # register tensor and dataframe execution handler

@@ -256,8 +256,8 @@ class TaskQueueAllocatorActor(WorkerActor):
 
             # obtain quota sizes for operands
             quota_request = self._execution_ref.prepare_quota_request(item.session_id, item.op_key)
-            logger.debug('Quota request for %s in %s: %r', item.op_key, self.address, quota_request)
             if quota_request:
+                logger.debug('Quota request for %s in %s: %r', item.op_key, self.address, quota_request)
                 local_cb = ((self._queue_ref.uid, self._queue_ref.address),
                             TaskQueueActor.handle_allocated.__name__,
                             item.session_id, item.op_key, item.callback)

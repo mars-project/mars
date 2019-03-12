@@ -80,6 +80,7 @@ class ChunkHolderActor(WorkerActor):
         from .status import StatusActor
 
         super(ChunkHolderActor, self).post_create()
+        self.register_process_down_handler()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
 
         self._plasma_limit = self._chunk_store.get_actual_capacity(self._plasma_limit)
@@ -120,7 +121,7 @@ class ChunkHolderActor(WorkerActor):
             request_size = self._min_spill_size
         request_size *= multiplier
         if request_size > self._plasma_limit:
-            raise SpillExhausted
+            raise NoDataToSpill
         if request_size > self._max_spill_size:
             request_size = self._max_spill_size
 
@@ -140,7 +141,7 @@ class ChunkHolderActor(WorkerActor):
 
             if not free_keys:
                 logger.warning('Cannot spill further. Rejected. request=%d', request_size)
-                raise SpillExhausted
+                raise NoDataToSpill
 
             logger.debug('Decide to spill %d chunks. request=%d', len(free_keys), request_size)
 
@@ -247,7 +248,9 @@ class ChunkHolderActor(WorkerActor):
     def pin_chunks(self, graph_key, chunk_keys):
         if isinstance(chunk_keys, six.string_types):
             chunk_keys = (chunk_keys,)
-        if any(k in self._spill_pending_keys for k in chunk_keys):
+        spilling_keys = list(k for k in chunk_keys if k in self._spill_pending_keys)
+        if spilling_keys:
+            logger.warning('Cannot pin chunks %r', spilling_keys)
             raise PinChunkFailed
         pinned = []
         for k in chunk_keys:

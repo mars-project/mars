@@ -368,20 +368,24 @@ class PromiseActor(FunctionActor):
         del self._promises[promise_id]
         del self._promise_ref_keys[promise_id]
 
-    def reject_promise_ref(self, ref, *args, **kwargs):
+    def reject_promise_refs(self, refs, *args, **kwargs):
         """
         Reject all promises related to given actor ref
-        :param ref: actor ref to reject
+        :param refs: actor refs to reject
         """
         kwargs['_accept'] = False
-        ref_key = (ref.uid, ref.address)
-        if ref_key not in self._ref_key_promises:
-            return
-        for promise_id in list(self._ref_key_promises[ref_key]):
-            p = self.get_promise(promise_id)
-            if p is None:
+        handled_refs = []
+        for ref in refs:
+            ref_key = (ref.uid, ref.address)
+            if ref_key not in self._ref_key_promises:
                 continue
-            p.step_next(*args, **kwargs)
+            handled_refs.append(ref)
+            for promise_id in list(self._ref_key_promises[ref_key]):
+                p = self.get_promise(promise_id)
+                if p is None:
+                    continue
+                p.step_next(*args, **kwargs)
+        return handled_refs
 
     def tell_promise(self, callback, *args, **kwargs):
         """

@@ -122,6 +122,13 @@ def _tensordot(ctx, chunk):
             ctx[chunk.key] = xp.tensordot(a, b, axes)
 
 
+def _tensordot_estimate_size(ctx, chunk):
+    if chunk.is_sparse():
+        raise NotImplementedError
+    # empirical value in real environments
+    ctx[chunk.key] = (chunk.nbytes, int(chunk.nbytes * 2.5))
+
+
 def _dot(ctx, chunk):
     (a, b), device_id, xp = as_same_device(
         [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
@@ -157,6 +164,6 @@ def register_linalg_handler():
     register(SolveTriangular, _solve_triangular)
     register(LU, _lu)
     register(Norm, _norm)
-    register(TensorDot, _tensordot)
+    register(TensorDot, _tensordot, _tensordot_estimate_size)
     register(Dot, _dot)
     register(Matmul, _matmul)
