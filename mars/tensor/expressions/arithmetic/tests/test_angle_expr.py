@@ -47,12 +47,13 @@ class Test(TestBase):
 
     def testDenseExpr(self):
         t1 = tensor(self.raw_data, chunk_size=(3, 4))
-        t = angle(t1)
+        t = angle(t1, deg=True)
         t.tiles()
 
         self.assertEqual(t.shape, self.raw_data.shape)
         self.assertEqual(t.chunk_shape, (3, 2))
         self.assertEqual(t.dtype, self.raw_data.dtype)
+        self.assertTrue(t.op.deg)
         self.assertFalse(t.issparse())
 
         # test each chunk
@@ -64,17 +65,20 @@ class Test(TestBase):
             self.assertEqual(chunk.index, t1.chunks[i].index)
             # test chunk's dtype
             self.assertEqual(chunk.dtype, t.dtype)
+            # test chunk's deg
+            self.assertTrue(chunk.op.deg)
             # test chunk's sparse
             self.assertFalse(chunk.issparse())
 
     def testSparseExpr(self):
         t1 = tensor(self.raw_sparse_data, chunk_size=(3, 4))
-        t = angle(t1)
+        t = angle(t1, deg=True)
         t.tiles()
 
         self.assertEqual(t.shape, self.raw_sparse_data.shape)
         self.assertEqual(t.chunk_shape, (3, 2))
         self.assertEqual(t.dtype, self.raw_sparse_data.dtype)
+        self.assertTrue(t.op.deg)
         self.assertTrue(t.issparse())
 
         # test each chunk
@@ -86,5 +90,7 @@ class Test(TestBase):
             self.assertEqual(chunk.index, t1.chunks[i].index)
             # test chunk's dtype
             self.assertEqual(chunk.dtype, t.dtype)
+            # test chunk's deg
+            self.assertTrue(chunk.op.deg)
             # test chunk's sparse
             self.assertTrue(chunk.issparse())
