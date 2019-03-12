@@ -58,7 +58,7 @@ class Test(unittest.TestCase):
         self.assertEqual(agg_node.shape, (1, 3))
         self.assertEqual(len(agg_node.composed), 4)
         self.assertIsInstance(agg_node.composed[0].op, operands.Rand)
-        self.assertIsInstance(agg_node.composed[1].op, operands.TDivConstant)
+        self.assertIsInstance(agg_node.composed[1].op, (operands.TDivConstant, operands.DivConstant))
         self.assertIsInstance(agg_node.composed[2].op, operands.SubConstant)
         self.assertIsInstance(agg_node.composed[3].op, operands.Sum)
 
@@ -78,7 +78,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(fuse_node.composed), 3)
         self.assertIsInstance(fuse_node.composed[0].op, CSRMatrixDataSource)
         self.assertIsInstance(fuse_node.composed[1].op, operands.MulConstant)
-        self.assertIsInstance(fuse_node.composed[2].op, operands.TDivConstant)
+        self.assertIsInstance(fuse_node.composed[2].op, (operands.TDivConstant, operands.DivConstant))
         self.assertTrue(all(c.op.sparse for c in fuse_node.composed))
 
         # add constant will convert sparse matrix to dense matrix
