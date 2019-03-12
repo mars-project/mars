@@ -30,7 +30,7 @@ from .logaddexp import logaddexp, TensorLogAddExp, TensorLAEConstant
 from .logaddexp2 import logaddexp2, TensorLogAddExp2, TensorLAE2Constant
 from .negative import negative, TensorNegative
 from .positive import positive, TensorPositive
-from .absolute import absolute, TensorAbsolute
+from .absolute import absolute, TensorAbsolute, absolute as abs
 from .fabs import fabs, TensorFabs
 from .rint import rint, TensorRint
 from .sign import sign, TensorSign
