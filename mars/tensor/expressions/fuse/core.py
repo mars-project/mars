@@ -20,8 +20,8 @@ from ..core import TensorOperandMixin
 
 
 class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
-    def __init__(self, dtype=None, **kw):
-        super(TensorFuseChunk, self).__init__(_dtype=dtype, **kw)
+    def __init__(self, dtype=None, sparse=False, **kw):
+        super(TensorFuseChunk, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
     def calc_shape(self, *inputs_shape):
         in_shapes = inputs_shape
