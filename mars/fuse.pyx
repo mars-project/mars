@@ -41,7 +41,7 @@ class Fusion(object):
         for c in composes:
             head_node = c[0]
             tail_node = c[-1]
-            fuse_op = TensorFuseChunk(dtype=tail_node.dtype, _key=tail_node.op.key)
+            fuse_op = TensorFuseChunk(dtype=tail_node.dtype, sparse=tail_node.op.sparse, _key=tail_node.op.key)
             fuse_chunk = fuse_op.new_chunk(head_node.inputs, tail_node.shape,
                                            index=tail_node.index, _key=tail_node.key,
                                            _composed=c)
