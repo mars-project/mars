@@ -29,7 +29,7 @@ msgid ""
 "<routines/random>`."
 msgstr ""
 "您可以像对象一样从Python数组创建mars tensor，就像Numpy一样，"
-"或者直接从Numpy数组创建。关于:doc:`阵列创建例程<routines/creation>`和:doc:`随机抽样<routines/random>`的更多细节。
+"或者直接从Numpy数组创建。关于 :doc:`阵列创建例程<routines/creation>` 和 :doc:`随机抽样<routines/random>` 的更多细节。
 
 #: ../../source/tensor/datasource.rst:14:<autosummary>:1
 msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"
@@ -52,7 +52,7 @@ msgid ""
 "Mars tensor can run on GPU, for tensor creation, just add a ``gpu`` "
 "parameter, and set it to ``True``."
 msgstr ""
-"Mars张量可以在GPU上运行，用于张量创建，只需添加一个``gpu``参数，然后将其设置为``True``。"
+"Mars张量可以在GPU上运行，用于张量创建，只需添加一个 ``gpu`` 参数，然后将其设置为 ``True`` 。"
 #: ../../source/tensor/datasource.rst:28
 msgid "Create sparse tensor"
 msgstr "创建稀疏张量"
@@ -76,7 +76,7 @@ msgid ""
 "fact is that chunk's size may effect heavily on the performance of "
 "execution."
 msgstr "Mars 张量中，我们将张量分块处理。"
-"``chunk_size``不是必须的，对于默认设置，块的字节占用将为128M。"
+" ``chunk_size`` 不是必须的，对于默认设置，块的字节占用将为128M。"
 "但是，用户可以以更灵活的方式指定每个块的大小，这可以适应数据规模。"
 "事实是，块的大小可能会严重影响执行的性能。"
 
@@ -90,17 +90,17 @@ msgstr "下面列出了影响块大小的选项或参数："
 msgid ""
 "Change ``options.tensor.chunk_size_limit`` which is 128*1024*1024(128M) "
 "by default."
-msgstr "``options.tensor.chunk_size_limit``默认情况下更改为128 * 1024 * 1024(128M)。"
+msgstr " ``options.tensor.chunk_size_limit`` 默认情况下更改为128 * 1024 * 1024(128M)。"
 
 #: ../../source/tensor/datasource.rst:51
 msgid ""
 "Specify ``chunk_size`` as integer, like ``5000``, means chunk's size is "
 "5000 at most for all dimensions"
-msgstr "指定``chunk_size``为整数，``5000``表示所有维度的块大小最多为5000"
+msgstr "指定 ``chunk_size`` 为整数， ``5000`` 表示所有维度的块大小最多为5000"
 
 #: ../../source/tensor/datasource.rst:52
 msgid "Specify ``chunk_size`` as tuple, like ``(5000, 3000)``"
-msgstr "指定``chunk_size``为元组，如``(5000, 3000)``"
+msgstr "指定 ``chunk_size`` 为元组，如 ``(5000, 3000)`` "
 
 #: ../../source/tensor/datasource.rst:53
 msgid ""
@@ -118,7 +118,7 @@ msgstr "假设我们有这样的张量，数据如下所示。"
 
 #: ../../source/tensor/datasource.rst:71
 msgid "We will show how different ``chunk_size=`` arguments will tile the tensor."
-msgstr "我们将展示不同的``chunk_size=``论证将如何平衡张量。"
+msgstr "我们将展示不同的 ``chunk_size=`` 论证将如何平衡张量。"
 
 #: ../../source/tensor/datasource.rst:73
 msgid "``chunk_size=3``:"

@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/fft.rst:4
 msgid "Discrete Fourier Transform"
-msgstr ""
+msgstr "离散傅立叶变换"
 
 #: ../../source/tensor/fft.rst:8
 msgid "Standard FFTs"
-msgstr ""
+msgstr "标准FFTs"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fft <mars.tensor.fft.fft>`"

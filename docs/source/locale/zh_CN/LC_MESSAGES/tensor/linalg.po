@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/linalg.rst:2
 msgid "Linear Algebra (``mars.tensor.linalg``)"
-msgstr ""
+msgstr "线性代数 (``mars.tensor.linalg``)"
 
 #: ../../source/tensor/linalg.rst:5
 msgid "Matrix and vector products"
