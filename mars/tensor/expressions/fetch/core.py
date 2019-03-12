@@ -31,9 +31,9 @@ class TensorFetchMixin(TensorOperandMixin):
 
 
 class TensorFetch(Fetch, TensorFetchMixin):
-    def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
+    def __init__(self, dtype=None, to_fetch_key=None, **kw):
         super(TensorFetch, self).__init__(
-            _dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
+            _dtype=dtype, _to_fetch_key=to_fetch_key, **kw)
 
     def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
