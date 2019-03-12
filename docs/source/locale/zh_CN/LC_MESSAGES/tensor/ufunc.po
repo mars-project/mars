@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-04 10:40+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,6 +20,7 @@ msgstr ""
 #: ../../source/tensor/ufunc.rst:2
 msgid "Universal Functions (ufunc)"
 msgstr ""
+"通用函数(ufunc)"
 
 #: ../../source/tensor/ufunc.rst:4
 msgid ""
@@ -27,32 +28,40 @@ msgid ""
 " elementwise operations. Mars tensor's ufunc supports following features "
 "of Numpy's one:"
 msgstr ""
+"Mars tensor提供通用函数(a.k.a ufuncs)来支持各种元素操作。"
+"Mars tensor的ufunc支持Numpy的以下功能："
 
 #: ../../source/tensor/ufunc.rst:7
 msgid "Broadcasting"
 msgstr ""
+"广播"
 
 #: ../../source/tensor/ufunc.rst:8
 msgid "Output type determination"
 msgstr ""
+"输出类型确定"
 
 #: ../../source/tensor/ufunc.rst:9
 msgid "Casting rules"
 msgstr ""
+"类型转换规则"
 
 #: ../../source/tensor/ufunc.rst:11
 msgid ""
 "Mars tensor's ufunc currently does not support methods like ``reduce``, "
 "``accumulate``, ``reduceat``, ``outer``, and ``at``."
 msgstr ""
+"Mars张量ufunc目前不支持包括方法有 ``accumulate``, ``reduceat``, ``outer``, 和 ``at``。"
 
 #: ../../source/tensor/ufunc.rst:15
 msgid "Available ufuncs"
 msgstr ""
+"可用的ufuncs"
 
 #: ../../source/tensor/ufunc.rst:18
 msgid "Math operations"
 msgstr ""
+"数学运算"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.add <mars.tensor.add>`"

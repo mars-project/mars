@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2019-01-11 15:52+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,10 +20,12 @@ msgstr ""
 #: ../../source/tensor/random.rst:4
 msgid "Random Sampling (``mars.tensor.random``)"
 msgstr ""
+"随机抽样 (``mars.tensor.random``)"
 
 #: ../../source/tensor/random.rst:7
 msgid "Sample random data"
 msgstr ""
+"随机数据样本"
 
 #: ../../source/tensor/random.rst:24:<autosummary>:1
 msgid ":obj:`mars.tensor.random.rand <mars.tensor.random.rand>`"
