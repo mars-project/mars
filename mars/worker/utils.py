@@ -15,11 +15,13 @@
 import logging
 import math
 import os
+import sys
 import time
 from collections import OrderedDict
 
 from ..actors import ActorNotExist
 from ..compat import OrderedDict3
+from ..errors import WorkerProcessStopped
 from ..config import options
 from ..promise import PromiseActor
 from ..cluster_info import HasClusterInfoActor
@@ -57,6 +59,27 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         addr = self.get_scheduler((session_id, chunk_key))
         actor_cls = LocalChunkMetaActor if local else ChunkMetaActor
         return self.ctx.actor_ref(actor_cls.default_name(), address=addr)
+
+    def handle_process_down(self, halt_refs):
+        """
+        Handle process down event
+        :param halt_refs: actor refs in halt processes
+        """
+        try:
+            raise WorkerProcessStopped
+        except WorkerProcessStopped:
+            exc_info = sys.exc_info()
+
+        handled_refs = self.reject_promise_refs(halt_refs, *exc_info)
+        logger.debug('Process halt detected. Affected promises %r rejected.',
+                     [ref.uid for ref in handled_refs])
+
+    def register_process_down_handler(self):
+        from .daemon import WorkerDaemonActor
+
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        if self.ctx.has_actor(daemon_ref):
+            daemon_ref.register_callback(self.ref(), self.handle_process_down.__name__, _tell=True)
 
 
 class ExpMeanHolder(object):

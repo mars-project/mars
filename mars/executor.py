@@ -603,7 +603,13 @@ def ignore(*_):
 
 
 def default_size_estimator(ctx, chunk, multiplier=1):
-    exec_size = int(sum(ctx[inp.key][0] for inp in chunk.inputs or ()) * multiplier)
+    exec_size = 0
+    for inp in chunk.inputs or ():
+        if chunk.is_sparse() or np.isnan(inp.nbytes):
+            exec_size += ctx[inp.key][0]
+        else:
+            exec_size += inp.nbytes
+    exec_size = int(exec_size * multiplier)
 
     total_out_size = 0
     chunk_sizes = dict()
@@ -635,13 +641,24 @@ def default_size_estimator(ctx, chunk, multiplier=1):
         ctx[out.key] = (store_size, exec_size // len(outputs))
 
 
+def size_estimator_wrapper(ctx, chunk, original_estimator=None):
+    try:
+        return original_estimator(ctx, chunk)
+    except NotImplementedError:
+        return default_size_estimator(ctx, chunk)
+
+
 Executor._op_runners[Fetch] = ignore
 
 
 def register(op, handler, size_estimator=None, size_multiplier=1):
     Executor._op_runners[op] = handler
-    Executor._op_size_estimators[op] = size_estimator or \
-        functools.partial(default_size_estimator, multiplier=size_multiplier)
+    if size_estimator:
+        Executor._op_size_estimators[op] = \
+            functools.partial(size_estimator_wrapper, original_estimator=size_estimator)
+    else:
+        Executor._op_size_estimators[op] = size_estimator or \
+            functools.partial(default_size_estimator, multiplier=size_multiplier)
 
 
 # register tensor and dataframe execution handler

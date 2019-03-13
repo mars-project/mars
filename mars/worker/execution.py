@@ -149,10 +149,10 @@ class ExecutionActor(WorkerActor):
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
 
         self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
-        if self.ctx.has_actor(self._daemon_ref):
-            self._daemon_ref.register_callback(self.ref(), self.handle_process_down.__name__, _tell=True)
-        else:
+        if not self.ctx.has_actor(self._daemon_ref):
             self._daemon_ref = None
+        else:
+            self.register_process_down_handler()
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
@@ -869,18 +869,3 @@ class ExecutionActor(WorkerActor):
                           for k, v in self._graph_records.items()
                           if v.state not in (ExecutionState.PRE_PUSHED, ExecutionState.ALLOCATING))
             logger.debug('Executing states: %r', states)
-
-    def handle_process_down(self, halt_refs):
-        """
-        Handle process down event
-        :param halt_refs: actor refs in halt processes
-        """
-        logger.debug('Process halt detected. Trying to reject affected promises %r.',
-                     [ref.uid for ref in halt_refs])
-        try:
-            raise WorkerProcessStopped
-        except WorkerProcessStopped:
-            exc_info = sys.exc_info()
-
-        for ref in halt_refs:
-            self.reject_promise_ref(ref, *exc_info)
