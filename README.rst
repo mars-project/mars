@@ -229,7 +229,7 @@ Thank you in advance for your contributions!
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg?style=flat-square
    :target: https://pypi.python.org/pypi/pymars
 .. |Docs| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat-square
-   :target: http://mars-project.readthedocs.org/
+   :target: https://docs.mars-project.io
 .. |License| image:: https://img.shields.io/pypi/l/pymars.svg?style=flat-square
    :target: https://github.com/mars-project/mars/blob/master/LICENSE
 .. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev

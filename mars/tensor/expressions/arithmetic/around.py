@@ -97,6 +97,9 @@ def around(a, decimals=0, out=None, **kwargs):
     array([ 0,  0,  0, 10])
 
     """
+    if 'where' in kwargs:
+        raise TypeError("around() got an unexpected keyword argument 'where'")
+
     dtype = astensor(a).dtype
     op = TensorAround(decimals=decimals, dtype=dtype, **kwargs)
     return op(a, out=out)
