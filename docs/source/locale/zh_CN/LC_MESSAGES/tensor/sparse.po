@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-07 22:26+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,6 +20,7 @@ msgstr ""
 #: ../../source/tensor/sparse.rst:2
 msgid "Sparse tensor"
 msgstr ""
+"稀疏张量"
 
 #: ../../source/tensor/sparse.rst:4
 msgid ""
@@ -27,10 +28,12 @@ msgid ""
 "tensors are available for now. Multi-dimensional sparse tensors will be "
 "supported later."
 msgstr ""
+"Mars支持稀疏张量，但不幸的是，目前只支持二维稀疏张量，以后将支持多维稀疏张量"
 
 #: ../../source/tensor/sparse.rst:8
 msgid "Functions to create sparse tensor"
 msgstr ""
+"创建稀疏张量的函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"
