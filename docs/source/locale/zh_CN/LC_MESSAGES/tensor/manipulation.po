@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2019-02-21 15:10+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,10 +20,12 @@ msgstr ""
 #: ../../source/tensor/manipulation.rst:2
 msgid "Tensor Manipulation Routines"
 msgstr ""
+"Tensor操作例程"
 
 #: ../../source/tensor/manipulation.rst:5
 msgid "Basic manipulations"
 msgstr ""
+"基本操作"
 
 #: ../../source/tensor/manipulation.rst:13:<autosummary>:1
 msgid ":obj:`mars.tensor.copyto <mars.tensor.copyto>`"

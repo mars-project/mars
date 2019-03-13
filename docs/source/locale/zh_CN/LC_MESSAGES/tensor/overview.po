@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-07 17:46+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -20,6 +20,7 @@ msgstr ""
 #: ../../source/tensor/overview.rst:2
 msgid "Overview"
 msgstr ""
+"概述"
 
 #: ../../source/tensor/overview.rst:4
 msgid ""
@@ -29,20 +30,27 @@ msgid ""
 "directed graph. This lets us compute on tensors larger than memory and "
 "take advantage of the ability of multi-cores or distributed clusters."
 msgstr ""
+"Mars tensor 对应 Numpy ndarray,它实现了Numpy ndarray接口的一个子集。"
+"它将一个大张量切分成很多小块，并用有向图描述块之间的计算。这使我们可以在大于内存的张量上进行计算，"
+"并利用多核或分布式集群的能力。"
 
 #: ../../source/tensor/overview.rst:9
 msgid "The following is a brief overview of supported subset of Numpy interface."
 msgstr ""
+"以下是Numpy接口支持子集的简要概述。"
 
 #: ../../source/tensor/overview.rst:11
 msgid ""
 "Arithmetic and mathematics: ``+``, ``-``, ``*``, ``/``, ``exp``, ``log``,"
 " etc."
 msgstr ""
+"算术和数学：``+``, ``-``, ``*``, ``/``, ``exp``, ``log`` 等"
+
 
 #: ../../source/tensor/overview.rst:12
 msgid "Reduction along axes (``sum``, ``max``, ``argmax``, etc)."
 msgstr ""
+"沿轴线聚合(``sum``, ``max``, ``argmax``, 等)"
 
 #: ../../source/tensor/overview.rst:13
 msgid ""
@@ -52,6 +60,11 @@ msgid ""
 "Mars does not only support create array/tensor on GPU, but also support "
 "create sparse tensor."
 msgstr ""
+"大多数的 ` 数组创建程序 "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"creation.html>`_ (``empty``, ``ones_like``, ``diag``, 等)。"
+"更重要的是，Mars不仅支持在GPU上创建数组/张量，还支持创建稀疏张量。"
+
 
 #: ../../source/tensor/overview.rst:16
 msgid ""
@@ -59,6 +72,9 @@ msgid ""
 "<https://docs.scipy.org/doc/numpy/reference/routines.array-"
 "manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, etc.)"
 msgstr ""
+"大部分的 `数组操作例程 "
+"<https://docs.scipy.org/doc/numpy/reference/routines.array-"
+"manipulation.html>`_ (``reshape``, ``rollaxis``, ``concatenate``, 等)"
 
 #: ../../source/tensor/overview.rst:18
 msgid ""
@@ -66,12 +82,16 @@ msgid ""
 "<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
 "(indexing by ints, slices, newaxes, and Ellipsis)"
 msgstr ""
+"`基本索引 "
+"<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
+"(通过整数，切片，添加新维度和省略号进行索引)"
 
 #: ../../source/tensor/overview.rst:20
 msgid ""
 "Fancy indexing along single axis with lists or numpy arrays, e.g. x[[1, "
 "4, 8], :5]"
 msgstr ""
+"使用列表或numpy数组沿单轴的花式索引，例如x [[1,4,8], :5]"
 
 #: ../../source/tensor/overview.rst:21
 msgid ""
@@ -79,6 +99,8 @@ msgid ""
 "<https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_ for "
 "elementwise operations."
 msgstr ""
+"元素运算的 `通用函数 "
+"<https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_"
 
 #: ../../source/tensor/overview.rst:23
 msgid ""
@@ -87,6 +109,10 @@ msgid ""
 "including product (``dot``, ``matmul``, etc.) and decomposition "
 "(``cholesky``, ``svd``, etc.)."
 msgstr ""
+"`线性代数函数 "
+"<https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, "
+"包括乘积 (``dot``, ``matmul``, 等)和分解"
+"(``cholesky``, ``svd``, 等)。"
 
 #: ../../source/tensor/overview.rst:26
 msgid ""
@@ -95,20 +121,25 @@ msgid ""
 "community is sincerely welcomed. The main feature not implemented are "
 "listed below:"
 msgstr ""
+"然而，Mars还没有实现整个Numpy接口，时间限制和难度是主要原因。"
+"我们真诚地欢迎社区的任何贡献。未实现的主要功能如下："
 
 #: ../../source/tensor/overview.rst:29
 msgid "Tensor with unknown shape does not support all operations."
 msgstr ""
+"形状未知的张量不支持所有操作"
 
 #: ../../source/tensor/overview.rst:30
 msgid "Only small subset of ``np.linalg`` are implemented."
 msgstr ""
+"只实现了一小部分 ``np.linalg``"
 
 #: ../../source/tensor/overview.rst:31
 msgid ""
 "Operations like ``sort`` which is hard to execute in parallel are not "
 "implemented."
 msgstr ""
+"像 ``sort`` 这些操作很难高效并行"
 
 #: ../../source/tensor/overview.rst:32
 msgid ""
@@ -116,4 +147,5 @@ msgid ""
 "etc, because the iteration or loops over a large tensor is very "
 "inefficient."
 msgstr ""
-
+"Mars张量没有实现类似 ``tolist`` 和 ``nditer`` 等接口，"
+"因为迭代或者循环处理巨大的张量非常低效。"
