@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/creation.rst:2
 msgid "Tensor Creation Routines"
-msgstr ""
+msgstr "创建 Tensor"
 
 #: ../../source/tensor/creation.rst:5
 msgid "Basic creation routines"
-msgstr ""
+msgstr "基本的创建函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.empty <mars.tensor.empty>`"
@@ -99,7 +99,7 @@ msgstr ""
 
 #: ../../source/tensor/creation.rst:23
 msgid "Creation from other data"
-msgstr ""
+msgstr "从其他数据创建"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.array <mars.tensor.array>`"
@@ -119,7 +119,7 @@ msgstr ""
 
 #: ../../source/tensor/creation.rst:34
 msgid "Numerical ranges"
-msgstr ""
+msgstr "从数值范围创建"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.arange <mars.tensor.arange>`"
@@ -159,7 +159,7 @@ msgstr ""
 
 #: ../../source/tensor/creation.rst:48
 msgid "Building matrices"
-msgstr ""
+msgstr "构建矩阵"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.diag <mars.tensor.diag>`"

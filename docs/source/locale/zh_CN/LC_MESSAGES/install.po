@@ -1,0 +1,141 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-01-18 09:50+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.6.0\n"
+
+#: ../../source/install.rst:2
+msgid "Standalone mode"
+msgstr "单机运行"
+
+#: ../../source/install.rst:5
+msgid "Threaded"
+msgstr "多线程执行模式"
+
+#: ../../source/install.rst:7
+msgid "You can install Mars via pip:"
+msgstr "你可以使用 ``pip`` 安装 Mars："
+
+#: ../../source/install.rst:13
+msgid "After installation, you can simply open a Python console and run"
+msgstr "当安装完成，可启动 Python 命令行并执行"
+
+#: ../../source/install.rst:32
+msgid "Local cluster"
+msgstr "本地集群模式"
+
+#: ../../source/install.rst:34
+msgid ""
+"Users can start the distributed runtime of Mars on a single machine.  "
+"First, install Mars distributed by run"
+msgstr ""
+"你可以在一台机器上启动 Mars 的分布式运行时。首先，使用下面的命令安装"
+"分布式 Mars 及相关组件："
+
+#: ../../source/install.rst:41
+msgid "For now, local cluster mode can only run on Linux and Mac OS."
+msgstr "目前，本地集群模式仅支持 Linux 和 MacOS。"
+
+#: ../../source/install.rst:43
+msgid "Then start a local cluster by run"
+msgstr "此后，使用下面的命令启动一个本地集群"
+
+#: ../../source/install.rst:68
+msgid "Run on Clusters"
+msgstr "在集群中部署"
+
+#: ../../source/install.rst:71
+msgid "Basic Steps"
+msgstr "基本步骤"
+
+#: ../../source/install.rst:73
+msgid "Mars can be deployed on a cluster. First, yu need to run"
+msgstr "Mars 可在集群中部署。首先，你需要在集群中的每个节点运行"
+
+#: ../../source/install.rst:79
+msgid ""
+"on every node in the cluster. This will install dependencies needed for "
+"distributed execution on your cluster. After that, you may select a node "
+"as scheduler and another as web service, leaving other nodes as workers."
+"  The scheduler can be started with the following command:"
+msgstr ""
+"这将会为你的集群安装所有需要的依赖。此后，你可以选择一台机器作为 "
+"Scheduler，另一台作为 Web Service，将其他的机器作为 Worker。你可以使用"
+"下面的命令启动 Scheduler："
+
+#: ../../source/install.rst:88
+msgid "Web service can be started with the following command:"
+msgstr "可以使用下面的命令启动 Web Service："
+
+#: ../../source/install.rst:94
+msgid "Workers can be started with the following command:"
+msgstr "可以使用下面的命令启动 Worker："
+
+#: ../../source/install.rst:100
+msgid ""
+"After all Mars processes are started, you can open a Python console and "
+"run"
+msgstr "当所有 Mars 进程启动后，可启动一个 Python 命令行，执行"
+
+#: ../../source/install.rst:111
+msgid ""
+"You can open a web browser and type ``http://<web_ip>:<ui_port>`` to open"
+" Mars UI to look up resource usage of workers and execution progress of "
+"the task submitted just now."
+msgstr ""
+"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<ui_port>`` 来打开 Mars "
+"UI，查看 Worker 资源使用状况和刚才提交作业的执行进度。"
+
+#: ../../source/install.rst:116
+msgid "Memory Tuning"
+msgstr "内存优化"
+
+#: ../../source/install.rst:117
+#, python-format
+msgid ""
+"Mars worker manages two different parts of memory. The first is private "
+"process memory and the second is shared memory between all worker "
+"processes handled by `plasma_store in Apache Arrow "
+"<https://arrow.apache.org/docs/python/plasma.html>`_. When Mars Worker "
+"starts, it will take 50% of free memory space by default as shared memory"
+" and the left as private process memory. What's more, Mars provides soft "
+"and hard memory limits for memory allocations, which are 75% and 90% by "
+"default. If these configurations does not meet your need, you can "
+"configure them when Mars Worker starts. You can use ``--cache-mem`` "
+"argument to configure the size of shared memory, ``--phy-mem`` to "
+"configure total memory size, from which the soft and hard limits are "
+"computed."
+msgstr ""
+"Mars Worker 管理两个不同部分的内存，第一部分为每个进程的私有内存，第二"
+"部分是使用 `Apache Arrow 中的 plasma_store <https://arrow.apache.org/docs"
+"/python/plasma.html>`_ 管理的共享内存。当 Mars Worker 启动，它将默认使用"
+"当前可用内存的 50% 作为共享内存，将剩余部分作为各进程私有内存使用。"
+"与此同时，Mars 为内存分配提供了软限制和硬限制，分别默认为 75% 和 90%。"
+"如果这些选项不满足你的需要，你可以使用 ``--cache-mem`` 参数配置共享内存的"
+"大小，使用 ``--phy-mem`` 参数配置总内存大小，软限制和硬限制将从这些数值"
+"计算。"
+
+#: ../../source/install.rst:129
+msgid "For instance, by using"
+msgstr "例如，使用"
+
+#: ../../source/install.rst:135
+#, python-format
+msgid ""
+"We limit the size of shared memory as 512MB and the worker can use up to "
+"90% of total physical memory."
+msgstr "可将共享内存限制为 512MB，总内存限制为物理内存的 90%。"
+

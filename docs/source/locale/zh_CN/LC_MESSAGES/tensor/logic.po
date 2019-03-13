@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:2
 msgid "Logic Functions"
-msgstr ""
+msgstr "逻辑函数"
 
 #: ../../source/tensor/logic.rst:5
 msgid "Truth value testing"
-msgstr ""
+msgstr "真值判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.all <mars.tensor.all>`"
@@ -43,7 +43,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:16
 msgid "Array contents"
-msgstr ""
+msgstr "数组值判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.isfinite <mars.tensor.isfinite>`"
@@ -71,7 +71,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:28
 msgid "Array type testing"
-msgstr ""
+msgstr "数组类型判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.iscomplex <mars.tensor.iscomplex>`"
@@ -91,7 +91,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:39
 msgid "Logic operations"
-msgstr ""
+msgstr "逻辑运算"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.logical_and <mars.tensor.logical_and>`"
@@ -127,7 +127,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:52
 msgid "Comparison"
-msgstr ""
+msgstr "比较"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.allclose <mars.tensor.allclose>`"

@@ -1,5 +1,5 @@
-Linear Algebra (``mars.tensor.linalg``)
-=======================================
+Linear Algebra
+==============
 
 Matrix and vector products
 --------------------------
@@ -10,6 +10,7 @@ Matrix and vector products
 
    mars.tensor.dot
    mars.tensor.vdot
+   mars.tensor.inner
    mars.tensor.matmul
    mars.tensor.tensordot
 

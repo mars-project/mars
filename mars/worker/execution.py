@@ -30,7 +30,7 @@ from .utils import WorkerActor
 
 logger = logging.getLogger(__name__)
 
-_WORKER_RETRY_ERRORS = (PinChunkFailed, SpillExhausted, ObjectNotInPlasma)
+_WORKER_RETRY_ERRORS = (PinChunkFailed, NoDataToSpill, ObjectNotInPlasma)
 
 
 class ExecutionActor(WorkerActor):
@@ -76,6 +76,8 @@ class ExecutionActor(WorkerActor):
         scheduler_addr = self.get_scheduler(self.uid)
         self._scheduler_resource_ref = self.ctx.actor_ref(ResourceActor.default_name(),
                                                           address=scheduler_addr)
+
+        self.register_process_down_handler()
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):
@@ -589,18 +591,3 @@ class ExecutionActor(WorkerActor):
             cur_time = time.time()
             stages = dict((k, (cur_time - v[-1], v[0])) for k, v in self._graph_stages.items())
             logger.debug('Executing stages: %r', stages)
-
-    def handle_process_down(self, halt_refs):
-        """
-        Handle process down event
-        :param halt_refs: actor refs in halt processes
-        """
-        logger.debug('Process halt detected. Trying to reject affected promises %r.',
-                     [ref.uid for ref in halt_refs])
-        try:
-            raise WorkerProcessStopped
-        except WorkerProcessStopped:
-            exc_info = sys.exc_info()
-
-        for ref in halt_refs:
-            self.reject_promise_ref(ref, *exc_info)

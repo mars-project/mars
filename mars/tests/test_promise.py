@@ -97,7 +97,7 @@ class PromiseTestActor(promise.PromiseActor):
 
         ref.serve(0, delay=2, _promise=True) \
             .catch(_rejecter)
-        self.reject_promise_ref(ref, *exc_info)
+        self.reject_promise_refs([ref], *exc_info)
 
 
 def _raise_exception(exc):

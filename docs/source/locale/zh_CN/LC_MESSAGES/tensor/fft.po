@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-04 13:28+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/fft.rst:4
 msgid "Discrete Fourier Transform"
-msgstr ""
+msgstr "离散傅立叶变换"
 
 #: ../../source/tensor/fft.rst:8
 msgid "Standard FFTs"
-msgstr ""
+msgstr "标准快速傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fft <mars.tensor.fft.fft>`"
@@ -31,7 +31,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the one-dimensional discrete Fourier Transform."
-msgstr ""
+msgstr "计算一维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.ifft <mars.tensor.fft.ifft>`"
@@ -39,7 +39,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the one-dimensional inverse discrete Fourier Transform."
-msgstr ""
+msgstr "计算一维离散傅立叶逆变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fft2 <mars.tensor.fft.fft2>`"
@@ -47,7 +47,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the 2-dimensional discrete Fourier Transform"
-msgstr ""
+msgstr "计算二维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.ifft2 <mars.tensor.fft.ifft2>`"
@@ -55,7 +55,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the 2-dimensional inverse discrete Fourier Transform."
-msgstr ""
+msgstr "计算二维离散傅立叶逆变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fftn <mars.tensor.fft.fftn>`"
@@ -63,7 +63,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the N-dimensional discrete Fourier Transform."
-msgstr ""
+msgstr "计算N维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.ifftn <mars.tensor.fft.ifftn>`"
@@ -71,11 +71,11 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the N-dimensional inverse discrete Fourier Transform."
-msgstr ""
+msgstr "计算N维离散傅立叶逆变换"
 
 #: ../../source/tensor/fft.rst:23
 msgid "Real FFTs"
-msgstr ""
+msgstr "实数快速傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.rfft <mars.tensor.fft.rfft>`"
@@ -83,7 +83,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the one-dimensional discrete Fourier Transform for real input."
-msgstr ""
+msgstr "对实数输入计算一维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.irfft <mars.tensor.fft.irfft>`"
@@ -91,7 +91,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the inverse of the n-point DFT for real input."
-msgstr ""
+msgstr "对实数输入的N点一维傅立叶变换结果计算逆变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.rfft2 <mars.tensor.fft.rfft2>`"
@@ -99,7 +99,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the 2-dimensional FFT of a real tensor."
-msgstr ""
+msgstr "对实数输入计算二维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.irfft2 <mars.tensor.fft.irfft2>`"
@@ -107,7 +107,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the 2-dimensional inverse FFT of a real array."
-msgstr ""
+msgstr "对实数输入计算二维离散傅立叶逆变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.rfftn <mars.tensor.fft.rfftn>`"
@@ -115,7 +115,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the N-dimensional discrete Fourier Transform for real input."
-msgstr ""
+msgstr "对实数输入计算N维离散傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.irfftn <mars.tensor.fft.irfftn>`"
@@ -123,11 +123,11 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the inverse of the N-dimensional FFT of real input."
-msgstr ""
+msgstr "对实数输入计算N维离散傅立叶逆变换"
 
 #: ../../source/tensor/fft.rst:38
 msgid "Hermitian FFTs"
-msgstr ""
+msgstr "Hermitian 快速傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.hfft <mars.tensor.fft.hfft>`"
@@ -137,7 +137,7 @@ msgstr ""
 msgid ""
 "Compute the FFT of a signal that has Hermitian symmetry, i.e., a real "
 "spectrum."
-msgstr ""
+msgstr "对具备 Hermitian 对称性的信号，例如实频谱，计算傅立叶变换"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.ihfft <mars.tensor.fft.ihfft>`"
@@ -145,11 +145,11 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the inverse FFT of a signal that has Hermitian symmetry."
-msgstr ""
+msgstr "对具备 Hermitian 对称信号 的傅立叶变换结果计算逆变换"
 
 #: ../../source/tensor/fft.rst:49
 msgid "Helper routines"
-msgstr ""
+msgstr "辅助函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fftfreq <mars.tensor.fft.fftfreq>`"
@@ -157,7 +157,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the Discrete Fourier Transform sample frequencies."
-msgstr ""
+msgstr "返回离散傅立叶变换的采样频率"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.rfftfreq <mars.tensor.fft.rfftfreq>`"
@@ -167,7 +167,7 @@ msgstr ""
 msgid ""
 "Return the Discrete Fourier Transform sample frequencies (for usage with "
 "rfft, irfft)."
-msgstr ""
+msgstr "返回离散傅立叶变换的采样频率（适用于实数变换和逆变换）"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.fftshift <mars.tensor.fft.fftshift>`"
@@ -175,7 +175,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Shift the zero-frequency component to the center of the spectrum."
-msgstr ""
+msgstr "将0频率成分移动到频谱中心"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.fft.ifftshift <mars.tensor.fft.ifftshift>`"
@@ -183,5 +183,5 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "The inverse of `fftshift`."
-msgstr ""
+msgstr "`fftshift` 的逆操作"
 

@@ -19,11 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/statistics.rst:2
 msgid "Statistics"
-msgstr ""
+msgstr "统计"
 
 #: ../../source/tensor/statistics.rst:5
 msgid "Order statistics"
-msgstr ""
+msgstr "顺序统计量"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.amin <mars.tensor.amin>`"
@@ -69,7 +69,7 @@ msgstr ""
 
 #: ../../source/tensor/statistics.rst:19
 msgid "Average and variances"
-msgstr ""
+msgstr "均值和方差"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.average <mars.tensor.average>`"
@@ -131,7 +131,7 @@ msgstr ""
 
 #: ../../source/tensor/statistics.rst:35
 msgid "Correlating"
-msgstr ""
+msgstr "相关性"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.corrcoef <mars.tensor.corrcoef>`"
@@ -151,7 +151,7 @@ msgstr ""
 
 #: ../../source/tensor/statistics.rst:46
 msgid "Histograms"
-msgstr ""
+msgstr "直方图"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.digitize <mars.tensor.digitize>`"

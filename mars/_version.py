@@ -28,6 +28,7 @@ def _get_cmd_results(pkg_root, cmd):
     proc.wait()
     if proc.returncode == 0:
         s = proc.stdout.read()
+        proc.stdout.close()
         if sys.version_info[0] >= 3:
             s = s.decode()
         return s
