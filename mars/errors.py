@@ -99,7 +99,7 @@ class PromiseTimeout(MarsError):
     pass
 
 
-class SpillExhausted(MarsError):
+class NoDataToSpill(MarsError):
     pass
 
 

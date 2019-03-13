@@ -66,8 +66,7 @@ class DaemonTestActor(WorkerActor):
         except WorkerProcessStopped:
             exc_info = sys.exc_info()
 
-        for ref in halt_refs:
-            self.reject_promise_ref(ref, *exc_info)
+        self.reject_promise_refs(halt_refs, *exc_info)
 
 
 class Test(WorkerCase):

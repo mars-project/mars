@@ -188,9 +188,10 @@ class WorkerService(object):
         if options.worker.cache_memory_limit is None:
             options.worker.cache_memory_limit = mem_stats.free // 2
 
-        return WorkerService._calc_size_limit(
+        ret = options.worker.cache_memory_limit = WorkerService._calc_size_limit(
             options.worker.cache_memory_limit, mem_stats.total
         )
+        return ret
 
     def start_local(self, endpoint, pool, process_start_index, ignore_avail_mem=True, spill_dir=None):
         mem_stats = resource.virtual_memory()

@@ -23,7 +23,7 @@ from mars.compat import six
 from mars.config import options
 from mars.utils import get_next_port, calc_data_size
 from mars import promise
-from mars.errors import StoreFull, SpillExhausted
+from mars.errors import StoreFull, NoDataToSpill
 from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
 from mars.tests.core import mock
@@ -52,7 +52,7 @@ class CacheTestActor(WorkerActor):
 
         def _put_chunk(data_key, data, *_):
             def _handle_reject(*exc):
-                if issubclass(exc[0], SpillExhausted):
+                if issubclass(exc[0], NoDataToSpill):
                     return
                 six.reraise(*exc)
 
