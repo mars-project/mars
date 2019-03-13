@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:08+0800\n"
+"POT-Creation-Date: 2019-03-13 14:24+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,83 +18,90 @@ msgstr ""
 "Generated-By: Babel 2.6.0\n"
 
 #: ../../source/tensor/linalg.rst:2
-msgid "Linear Algebra (``mars.tensor.linalg``)"
-msgstr ""
-"线性代数 (``mars.tensor.linalg``)"
+msgid "Linear Algebra"
+msgstr "线性代数"
 
 #: ../../source/tensor/linalg.rst:5
 msgid "Matrix and vector products"
-msgstr ""
+msgstr "矩阵和向量乘法"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid ":obj:`mars.tensor.dot <mars.tensor.dot>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid "Dot product of two arrays."
-msgstr ""
+msgstr "计算两个数组的点积"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid ":obj:`mars.tensor.vdot <mars.tensor.vdot>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid "Return the dot product of two vectors."
+msgstr "计算两个向量的点积"
+
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
+msgid ":obj:`mars.tensor.inner <mars.tensor.inner>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
+msgid "Returns the inner product of a and b for arrays of floating point types."
+msgstr "对两个数组计算内积"
+
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid ":obj:`mars.tensor.matmul <mars.tensor.matmul>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid "Matrix product of two tensors."
-msgstr ""
+msgstr "计算两个张量的乘法"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid ":obj:`mars.tensor.tensordot <mars.tensor.tensordot>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:16:<autosummary>:1
 msgid "Compute tensor dot product along specified axes for tensors >= 1-D."
-msgstr ""
+msgstr "沿指定的坐标计算张量点乘"
 
-#: ../../source/tensor/linalg.rst:17
+#: ../../source/tensor/linalg.rst:18
 msgid "Decompositions"
-msgstr ""
+msgstr "矩阵分解"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid ":obj:`mars.tensor.linalg.cholesky <mars.tensor.linalg.cholesky>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid "Cholesky decomposition."
-msgstr ""
+msgstr "Cholesky 分解"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid ":obj:`mars.tensor.linalg.qr <mars.tensor.linalg.qr>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid "Compute the qr factorization of a matrix."
-msgstr ""
+msgstr "计算矩阵的 QR 分解"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid ":obj:`mars.tensor.linalg.svd <mars.tensor.linalg.svd>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:28:<autosummary>:1
 msgid "Singular Value Decomposition."
-msgstr ""
+msgstr "奇异值分解（SVD）"
 
-#: ../../source/tensor/linalg.rst:29
+#: ../../source/tensor/linalg.rst:30
 msgid "Norms and other numbers"
-msgstr ""
+msgstr "范数和其他数值"
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:38:<autosummary>:1
 msgid ":obj:`mars.tensor.linalg.norm <mars.tensor.linalg.norm>`"
 msgstr ""
 
-#: ../../<autosummary>:1
+#: ../../source/tensor/linalg.rst:38:<autosummary>:1
 msgid "Matrix or vector norm."
-msgstr ""
+msgstr "计算矩阵或向量的范数"
 

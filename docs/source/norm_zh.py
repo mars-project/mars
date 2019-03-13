@@ -130,7 +130,7 @@ def main():
 
             # only modify recent-changed files
             modify_time = datetime.datetime.fromtimestamp(os.path.getmtime(path))
-            if (datetime.datetime.now() - modify_time).total_seconds() > 1800:
+            if (datetime.datetime.now() - modify_time).total_seconds() > 120:
                 continue
 
             with open(path, 'rb') as inpf:

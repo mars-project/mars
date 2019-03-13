@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-15 19:14+0800\n"
+"POT-Creation-Date: 2019-03-13 13:14+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -208,4 +208,12 @@ msgstr ""
 "此后你可以在 po 文件中将 Mars 文档翻译成你所需的语言。注意当你再次运行 ``"
 "make gettext``，翻译后的文字将被转为固定宽度文字。对于中文译者，为达到该"
 "效果，需要安装 ``jieba`` 分词包。"
+
+#: ../../source/contributing.rst:132
+msgid "When you finish translation, you can run"
+msgstr "在完成翻译后，你可以执行"
+
+#: ../../source/contributing.rst:140
+msgid "to build the document in the language you just translated into."
+msgstr "以使用你刚才翻译的语言编译文档。"
 

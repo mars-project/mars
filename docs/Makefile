@@ -13,6 +13,9 @@ BUILDDIR      = build
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SOURCEDIR)
 I18NSPHINXLANGS = -l zh_CN
 
+# make mars code available for sphinx builder
+export PYTHONPATH := ../
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

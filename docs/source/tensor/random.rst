@@ -1,7 +1,7 @@
 .. module:: mars.tensor.random
 
-Random Sampling (``mars.tensor.random``)
-========================================
+Random Sampling
+===============
 
 Sample random data
 ------------------

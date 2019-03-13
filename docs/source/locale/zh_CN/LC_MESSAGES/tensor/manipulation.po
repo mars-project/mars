@@ -19,13 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:2
 msgid "Tensor Manipulation Routines"
-msgstr ""
-"Tensor操作例程"
+msgstr "Tensor 操作"
 
 #: ../../source/tensor/manipulation.rst:5
 msgid "Basic manipulations"
-msgstr ""
-"基本操作"
+msgstr "基本操作"
 
 #: ../../source/tensor/manipulation.rst:13:<autosummary>:1
 msgid ":obj:`mars.tensor.copyto <mars.tensor.copyto>`"
@@ -37,7 +35,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:15
 msgid "Shape manipulation"
-msgstr ""
+msgstr "形状操作"
 
 #: ../../source/tensor/manipulation.rst:116:<autosummary>:1
 #: ../../source/tensor/manipulation.rst:24:<autosummary>:1
@@ -59,7 +57,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:26
 msgid "Transposition"
-msgstr ""
+msgstr "变换"
 
 #: ../../source/tensor/manipulation.rst:38:<autosummary>:1
 msgid ":obj:`mars.tensor.moveaxis <mars.tensor.moveaxis>`"
@@ -103,7 +101,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:40
 msgid "Edit dimensionalities"
-msgstr ""
+msgstr "修改维度"
 
 #: ../../source/tensor/manipulation.rst:54:<autosummary>:1
 msgid ":obj:`mars.tensor.atleast_1d <mars.tensor.atleast_1d>`"
@@ -163,7 +161,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:56
 msgid "Changing kind of tensor"
-msgstr ""
+msgstr "修改 Tensor 类型"
 
 #: ../../source/tensor/manipulation.rst:64:<autosummary>:1
 msgid ":obj:`mars.tensor.asarray <mars.tensor.asarray>`"
@@ -175,7 +173,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:66
 msgid "Joining tensors"
-msgstr ""
+msgstr "合并 Tensor"
 
 #: ../../source/tensor/manipulation.rst:79:<autosummary>:1
 msgid ":obj:`mars.tensor.concatenate <mars.tensor.concatenate>`"
@@ -227,7 +225,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:81
 msgid "Splitting tensors"
-msgstr ""
+msgstr "拆分 Tensor"
 
 #: ../../source/tensor/manipulation.rst:93:<autosummary>:1
 msgid ":obj:`mars.tensor.split <mars.tensor.split>`"
@@ -267,7 +265,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:95
 msgid "Tiling tensors"
-msgstr ""
+msgstr "对 Tensor 分块"
 
 #: ../../source/tensor/manipulation.rst:104:<autosummary>:1
 msgid ":obj:`mars.tensor.tile <mars.tensor.tile>`"
@@ -287,7 +285,7 @@ msgstr ""
 
 #: ../../source/tensor/manipulation.rst:106
 msgid "Rearranging elements"
-msgstr ""
+msgstr "元素重排"
 
 #: ../../source/tensor/manipulation.rst:116:<autosummary>:1
 msgid ":obj:`mars.tensor.flip <mars.tensor.flip>`"

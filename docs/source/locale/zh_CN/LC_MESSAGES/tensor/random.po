@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-01-11 15:52+0800\n"
+"POT-Creation-Date: 2019-03-13 13:29+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,14 +18,12 @@ msgstr ""
 "Generated-By: Babel 2.6.0\n"
 
 #: ../../source/tensor/random.rst:4
-msgid "Random Sampling (``mars.tensor.random``)"
-msgstr ""
-"随机抽样 (``mars.tensor.random``)"
+msgid "Random Sampling"
+msgstr "随机抽样"
 
 #: ../../source/tensor/random.rst:7
 msgid "Sample random data"
-msgstr ""
-"随机数据样本"
+msgstr "随机数据样本"
 
 #: ../../source/tensor/random.rst:24:<autosummary>:1
 msgid ":obj:`mars.tensor.random.rand <mars.tensor.random.rand>`"
@@ -99,7 +97,7 @@ msgstr ""
 
 #: ../../source/tensor/random.rst:26
 msgid "Distributions"
-msgstr ""
+msgstr "随机分布"
 
 #: ../../source/tensor/random.rst:67:<autosummary>:1
 msgid ":obj:`mars.tensor.random.beta <mars.tensor.random.beta>`"
@@ -399,7 +397,7 @@ msgstr ""
 
 #: ../../source/tensor/random.rst:69
 msgid "Random number generator"
-msgstr ""
+msgstr "生成随机数"
 
 #: ../../source/tensor/random.rst:77:<autosummary>:1
 msgid ":obj:`mars.tensor.random.seed <mars.tensor.random.seed>`"

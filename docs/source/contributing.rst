@@ -128,3 +128,13 @@ After that you can translate Mars documents into your language. Note that when
 you run ``make gettext`` again, translations will be broken into a fixed-width
 text. For Chinese translators, you need to install ``jieba`` to get this
 effect.
+
+When you finish translation, you can run
+
+.. code-block:: bash
+
+    cd docs
+    # change LANG into the language you want to build
+    make -e SPHINXOPTS="-D language='LANG'" html
+
+to build the document in the language you just translated into.

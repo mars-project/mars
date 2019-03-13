@@ -23,7 +23,7 @@ msgstr "Mars"
 
 #: ../../source/index.rst:9
 msgid "Mars is a tensor-based unified framework for large-scale data computation."
-msgstr "Mars 是基于张量的，用来进行大规模数据计算的统一计算框架"
+msgstr "Mars 是基于张量的，用于进行大规模数据计算的统一计算框架"
 
 #: ../../source/index.rst:12
 msgid "Mars tensor"

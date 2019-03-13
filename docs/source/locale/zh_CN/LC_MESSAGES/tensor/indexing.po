@@ -19,12 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/indexing.rst:2
 msgid "Indexing Routines"
-msgstr "索引例程"
+msgstr "索引"
 
 #: ../../source/tensor/indexing.rst:5
 msgid "Generating index arrays"
-msgstr ""
-"生成索引数组"
+msgstr "生成索引数组"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.nonzero <mars.tensor.nonzero>`"
@@ -70,7 +69,7 @@ msgstr ""
 
 #: ../../source/tensor/indexing.rst:19
 msgid "Indexing-like opeartions"
-msgstr ""
+msgstr "类似索引的操作"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.take <mars.tensor.take>`"
