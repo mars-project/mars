@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/binary.rst:2
 msgid "Binary Operations"
-msgstr "二元操作"
+msgstr "二元运算"
 
 #: ../../source/tensor/binary.rst:5
 msgid "Elementwise bit operations"
@@ -31,7 +31,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the bit-wise AND of two tensors element-wise."
-msgstr ""
+msgstr "按元素对两个张量按位求与"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.bitwise_or <mars.tensor.bitwise_or>`"
@@ -39,7 +39,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the bit-wise OR of two tensors element-wise."
-msgstr ""
+msgstr "按元素对两个张量按位求或"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.bitwise_xor <mars.tensor.bitwise_xor>`"
@@ -47,7 +47,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute the bit-wise XOR of two arrays element-wise."
-msgstr ""
+msgstr "按元素对两个张量按位求异或"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.invert <mars.tensor.invert>`"
@@ -55,7 +55,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Compute bit-wise inversion, or bit-wise NOT, element-wise."
-msgstr ""
+msgstr "按元素对张量按位求反"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.left_shift <mars.tensor.left_shift>`"
@@ -63,7 +63,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Shift the bits of an integer to the left."
-msgstr ""
+msgstr "按元素对张量按位左移"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.right_shift <mars.tensor.right_shift>`"
@@ -71,5 +71,5 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Shift the bits of an integer to the right."
-msgstr ""
+msgstr "按元素对张量按位右移"
 

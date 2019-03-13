@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-07 16:23+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -19,13 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:2
 msgid "Logic Functions"
-msgstr ""
-"逻辑函数"
+msgstr "逻辑函数"
 
 #: ../../source/tensor/logic.rst:5
 msgid "Truth value testing"
-msgstr ""
-"真值测试"
+msgstr "真值判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.all <mars.tensor.all>`"
@@ -45,7 +43,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:16
 msgid "Array contents"
-msgstr ""
+msgstr "数组值判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.isfinite <mars.tensor.isfinite>`"
@@ -73,7 +71,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:28
 msgid "Array type testing"
-msgstr ""
+msgstr "数组类型判定"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.iscomplex <mars.tensor.iscomplex>`"
@@ -93,7 +91,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:39
 msgid "Logic operations"
-msgstr ""
+msgstr "逻辑运算"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.logical_and <mars.tensor.logical_and>`"
@@ -129,7 +127,7 @@ msgstr ""
 
 #: ../../source/tensor/logic.rst:52
 msgid "Comparison"
-msgstr ""
+msgstr "比较"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.allclose <mars.tensor.allclose>`"

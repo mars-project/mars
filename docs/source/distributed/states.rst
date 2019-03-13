@@ -36,11 +36,12 @@ these states.
   can move to ``READY``.
 * ``FREED``: the operand is in this state when all data related to this operand
   is freed.
-* ``FATAL``: the operand is in tihs state when itself or some predecessor
+* ``FATAL``: the operand is in this state when itself or some predecessor
   failed to execute.  When this state is entered, the OperandActor try to pass
   this state down to its successors.
-* ``CANCELLING``: the operand is in this state when it is being cancelled. The
-  operand is in this state when it is previously running.
+* ``CANCELLING``: the operand is in this state when it is being cancelled. If
+  the operand is previously running, a cancel request will be sent to the
+  worker.
 * ``CANCELLED``: the operand is in this state when it is cancelled and stops
   running. When this state is entered, the OperandActor tries to switch its
   descendants into ``CANCELLING``.

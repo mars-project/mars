@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-07 16:39+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -19,13 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:2
 msgid "Mathematical Functions"
-msgstr ""
-"数学函数"
+msgstr "数学函数"
 
 #: ../../source/tensor/math.rst:5
 msgid "Trigonometric functions"
-msgstr ""
-"三角函数"
+msgstr "三角函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.sin <mars.tensor.sin>`"
@@ -117,7 +115,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:26
 msgid "Hyperbolic functions"
-msgstr ""
+msgstr "双曲函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.sinh <mars.tensor.sinh>`"
@@ -169,7 +167,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:41
 msgid "Rounding"
-msgstr ""
+msgstr "取整"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.around <mars.tensor.around>`"
@@ -225,7 +223,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:57
 msgid "Sums, products, differences"
-msgstr ""
+msgstr "求和、求积和差分"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.prod <mars.tensor.prod>`"
@@ -317,7 +315,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:76
 msgid "Exponential and logarithms"
-msgstr ""
+msgstr "指数和对数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.exp <mars.tensor.exp>`"
@@ -393,7 +391,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:94
 msgid "Other special functions"
-msgstr ""
+msgstr "其他特殊函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.i0 <mars.tensor.i0>`"
@@ -413,7 +411,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:105
 msgid "Floating point routines"
-msgstr ""
+msgstr "浮点数操作"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.signbit <mars.tensor.signbit>`"
@@ -465,7 +463,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:120
 msgid "Arithmetic operations"
-msgstr ""
+msgstr "算数操作"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.add <mars.tensor.add>`"
@@ -585,7 +583,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:144
 msgid "Handling complex numbers"
-msgstr ""
+msgstr "复数操作"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.angle <mars.tensor.angle>`"
@@ -621,7 +619,7 @@ msgstr ""
 
 #: ../../source/tensor/math.rst:157
 msgid "Miscellaneous"
-msgstr ""
+msgstr "其他"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.clip <mars.tensor.clip>`"

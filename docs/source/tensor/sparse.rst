@@ -1,8 +1,8 @@
 Sparse tensor
 =============
 
-Mars tensor supports sparse tensor, unfortunately, only 2-D sparse tensors are available for now.
-Multi-dimensional sparse tensors will be supported later.
+Mars tensor supports sparse tensor, unfortunately, only 2-D sparse tensors are
+available for now.  Multi-dimensional sparse tensors will be supported later.
 
 Functions to create sparse tensor
 ---------------------------------

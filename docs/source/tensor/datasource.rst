@@ -2,7 +2,7 @@ Create Mars tensor
 ==================
 
 You can create mars tensor from Python array like object just like Numpy, or create from Numpy array directly.
-More details on :doc:`array creation routine <routines/creation>` and :doc:`random sampling <routines/random>`.
+More details on :doc:`array creation routine <creation>` and :doc:`random sampling <random>`.
 
 .. autosummary::
    :toctree: generated/
@@ -68,7 +68,7 @@ Assume we have such a tensor with the data shown below.
     4 2 4 6 2 0
     6 8 2 6 5 4
 
-We will show how different ``chunk_size=`` arguments will tile the tensor.
+We will show how different ``chunk_size`` arguments will tile the tensor.
 
 ``chunk_size=3``:
 

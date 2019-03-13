@@ -41,7 +41,7 @@ the QuotaActor accepts the request.  Otherwise the request is queued. After the
 memory block is released, the allocation is freed and QuotaActor can accept
 other requests.
 
-Shared memory is handled by plasma_store, which often takes of up to 50% of
+Shared memory is handled by plasma\_store, which often takes of up to 50% of
 total memory.  This part of memory is allocated directly without quota
 requests. When shared memory is exhausted, Mars worker tries to spill unused
 chunks into disk.

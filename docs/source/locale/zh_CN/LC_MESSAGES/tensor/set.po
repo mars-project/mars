@@ -19,13 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/set.rst:2
 msgid "Set routines"
-msgstr ""
-"集合例程"
+msgstr "集合函数"
 
 #: ../../source/tensor/set.rst:5
 msgid "Boolean operations"
-msgstr ""
-"布尔运算"
+msgstr "布尔运算"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.isin <mars.tensor.isin>`"

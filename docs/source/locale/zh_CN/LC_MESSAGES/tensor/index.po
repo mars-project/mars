@@ -19,5 +19,5 @@ msgstr ""
 
 #: ../../source/tensor/index.rst:2
 msgid "Mars tensor - distributed tensor with NumPy-like API"
-msgstr ""
-"Mars tensor - 提供类似 Numpy API 的分布式张量库"
+msgstr "Mars tensor - 提供类似 Numpy API 的分布式张量库"
+

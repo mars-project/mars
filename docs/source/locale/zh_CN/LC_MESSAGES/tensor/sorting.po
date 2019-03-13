@@ -19,13 +19,11 @@ msgstr ""
 
 #: ../../source/tensor/sorting.rst:2
 msgid "Sorting, Searching, and Counting"
-msgstr ""
-"排序、搜索和计数"
+msgstr "排序、搜索和计数"
 
 #: ../../source/tensor/sorting.rst:5
 msgid "Searching"
-msgstr ""
-"搜索"
+msgstr "搜索"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.argmax <mars.tensor.argmax>`"
@@ -105,8 +103,7 @@ msgstr ""
 
 #: ../../source/tensor/sorting.rst:24
 msgid "Counting"
-msgstr ""
-"计数"
+msgstr "计数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.count_nonzero <mars.tensor.count_nonzero>`"
