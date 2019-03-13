@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-11-28 19:54+0800\n"
+"POT-Creation-Date: 2019-03-13 13:07+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,21 +19,18 @@ msgstr ""
 
 #: ../../source/tensor/sparse.rst:2
 msgid "Sparse tensor"
-msgstr ""
-"稀疏张量"
+msgstr "稀疏张量"
 
 #: ../../source/tensor/sparse.rst:4
 msgid ""
 "Mars tensor supports sparse tensor, unfortunately, only 2-D sparse "
-"tensors are available for now. Multi-dimensional sparse tensors will be "
+"tensors are available for now.  Multi-dimensional sparse tensors will be "
 "supported later."
-msgstr ""
-"Mars支持稀疏张量，但不幸的是，目前只支持二维稀疏张量，以后将支持多维稀疏张量"
+msgstr "Mars 支持稀疏张量，但目前只支持二维稀疏张量，未来将支持多维稀疏张量。"
 
 #: ../../source/tensor/sparse.rst:8
 msgid "Functions to create sparse tensor"
-msgstr ""
-"创建稀疏张量的函数"
+msgstr "创建稀疏张量的函数"
 
 #: ../../source/tensor/sparse.rst:18:<autosummary>:1
 msgid ":obj:`mars.tensor.tensor <mars.tensor.tensor>`"

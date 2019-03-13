@@ -19,8 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/routines.rst:2
 msgid "Routines"
-msgstr ""
-"例程"
+msgstr "功能"
 
 #: ../../source/tensor/routines.rst:4
 msgid ""
@@ -28,5 +27,6 @@ msgid ""
 "cover a subset of `NumPy routines "
 "<https://docs.scipy.org/doc/numpy/reference/routines.html>`_."
 msgstr ""
-"以下页面描述了与Numpy兼容的例程。这些函数涵盖了 `NumPy例程的子集 "
-"<https://docs.scipy.org/doc/numpy/reference/routines.html>`_ 。"
+"以下页面描述了与 Numpy 兼容的功能。这些函数涵盖了 `NumPy 功能的子集 <"
+"https://docs.scipy.org/doc/numpy/reference/routines.html>`_ 。"
+

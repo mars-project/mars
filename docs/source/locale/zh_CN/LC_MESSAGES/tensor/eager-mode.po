@@ -23,35 +23,31 @@ msgstr "Eager 模式"
 
 #: ../../source/tensor/eager-mode.rst:4
 msgid "New in version 0.2.0a2"
-msgstr ""
+msgstr "自 0.2.0a2 起支持"
 
 #: ../../source/tensor/eager-mode.rst:6
 msgid ""
 "Mars supports eager mode which makes it friendly for developing and easy "
 "to debug."
-msgstr ""
-"Mars支持eager模式，使其易于开发和易于调试。"
+msgstr "Mars 支持 Eager 模式以方便开发和调试。"
 
 #: ../../source/tensor/eager-mode.rst:9
 msgid ""
 "Users can enable the eager mode by options, set options at the beginning "
 "of the program or console session."
-msgstr ""
-"用户可以通过选项启用eager模式，在程序开头或控制台会话中设置选项。"
+msgstr "用户可以通过选项启用 Eager 模式，在程序开头或控制台会话中设置选项。"
 
 #: ../../source/tensor/eager-mode.rst:18
 msgid "Or use a context."
-msgstr ""
-"或者使用上下文。"
+msgstr "或者使用上下文。"
 
 #: ../../source/tensor/eager-mode.rst:29
 msgid ""
 "If eager mode is on, tensor will be executed immediately by default "
 "session once it is created."
-msgstr ""
-"如果打开了eager模式，则会在创建默认会话后立即执行tensor。"
+msgstr "如果打开了 Eager 模式，则会在创建默认会话后立即执行 tensor。"
 
 #: ../../source/tensor/eager-mode.rst:43
 msgid "Use ``fetch`` to obtain numpy value from a tensor:"
-msgstr ""
-"使用 ``fetch`` 从张量中获取numpy值："
+msgstr "使用 ``fetch`` 从张量中获取 Numpy 值："
+

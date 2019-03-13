@@ -12,7 +12,6 @@ program or console session.
 .. code-block:: python
 
     >>> from mars.config import options
-
     >>> options.eager_mode = True
 
 Or use a context.

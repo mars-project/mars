@@ -10,7 +10,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2018-05-04 10:40+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: Chen Quan <ChenQuan@osai.club>\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -19,8 +19,7 @@ msgstr ""
 
 #: ../../source/tensor/ufunc.rst:2
 msgid "Universal Functions (ufunc)"
-msgstr ""
-"通用函数(ufunc)"
+msgstr "通用函数（ufunc）"
 
 #: ../../source/tensor/ufunc.rst:4
 msgid ""
@@ -28,40 +27,36 @@ msgid ""
 " elementwise operations. Mars tensor's ufunc supports following features "
 "of Numpy's one:"
 msgstr ""
-"Mars tensor提供通用函数(也被称为ufuncs)来支持各种元素操作。"
-"Mars tensor的ufunc支持Numpy的以下功能："
+"Mars tensor 提供通用函数（也被称为 ufunc）来支持各种元素操作。Mars "
+"tensor 的通用函数支持 Numpy 的以下功能："
 
 #: ../../source/tensor/ufunc.rst:7
 msgid "Broadcasting"
-msgstr ""
-"广播"
+msgstr "广播"
 
 #: ../../source/tensor/ufunc.rst:8
 msgid "Output type determination"
-msgstr ""
-"输出类型确定"
+msgstr "确定输出类型"
 
 #: ../../source/tensor/ufunc.rst:9
 msgid "Casting rules"
-msgstr ""
-"类型转换规则"
+msgstr "类型转换规则"
 
 #: ../../source/tensor/ufunc.rst:11
 msgid ""
 "Mars tensor's ufunc currently does not support methods like ``reduce``, "
 "``accumulate``, ``reduceat``, ``outer``, and ``at``."
 msgstr ""
-"Mars张量ufunc目前不支持包括方法有 ``accumulate``, ``reduceat``, ``outer`` 和 ``at``。"
+"Mars 张量通用函数目前不支持包括方法有 ``accumulate``、``reduceat``、``"
+"outer`` 和 ``at``。"
 
 #: ../../source/tensor/ufunc.rst:15
 msgid "Available ufuncs"
-msgstr ""
-"可用的ufuncs"
+msgstr "可用的通用函数"
 
 #: ../../source/tensor/ufunc.rst:18
 msgid "Math operations"
-msgstr ""
-"数学运算"
+msgstr "数学运算"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.add <mars.tensor.add>`"
@@ -69,7 +64,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Add arguments element-wise."
-msgstr ""
+msgstr "按元素相加"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.subtract <mars.tensor.subtract>`"
@@ -77,7 +72,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Subtract arguments, element-wise."
-msgstr ""
+msgstr "按元素相减"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.multiply <mars.tensor.multiply>`"
@@ -85,7 +80,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Multiply arguments element-wise."
-msgstr ""
+msgstr "按元素相乘"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.divide <mars.tensor.divide>`"
@@ -93,7 +88,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Divide arguments element-wise."
-msgstr ""
+msgstr "按元素相除"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.logaddexp <mars.tensor.logaddexp>`"
@@ -101,7 +96,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Logarithm of the sum of exponentiations of the inputs."
-msgstr ""
+msgstr "按元素计算以e为底的两个输入指数值之和的对数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.logaddexp2 <mars.tensor.logaddexp2>`"
@@ -109,7 +104,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Logarithm of the sum of exponentiations of the inputs in base-2."
-msgstr ""
+msgstr "按元素计算以2为底的两个输入指数值之和的对数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.true_divide <mars.tensor.true_divide>`"
@@ -117,7 +112,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Returns a true division of the inputs, element-wise."
-msgstr ""
+msgstr "按元素计算实数除法"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.floor_divide <mars.tensor.floor_divide>`"
@@ -125,7 +120,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the largest integer smaller or equal to the division of the inputs."
-msgstr ""
+msgstr "按元素计算除法并向下取整"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.negative <mars.tensor.negative>`"
@@ -133,7 +128,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Numerical negative, element-wise."
-msgstr ""
+msgstr "按元素求相反数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.power <mars.tensor.power>`"
@@ -141,7 +136,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "First tensor elements raised to powers from second tensor, element-wise."
-msgstr ""
+msgstr "按元素求幂，前一个张量中的数值作为底数，后一个张量的数值作为指数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.remainder <mars.tensor.remainder>`"
@@ -149,7 +144,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return element-wise remainder of division."
-msgstr ""
+msgstr "按元素返回整数除法的余数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.mod <mars.tensor.mod>`"
@@ -161,7 +156,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the element-wise remainder of division."
-msgstr ""
+msgstr "按元素返回整数除法的余数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.absolute <mars.tensor.absolute>`"
@@ -169,7 +164,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Calculate the absolute value element-wise."
-msgstr ""
+msgstr "按元素计算绝对值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.rint <mars.tensor.rint>`"
@@ -177,7 +172,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Round elements of the tensor to the nearest integer."
-msgstr ""
+msgstr "按元素将张量中的值取整到最接近的整数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.sign <mars.tensor.sign>`"
@@ -185,7 +180,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Returns an element-wise indication of the sign of a number."
-msgstr ""
+msgstr "按元素取符号"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.exp <mars.tensor.exp>`"
@@ -193,7 +188,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Calculate the exponential of all elements in the input tensor."
-msgstr ""
+msgstr "计算所有元素的指数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.exp2 <mars.tensor.exp2>`"
@@ -201,7 +196,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Calculate `2**p` for all `p` in the input tensor."
-msgstr ""
+msgstr "计算所有元素以2为底的指数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.log <mars.tensor.log>`"
@@ -209,7 +204,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Natural logarithm, element-wise."
-msgstr ""
+msgstr "按元素求自然对数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.log2 <mars.tensor.log2>`"
@@ -217,7 +212,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Base-2 logarithm of `x`."
-msgstr ""
+msgstr "计算所有元素以2为底的对数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.log10 <mars.tensor.log10>`"
@@ -225,7 +220,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the base 10 logarithm of the input tensor, element-wise."
-msgstr ""
+msgstr "计算所有元素以10为底的对数值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.expm1 <mars.tensor.expm1>`"
@@ -233,7 +228,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Calculate ``exp(x) - 1`` for all elements in the tensor."
-msgstr ""
+msgstr "对张量中的所有元素计算 ``exp(x) - 1``"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.log1p <mars.tensor.log1p>`"
@@ -241,7 +236,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the natural logarithm of one plus the input tensor, element-wise."
-msgstr ""
+msgstr "对张量中的所有元素计算 ``log(1 + x)``"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.sqrt <mars.tensor.sqrt>`"
@@ -249,7 +244,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the positive square-root of an tensor, element-wise."
-msgstr ""
+msgstr "返回按元素求平方根的结果"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.square <mars.tensor.square>`"
@@ -257,7 +252,7 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the element-wise square of the input."
-msgstr ""
+msgstr "返回按元素求平方的结果"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.reciprocal <mars.tensor.reciprocal>`"
@@ -265,11 +260,11 @@ msgstr ""
 
 #: ../../<autosummary>:1
 msgid "Return the reciprocal of the argument, element-wise."
-msgstr ""
+msgstr "返回按元素求倒数的结果"
 
 #: ../../source/tensor/ufunc.rst:53
 msgid "Trigonometric functions"
-msgstr ""
+msgstr "三角函数和双曲函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.sin <mars.tensor.sin>`"
@@ -401,7 +396,7 @@ msgstr ""
 
 #: ../../source/tensor/ufunc.rst:78
 msgid "Bit-twiddling functions"
-msgstr ""
+msgstr "位运算函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.bitwise_and <mars.tensor.bitwise_and>`"
@@ -453,7 +448,7 @@ msgstr ""
 
 #: ../../source/tensor/ufunc.rst:93
 msgid "Comparison functions"
-msgstr ""
+msgstr "比较函数"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.greater <mars.tensor.greater>`"
@@ -569,7 +564,7 @@ msgstr ""
 
 #: ../../source/tensor/ufunc.rst:116
 msgid "Floating point values"
-msgstr ""
+msgstr "浮点数取值"
 
 #: ../../<autosummary>:1
 msgid ":obj:`mars.tensor.isfinite <mars.tensor.isfinite>`"

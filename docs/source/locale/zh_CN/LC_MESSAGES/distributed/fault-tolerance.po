@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-19 13:49+0800\n"
+"POT-Creation-Date: 2019-03-13 11:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -27,7 +27,7 @@ msgid ""
 "worker-level. Scheduler-level support is not implemented now."
 msgstr ""
 "当下，Mars 在两个层面上有容错支持：进程级别容错和 Worker 级别容错，尚未"
-"实现 Scheduler 级别容错"
+"实现 Scheduler 级别容错。"
 
 #: ../../source/distributed/fault-tolerance.rst:8
 msgid "Process-level Fault Tolerance"
@@ -51,8 +51,8 @@ msgid "Worker-level Fault Tolerance"
 msgstr "Worker 容错"
 
 #: ../../source/distributed/fault-tolerance.rst:20
-msgid "New in version 0.2.0a3"
-msgstr ""
+msgid "New in version 0.2.0a2"
+msgstr "自 0.2.0a2 起支持"
 
 #: ../../source/distributed/fault-tolerance.rst:22
 msgid ""

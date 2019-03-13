@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-02-21 15:10+0800\n"
+"POT-Creation-Date: 2019-03-13 11:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.5.3\n"
+"Generated-By: Babel 2.6.0\n"
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:2
 msgid "mars.tensor.core.Tensor"
@@ -176,7 +176,7 @@ msgid "Dot product of two arrays."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ":obj:`Tensor.execute <Tensor.execute>`\\"
+msgid ":obj:`execute <mars.tensor.core.Tensor.execute>`\\ \\(\\[session\\]\\)"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -264,7 +264,11 @@ msgid "Return the product of tensor elements over a given axis."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ":obj:`Tensor.ravel <Tensor.ravel>`\\"
+msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid "Return a flattened tensor."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -284,7 +288,13 @@ msgid "Repeat elements of a tensor."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ":obj:`Tensor.reshape <Tensor.reshape>`\\"
+msgid ""
+":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ \\(shape\\, "
+"\\*shapes\\)"
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid "Returns a tensor containing the same data with a new shape."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -372,7 +382,11 @@ msgid ":obj:`Tensor.tosparse <Tensor.tosparse>`\\"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ":obj:`Tensor.transpose <Tensor.transpose>`\\"
+msgid ":obj:`transpose <mars.tensor.core.Tensor.transpose>`\\ \\(\\*axes\\)"
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid "Returns a view of the tensor with axes transposed."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
