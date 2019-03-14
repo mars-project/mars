@@ -78,6 +78,18 @@ class OperandActor(BaseOperandActor):
                                                     _tell=True, _wait=False))
         [f.result() for f in futures]
 
+    def append_graph(self, graph_key, op_info, position=None):
+        from ..graph import GraphActor
+
+        if self._position != OperandPosition.TERMINAL:
+            self._position = position
+        graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
+        self._graph_refs.append(graph_ref)
+        self._pred_keys.update(op_info['io_meta']['predecessors'])
+        self._succ_keys.update(op_info['io_meta']['successors'])
+        if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
+            self._state = OperandState(op_info['state'].lower())
+
     def add_running_predecessor(self, op_key, worker):
         self._running_preds.add(op_key)
         self._pred_workers.add(worker)
@@ -94,7 +106,7 @@ class OperandActor(BaseOperandActor):
             try:
                 if worker in self._assigned_workers:
                     return
-                serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
+                serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
 
                 self._get_execution_ref(address=worker).enqueue_graph(
                     self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
@@ -125,7 +137,9 @@ class OperandActor(BaseOperandActor):
         if self._position != OperandPosition.TERMINAL and \
                 all(k in self._finish_succs for k in self._succ_keys):
             # make sure that all prior states are terminated (in case of failover)
-            states = self._graph_ref.get_operand_states(self._succ_keys)
+            states = []
+            for graph_ref in self._graph_refs:
+                states.extend(graph_ref.get_operand_states(self._succ_keys))
             # non-terminal operand with all successors done, the data can be freed
             if all(k in OperandState.TERMINATED_STATES for k in states) and self._is_worker_alive():
                 self.ref().free_data(_tell=True)
@@ -284,8 +298,9 @@ class OperandActor(BaseOperandActor):
                 futures.append(self._get_operand_actor(in_key).remove_finished_successor(
                     self._op_key, _tell=True, _wait=False))
             if self._position == OperandPosition.TERMINAL:
-                futures.append(self._graph_ref.remove_finished_terminal(
-                    self._op_key, _tell=True, _wait=False))
+                for graph_ref in self._graph_refs:
+                    futures.append(graph_ref.remove_finished_terminal(
+                        self._op_key, _tell=True, _wait=False))
             [f.result() for f in futures]
 
         # actual start the new state
@@ -313,7 +328,8 @@ class OperandActor(BaseOperandActor):
         if state == OperandState.CANCELLED:
             can_be_freed = True
         else:
-            can_be_freed = self._graph_ref.check_operand_can_be_freed(self._succ_keys)
+            can_be_freed = all(graph_ref.check_operand_can_be_freed(self._succ_keys) for
+                               graph_ref in self._graph_refs)
         if can_be_freed is None:
             self.ref().free_data(state, _delay=1, _tell=True)
             return
@@ -394,7 +410,7 @@ class OperandActor(BaseOperandActor):
                 self._assigned_workers.difference_update((worker,))
 
         if self._position == OperandPosition.INITIAL:
-            new_worker = self._graph_ref.get_operand_target_worker(self._op_key)
+            new_worker = self._graph_refs[0].get_operand_target_worker(self._op_key)
             if new_worker and new_worker != self._target_worker:
                 logger.debug('Cancelling running operand %s on %s, new_target %s',
                              self._op_key, worker, new_worker)
@@ -496,7 +512,7 @@ class OperandActor(BaseOperandActor):
         data_sizes = dict(zip(self._input_chunks, chunk_sizes))
 
         dead_workers = set()
-        serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
+        serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
         for worker_ep in new_assignment:
             try:
                 with rewrite_worker_errors():
@@ -589,8 +605,7 @@ class OperandActor(BaseOperandActor):
         # require more chunks to execute if the completion caused no successors to run
         if self._position == OperandPosition.TERMINAL:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.append(self._graph_ref.add_finished_terminal(
-                self._op_key, _tell=True, _wait=False))
+            futures.extend(self._add_finished_terminal())
         [f.result() for f in futures]
 
     @log_unhandled
@@ -601,8 +616,7 @@ class OperandActor(BaseOperandActor):
         futures = []
         if self._position == OperandPosition.TERMINAL:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.append(self._graph_ref.add_finished_terminal(
-                self._op_key, final_state=GraphState.FAILED, _tell=True, _wait=False))
+            futures.extend(self._add_finished_terminal(final_state=GraphState.FAILED))
         # set successors to FATAL
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
@@ -644,8 +658,7 @@ class OperandActor(BaseOperandActor):
     def _on_cancelled(self):
         futures = []
         if self._position == OperandPosition.TERMINAL:
-            futures.append(self._graph_ref.add_finished_terminal(
-                self._op_key, final_state=GraphState.CANCELLED, _tell=True, _wait=False))
+            futures.extend(self._add_finished_terminal(final_state=GraphState.CANCELLED))
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
                 OperandState.CANCELLING, _tell=True, _wait=False))
@@ -653,6 +666,15 @@ class OperandActor(BaseOperandActor):
 
     def _on_unscheduled(self):
         self.worker = None
+
+    def _add_finished_terminal(self, final_state=None):
+        futures = []
+        for graph_ref in self._graph_refs:
+            futures.append(graph_ref.add_finished_terminal(
+                self._op_key, final_state=final_state, _tell=True, _wait=False
+            ))
+
+        return futures
 
 
 register_operand_class(Operand, OperandActor)

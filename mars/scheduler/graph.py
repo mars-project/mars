@@ -38,6 +38,7 @@ from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 from ..tensor.expressions.fetch import TensorFetch
 from ..tensor.core import ChunkData
+from ..actors.core import ActorRef
 
 logger = logging.getLogger(__name__)
 
@@ -605,11 +606,11 @@ class GraphActor(SchedulerActor):
             chunk_keys.update(co.key for co in c.op.outputs)
 
         io_meta = dict(
-            predecessors=list(predecessor_keys),
-            successors=list(successor_keys),
-            input_chunks=list(input_chunk_keys),
-            shared_input_chunks=list(shared_input_chunk_keys),
-            chunks=list(chunk_keys),
+            predecessors=set(predecessor_keys),
+            successors=set(successor_keys),
+            input_chunks=set(input_chunk_keys),
+            shared_input_chunks=set(shared_input_chunk_keys),
+            chunks=set(chunk_keys),
         )
         return io_meta
 
@@ -653,10 +654,18 @@ class GraphActor(SchedulerActor):
             op_cls = get_operand_actor_class(type(op))
             op_uid = op_cls.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
-            op_refs[op_key] = self.ctx.create_actor(
-                op_cls, self._session_id, self._graph_key, op_key, op_info,
-                position=position, uid=op_uid, address=scheduler_addr, wait=False
-            )
+
+            # if operand actor exists, the behavior depends on the existing operand state.
+            op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
+            if self.ctx.has_actor(op_ref):
+                op_ref.append_graph(self._graph_key, op_info, position=position)
+                op_refs[op_key] = op_ref
+            else:
+                op_refs[op_key] = self.ctx.create_actor(
+                    op_cls, self._session_id, self._graph_key, op_key, op_info,
+                    position=position, uid=op_uid, address=scheduler_addr, wait=False
+                )
+
             op_info['state'] = getattr(OperandState, state.upper())
             if _clean_io_meta:
                 del op_info['io_meta']
@@ -664,7 +673,7 @@ class GraphActor(SchedulerActor):
         self.state = GraphState.RUNNING
 
         if _start:
-            op_refs = dict((k, v.result()) for k, v in op_refs.items())
+            op_refs = dict((k, v) if isinstance(v, ActorRef) else (k, v.result()) for k, v in op_refs.items())
             start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
                              for op_key in initial_keys]
             [future.result() for future in start_futures]
@@ -721,7 +730,7 @@ class GraphActor(SchedulerActor):
         return self._start_time, self._end_time, len(self._operand_infos)
 
     def get_operand_states(self, op_keys):
-        return [self._operand_infos[k]['state'] for k in op_keys]
+        return [self._operand_infos[k]['state'] for k in op_keys if k in self._operand_infos]
 
     def set_operand_state(self, op_key, state):
         op_info = self._operand_infos[op_key]
@@ -887,6 +896,8 @@ class GraphActor(SchedulerActor):
         """
         operand_infos = self._operand_infos
         for k in succ_op_keys:
+            if k not in operand_infos:
+                continue
             op_info = operand_infos[k]
             op_state = op_info.get('state')
             if op_state not in OperandState.SUCCESSFUL_STATES:

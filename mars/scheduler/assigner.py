@@ -88,6 +88,7 @@ class AssignerActor(SchedulerActor):
         input_chunk_keys = op_io_meta['input_chunks']
         metas = self._get_chunks_meta(session_id, input_chunk_keys)
         if any(meta is None for meta in metas.values()):
+            print(op_info)
             raise DependencyMissing
 
         input_sizes = dict((k, meta.chunk_size) for k, meta in metas.items())

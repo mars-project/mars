@@ -29,7 +29,7 @@ class BaseOperandActor(SchedulerActor):
     def __init__(self, session_id, graph_id, op_key, op_info, worker=None, position=None):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
-        self._graph_id = graph_id
+        self._graph_ids = [graph_id]
         self._info = copy.deepcopy(op_info)
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
@@ -62,9 +62,9 @@ class BaseOperandActor(SchedulerActor):
             OperandState.CANCELLED: self._on_cancelled,
         }
 
+        self._graph_refs = []
         self._cluster_info_ref = None
         self._assigner_ref = None
-        self._graph_ref = None
         self._resource_ref = None
         self._kv_store_ref = None
         self._chunk_meta_ref = None
@@ -79,7 +79,7 @@ class BaseOperandActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
-        self._graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_id))
+        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
@@ -98,9 +98,9 @@ class BaseOperandActor(SchedulerActor):
                          self._last_state, value)
         self._state = value
         self._info['state'] = value.name
-        futures = [
-            self._graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False),
-        ]
+        futures = []
+        for graph_ref in self._graph_refs:
+            futures.append(graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False))
         if self._kv_store_ref is not None:
             futures.append(self._kv_store_ref.write(
                 '%s/state' % self._op_path, value.name, _tell=True, _wait=False))
@@ -112,9 +112,9 @@ class BaseOperandActor(SchedulerActor):
 
     @worker.setter
     def worker(self, value):
-        futures = [
-            self._graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False)
-        ]
+        futures =[]
+        for graph_ref in self._graph_refs:
+            futures.append(graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False))
         if self._kv_store_ref is not None:
             if value:
                 futures.append(self._kv_store_ref.write(
