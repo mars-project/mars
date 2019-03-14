@@ -443,7 +443,7 @@ class Test(unittest.TestCase):
         import scipy.sparse as sps
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=False) as cluster:
             session = cluster.session
 
             # calculate sparse with no element in matrix
@@ -452,3 +452,14 @@ class Test(unittest.TestCase):
             t1 = mt.tensor(a)
             t2 = mt.tensor(b)
             session.run(t1 * t2)
+
+    def testRunWithoutCompose(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=False) as cluster:
+            session = cluster.session
+
+            arr1 = (mt.ones((10, 10), chunk_size=3) + 1) * 2
+            r1 = session.run(arr1)
+            arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
+            r2 = session.run(arr2, compose=False)
+            np.testing.assert_array_equal(r1, r2)

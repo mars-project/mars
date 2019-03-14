@@ -58,14 +58,14 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(graph_ref)
 
     @log_unhandled
-    def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None):
+    def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
         from .graph import GraphActor
 
         graph_uid = GraphActor.gen_name(self._session_id, graph_key)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tensors=target_tensors,
                                           uid=graph_uid, address=self.get_scheduler(graph_uid))
-        graph_ref.execute_graph(_tell=True)
+        graph_ref.execute_graph(_tell=True, compose=compose)
         self._graph_refs[graph_key] = graph_ref
         for tensor_key in target_tensors or ():
             if tensor_key not in self._tensor_to_graph:

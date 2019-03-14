@@ -29,17 +29,21 @@ logger = logging.getLogger(__name__)
 
 
 class Session(object):
-    def __init__(self, endpoint, args=None):
+    def __init__(self, endpoint, req_session=None, args=None):
         self._endpoint = endpoint
         self._args = args
         # dict structure: {tensor_key -> graph_key, tensor_ids}
         # dict value is a tuple object which records graph key and tensor id
         self._executed_tensors = dict()
 
-        self._req_session = requests.Session()
+        if req_session:
+            self._req_session = req_session
+        else:
+            from requests.adapters import HTTPAdapter
 
-        from requests.adapters import HTTPAdapter
-        self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
+            self._req_session = requests.Session()
+            self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
+
         self._main()
 
     @property
@@ -122,15 +126,14 @@ class Session(object):
         # those executed tensors should fetch data directly, submit the others
         run_tensors = [t for t in tensors if t.key not in self._executed_tensors]
 
-        graph = build_graph(run_tensors, compose=compose,
-                            executed_keys=list(self._executed_tensors.keys()))
+        graph = build_graph(run_tensors, executed_keys=list(self._executed_tensors.keys()))
         targets = [t.key for t in run_tensors]
 
         targets_join = ','.join(targets)
         session_url = self._endpoint + '/api/session/' + self._session_id
         graph_json = graph.to_json()
 
-        resp_json = self._submit_graph(graph_json, targets_join)
+        resp_json = self._submit_graph(graph_json, targets_join, compose=compose)
         graph_key = resp_json['graph_key']
         graph_url = session_url + '/graph/' + graph_key
 
@@ -211,11 +214,12 @@ class Session(object):
             raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                               (resp.status_code, resp.reason, resp.text))
 
-    def _submit_graph(self, graph_json, targets):
+    def _submit_graph(self, graph_json, targets, compose=True):
         session_url = self._endpoint + '/api/session/' + self._session_id
         resp = self._req_session.post(session_url + '/graph', dict(
             graph=json.dumps(graph_json),
             target=targets,
+            compose=compose
         ))
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
