@@ -51,7 +51,7 @@ class MockInProcessCacheActor(WorkerActor):
         super(MockInProcessCacheActor, self).post_create()
         self._chunk_holder_ref = self.ctx.actor_ref(ChunkHolderActor.default_name())
 
-    def dump_cache(self, keys, callback):
+    def dump_cache(self, session_id, keys, callback):
         for k in keys:
             ref = self._chunk_store.put(self._session_id, k, self._mock_data)
             self._chunk_holder_ref.register_chunk(self._session_id, k)

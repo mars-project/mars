@@ -17,6 +17,7 @@ import logging
 import numpy as np
 
 from .array import as_same_device, device
+from ...operands import ShuffleProxy
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +114,15 @@ def _reshape_reduce(ctx, chunk):
     except KeyError:
         result_array = np.zeros(chunk.shape, dtype=chunk.dtype)
 
-    for shuffle_input in chunk.inputs[0].inputs:
-        key = (shuffle_input.key, chunk.op.shuffle_key)
+    in_chunk = chunk.inputs[0]
+    if isinstance(in_chunk.op, ShuffleProxy):
+        input_keys = [inp.key for inp in in_chunk.inputs]
+    else:
+        input_keys = in_chunk.op.to_fetch_keys
+
+    shuffle_key = chunk.op.shuffle_key
+    for input_key in input_keys:
+        key = (input_key, shuffle_key)
         if ctx.get(key) is not None:
             data_tuple = ctx[key]
             result_array[data_tuple[:-1]] = data_tuple[-1]
@@ -125,7 +133,7 @@ def _reshape_reduce(ctx, chunk):
 
 def _reshape_reduce_estimate_size(ctx, chunk):
     sum_size = 0
-    for shuffle_input in chunk.inputs[0].inputs:
+    for shuffle_input in chunk.inputs[0].inputs or ():
         key = (shuffle_input.key, chunk.op.shuffle_key)
         if ctx.get(key) is not None:
             sum_size += ctx[key][0]

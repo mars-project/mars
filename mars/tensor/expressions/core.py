@@ -60,7 +60,8 @@ class TensorOperandMixin(TilesableOperandMixin):
 
 
 class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
-    def __init__(self, **kwargs):
+    def __init__(self, dtype=None, **kwargs):
+        kwargs['_dtype'] = kwargs.get('_dtype', dtype)
         super(TensorShuffleProxy, self).__init__(**kwargs)
 
     def calc_shape(self, *inputs_shape):

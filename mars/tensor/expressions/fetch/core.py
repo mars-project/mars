@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....operands import Fetch
+from ....operands import Fetch, FetchShuffle
 from ..core import TensorOperandMixin
 
 
@@ -48,3 +48,9 @@ class TensorFetch(Fetch, TensorFetchMixin):
         return super(TensorFetch, self)._new_entities(
             inputs, shape, chunks=chunks, nsplits=nsplits,
             output_limit=output_limit, kws=kws, **kw)
+
+
+class TensorFetchShuffle(FetchShuffle, TensorFetchMixin):
+    def __init__(self, dtype=None, to_fetch_keys=None, **kw):
+        super(TensorFetchShuffle, self).__init__(
+            _dtype=dtype, _to_fetch_keys=to_fetch_keys, **kw)

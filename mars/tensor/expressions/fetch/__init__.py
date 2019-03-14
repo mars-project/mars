@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import TensorFetch
+from .core import TensorFetch, TensorFetchShuffle

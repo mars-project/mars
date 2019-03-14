@@ -454,7 +454,7 @@ class Executor(object):
             return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False):
+                      mock=False, retval=True):
         optimized_graph = self._preprocess(graph, keys)
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
@@ -463,7 +463,7 @@ class Executor(object):
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
                                          mock_max_memory=self._mock_max_memory)
-        res = graph_execution.execute(True)
+        res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
             self._chunk_result.clear()

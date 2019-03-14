@@ -28,7 +28,6 @@ import sys
 import time
 import zlib
 import threading
-from hashlib import md5
 
 import numpy as np
 
@@ -192,7 +191,7 @@ def get_next_port(typ=None):
 
 @functools32.lru_cache(200)
 def mod_hash(val, modulus):
-    return int(md5(to_binary(val)).hexdigest(), 16) % modulus
+    return int(tokenize(val), 16) % modulus
 
 
 class classproperty(object):

@@ -14,9 +14,10 @@
 
 import copy
 import logging
+from collections import defaultdict
 
 from ..utils import SchedulerActor
-from .core import OperandState
+from .core import OperandState, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -144,12 +145,47 @@ class BaseOperandActor(SchedulerActor):
         op_uid = self.gen_uid(self._session_id, key)
         return self.ctx.actor_ref(op_uid, address=self.get_scheduler(op_uid))
 
-    def start_operand(self, state=None):
+    def _free_data_in_worker(self, data_keys):
+        """
+        Free data on single worker
+        :param data_keys: keys of data in chunk meta
+        """
+        from ...worker.chunkholder import ChunkHolderActor
+
+        endpoint_lists = self._chunk_meta_ref.batch_get_workers(self._session_id, data_keys)
+        futures = []
+        worker_data = defaultdict(list)
+        for data_key, endpoints in zip(data_keys, endpoint_lists):
+            if endpoints is None:
+                continue
+            for ep in endpoints:
+                worker_data[ep].append(data_key)
+
+        for ep, data_keys in worker_data.items():
+            worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
+            futures.append(worker_cache_ref.unregister_chunks(
+                self._session_id, data_keys, _tell=True, _wait=False))
+
+        for f in futures:
+            with rewrite_worker_errors(ignore_error=True):
+                f.result()
+
+        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True)
+
+    def start_operand(self, state=None, **kwargs):
         """
         Start handling operand given self.state
         """
         if state:
             self.state = state
+
+        kwargs = dict((k, v) for k, v in kwargs.items() if v is not None)
+        io_meta = kwargs.pop('io_meta', None)
+        if io_meta:
+            self._io_meta.update(io_meta)
+            self._info['io_meta'] = self._io_meta
+        self._info.update(kwargs)
+
         self._state_handlers[self.state]()
 
     def stop_operand(self, state=OperandState.CANCELLING):
@@ -164,7 +200,7 @@ class BaseOperandActor(SchedulerActor):
     def add_running_predecessor(self, op_key, worker):
         pass
 
-    def add_finished_predecessor(self, op_key, worker, output_keys=None):
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)
 
     def add_finished_successor(self, op_key):

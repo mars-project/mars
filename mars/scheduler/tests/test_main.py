@@ -248,6 +248,21 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, sumv.key)
         assert_allclose(loads(result), expected)
 
+        a = mt.ones((31, 27), chunk_size=10)
+        b = a.reshape(27, 31)
+        b.op.params['_reshape_with_shuffle'] = True
+        graph = b.build_graph()
+        targets = [b.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
+                                        graph_key, target_tensors=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, b.key)
+        assert_allclose(loads(result), np.ones((27, 31)))
+
     def testMainWithEtcd(self):
         self.start_processes(etcd=True)
 

@@ -52,6 +52,8 @@ class OperandActor(BaseOperandActor):
         self._running_preds = set()
         self._pred_workers = set()
 
+        self._data_sizes = None
+
         self._input_worker_scores = dict()
         self._worker_scores = dict()
 
@@ -88,6 +90,12 @@ class OperandActor(BaseOperandActor):
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
             self._state = op_info['state']
 
+    def start_operand(self, state=None, **kwargs):
+        target_worker = kwargs.get('target_worker')
+        if target_worker:
+            self._target_worker = target_worker
+        return super(OperandActor, self).start_operand(state=state, **kwargs)
+
     def add_running_predecessor(self, op_key, worker):
         self._running_preds.add(op_key)
         self._pred_workers.add(worker)
@@ -119,8 +127,8 @@ class OperandActor(BaseOperandActor):
                 self._pred_workers = set()
                 self._running_preds = set()
 
-    def add_finished_predecessor(self, op_key, worker, output_keys=None):
-        super(OperandActor, self).add_finished_predecessor(op_key, worker, output_keys=output_keys)
+    def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+        super(OperandActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
         if all(k in self._finish_preds for k in self._pred_keys):
             if self.state != OperandState.UNSCHEDULED:
                 return True
@@ -304,18 +312,6 @@ class OperandActor(BaseOperandActor):
         # actual start the new state
         self.start_operand(state)
 
-    def _free_worker_data(self, ep, chunk_key):
-        """
-        Free data on single worker
-        :param ep: worker endpoint
-        :param chunk_key: chunk key
-        """
-        from ...worker.chunkholder import ChunkHolderActor
-
-        worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
-        return worker_cache_ref.unregister_chunk(self._session_id, chunk_key,
-                                                 _tell=True, _wait=False)
-
     def free_data(self, state=OperandState.FREED):
         """
         Free output data of current operand
@@ -340,27 +336,9 @@ class OperandActor(BaseOperandActor):
 
         self.start_operand(state)
 
-        endpoint_lists = self._chunk_meta_ref.batch_get_workers(self._session_id, self._chunks)
-        futures = []
-        for chunk_key, endpoints in zip(self._chunks, endpoint_lists):
-            if endpoints is None:
-                continue
-            for ep in endpoints:
-                futures.append((self._free_worker_data(ep, chunk_key), ep))
-
-        dead_workers = []
-        for f, ep in futures:
-            try:
-                with rewrite_worker_errors():
-                    f.result()
-            except WorkerDead:
-                dead_workers.append(ep)
-
-        if dead_workers:
-            self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
-            self._assigned_workers.difference_update(dead_workers)
-
-        self._chunk_meta_ref.batch_delete_meta(self._session_id, self._chunks, _tell=True)
+        stored_keys = self._io_meta.get('data_targets')
+        if stored_keys:
+            self._free_data_in_worker(stored_keys)
 
     def _get_execution_ref(self, uid=None, address=None):
         """
@@ -498,7 +476,14 @@ class OperandActor(BaseOperandActor):
             self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             return
 
-        chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, self._input_chunks)
+        try:
+            input_keys = self._io_meta['input_data_keys']
+            input_chunks = [k[0] if isinstance(k, tuple) else k
+                            for k in input_keys]
+        except KeyError:
+            input_keys = self._input_chunks
+            input_chunks = self._input_chunks
+        chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, input_keys)
         if any(v is None for v in chunk_sizes):
             logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
                            self._op_key)
@@ -511,10 +496,10 @@ class OperandActor(BaseOperandActor):
         logger.debug('Operand %s assigned to run on workers %r, now it has %r',
                      self._op_key, new_assignment, self._assigned_workers)
 
-        data_sizes = dict(zip(self._input_chunks, chunk_sizes))
+        data_sizes = dict(zip(input_keys, chunk_sizes))
 
         dead_workers = set()
-        serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
+        serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
         for worker_ep in new_assignment:
             try:
                 with rewrite_worker_errors():
@@ -538,10 +523,11 @@ class OperandActor(BaseOperandActor):
         self._execution_ref = self._get_execution_ref()
 
         @log_unhandled
-        def _acceptor(*_):
+        def _acceptor(data_sizes):
             if not self._is_worker_alive():
                 return
-            # handling success of operand execution
+            self._data_sizes = data_sizes
+            self._io_meta['data_targets'] = list(data_sizes)
             self.start_operand(OperandState.FINISHED)
 
         @log_unhandled
@@ -600,7 +586,8 @@ class OperandActor(BaseOperandActor):
         # record if successors can be executed
         for out_key in self._succ_keys:
             futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
-                self._op_key, self.worker, _tell=True, _wait=False))
+                self._op_key, self.worker, output_sizes=self._data_sizes,
+                _tell=True, _wait=False))
         for in_key in self._pred_keys:
             futures.append(self._get_operand_actor(in_key).add_finished_successor(
                 self._op_key, _tell=True, _wait=False))

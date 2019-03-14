@@ -176,7 +176,8 @@ class TensorReshape(Reshape, TensorOperandMixin):
                                         _dtype=inp.dtype)
             shuffle_inputs.append(chunk_op.new_chunk([inp], (np.nan,), index=inp.index))
 
-        proxy_chunk = TensorShuffleProxy(_tensor_keys=[in_tensor.op.key]).new_chunk(shuffle_inputs, ())
+        proxy_chunk = TensorShuffleProxy(dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]) \
+            .new_chunk(shuffle_inputs, ())
 
         for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
                                            itertools.product(*chunk_size_idxes)):

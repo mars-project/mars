@@ -15,16 +15,17 @@
 import logging
 import time
 import uuid
+from collections import defaultdict
 from functools import partial
 
-from .spill import read_spill_file, write_spill_file, spill_exists
-from .utils import WorkerActor, concat_operand_keys
 from .. import promise
+from ..compat import six, OrderedDict3
 from ..config import options
 from ..errors import *
-from ..utils import deserialize_graph, log_unhandled, calc_data_size
-from ..compat import six, OrderedDict3
 from ..executor import Executor
+from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size
+from .spill import read_spill_file, write_spill_file, spill_exists
+from .utils import WorkerActor, concat_operand_keys, build_load_key, get_chunk_key
 
 logger = logging.getLogger(__name__)
 
@@ -54,72 +55,96 @@ class InProcessCacheActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def dump_cache(self, keys, callback):
+    def dump_cache(self, session_id, keys, callback):
         """
         Dump data in rss memory into shared cache
         """
+        from ..scheduler.chunkmeta import WorkerMeta
+        meta_dict = dict()
+
         @log_unhandled
-        def _try_put_chunk(session_id, chunk_key, data_size, data_shape):
+        def _try_put_chunk(chunk_key, data_size, data_shape):
             logger.debug('Try putting %s into shared cache.', chunk_key)
+            session_chunk_key = (session_id, chunk_key)
             try:
-                if chunk_key not in _calc_result_cache:
+                if session_chunk_key not in _calc_result_cache:
                     if not self._chunk_store.contains(session_id, chunk_key):
                         raise KeyError('Data key %s not found in inproc cache', chunk_key)
                     return
 
                 buf = None
                 try:
-                    buf = self._chunk_store.put(session_id, chunk_key, _calc_result_cache[chunk_key][1])
-                    del _calc_result_cache[chunk_key]
+                    buf = self._chunk_store.put(session_id, chunk_key,
+                                                _calc_result_cache[session_chunk_key])
+                    del _calc_result_cache[session_chunk_key]
                     self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
                     self._chunk_holder_ref.register_chunk(session_id, chunk_key)
                     data_size = self._chunk_store.get_actual_size(session_id, chunk_key)
-                    self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
-                        session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
+                    meta_dict[chunk_key] = WorkerMeta(
+                        chunk_size=data_size, chunk_shape=data_shape, workers=(self.address,))
                 finally:
                     del buf
 
             except StoreFull:
                 # if we cannot put data into shared cache, we store it into spill directly
                 self._chunk_holder_ref.spill_size(data_size, _tell=True)
-                _put_spill_directly(session_id, chunk_key, data_size, data_shape)
+                _put_spill_directly(chunk_key, data_size, data_shape)
 
         @log_unhandled
-        def _put_spill_directly(session_id, chunk_key, data_size, data_shape, *_):
+        def _put_spill_directly(chunk_key, data_size, data_shape, *_):
             if self._spill_dump_pool is None:
                 raise SpillNotConfigured
 
+            session_chunk_key = (session_id, chunk_key)
             logger.debug('Writing data %s directly into spill.', chunk_key)
-            self._spill_dump_pool.submit(write_spill_file, chunk_key, _calc_result_cache[chunk_key][1]).result()
+            self._spill_dump_pool.submit(write_spill_file, chunk_key,
+                                         _calc_result_cache[session_chunk_key]).result()
 
-            del _calc_result_cache[chunk_key]
+            del _calc_result_cache[session_chunk_key]
             self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
-            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
-                session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
+            meta_dict[chunk_key] = WorkerMeta(
+                chunk_size=data_size, chunk_shape=data_shape, workers=(self.address,))
+
+        @log_unhandled
+        def _finish_store(*_):
+            meta_targets = dict()
+            addr_refs = dict()
+            for k in keys:
+                ref = self.get_meta_ref(session_id, k)
+                addr_refs[ref.address] = ref
+                if ref.address not in meta_targets:
+                    meta_targets[ref.address] = ([], [])
+                meta_targets[ref.address][0].append(k)
+                meta_targets[ref.address][1].append(meta_dict[k])
+
+            for addr, (chunk_keys, metas) in meta_targets.items():
+                addr_refs[addr].batch_set_chunk_meta(session_id, chunk_keys, metas)
+
+            self.tell_promise(callback)
 
         promises = []
         for k in keys:
-            session_id, value = _calc_result_cache[k]
+            value = _calc_result_cache[(session_id, k)]
             data_size = calc_data_size(value)
             # for some special operands(argmax, argmean, mean, ..), intermediate chunk data has multiple parts, choose
             # first part's shape as chunk's shape.
             data_shape = value[0].shape if isinstance(value, tuple) else value.shape
             del value
             promises.append(
-                promise.Promise(done=True).then(partial(_try_put_chunk, session_id, k, data_size, data_shape))
+                promise.Promise(done=True).then(partial(_try_put_chunk, k, data_size, data_shape))
             )
-        promise.all_(promises).then(lambda *_: self.tell_promise(callback)) \
+        promise.all_(promises).then(_finish_store) \
             .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
 
     @log_unhandled
-    def remove_cache(self, keys):
+    def remove_cache(self, session_id, keys):
         """
         Remove data from cache
         """
         for k in keys:
-            del _calc_result_cache[k]
+            del _calc_result_cache[(session_id, k)]
 
 
 class CpuCalcActor(WorkerActor):
@@ -164,91 +189,131 @@ class CpuCalcActor(WorkerActor):
         if options.worker.spill_directory:
             self._spill_load_pool = self.ctx.threadpool(len(options.worker.spill_directory))
 
-    @staticmethod
-    def _build_load_key(graph_key, chunk_key):
-        return '%s_load_memory_%s' % (graph_key, chunk_key)
+    def _collect_input_data(self, session_id, graph, op_key):
+        from ..operands import Fetch, FetchShuffle
+
+        comp_nodes = set()
+        fetch_keys = set()
+        for chunk in graph:
+            if isinstance(chunk.op, Fetch):
+                fetch_keys.add(chunk.op.to_fetch_key or chunk.key)
+            elif isinstance(chunk.op, FetchShuffle):
+                shuffle_key = graph.successors(chunk)[0].op.shuffle_key
+                for k in chunk.op.to_fetch_keys:
+                    fetch_keys.add((k, shuffle_key))
+            else:
+                comp_nodes.add(chunk.key)
+
+        context_dict = dict()
+        absent_keys = []
+        spill_load_futures = dict()
+        for key in fetch_keys:
+            try:
+                # try load chunk from shared cache
+                context_dict[key] = self._chunk_store.get(session_id, key)
+                self._mem_quota_ref.release_quota(build_load_key(op_key, key))
+            except KeyError:
+                # chunk not in shared cache, we load it from spill directly
+                if self._spill_load_pool is not None and spill_exists(key):
+                    logger.debug('Load chunk %s directly from spill', key)
+                    self._mem_quota_ref.process_quota(build_load_key(op_key, key))
+                    spill_load_futures[key] = self._spill_load_pool.submit(read_spill_file, key)
+                else:
+                    absent_keys.append(key)
+        if absent_keys:
+            logger.error('Chunk requirements %r unmet.')
+            raise ObjectNotInPlasma(absent_keys)
+
+        # collect results from futures
+        direct_load_keys = []
+        if spill_load_futures:
+            for k, future in spill_load_futures.items():
+                context_dict[k] = future.result()
+                load_key = build_load_key(op_key, k)
+                direct_load_keys.append(load_key)
+                self._mem_quota_ref.hold_quota(load_key)
+            spill_load_futures.clear()
+
+        return context_dict, direct_load_keys
+
+    def _calc_results(self, graph, context_dict, chunk_targets):
+        # mark targets as processing
+        for k in chunk_targets:
+            self._mem_quota_ref.process_quota(k)
+
+        # start actual execution
+        executor = Executor(storage=context_dict)
+        self._execution_pool.submit(executor.execute_graph, graph,
+                                    chunk_targets, retval=False).result()
+
+        # collect results
+        result_pairs = []
+        collected_chunk_keys = set()
+        for k, v in context_dict.items():
+            if isinstance(k, tuple):
+                k = tuple(to_str(i) for i in k)
+            else:
+                k = to_str(k)
+
+            chunk_key = get_chunk_key(k)
+            if chunk_key in chunk_targets:
+                result_pairs.append((k, v))
+                collected_chunk_keys.add(chunk_key)
+
+        for k in chunk_targets:
+            if k not in collected_chunk_keys:  # pragma: no cover
+                raise KeyError(k)
+            self._mem_quota_ref.hold_quota(k)
+        return result_pairs
 
     @promise.reject_on_exception
     @log_unhandled
-    def calc(self, session_id, ser_graph, targets, callback):
+    def calc(self, session_id, ser_graph, chunk_targets, callback):
         """
         Do actual calculation. This method should be called when all data
         is available (i.e., either in shared cache or in memory)
         :param session_id: session id
         :param ser_graph: serialized executable graph
-        :param targets: keys of target chunks
+        :param chunk_targets: keys of target chunks
         :param callback: promise callback, returns the uid of InProcessCacheActor
         """
-        from ..operands import Fetch
         graph = deserialize_graph(ser_graph)
         op_key, op_name = concat_operand_keys(graph, '_')
+        chunk_targets = set(chunk_targets)
 
         try:
-            context_dict = dict()
-            comp_nodes = []
-            absent_keys = []
-            spill_load_futures = dict()
-            for chunk in graph.iter_nodes():
-                try:
-                    # try load chunk from shared cache
-                    if isinstance(chunk.op, Fetch):
-                        context_dict[chunk.key] = self._chunk_store.get(session_id, chunk.key)
-                        self._mem_quota_ref.release_quota(self._build_load_key(op_key, chunk.key))
-                    else:
-                        comp_nodes.append(chunk.op.key)
-                except KeyError:
-                    # chunk not in shared cache, we load it from spill directly
-                    if self._spill_load_pool is not None and spill_exists(chunk.key):
-                        logger.debug('Load chunk %s directly from spill', chunk.key)
-                        self._mem_quota_ref.process_quota(self._build_load_key(op_key, chunk.key))
-                        spill_load_futures[chunk.key] = self._spill_load_pool.submit(read_spill_file, chunk.key)
-                    else:
-                        absent_keys.append(chunk.key)
-            if absent_keys:
-                logger.error('Chunk requirements %r unmet.')
-                raise ObjectNotInPlasma(absent_keys)
+            context_dict, direct_load_keys = self._collect_input_data(session_id, graph, op_key)
 
-            # collect results from futures
-            if spill_load_futures:
-                for k, future in spill_load_futures.items():
-                    context_dict[k] = future.result()
-                    self._mem_quota_ref.hold_quota(self._build_load_key(op_key, k))
-                spill_load_futures.clear()
-
-            logger.debug('Start calculating operand %r.', comp_nodes)
-
+            logger.debug('Start calculating operand %s.', op_key)
             start_time = time.time()
 
-            # mark targets as processing
-            target_keys = [k for k in targets if not self._chunk_store.contains(session_id, k)]
-            [self._mem_quota_ref.process_quota(k) for k in target_keys]
-
-            # start actual execution
-            executor = Executor(storage=context_dict)
-            results = self._execution_pool.submit(executor.execute_graph, graph, targets).result()
-
-            for k in list(context_dict.keys()):
-                del context_dict[k]
-                self._mem_quota_ref.release_quota(self._build_load_key(op_key, k))
+            try:
+                result_pairs = self._calc_results(graph, context_dict, chunk_targets)
+            finally:
+                # release memory alloc for load keys
+                for k in direct_load_keys:
+                    self._mem_quota_ref.release_quota(k)
 
             end_time = time.time()
 
-            [self._mem_quota_ref.hold_quota(k) for k in target_keys]
-
             # adjust sizes in allocation
             save_sizes = dict()
-            for k, v in zip(targets, results):
+            apply_alloc_sizes = defaultdict(lambda: 0)
+            for k, v in result_pairs:
                 if not self._chunk_store.contains(session_id, k):
-                    _calc_result_cache[k] = (session_id, v)
-                    save_sizes[k] = calc_data_size(v)
-                    self._mem_quota_ref.apply_allocation(k, save_sizes[k])
+                    _calc_result_cache[(session_id, k)] = v
+                    data_size = save_sizes[k] = calc_data_size(v)
+                    apply_alloc_sizes[get_chunk_key(k)] += data_size
+
+            for k, v in apply_alloc_sizes.items():
+                self._mem_quota_ref.apply_allocation(k, v)
 
             if self._status_ref:
                 self._status_ref.update_mean_stats(
                     'calc_speed.' + op_name, sum(save_sizes.values()) * 1.0 / (end_time - start_time),
                     _tell=True, _wait=False)
 
-            logger.debug('Finish calculating operand %r.', comp_nodes)
+            logger.debug('Finish calculating operand %s.', op_key)
             self.tell_promise(callback, self._inproc_cache_ref.uid, save_sizes)
             self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True)
         except:  # noqa: E722

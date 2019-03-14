@@ -85,8 +85,12 @@ class AssignerActor(SchedulerActor):
             target_worker = None
 
         op_io_meta = op_info['io_meta']
-        input_chunk_keys = op_io_meta['input_chunks']
-        metas = self._get_chunks_meta(session_id, input_chunk_keys)
+        try:
+            input_data_keys = op_io_meta['input_data_keys']
+        except KeyError:
+            input_data_keys = op_io_meta['input_chunks']
+
+        metas = self._get_chunks_meta(session_id, input_data_keys)
         if any(meta is None for meta in metas.values()):
             raise DependencyMissing
 
@@ -95,7 +99,7 @@ class AssignerActor(SchedulerActor):
         if target_worker is None:
             chunk_workers = dict((k, meta.workers) for k, meta in metas.items())
 
-            candidate_workers = self._get_eps_by_worker_locality(input_chunk_keys, chunk_workers, input_sizes)
+            candidate_workers = self._get_eps_by_worker_locality(input_data_keys, chunk_workers, input_sizes)
         else:
             candidate_workers = [target_worker]
 

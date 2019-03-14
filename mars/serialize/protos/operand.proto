@@ -351,6 +351,8 @@ message OperandDef {
         RESHAPE_MAP = 2002;
         RESHAPE_REDUCE = 2003;
 
+        // fetches
+        FETCH_SHUFFLE = 999998;
         FETCH = 999999;
     }
 

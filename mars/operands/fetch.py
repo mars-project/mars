@@ -16,7 +16,7 @@
 
 from .core import Operand
 from .. import opcodes as OperandDef
-from ..serialize import StringField
+from ..serialize import StringField, ListField, ValueType
 from ..utils import to_str
 
 
@@ -28,3 +28,14 @@ class Fetch(Operand):
     @property
     def to_fetch_key(self):
         return self._to_fetch_key
+
+
+class FetchShuffle(Operand):
+    _op_type_ = OperandDef.FETCH_SHUFFLE
+
+    _to_fetch_keys = ListField('to_fetch_keys', ValueType.string,
+                               on_serialize=lambda v: [to_str(i) for i in v])
+
+    @property
+    def to_fetch_keys(self):
+        return self._to_fetch_keys

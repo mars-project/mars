@@ -153,3 +153,13 @@ def concat_operand_keys(graph, sep=','):
     keys = sep.join(graph_op_dict.keys())
     graph_ops = sep.join(graph_op_dict.values())
     return keys, graph_ops
+
+
+def get_chunk_key(key):
+    return key[0] if isinstance(key, tuple) else key
+
+
+def build_load_key(graph_key, chunk_key):
+    if isinstance(chunk_key, tuple):
+        chunk_key = '@'.join(chunk_key)
+    return '%s_load_memory_%s' % (graph_key, chunk_key)

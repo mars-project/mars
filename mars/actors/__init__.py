@@ -15,6 +15,6 @@
 # limitations under the License.
 
 
-from .core import create_actor_pool, Actor, FunctionActor, new_client
+from .core import create_actor_pool, Actor, ActorRef, FunctionActor, new_client
 from .errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from .distributor import Distributor

@@ -19,6 +19,7 @@ from .core import Operand
 from .. import opcodes as OperandDef
 from ..serialize import ValueType, AnyField, KeyField, ListField, TupleField, DataTypeField, \
     StringField, Int32Field, Int64Field, BoolField
+from ..utils import to_str
 
 
 class VirtualOperand(Operand):
@@ -48,7 +49,7 @@ class ShuffleMap(Operand):
 
 
 class ShuffleReduce(Operand):
-    _shuffle_key = StringField('shuffle_key')
+    _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
     _rough_nbytes = Int64Field('rough_nbytes')
 
     @property
@@ -58,7 +59,7 @@ class ShuffleReduce(Operand):
     def get_dependent_data_keys(self):
         inputs = self.inputs or ()
         return [(chunk.key, self._shuffle_key)
-                for proxy in inputs for chunk in proxy.inputs]
+                for proxy in inputs for chunk in proxy.inputs or ()]
 
 
 class Reshape(HasInput):

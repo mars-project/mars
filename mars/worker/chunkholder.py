@@ -238,6 +238,11 @@ class ChunkHolderActor(WorkerActor):
             self._status_ref.set_cache_allocations(
                 dict(hold=self._total_hold, total=self._total_size), _tell=True, _wait=False)
 
+    @log_unhandled
+    def unregister_chunks(self, session_id, chunk_keys):
+        for c in chunk_keys:
+            self.unregister_chunk(session_id, c)
+
     def is_stored(self, chunk_key):
         return chunk_key in self._chunk_holder
 
