@@ -87,15 +87,24 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
 def parse_index(index_value):
     import pandas as pd
 
+    def _parse_property(index):
+        return {
+            '_is_monotonic_increasing': index.is_monotonic_increasing,
+            '_is_monotonic_decreasing': index.is_monotonic_decreasing,
+            '_is_unique': index.is_unique
+        }
+
     def _serialize_index(index):
-        return getattr(IndexValue, type(index).__name__)(_name=index.name)
+        params = _parse_property(index)
+        return getattr(IndexValue, type(index).__name__)(_name=index.name, **params)
 
     def _serialize_range_index(index):
+        params = _parse_property(index)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
-                                     _name=index.name)
+                                     _name=index.name, **params)
 
     def _serialize_multi_index(index):
-        return IndexValue.MultiIndex(_names=index.names)
+        return IndexValue.MultiIndex(_names=index.names, **_parse_property(index))
 
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))

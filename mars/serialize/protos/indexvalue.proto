@@ -8,20 +8,32 @@ message IndexValue {
         Value name = 1;
         repeated Value data = 2;
         Value dtype = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message RangeIndex {
         Value name = 1;
         Value slice = 2;
+        bool is_monotonic_increasing = 3;
+        bool is_monotonic_decreasing = 4;
+        bool is_unique = 5;
     }
     message CategoricalIndex {
         Value name = 1;
         repeated Value categories = 2;
         bool ordered = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message IntervalIndex {
         Value name = 1;
         repeated Value data = 2;
         bool closed = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message DatetimeIndex {
         Value name = 1;
@@ -34,6 +46,9 @@ message IndexValue {
         Value tz = 8;
         bool dayfirst = 9;
         bool yearfirst = 10;
+        bool is_monotonic_increasing = 11;
+        bool is_monotonic_decreasing = 12;
+        bool is_unique = 13;
     }
     message TimedeltaIndex {
         Value name = 1;
@@ -44,6 +59,9 @@ message IndexValue {
         int64 periods = 6;
         Value end = 7;
         Value closed = 8;
+        bool is_monotonic_increasing = 9;
+        bool is_monotonic_decreasing = 10;
+        bool is_unique = 11;
     }
     message PeriodIndex {
         Value name = 1;
@@ -61,27 +79,42 @@ message IndexValue {
         Value second = 13;
         Value tz = 14;
         Value dtype = 15;
+        bool is_monotonic_increasing = 16;
+        bool is_monotonic_decreasing = 17;
+        bool is_unique = 18;
     }
     message Int64Index {
         Value name = 1;
         repeated Value data = 2;
         Value dtype = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message UInt64Index {
         Value name = 1;
         repeated Value data = 2;
         Value dtype = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message Float64Index {
         Value name = 1;
         repeated Value data = 2;
         Value dtype = 3;
+        bool is_monotonic_increasing = 4;
+        bool is_monotonic_decreasing = 5;
+        bool is_unique = 6;
     }
     message MultiIndex {
         repeated Value names = 1;
         repeated Value levels = 2;
         repeated Value labels = 3;
         int32 sortorder = 4;
+        bool is_monotonic_increasing = 5;
+        bool is_monotonic_decreasing = 6;
+        bool is_unique = 7;
     }
 
     oneof index_value {

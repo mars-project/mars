@@ -22,26 +22,31 @@ from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, An
 class IndexValue(Serializable):
     __slots__ = ()
 
-    class Index(Serializable):
+    class IndexBase(Serializable):
+        _is_monotonic_increasing = BoolField('is_monotonic_increasing')
+        _is_monotonic_decreasing = BoolField('is_monotonic_decreasing')
+        _is_unique = BoolField('is_unique')
+
+    class Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class RangeIndex(Serializable):
+    class RangeIndex(IndexBase):
         _name = AnyField('name')
         _slice = SliceField('slice')
 
-    class CategoricalIndex(Serializable):
+    class CategoricalIndex(IndexBase):
         _name = AnyField('name')
         _categories = ListField('categories')
         _ordered = BoolField('ordered')
 
-    class IntervalIndex(Serializable):
+    class IntervalIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _closed = BoolField('closed')
 
-    class DatetimeIndex(Serializable):
+    class DatetimeIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _freq = AnyField('freq')
@@ -53,7 +58,7 @@ class IndexValue(Serializable):
         _dayfirst = BoolField('dayfirst')
         _yearfirst = BoolField('yearfirst')
 
-    class TimedeltaIndex(Serializable):
+    class TimedeltaIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _unit = AnyField('unit')
@@ -63,7 +68,7 @@ class IndexValue(Serializable):
         _end = AnyField('end')
         _closed = AnyField('closed')
 
-    class PeriodIndex(Serializable):
+    class PeriodIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _freq = AnyField('freq')
@@ -80,22 +85,22 @@ class IndexValue(Serializable):
         _tz = AnyField('tz')
         _dtype = DataTypeField('dtype')
 
-    class Int64Index(Serializable):
+    class Int64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class UInt64Index(Serializable):
+    class UInt64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class Float64Index(Serializable):
+    class Float64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class MultiIndex(Serializable):
+    class MultiIndex(IndexBase):
         _names = ListField('name')
         _levels = ListField('levels')
         _labels = ListField('labels')
