@@ -67,6 +67,7 @@ class LocalClusterSession(object):
     def run(self, *tensors, **kw):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)
+        compose = kw.pop('compose', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -79,7 +80,7 @@ class LocalClusterSession(object):
 
         # submit graph to local cluster
         self._api.submit_graph(self._session_id, json.dumps(graph.to_json()),
-                               graph_key, targets)
+                               graph_key, targets, compose=compose)
 
         exec_start_time = time.time()
         while timeout <= 0 or time.time() - exec_start_time <= timeout:

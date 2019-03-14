@@ -474,7 +474,7 @@ class Executor(object):
 
     @kernel_mode
     def execute_tensors(self, tensors, fetch=True, n_parallel=None, n_thread=None,
-                        print_progress=False, mock=False, sparse_mock_percent=1.0):
+                        print_progress=False, mock=False, compose=True, sparse_mock_percent=1.0):
         graph = DirectedGraph()
 
         result_keys = []
@@ -508,7 +508,8 @@ class Executor(object):
             else:
                 concat_keys.append(tensor.chunks[0].key)
 
-            tensor.build_graph(graph=graph, tiled=True, executed_keys=list(self._chunk_result.keys()))
+            tensor.build_graph(graph=graph, tiled=True, compose=compose,
+                               executed_keys=list(self._chunk_result.keys()))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
                            print_progress=print_progress, mock=mock,

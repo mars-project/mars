@@ -246,7 +246,7 @@ class GraphActor(SchedulerActor):
         self._graph_meta_ref.set_final_state(value, _tell=True)
 
     @log_unhandled
-    def execute_graph(self):
+    def execute_graph(self, compose=True):
         """
         Start graph execution
         """
@@ -264,7 +264,7 @@ class GraphActor(SchedulerActor):
         self.state = GraphState.PREPARING
 
         try:
-            self.prepare_graph()
+            self.prepare_graph(compose=compose)
             _detect_cancel()
 
             with self._open_dump_file('graph') as outf:  # pragma: no cover

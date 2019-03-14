@@ -263,3 +263,12 @@ class Test(unittest.TestCase):
         self.assertEqual(len(executor.chunk_result), 4)
         del arr2
         self.assertEqual(len(executor.chunk_result), 0)
+
+    def testWithoutCompose(self):
+        sess = new_session()
+
+        arr1 = (mt.ones((10, 10), chunk_size=3) + 1) * 2
+        r1 = sess.run(arr1)
+        arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
+        r2 = sess.run(arr2, compose=False)
+        np.testing.assert_array_equal(r1, r2)
