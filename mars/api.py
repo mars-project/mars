@@ -56,10 +56,10 @@ class MarsAPI(object):
     def delete_session(self, session_id):
         self.session_manager.delete_session(session_id)
 
-    def submit_graph(self, session_id, serialized_graph, graph_key, target):
+    def submit_graph(self, session_id, serialized_graph, graph_key, target, compose=True):
         session_uid = SessionActor.gen_name(session_id)
         session_ref = self.get_actor_ref(session_uid)
-        session_ref.submit_tensor_graph(serialized_graph, graph_key, target, _tell=True)
+        session_ref.submit_tensor_graph(serialized_graph, graph_key, target, compose=compose, _tell=True)
 
     def delete_graph(self, session_id, graph_key):
         graph_uid = GraphActor.gen_name(session_id, graph_key)

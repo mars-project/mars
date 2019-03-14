@@ -56,12 +56,12 @@ class SessionActor(SchedulerActor):
         self.ctx.destroy_actor(self._assigner_ref)
         [self.ctx.destroy_actor(graph_ref) for graph_ref in six.itervalues(self._graph_refs)]
 
-    def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None):
+    def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
         graph_uid = GraphActor.gen_name(self._session_id, graph_key)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tensors=target_tensors,
                                           uid=graph_uid, address=self.get_scheduler(graph_uid))
-        graph_ref.execute_graph(_tell=True)
+        graph_ref.execute_graph(_tell=True, compose=compose)
         self._graph_refs[graph_key] = graph_ref
 
     def graph_state(self, graph_key):

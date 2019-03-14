@@ -29,15 +29,19 @@ logger = logging.getLogger(__name__)
 
 
 class Session(object):
-    def __init__(self, endpoint, args=None):
+    def __init__(self, endpoint, req_session=None, args=None):
         self._endpoint = endpoint
         self._args = args
         self._tensor_to_graph = dict()
 
-        self._req_session = requests.Session()
+        if req_session:
+            self._req_session = req_session
+        else:
+            from requests.adapters import HTTPAdapter
 
-        from requests.adapters import HTTPAdapter
-        self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
+            self._req_session = requests.Session()
+            self._req_session.mount('http://stackoverflow.com', HTTPAdapter(max_retries=5))
+
         self._main()
 
     @property

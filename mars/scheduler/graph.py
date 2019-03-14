@@ -219,7 +219,7 @@ class GraphActor(SchedulerActor):
         self._final_state = value
         self._graph_meta_ref.set_final_state(value, _tell=True)
 
-    def execute_graph(self):
+    def execute_graph(self, compose=True):
         """
         Start graph execution
         """
@@ -237,7 +237,7 @@ class GraphActor(SchedulerActor):
         self.state = GraphState.PREPARING
 
         try:
-            self.prepare_graph()
+            self.prepare_graph(compose=compose)
             _detect_cancel()
 
             self.scan_node()
