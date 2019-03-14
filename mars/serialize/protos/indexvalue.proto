@@ -11,6 +11,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message RangeIndex {
         Value name = 1;
@@ -18,6 +21,9 @@ message IndexValue {
         bool is_monotonic_increasing = 3;
         bool is_monotonic_decreasing = 4;
         bool is_unique = 5;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 6;
     }
     message CategoricalIndex {
         Value name = 1;
@@ -26,6 +32,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message IntervalIndex {
         Value name = 1;
@@ -34,6 +43,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message DatetimeIndex {
         Value name = 1;
@@ -49,6 +61,9 @@ message IndexValue {
         bool is_monotonic_increasing = 11;
         bool is_monotonic_decreasing = 12;
         bool is_unique = 13;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 14;
     }
     message TimedeltaIndex {
         Value name = 1;
@@ -62,6 +77,9 @@ message IndexValue {
         bool is_monotonic_increasing = 9;
         bool is_monotonic_decreasing = 10;
         bool is_unique = 11;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 12;
     }
     message PeriodIndex {
         Value name = 1;
@@ -82,6 +100,9 @@ message IndexValue {
         bool is_monotonic_increasing = 16;
         bool is_monotonic_decreasing = 17;
         bool is_unique = 18;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 19;
     }
     message Int64Index {
         Value name = 1;
@@ -90,6 +111,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message UInt64Index {
         Value name = 1;
@@ -98,6 +122,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message Float64Index {
         Value name = 1;
@@ -106,6 +133,9 @@ message IndexValue {
         bool is_monotonic_increasing = 4;
         bool is_monotonic_decreasing = 5;
         bool is_unique = 6;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 7;
     }
     message MultiIndex {
         repeated Value names = 1;
@@ -115,6 +145,9 @@ message IndexValue {
         bool is_monotonic_increasing = 5;
         bool is_monotonic_decreasing = 6;
         bool is_unique = 7;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 8;
     }
 
     oneof index_value {
@@ -129,5 +162,8 @@ message IndexValue {
         UInt64Index uint64_index = 9;
         Float64Index float64_index = 10;
         MultiIndex multi_index = 11;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 12;
     }
 }

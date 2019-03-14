@@ -26,6 +26,7 @@ class IndexValue(Serializable):
         _is_monotonic_increasing = BoolField('is_monotonic_increasing')
         _is_monotonic_decreasing = BoolField('is_monotonic_decreasing')
         _is_unique = BoolField('is_unique')
+        _should_be_monotonic = BoolField('should_be_monotonic')
 
     class Index(IndexBase):
         _name = AnyField('name')
@@ -276,5 +277,7 @@ class DataFrame(Entity):
     _allow_data_type_ = (DataFrameData,)
 
 
+INDEX_TYPE = (Index, IndexData)
+SERIES_TYPE = (Series, SeriesData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
