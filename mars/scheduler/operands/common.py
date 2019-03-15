@@ -328,8 +328,12 @@ class OperandActor(BaseOperandActor):
         if state == OperandState.CANCELLED:
             can_be_freed = True
         else:
-            can_be_freed = all(graph_ref.check_operand_can_be_freed(self._succ_keys) for
-                               graph_ref in self._graph_refs)
+            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
+                                   graph_ref in self._graph_refs]
+            if None in can_be_freed_states:
+                can_be_freed = None
+            else:
+                can_be_freed = all(can_be_freed_states)
         if can_be_freed is None:
             self.ref().free_data(state, _delay=1, _tell=True)
             return
