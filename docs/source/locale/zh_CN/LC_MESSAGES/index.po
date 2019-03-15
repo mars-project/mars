@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-11-28 19:54+0800\n"
+"POT-Creation-Date: 2019-03-15 13:09+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,9 +30,8 @@ msgid "Mars tensor"
 msgstr "Mars tensor"
 
 #: ../../source/index.rst:14
-#, fuzzy
 msgid ":doc:`documentation <tensor/index>`"
-msgstr ":doc:`文档 <tensor>`"
+msgstr ":doc:`文档 <tensor/index>`"
 
 #: ../../source/index.rst:16
 msgid "Mars tensor provides a familiar interface like Numpy."
@@ -60,4 +59,20 @@ msgstr ""
 "Mars 可以在单台机器上运行，也可以扩展到上百台机器组成的集群中运行，且在"
 "两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
 "适应数据量的增长。"
+
+#: ../../source/index.rst:37
+msgid "Getting Started"
+msgstr "开始使用 Mars"
+
+#: ../../source/index.rst:44
+msgid "Tensor Interface"
+msgstr "张量接口"
+
+#: ../../source/index.rst:57
+msgid "Distributed Scheduling"
+msgstr "分布式调度"
+
+#: ../../source/index.rst:69
+msgid "Contribution Guide"
+msgstr "贡献指南"
 

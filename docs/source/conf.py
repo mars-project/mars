@@ -18,15 +18,16 @@
 
 
 # -- Project information -----------------------------------------------------
+from mars import __version__
 
 project = 'mars'
 copyright = '2014-2018, The Alibaba Group Holding Ltd.'
 author = 'jisheng, qinxing'
 
 # The short X.Y version
-version = ''
+version = __version__
 # The full version, including alpha/beta/rc tags
-release = '0.1alpha1'
+release = version
 
 
 # -- General configuration ---------------------------------------------------
