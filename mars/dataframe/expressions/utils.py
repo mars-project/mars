@@ -15,6 +15,7 @@
 import numpy as np
 
 from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
+from ...utils import tokenize
 from ..core import IndexValue
 
 
@@ -84,27 +85,35 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
     return tuple(row_chunk_size), tuple(col_chunk_size)
 
 
-def parse_index(index_value):
+def parse_index(index_value, store_data=False):
     import pandas as pd
 
-    def _parse_property(index):
-        return {
+    def _parse_property(index, ret_data):
+        kw = {
             '_is_monotonic_increasing': index.is_monotonic_increasing,
             '_is_monotonic_decreasing': index.is_monotonic_decreasing,
-            '_is_unique': index.is_unique
+            '_is_unique': index.is_unique,
+            '_min_val': index.min(),
+            '_max_val': index.max(),
+            '_key': tokenize(index),
         }
+        if ret_data:
+            kw['_data'] = index.values
+        return kw
 
     def _serialize_index(index):
-        params = _parse_property(index)
+        params = _parse_property(index, store_data)
         return getattr(IndexValue, type(index).__name__)(_name=index.name, **params)
 
     def _serialize_range_index(index):
-        params = _parse_property(index)
+        params = _parse_property(index, False)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
                                      _name=index.name, **params)
 
     def _serialize_multi_index(index):
-        return IndexValue.MultiIndex(_names=index.names, **_parse_property(index))
+        kw = _parse_property(index, store_data)
+        kw['_sortorder'] = index.sortorder
+        return IndexValue.MultiIndex(_names=index.names, **kw)
 
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))

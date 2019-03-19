@@ -110,15 +110,18 @@ class Test(TestBase):
         self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
 
     def testFromPandas(self):
-        data = pd.DataFrame(np.random.rand(10, 10))
+        data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
         df = from_pandas(data, chunk_size=4)
 
         pd.testing.assert_series_equal(df.op.dtypes, data.dtypes)
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(df.index_value._index_value._slice, slice(0, 10, 1))
-        self.assertTrue(df.index_value._index_value._is_monotonic_increasing)
-        self.assertFalse(df.index_value._index_value._is_monotonic_decreasing)
-        self.assertTrue(df.index_value._index_value._is_unique)
+        self.assertTrue(df.index_value.is_monotonic_increasing)
+        self.assertFalse(df.index_value.is_monotonic_decreasing)
+        self.assertTrue(df.index_value.is_unique)
+        self.assertEqual(df.index_value.min_val, 0)
+        self.assertEqual(df.index_value.max_val, 9)
+        np.testing.assert_equal(df.columns._index_value._data, data.columns.values)
 
         df.tiles()
 

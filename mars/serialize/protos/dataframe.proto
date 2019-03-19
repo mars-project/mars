@@ -42,4 +42,5 @@ message DataFrameDef {
     Value params = 7;
     string id = 8;
     IndexValue index_value = 9;
+    IndexValue columns_value = 10;
 }
