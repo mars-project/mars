@@ -33,10 +33,8 @@ class OperandActor(BaseOperandActor):
     Actor handling the whole lifecycle of a particular operand instance
     """
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
-                 position=None):
-        super(OperandActor, self).__init__(session_id, graph_id, op_key, op_info,
-                                           position=position, worker=worker)
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
+        super(OperandActor, self).__init__(session_id, graph_id, op_key, op_info, worker=worker)
         io_meta = self._io_meta
         self._input_chunks = io_meta['input_chunks']
         self._chunks = io_meta['chunks']
@@ -78,17 +76,17 @@ class OperandActor(BaseOperandActor):
                                                     _tell=True, _wait=False))
         [f.result() for f in futures]
 
-    def append_graph(self, graph_key, op_info, position=None):
+    def append_graph(self, graph_key, op_info):
         from ..graph import GraphActor
 
         if self._position != OperandPosition.TERMINAL:
-            self._position = position
+            self._position = op_info.get('position')
         graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
         self._graph_refs.append(graph_ref)
         self._pred_keys.update(op_info['io_meta']['predecessors'])
         self._succ_keys.update(op_info['io_meta']['successors'])
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
-            self._state = OperandState(op_info['state'].lower())
+            self._state = op_info['state']
 
     def add_running_predecessor(self, op_key, worker):
         self._running_preds.add(op_key)

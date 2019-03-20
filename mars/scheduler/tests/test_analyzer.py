@@ -56,7 +56,7 @@ class Test(unittest.TestCase):
             self.assertGreaterEqual(descendants[nodes[idx].op.key],
                                     descendants[nodes[idx + 1].op.key])
 
-    def testInitialWithInputs(self):
+    def testInitialAssignsWithInputs(self):
         import numpy as np
         from mars.tensor.expressions.random import TensorRandint
         from mars.tensor.expressions.arithmetic import TensorTreeAdd
@@ -110,7 +110,7 @@ class Test(unittest.TestCase):
                 graph.add_edge(n, r)
 
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
-        assignments = analyzer.calc_initial_assignments()
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
         for inp in inputs:
             self.assertEqual(1, len(set(assignments[n.op.key] for n in inp)))
 
@@ -143,7 +143,7 @@ class Test(unittest.TestCase):
                 graph.add_edge(n, r)
 
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
-        assignments = analyzer.calc_initial_assignments()
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
         self.assertEqual(len(assignments), 6)
 
     def testAssignWithPreviousData(self):
@@ -185,7 +185,10 @@ class Test(unittest.TestCase):
             '4': dict(c40=WorkerMeta(chunk_size=7, workers=('w3',))),
         }
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
-        assignments = analyzer.calc_initial_assignments(input_chunk_metas=data_dist)
+        assignments = analyzer.calc_operand_assignments(
+            analyzer.get_initial_operand_keys(),
+            input_chunk_metas=data_dist
+        )
 
         self.assertEqual(len(assignments), 6)
 
@@ -213,7 +216,10 @@ class Test(unittest.TestCase):
             '5': dict(c50=WorkerMeta(chunk_size=7, workers=('w2',))),
         }
         analyzer = GraphAnalyzer(graph, dict(w1=24, w2=24, w3=24))
-        assignments = analyzer.calc_initial_assignments(input_chunk_metas=data_dist)
+        assignments = analyzer.calc_operand_assignments(
+            analyzer.get_initial_operand_keys(),
+            input_chunk_metas=data_dist
+        )
 
         self.assertEqual(len(assignments), 6)
         self.assertEqual(assignments['0'], 'w1')
@@ -222,6 +228,24 @@ class Test(unittest.TestCase):
         self.assertEqual(assignments['3'], 'w3')
         self.assertEqual(assignments['4'], 'w2')
         self.assertEqual(assignments['5'], 'w2')
+
+    def testAssignsHalfway(self):
+        from mars.operands import ShuffleProxy
+
+        a = mt.ones((31, 27), chunk_size=10)
+        b = a.reshape(27, 31)
+        b.op.params['_reshape_with_shuffle'] = True
+        graph = b.build_graph(compose=False, tiled=True)
+
+        worker_res = dict(w1=24, w2=24, w3=24)
+        analyzer = GraphAnalyzer(graph, worker_res)
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
+        self.assertSetEqual(set(assignments.values()), set(worker_res))
+
+        shuffle_proxy_chunk = [c for c in graph if isinstance(c.op, ShuffleProxy)][0]
+        assignments = analyzer.calc_operand_assignments(
+            [c.op.key for c in graph.successors(shuffle_proxy_chunk)])
+        self.assertSetEqual(set(assignments.values()), set(worker_res))
 
     def testAssignOnWorkerAdd(self):
         import numpy as np
@@ -276,7 +300,7 @@ class Test(unittest.TestCase):
 
         worker_metrics = dict(w1=24, w2=24, w3=24)
         analyzer = GraphAnalyzer(graph, worker_metrics, fixed_assigns, op_states)
-        assignments = analyzer.calc_initial_assignments()
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
         for inp in inputs:
             if any(n.op.key in fixed_assigns for n in inp):
                 continue
@@ -353,7 +377,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all(changed_states[c.op.key] == OperandState.UNSCHEDULED
                             for res in (results[0], results[2]) for c in res))
 
-        assignments = analyzer.calc_initial_assignments()
+        assignments = analyzer.calc_operand_assignments(analyzer.get_initial_operand_keys())
         for inp in inputs:
             if any(n.op.key in fixed_assigns for n in inp):
                 continue
