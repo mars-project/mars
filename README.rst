@@ -5,6 +5,8 @@ Mars
 
 Mars is a tensor-based unified framework for large-scale data computation.
 
+See documentation for more information: https://docs.mars-project.io
+
 Installation
 ------------
 
