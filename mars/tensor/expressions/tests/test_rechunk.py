@@ -63,3 +63,11 @@ class Test(unittest.TestCase):
                          (slice(1, None, None), slice(2, None, None)))
         self.assertEqual(new_tensor.chunks[-1].inputs[1].op.slices,
                          (slice(1, None, None), slice(None, None, None)))
+
+    def testSparse(self):
+        tensor = ones((7, 12), chunk_size=4).tosparse()
+        new_tensor = tensor.rechunk(5)
+        new_tensor.tiles()
+
+        self.assertTrue(new_tensor.issparse())
+        self.assertTrue(all(c.issparse() for c in new_tensor.chunks))

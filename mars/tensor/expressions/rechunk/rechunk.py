@@ -29,9 +29,9 @@ from ..core import TensorOperandMixin
 
 
 class TensorRechunk(Rechunk, TensorOperandMixin):
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, **kw):
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, sparse=False, **kw):
         super(TensorRechunk, self).__init__(_chunk_size=chunk_size, _threshold=threshold,
-                                            _chunk_size_limit=chunk_size_limit, _dtype=dtype, **kw)
+                                            _chunk_size_limit=chunk_size_limit, _dtype=dtype, _sparse=sparse, **kw)
 
     def _set_inputs(self, inputs):
         super(TensorRechunk, self)._set_inputs(inputs)
@@ -61,7 +61,8 @@ def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None):
     if chunk_size == tensor.nsplits:
         return tensor
 
-    op = TensorRechunk(chunk_size, threshold, chunk_size_limit, dtype=tensor.dtype)
+    op = TensorRechunk(chunk_size, threshold, chunk_size_limit,
+                       dtype=tensor.dtype, sparse=tensor.issparse())
     return op(tensor)
 
 
@@ -396,6 +397,6 @@ def compute_rechunk(tensor, chunk_size):
             out_chunk = chunk_op.new_chunk(to_merge, chunk_shape, index=idx)
             result_chunks.append(out_chunk)
 
-    op = TensorRechunk(chunk_size)
+    op = TensorRechunk(chunk_size, sparse=tensor.issparse())
     return op.new_tensor([tensor], tensor.shape, dtype=tensor.dtype,
                          nsplits=chunk_size, chunks=result_chunks)
