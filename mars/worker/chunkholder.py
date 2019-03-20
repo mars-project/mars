@@ -80,7 +80,7 @@ class ChunkHolderActor(WorkerActor):
         from .status import StatusActor
 
         super(ChunkHolderActor, self).post_create()
-        self.register_process_down_handler()
+        self.register_actors_down_handler()
         self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
 
         self._plasma_limit = self._chunk_store.get_actual_capacity(self._plasma_limit)
