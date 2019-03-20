@@ -760,10 +760,6 @@ class SparseMatrix(SparseNDArray):
         if not issparse(this):
             return SparseMatrix._bitwise(other, this, method_name)
 
-        other_xp = get_array_module(other)
-        if other_xp.isscalar(other):
-            return call_sparse_binary_scalar(method_name, this, other)
-
         if issparse(other):
             other = other.toarray()
 
@@ -772,21 +768,33 @@ class SparseMatrix(SparseNDArray):
         return SparseMatrix(xps.csr_matrix(getattr(xp, method_name)(this.toarray(), other)))
 
     def __and__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_and', self, other)
         return self._bitwise(self.spmatrix, other, 'bitwise_and')
 
     def __rand__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_and', other, self)
         return self._bitwise(other, self.spmatrix, 'bitwise_and')
 
     def __or__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_or', self, other)
         return self._bitwise(self.spmatrix, other, 'bitwise_or')
 
     def __ror__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_or', other, self)
         return self._bitwise(other, self.spmatrix, 'bitwise_or')
 
     def __xor__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_xor', self, other)
         return self._bitwise(self.spmatrix, other, 'bitwise_xor')
 
     def __rxor__(self, other):
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('bitwise_xor', other, self)
         return self._bitwise(other, self.spmatrix, 'bitwise_xor')
 
     def isclose(self, other, **kw):
@@ -981,9 +989,9 @@ class SparseMatrix(SparseNDArray):
 
         if todense:
             x = self.spmatrix.toarray()
-            x = getattr(get_array_module(x), method_name)(x, axis=axis, dtype=dtype, keepdims=keepdims, **kw)
+            x = getattr(get_array_module(x), method_name)(x, axis=axis, **kw)
         else:
-            x = getattr(self.spmatrix, method_name)(axis=axis, dtype=dtype, **kw)
+            x = getattr(self.spmatrix, method_name)(axis=axis, **kw)
         if issparse(x):
             return SparseMatrix(x)
         if not isinstance(axis, Iterable):
@@ -1167,28 +1175,13 @@ class SparseMatrix(SparseNDArray):
         return get_array_module(x).asarray(x)
 
     def isinf(self):
-        xp = get_array_module(self.spmatrix)
-        data = xp.isinf(self.spmatrix.data)
-        x = get_sparse_module(self.spmatrix).csr_matrix(
-            (data, self.spmatrix.indices, self.spmatrix.indptr), self.spmatrix.shape
-        )
-        return SparseMatrix(x)
+        return call_sparse_unary('isinf', self)
 
     def isnan(self):
-        xp = get_array_module(self.spmatrix)
-        data = xp.isnan(self.spmatrix.data)
-        x = get_sparse_module(self.spmatrix).csr_matrix(
-            (data, self.spmatrix.indices, self.spmatrix.indptr), self.spmatrix.shape
-        )
-        return SparseMatrix(x)
+        return call_sparse_unary('isnan', self)
 
     def signbit(self):
-        xp = get_array_module(self.spmatrix)
-        data = xp.signbit(self.spmatrix.data)
-        x = get_sparse_module(self.spmatrix).csr_matrix(
-            (data, self.spmatrix.indices, self.spmatrix.indptr), self.spmatrix.shape
-        )
-        return SparseMatrix(x)
+        return call_sparse_unary('signbit', self)
 
     def floor(self):
         return SparseMatrix(self.spmatrix.floor())
@@ -1235,7 +1228,12 @@ class SparseMatrix(SparseNDArray):
         return call_sparse_unary('fix', self)
 
     def i0(self):
-        return call_sparse_unary('i0', self)
+        xp = get_array_module(self.spmatrix)
+        data = xp.i0(self.spmatrix.data).reshape(self.spmatrix.data.shape)
+        x = get_sparse_module(self.spmatrix).csr_matrix(
+            (data, self.spmatrix.indices, self.spmatrix.indptr), self.spmatrix.shape
+        )
+        return SparseMatrix(x)
 
     def nan_to_num(self):
         return call_sparse_unary('nan_to_num', self)
@@ -1245,6 +1243,9 @@ class SparseMatrix(SparseNDArray):
             other = naked(other)
         except TypeError:
             return NotImplemented
+
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('copysign', self, other)
 
         if issparse(other):
             other = other.toarray()
@@ -1272,13 +1273,18 @@ class SparseMatrix(SparseNDArray):
         return x
 
     def spacing(self):
-        return get_array_module(self.spmatrix).spacing(self.spmatrix.toarray())
+        if is_cupy(self.spmatrix):
+            raise NotImplementedError
+        return call_sparse_unary('spacing', self)
 
     def ldexp(self, other):
         try:
             other = naked(other)
         except TypeError:
             return NotImplemented
+
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('ldexp', self, other)
 
         if issparse(other):
             other = other.toarray()
@@ -1298,16 +1304,13 @@ class SparseMatrix(SparseNDArray):
         return SparseMatrix(xps.csr_matrix(x)), SparseMatrix(xps.csr_matrix(y))
 
     def sinc(self):
-        xp = get_array_module(self.spmatrix)
-        return xp.sinc(self.spmatrix.toarray())
+        return call_sparse_unary('sinc', self)
 
     def isfinite(self):
-        xp = get_array_module(self.spmatrix)
-        return xp.isfinite(self.spmatrix.toarray())
+        return call_sparse_unary('isfinite', self)
 
     def isreal(self):
-        xp = get_array_module(self.spmatrix)
-        return xp.isreal(self.spmatrix.toarray())
+        return call_sparse_unary('isreal', self)
 
     def digitize(self, bins, right=False):
         return call_sparse_unary('digitize', self, bins=bins, right=right)

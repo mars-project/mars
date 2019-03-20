@@ -184,7 +184,8 @@ class Test(TestBase):
                        'sign', 'conj', 'exp', 'exp2', 'log', 'log2', 'log10',
                        'expm1', 'log1p', 'sqrt', 'square', 'cbrt', 'reciprocal',
                        'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
-                       'arcsinh', 'arccosh', 'arctanh', 'deg2rad', 'rad2deg', 'angle'):
+                       'arcsinh', 'arccosh', 'arctanh', 'deg2rad', 'rad2deg',
+                       'angle', 'isnan', 'isinf', 'signbit', 'sinc', 'isreal', 'isfinite'):
             lm, rm = getattr(mls, method), getattr(np, method)
             r = sps.csr_matrix((rm(self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
             self.assertArrayEqual(lm(s1), r)

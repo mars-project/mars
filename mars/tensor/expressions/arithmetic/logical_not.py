@@ -22,7 +22,7 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='always_false')
+@arithmetic_operand(sparse_mode='unary')
 class TensorNot(operands.Not, TensorUnaryOp):
     pass
 

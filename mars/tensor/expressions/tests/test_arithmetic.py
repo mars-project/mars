@@ -72,11 +72,11 @@ class Test(unittest.TestCase):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
         t = t1 + 1
-        self.assertFalse(t.issparse())
-        self.assertIs(type(t), Tensor)
+        self.assertTrue(t.issparse())
+        self.assertIs(type(t), SparseTensor)
 
         t.tiles()
-        self.assertFalse(t.chunks[0].op.sparse)
+        self.assertTrue(t.chunks[0].op.sparse)
 
         t = t1 + 0
         self.assertTrue(t.issparse())
@@ -382,8 +382,8 @@ class Test(unittest.TestCase):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
         t = cos(t1)
-        self.assertFalse(t.issparse())
-        self.assertIs(type(t), Tensor)
+        self.assertTrue(t.issparse())
+        self.assertIs(type(t), SparseTensor)
         self.assertEqual(calc_shape(t), t.shape)
 
     def testAround(self):

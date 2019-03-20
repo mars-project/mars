@@ -20,7 +20,7 @@ import scipy.sparse as sps
 
 import mars.tensor as mt
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
-from mars.tensor.expressions.datasource import CSRMatrixDataSource
+from mars.tensor.expressions.datasource import CSRMatrixDataSource, SparseToDense
 from mars import operands
 
 
@@ -81,8 +81,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(fuse_node.composed[2].op, (operands.TDivConstant, operands.DivConstant))
         self.assertTrue(all(c.op.sparse for c in fuse_node.composed))
 
-        # add constant will convert sparse matrix to dense matrix
-        t2 = t * 2 + 3
+        t2 = (t * 2).todense()
         g = t2.build_graph(tiled=True, compose=True)
         graph_nodes = list(g)
         self.assertTrue(all([isinstance(n.op, TensorFuseChunk) for n in graph_nodes]))
@@ -95,5 +94,5 @@ class Test(unittest.TestCase):
         self.assertIsInstance(fuse_node.composed[0].op, CSRMatrixDataSource)
         self.assertIsInstance(fuse_node.composed[1].op, operands.MulConstant)
         self.assertTrue(fuse_node.composed[1].op.sparse)
-        self.assertIsInstance(fuse_node.composed[2].op, operands.AddConstant)
+        self.assertIsInstance(fuse_node.composed[2].op, SparseToDense)
         self.assertFalse(fuse_node.composed[2].op.sparse)

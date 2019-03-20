@@ -29,7 +29,7 @@ class TensorAdd(operands.Add, TensorBinOp):
         return TensorAddConstant
 
 
-@arithmetic_operand(sparse_mode='binary_and_const')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorAddConstant(operands.AddConstant, TensorConstant):
     pass
 

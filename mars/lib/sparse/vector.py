@@ -180,6 +180,9 @@ class SparseVector(SparseNDArray):
         return get_array_module(x).asarray(x)
 
     def concatenate(self, other, axis=0):
+        if other.ndim != 1:
+            raise ValueError('all the input arrays must have same number of dimensions')
+
         try:
             other = naked(other)
         except TypeError:
@@ -189,7 +192,8 @@ class SparseVector(SparseNDArray):
             xps = get_sparse_module(self.spmatrix)
             if axis != 0:
                 raise ValueError('axis can only be 0')
-            x = xps.hstack((self.spmatrix, other))
+            other = other.reshape(1, other.shape[0]) if other.shape[0] != 1 else other
+            x = xps.hstack((self.spmatrix.reshape(1, self.shape[0]), other))
         else:
             xp = get_array_module(self.spmatrix)
             x = xp.concatenate((self.spmatrix.toarray().reshape(self.shape), other), axis=axis)

@@ -65,4 +65,3 @@ def call_sparse_unary(method, matrix, *args, **kwargs):
     new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
         (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
     return SparseNDArray(new_spmatrix, shape=matrix.shape)
-
