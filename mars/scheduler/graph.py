@@ -29,6 +29,7 @@ from .operands import get_operand_actor_class, OperandState, OperandPosition
 from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
+from ..actors.errors import ActorAlreadyExist
 from ..compat import six, functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
@@ -38,7 +39,6 @@ from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 from ..tensor.expressions.fetch import TensorFetch
 from ..tensor.core import ChunkData
-from ..actors.core import ActorRef
 
 logger = logging.getLogger(__name__)
 
@@ -497,6 +497,26 @@ class GraphActor(SchedulerActor):
                 chunk_metas[k] = metas[k]
         return input_chunk_metas
 
+    def assign_operand_workers(self, op_keys, input_chunk_metas=None, analyzer=None):
+        operand_infos = self._operand_infos
+        chunk_graph = self.get_chunk_graph()
+
+        if analyzer is None:
+            analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
+        assignments = analyzer.calc_operand_assignments(op_keys, input_chunk_metas=input_chunk_metas)
+        for k, v in assignments.items():
+            operand_infos[k]['target_worker'] = v
+        return assignments
+
+    def _assign_initial_workers(self, analyzer):
+        # collect external inputs for eager mode
+        ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
+        input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
+        # do placements
+        return self.assign_operand_workers(
+            analyzer.get_initial_operand_keys(), input_chunk_metas=input_chunk_metas, analyzer=analyzer
+        )
+
     @log_unhandled
     def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
@@ -509,9 +529,9 @@ class GraphActor(SchedulerActor):
             k = n.op.key
             succ_size = chunk_graph.count_successors(n)
             if k not in operand_infos:
-                operand_infos[k] = dict(
-                    optimize=dict(depth=0, demand_depths=(), successor_size=succ_size, descendant_size=0)
-                )
+                operand_infos[k] = dict(optimize=dict(
+                    depth=0, demand_depths=(), successor_size=succ_size, descendant_size=0
+                ))
             else:
                 operand_infos[k]['optimize']['successor_size'] = succ_size
 
@@ -525,13 +545,7 @@ class GraphActor(SchedulerActor):
 
         if kwargs.get('do_placement', True):
             logger.debug('Placing initial chunks for graph %s', self._graph_key)
-
-            # collect external inputs for eager mode
-            ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
-            input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
-            # do placements
-            for k, v in analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas).items():
-                operand_infos[k]['target_worker'] = v
+            self._assign_initial_workers(analyzer)
 
     @log_unhandled
     def get_executable_operand_dag(self, op_key, serialize=True):
@@ -606,11 +620,11 @@ class GraphActor(SchedulerActor):
             chunk_keys.update(co.key for co in c.op.outputs)
 
         io_meta = dict(
-            predecessors=set(predecessor_keys),
-            successors=set(successor_keys),
-            input_chunks=set(input_chunk_keys),
-            shared_input_chunks=set(shared_input_chunk_keys),
-            chunks=set(chunk_keys),
+            predecessors=list(predecessor_keys),
+            successors=list(successor_keys),
+            input_chunks=list(input_chunk_keys),
+            shared_input_chunks=list(shared_input_chunk_keys),
+            chunks=list(chunk_keys),
         )
         return io_meta
 
@@ -638,10 +652,10 @@ class GraphActor(SchedulerActor):
             op_info['io_meta'] = io_meta
 
             if io_meta['predecessors']:
-                state = 'UNSCHEDULED'
+                state = OperandState.UNSCHEDULED
             else:
                 initial_keys.append(op_key)
-                state = 'READY'
+                state = OperandState.READY
             op_info['retries'] = 0
             op_info['state'] = state
 
@@ -650,32 +664,44 @@ class GraphActor(SchedulerActor):
                 position = OperandPosition.TERMINAL
             elif not io_meta['predecessors']:
                 position = OperandPosition.INITIAL
+            op_info['position'] = position
 
             op_cls = get_operand_actor_class(type(op))
             op_uid = op_cls.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
 
-            # if operand actor exists, the behavior depends on the existing operand state.
-            op_ref = self.ctx.actor_ref(op_uid, address=scheduler_addr)
-            if self.ctx.has_actor(op_ref):
-                op_ref.append_graph(self._graph_key, op_info, position=position)
-                op_refs[op_key] = op_ref
-            else:
-                op_refs[op_key] = self.ctx.create_actor(
-                    op_cls, self._session_id, self._graph_key, op_key, op_info,
-                    position=position, uid=op_uid, address=scheduler_addr, wait=False
-                )
-
-            op_info['state'] = getattr(OperandState, state.upper())
+            op_refs[op_key] = self.ctx.create_actor(
+                op_cls, self._session_id, self._graph_key, op_key, op_info,
+                uid=op_uid, address=scheduler_addr, wait=False
+            )
             if _clean_io_meta:
                 del op_info['io_meta']
 
         self.state = GraphState.RUNNING
 
         if _start:
-            op_refs = dict((k, v) if isinstance(v, ActorRef) else (k, v.result()) for k, v in op_refs.items())
-            start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
-                             for op_key in initial_keys]
+            existing_keys = []
+            for op_key, future in op_refs.items():
+                try:
+                    op_refs[op_key] = future.result()
+                except ActorAlreadyExist:
+                    existing_keys.append(op_key)
+
+            append_futures = []
+            for op_key in existing_keys:
+                chunks = self._op_key_to_chunk[op_key]
+                op = chunks[0].op
+                op_info = operand_infos[op_key]
+                op_info['io_meta'] = self._collect_operand_io_meta(chunk_graph, chunks)
+
+                op_cls = get_operand_actor_class(type(op))
+                op_uid = op_cls.gen_uid(self._session_id, op_key)
+                scheduler_addr = self.get_scheduler(op_uid)
+                op_ref = op_refs[op_key] = self.ctx.actor_ref(op_uid, address=scheduler_addr)
+                append_futures.append(op_ref.append_graph(self._graph_key, op_info, _wait=False))
+            [future.result() for future in append_futures]
+
+            start_futures = [ref.start_operand(_tell=True, _wait=False) for ref in op_refs.values()]
             [future.result() for future in start_futures]
 
     @log_unhandled
@@ -967,10 +993,7 @@ class GraphActor(SchedulerActor):
                          len(new_states))
 
         logger.debug('Start reallocating initial operands')
-        # collect external inputs for eager mode
-        ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
-        input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
-        new_targets = analyzer.calc_initial_assignments(input_chunk_metas=input_chunk_metas)
+        new_targets = dict(self._assign_initial_workers(analyzer))
 
         futures = []
         # make sure that all readies and runnings are included to be checked
@@ -985,10 +1008,7 @@ class GraphActor(SchedulerActor):
                 new_states[key] = state
 
         for key, state in new_states.items():
-            if key in new_targets:
-                new_target = operand_infos[key]['target_worker'] = new_targets[key]
-            else:
-                new_target = None
+            new_target = new_targets.get(key)
 
             op_info = operand_infos[key]
             from_state = op_info['state']

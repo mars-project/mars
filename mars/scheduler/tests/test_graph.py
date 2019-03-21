@@ -224,6 +224,6 @@ class Test(unittest.TestCase):
                 graph_meta_ref.set_state(GraphState.CANCELLING)
                 return dict()
 
-            with patch_method(GraphAnalyzer.calc_initial_assignments, new=_mock_cancels):
+            with patch_method(GraphAnalyzer.calc_operand_assignments, new=_mock_cancels):
                 graph_ref.execute_graph()
             self.assertEqual(graph_ref.get_state(), GraphState.CANCELLED)

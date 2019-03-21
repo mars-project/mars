@@ -152,7 +152,7 @@ class ExecutionActor(WorkerActor):
         if not self.ctx.has_actor(self._daemon_ref):
             self._daemon_ref = None
         else:
-            self.register_process_down_handler()
+            self.register_actors_down_handler()
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
         if not self.ctx.has_actor(self._status_ref):

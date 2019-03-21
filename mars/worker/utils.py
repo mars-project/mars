@@ -60,7 +60,7 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         actor_cls = LocalChunkMetaActor if local else ChunkMetaActor
         return self.ctx.actor_ref(actor_cls.default_name(), address=addr)
 
-    def handle_process_down(self, halt_refs):
+    def handle_actors_down(self, halt_refs):
         """
         Handle process down event
         :param halt_refs: actor refs in halt processes
@@ -74,12 +74,12 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         logger.debug('Process halt detected. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 
-    def register_process_down_handler(self):
+    def register_actors_down_handler(self):
         from .daemon import WorkerDaemonActor
 
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
         if self.ctx.has_actor(daemon_ref):
-            daemon_ref.register_callback(self.ref(), self.handle_process_down.__name__, _tell=True)
+            daemon_ref.register_callback(self.ref(), self.handle_actors_down.__name__, _tell=True)
 
 
 class ExpMeanHolder(object):

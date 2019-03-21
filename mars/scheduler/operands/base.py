@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 class BaseOperandActor(SchedulerActor):
     @staticmethod
     def gen_uid(session_id, op_key):
-        return 's:operator$%s$%s' % (session_id, op_key)
+        return 's:operand$%s$%s' % (session_id, op_key)
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None, position=None):
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
@@ -34,15 +34,15 @@ class BaseOperandActor(SchedulerActor):
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
-        self._position = position
+        self._position = op_info.get('position')
         # worker actually assigned
         self._worker = worker
 
         self._op_name = op_info['op_name']
-        self._state = self._last_state = OperandState(op_info['state'].lower())
+        self._state = self._last_state = op_info['state']
         io_meta = self._io_meta = op_info['io_meta']
-        self._pred_keys = io_meta['predecessors']
-        self._succ_keys = io_meta['successors']
+        self._pred_keys = set(io_meta['predecessors'])
+        self._succ_keys = set(io_meta['successors'])
 
         # set of finished predecessors, used to decide whether we should move the operand to ready
         self._finish_preds = set()

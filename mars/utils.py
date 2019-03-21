@@ -80,14 +80,6 @@ def on_deserialize_shape(shape):
     return shape
 
 
-def get_gpu_used_memory(device_id):
-    import pynvml
-
-    handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
-    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-    return mem_info.used
-
-
 def parse_memory_limit(value):
     if isinstance(value, numbers.Number):
         return float(value), False
