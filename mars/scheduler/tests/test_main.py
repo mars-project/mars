@@ -130,7 +130,7 @@ class Test(unittest.TestCase):
                               '--level', 'debug' if log_worker else 'warning',
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
-                              '-Dworker.prepare_data_timeout=5']
+                              '-Dworker.prepare_data_timeout=30']
                              + append_args)
             for _ in range(n_workers)
         ]

@@ -130,7 +130,7 @@ class FakeExecutionActor(promise.PromiseActor):
         self._graph_records[query_key] = GraphExecutionRecord(
             graph_ser, None,
             data_targets=io_meta['chunks'],
-            chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
+            shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
             enqueue_callback=callback,
             succ_keys=succ_keys,

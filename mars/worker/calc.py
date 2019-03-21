@@ -88,7 +88,8 @@ class InProcessCacheActor(WorkerActor):
 
             except StoreFull:
                 # if we cannot put data into shared cache, we store it into spill directly
-                self._chunk_holder_ref.spill_size(data_size, _tell=True)
+                if not isinstance(chunk_key, tuple):
+                    self._chunk_holder_ref.spill_size(data_size, _tell=True)
                 _put_spill_directly(chunk_key, data_size, data_shape)
 
         @log_unhandled
@@ -110,8 +111,13 @@ class InProcessCacheActor(WorkerActor):
         @log_unhandled
         def _finish_store(*_):
             meta_targets = dict()
+            data_sizes = dict()
             addr_refs = dict()
             for k in keys:
+                data_sizes[k] = meta_dict[k].chunk_size
+
+                if isinstance(k, tuple):
+                    continue
                 ref = self.get_meta_ref(session_id, k)
                 addr_refs[ref.address] = ref
                 if ref.address not in meta_targets:
@@ -122,7 +128,7 @@ class InProcessCacheActor(WorkerActor):
             for addr, (chunk_keys, metas) in meta_targets.items():
                 addr_refs[addr].batch_set_chunk_meta(session_id, chunk_keys, metas)
 
-            self.tell_promise(callback)
+            self.tell_promise(callback, data_sizes)
 
         promises = []
         for k in keys:
@@ -138,8 +144,9 @@ class InProcessCacheActor(WorkerActor):
         promise.all_(promises).then(_finish_store) \
             .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
 
+    @staticmethod
     @log_unhandled
-    def remove_cache(self, session_id, keys):
+    def remove_cache(session_id, keys):
         """
         Remove data from cache
         """

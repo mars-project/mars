@@ -285,7 +285,7 @@ class SpillActor(WorkerActor):
         file_name = build_spill_file_name(chunk_key)
         if not file_name:
             raise SpillNotConfigured('Spill not configured')
-        if sys.platform == 'win32':  # pragma: nom cover
+        if sys.platform == 'win32':  # pragma: no cover
             CREATE_NO_WINDOW = 0x08000000
             self.ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
         else:

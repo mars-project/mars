@@ -138,8 +138,8 @@ class OperandActor(BaseOperandActor):
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
         return False
 
-    def add_finished_successor(self, op_key):
-        super(OperandActor, self).add_finished_successor(op_key)
+    def add_finished_successor(self, op_key, worker):
+        super(OperandActor, self).add_finished_successor(op_key, worker)
         if self._position != OperandPosition.TERMINAL and \
                 all(k in self._finish_succs for k in self._succ_keys):
             # make sure that all prior states are terminated (in case of failover)
@@ -440,9 +440,11 @@ class OperandActor(BaseOperandActor):
         for chunk_key in self._chunks:
             chunk_keys.append(chunk_key)
             broadcast_ep_groups.append(broadcast_eps)
-
-        self._chunk_meta_ref.batch_set_chunk_broadcasts(
-            self._session_id, chunk_keys, broadcast_ep_groups, _tell=True, _wait=False)
+        broadcast_chunk_keys = [k for k in chunk_keys if not isinstance(k, tuple)]
+        if broadcast_chunk_keys:
+            self._chunk_meta_ref.batch_set_chunk_broadcasts(
+                self._session_id, broadcast_chunk_keys, broadcast_ep_groups,
+                _tell=True, _wait=False)
 
         # submit job
         logger.debug('Start running operand %s on %s', self._op_key, worker)
@@ -477,26 +479,24 @@ class OperandActor(BaseOperandActor):
             return
 
         try:
-            input_keys = self._io_meta['input_data_keys']
-            input_chunks = [k[0] if isinstance(k, tuple) else k
-                            for k in input_keys]
+            input_metas = self._io_meta['input_data_metas']
+            input_chunks = [k[0] if isinstance(k, tuple) else k for k in input_metas]
+            data_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
         except KeyError:
-            input_keys = self._input_chunks
             input_chunks = self._input_chunks
-        chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, input_keys)
-        if any(v is None for v in chunk_sizes):
-            logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
-                           self._op_key)
-            self._assigned_workers = set()
-            self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
-            return
+            chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, input_chunks)
+            if any(v is None for v in chunk_sizes):
+                logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
+                               self._op_key)
+                self._assigned_workers = set()
+                self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
+                return
+            data_sizes = dict(zip(input_chunks, chunk_sizes))
 
         new_assignment = [a for a in new_assignment if a not in self._assigned_workers]
         self._assigned_workers.update(new_assignment)
         logger.debug('Operand %s assigned to run on workers %r, now it has %r',
                      self._op_key, new_assignment, self._assigned_workers)
-
-        data_sizes = dict(zip(input_keys, chunk_sizes))
 
         dead_workers = set()
         serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
@@ -590,7 +590,7 @@ class OperandActor(BaseOperandActor):
                 _tell=True, _wait=False))
         for in_key in self._pred_keys:
             futures.append(self._get_operand_actor(in_key).add_finished_successor(
-                self._op_key, _tell=True, _wait=False))
+                self._op_key, self.worker, _tell=True, _wait=False))
         # require more chunks to execute if the completion caused no successors to run
         if self._position == OperandPosition.TERMINAL:
             # update records in GraphActor to help decide if the whole graph finished execution

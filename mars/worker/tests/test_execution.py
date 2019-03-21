@@ -56,7 +56,7 @@ class MockInProcessCacheActor(WorkerActor):
             ref = self._chunk_store.put(self._session_id, k, self._mock_data)
             self._chunk_holder_ref.register_chunk(self._session_id, k)
             del ref
-        self.tell_promise(callback)
+        self.tell_promise(callback, {})
 
 
 class MockCpuCalcActor(WorkerActor):

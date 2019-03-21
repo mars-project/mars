@@ -49,14 +49,14 @@ class GraphExecutionRecord(object):
     """
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'data_targets',
                  'chunk_targets', 'io_meta', 'priority_data', 'data_sizes',
-                 'chunks_use_once', 'state_time', 'mem_request', 'pin_request',
+                 'shared_input_chunks', 'state_time', 'mem_request', 'pin_request',
                  'est_finish_time', 'calc_actor_uid', 'send_addresses', 'retry_delay',
                  'enqueue_callback', 'finish_callbacks', 'stop_requested', 'succ_keys',
                  'undone_pred_keys')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
-                 io_meta=None, priority_data=None, data_sizes=None, chunks_use_once=None,
-                 mem_request=None, pin_request=None, est_finish_time=None,
+                 io_meta=None, priority_data=None, data_sizes=None, mem_request=None,
+                 shared_input_chunks=None, pin_request=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  enqueue_callback=None, finish_callbacks=None, stop_requested=False,
                  undone_pred_keys=None, succ_keys=None):
@@ -71,7 +71,7 @@ class GraphExecutionRecord(object):
         self.io_meta = io_meta or dict()
         self.data_sizes = data_sizes or dict()
         self.priority_data = priority_data or dict()
-        self.chunks_use_once = chunks_use_once or set()
+        self.shared_input_chunks = shared_input_chunks or set()
         self.mem_request = mem_request or dict()
         self.pin_request = pin_request or set()
         self.est_finish_time = est_finish_time or time.time()
@@ -212,7 +212,7 @@ class ExecutionActor(WorkerActor):
             chunk_targets=io_meta['chunks'],
             data_targets=list(io_meta.get('data_targets') or io_meta['chunks']),
             succ_keys=succ_keys,
-            chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
+            shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
         )
 
@@ -324,7 +324,9 @@ class ExecutionActor(WorkerActor):
                         pass
             elif chunk.key in graph_record.chunk_targets:
                 # use estimated size as potential allocation size
-                alloc_cache_batch[chunk.key], alloc_mem_batch[chunk.key] = memory_estimations[chunk.key]
+                cache_batch, alloc_mem_batch[chunk.key] = memory_estimations[chunk.key]
+                if not isinstance(chunk.key, tuple):
+                    alloc_cache_batch[chunk.key] = cache_batch
 
         keys_to_pin = list(input_chunk_keys.keys())
         try:
@@ -345,9 +347,10 @@ class ExecutionActor(WorkerActor):
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
                                 if k not in graph_record.pin_request)
-        alloc_mem_batch.update((build_load_key(graph_key, k), v)
-                               for k, v in load_chunk_sizes.items() if k in graph_record.chunks_use_once)
-        self._chunk_holder_ref.spill_size(sum(alloc_cache_batch.values()), _tell=True)
+        alloc_mem_batch.update((build_load_key(graph_key, k), v) for k, v in load_chunk_sizes.items()
+                               if k not in graph_record.shared_input_chunks)
+        if alloc_cache_batch:
+            self._chunk_holder_ref.spill_size(sum(alloc_cache_batch.values()), _tell=True)
 
         if alloc_mem_batch:
             graph_record.mem_request = alloc_mem_batch
@@ -595,6 +598,7 @@ class ExecutionActor(WorkerActor):
         """
         graph_record = self._graph_records[(session_id, graph_key)]
         graph = graph_record.graph
+        input_metas = graph_record.io_meta.get('input_data_metas', dict())
 
         if graph_record.stop_requested:
             raise ExecutionInterrupted
@@ -605,7 +609,7 @@ class ExecutionActor(WorkerActor):
         logger.debug('Start preparing input data for graph %s', graph_key)
         self._update_state(session_id, graph_key, ExecutionState.PREPARING_INPUTS)
         prepare_promises = []
-        chunks_use_once = graph_record.chunks_use_once
+        shared_input_chunks = graph_record.shared_input_chunks
 
         input_keys = set()
         shuffle_keys = set()
@@ -623,13 +627,13 @@ class ExecutionActor(WorkerActor):
         for input_key in input_keys:
             if self._chunk_holder_ref.is_stored(input_key):
                 # data already in plasma: we just pin it
-                pinned_keys = self._chunk_holder_ref.pin_chunks(graph_key, input_key)
+                pinned_keys = self._chunk_holder_ref.pin_chunks(graph_key, (input_key,))
                 if input_key in pinned_keys:
                     self._mem_quota_ref.release_quota(build_load_key(graph_key, input_key))
                     continue
 
             if spill_exists(input_key):
-                if input_key in chunks_use_once or input_key in shuffle_keys:
+                if input_key not in shared_input_chunks or input_key in shuffle_keys:
                     # input only use in current operand, we only need to load it into process memory
                     continue
                 self._mem_quota_ref.release_quota(build_load_key(graph_key, input_key))
@@ -641,8 +645,13 @@ class ExecutionActor(WorkerActor):
                 continue
 
             # load data from another worker
-            chunk_meta = self.get_meta_ref(session_id, input_key) \
-                .get_chunk_meta(session_id, input_key)
+            try:
+                chunk_meta = input_metas[input_key]
+                chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
+            except KeyError:
+                chunk_meta = self.get_meta_ref(session_id, input_key) \
+                    .get_chunk_meta(session_id, input_key)
+
             if chunk_meta is None or not chunk_meta.workers:
                 raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
             worker_results = chunk_meta.workers
@@ -659,7 +668,7 @@ class ExecutionActor(WorkerActor):
             p = promise.Promise(failed=True)
             for wp in sorted_workers:
                 p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, input_key, wp[0],
-                                              ensure_cached=input_key not in chunks_use_once))
+                                              ensure_cached=input_key in shared_input_chunks))
             prepare_promises.append(p)
 
         logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
@@ -811,6 +820,7 @@ class ExecutionActor(WorkerActor):
                                      if k in save_sizes)
 
             return inproc_ref.dump_cache(session_id, calc_keys, _promise=True) \
+                .then(save_sizes.update) \
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses)) \
                 .then(_cache_result)

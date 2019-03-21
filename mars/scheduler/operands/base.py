@@ -17,7 +17,7 @@ import logging
 from collections import defaultdict
 
 from ..utils import SchedulerActor
-from .core import OperandState, rewrite_worker_errors
+from .core import OperandState
 
 logger = logging.getLogger(__name__)
 
@@ -145,17 +145,17 @@ class BaseOperandActor(SchedulerActor):
         op_uid = self.gen_uid(self._session_id, key)
         return self.ctx.actor_ref(op_uid, address=self.get_scheduler(op_uid))
 
-    def _free_data_in_worker(self, data_keys):
+    def _free_data_in_worker(self, data_keys, workers_list=None):
         """
         Free data on single worker
         :param data_keys: keys of data in chunk meta
         """
         from ...worker.chunkholder import ChunkHolderActor
 
-        endpoint_lists = self._chunk_meta_ref.batch_get_workers(self._session_id, data_keys)
-        futures = []
+        if not workers_list:
+            workers_list = self._chunk_meta_ref.batch_get_workers(self._session_id, data_keys)
         worker_data = defaultdict(list)
-        for data_key, endpoints in zip(data_keys, endpoint_lists):
+        for data_key, endpoints in zip(data_keys, workers_list):
             if endpoints is None:
                 continue
             for ep in endpoints:
@@ -163,14 +163,9 @@ class BaseOperandActor(SchedulerActor):
 
         for ep, data_keys in worker_data.items():
             worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
-            futures.append(worker_cache_ref.unregister_chunks(
-                self._session_id, data_keys, _tell=True, _wait=False))
-
-        for f in futures:
-            with rewrite_worker_errors(ignore_error=True):
-                f.result()
-
-        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True)
+            worker_cache_ref.unregister_chunks(
+                self._session_id, data_keys, _tell=True, _wait=False)
+        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
 
     def start_operand(self, state=None, **kwargs):
         """
@@ -203,7 +198,7 @@ class BaseOperandActor(SchedulerActor):
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)
 
-    def add_finished_successor(self, op_key):
+    def add_finished_successor(self, op_key, worker):
         self._finish_succs.add(op_key)
 
     def remove_finished_predecessor(self, op_key):
