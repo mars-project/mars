@@ -329,7 +329,26 @@ class SparseMatrix(SparseNDArray):
             other = naked(other)
         except TypeError:
             return NotImplemented
-        x = self.spmatrix.multiply(other)
+        if is_cupy(self.spmatrix):
+            if not cp.isscalar(other):
+                # TODO(jisheng): cupy does not implement multiply method
+                is_other_sparse = issparse(other)
+                if is_other_sparse and self.spmatrix.nnz == other.nnz and \
+                        cp.all(self.spmatrix.indptr == other.indptr) and \
+                        cp.all(self.spmatrix.indices == other.indices):
+                    x = cps.csr_matrix((self.spmatrix.data * other.data,
+                                        self.spmatrix.indices,
+                                        self.spmatrix.indptr), self.spmatrix.shape)
+                else:
+                    if is_other_sparse:
+                        other = other.toarray()
+                    dense = self.spmatrix.toarray()
+                    res = cp.multiply(dense, other, out=dense)
+                    x = cps.csr_matrix(res)
+            else:
+                x = self.spmatrix * other
+        else:
+            x = self.spmatrix.multiply(other)
         if issparse(x):
             return SparseMatrix(x)
         return get_array_module(x).asarray(x)
@@ -339,7 +358,26 @@ class SparseMatrix(SparseNDArray):
             other = naked(other)
         except TypeError:
             return NotImplemented
-        x = self.spmatrix.multiply(other)
+        if is_cupy(self.spmatrix):
+            if not cp.isscalar(other):
+                # TODO(jisheng): cupy does not implement multiply method
+                is_other_sparse = issparse(other)
+                if is_other_sparse and self.spmatrix.nnz == other.nnz and \
+                        cp.all(self.spmatrix.indptr == other.indptr) and \
+                        cp.all(self.spmatrix.indices == other.indices):
+                    x = cps.csr_matrix((other.data * self.spmatrix.data,
+                                        self.spmatrix.indices,
+                                        self.spmatrix.indptr), self.spmatrix.shape)
+                else:
+                    if is_other_sparse:
+                        other = other.toarray()
+                    dense = self.spmatrix.toarray()
+                    res = cp.multiply(other, dense, out=dense)
+                    x = cps.csr_matrix(res)
+            else:
+                x = other * self.spmatrix
+        else:
+            x = self.spmatrix.multiply(other)
         if issparse(x):
             return SparseMatrix(x)
         return get_array_module(x).asarray(x)
