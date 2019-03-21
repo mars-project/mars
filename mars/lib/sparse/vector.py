@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .array import SparseNDArray
+from .array import SparseNDArray, call_sparse_binary_scalar
 from .core import get_array_module, get_sparse_module, cp, cps, naked, issparse
 
 
@@ -34,6 +34,8 @@ class SparseVector(SparseNDArray):
             other = naked(other)
         except TypeError:
             return NotImplemented
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('add', self, other)
         if issparse(other):
             x = self.spmatrix + other.reshape(self.spmatrix.shape)
         else:
@@ -48,6 +50,8 @@ class SparseVector(SparseNDArray):
         except TypeError:
             return NotImplemented
 
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('add', other, self)
         x = other + self.toarray()
         if issparse(x):
             return SparseVector(x, shape=self.shape)
@@ -58,6 +62,9 @@ class SparseVector(SparseNDArray):
             other = naked(other)
         except TypeError:
             return NotImplemented
+
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('subtract', self, other)
         if issparse(other):
             x = self.spmatrix - other.reshape(self.spmatrix.shape)
         else:
@@ -72,6 +79,8 @@ class SparseVector(SparseNDArray):
         except TypeError:
             return NotImplemented
 
+        if get_array_module(other).isscalar(other):
+            return call_sparse_binary_scalar('subtract', other, self)
         x = other - self.toarray()
         if issparse(x):
             return SparseVector(x, shape=self.shape)
@@ -171,6 +180,9 @@ class SparseVector(SparseNDArray):
         return get_array_module(x).asarray(x)
 
     def concatenate(self, other, axis=0):
+        if other.ndim != 1:
+            raise ValueError('all the input arrays must have same number of dimensions')
+
         try:
             other = naked(other)
         except TypeError:
@@ -180,7 +192,8 @@ class SparseVector(SparseNDArray):
             xps = get_sparse_module(self.spmatrix)
             if axis != 0:
                 raise ValueError('axis can only be 0')
-            x = xps.hstack((self.spmatrix, other))
+            other = other.reshape(1, other.shape[0]) if other.shape[0] != 1 else other
+            x = xps.hstack((self.spmatrix.reshape(1, self.shape[0]), other))
         else:
             xp = get_array_module(self.spmatrix)
             x = xp.concatenate((self.spmatrix.toarray().reshape(self.shape), other), axis=axis)

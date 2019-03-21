@@ -3,7 +3,7 @@ Mars
 
 |PyPI version| |Docs| |Build| |Coverage| |Quality| |License|
 
-Mars is a tensor-based unified framework for large-scale data computation.
+Mars is a tensor-based unified framework for large-scale data computation. `Documentation`_.
 
 Installation
 ------------
@@ -179,9 +179,10 @@ Thank you in advance for your contributions!
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg?style=flat-square
    :target: https://pypi.python.org/pypi/pymars
 .. |Docs| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat-square
-   :target: http://mars-project.readthedocs.org/
+   :target: `Documentation`_
 .. |License| image:: https://img.shields.io/pypi/l/pymars.svg?style=flat-square
    :target: https://github.com/mars-project/mars/blob/master/LICENSE
 .. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev
 .. _`GitHub issue`: https://github.com/mars-project/mars/issues
 .. _`pull requests`: https://github.com/mars-project/mars/pulls
+.. _`Documentation`: https://docs.mars-project.io

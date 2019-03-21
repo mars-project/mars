@@ -29,7 +29,7 @@ class TensorXor(operands.Xor, TensorBinOp):
         return TensorXorConstant
 
 
-@arithmetic_operand(sparse_mode='binary_and_const')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorXorConstant(operands.XorConstant, TensorConstant):
     pass
 

@@ -17,10 +17,11 @@
 from collections import Container, Iterable, Sequence
 from functools import wraps
 from math import factorial
+import operator
 
 import numpy as np
 
-from ...compat import getargspec, numpy_compat
+from ...compat import getargspec, numpy_compat, reduce
 from ...operands import Mean
 from .array import get_array_module, as_same_device, device, cp
 
@@ -279,8 +280,9 @@ def _numel(x, **kwargs):
 
 
 def _nannumel(x, **kwargs):
+    x_size = reduce(operator.mul, x.shape)
     xp = get_array_module(x)
-    return sum(~xp.isnan(x), **kwargs)
+    return x_size - sum(xp.isnan(x), **kwargs)
 
 
 def _nanargmin(x, **kwargs):
