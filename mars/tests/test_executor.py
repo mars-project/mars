@@ -81,3 +81,14 @@ class Test(unittest.TestCase):
         with create_actor_pool(n_process=2) as pool:
             actor = pool.create_actor(ExecutorActor, uid='0-executor')
             self.assertIsNone(actor.send(1))
+
+    def testMockExecuteSize(self):
+        a = mt.random.rand(10, 10, chunk_size=10)
+        b = a[:, mt.newaxis, :] - a
+        r = mt.triu(mt.sqrt(b ** 2).sum(axis=2))
+
+        executor = Executor()
+        res = executor.execute_tensor(r, concat=False, mock=True)
+        # larger than maximal memory size in calc procedure
+        self.assertGreaterEqual(res[0][0], 800)
+        self.assertGreaterEqual(res[0][1], 8000)
