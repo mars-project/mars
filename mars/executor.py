@@ -175,7 +175,7 @@ class GraphExecution(object):
     """
     def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
                  n_parallel=None, prefetch=False, print_progress=False,
-                 mock=False, sparse_mock_percent=1.0):
+                 mock=False, mock_max_memory=0):
         self._chunk_results = chunk_results
         self._graph = graph
         self._keys = keys
@@ -184,7 +184,7 @@ class GraphExecution(object):
         self._prefetch = prefetch
         self._print_progress = print_progress
         self._mock = mock
-        self._sparse_mock_percent = sparse_mock_percent
+        self._mock_max_memory = mock_max_memory
 
         # pool executor for the operand execution
         self._operand_executor = sync_provider.thread_pool_executor(self._n_parallel)
@@ -260,6 +260,14 @@ class GraphExecution(object):
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
             Executor.handle(first_op.outputs[0], results, self._mock)
+
+            # update maximal memory usage during execution
+            if self._mock:
+                self._mock_max_memory = max(
+                    self._mock_max_memory,
+                    sum(results[op_output.key][1] for op_output in first_op.outputs
+                        if results.get(op_output.key) is not None))
+
             executed_chunk_keys.update([c.key for c in first_op.outputs])
             op_keys.add(first_op.key)
             # handle other operands
@@ -370,6 +378,13 @@ class GraphExecution(object):
         for future in executed_futures:
             future.result()
 
+        # update with the maximal memory cost during the whole execution
+        if self._mock:
+            avg_max_mem = self._mock_max_memory // len(self._keys)
+            for key in self._keys:
+                r = self._chunk_results[key]
+                self._chunk_results[key] = (r[0], max(r[1], avg_max_mem))
+
         if retval:
             return [self._chunk_results[key] for key in self._keys]
 
@@ -405,6 +420,8 @@ class Executor(object):
         # synchronous provider
         self._sync_provider = self._sync_provider[sync_provider_type]
 
+        self._mock_max_memory = 0
+
     @property
     def chunk_result(self):
         return self._chunk_result
@@ -437,7 +454,7 @@ class Executor(object):
             return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False, sparse_mock_percent=1.0):
+                      mock=False):
         optimized_graph = self._preprocess(graph, keys)
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
@@ -445,15 +462,16 @@ class Executor(object):
                                          keys, executed_keys, self._sync_provider,
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
-                                         sparse_mock_percent=sparse_mock_percent)
+                                         mock_max_memory=self._mock_max_memory)
         res = graph_execution.execute(True)
+        self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
             self._chunk_result.clear()
         return res
 
     @kernel_mode
     def execute_tensor(self, tensor, n_parallel=None, n_thread=None, concat=False,
-                       print_progress=False, mock=False, sparse_mock_percent=1.0):
+                       print_progress=False, mock=False):
         if concat:
             # only for tests
             tensor.tiles()
@@ -469,12 +487,11 @@ class Executor(object):
 
         return self.execute_graph(graph, [c.key for c in tensor.chunks],
                                   n_parallel=n_parallel or n_thread,
-                                  print_progress=print_progress, mock=mock,
-                                  sparse_mock_percent=sparse_mock_percent)
+                                  print_progress=print_progress, mock=mock)
 
     @kernel_mode
     def execute_tensors(self, tensors, fetch=True, n_parallel=None, n_thread=None,
-                        print_progress=False, mock=False, compose=True, sparse_mock_percent=1.0):
+                        print_progress=False, mock=False, compose=True):
         graph = DirectedGraph()
 
         result_keys = []
@@ -512,8 +529,7 @@ class Executor(object):
                                executed_keys=list(self._chunk_result.keys()))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
-                           print_progress=print_progress, mock=mock,
-                           sparse_mock_percent=sparse_mock_percent)
+                           print_progress=print_progress, mock=mock)
 
         results = self._chunk_result
         try:
