@@ -65,7 +65,7 @@ class TensorReduction(TensorOperandMixin):
         else:
             axis = lrange(len(a.shape)) if axis is None else axis
             if not isinstance(axis, Iterable):
-                axis = (axis,)
+                axis = (validate_axis(a.ndim, axis),)
             axis = set(axis)
 
             shape = tuple(s if i not in axis else 1 for i, s in enumerate(a.shape)
@@ -238,10 +238,7 @@ class TensorArgReduction(TensorReduction):
             axis = tuple(range(ndim))
             ravel = True
         elif isinstance(axis, six.integer_types):
-            if axis < 0:
-                axis += ndim
-            if axis < 0 or axis >= ndim:
-                raise ValueError("axis entry is out of bounds")
+            axis = validate_axis(ndim, axis)
             axis = (axis,)
             ravel = ndim == 1
         else:

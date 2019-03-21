@@ -16,6 +16,8 @@
 
 import unittest
 
+import numpy as np
+
 from mars.tensor.expressions.datasource import ones, tensor
 from mars.operands import MeanCombine, MeanChunk, Mean, Concatenate, Argmax, Argmin,\
     ArgmaxChunk, ArgmaxCombine, ArgminChunk, ArgminCombine
@@ -49,6 +51,16 @@ class Test(unittest.TestCase):
             res = f(ones((10, 8), chunk_size=3), axis=1)
             self.assertEqual(res.shape, (10,))
             self.assertEqual(calc_shape(res), res.shape)
+
+            with self.assertRaises(np.AxisError):
+                f(ones((10, 8), chunk_size=3), axis=2)
+
+            res = f(ones((10, 8), chunk_size=3), axis=-1)
+            self.assertEqual(res.shape, (10,))
+            self.assertEqual(calc_shape(res), res.shape)
+
+            with self.assertRaises(np.AxisError):
+                f(ones((10, 8), chunk_size=3), axis=-3)
 
             res = f(ones((10, 8), chunk_size=3), keepdims=True)
             self.assertEqual(res.shape, (1, 1))
@@ -99,6 +111,16 @@ class Test(unittest.TestCase):
         res = mean(ones((10, 8), chunk_size=3), axis=1)
         self.assertEqual(res.shape, (10,))
         self.assertEqual(calc_shape(res), res.shape)
+
+        with self.assertRaises(np.AxisError):
+            mean(ones((10, 8), chunk_size=3), axis=2)
+
+        res = mean(ones((10, 8), chunk_size=3), axis=-1)
+        self.assertEqual(res.shape, (10,))
+        self.assertEqual(calc_shape(res), res.shape)
+
+        with self.assertRaises(np.AxisError):
+            mean(ones((10, 8), chunk_size=3), axis=-3)
 
         res = mean(ones((10, 8), chunk_size=3), keepdims=True)
         self.assertEqual(res.shape, (1, 1))
@@ -153,6 +175,8 @@ class Test(unittest.TestCase):
 
         self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
         self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
+        self.assertRaises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=3))
+        self.assertRaises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=-4))
 
     def testCumReduction(self):
         cumsum = lambda x, *args, **kwargs: x.cumsum(*args, **kwargs).tiles()
@@ -177,6 +201,20 @@ class Test(unittest.TestCase):
         self.assertEqual(res2.shape, (10, 8, 8))
         self.assertEqual(calc_shape(res2), res2.shape)
         self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
+
+        res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=-2)
+        res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=-2)
+        self.assertEqual(res1.shape, (10, 8, 8))
+        self.assertEqual(calc_shape(res1), res1.shape)
+        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
+        self.assertEqual(res2.shape, (10, 8, 8))
+        self.assertEqual(calc_shape(res2), res2.shape)
+        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
+
+        with self.assertRaises(np.AxisError):
+            cumsum(ones((10, 8), chunk_size=3), axis=2)
+        with self.assertRaises(np.AxisError):
+            cumsum(ones((10, 8), chunk_size=3), axis=-3)
 
     def testAllReduction(self):
         o = tensor([False])
