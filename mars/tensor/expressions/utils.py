@@ -96,8 +96,7 @@ def random_state_data(n, random_state=None):
 
 def validate_axis(ndim, axis):
     if axis >= ndim or axis < -ndim:
-        raise ValueError('Axis must be between -%d and %d, got %d' %
-                         (ndim, ndim - 1, axis))
+        raise np.AxisError(axis, ndim=ndim)
 
     return axis if axis >= 0 else ndim + axis
 
