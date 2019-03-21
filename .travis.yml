@@ -54,7 +54,8 @@ install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls flake8 etcd-gevent tiledb
+  - pip install virtualenv coveralls flake8 etcd-gevent
+  - PYTHONHTTPSVERIFY=0 pip install tiledb  # workaround for tiledb ssl error
   - virtualenv testenv && source testenv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
