@@ -18,6 +18,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message RangeIndex {
         Value name = 1;
@@ -32,6 +34,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message CategoricalIndex {
         Value name = 1;
@@ -47,6 +51,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message IntervalIndex {
         Value name = 1;
@@ -62,6 +68,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message DatetimeIndex {
         Value name = 1;
@@ -84,6 +92,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message TimedeltaIndex {
         Value name = 1;
@@ -104,6 +114,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message PeriodIndex {
         Value name = 1;
@@ -131,6 +143,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message Int64Index {
         Value name = 1;
@@ -146,6 +160,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message UInt64Index {
         Value name = 1;
@@ -161,6 +177,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message Float64Index {
         Value name = 1;
@@ -176,6 +194,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message MultiIndex {
         repeated Value names = 1;
@@ -191,6 +211,8 @@ message IndexValue {
         bool should_be_monotonic = 55;
         Value max_val = 56;
         Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
 
     oneof index_value {

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
 
 from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
@@ -95,6 +97,8 @@ def parse_index(index_value, store_data=False):
             '_is_unique': index.is_unique,
             '_min_val': index.min(),
             '_max_val': index.max(),
+            '_min_val_close': True,
+            '_max_val_close': True,
             '_key': tokenize(index),
         }
         if ret_data:
@@ -121,3 +125,36 @@ def parse_index(index_value, store_data=False):
         return IndexValue(_index_value=_serialize_multi_index(index_value))
     else:
         return IndexValue(_index_value=_serialize_index(index_value))
+
+
+def rechunk_monotonic_index_min_max(*chunk_indexes_min_max):
+    all_min, all_min_close, all_max, all_max_close = zip(*chunk_indexes_min_max[0])
+
+    for chunk_index_min_max in chunk_indexes_min_max[1:]:
+        for index_min, index_max in chunk_index_min_max:
+            min_effect_idx = np.searchsorted(all_min, index_min)
+            max_effect_idx = np.searchsorted(all_max, index_max, side='right')
+
+            # for min, check another one, according to its max
+            if min_effect_idx > 0:
+                if all_max_close[min_effect_idx - 1] and \
+                        all_max[min_effect_idx - 1] >= index_min:
+                    min_effect_idx -= 1
+                elif not all_max_close[min_effect_idx - 1] and \
+                        all_max[min_effect_idx - 1] > index_min:
+                    min_effect_idx -= 1
+
+            # for max, check another one, according to its min
+            if max_effect_idx < len(all_max) - 1:
+                if all_min_close[max_effect_idx + 1] and \
+                        all_min[max_effect_idx + 1] <= index_max:
+                    max_effect_idx += 1
+                elif not all_max_close[max_effect_idx + 1] and \
+                        all_min[max_effect_idx + 1] < index_max:
+                    max_effect_idx += 1
+
+            if min_effect_idx == max_effect_idx:
+                all_min.insert(min_effect_idx, index_min)
+                all_max.insert(min_effect_idx, index_max)
+                all_min_close.insert(min_effect_idx, True)
+                all_max_close.insert(max_effect_idx, True)

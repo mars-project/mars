@@ -29,7 +29,9 @@ class IndexValue(Serializable):
         _is_unique = BoolField('is_unique')
         _should_be_monotonic = BoolField('should_be_monotonic')
         _max_val = AnyField('max_val')
+        _max_val_close = BoolField('max_val_close')
         _min_val = AnyField('min_val')
+        _min_val_close = BoolField('min_val_close')
 
         @property
         def is_monotonic_increasing(self):
@@ -50,6 +52,10 @@ class IndexValue(Serializable):
         @property
         def min_val(self):
             return self._min_val
+
+        @property
+        def min_val_close(self):
+            return self._min_val_close
 
         @property
         def max_val(self):
