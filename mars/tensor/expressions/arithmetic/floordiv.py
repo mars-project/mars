@@ -29,7 +29,7 @@ class TensorFloorDiv(operands.FloorDiv, TensorBinOp):
         return TensorFDivConstant
 
 
-@arithmetic_operand
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorFDivConstant(operands.FDivConstant, TensorConstant):
     @classmethod
     def _is_sparse(cls, x1, x2):

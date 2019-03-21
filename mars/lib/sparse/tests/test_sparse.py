@@ -75,14 +75,20 @@ class Test(TestBase):
         self.assertArrayEqual(s1 + s2, self.s1 + self.s2)
         self.assertArrayEqual(s1 + self.d1, self.s1 + self.d1)
         self.assertArrayEqual(self.d1 + s1, self.d1 + self.s1)
-        self.assertArrayEqual(s1 + 1, self.s1.toarray() + 1)
-        self.assertArrayEqual(1 + s1, self.s1.toarray() + 1)
+        r = sps.csr_matrix(((self.s1.data + 1), self.s1.indices, self.s1.indptr), self.s1.shape)
+        self.assertArrayEqual(s1 + 1, r)
+        r = sps.csr_matrix(((1 + self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
+        self.assertArrayEqual(1 + s1, r)
 
         # test sparse vector
         v = SparseNDArray(self.v1, shape=(3,))
         self.assertArrayEqual(v + v, self.v1_data + self.v1_data)
         self.assertArrayEqual(v + self.d1, self.v1_data + self.d1)
         self.assertArrayEqual(self.d1 + v, self.d1 + self.v1_data)
+        r = sps.csr_matrix(((self.v1.data + 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v + 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 + self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 + v, r.toarray().reshape(3))
 
     def testSparseSubtract(self):
         s1 = SparseNDArray(self.s1)
@@ -91,14 +97,20 @@ class Test(TestBase):
         self.assertArrayEqual(s1 - s2, self.s1 - self.s2)
         self.assertArrayEqual(s1 - self.d1, self.s1 - self.d1)
         self.assertArrayEqual(self.d1 - s1, self.d1 - self.s1)
-        self.assertArrayEqual(s1 - 1, self.s1.toarray() - 1)
-        self.assertArrayEqual(1 - s1, 1 - self.s1.toarray())
+        r = sps.csr_matrix(((self.s1.data - 1), self.s1.indices, self.s1.indptr), self.s1.shape)
+        self.assertArrayEqual(s1 - 1, r)
+        r = sps.csr_matrix(((1 - self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
+        self.assertArrayEqual(1 - s1, r)
 
         # test sparse vector
         v = SparseNDArray(self.v1, shape=(3,))
         self.assertArrayEqual(v - v, self.v1_data - self.v1_data)
         self.assertArrayEqual(v - self.d1, self.v1_data - self.d1)
         self.assertArrayEqual(self.d1 - v, self.d1 - self.v1_data)
+        r = sps.csr_matrix(((self.v1.data - 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v - 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 - self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 - v, r.toarray().reshape(3))
 
     def testSparseMultiply(self):
         s1 = SparseNDArray(self.s1)
@@ -155,13 +167,15 @@ class Test(TestBase):
         s2 = SparseNDArray(self.s2)
 
         for method in ('fmod', 'logaddexp', 'logaddexp2', 'equal', 'not_equal',
-                       'less', 'less_equal', 'greater', 'greater_equal', 'hypot'):
+                       'less', 'less_equal', 'greater', 'greater_equal', 'hypot', 'arctan2'):
             lm, rm = getattr(mls, method), getattr(np, method)
             self.assertArrayEqual(lm(s1, s2), rm(self.s1.toarray(), self.s2.toarray()))
             self.assertArrayEqual(lm(s1, self.d1), rm(self.s1.toarray(), self.d1))
             self.assertArrayEqual(lm(self.d1, s1), rm(self.d1, self.s1.toarray()))
-            self.assertArrayEqual(lm(s1, 2), rm(self.s1.toarray(), 2))
-            self.assertArrayEqual(lm(2, s1), rm(2, self.s1.toarray()))
+            r1 = sps.csr_matrix((rm(self.s1.data, 2), self.s1.indices, self.s1.indptr), self.s1.shape)
+            self.assertArrayEqual(lm(s1, 2), r1)
+            r2 = sps.csr_matrix((rm(2, self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
+            self.assertArrayEqual(lm(2, s1), r2)
 
     def testSparseUnary(self):
         s1 = SparseNDArray(self.s1)
@@ -170,9 +184,11 @@ class Test(TestBase):
                        'sign', 'conj', 'exp', 'exp2', 'log', 'log2', 'log10',
                        'expm1', 'log1p', 'sqrt', 'square', 'cbrt', 'reciprocal',
                        'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan',
-                       'arcsinh', 'arccosh', 'arctanh', 'deg2rad', 'rad2deg'):
+                       'arcsinh', 'arccosh', 'arctanh', 'deg2rad', 'rad2deg',
+                       'angle', 'isnan', 'isinf', 'signbit', 'sinc', 'isreal', 'isfinite'):
             lm, rm = getattr(mls, method), getattr(np, method)
-            self.assertArrayEqual(lm(s1), rm(self.s1.toarray()))
+            r = sps.csr_matrix((rm(self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
+            self.assertArrayEqual(lm(s1), r)
 
     def testSparseDot(self):
         s1 = SparseNDArray(self.s1)
@@ -202,6 +218,7 @@ class Test(TestBase):
         s1 = SparseNDArray(self.s1)
         self.assertEqual(s1.sum(), self.s1.sum())
         np.testing.assert_array_equal(s1.sum(axis=1), np.asarray(self.s1.sum(axis=1)).reshape(2))
+        np.testing.assert_array_equal(s1.sum(axis=0), np.asarray(self.s1.sum(axis=0)).reshape(3))
 
     @unittest.skip
     def testSparseGetitem(self):

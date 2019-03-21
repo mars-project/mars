@@ -109,9 +109,12 @@ def mod(a, b, **_):
 
 def _call_bin(method, a, b, **kwargs):
     from .core import get_array_module, cp, issparse
+    from .array import call_sparse_binary_scalar
 
     if hasattr(a, method):
         res = getattr(a, method)(b, **kwargs)
+    elif get_array_module(a).isscalar(a):
+        res = call_sparse_binary_scalar(method, a, b, **kwargs)
     else:
         assert get_array_module(a) == get_array_module(b)
         xp = get_array_module(a)
@@ -458,10 +461,6 @@ def matmul(a, b, sparse=True, **_):
 
 
 def concatenate(tensors, axis=0):
-    has_sparse = any(issparse(t) for t in tensors)
-    if has_sparse:
-        tensors = [asarray(get_sparse_module(t).csr_matrix(t), t.shape) for t in tensors]
-
     return reduce(lambda a, b: _call_bin('concatenate', a, b, axis=axis), tensors)
 
 

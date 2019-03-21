@@ -29,7 +29,7 @@ class TensorHypot(operands.Hypot, TensorBinOp):
         return TensorHypotConstant
 
 
-@arithmetic_operand(sparse_mode='binary_and_const')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorHypotConstant(operands.HypotConstant, TensorConstant):
     pass
 
