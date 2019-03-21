@@ -265,7 +265,8 @@ class GraphExecution(object):
             if self._mock:
                 self._mock_max_memory = max(
                     self._mock_max_memory,
-                    sum(results[op_output.key][1] for op_output in first_op.outputs))
+                    sum(results[op_output.key][1] for op_output in first_op.outputs
+                        if results.get(op_output.key) is not None))
 
             executed_chunk_keys.update([c.key for c in first_op.outputs])
             op_keys.add(first_op.key)
