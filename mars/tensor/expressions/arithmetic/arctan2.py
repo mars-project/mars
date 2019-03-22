@@ -19,14 +19,11 @@ import numpy as np
 from .... import operands
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand
 class TensorArctan2(operands.Arctan2, TensorBinOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorArctan2, self).__init__(_casting=casting, _err=err,
-                                            _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         # x2 is sparse or not does not matter
@@ -37,12 +34,8 @@ class TensorArctan2(operands.Arctan2, TensorBinOp):
         return TensorArct2Constant
 
 
+@arithmetic_operand
 class TensorArct2Constant(operands.Arct2Constant, TensorConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorArct2Constant, self).__init__(_casting=casting, _err=err,
-                                                  _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2):

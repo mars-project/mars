@@ -17,7 +17,6 @@ import os
 
 from .utils import SchedulerActor
 from .graph import GraphActor
-from ..compat import six
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,8 @@ class SessionActor(SchedulerActor):
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._assigner_ref)
-        [self.ctx.destroy_actor(graph_ref) for graph_ref in six.itervalues(self._graph_refs)]
+        for graph_ref in self._graph_refs.values():
+            self.ctx.destroy_actor(graph_ref)
 
     def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
         graph_uid = GraphActor.gen_name(self._session_id, graph_key)

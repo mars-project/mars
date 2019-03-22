@@ -250,6 +250,6 @@ class CpuCalcActor(WorkerActor):
             logger.debug('Finish calculating operand %r.', comp_nodes)
             self.tell_promise(callback, self._inproc_cache_ref.uid, save_sizes)
             self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True)
-        except:
+        except:  # noqa: E722
             self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True)
             raise

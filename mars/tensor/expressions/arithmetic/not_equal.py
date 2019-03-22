@@ -19,23 +19,19 @@ import numpy as np
 from .... import operands
 from ..utils import inject_dtype
 from .core import TensorCompare, TensorCompareConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand
 class TensorNotEqual(operands.NotEqual, TensorCompare):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorNotEqual, self).__init__(_casting=casting, _err=err,
-                                             _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def constant_cls(cls):
         return TensorNeConstant
 
 
+@arithmetic_operand
 class TensorNeConstant(operands.NeConstant, TensorCompareConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        super(TensorNeConstant, self).__init__(_casting=casting, _err=err,
-                                               _dtype=dtype, _sparse=sparse, **kw)
+    pass
 
 
 @inject_dtype(np.bool_)

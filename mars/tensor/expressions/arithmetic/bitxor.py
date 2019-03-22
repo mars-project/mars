@@ -19,35 +19,19 @@ import numpy as np
 from .... import operands
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand(sparse_mode='binary_or')
 class TensorBitxor(operands.Bitxor, TensorBinOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorBitxor, self).__init__(_casting=casting, _err=err,
-                                           _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        return x1.issparse() or x2.issparse()
-
     @classmethod
     def constant_cls(cls):
         return TensorBitxorConstant
 
 
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorBitxorConstant(operands.BitxorConstant, TensorConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorBitxorConstant, self).__init__(_casting=casting, _err=err,
-                                                   _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        if (hasattr(x1, 'issparse') and x1.issparse()) or \
-                (hasattr(x2, 'issparse') and x2.issparse()):
-            return True
-        return False
+    pass
 
 
 @infer_dtype(np.bitwise_xor)

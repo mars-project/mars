@@ -45,18 +45,18 @@ class Tilesable(object):
 
             if obj not in graph:
                 graph.add_node(obj)
-            for input in obj.inputs or []:
+            for input_obj in obj.inputs or []:
                 sub = False
-                if input in substitutes:
-                    input = substitutes[input]
+                if input_obj in substitutes:
+                    input_obj = substitutes[input_obj]
                     sub = True
                 in_graph = True
-                if input not in graph:
-                    graph.add_node(input)
+                if input_obj not in graph:
+                    graph.add_node(input_obj)
                     in_graph = False
-                graph.add_edge(input, obj)
+                graph.add_edge(input_obj, obj)
                 if not sub and not in_graph:
-                    q.append(input)
+                    q.append(input_obj)
 
             visited.add(obj)
 

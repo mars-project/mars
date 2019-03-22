@@ -169,7 +169,7 @@ class Config(object):
         if isinstance(validator, tuple):
             validator = any_validator(*validator)
 
-        for i, name in enumerate(splits[:-1]):
+        for name in splits[:-1]:
             config = conf.get(name)
             if config is None:
                 val = AttributeDict(_parent=conf)

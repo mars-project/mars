@@ -92,9 +92,9 @@ class nd_grid(object):
         try:
             size = []
             typ = int
-            for k in range(len(key)):
-                step = key[k].step
-                start = key[k].start
+            for k in key:
+                step = k.step
+                start = k.start
                 if start is None:
                     start = 0
                 if step is None:
@@ -104,14 +104,14 @@ class nd_grid(object):
                     typ = float
                 else:
                     size.append(
-                        int(math.ceil((key[k].stop - start)/(step*1.0))))
+                        int(math.ceil((k.stop - start)/(step*1.0))))
                 if (isinstance(step, float) or
                         isinstance(start, float) or
-                        isinstance(key[k].stop, float)):
+                        isinstance(k.stop, float)):
                     typ = float
             if self.sparse:
                 nn = [_nx.arange(_x, dtype=_t)
-                        for _x, _t in zip(size, (typ,)*len(size))]
+                      for _x, _t in zip(size, (typ,)*len(size))]
             else:
                 nn = _nx.indices(size, typ)
             for k in range(len(size)):

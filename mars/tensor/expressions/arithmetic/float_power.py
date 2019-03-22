@@ -19,14 +19,11 @@ import numpy as np
 from .... import operands
 from ..utils import inject_dtype
 from .core import TensorBinOp, TensorConstant
+from .utils import arithmetic_operand
 
 
+@arithmetic_operand
 class TensorFloatPower(operands.FloatPower, TensorBinOp):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorFloatPower, self).__init__(_casting=casting, _err=err,
-                                               _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         return x1.issparse() and not x2.issparse()
@@ -36,12 +33,8 @@ class TensorFloatPower(operands.FloatPower, TensorBinOp):
         return TensorFloatPowerConstant
 
 
+@arithmetic_operand
 class TensorFloatPowerConstant(operands.FloatPowerConstant, TensorConstant):
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorFloatPowerConstant, self).__init__(_casting=casting, _err=err,
-                                                       _dtype=dtype, _sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():
