@@ -29,7 +29,7 @@ class TensorLogAddExp2(operands.LogAddExp2, TensorBinOp):
         return TensorLAE2Constant
 
 
-@arithmetic_operand(sparse_mode='always_false')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorLAE2Constant(operands.LAE2Constant, TensorConstant):
     pass
 

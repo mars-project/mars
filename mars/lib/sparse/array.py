@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import issparse
+from .core import issparse, get_array_module, get_sparse_module
 
 
 class SparseNDArray(object):
@@ -40,3 +40,28 @@ class SparseNDArray(object):
     @property
     def raw(self):
         raise NotImplementedError
+
+
+def call_sparse_binary_scalar(method, left, right, **kwargs):
+    if isinstance(left, SparseNDArray):
+        spmatrix = left.spmatrix
+        xp = get_array_module(spmatrix)
+        new_data = getattr(xp, method)(spmatrix.data, right, **kwargs)
+        shape = left.shape
+    else:
+        spmatrix = right.spmatrix
+        xp = get_array_module(spmatrix)
+        new_data = getattr(xp, method)(left, spmatrix.data, **kwargs)
+        shape = right.shape
+    new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
+        (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
+    return SparseNDArray(new_spmatrix, shape=shape)
+
+
+def call_sparse_unary(method, matrix, *args, **kwargs):
+    spmatrix = matrix.spmatrix
+    xp = get_array_module(spmatrix)
+    new_data = getattr(xp, method)(spmatrix.data, *args, **kwargs)
+    new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
+        (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
+    return SparseNDArray(new_spmatrix, shape=matrix.shape)

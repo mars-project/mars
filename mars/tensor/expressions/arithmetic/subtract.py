@@ -29,7 +29,7 @@ class TensorSubtract(operands.Subtract, TensorBinOp):
         return TensorSubConstant
 
 
-@arithmetic_operand(sparse_mode='binary_and_const')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorSubConstant(operands.SubConstant, TensorConstant):
     pass
 

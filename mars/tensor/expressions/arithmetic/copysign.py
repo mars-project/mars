@@ -29,7 +29,7 @@ class TensorCopysign(operands.Copysign, TensorBinOp):
         return TensorCopysignConstant
 
 
-@arithmetic_operand(sparse_mode='always_false')
+@arithmetic_operand(sparse_mode='binary_or_const')
 class TensorCopysignConstant(operands.CopysignConstant, TensorConstant):
     pass
 
