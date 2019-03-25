@@ -122,6 +122,16 @@ class Test(TestBase):
         self.assertArrayEqual(s1 * 2, self.s1 * 2)
         self.assertArrayEqual(2 * s1, self.s1 * 2)
 
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v * v, self.v1_data * self.v1_data)
+        self.assertArrayEqual(v * self.d1, self.v1_data * self.d1)
+        self.assertArrayEqual(self.d1 * v, self.d1 * self.v1_data)
+        r = sps.csr_matrix(((self.v1.data * 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v * 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 * self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 * v, r.toarray().reshape(3))
+
     def testSparseDivide(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
@@ -131,6 +141,16 @@ class Test(TestBase):
         self.assertArrayEqual(self.d1 / s1, self.d1 / self.s1.toarray())
         self.assertArrayEqual(s1 / 2, self.s1 / 2)
         self.assertArrayEqual(2 / s1, 2 / self.s1.toarray())
+        
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v / v, self.v1_data / self.v1_data)
+        self.assertArrayEqual(v / self.d1, self.v1_data / self.d1)
+        self.assertArrayEqual(self.d1 / v, self.d1 / self.v1_data)
+        r = sps.csr_matrix(((self.v1.data / 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v / 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 / self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 / v, r.toarray().reshape(3))
 
     def testSparseFloorDivide(self):
         s1 = SparseNDArray(self.s1)
@@ -142,6 +162,16 @@ class Test(TestBase):
         self.assertArrayEqual(s1 // 2, self.s1.toarray() // 2)
         self.assertArrayEqual(2 // s1, 2 // self.s1.toarray())
 
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v // v, self.v1_data // self.v1_data)
+        self.assertArrayEqual(v // self.d1, self.v1_data // self.d1)
+        self.assertArrayEqual(self.d1 // v, self.d1 // self.v1_data)
+        r = sps.csr_matrix(((self.v1.data // 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v // 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 // self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 // v, r.toarray().reshape(3))
+
     def testSparsePower(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
@@ -151,6 +181,16 @@ class Test(TestBase):
         self.assertArrayEqual(self.d1 ** s1, self.d1 ** self.s1.toarray())
         self.assertArrayEqual(s1 ** 2, self.s1.power(2))
         self.assertArrayEqual(2 ** s1, 2 ** self.s1.toarray())
+
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v ** v, self.v1_data ** self.v1_data)
+        self.assertArrayEqual(v ** self.d1, self.v1_data ** self.d1)
+        self.assertArrayEqual(self.d1 ** v, self.d1 ** self.v1_data)
+        r = sps.csr_matrix(((self.v1.data ** 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v ** 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 ** self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 ** v, r.toarray().reshape(3))
 
     def testSparseMod(self):
         s1 = SparseNDArray(self.s1)
@@ -162,9 +202,20 @@ class Test(TestBase):
         self.assertArrayEqual(s1 % 2, self.s1.toarray() % 2)
         self.assertArrayEqual(2 % s1, 2 % self.s1.toarray())
 
+        # test sparse vector
+        v = SparseNDArray(self.v1, shape=(3,))
+        self.assertArrayEqual(v % v, self.v1_data % self.v1_data)
+        self.assertArrayEqual(v % self.d1, self.v1_data % self.d1)
+        self.assertArrayEqual(self.d1 % v, self.d1 % self.v1_data)
+        r = sps.csr_matrix(((self.v1.data % 1), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(v % 1, r.toarray().reshape(3))
+        r = sps.csr_matrix(((1 % self.v1.data), self.v1.indices, self.v1.indptr), self.v1.shape)
+        self.assertArrayEqual(1 % v, r.toarray().reshape(3))
+
     def testSparseBin(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
+        v1 = SparseNDArray(self.v1, shape=(3,))
 
         for method in ('fmod', 'logaddexp', 'logaddexp2', 'equal', 'not_equal',
                        'less', 'less_equal', 'greater', 'greater_equal', 'hypot', 'arctan2'):
@@ -177,8 +228,16 @@ class Test(TestBase):
             r2 = sps.csr_matrix((rm(2, self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
             self.assertArrayEqual(lm(2, s1), r2)
 
+            # test sparse
+            self.assertArrayEqual(lm(v1, v1), rm(self.v1_data, self.v1_data))
+            self.assertArrayEqual(lm(v1, self.d1), rm(self.v1_data, self.d1))
+            self.assertArrayEqual(lm(self.d1, v1), rm(self.d1, self.v1_data))
+            self.assertArrayEqual(lm(v1, 2), rm(self.v1_data, 2))
+            self.assertArrayEqual(lm(2, v1), rm(2, self.v1_data))
+
     def testSparseUnary(self):
         s1 = SparseNDArray(self.s1)
+        v1 = SparseNDArray(self.v1, shape=(3,))
 
         for method in ('negative', 'positive', 'absolute', 'abs', 'fabs', 'rint',
                        'sign', 'conj', 'exp', 'exp2', 'log', 'log2', 'log10',
@@ -189,6 +248,7 @@ class Test(TestBase):
             lm, rm = getattr(mls, method), getattr(np, method)
             r = sps.csr_matrix((rm(self.s1.data), self.s1.indices, self.s1.indptr), self.s1.shape)
             self.assertArrayEqual(lm(s1), r)
+            self.assertArrayEqual(lm(v1), rm(self.v1_data))
 
     def testSparseDot(self):
         s1 = SparseNDArray(self.s1)
@@ -216,14 +276,18 @@ class Test(TestBase):
 
     def testSparseSum(self):
         s1 = SparseNDArray(self.s1)
+        v1 = SparseNDArray(self.v1, shape=(3,))
         self.assertEqual(s1.sum(), self.s1.sum())
         np.testing.assert_array_equal(s1.sum(axis=1), np.asarray(self.s1.sum(axis=1)).reshape(2))
         np.testing.assert_array_equal(s1.sum(axis=0), np.asarray(self.s1.sum(axis=0)).reshape(3))
+        np.testing.assert_array_equal(v1.sum(), np.asarray(self.v1_data.sum()))
 
     @unittest.skip
     def testSparseGetitem(self):
         s1 = SparseNDArray(self.s1)
+        v1 = SparseVector(self.v1, shape=(3,))
         self.assertEqual(s1[0, 1], self.s1[0, 1])
+        self.assertEqual(v1[1], self.v1_data[1])
 
     def testSparseSetitem(self):
         s1 = SparseNDArray(self.s1.copy())
@@ -232,14 +296,26 @@ class Test(TestBase):
         ss1[1:2, 1] = [2]
         np.testing.assert_array_equal(s1.toarray(), ss1.toarray())
 
+        v1 = SparseVector(self.v1, shape=(3,))
+        v1[1:2] = [2]
+        vv1 = self.v1_data
+        vv1[1:2] = [2]
+        np.testing.assert_array_equal(v1.toarray(), vv1)
+
     def testSparseMaximum(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
 
         np.testing.assert_array_equal(s1.maximum(s2).toarray(), self.s1.maximum(self.s2).toarray())
 
+        v1 = SparseVector(self.v1, shape=(3,))
+        np.testing.assert_array_equal(v1.maximum(self.d1), np.maximum(self.v1_data, self.d1))
+
     def testSparseMinimum(self):
         s1 = SparseNDArray(self.s1)
         s2 = SparseNDArray(self.s2)
 
         np.testing.assert_array_equal(s1.minimum(s2).toarray(), self.s1.minimum(self.s2).toarray())
+
+        v1 = SparseVector(self.v1, shape=(3,))
+        np.testing.assert_array_equal(v1.minimum(self.d1), np.minimum(self.v1_data, self.d1))

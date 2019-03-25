@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .array import SparseNDArray, call_sparse_binary_scalar
-from .core import get_array_module, get_sparse_module, cp, cps, naked, issparse
+from .array import SparseArray, SparseNDArray
+from .core import get_array_module, get_sparse_module, naked, issparse, np, is_cupy
 
 
-class SparseVector(SparseNDArray):
+class SparseVector(SparseArray):
     __slots__ = 'spmatrix',
 
     def __init__(self, spvector, shape=()):
@@ -27,133 +27,47 @@ class SparseVector(SparseNDArray):
         if isinstance(spvector, SparseVector):
             self.spmatrix = spvector.spmatrix
         else:
+            spvector = spvector.reshape(1, shape[0])
             self.spmatrix = spvector.tocsr()
-
-    def __add__(self, other):
-        try:
-            other = naked(other)
-        except TypeError:
-            return NotImplemented
-        if get_array_module(other).isscalar(other):
-            return call_sparse_binary_scalar('add', self, other)
-        if issparse(other):
-            x = self.spmatrix + other.reshape(self.spmatrix.shape)
-        else:
-            x = self.toarray() + other
-        if issparse(x):
-            return SparseVector(x, shape=self.shape)
-        return get_array_module(x).asarray(x)
-
-    def __radd__(self, other):
-        try:
-            other = naked(other)
-        except TypeError:
-            return NotImplemented
-
-        if get_array_module(other).isscalar(other):
-            return call_sparse_binary_scalar('add', other, self)
-        x = other + self.toarray()
-        if issparse(x):
-            return SparseVector(x, shape=self.shape)
-        return get_array_module(x).asarray(x)
-
-    def __sub__(self, other):
-        try:
-            other = naked(other)
-        except TypeError:
-            return NotImplemented
-
-        if get_array_module(other).isscalar(other):
-            return call_sparse_binary_scalar('subtract', self, other)
-        if issparse(other):
-            x = self.spmatrix - other.reshape(self.spmatrix.shape)
-        else:
-            x = self.toarray() - other
-        if issparse(x):
-            return SparseVector(x, shape=self.shape)
-        return get_array_module(x).asarray(x)
-
-    def __rsub__(self, other):
-        try:
-            other = naked(other)
-        except TypeError:
-            return NotImplemented
-
-        if get_array_module(other).isscalar(other):
-            return call_sparse_binary_scalar('subtract', other, self)
-        x = other - self.toarray()
-        if issparse(x):
-            return SparseVector(x, shape=self.shape)
-        return get_array_module(x).asarray(x)
-
-    @property
-    def ndim(self):
-        return 1
-
-    def toarray(self):
-        return self.spmatrix.toarray().reshape(self.shape)
-
-    def todense(self):
-        return self.spmatrix.toarray().reshape(self.shape)
-
-    def tocsr(self):
-        return self
-
-    def ascupy(self):
-        is_cp = get_array_module(self.spmatrix) is cp
-        if is_cp:
-            return self
-        mat_tuple = (cp.asarray(self.data), cp.asarray(self.indices), cp.asarray(self.indptr))
-        return SparseVector(cps.csr_matrix(mat_tuple, shape=self.spmatrix.shape))
-
-    def asscipy(self):
-        is_cp = get_array_module(self.spmatrix) is cp
-        if not is_cp:
-            return self
-        return SparseVector(self.spmatrix.get())
-
-    def __array__(self, dtype=None):
-        x = self.toarray()
-        if dtype and x.dtype != dtype:
-            return x.astype(dtype)
-        return x
-
-    @property
-    def nbytes(self):
-        return self.spmatrix.data.nbytes + self.spmatrix.indptr.nbytes \
-               + self.spmatrix.indices.nbytes
-
-    @property
-    def raw(self):
-        return self.spmatrix
-
-    @property
-    def data(self):
-        return self.spmatrix.data
-
-    @property
-    def indptr(self):
-        return self.spmatrix.indptr
-
-    @property
-    def indices(self):
-        return self.spmatrix.indices
-
-    @property
-    def nnz(self):
-        return self.spmatrix.nnz
 
     @property
     def shape(self):
-        v_shape = self.spmatrix.shape
-        if v_shape[0] != 1:
-            return v_shape[0],
-        else:
-            return v_shape[1],
+        return self.spmatrix.shape[1],
+
+    def transpose(self, axes=None):
+        assert axes is None or tuple(axes) == (0,)
+        return self
 
     @property
-    def dtype(self):
-        return self.spmatrix.dtype
+    def T(self):
+        return self
+
+    def __truediv__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+        x = self.spmatrix / other
+        if issparse(x):
+            return SparseNDArray(x, shape=self.shape)
+        if x.shape != self.shape:
+            x = np.asarray(x).reshape(self.shape)
+        return get_array_module(x).asarray(x)
+
+    def __rtruediv__(self, other):
+        try:
+            other = naked(other)
+        except TypeError:
+            return NotImplemented
+        try:
+            x = other / self.spmatrix
+        except TypeError:
+            x = other / self.spmatrix.toarray()
+        if issparse(x):
+            return SparseNDArray(x, shape=self.shape)
+        if x.shape != self.shape:
+            x = np.asarray(x).reshape(self.shape)
+        return get_array_module(x).asarray(x)
 
     def dot(self, other, sparse=True):
         other_shape = other.shape
@@ -169,13 +83,12 @@ class SparseVector(SparseNDArray):
 
             x = a.dot(other)
         else:
-            v = self.spmatrix.T if self.spmatrix.shape[1] == 1 else self.spmatrix
-            if len(other_shape) == 1 and other.shape[0] == 1:
-                x = v.dot(other.T)
+            if len(other_shape) == 1:
+                x = self.spmatrix.dot(other.T)
             else:
-                x = v.dot(other)
+                x = self.spmatrix.dot(other)
         if issparse(x):
-            shape = (other.shape[1],)
+            shape = (x.shape[1],)
             return SparseNDArray(x, shape=shape)
         return get_array_module(x).asarray(x)
 
@@ -201,3 +114,30 @@ class SparseVector(SparseNDArray):
         if issparse(x):
             return SparseNDArray(x, shape=(x.shape[1],))
         return get_array_module(x).asarray(x)
+
+    def _reduction(self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw):
+        if not todense:
+            assert keepdims is None or keepdims is False
+
+        if isinstance(axis, tuple):
+            assert axis == (0, )
+            axis = None
+
+        if todense:
+            x = self.spmatrix.toarray()
+            x = getattr(get_array_module(x), method_name)(x, axis=axis, **kw)
+        else:
+            x = getattr(self.spmatrix, method_name)(axis=axis, **kw)
+
+        m = get_array_module(x)
+        return m.array([x])[0]
+
+    def __setitem__(self, key, value):
+        if is_cupy(self.spmatrix):
+            return NotImplemented
+        else:
+            x = self.spmatrix.tolil()
+            key = (0,) + (key, )
+            x[key] = value
+            x = x.tocsr()
+        self.spmatrix = x
