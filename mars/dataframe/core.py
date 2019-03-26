@@ -61,6 +61,10 @@ class IndexValue(Serializable):
         def max_val(self):
             return self._max_val
 
+        @property
+        def max_val_close(self):
+            return self._max_val_close
+
     class Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')

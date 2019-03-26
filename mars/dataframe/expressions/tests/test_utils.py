@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.config import option_context
-from mars.dataframe.expressions.utils import decide_chunk_sizes
+from mars.dataframe.expressions.utils import decide_chunk_sizes, split_monotonic_index_min_max
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -69,3 +69,57 @@ class Test(unittest.TestCase):
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
+    def testSplitMonotonicIndexMinMax(self):
+        left_min_max = [[0, True, 3, True], [3, False, 5, False]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        self.assertEqual(right_splits,
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        left_splits, right_splits = split_monotonic_index_min_max(right_min_max, False, left_min_max, False)
+        self.assertEqual(list(reversed(left_splits)),
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        self.assertEqual(list(reversed(right_splits)),
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+
+        left_min_max = [[2, True, 4, True], [8, True, 9, False]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 6, True), (8, True, 9, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 6, True), (8, True, 9, False)]])
+
+        left_min_max = [[1, False, 3, True], [4, False, 6, True], [10, True, 12, False], [13, True, 14, False]]
+        right_min_max = [[2, True, 4, True], [5, True, 7, False]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+                          [(6, False, 7, False), (10, True, 12, False)],
+                          [(13, True, 14, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
+                           (10, True, 12, False), (13, True, 14, False)]])
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(right_min_max, True, left_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
+                           (10, True, 12, False), (13, True, 14, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+                          [(6, False, 7, False), (10, True, 12, False)],
+                          [(13, True, 14, False)]])
