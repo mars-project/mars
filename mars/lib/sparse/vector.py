@@ -88,6 +88,9 @@ class SparseVector(SparseArray):
             else:
                 x = self.spmatrix.dot(other)
         if issparse(x):
+            if x.shape == (1, 1):
+                # return scalar
+                return x.toarray()[0, 0]
             shape = (x.shape[1],)
             return SparseNDArray(x, shape=shape)
         return get_array_module(x).asarray(x)
