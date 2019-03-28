@@ -154,7 +154,7 @@ def _tensor_sparse_to_dense(ctx, chunk):
 def _tensor_dense_to_sparse(ctx, chunk):
     in_data = naked(ctx[chunk.inputs[0].key])
     xps = cps if chunk.op.gpu else sps
-    ctx[chunk.key] = SparseNDArray(xps.csr_matrix(in_data))
+    ctx[chunk.key] = SparseNDArray(xps.csr_matrix(in_data), shape=chunk.shape)
 
 
 def _tensor_tiledb(ctx, chunk):
