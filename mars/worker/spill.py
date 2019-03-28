@@ -49,17 +49,19 @@ def parse_spill_dirs(dir_str):
     return sorted(final_dirs)
 
 
-def build_spill_file_name(chunk_key, dirs=None, writing=False):
+def build_spill_file_name(data_key, dirs=None, writing=False):
     """
     Build spill file name from chunk key. Path is selected given hash of the chunk key
-    :param chunk_key: chunk key
+    :param data_key: data key
     """
+    if isinstance(data_key, tuple):
+        data_key = '@'.join(data_key)
     dirs = dirs or options.worker.spill_directory
     if not dirs:
         return None
     if not isinstance(dirs, list):
         dirs = parse_spill_dirs(dirs)
-    spill_dir = dirs[mod_hash(chunk_key, len(dirs))]
+    spill_dir = dirs[mod_hash(data_key, len(dirs))]
     if writing:
         spill_dir = os.path.join(spill_dir, 'writing')
     if not os.path.exists(spill_dir):
@@ -68,16 +70,16 @@ def build_spill_file_name(chunk_key, dirs=None, writing=False):
         except OSError:
             if not os.path.exists(spill_dir):
                 raise
-    return os.path.join(spill_dir, chunk_key)
+    return os.path.join(spill_dir, data_key)
 
 
-def read_spill_file(chunk_key):
+def read_spill_file(data_key):
     """
     Read spill file of chunk key via gevent thread pool input_pool
-    :param chunk_key: chunk key
+    :param data_key: chunk key
     :return: mars object
     """
-    file_name = build_spill_file_name(chunk_key)
+    file_name = build_spill_file_name(data_key)
     if not file_name:
         raise SpillNotConfigured('Spill not configured')
     with open(file_name, 'rb') as file_obj:
@@ -85,14 +87,14 @@ def read_spill_file(chunk_key):
         return data
 
 
-def write_spill_file(chunk_key, data):
+def write_spill_file(data_key, data):
     """
     Write mars object into spill
-    :param chunk_key: chunk key
+    :param data_key: chunk key
     :param data: data of the chunk
     """
-    src_file_name = build_spill_file_name(chunk_key, writing=True)
-    dest_file_name = build_spill_file_name(chunk_key, writing=False)
+    src_file_name = build_spill_file_name(data_key, writing=True)
+    dest_file_name = build_spill_file_name(data_key, writing=False)
     if not src_file_name:
         raise SpillNotConfigured('Spill not configured')
     if not os.path.exists(dest_file_name):
@@ -101,15 +103,15 @@ def write_spill_file(chunk_key, data):
         os.rename(src_file_name, dest_file_name)
 
 
-def spill_exists(chunk_key):
-    file_name = build_spill_file_name(chunk_key)
+def spill_exists(data_key):
+    file_name = build_spill_file_name(data_key)
     if not file_name:
         return False
     return os.path.exists(file_name)
 
 
-def get_spill_data_size(chunk_key):
-    file_name = build_spill_file_name(chunk_key)
+def get_spill_data_size(data_key):
+    file_name = build_spill_file_name(data_key)
     if not file_name:
         raise SpillNotConfigured('Spill not configured')
     if not os.path.exists(file_name):
@@ -283,7 +285,7 @@ class SpillActor(WorkerActor):
         file_name = build_spill_file_name(chunk_key)
         if not file_name:
             raise SpillNotConfigured('Spill not configured')
-        if sys.platform == 'win32':
+        if sys.platform == 'win32':  # pragma: no cover
             CREATE_NO_WINDOW = 0x08000000
             self.ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
         else:

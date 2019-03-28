@@ -16,3 +16,4 @@ from .base import BaseOperandActor
 from .core import register_operand_class, get_operand_actor_class, \
     OperandState, OperandPosition
 from .common import OperandActor
+from .shuffle import ShuffleProxyActor

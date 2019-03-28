@@ -77,8 +77,8 @@ _op_cls_to_actor = dict()
 def get_operand_actor_class(op_cls):
     if op_cls in _op_cls_to_actor:
         return _op_cls_to_actor[op_cls]
-    for cls in _op_cls_to_actor.keys():
-        if issubclass(op_cls, cls):
+    for cls in op_cls.__mro__:
+        if cls in _op_cls_to_actor:
             actor_cls = _op_cls_to_actor[op_cls] = _op_cls_to_actor[cls]
             return actor_cls
     raise ValueError('Operand type %s not supported.' % op_cls.__name__)  # pragma: no cover

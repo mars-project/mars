@@ -20,3 +20,4 @@ def register_fetch_handler():
     from ...executor import register
 
     register(fetch.TensorFetch, lambda *_: None)
+    register(fetch.TensorFetchShuffle, lambda *_: None)

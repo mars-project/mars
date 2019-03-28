@@ -314,7 +314,7 @@ class LocalChunkMetaActor(SchedulerActor):
         """
         return [self.get_chunk_meta(session_id, k) for k in chunk_keys]
 
-    def delete_meta(self, session_id, chunk_key):
+    def delete_meta(self, session_id, chunk_key, broadcast=True):
         """
         Delete metadata from store and cache
         """
@@ -324,16 +324,16 @@ class LocalChunkMetaActor(SchedulerActor):
             if self._kv_store_ref is not None:
                 self._kv_store_ref.delete('/sessions/%s/chunks/%s' % (session_id, chunk_key),
                                           recursive=True, _tell=True, _wait=False)
+            logger.debug('Delete chunk meta %s', chunk_key)
         except KeyError:
             pass
         try:
             del self._meta_cache[query_key]
         except KeyError:
             pass
-        logger.debug('Delete chunk meta %s', chunk_key)
 
         # broadcast deletion into pre-determined destinations
-        if query_key in self._meta_broadcasts:
+        if broadcast and query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
                 self.ctx.actor_ref(self.default_name(), address=dest) \
                     .delete_meta(session_id, chunk_key, _wait=False, _tell=True)
@@ -343,8 +343,19 @@ class LocalChunkMetaActor(SchedulerActor):
         """
         Delete metadata in batch from store and cache
         """
+        dest_to_keys = defaultdict(list)
         for chunk_key in chunk_keys:
-            self.delete_meta(session_id, chunk_key)
+            query_key = (session_id, chunk_key)
+            self.delete_meta(session_id, chunk_key, broadcast=False)
+            try:
+                for dest in self._meta_broadcasts[query_key]:
+                    dest_to_keys[dest].append(chunk_key)
+                del self._meta_broadcasts[query_key]
+            except KeyError:
+                pass
+        for dest, keys in dest_to_keys.items():
+            self.ctx.actor_ref(self.default_name(), address=dest) \
+                .batch_delete_meta(session_id, keys, _wait=False, _tell=True)
 
     def remove_workers_in_session(self, session_id, workers):
         """

@@ -49,10 +49,6 @@ class SchedulerActor(HasClusterInfoActor, PromiseActor):
         return 's:{0}'.format(cls.__name__)
 
 
-def remove_shuffle_chunks(chunks):
-    return list(n for n in chunks if not getattr(n.op, '_shuffle_source', False))
-
-
 if six.PY3:
     def array_to_bytes(typecode, initializer):
         return array.array(typecode, initializer).tobytes()

@@ -90,7 +90,7 @@ class FakeExecutionActor(promise.PromiseActor):
             key_to_chunks[n.key].append(n)
             self._chunk_meta_ref.set_chunk_size(session_id, n.key, 0)
 
-        for tk in rec.targets:
+        for tk in rec.data_targets:
             for n in key_to_chunks[tk]:
                 self._chunk_meta_ref.add_worker(session_id, n.key, 'localhost:12345')
         self._results[graph_key] = ((dict(),), dict())
@@ -129,8 +129,8 @@ class FakeExecutionActor(promise.PromiseActor):
 
         self._graph_records[query_key] = GraphExecutionRecord(
             graph_ser, None,
-            targets=io_meta['chunks'],
-            chunks_use_once=set(io_meta.get('input_chunks', [])) - set(io_meta.get('shared_input_chunks', [])),
+            data_targets=io_meta['chunks'],
+            shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
             enqueue_callback=callback,
             succ_keys=succ_keys,
@@ -218,7 +218,7 @@ class Test(unittest.TestCase):
                     break
 
     @patch_method(OperandActor._get_raw_execution_ref)
-    @patch_method(OperandActor._free_worker_data)
+    @patch_method(OperandActor._free_data_in_worker)
     def testOperandActor(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -230,7 +230,7 @@ class Test(unittest.TestCase):
                                lambda pool: pool.create_actor(FakeExecutionActor))
 
     @patch_method(OperandActor._get_raw_execution_ref)
-    @patch_method(OperandActor._free_worker_data)
+    @patch_method(OperandActor._free_data_in_worker)
     def testOperandActorWithSameKey(self, *_):
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = mt.concatenate((arr, arr))
@@ -241,7 +241,7 @@ class Test(unittest.TestCase):
                                lambda pool: pool.create_actor(FakeExecutionActor))
 
     @patch_method(OperandActor._get_raw_execution_ref)
-    @patch_method(OperandActor._free_worker_data)
+    @patch_method(OperandActor._free_data_in_worker)
     def testOperandActorWithRetry(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -257,7 +257,7 @@ class Test(unittest.TestCase):
             options.scheduler.retry_delay = 60
 
     @patch_method(OperandActor._get_raw_execution_ref)
-    @patch_method(OperandActor._free_worker_data)
+    @patch_method(OperandActor._free_data_in_worker)
     def testOperandActorWithRetryAndFail(self, *_):
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
@@ -273,7 +273,7 @@ class Test(unittest.TestCase):
             options.scheduler.retry_delay = 60
 
     @patch_method(OperandActor._get_raw_execution_ref)
-    @patch_method(OperandActor._free_worker_data)
+    @patch_method(OperandActor._free_data_in_worker)
     def testOperandActorWithCancel(self, *_):
         import logging
         logging.basicConfig(level=logging.DEBUG)

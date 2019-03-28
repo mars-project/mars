@@ -34,11 +34,11 @@ from ..compat import six, functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
-from ..tiles import handler, DataNotReady
+from ..operands import Fetch, ShuffleProxy
 from ..serialize.dataserializer import loads, dumps
-from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
-from ..tensor.expressions.fetch import TensorFetch
 from ..tensor.core import ChunkData
+from ..tiles import handler, DataNotReady
+from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class ResultReceiverActor(SchedulerActor):
         graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
         fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
 
-        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetch):
+        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, Fetch):
             c = next(fetch_graph.iter_nodes())
             worker_ip = self._chunk_meta_ref.get_workers(session_id, c.key)[-1]
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
@@ -75,7 +75,7 @@ class ResultReceiverActor(SchedulerActor):
             ctx = dict()
             target_keys = set()
             for c in fetch_graph:
-                if isinstance(c.op, TensorFetch):
+                if isinstance(c.op, Fetch):
                     if c.key in ctx:
                         continue
                     endpoints = self._chunk_meta_ref.get_workers(session_id, c.key)
@@ -403,7 +403,7 @@ class GraphActor(SchedulerActor):
                 # replace inputs with tiled ones
                 if not total_tiled:
                     try:
-                        if isinstance(to_tile.op, TensorFetch):
+                        if isinstance(to_tile.op, Fetch):
                             td = self.tile_fetch_tensor(tensor)
                         else:
                             td = handler.dispatch(to_tile)
@@ -458,7 +458,7 @@ class GraphActor(SchedulerActor):
         for n in list(chunk_graph.iter_nodes()):
             if n not in reserve_chunk:
                 chunk_graph.remove_node(n)
-            elif isinstance(n.op, TensorFetch):
+            elif isinstance(n.op, Fetch):
                 chunk_graph.remove_node(n)
 
         if compose:
@@ -548,18 +548,31 @@ class GraphActor(SchedulerActor):
             self._assign_initial_workers(analyzer)
 
     @log_unhandled
-    def get_executable_operand_dag(self, op_key, serialize=True):
+    def get_executable_operand_dag(self, op_key, input_chunk_keys=None, serialize=True):
         """
         Make an operand into a worker-executable dag
         :param op_key: operand key
+        :param input_chunk_keys: actual input chunks, None if use all chunks in input
         :param serialize: whether to return serialized dag
         """
+        from ..tensor.expressions.core import TensorShuffleProxy
+        from ..tensor.expressions.fetch import TensorFetch, TensorFetchShuffle
         graph = DAG()
 
         inputs_to_copied = dict()
+        input_chunk_keys = set(input_chunk_keys) if input_chunk_keys is not None else None
         for c in self._op_key_to_chunk[op_key]:
             for inp in set(c.inputs or ()):
-                op = TensorFetch(dtype=inp.dtype, sparse=inp.op.sparse)
+                if isinstance(inp.op, TensorShuffleProxy):
+                    # for shuffle nodes, we build FetchShuffle chunks
+                    # to replace TensorShuffleProxy
+                    to_fetch_keys = [pinp.key for pinp in inp.inputs
+                                     if input_chunk_keys is None or pinp.key in input_chunk_keys]
+                    op = TensorFetchShuffle(dtype=inp.dtype, to_fetch_keys=to_fetch_keys)
+                else:
+                    # for shuffle nodes, we build Fetch chunks
+                    # to replace original chunk
+                    op = TensorFetch(dtype=inp.dtype, sparse=inp.op.sparse)
                 inp_chunk = op.new_chunk(None, inp.shape, _key=inp.key).data
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
@@ -604,6 +617,7 @@ class GraphActor(SchedulerActor):
         input_chunk_keys = set()
         shared_input_chunk_keys = set()
         chunk_keys = set()
+        shuffle_keys = dict()
 
         for c in chunks:
             # handling predecessor args
@@ -616,6 +630,9 @@ class GraphActor(SchedulerActor):
             # handling successor args
             for sn in graph.iter_successors(c):
                 successor_keys.add(sn.op.key)
+            if isinstance(c.op, ShuffleProxy):
+                for sn in graph.iter_successors(c):
+                    shuffle_keys[sn.op.key] = sn.op.shuffle_key
 
             chunk_keys.update(co.key for co in c.op.outputs)
 
@@ -626,6 +643,8 @@ class GraphActor(SchedulerActor):
             shared_input_chunks=list(shared_input_chunk_keys),
             chunks=list(chunk_keys),
         )
+        if shuffle_keys:
+            io_meta['shuffle_keys'] = [shuffle_keys.get(k) for k in io_meta['successors']]
         return io_meta
 
     @log_unhandled
@@ -634,6 +653,7 @@ class GraphActor(SchedulerActor):
         Create operand actors for all operands
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
+        from ..operands import VirtualOperand
 
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
@@ -643,6 +663,9 @@ class GraphActor(SchedulerActor):
         for op_key in self._op_key_to_chunk:
             chunks = self._op_key_to_chunk[op_key]
             op = chunks[0].op
+
+            if isinstance(op, VirtualOperand):
+                operand_infos[op_key]['virtual'] = True
 
             op_name = type(op).__name__
             op_info = operand_infos[op_key]
@@ -799,6 +822,9 @@ class GraphActor(SchedulerActor):
         finished = 0
         total_count = len(self._operand_infos)
         for operand_info in self._operand_infos.values():
+            if operand_info.get('virtual'):
+                total_count -= 1
+                continue
             op_name = operand_info['op_name']
             state = operand_info['state']
             if state in (OperandState.FINISHED, OperandState.FREED):
@@ -840,6 +866,7 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def build_tensor_merge_graph(self, tensor_key):
+        from ..tensor.expressions.fetch import TensorFetch
         from ..tensor.expressions.merge.concatenate import TensorConcatenate
 
         tiled_tensor = self._get_tensor_by_key(tensor_key)
@@ -869,6 +896,7 @@ class GraphActor(SchedulerActor):
         Convert single tensor to tiled fetch tensor and put into a graph which only contains one tensor
         :param tensor_key: the key of tensor
         """
+        from ..tensor.expressions.fetch import TensorFetch
         tiled_tensor = self._get_tensor_by_key(tensor_key)
         graph = DAG()
 

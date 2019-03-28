@@ -540,8 +540,9 @@ class ReceiverActor(WorkerActor):
                     'net_transfer_speed', data_meta.chunk_size * 1.0 / time_delta,
                     _tell=True, _wait=False)
 
-            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
-                session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,))
+            if not isinstance(chunk_key, tuple):
+                self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                    session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,))
 
             if data_meta.write_shared:
                 # seal data on shared store

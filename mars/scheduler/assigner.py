@@ -80,24 +80,26 @@ class AssignerActor(SchedulerActor):
         """
         self._refresh_worker_metrics()
 
+        # already assigned valid target worker, return directly
         target_worker = op_info.get('target_worker')
-        if target_worker and target_worker not in self._worker_metrics:
-            target_worker = None
+        if target_worker and target_worker in self._worker_metrics:
+            return [target_worker]
 
         op_io_meta = op_info['io_meta']
-        input_chunk_keys = op_io_meta['input_chunks']
-        metas = self._get_chunks_meta(session_id, input_chunk_keys)
+        try:
+            input_data_keys = op_io_meta['input_data_keys']
+        except KeyError:
+            input_data_keys = op_io_meta['input_chunks']
+
+        metas = self._get_chunks_meta(session_id, input_data_keys)
         if any(meta is None for meta in metas.values()):
-            raise DependencyMissing
+            raise DependencyMissing('Missing dependency meta %r' % [
+                key for key, meta in metas.items() if meta is None
+            ])
 
         input_sizes = dict((k, meta.chunk_size) for k, meta in metas.items())
-
-        if target_worker is None:
-            chunk_workers = dict((k, meta.workers) for k, meta in metas.items())
-
-            candidate_workers = self._get_eps_by_worker_locality(input_chunk_keys, chunk_workers, input_sizes)
-        else:
-            candidate_workers = [target_worker]
+        chunk_workers = dict((k, meta.workers) for k, meta in metas.items())
+        candidate_workers = self._get_eps_by_worker_locality(input_data_keys, chunk_workers, input_sizes)
 
         return candidate_workers
 
