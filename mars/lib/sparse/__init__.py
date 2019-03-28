@@ -499,7 +499,7 @@ def all(tensor, axis=None, **kw):
 
 
 def any(tensor, axis=None, **kw):
-    return _call_unary('all', tensor, axis=axis, **kw)
+    return _call_unary('any', tensor, axis=axis, **kw)
 
 
 def mean(tensor, axis=None, **kw):

@@ -698,6 +698,18 @@ class Test(unittest.TestCase):
         self.assertFalse(issparse(res))
         np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
+        # test vector inner
+        a_data = np.random.rand(5)
+        b_data = np.random.rand(5)
+        a = tensor(a_data, chunk_size=2).tosparse()
+        b = tensor(b_data, chunk_size=2).tosparse()
+
+        c = inner(a, b)
+
+        res = self.executor.execute_tensor(c, concat=True)[0]
+        self.assertTrue(np.isscalar(res))
+        np.testing.assert_allclose(res, np.inner(a_data, b_data))
+
     def testVdotExecution(self):
         a_data = np.array([1 + 2j, 3 + 4j])
         b_data = np.array([5 + 6j, 7 + 8j])
