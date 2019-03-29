@@ -247,6 +247,21 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(
             res, np.true_divide(data1, data2, out=data1.copy(), where=data2 > .5)))
 
+        arr1 = tensor(data1.copy(), chunk_size=4)
+        arr2 = tensor(data2.copy(), chunk_size=4)
+
+        arr3 = add(arr1, arr2, where=arr1 > .5)
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        expected = np.add(data1, data2, where=data1 > .5)
+        self.assertTrue(np.array_equal(res[data1 > .5], expected[data1 > .5]))
+
+        arr1 = tensor(data1.copy(), chunk_size=4)
+
+        arr3 = add(arr1, 1, where=arr1 > .5)
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        expected = np.add(data1, 1, where=data1 > .5)
+        self.assertTrue(np.array_equal(res[data1 > .5], expected[data1 > .5]))
+
     def testFrexpExecution(self):
         data1 = np.random.random((5, 9, 4))
 
