@@ -149,6 +149,8 @@ def _build_elementwise(op):
                 inputs, kw['out'], kw['where'] = inputs[:-2], inputs[-2].copy(), inputs[-1]
             elif chunk.op.out:
                 inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
+            elif chunk.op.where:
+                inputs, kw['where'] = inputs[:-1], inputs[-1]
 
             with np.errstate(**chunk.op.err):
                 if len(inputs) == 1:
