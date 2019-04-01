@@ -150,7 +150,7 @@ class TensorBinOp(TensorElementWise):
 
     def _call(self, x1, x2, out=None, where=None):
         # if x1 or x2 is scalar, and out is none, to constant
-        if (np.isscalar(x1) or np.isscalar(x2)) and not out:
+        if (np.isscalar(x1) or np.isscalar(x2)) and not out and not where:
             return self.to_constant(x1, x2)
 
         x1, x2, out, where = self._process_inputs(x1, x2, out, where)
