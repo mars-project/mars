@@ -132,10 +132,8 @@ class WorkerService(object):
 
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 
-    def start_plasma(self, one_mapped_file=False):
-        self._plasma_store = plasma.start_plasma_store(
-            self._cache_mem_limit, use_one_memory_mapped_file=one_mapped_file
-        )
+    def start_plasma(self):
+        self._plasma_store = plasma.start_plasma_store(self._cache_mem_limit)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     def start(self, endpoint, pool, distributed=True, schedulers=None, process_start_index=0):
