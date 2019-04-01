@@ -64,9 +64,12 @@ class WorkerService(object):
         self._result_sender_ref = None
 
     def start_plasma(self, mem_limit, one_mapped_file=False):
-        self._plasma_store = plasma.start_plasma_store(
-            int(mem_limit), use_one_memory_mapped_file=one_mapped_file
-        )
+        try:
+            self._plasma_store = plasma.start_plasma_store(
+                int(mem_limit), use_one_memory_mapped_file=one_mapped_file
+            )
+        except TypeError:
+            self._plasma_store = plasma.start_plasma_store(int(mem_limit))
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     @classmethod
@@ -98,6 +101,10 @@ class WorkerService(object):
         else:
             schedulers = None
             service_discover_addr = options.kv_store
+
+        # create plasma key mapper
+        from .chunkstore import PlasmaKeyMapActor
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
 
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(ClusterInfoActor, schedulers=schedulers,
@@ -207,6 +214,10 @@ class WorkerService(object):
             spill_directory = parse_spill_dirs(spill_dir)
         else:
             spill_directory = None
+
+        # create plasma key mapper
+        from .chunkstore import PlasmaKeyMapActor
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
 
         # create StatusActor
         self._status_ref = pool.create_actor(

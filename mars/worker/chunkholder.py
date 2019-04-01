@@ -155,13 +155,11 @@ class ChunkHolderActor(WorkerActor):
                     return
 
                 logger.debug('Removing reference of chunk %s from %s when spilling', key, self.uid)
-                chunk_size = 0
                 if key in self._chunk_holder:
-                    chunk_size = len(self._chunk_holder[key])
-                    self._total_hold -= chunk_size
+                    self._total_hold -= len(self._chunk_holder[key])
                     del self._chunk_holder[key]
-
-                self._plasma_client.evict(chunk_size)
+                    session_id = self._cache_chunk_sessions[key]
+                    self._chunk_store.delete(session_id, key)
 
             @log_unhandled
             def _handle_spill_reject(*exc, **kwargs):
@@ -221,8 +219,6 @@ class ChunkHolderActor(WorkerActor):
 
     @log_unhandled
     def unregister_chunk(self, session_id, chunk_key):
-        _ = session_id  # noqa: F841
-
         spill_ref = self._get_spill_actor_ref(chunk_key)
         if spill_ref:
             spill_ref.delete(chunk_key, _tell=True)
@@ -233,6 +229,7 @@ class ChunkHolderActor(WorkerActor):
         if chunk_key in self._chunk_holder:
             self._total_hold -= self._chunk_holder[chunk_key].size
             del self._chunk_holder[chunk_key]
+            self._chunk_store.delete(session_id, chunk_key)
 
         logger.debug('Chunk %s unregistered in %s. total_hold=%d', chunk_key, self.uid, self._total_hold)
 

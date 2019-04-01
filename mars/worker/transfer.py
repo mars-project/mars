@@ -541,6 +541,7 @@ class ReceiverActor(WorkerActor):
                 self._chunk_store.seal(session_id, chunk_key)
             except KeyError:
                 pass
+            self._chunk_store.delete(session_id, chunk_key)
         else:
             src_dir = build_spill_file_name(chunk_key, writing=True)
             if os.path.exists(src_dir):
