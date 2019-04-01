@@ -333,7 +333,6 @@ default_options.register_option('worker.transfer_block_size', 4 * 1024 * 1024, v
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
-default_options.register_option('worker.plasma_one_mapped_file', False, validator=is_bool)
 default_options.register_option('worker.advertise_addr', '127.0.0.1', validator=is_string)
 
 # optimization

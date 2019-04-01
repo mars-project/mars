@@ -89,7 +89,7 @@ class WorkerApplication(BaseApplication, WorkerService):
 
         # start plasma
         self.start_plasma(self.calc_cache_memory_limit(),
-                          one_mapped_file=options.worker.plasma_one_mapped_file or False)
+                          one_mapped_file=self.args.plasma_one_mapped_file or False)
 
         kwargs['distributor'] = WorkerDistributor(self.n_process)
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
