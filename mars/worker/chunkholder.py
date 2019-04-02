@@ -18,7 +18,7 @@ from functools import partial
 from .. import promise
 from ..compat import OrderedDict3, six, functools32
 from ..config import options
-from ..utils import parse_memory_limit, log_unhandled, readable_size
+from ..utils import parse_readable_size, log_unhandled, readable_size
 from ..errors import *
 from .utils import WorkerActor
 
@@ -86,9 +86,9 @@ class ChunkHolderActor(WorkerActor):
         self._plasma_limit = self._chunk_store.get_actual_capacity(self._plasma_limit)
         logger.info('Detected actual plasma store size: %s', readable_size(self._plasma_limit))
         self._total_size = self._plasma_limit
-        parse_num, is_percent = parse_memory_limit(options.worker.min_spill_size)
+        parse_num, is_percent = parse_readable_size(options.worker.min_spill_size)
         self._min_spill_size = int(self._plasma_limit * parse_num if is_percent else parse_num)
-        parse_num, is_percent = parse_memory_limit(options.worker.max_spill_size)
+        parse_num, is_percent = parse_readable_size(options.worker.max_spill_size)
         self._max_spill_size = int(self._plasma_limit * parse_num if is_percent else parse_num)
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_name())

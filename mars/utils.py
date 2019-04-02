@@ -79,20 +79,26 @@ def on_deserialize_shape(shape):
     return shape
 
 
-def parse_memory_limit(value):
+_memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
+
+
+def parse_readable_size(value):
     if isinstance(value, numbers.Number):
         return float(value), False
-    elif value.endswith('%'):
-        return float(value[:-1]) / 100, True
-    elif value.lower().endswith('t'):
-        return float(value[:-1]) * (1024 ** 4), False
-    elif value.lower().endswith('g'):
-        return float(value[:-1]) * (1024 ** 3), False
-    elif value.lower().endswith('m'):
-        return float(value[:-1]) * (1024 ** 2), False
-    elif value.lower().endswith('k'):
-        return float(value[:-1]) * 1024, False
-    else:
+
+    value = value.strip().lower()
+    num_pos = 0
+    while num_pos < len(value) and value[num_pos] in '0123456789.-':
+        num_pos += 1
+
+    value, suffix = value[:num_pos], value[num_pos:]
+    suffix = suffix.strip()
+    if suffix.endswith('%'):
+        return float(value) / 100, True
+
+    try:
+        return float(value) * (1024 ** _memory_size_indices[suffix[:1]]), False
+    except (ValueError, KeyError):
         raise ValueError('Unknown limitation value: {0}'.format(value))
 
 

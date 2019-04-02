@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 
 from ..config import options
 from .. import resource
-from ..utils import parse_memory_limit, readable_size
+from ..utils import parse_readable_size, readable_size
 from ..compat import six
 from ..cluster_info import ClusterInfoActor
 from .status import StatusActor
@@ -100,7 +100,7 @@ class WorkerService(object):
                 return None
             if isinstance(limit_str, int):
                 return limit_str
-            mem_limit, is_percent = parse_memory_limit(limit_str)
+            mem_limit, is_percent = parse_readable_size(limit_str)
             if is_percent:
                 return int(total_size * mem_limit)
             else:
