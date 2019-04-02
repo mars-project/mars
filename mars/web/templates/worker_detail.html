@@ -29,12 +29,18 @@
             </tr>
             {% endif %}
             <tr>
-                <td>Git Branch</td>
-                <td><pre class="plain-pre">{{ worker_details['git_info'] }}</pre></td>
-            </tr>
-            <tr>
                 <td>Platform</td>
                 <td><pre class="plain-pre">{{ worker_details['platform'] }}</pre></td>
+            </tr>
+            {% if worker_details['cuda_info'] is defined %}
+                <tr>
+                    <td>CUDA</td>
+                    <td><pre class="plain-pre">{{ worker_details['cuda_info'] }}</pre></td>
+                </tr>
+            {% endif %}
+            <tr>
+                <td>Git Branch</td>
+                <td><pre class="plain-pre">{{ worker_details['git_info'] }}</pre></td>
             </tr>
             <tr>
                 <td>Command</td>
@@ -45,12 +51,8 @@
                 <td><pre class="plain-pre">{{ worker_details['sys_version'] }}</pre></td>
             </tr>
             <tr>
-                <td>Numpy</td>
-                <td><pre class="plain-pre">{{ worker_details['numpy_info'] }}</pre></td>
-            </tr>
-            <tr>
-                <td>Scipy</td>
-                <td><pre class="plain-pre">{{ worker_details['scipy_info'] }}</pre></td>
+                <td>Packages</td>
+                <td><pre class="plain-pre">{{ worker_details['package_info'] }}</pre></td>
             </tr>
             </tbody>
         </table>
@@ -192,6 +194,28 @@ Total: {{ worker_metrics['hardware']['disk_total'] | readable_size }}</pre></td>
             {% endfor %}
             </tbody>
         </table>
+        {% if worker_metrics['hardware']['cuda_stats'] is defined %}
+        <div><h3>GPU Details</h3></div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Item</th>
+                <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in worker_metrics['hardware']['cuda_stats'] %}
+                <tr>
+                    <td>{{ item['product_name'] }}</td>
+                    <td><pre class="plain-pre">GPU Usage: {{ '%0.2f' % item['gpu_usage'] }}
+Memory Usage: {{ item['fb_memory_used'] | readable_size }}
+Memory Total: {{ item['fb_memory_total'] | readable_size }}
+Temperature: {{ item['temperature'] }} C</pre></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
         {% if worker_metrics['hardware']['disk_stats'] is defined %}
         <div><h3>Disk Details</h3></div>
         <table class="table">

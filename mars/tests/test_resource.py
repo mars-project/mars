@@ -18,6 +18,28 @@ import unittest
 
 from mars.compat import reload_module
 
+_MOCK_NVIDIA_SMI_RESULT = b'''<?xml version="1.0" ?>
+<!DOCTYPE nvidia_smi_log SYSTEM "nvsmi_device_v10.dtd">
+<nvidia_smi_log>
+  <driver_version>410.79</driver_version>
+  <cuda_version>10.0</cuda_version>
+  <attached_gpus>1</attached_gpus>
+  <gpu id="00000000:00:04.0">
+    <product_name>Tesla K80</product_name>
+    <fb_memory_usage>
+      <total>1024 MiB</total>
+      <used>512 MiB</used>
+      <free>512 MiB</free>
+    </fb_memory_usage>
+    <utilization>
+      <gpu_util>10 %</gpu_util>
+    </utilization>
+    <temperature>
+      <gpu_temp>34 C</gpu_temp>
+    </temperature>
+  </gpu>
+</nvidia_smi_log>'''
+
 
 class Test(unittest.TestCase):
     def testStats(self):
@@ -74,4 +96,35 @@ class Test(unittest.TestCase):
             del os.environ['MARS_USE_PROCESS_STAT']
             del os.environ['MARS_CPU_TOTAL']
             del os.environ['MARS_MEMORY_TOTAL']
+            reload_module(resource)
+
+    def testCUDAInfo(self):
+        from mars import resource
+        from xml.etree import ElementTree
+
+        self.assertTrue(
+            (resource.cuda_info() is None and resource.cuda_card_stats() is None) or
+            (resource.cuda_info() is not None and resource.cuda_card_stats() is not None)
+        )
+
+        try:
+            resource._last_nvml_output = ElementTree.fromstring(_MOCK_NVIDIA_SMI_RESULT)
+            resource._last_nvml_output_time = time.time()
+
+            cuda_info = resource.cuda_info()
+            self.assertEqual(cuda_info.driver_version, '410.79')
+            self.assertEqual(cuda_info.cuda_version, '10.0')
+            self.assertListEqual(cuda_info.products, ['Tesla K80'])
+            self.assertEqual(cuda_info.gpu_count, 1)
+
+            cuda_card_stats = resource.cuda_card_stats()
+            self.assertEqual(len(cuda_card_stats), 1)
+            self.assertEqual(cuda_card_stats[0].product_name, 'Tesla K80')
+            self.assertAlmostEqual(cuda_card_stats[0].temperature, 34)
+            self.assertAlmostEqual(cuda_card_stats[0].gpu_usage, 0.1)
+            self.assertAlmostEqual(cuda_card_stats[0].fb_mem_info.total, 1024 ** 3)
+            self.assertAlmostEqual(cuda_card_stats[0].fb_mem_info.used, 1024 ** 3 / 2)
+            self.assertAlmostEqual(cuda_card_stats[0].fb_mem_info.free, 1024 ** 3 / 2)
+            self.assertAlmostEqual(cuda_card_stats[0].fb_mem_info.percent, 0.5)
+        finally:
             reload_module(resource)

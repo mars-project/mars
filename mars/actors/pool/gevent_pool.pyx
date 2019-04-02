@@ -1652,5 +1652,9 @@ cdef class ActorClient:
         gevent.sleep(seconds)
 
     @staticmethod
+    def popen(*args, **kwargs):
+        return gevent.subprocess.Popen(*args, **kwargs)
+
+    @staticmethod
     def threadpool(num_threads):
         return ThreadPool(num_threads)
