@@ -345,6 +345,10 @@ class TilesableData(SerializableWithKey, Tilesable):
     def chunks(self):
         return getattr(self, '_chunks', None)
 
+    @chunks.setter
+    def chunks(self, new_chunks):
+        self._chunks = new_chunks
+
     @property
     def op(self):
         return getattr(self, '_op', None)
@@ -372,6 +376,9 @@ class TilesableData(SerializableWithKey, Tilesable):
     @property
     def params(self):
         return self._params
+
+    def update_params(self, new_params):
+        self._params.update(new_params)
 
     @property
     def cix(self):
@@ -410,8 +417,12 @@ class TilesableData(SerializableWithKey, Tilesable):
         else:
             nodes = list(self.op.outputs)
         visited = set()
+
+        has_tiled_tensor = False
         while len(nodes) > 0:
             node = nodes.pop()
+            if not tiled and not node.is_coarse():
+                has_tiled_tensor = True
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
@@ -432,6 +443,13 @@ class TilesableData(SerializableWithKey, Tilesable):
                           if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
+
+        if not tiled and has_tiled_tensor:
+            for node in graph:
+                node.chunks = None
+                if len(graph.predecessors(node)) == 0:
+                    node.update_params({'raw_chunk_size': node.nsplits})
+
         return graph
 
     def visualize(self, graph_attrs=None, node_attrs=None, **kw):

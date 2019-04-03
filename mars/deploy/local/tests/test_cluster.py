@@ -491,3 +491,20 @@ class Test(unittest.TestCase):
             d = d.dot(d)
             r4 = session.run(d, compose=False)
             np.testing.assert_array_equal(r4, np.ones((5, 5)) * 5)
+
+    def testTiledTensor(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
+            session = cluster.session
+            a = mt.ones((10, 10), chunk_size=3)
+            b = a.dot(a)
+            b.tiles()
+
+            r = session.run(b)
+            np.testing.assert_array_equal(r, np.ones((10, 10)) * 10)
+
+            a.tiles()
+            b = a + 1
+
+            r = session.run(b)
+            np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
