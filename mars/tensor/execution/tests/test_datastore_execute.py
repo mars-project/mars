@@ -20,7 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars.tensor.execution.core import Executor
@@ -45,7 +45,7 @@ class Test(TestBase):
             save = totiledb(tempdir, a, ctx=ctx)
             self.executor.execute_tensor(save)
 
-            with tiledb.DenseArray(ctx, tempdir) as arr:
+            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
                 np.testing.assert_allclose(expected, arr.read_direct())
         finally:
             shutil.rmtree(tempdir)
@@ -58,7 +58,7 @@ class Test(TestBase):
             save = totiledb(tempdir, a, ctx=ctx)
             self.executor.execute_tensor(save)
 
-            with tiledb.SparseArray(ctx, tempdir) as arr:
+            with tiledb.SparseArray(uri=tempdir, ctx=ctx) as arr:
                 data = arr[:, :]
                 coords = data['coords']
                 value = data[arr.attr(0).name]

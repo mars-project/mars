@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars.tests.core import TestBase
@@ -33,13 +33,13 @@ class Test(TestBase):
 
         for sparse in (True, False):
             dom = tiledb.Domain(
-                ctx,
-                tiledb.Dim(ctx, name="i", domain=(1, 30), tile=7, dtype=np.int32),
-                tiledb.Dim(ctx, name="j", domain=(1, 20), tile=3, dtype=np.int32),
-                tiledb.Dim(ctx, name="k", domain=(1, 10), tile=4, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, name="i", domain=(1, 30), tile=7, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, name="j", domain=(1, 20), tile=3, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, name="k", domain=(1, 10), tile=4, dtype=np.int32),
+                ctx=ctx,
             )
-            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=sparse,
-                                        attrs=[tiledb.Attr(ctx, name='a', dtype=np.float32)])
+            schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=sparse,
+                                        attrs=[tiledb.Attr(ctx=ctx, name='a', dtype=np.float32)])
 
             tempdir = tempfile.mkdtemp()
             try:
@@ -89,11 +89,11 @@ class Test(TestBase):
         ctx = tiledb.Ctx()
 
         dom = tiledb.Domain(
-            ctx,
-            tiledb.Dim(ctx, name="i", domain=(0.0, 6.0), tile=6, dtype=np.float64),
+            tiledb.Dim(ctx=ctx, name="i", domain=(0.0, 6.0), tile=6, dtype=np.float64),
+            ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
-                                    attrs=[tiledb.Attr(ctx, name='a', dtype=np.float32)])
+        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
+                                    attrs=[tiledb.Attr(ctx=ctx, name='a', dtype=np.float32)])
 
         tempdir = tempfile.mkdtemp()
         try:

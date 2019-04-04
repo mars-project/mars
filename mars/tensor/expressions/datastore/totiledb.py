@@ -79,8 +79,8 @@ class TensorTileDBDataStore(TensorDataStore):
         ctx = tiledb.Ctx(op.tiledb_config)
         tiledb_array_type = tiledb.SparseArray if tensor.issparse() else tiledb.DenseArray
         try:
-            tiledb_array_type(ctx, op.tiledb_uri, key=op.tiledb_key,
-                              timestamp=op.tiledb_timestamp)
+            tiledb_array_type(uri=op.tiledb_uri, key=op.tiledb_key,
+                              timestamp=op.tiledb_timestamp, ctx=ctx)
         except tiledb.TileDBError:
             # not exist, try to create TileDB Array by given uri
             tiledb_array_schema = get_tiledb_schema_from_tensor(op.input, ctx, op.input.nsplits)
@@ -99,7 +99,7 @@ def totiledb(uri, x, ctx=None, key=None, timestamp=None):
 
     tiledb_array_type = tiledb.SparseArray if x.issparse() else tiledb.DenseArray
     try:
-        tiledb_array = tiledb_array_type(ctx, uri, key=key, timestamp=timestamp)
+        tiledb_array = tiledb_array_type(uri=uri, key=key, timestamp=timestamp, ctx=ctx)
         # if already created, we will check the shape and dtype
         check_tiledb_array_with_tensor(x, tiledb_array)
     except tiledb.TileDBError:

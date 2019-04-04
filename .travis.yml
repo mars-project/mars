@@ -8,41 +8,41 @@ notifications:
 matrix:
   include:
     - os: linux
-      python: "2.7"
+      language: generic
       services:
         - docker
       env: PYTHON=2.7 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu
     - os: osx
       language: generic
-      env: PYTHON=2.7.12
+      env: PYTHON=2.7
     - os: linux
-      python: "3.5"
+      language: generic
       services:
         - docker
       env: PYTHON=3.5 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp35-cp35m
     - os: osx
       language: generic
-      env: PYTHON=3.5.3
+      env: PYTHON=3.5
     - os: linux
-      python: "3.6"
+      language: generic
       services:
         - docker
       env: PYTHON=3.6 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp36-cp36m
     - os: osx
       language: generic
-      env: PYTHON=3.6.1
+      env: PYTHON=3.6
     - os: linux
-      python: "3.7"
+      language: generic
       dist: xenial
       services:
         - docker
       env: PYTHON=3.7 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp37-cp37m
     - os: osx
       language: generic
-      env: PYTHON=3.7.0
+      env: PYTHON=3.7
 
 before_install:
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source ./bin/travis-prepare-osx.sh; fi
+  - source ./bin/travis-install-conda.sh
   - if [[ "$PYTHON" =~ "2" ]]; then
       pip install --upgrade pip\<19 setuptools\<40.7 wheel coverage;
     else
@@ -55,7 +55,7 @@ install:
   - pip install -r requirements-dev.txt
   - pip install -r requirements-extra.txt
   - pip install virtualenv coveralls flake8 etcd-gevent
-  - PYTHONHTTPSVERIFY=0 pip install tiledb  # workaround for tiledb ssl error
+  - conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4" || true
   - virtualenv testenv && source testenv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
