@@ -15,7 +15,7 @@
 import numpy as np
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 
@@ -27,10 +27,10 @@ def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
         extent = tensor.shape[d]
         domain = (0, extent - 1)
         tile = max(nsplits[d])
-        dims.append(tiledb.Dim(ctx, "", domain, tile=tile, dtype=np.int64))
-    dom = tiledb.Domain(ctx, *dims)
-    att = tiledb.Attr(ctx, dtype=tensor.dtype)
-    return tiledb.ArraySchema(ctx, domain=dom, attrs=(att,),
+        dims.append(tiledb.Dim(name="", domain=domain, tile=tile, dtype=np.int64, ctx=ctx))
+    dom = tiledb.Domain(*dims, **dict(ctx=ctx))
+    att = tiledb.Attr(ctx=ctx, dtype=tensor.dtype)
+    return tiledb.ArraySchema(ctx=ctx, domain=dom, attrs=(att,),
                               sparse=tensor.issparse(), **kw)
 
 

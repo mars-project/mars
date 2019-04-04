@@ -22,7 +22,7 @@ import numpy as np
 import scipy.sparse as sps
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars.tests.core import TestBase
@@ -781,17 +781,18 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         try:
             # create TileDB dense array
-            dom = tiledb.Domain(ctx,
-                                tiledb.Dim(ctx, domain=(1, 100), tile=30, dtype=np.int32),
-                                tiledb.Dim(ctx, domain=(0, 90), tile=22, dtype=np.int32),
-                                tiledb.Dim(ctx, domain=(0, 9), tile=8, dtype=np.int32),
+            dom = tiledb.Domain(
+                tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, domain=(0, 90), tile=22, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, domain=(0, 9), tile=8, dtype=np.int32),
+                ctx=ctx,
             )
-            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=False,
-                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=False,
+                                        attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
             tiledb.DenseArray.create(tempdir, schema)
 
             expected = np.random.rand(100, 91, 10)
-            with tiledb.DenseArray(ctx, tempdir, mode='w') as arr:
+            with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
                 arr.write_direct(expected)
 
             a = fromtiledb(tempdir, ctx=ctx)
@@ -804,16 +805,17 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         try:
             # create 2-d TileDB sparse array
-            dom = tiledb.Domain(ctx,
-                                tiledb.Dim(ctx, domain=(0, 99), tile=30, dtype=np.int32),
-                                tiledb.Dim(ctx, domain=(2, 11), tile=8, dtype=np.int32),
+            dom = tiledb.Domain(
+                tiledb.Dim(ctx=ctx, domain=(0, 99), tile=30, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, domain=(2, 11), tile=8, dtype=np.int32),
+                ctx=ctx,
             )
-            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
-                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
+                                        attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
             tiledb.SparseArray.create(tempdir, schema)
 
             expected = sps.rand(100, 10, density=0.01)
-            with tiledb.SparseArray(ctx, tempdir, mode='w') as arr:
+            with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
                 I, J = expected.row, expected.col + 2
                 arr[I, J] = {arr.attr(0).name: expected.data}
 
@@ -827,16 +829,17 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         try:
             # create 1-d TileDB sparse array
-            dom = tiledb.Domain(ctx,
-                                tiledb.Dim(ctx, domain=(1, 100), tile=30, dtype=np.int32),
+            dom = tiledb.Domain(
+                tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32),
+                ctx=ctx,
             )
-            schema = tiledb.ArraySchema(ctx, domain=dom, sparse=True,
-                                        attrs=[tiledb.Attr(ctx, dtype=np.float64)])
+            schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
+                                        attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
             tiledb.SparseArray.create(tempdir, schema)
 
             expected = sps.rand(1, 100, density=0.05)
-            with tiledb.SparseArray(ctx, tempdir, mode='w') as arr:
-                I= expected.col + 1
+            with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+                I = expected.col + 1
                 arr[I] = expected.data
 
             a = fromtiledb(tempdir, ctx=ctx)
