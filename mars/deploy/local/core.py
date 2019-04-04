@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 import multiprocessing
-import signal
 import os
+import signal
 import time
 
 from ...actors import create_actor_pool
@@ -28,6 +29,9 @@ from ...session import new_session
 from ...utils import get_next_port
 from ...worker.service import WorkerService
 from .distributor import gen_distributor
+
+_local_cluster_clients = dict()
+atexit.register(lambda: [v.stop() for v in list(_local_cluster_clients.values())])
 
 
 class LocalDistributedCluster(object):
@@ -262,6 +266,11 @@ class LocalDistributedClusterClient(object):
                 proc.terminate()
 
     def stop(self):
+        try:
+            del _local_cluster_clients[id(self)]
+        except KeyError:  # pragma: no cover
+            pass
+
         if self._cluster_process.is_alive():
             os.kill(self._cluster_process.pid, signal.SIGINT)
         if self._web_process is not None and self._web_process.is_alive():
@@ -288,4 +297,6 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
     if web_endpoint:
         web_process = _start_web_process(endpoint, web_endpoint)
 
-    return LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)
+    client = LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)
+    _local_cluster_clients[id(client)] = client
+    return client
