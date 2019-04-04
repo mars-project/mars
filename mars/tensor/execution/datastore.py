@@ -17,7 +17,7 @@
 import numpy as np
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from ...lib.sparse import SparseNDArray
@@ -41,7 +41,7 @@ def _store_tiledb(ctx, chunk):
             axis_offset = axis_offsets[axis]
             axis_length = chunk.op.input.shape[axis]
             slcs.append(slice(axis_offset, axis_offset + axis_length))
-        with tiledb.DenseArray(tiledb_ctx, uri, mode='w',
+        with tiledb.DenseArray(uri=uri, ctx=tiledb_ctx, mode='w',
                                key=key, timestamp=timestamp) as arr:
             arr[tuple(slcs)] = to_store
         ctx[chunk.key] = np.empty((0,) * chunk.ndim, dtype=chunk.dtype)
@@ -49,7 +49,7 @@ def _store_tiledb(ctx, chunk):
         # sparse
         to_store = ctx[chunk.op.input.key].spmatrix.tocoo()
         if to_store.nnz > 0:
-            with tiledb.SparseArray(tiledb_ctx, uri, mode='w',
+            with tiledb.SparseArray(uri=uri, ctx=tiledb_ctx, mode='w',
                                     key=key, timestamp=timestamp) as arr:
                 if chunk.ndim == 1:
                     vec = to_store.col if to_store.shape[0] == 1 else to_store.row

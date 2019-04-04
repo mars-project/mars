@@ -19,7 +19,7 @@ import tempfile
 import numpy as np
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars.tensor import random
@@ -49,7 +49,7 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         try:
             np_a = np.random.rand(2, 3)
-            tiledb_a = tiledb.DenseArray.from_numpy(ctx, tempdir, np_a)
+            tiledb_a = tiledb.DenseArray.from_numpy(ctx=ctx, uri=tempdir, array=np_a)
 
             with self.assertRaises(ValueError):
                 # ndim not match
@@ -82,13 +82,13 @@ class Test(TestBase):
             self.assertEquals(saved.op.tiledb_uri, tempdir)
 
             with self.assertRaises(tiledb.TileDBError):
-                tiledb.DenseArray(ctx, tempdir)
+                tiledb.DenseArray(ctx=ctx, uri=tempdir)
 
             # tiledb array is created in the tile
             saved.tiles()
 
             # no error
-            tiledb.DenseArray(ctx, tempdir)
+            tiledb.DenseArray(ctx=ctx, uri=tempdir)
 
             self.assertEqual(saved.chunks[0].op.axis_offsets, (0, 0))
             self.assertEqual(saved.chunks[1].op.axis_offsets, (0, 13))
