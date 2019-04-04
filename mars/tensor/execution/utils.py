@@ -14,7 +14,7 @@
 
 try:
     import tiledb
-except ImportError:  # pragma: no cover
+except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ...compat import functools32
