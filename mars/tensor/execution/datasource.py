@@ -177,11 +177,11 @@ def _tensor_tiledb(ctx, chunk):
 
     if not chunk.issparse():
         # read dense array from tiledb
-        with tiledb.DenseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
+        with tiledb.DenseArray(uri=uri, ctx=tiledb_ctx, key=key, timestamp=timestamp) as tiledb_arr:
             ctx[chunk.key] = tiledb_arr[tuple(slcs)]
     else:
         # read sparse array from tiledb
-        with tiledb.SparseArray(tiledb_ctx, uri, key=key, timestamp=timestamp) as tiledb_arr:
+        with tiledb.SparseArray(uri=uri, ctx=tiledb_ctx, key=key, timestamp=timestamp) as tiledb_arr:
             if tiledb_arr.ndim > 2:
                 raise NotImplementedError(
                     'Does not support to read array with more than 2 dimensions')

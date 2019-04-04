@@ -21,4 +21,5 @@ $HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv
 export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"
 
 #check python version
-python -V
+export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
+echo "Installed Python version: $PYTHON"

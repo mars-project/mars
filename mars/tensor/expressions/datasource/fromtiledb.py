@@ -83,11 +83,11 @@ def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=None):
 
     # get metadata from tiledb
     try:
-        tiledb_arr = tiledb.DenseArray(ctx, uri, key=key, timestamp=timestamp)
+        tiledb_arr = tiledb.DenseArray(uri=uri, ctx=ctx, key=key, timestamp=timestamp)
         sparse = False
     except ValueError:
         # if the array is not dense, ValueError will be raised by tiledb
-        tiledb_arr = tiledb.SparseArray(ctx, uri, key=key, timestamp=timestamp)
+        tiledb_arr = tiledb.SparseArray(uri=uri, ctx=ctx, key=key, timestamp=timestamp)
         sparse = True
 
     if tiledb_arr.nattr > 1:
