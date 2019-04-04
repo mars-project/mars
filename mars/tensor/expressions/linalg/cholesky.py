@@ -56,12 +56,10 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
 
         tensor = op.outputs[0]
         in_tensor = op.input
-        if len(set(in_tensor.nsplits[0] + in_tensor.nsplits[1])) != 1:
-            nsplit = min(in_tensor.nsplits[0] + in_tensor.nsplits[1])
-            # input's chunks must be all square
-            in_tensor = in_tensor.rechunk([nsplit for _ in range(in_tensor.ndim)]).single_tiles()
-            if len(set(in_tensor.nsplits[0] + in_tensor.nsplits[1])) != 1:
-                raise LinAlgError('All chunks must be a square matrix to perform cholesky decomposition.')
+        if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
+            # all chunks on diagonal should be square
+            nsplits = in_tensor.nsplits[0]
+            in_tensor = in_tensor.rechunk([nsplits, nsplits]).single_tiles()
 
         lower_chunks, upper_chunks = {}, {}
         for i in range(in_tensor.chunk_shape[0]):
@@ -70,7 +68,7 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                     lower_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
                         None, (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]), index=(i, j))
                     upper_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]), index=(j, i))
+                        None, (in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]), index=(j, i))
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
