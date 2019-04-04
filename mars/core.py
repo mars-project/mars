@@ -444,11 +444,30 @@ class TilesableData(SerializableWithKey, Tilesable):
         if tiled and compose:
             graph.compose(keys=keys)
 
+        def adapt_tensor(tensor):
+            new_tensor = tensor.copy()
+            new_tensor.chunks = None
+
+            if len(graph.predecessors(tensor)) == 0:
+                new_tensor.update_params({'raw_chunk_size': node.nsplits})
+            new_tensor.update_id(tensor.id)
+            return new_tensor
+
         if not tiled and has_tiled_tensor:
-            for node in graph:
-                node.chunks = None
-                if len(graph.predecessors(node)) == 0:
-                    node.update_params({'raw_chunk_size': node.nsplits})
+            new_graph = cls()
+            adapted = dict()
+            for n in graph:
+                if n not in adapted:
+                    new_node = adapt_tensor(n)
+                    adapted[n] = new_node
+                    new_graph.add_node(new_node)
+                for succ in graph.successors(n):
+                    if succ not in adapted:
+                        new_node = adapt_tensor(succ)
+                        adapted[succ] = new_node
+                        new_graph.add_node(new_node)
+                    new_graph.add_edge(adapted[n], adapted[succ])
+            return new_graph
 
         return graph
 
