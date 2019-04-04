@@ -113,40 +113,68 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res, data))
 
     def testCholeskyExecution(self):
-        data = np.array([[1, -2j], [2j, 5]])
+        data = np.random.randint(1, 10, (10, 10))
+        symmetric_data = data.dot(data.T)
 
-        a = tensor(data, chunk_size=1)
+        a = tensor(symmetric_data, chunk_size=5)
 
-        L = cholesky(a, lower=True)
-        t = L.dot(L.T.conj())
+        U = cholesky(a)
+        t = U.T.dot(U)
+
+        res_u = self.executor.execute_tensor(U, concat=True)[0]
+        np.testing.assert_allclose(np.triu(res_u), res_u)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
-        self.assertTrue(np.allclose(res, data))
+        self.assertTrue(np.allclose(res, symmetric_data))
 
         L = cholesky(a, lower=True)
         U = cholesky(a)
         t = L.dot(U)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
-        self.assertTrue(np.allclose(res, data))
+        self.assertTrue(np.allclose(res, symmetric_data))
 
-        a = tensor(data, chunk_size=2)
-
-        L = cholesky(a, lower=True)
-        U = cholesky(a)
-        t = L.dot(U)
-
-        res = self.executor.execute_tensor(t, concat=True)[0]
-        np.testing.assert_allclose(res, data)
-
-        a = tensor(data, chunk_size=(1, 2))
+        a = tensor(symmetric_data, chunk_size=2)
 
         L = cholesky(a, lower=True)
         U = cholesky(a)
         t = L.dot(U)
 
         res = self.executor.execute_tensor(t, concat=True)[0]
-        np.testing.assert_allclose(res, data)
+        np.testing.assert_allclose(res, symmetric_data)
+
+        a = tensor(symmetric_data, chunk_size=(1, 2))
+
+        L = cholesky(a, lower=True)
+        U = cholesky(a)
+        t = L.dot(U)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, symmetric_data)
+
+        a = tensor(symmetric_data, chunk_size=4)
+
+        L = cholesky(a, lower=True)
+        U = cholesky(a)
+        t = L.dot(U)
+
+        res_u = self.executor.execute_tensor(U, concat=True)[0]
+        np.testing.assert_allclose(np.triu(res_u), res_u)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, symmetric_data)
+
+        a = tensor(symmetric_data, chunk_size=3)
+
+        L = cholesky(a, lower=True)
+        U = cholesky(a)
+        t = L.dot(U)
+
+        res_u = self.executor.execute_tensor(U, concat=True)[0]
+        np.testing.assert_allclose(np.triu(res_u), res_u)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, symmetric_data)
 
     def testLUExecution(self):
         np.random.seed(1)
