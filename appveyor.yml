@@ -1,6 +1,7 @@
 environment:
   SECUREPSD:
     secure: wK8LfpxMgNxohHh6eS3e7TvG9SGLAOGZQdquleClj/E=
+  NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: '1'
 
   matrix:
 
