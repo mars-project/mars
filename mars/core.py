@@ -66,24 +66,20 @@ class BaseWithKey(Base):
         super(BaseWithKey, self).__init__(*args, **kwargs)
 
         if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
-            self.update_key()
+            self._update_key()
         if not hasattr(self, '_id') or not self._id:
             self._id = str(id(self))
 
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)
 
-    def update_key(self):
+    def _update_key(self):
         self._obj_set('_key', tokenize(type(self), *self._values_))
         return self
 
     def reset_key(self):
         self._obj_set('_key', None)
         return self
-
-    def update_id(self, new_id=None):
-        new_id = new_id if new_id is not None else str(id(self))
-        self._obj_set('_id', new_id)
 
     def __copy__(self):
         return self.copy()
@@ -279,7 +275,7 @@ class ChunkData(SerializableWithKey):
 
     issparse = is_sparse
 
-    def update_key(self):
+    def _update_key(self):
         object.__setattr__(self, '_key', tokenize(
             type(self), *(getattr(self, k, None) for k in self._keys_ if k != '_index')))
 
@@ -388,6 +384,16 @@ class TilesableData(SerializableWithKey, Tilesable):
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
+    def to_coarse(self):
+        if self.is_coarse():
+            return self
+        new_entity = self.copy()
+        new_entity._obj_set('_id', self._id)
+        new_entity._chunks = None
+        if self.inputs is None or len(self.inputs) == 0:
+            new_entity.params.update({'raw_chunk_size': self.nsplits})
+        return new_entity
+
     def tiles(self):
         return handler.tiles(self)
 
@@ -409,6 +415,7 @@ class TilesableData(SerializableWithKey, Tilesable):
             keys = list(c.key for c in self.chunks)
         else:
             nodes = list(self.op.outputs)
+
         visited = set()
         while len(nodes) > 0:
             node = nodes.pop()
@@ -432,7 +439,28 @@ class TilesableData(SerializableWithKey, Tilesable):
                           if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
+
+        if not tiled and any(not n.is_coarse() for n in graph):
+            return self._to_coarse_graph(graph)
+
         return graph
+
+    @staticmethod
+    def _to_coarse_graph(graph):
+        new_graph = type(graph)()
+        visited = dict()
+        for n in graph:
+            if n not in visited:
+                new_node = n.to_coarse()
+                visited[n] = new_node
+                new_graph.add_node(new_node)
+            for succ in graph.successors(n):
+                if succ not in visited:
+                    new_node = succ.to_coarse()
+                    visited[succ] = new_node
+                    new_graph.add_node(new_node)
+                new_graph.add_edge(visited[n], visited[succ])
+        return new_graph
 
     def visualize(self, graph_attrs=None, node_attrs=None, **kw):
         from graphviz import Source
@@ -482,7 +510,7 @@ class TilesableOperandMixin(object):
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
-            getattr(self, 'update_key')()  # update key when inputs are set
+            getattr(self, '_update_key')()  # update key when inputs are set
 
         if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
             if len(shape) != output_limit:
@@ -531,7 +559,7 @@ class TilesableOperandMixin(object):
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
-            getattr(self, 'update_key')()  # update key when inputs are set
+            getattr(self, '_update_key')()  # update key when inputs are set
 
         if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
             if not np.isinf(output_limit) and len(shape) != output_limit:
