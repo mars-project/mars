@@ -2,6 +2,7 @@ language: python
 env:
   global:
     - COVERALLS_PARALLEL=true
+    - NUMPY_EXPERIMENTAL_ARRAY_FUNCTION='1'
 notifications:
   webhooks:
     - https://coveralls.io/webhook

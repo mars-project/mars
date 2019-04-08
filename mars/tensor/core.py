@@ -248,6 +248,22 @@ class Tensor(Entity):
         else:
             return np.asarray(self.execute(), dtype=dtype)
 
+    def __array_function__(self, func, types, args, kwargs):
+        from .. import tensor as module
+
+        for submodule in func.__module__.split('.')[1:]:
+            try:
+                module = getattr(module, submodule)
+            except AttributeError:
+                return NotImplemented
+        if not hasattr(module, func.__name__):
+            return NotImplemented
+        mars_func = getattr(module, func.__name__)
+        if mars_func is func:
+            # avoid Numpy func
+            return NotImplemented
+        return mars_func(*args, **kwargs)
+
     def transpose(self, *axes):
         """
         Returns a view of the tensor with axes transposed.
