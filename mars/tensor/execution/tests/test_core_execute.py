@@ -16,6 +16,8 @@
 
 import unittest
 
+import numpy as np
+
 from mars.tensor.execution.core import Executor
 from mars import tensor as mt
 from mars.session import LocalSession, Session
@@ -52,3 +54,13 @@ class Test(unittest.TestCase):
         # larger than maximal memory size in calc procedure
         self.assertGreaterEqual(res[0][0], 800)
         self.assertGreaterEqual(res[0][1], 8000)
+
+    def testArrayFunction(self):
+        a = mt.ones((10, 20), chunk_size=5)
+
+        # test sum
+        self.assertEqual(np.sum(a).execute(), 200)
+
+        # test qr
+        q, r = np.linalg.qr(a)
+        self.assertTrue(np.allclose(np.dot(q, r), a).execute())
