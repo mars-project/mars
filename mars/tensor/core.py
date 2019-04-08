@@ -114,7 +114,7 @@ class ChunkData(SerializableWithKey):
 
     issparse = is_sparse
 
-    def update_key(self):
+    def _update_key(self):
         object.__setattr__(self, '_key', tokenize(
             type(self), *(getattr(self, k, None) for k in self._keys_ if k != '_index')))
 
@@ -136,7 +136,9 @@ class TensorData(SerializableWithKey, Tilesable):
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
-    _chunks = ListField('chunks', ValueType.reference(Chunk))
+    _chunks = ListField('chunks', ValueType.reference(ChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [Chunk(it) for it in x] if x is not None else x)
     _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
@@ -244,6 +246,16 @@ class TensorData(SerializableWithKey, Tilesable):
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
+    def to_coarse(self):
+        if self.is_coarse():
+            return self
+        new_entity = self.copy()
+        new_entity._obj_set('_id', self._id)
+        new_entity._chunks = None
+        if self.inputs is None or len(self.inputs) == 0:
+            new_entity.params.update({'raw_chunk_size': self.nsplits})
+        return new_entity
+
     def is_scalar(self):
         return self.ndim == 0
 
@@ -314,7 +326,28 @@ class TensorData(SerializableWithKey, Tilesable):
                           if c not in visited])
         if tiled and compose:
             graph.compose(keys=keys)
+
+        if not tiled and any(not n.is_coarse() for n in graph):
+            return self._to_coarse_graph(graph)
+
         return graph
+
+    @staticmethod
+    def _to_coarse_graph(graph):
+        new_graph = type(graph)()
+        visited = dict()
+        for n in graph:
+            if n not in visited:
+                new_node = n.to_coarse()
+                visited[n] = new_node
+                new_graph.add_node(new_node)
+            for succ in graph.successors(n):
+                if succ not in visited:
+                    new_node = succ.to_coarse()
+                    visited[succ] = new_node
+                    new_graph.add_node(new_node)
+                new_graph.add_edge(visited[n], visited[succ])
+        return new_graph
 
     def transpose(self, *axes):
         """

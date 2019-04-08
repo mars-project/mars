@@ -44,7 +44,7 @@ class RandomOperand(Operand):
         return [slot for slot in self.__slots__
                 if slot not in set(RandomOperand.__slots__)]
 
-    def update_key(self):
+    def _update_key(self):
         args = tuple(getattr(self, k, None) for k in self._keys_)
         if self.state is None:
             args += (np.random.random(),)
