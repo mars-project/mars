@@ -19,6 +19,8 @@ from collections import defaultdict
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor
 from ..compat import PY27, OrderedDict3
+from ..config import options
+from ..utils import BlacklistSet
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +175,7 @@ class LocalChunkMetaActor(SchedulerActor):
         self._chunk_info_uid = chunk_info_uid
 
         self._kv_store_ref = None
+        self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
 
     def post_create(self):
         logger.debug('Actor %s running in process %d at %s', self.uid, os.getpid(), self.address)
@@ -225,7 +228,7 @@ class LocalChunkMetaActor(SchedulerActor):
         :param broadcast: broadcast meta into registered destinations
         """
         query_key = (session_id, chunk_key)
-        workers = workers or ()
+        workers = tuple(w for w in workers or () if w not in self._worker_blacklist)
         # update input with existing value
         if query_key in self._meta_store:
             old_meta = self._meta_store[query_key]  # type: WorkerMeta
@@ -365,6 +368,7 @@ class LocalChunkMetaActor(SchedulerActor):
         :return: keys of lost chunks
         """
         logger.debug('Removing workers %r from store', workers)
+        self._worker_blacklist.update(workers)
         removed_chunks = set()
         for w in workers:
             self._meta_cache.remove_worker_keys(w, lambda k: k[0] == session_id)

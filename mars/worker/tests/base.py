@@ -54,7 +54,9 @@ class WorkerCase(unittest.TestCase):
     @classproperty
     def spill_dir(cls):
         import tempfile
-        return os.path.join(tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(cls)))
+        if not getattr(cls, '_base_spill_dir', None):
+            cls._base_spill_dir = tempfile.mkdtemp('mars_spill_%d_%d' % (os.getpid(), id(cls)))
+        return cls._base_spill_dir
 
     @classmethod
     def setUpClass(cls):
@@ -71,14 +73,12 @@ class WorkerCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        import shutil
         cls._plasma_client.disconnect()
         cls._plasma_store.__exit__(None, None, None)
-        if not isinstance(options.worker.spill_directory, list):
-            options.worker.spill_directory = options.worker.spill_directory.split(os.path.pathsep)
-        for p in options.worker.spill_directory:
-            if os.path.exists(p):
-                shutil.rmtree(p)
+
+        cls.rm_spill_dirs(cls.spill_dir)
+        cls.rm_spill_dirs(options.worker.spill_directory)
+
         if os.path.exists(cls.plasma_socket):
             os.unlink(cls.plasma_socket)
 
@@ -112,3 +112,12 @@ class WorkerCase(unittest.TestCase):
             return r
         else:
             six.reraise(*r)
+
+    @staticmethod
+    def rm_spill_dirs(spill_dirs):
+        import shutil
+        spill_dirs = spill_dirs or []
+        if not isinstance(spill_dirs, list):
+            spill_dirs = [spill_dirs]
+        for d in spill_dirs:
+            shutil.rmtree(d, ignore_errors=True)

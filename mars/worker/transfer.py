@@ -25,7 +25,7 @@ from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..serialize import dataserializer
 from ..errors import *
-from ..utils import log_unhandled
+from ..utils import log_unhandled, build_exc_info
 from .spill import build_spill_file_name, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache
 
@@ -75,7 +75,7 @@ class SenderActor(WorkerActor):
             pass
         if nbytes is None:
             try:
-                nbytes = self._serialize_pool.submit(get_spill_data_size, chunk_key).result()
+                nbytes = get_spill_data_size(chunk_key)
             except KeyError:
                 raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
         return nbytes
@@ -274,14 +274,15 @@ class SenderActor(WorkerActor):
 
 class ReceiverDataMeta(object):
     __slots__ = 'start_time', 'chunk_size', 'write_shared', 'checksum', \
-                'status', 'callback_args', 'callback_kwargs'
+                'source_address', 'status', 'callback_args', 'callback_kwargs'
 
     def __init__(self, start_time=None, chunk_size=None, write_shared=True, checksum=0,
-                 status=None, callback_args=None, callback_kwargs=None):
+                 source_address=None, status=None, callback_args=None, callback_kwargs=None):
         self.start_time = start_time or time.time()
         self.chunk_size = chunk_size
         self.write_shared = write_shared
         self.checksum = checksum
+        self.source_address = source_address
         self.status = status
         self.callback_args = callback_args or ()
         self.callback_kwargs = callback_kwargs or {}
@@ -408,7 +409,8 @@ class ReceiverActor(WorkerActor):
                 del self._data_meta_cache[session_chunk_key]
 
         self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
-            chunk_size=data_size, write_shared=True, status=ReceiveStatus.RECEIVING)
+            chunk_size=data_size, source_address=sender_ref.address,
+            write_shared=True, status=ReceiveStatus.RECEIVING)
 
         # configure timeout callback
         if timeout:
@@ -573,20 +575,33 @@ class ReceiverActor(WorkerActor):
         return True
 
     @log_unhandled
-    def cancel_receive(self, session_id, chunk_key):
+    def cancel_receive(self, session_id, chunk_key, exc_info=None):
         """
         Cancel data receive by returning an ExecutionInterrupted
         :param session_id: session id
         :param chunk_key: chunk key
+        :param exc_info: exception to raise
         """
         logger.debug('Transfer for %s cancelled.', chunk_key)
         if not self._is_receive_running(session_id, chunk_key):
             return
 
-        try:
-            raise ExecutionInterrupted
-        except ExecutionInterrupted:
-            self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
+        if exc_info is None:
+            exc_info = build_exc_info(ExecutionInterrupted)
+
+        self._stop_transfer_with_exc(session_id, chunk_key, exc_info)
+
+    @log_unhandled
+    def notify_dead_senders(self, dead_workers):
+        """
+        When some peer workers are dead, corresponding receivers will be cancelled
+        :param dead_workers: endpoints of dead workers
+        """
+        dead_workers = set(dead_workers)
+        exc_info = build_exc_info(WorkerDead)
+        for session_chunk_key in self._data_writers.keys():
+            if self._data_meta_cache[session_chunk_key].source_address in dead_workers:
+                self.ref().cancel_receive(*session_chunk_key, **dict(exc_info=exc_info, _tell=True))
 
     @log_unhandled
     def handle_receive_timeout(self, session_id, chunk_key):
@@ -594,10 +609,7 @@ class ReceiverActor(WorkerActor):
             # if transfer already finishes, no needs to report timeout
             return
         logger.debug('Transfer for %s timed out, cancelling.', chunk_key)
-        try:
-            raise TimeoutError
-        except TimeoutError:
-            self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
+        self._stop_transfer_with_exc(session_id, chunk_key, build_exc_info(TimeoutError))
 
     def _stop_transfer_with_exc(self, session_id, chunk_key, exc):
         if not isinstance(exc[1], ExecutionInterrupted):

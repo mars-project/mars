@@ -67,9 +67,10 @@ class AssignerActor(SchedulerActor):
         logger.debug('Metrics cache marked as expired.')
         self._worker_metric_time = 0
 
-    def is_worker_alive(self, worker):
-        self._refresh_worker_metrics()
-        return worker in self._worker_metrics
+    def filter_alive_workers(self, workers, refresh=False):
+        if refresh:
+            self._refresh_worker_metrics()
+        return [w for w in workers if w in self._worker_metrics] if self._worker_metrics else []
 
     @log_unhandled
     def get_worker_assignments(self, session_id, op_info):

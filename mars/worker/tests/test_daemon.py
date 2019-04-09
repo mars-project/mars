@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 
 from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.errors import WorkerProcessStopped
-from mars.utils import get_next_port
+from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, DispatchActor, ProcessHelperActor
 from mars.worker.distributor import WorkerDistributor
 from mars.worker.utils import WorkerActor
@@ -60,12 +59,7 @@ class DaemonTestActor(WorkerActor):
             return val
 
     def handle_process_down(self, halt_refs):
-        try:
-            raise WorkerProcessStopped
-        except WorkerProcessStopped:
-            exc_info = sys.exc_info()
-
-        self.reject_promise_refs(halt_refs, *exc_info)
+        self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
 
 
 class Test(WorkerCase):

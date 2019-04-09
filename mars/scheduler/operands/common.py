@@ -186,15 +186,8 @@ class OperandActor(BaseOperandActor):
             futures.append(self._get_execution_ref(address=w).update_priority(
                 self._session_id, self._op_key, optimize_data, _tell=True, _wait=False))
 
-        dead_workers = set()
-        for w, f in zip(self._assigned_workers, futures):
-            try:
-                with rewrite_worker_errors():
-                    f.result()
-            except WorkerDead:
-                dead_workers.add(w)
+        dead_workers = set(self._wait_worker_futures(zip(self._assigned_workers, futures)))
         if dead_workers:
-            self._resource_ref.detach_dead_workers(list(dead_workers), _tell=True)
             self._assigned_workers.difference_update(dead_workers)
 
         futures = []
@@ -229,7 +222,11 @@ class OperandActor(BaseOperandActor):
                 if self._worker_scores[k] < 1e-6:
                     del self._worker_scores[k]
 
-        if depth:
+        live_workers = set(self._assigner_ref.filter_alive_workers(list(self._worker_scores.keys())))
+        self._worker_scores = dict((k, v) for k, v in self._worker_scores.items()
+                                   if k in live_workers)
+
+        if self._worker_scores and depth:
             # push down to successors
             futures = []
             for succ_key in self._succ_keys:
@@ -249,7 +246,7 @@ class OperandActor(BaseOperandActor):
             return self._input_chunks, max_worker
 
     def _is_worker_alive(self):
-        return self._assigner_ref.is_worker_alive(self.worker)
+        return bool(self._assigner_ref.filter_alive_workers([self.worker], refresh=True))
 
     def move_failover_state(self, from_states, state, new_target, dead_workers):
         """
@@ -278,6 +275,11 @@ class OperandActor(BaseOperandActor):
             logger.debug('Target worker of %s reassigned to %s', self._op_key, new_target)
             self._target_worker = new_target
             self._info['target_worker'] = new_target
+
+            for succ_key in self._succ_keys:
+                self._get_operand_actor(succ_key).propose_descendant_workers(
+                    self._op_key, {new_target: 1.0}, _wait=False)
+
             target_updated = True
         else:
             target_updated = False
@@ -383,9 +385,12 @@ class OperandActor(BaseOperandActor):
     def _handle_worker_accept(self, worker):
         def _dequeue_worker(endpoint, wait=True):
             try:
-                with rewrite_worker_errors():
-                    return self._get_execution_ref(address=endpoint).dequeue_graph(
-                        self._session_id, self._op_key, _tell=True, _wait=wait)
+                future = self._get_execution_ref(address=endpoint).dequeue_graph(
+                    self._session_id, self._op_key, _tell=True, _wait=False)
+                if not wait:
+                    return future
+                elif self._wait_worker_futures([(worker, future)]):
+                    raise WorkerDead
             finally:
                 self._assigned_workers.difference_update((worker,))
 
@@ -420,11 +425,9 @@ class OperandActor(BaseOperandActor):
             if w != worker:
                 logger.debug('Cancelling running operand %s on %s, when deciding to run on %s',
                              self._op_key, w, worker)
-                cancel_futures.append(_dequeue_worker(w, wait=False))
+                cancel_futures.append((w, _dequeue_worker(w, wait=False)))
 
-        for f in cancel_futures:
-            with rewrite_worker_errors(ignore_error=True):
-                f.result()
+        self._wait_worker_futures(cancel_futures)
         self._assigned_workers = set()
 
         target_predicts = self._get_target_predicts(worker)

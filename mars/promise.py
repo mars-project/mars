@@ -24,7 +24,7 @@ from .compat import getargspec
 from .actors import FunctionActor
 from .actors.core import ActorRef
 from .errors import PromiseTimeout
-from .utils import wraps
+from .utils import wraps, build_exc_info
 
 logger = logging.getLogger(__name__)
 _promise_pool = dict()
@@ -368,6 +368,18 @@ class PromiseActor(FunctionActor):
         del self._promises[promise_id]
         del self._promise_ref_keys[promise_id]
 
+    def reject_dead_workers(self, dead_workers, *args, **kwargs):
+        """
+        Reject all promises related to given remote address
+        :param dead_workers: list of dead workers
+        """
+        dead_refs = []
+        for ref_key in self._ref_key_promises.keys():
+            uid, addr = ref_key
+            if addr in dead_workers:
+                dead_refs.append(self.ctx.actor_ref(uid, address=addr))
+        return self.reject_promise_refs(dead_refs, *args, **kwargs)
+
     def reject_promise_refs(self, refs, *args, **kwargs):
         """
         Reject all promises related to given actor ref
@@ -419,11 +431,7 @@ class PromiseActor(FunctionActor):
             return
 
         self.delete_promise(promise_id)
-        try:
-            raise PromiseTimeout
-        except PromiseTimeout:
-            exc_info = sys.exc_info()
-        p.step_next(*exc_info, **dict(_accept=False))
+        p.step_next(*build_exc_info(PromiseTimeout), **dict(_accept=False))
 
 
 def all_(promises):

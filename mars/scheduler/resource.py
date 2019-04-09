@@ -21,6 +21,7 @@ from .kvstore import KVStoreActor
 from .session import SessionManagerActor, SessionActor
 from .utils import SchedulerActor
 from ..config import options
+from ..utils import BlacklistSet
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class ResourceActor(SchedulerActor):
     def __init__(self):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
-        self._worker_blacklist_time = dict()
+        self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
         self._kv_store_ref = None
 
     def post_create(self):
@@ -51,16 +52,6 @@ class ResourceActor(SchedulerActor):
     @classmethod
     def default_name(cls):
         return 's:%s' % cls.__name__
-
-    def _check_worker_in_blacklist(self, worker):
-        if worker not in self._worker_blacklist_time:
-            return False
-        expire_time = time.time() - options.scheduler.worker_blacklist_time
-        if expire_time > self._worker_blacklist_time[worker]:
-            del self._worker_blacklist_time[worker]
-            return False
-        else:
-            return True
 
     def detect_dead_workers(self):
         """
@@ -82,27 +73,33 @@ class ResourceActor(SchedulerActor):
         self.ref().detect_dead_workers(_tell=True, _delay=1)
 
     def detach_dead_workers(self, workers):
+        from ..worker.execution import ExecutionActor
+
+        workers = [w for w in workers if w in self._meta_cache and
+                   w not in self._worker_blacklist]
+
         if not workers:
             return
 
         logger.warning('Workers %r dead, detaching from ResourceActor.', workers)
-        workers = [w for w in workers if w in self._meta_cache and
-                   not self._check_worker_in_blacklist(w)]
         for w in workers:
             del self._meta_cache[w]
-            self._worker_blacklist_time[w] = time.time()
-        if workers:
-            self._broadcast_sessions(SessionActor.handle_worker_change, [], workers)
+            self._worker_blacklist.add(w)
+
+        self._broadcast_sessions(SessionActor.handle_worker_change, [], workers)
+        self._broadcast_workers(ExecutionActor.handle_worker_change, [], workers)
 
     def get_worker_count(self):
         return len(self._meta_cache)
 
     def get_workers_meta(self):
         return dict((k, v) for k, v in self._meta_cache.items()
-                    if k not in self._worker_blacklist_time)
+                    if k not in self._worker_blacklist)
 
     def set_worker_meta(self, worker, worker_meta):
-        if self._check_worker_in_blacklist(worker):
+        from ..worker.execution import ExecutionActor
+
+        if worker in self._worker_blacklist:
             return
 
         is_new = worker not in self._meta_cache
@@ -115,6 +112,7 @@ class ResourceActor(SchedulerActor):
                                      _tell=True, _wait=False)
         if is_new:
             self._broadcast_sessions(SessionActor.handle_worker_change, [worker], [])
+            self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
 
     def _broadcast_sessions(self, handler, *args, **kwargs):
         from .assigner import AssignerActor
@@ -132,8 +130,22 @@ class ResourceActor(SchedulerActor):
         [f.result() for f in futures]
 
         futures = []
+        kwargs.update(dict(_tell=True, _wait=False))
         for ep in self.get_schedulers():
             ref = self.ctx.actor_ref(SessionManagerActor.default_name(), address=ep)
-            kwargs.update(dict(_tell=True, _wait=False))
             futures.append(ref.broadcast_sessions(handler, *args, **kwargs))
         [f.result() for f in futures]
+
+    def _broadcast_workers(self, handler, *args, **kwargs):
+        from ..worker.execution import ExecutionActor
+
+        if not options.scheduler.enable_failover:  # pragma: no cover
+            return
+
+        if hasattr(handler, '__name__'):
+            handler = handler.__name__
+
+        kwargs.update(dict(_tell=True, _wait=False))
+        for w in self._meta_cache.keys():
+            ref = self.ctx.actor_ref(ExecutionActor.default_name(), address=w)
+            getattr(ref, handler)(*args, **kwargs)

@@ -22,6 +22,7 @@ import weakref
 
 from mars.actors import create_actor_pool
 from mars.compat import Queue, TimeoutError
+from mars.utils import build_exc_info
 from mars import promise
 
 
@@ -122,14 +123,9 @@ class PromiseTestActor(promise.PromiseActor):
             .then(lambda *_: setattr(self, '_finished', True))
 
     def test_ref_reject(self):
-        self._finished = False
-
         from mars.errors import WorkerProcessStopped
-        try:
-            raise WorkerProcessStopped
-        except WorkerProcessStopped:
-            exc_info = sys.exc_info()
 
+        self._finished = False
         ref = self.promise_ref('ServeActor')
 
         def _rejecter(*exc):
@@ -138,7 +134,21 @@ class PromiseTestActor(promise.PromiseActor):
         ref.serve(0, delay=2, _promise=True) \
             .catch(_rejecter) \
             .then(lambda *_: setattr(self, '_finished', True))
-        self.reject_promise_refs([ref], *exc_info)
+        self.reject_promise_refs([ref], *build_exc_info(WorkerProcessStopped))
+
+    def test_addr_reject(self):
+        from mars.errors import WorkerDead
+
+        self._finished = False
+        ref = self.promise_ref('ServeActor', address=self.address)
+
+        def _rejecter(*exc):
+            ref.serve(exc[0].__name__)
+
+        ref.serve(0, delay=2, _promise=True) \
+            .catch(_rejecter) \
+            .then(lambda *_: setattr(self, '_finished', True))
+        self.reject_dead_workers([self.address], *build_exc_info(WorkerDead))
 
 
 def _raise_exception(exc):
@@ -530,5 +540,18 @@ class Test(unittest.TestCase):
                 gc.collect()
                 wait_test_actor_result(test_ref, 30)
                 self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
+        finally:
+            self.assertDictEqual(promise._promise_pool, {})
+
+    def testAddrReject(self):
+        try:
+            with create_actor_pool(n_process=1) as pool:
+                serve_ref = pool.create_actor(ServeActor, uid='ServeActor')
+                test_ref = pool.create_actor(PromiseTestActor)
+
+                test_ref.test_addr_reject()
+                gc.collect()
+                wait_test_actor_result(test_ref, 30)
+                self.assertListEqual(serve_ref.get_result(), [0, 'WorkerDead'])
         finally:
             self.assertDictEqual(promise._promise_pool, {})

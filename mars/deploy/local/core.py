@@ -259,7 +259,10 @@ class LocalDistributedClusterClient(object):
             try:
                 import psutil
                 for subproc in psutil.Process(proc.pid).children(recursive=True):
-                    subproc.kill()
+                    try:
+                        subproc.kill()
+                    except psutil.NoSuchProcess:  # pragma: no cover
+                        pass
             except ImportError:
                 pass
             finally:
