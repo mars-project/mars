@@ -253,9 +253,11 @@ class EtcdProcessHelper(object):
 def patch_method(method, *args, **kwargs):
     if hasattr(method, '__qualname__'):
         return mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
-    else:
+    elif hasattr(method, 'im_class'):
         return mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
                           *args, **kwargs)
+    else:
+        return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
 
 
 def calc_shape(tensor):

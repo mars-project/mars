@@ -38,6 +38,15 @@ class WorkerTestActor(WorkerActor):
         v = yield
         del v
 
+    def run_later(self, fun, *args, **kw):
+        delay = kw.get('_delay')
+        if not delay:
+            kw.pop('_delay', None)
+            return fun(*args, **kw)
+        else:
+            kw['_tell'] = True
+            self.ref().run_later(fun, *args, **kw)
+
     def set_result(self, result, accept=True, destroy=True):
         self.test_obj._result_store = (result, accept)
         self.test_obj._result_event.set()
