@@ -38,8 +38,8 @@ def _store_tiledb(ctx, chunk):
         to_store = np.ascontiguousarray(ctx[chunk.op.input.key])
         slcs = []
         for axis in range(chunk.ndim):
-            axis_offset = axis_offsets[axis]
-            axis_length = chunk.op.input.shape[axis]
+            axis_offset = int(axis_offsets[axis])
+            axis_length = int(chunk.op.input.shape[axis])
             slcs.append(slice(axis_offset, axis_offset + axis_length))
         with tiledb.DenseArray(uri=uri, ctx=tiledb_ctx, mode='w',
                                key=key, timestamp=timestamp) as arr:

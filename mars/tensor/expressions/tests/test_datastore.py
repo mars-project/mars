@@ -79,7 +79,7 @@ class Test(TestBase):
             saved = totiledb(tempdir, t2)
             self.assertEqual(saved.shape, (0, 0))
             self.assertIsNone(saved.op.tiledb_config)
-            self.assertEquals(saved.op.tiledb_uri, tempdir)
+            self.assertEqual(saved.op.tiledb_uri, tempdir)
 
             with self.assertRaises(tiledb.TileDBError):
                 tiledb.DenseArray(ctx=ctx, uri=tempdir)
