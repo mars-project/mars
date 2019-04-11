@@ -99,10 +99,8 @@ cdef inline list h_iterative(object ob):
 
 
 cdef inline object h_non_iterative(object ob):
-    if isinstance(ob, (int, float, str, unicode, bytes,
+    if isinstance(ob, (int, long, float, str, unicode, bytes, complex,
                        type(None), type, slice, date, datetime, timedelta)):
-        return ob
-    if isinstance(ob, (int, long, complex)):
         return ob
     if hasattr(ob, 'key'):
         return ob.key
