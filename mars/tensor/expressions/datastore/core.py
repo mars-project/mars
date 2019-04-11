@@ -32,6 +32,10 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
                                   index=in_chunk.index)
 
     @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        return out_chunks
+
+    @classmethod
     def tile(cls, op):
         in_tensor = op.input
 
@@ -39,6 +43,7 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
         for chunk in in_tensor.chunks:
             out_chunk = cls._get_out_chunk(op, chunk)
             out_chunks.append(out_chunk)
+        out_chunks = cls._process_out_chunks(op, out_chunks)
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,

@@ -14,7 +14,9 @@
 
 from .... import opcodes as OperandDef
 from ....serialize import ValueType, DictField, TupleField, StringField, Int64Field, KeyField
+from ....operands import Operand
 from ..datasource import tensor as astensor
+from ..core import TensorOperandMixin
 from .core import TensorDataStore
 from .utils import check_tiledb_array_with_tensor, get_tiledb_schema_from_tensor
 
@@ -71,6 +73,18 @@ class TensorTileDBDataStore(TensorDataStore):
                                   index=in_chunk.index)
 
     @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        if len(out_chunks) == 1:
+            return out_chunks
+
+        consolidate_op = TensorTileDBConsolidate(
+            tiledb_config=op.tiledb_config, tiledb_uri=op.tiledb_uri,
+            tiledb_key=op.tiledb_key, sparse=op.sparse, dtype=op.dtype
+        )
+        return consolidate_op.new_chunks(out_chunks, out_chunks[0].shape,
+                                         index=(0,) * out_chunks[0].ndim)
+
+    @classmethod
     def tile(cls, op):
         import tiledb
 
@@ -87,6 +101,41 @@ class TensorTileDBDataStore(TensorDataStore):
             tiledb_array_type.create(op.tiledb_uri, tiledb_array_schema, key=op.tiledb_key)
 
         return [tensor]
+
+
+class TensorTileDBConsolidate(Operand, TensorOperandMixin):
+    _op_type_ = OperandDef.TENSOR_STORE_TILEDB_CONSOLIDATE
+
+    _tiledb_config = DictField('tiledb_config')
+    # URI of array to write
+    _tiledb_uri = StringField('tiledb_uri')
+    # encryption key to decrypt if provided
+    _tiledb_key = StringField('tiledb_key')
+
+    def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
+                 dtype=None, sparse=None, **kw):
+        super(TensorTileDBConsolidate, self).__init__(
+            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
+            _dtype=dtype, _sparse=sparse, **kw)
+
+    def calc_shape(self, *inputs_shape):
+        return self.outputs[0].shape
+
+    @property
+    def tiledb_config(self):
+        return self._tiledb_config
+
+    @property
+    def tiledb_uri(self):
+        return self._tiledb_uri
+
+    @property
+    def tiledb_key(self):
+        return self._tiledb_key
+
+    @classmethod
+    def tile(cls, op):
+        raise TypeError('{0} is a chunk op, cannot be tiled'.format(cls.__name__))
 
 
 def totiledb(uri, x, ctx=None, key=None, timestamp=None):
