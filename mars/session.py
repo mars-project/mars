@@ -119,7 +119,7 @@ class Session(object):
             ret = []
             for r, t in zip(result, tensors):
                 if t.isscalar() and hasattr(r, 'item'):
-                    ret.append(np.asscalar(r))
+                    ret.append(r.item())
                 else:
                     ret.append(r)
             if ret_list:
@@ -139,7 +139,7 @@ class Session(object):
         ret = []
         for r, t in zip(result, tensors):
             if t.isscalar() and hasattr(r, 'item'):
-                ret.append(np.asscalar(r))
+                ret.append(r.item())
             else:
                 ret.append(r)
         if ret_list:
