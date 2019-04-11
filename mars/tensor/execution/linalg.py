@@ -53,7 +53,7 @@ def _cholesky(ctx, chunk):
 
                 ctx[chunk.key] = scipy.linalg.cholesky(a, lower=chunk.op.lower)
                 return
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 pass
 
         r = xp.linalg.cholesky(a)

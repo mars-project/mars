@@ -19,7 +19,7 @@ import json
 import time
 
 from ...api import MarsAPI
-from ...compat import TimeoutError
+from ...compat import TimeoutError  # pylint: disable=W0622
 from ...graph import DirectedGraph
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
