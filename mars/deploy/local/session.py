@@ -64,7 +64,7 @@ class LocalClusterSession(object):
         targets = [t.key for t in tensors]
         graph_key = uuid.uuid4()
         for t in tensors:
-            t.build_graph(graph, tiled=False)
+            graph = t.build_graph(graph, tiled=False)
             self._tensor_to_graph[t.key] = graph_key
 
         # submit graph to local cluster

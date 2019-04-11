@@ -55,24 +55,20 @@ class BaseWithKey(Base):
         super(BaseWithKey, self).__init__(*args, **kwargs)
 
         if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
-            self.update_key()
+            self._update_key()
         if not hasattr(self, '_id') or not self._id:
             self._id = str(id(self))
 
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)
 
-    def update_key(self):
+    def _update_key(self):
         self._obj_set('_key', tokenize(type(self), *self._values_))
         return self
 
     def reset_key(self):
         self._obj_set('_key', None)
         return self
-
-    def update_id(self, new_id=None):
-        new_id = new_id if new_id is not None else str(id(self))
-        self._obj_set('_id', new_id)
 
     def __copy__(self):
         return self.copy()

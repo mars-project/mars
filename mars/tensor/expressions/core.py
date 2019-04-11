@@ -32,7 +32,7 @@ class TensorOperandMixin(object):
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
-            getattr(self, 'update_key')()  # update key when inputs are set
+            getattr(self, '_update_key')()  # update key when inputs are set
 
         if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
             if len(shape) != output_limit:
@@ -68,7 +68,7 @@ class TensorOperandMixin(object):
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
-            getattr(self, 'update_key')()  # update key when inputs are set
+            getattr(self, '_update_key')()  # update key when inputs are set
 
         if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
             if not np.isinf(output_limit) and len(shape) != output_limit:
