@@ -25,7 +25,7 @@ except (ImportError, OSError):  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.tensor import tensor, totiledb
+from mars.tensor import tensor, arange, totiledb
 
 
 class Test(TestBase):
@@ -47,6 +47,18 @@ class Test(TestBase):
 
             with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
                 np.testing.assert_allclose(expected, arr.read_direct())
+        finally:
+            shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            # store tensor with 1 chunk to TileDB dense array
+            a = arange(12)
+            save = totiledb(tempdir, a, ctx=ctx)
+            self.executor.execute_tensor(save)
+
+            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
+                np.testing.assert_allclose(np.arange(12), arr.read_direct())
         finally:
             shutil.rmtree(tempdir)
 

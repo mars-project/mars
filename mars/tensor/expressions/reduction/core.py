@@ -173,6 +173,9 @@ class TensorReduction(TensorOperandMixin):
         for combine_block_idx, combine_block in izip(itertools.product(*combine_blocks_idxes),
                                                      itertools.product(*combine_blocks)):
             chks = [tensor.cix[idx] for idx in itertools.product(*combine_block)]
+            if len(chks) == 1:
+                chunks.append(chks[0])
+                continue
             op = TensorConcatenate(axis=axes, dtype=chks[0].dtype)
             chk = op.new_chunk(chks, shape=cls._concatenate_shape(tensor, combine_block))
             shape = tuple(s if i not in combine_size else 1
