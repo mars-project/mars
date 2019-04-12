@@ -40,6 +40,7 @@ class Test(WorkerCase):
                                   uid=ChunkHolderActor.default_name())
                 status_ref = pool.create_actor(StatusActor, pool_address,
                                                uid=StatusActor.default_name())
+                status_ref.enable_status_upload()
 
                 status_ref.update_slots(dict(cpu=4))
                 status_ref.update_stats(dict(min_est_finish_time=10))
