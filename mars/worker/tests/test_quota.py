@@ -32,6 +32,9 @@ class Test(WorkerCase):
             quota_ref.hold_quota('non_exist')
             quota_ref.release_quota('non_exist')
 
+            with self.assertRaises(ValueError):
+                quota_ref.request_quota('ERROR', 1000)
+
             self.assertTrue(quota_ref.request_quota('0', 100))
             self.assertTrue(quota_ref.request_quota('0', 50))
             self.assertTrue(quota_ref.request_quota('0', 200))

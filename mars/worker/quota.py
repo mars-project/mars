@@ -128,6 +128,9 @@ class QuotaActor(WorkerActor):
         :param make_first: whether to move request keys to the highest priority
         :return: if request is returned immediately, return True, otherwise False
         """
+        if delta > self._total_size:
+            raise ValueError('Cannot allocate size larger than the total capacity.')
+
         if not multiple and self._allocations.get(keys, 0) >= quota_sizes:
             # already allocated, inform and quit
             if callback is not None:
