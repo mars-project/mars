@@ -16,8 +16,9 @@ import copy
 import logging
 from collections import defaultdict
 
+from ...errors import WorkerDead
 from ..utils import SchedulerActor
-from .core import OperandState
+from .core import OperandState, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,18 @@ class BaseOperandActor(SchedulerActor):
         op_uid = self.gen_uid(self._session_id, key)
         return self.ctx.actor_ref(op_uid, address=self.get_scheduler(op_uid))
 
+    def _wait_worker_futures(self, worker_futures):
+        dead_workers = []
+        for ep, future in worker_futures:
+            try:
+                with rewrite_worker_errors():
+                    future.result()
+            except WorkerDead:
+                dead_workers.append(ep)
+        if dead_workers:
+            self._resource_ref.detach_dead_workers(dead_workers, _tell=True)
+        return dead_workers
+
     def _free_data_in_worker(self, data_keys, workers_list=None):
         """
         Free data on single worker
@@ -161,11 +174,15 @@ class BaseOperandActor(SchedulerActor):
             for ep in endpoints:
                 worker_data[ep].append(data_key)
 
+        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
+
+        worker_futures = []
         for ep, data_keys in worker_data.items():
             worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
-            worker_cache_ref.unregister_chunks(
-                self._session_id, data_keys, _tell=True, _wait=False)
-        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
+            worker_futures.append((ep, worker_cache_ref.unregister_chunks(
+                self._session_id, data_keys, _tell=True, _wait=False)))
+
+        return self._wait_worker_futures(worker_futures)
 
     def start_operand(self, state=None, **kwargs):
         """

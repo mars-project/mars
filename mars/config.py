@@ -326,6 +326,7 @@ default_options.register_option('worker.max_spill_size', '95%', validator=(is_st
 default_options.register_option('worker.callback_preserve_time', 3600 * 24, validator=is_integer)
 default_options.register_option('worker.transfer_block_size', 4 * 1024 * 1024, validator=is_integer)
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)
+default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
 default_options.register_option('worker.advertise_addr', '127.0.0.1', validator=is_string)

@@ -15,17 +15,16 @@
 import logging
 import math
 import os
-import sys
 import time
 from collections import OrderedDict
 
 from ..actors import ActorNotExist
-from ..compat import OrderedDict3
-from ..errors import WorkerProcessStopped
-from ..config import options
-from ..promise import PromiseActor
 from ..cluster_info import HasClusterInfoActor
-
+from ..compat import OrderedDict3
+from ..config import options
+from ..errors import WorkerProcessStopped
+from ..promise import PromiseActor
+from ..utils import build_exc_info
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +64,7 @@ class WorkerActor(HasClusterInfoActor, PromiseActor):
         Handle process down event
         :param halt_refs: actor refs in halt processes
         """
-        try:
-            raise WorkerProcessStopped
-        except WorkerProcessStopped:
-            exc_info = sys.exc_info()
-
-        handled_refs = self.reject_promise_refs(halt_refs, *exc_info)
+        handled_refs = self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
         logger.debug('Process halt detected. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 

@@ -153,6 +153,7 @@ class Test(WorkerCase):
         super(Test, self).tearDown()
         logger = logging.getLogger(ExecutionActor.__module__)
         logger.setLevel(logging.WARNING)
+        self.rm_spill_dirs(options.worker.spill_directory)
 
     @classmethod
     def create_standard_actors(cls, pool, address, quota_size=None, with_daemon=True,
@@ -289,7 +290,7 @@ class Test(WorkerCase):
             data = test_actor._chunk_store.get(session_id, arr_add.chunks[0].key)
             assert_array_equal(data, data_inputs[0] + data_inputs[1])
 
-        options.worker.spill_directory = tempfile.mkdtemp('mars_worker_prep_spilled-')
+        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_worker_prep_spilled-')
 
         # register when all predecessors unfinished
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
@@ -419,7 +420,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
 
-        options.worker.spill_directory = tempfile.mkdtemp('mars_worker_prep_spilled-')
+        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_worker_prep_spilled-')
 
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)

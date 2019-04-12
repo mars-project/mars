@@ -150,7 +150,8 @@ class BaseApplication(object):
                 level = logging.INFO
             else:
                 level = getattr(logging, self.args.level.upper())
-            logging.basicConfig(level=level, format=self.args.format)
+            logging.getLogger('mars').setLevel(level)
+            logging.basicConfig(format=self.args.format)
 
     def validate_arguments(self):
         pass

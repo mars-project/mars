@@ -237,18 +237,18 @@ class WorkerService(object):
     def stop(self):
         try:
             if self._result_sender_ref:
-                self._result_sender_ref.destroy()
+                self._result_sender_ref.destroy(wait=False)
             if self._status_ref:
-                self._status_ref.destroy()
+                self._status_ref.destroy(wait=False)
             if self._chunk_holder_ref:
-                self._chunk_holder_ref.destroy()
+                self._chunk_holder_ref.destroy(wait=False)
             if self._dispatch_ref:
-                self._dispatch_ref.destroy()
+                self._dispatch_ref.destroy(wait=False)
             if self._execution_ref:
-                self._execution_ref.destroy()
+                self._execution_ref.destroy(wait=False)
 
             for actor in (self._cpu_calc_actors + self._sender_actors
                           + self._receiver_actors + self._spill_actors + self._process_helper_actors):
-                actor.destroy()
+                actor.destroy(wait=False)
         finally:
             self._plasma_store.__exit__(None, None, None)

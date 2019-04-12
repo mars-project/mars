@@ -23,11 +23,11 @@ from .. import promise
 from ..compat import reduce, six, Enum, BrokenPipeError, \
     ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..errors import PinChunkFailed, WorkerProcessStopped, ExecutionInterrupted, \
-    DependencyMissing
+from ..errors import PinChunkFailed, WorkerProcessStopped, WorkerDead, \
+    ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
-from ..utils import deserialize_graph, log_unhandled
+from ..utils import deserialize_graph, log_unhandled, build_exc_info, BlacklistSet
 from .chunkholder import ensure_chunk
 from .spill import spill_exists, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_load_key
@@ -136,6 +136,8 @@ class ExecutionActor(WorkerActor):
 
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
         self._result_cache = ExpiringCache()  # type: dict[tuple, GraphResultRecord]
+
+        self._peer_blacklist = BlacklistSet(options.worker.peer_blacklist_time)
 
     def post_create(self):
         from .chunkholder import ChunkHolderActor
@@ -391,6 +393,9 @@ class ExecutionActor(WorkerActor):
         """
         from .dispatcher import DispatchActor
 
+        if remote_addr in self._peer_blacklist:
+            raise DependencyMissing
+
         remote_disp_ref = self.promise_ref(uid=DispatchActor.default_name(),
                                            address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
@@ -418,13 +423,17 @@ class ExecutionActor(WorkerActor):
                     return
 
                 six.reraise(*exc)
-            except (BrokenPipeError, ConnectionRefusedError, TimeoutError, promise.PromiseTimeout):
+            except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
+                    WorkerDead, promise.PromiseTimeout):
                 if self._resource_ref:
                     self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
                 raise DependencyMissing
 
         @log_unhandled
         def _fetch_step(sender_uid):
+            if remote_addr in self._peer_blacklist:
+                raise DependencyMissing
+
             if self._graph_records[(session_id, graph_key)].stop_requested:
                 remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
@@ -555,10 +564,7 @@ class ExecutionActor(WorkerActor):
             if graph_record.stop_requested:
                 graph_record.stop_requested = False
                 if not isinstance(exc[1], ExecutionInterrupted):
-                    try:
-                        raise ExecutionInterrupted
-                    except ExecutionInterrupted:
-                        exc = sys.exc_info()
+                    exc = build_exc_info(ExecutionInterrupted)
 
             if isinstance(exc[1], ExecutionInterrupted):
                 logger.warning('Execution of graph %s interrupted.', graph_key)
@@ -894,15 +900,31 @@ class ExecutionActor(WorkerActor):
 
         graph_record.stop_requested = True
         if graph_record.state == ExecutionState.ALLOCATING:
-            try:
-                raise ExecutionInterrupted
-            except:  # noqa: E722
-                exc_info = sys.exc_info()
             if graph_record.mem_request:
-                self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), exc_info, _tell=True)
+                self._mem_quota_ref.cancel_requests(
+                    tuple(graph_record.mem_request.keys()), build_exc_info(ExecutionInterrupted), _tell=True)
         elif graph_record.state == ExecutionState.CALCULATING:
             if self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
                 self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
+
+    @log_unhandled
+    def handle_worker_change(self, _adds, removes):
+        """
+        Handle worker dead event
+        :param removes: list of dead workers
+        """
+        if not removes:
+            return
+        self._peer_blacklist.update(removes)
+
+        handled_refs = self.reject_dead_endpoints(removes, *build_exc_info(DependencyMissing))
+        logger.debug('Peer worker halt received. Affected promises %r rejected.',
+                     [ref.uid for ref in handled_refs])
+
+        for sender_slot in self._dispatch_ref.get_slots('sender'):
+            self.ctx.actor_ref(sender_slot).reject_dead_endpoints(removes, _tell=True)
+        for receiver_slot in self._dispatch_ref.get_slots('receiver'):
+            self.ctx.actor_ref(receiver_slot).notify_dead_senders(removes, _tell=True)
 
     @log_unhandled
     def _invoke_finish_callbacks(self, session_id, graph_key):

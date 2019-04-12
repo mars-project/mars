@@ -30,7 +30,7 @@ from mars.cluster_info import ClusterInfoActor
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
-    SpillNotConfigured, ExecutionInterrupted
+    SpillNotConfigured, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method
@@ -188,21 +188,15 @@ class Test(WorkerCase):
 
     def tearDown(self):
         super(Test, self).tearDown()
-        import shutil
         options.worker.transfer_block_size = self._old_block_size
-        for p in options.worker.spill_directory or ():
-            try:
-                shutil.rmtree(p)
-            except OSError:
-                pass
+        self.rm_spill_dirs(options.worker.spill_directory)
 
     def testSender(self):
         send_pool_addr = 'localhost:%d' % get_next_port()
         recv_pool_addr = 'localhost:%d' % get_next_port()
         recv_pool_addr2 = 'localhost:%d' % get_next_port()
 
-        options.worker.spill_directory = os.path.join(
-            tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
+        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_sender_')
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
@@ -293,8 +287,7 @@ class Test(WorkerCase):
 
     def testReceiver(self):
         pool_addr = 'localhost:%d' % get_next_port()
-        options.worker.spill_directory = os.path.join(
-            tempfile.gettempdir(), 'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
+        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_receiver_')
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
@@ -307,6 +300,7 @@ class Test(WorkerCase):
         chunk_key4 = str(uuid.uuid4())
         chunk_key5 = str(uuid.uuid4())
         chunk_key6 = str(uuid.uuid4())
+        chunk_key7 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_name())
@@ -485,6 +479,23 @@ class Test(WorkerCase):
                 with self.assertRaises(TimeoutError):
                     self.get_result(5)
 
+                # test sender halt
+                receiver_ref_p.register_finish_callback(session_id, chunk_key7, _promise=True) \
+                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+
+                mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
+                receiver_ref_p.create_data_writer(
+                    session_id, chunk_key7, data_size, mock_ref, _promise=True) \
+                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+                receiver_ref_p.receive_data_part(session_id, chunk_key7, serialized_mock_data[:64],
+                                                 zlib.crc32(serialized_mock_data[:64]))
+                receiver_ref_p.notify_dead_senders(['MOCK_ADDR'])
+
+                with self.assertRaises(WorkerDead):
+                    self.get_result(5)
+
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())
 
@@ -493,8 +504,7 @@ class Test(WorkerCase):
         remote_chunk_keys = [str(uuid.uuid4()) for _ in range(9)]
         msg_queue = multiprocessing.Queue()
 
-        remote_spill_dir = os.path.join(tempfile.gettempdir(),
-                                        'mars_spill_%d_%d' % (os.getpid(), id(run_transfer_worker)))
+        remote_spill_dir = tempfile.mkdtemp(prefix='mars_test_simple_transfer_')
 
         proc = multiprocessing.Process(
             target=run_transfer_worker,
@@ -567,3 +577,5 @@ class Test(WorkerCase):
                     time.sleep(1)
                 if proc.is_alive():
                     proc.terminate()
+
+                self.rm_spill_dirs(remote_spill_dir)

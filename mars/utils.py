@@ -354,3 +354,51 @@ def kernel_mode(func):
             _kernel_mode.eager = None
 
     return _wrapped
+
+
+def build_exc_info(exc_type, *args, **kwargs):
+    try:
+        raise exc_type(*args, **kwargs)
+    except exc_type:
+        return sys.exc_info()
+
+
+class BlacklistSet(object):
+    def __init__(self, expire_time):
+        self._key_time = dict()
+        self._expire_time = expire_time
+
+    def add(self, key):
+        self._key_time[key] = time.time()
+
+    def remove(self, key):
+        t = self._key_time[key]
+        del self._key_time[key]
+        if t < time.time() - self._expire_time:
+            raise KeyError(key)
+
+    def update(self, keys):
+        t = time.time()
+        for k in keys:
+            self._key_time[k] = t
+
+    def __contains__(self, item):
+        try:
+            if self._key_time[item] >= time.time() - self._expire_time:
+                return True
+            else:
+                del self._key_time[item]
+                return False
+        except KeyError:
+            return False
+
+    def __iter__(self):
+        rmv_list = []
+        exp_time = time.time() - self._expire_time
+        for k, t in self._key_time.items():
+            if t >= exp_time:
+                yield k
+            else:
+                rmv_list.append(k)
+        for k in rmv_list:
+            del self._key_time[k]

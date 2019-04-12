@@ -14,6 +14,7 @@
 
 import logging
 import os
+import shutil
 import sys
 import time
 
@@ -100,7 +101,7 @@ def write_spill_file(data_key, data):
     if not os.path.exists(dest_file_name):
         with open(src_file_name, 'wb') as file_obj:
             dataserializer.dump(data, file_obj, dataserializer.COMPRESS_FLAG_LZ4)
-        os.rename(src_file_name, dest_file_name)
+        shutil.move(src_file_name, dest_file_name)
 
 
 def spill_exists(data_key):

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import copy
+import time
 import unittest
 
 import numpy as np
@@ -168,3 +169,23 @@ class Test(unittest.TestCase):
         with option_context({'eager_mode': True}):
             self.assertTrue(options.eager_mode)
             self.assertFalse(wrapped())
+
+    def testBlacklistSet(self):
+        blset = utils.BlacklistSet(0.1)
+        blset.update([1, 2])
+        time.sleep(0.3)
+        blset.add(3)
+
+        with self.assertRaises(KeyError):
+            blset.remove(2)
+
+        self.assertNotIn(1, blset)
+        self.assertNotIn(2, blset)
+        self.assertIn(3, blset)
+
+        blset.add(4)
+        time.sleep(0.3)
+        blset.add(5)
+        blset.add(6)
+
+        self.assertSetEqual({5, 6}, set(blset))

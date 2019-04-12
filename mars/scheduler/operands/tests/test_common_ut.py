@@ -63,7 +63,8 @@ class FakeExecutionActor(promise.PromiseActor):
             self._undone_preds[graph_key] = set(pred_keys) - self._finished_keys
 
     def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
-        self._finish_callbacks[graph_key].append(callback)
+        if callback:
+            self._finish_callbacks[graph_key].append(callback)
         self.ref().mock_send_all_callbacks(graph_key, _tell=True, _delay=self._exec_delay)
 
     def add_finish_callback(self, session_id, graph_key, callback):
@@ -74,6 +75,7 @@ class FakeExecutionActor(promise.PromiseActor):
 
 
 @patch_method(ResourceActor._broadcast_sessions)
+@patch_method(ResourceActor._broadcast_workers)
 class Test(unittest.TestCase):
     @contextlib.contextmanager
     def _prepare_test_graph(self, session_id, graph_key, mock_workers):

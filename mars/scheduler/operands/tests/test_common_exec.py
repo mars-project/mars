@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import sys
 import time
 import unittest
 import uuid
@@ -27,7 +26,7 @@ from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActo
     ChunkMetaActor, GraphMetaActor
 from mars.scheduler.utils import GraphState
 from mars.worker.execution import GraphExecutionRecord
-from mars.utils import serialize_graph, log_unhandled
+from mars.utils import serialize_graph, log_unhandled, build_exc_info
 from mars.actors import create_actor_pool
 from mars.tests.core import patch_method
 
@@ -58,22 +57,14 @@ class FakeExecutionActor(promise.PromiseActor):
 
         rec = self._graph_records[(session_id, graph_key)]
         if graph_key in self._cancels:
-            try:
-                raise ExecutionInterrupted
-            except ExecutionInterrupted:
-                exc = sys.exc_info()
-
+            exc = build_exc_info(ExecutionInterrupted)
             self._results[graph_key] = (exc, dict(_accept=False))
             for cb in rec.finish_callbacks:
                 self.tell_promise(cb, *exc, **dict(_accept=False))
             rec.finish_callbacks = []
             return
         elif self._fail_count and self._retries[graph_key] < self._fail_count:
-            try:
-                raise ValueError
-            except ValueError:
-                exc = sys.exc_info()
-
+            exc = build_exc_info(ValueError)
             logger.debug('Key %r: %r', graph_key, self._retries.get(graph_key))
             self._retries[graph_key] += 1
 
@@ -110,7 +101,8 @@ class FakeExecutionActor(promise.PromiseActor):
     @log_unhandled
     def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
         rec = self._graph_records[(session_id, graph_key)]
-        rec.finish_callbacks.append(callback)
+        if callback:
+            rec.finish_callbacks.append(callback)
         self.ref().actual_exec(session_id, graph_key, _tell=True, _delay=self._exec_delay)
 
     @log_unhandled
@@ -166,6 +158,7 @@ class FakeExecutionActor(promise.PromiseActor):
 
 
 @patch_method(ResourceActor._broadcast_sessions)
+@patch_method(ResourceActor._broadcast_workers)
 class Test(unittest.TestCase):
     @staticmethod
     def _run_operand_case(session_id, graph_key, tensor, execution_creator):

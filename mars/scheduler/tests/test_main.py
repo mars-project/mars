@@ -16,9 +16,11 @@ import json
 import logging
 import operator
 import os
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 import unittest
 import uuid
@@ -46,7 +48,6 @@ class Test(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        import tempfile
         from mars import kvstore
 
         options.worker.spill_directory = os.path.join(tempfile.gettempdir(), 'mars_test_spill')
@@ -69,9 +70,14 @@ class Test(unittest.TestCase):
         self.scheduler_endpoints = []
         self.proc_schedulers = []
         self.proc_workers = []
+        self.state_files = []
         self.etcd_helper = None
 
     def tearDown(self):
+        for fn in self.state_files:
+            if os.path.exists(fn):
+                os.unlink(fn)
+
         procs = tuple(self.proc_workers) + tuple(self.proc_schedulers)
         for p in procs:
             p.send_signal(signal.SIGINT)
@@ -89,6 +95,12 @@ class Test(unittest.TestCase):
         if self.etcd_helper:
             self.etcd_helper.stop()
         options.kv_store = ':inproc:'
+
+    def add_state_file(self, environ):
+        fn = os.environ[environ] = os.path.join(
+            tempfile.gettempdir(), 'test-main-%s-%d-%d' % (environ.lower(), os.getpid(), id(self)))
+        self.state_files.append(fn)
+        return fn
 
     def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
                         log_scheduler=True, log_worker=True):
@@ -288,20 +300,25 @@ class Test(unittest.TestCase):
         assert_allclose(loads(result), expected.sum())
 
     def testWorkerFailOver(self):
-        def kill_process_tree(p):
+        def kill_process_tree(proc):
             import psutil
-            proc = psutil.Process(p.pid)
+            proc = psutil.Process(proc.pid)
+            plasma_sock_dir = None
             for p in proc.children(recursive=True):
+                if 'plasma' in p.name():
+                    socks = [conn.laddr for conn in p.connections('unix')
+                             if 'plasma' in conn.laddr]
+                    if socks:
+                        plasma_sock_dir = os.path.dirname(socks[0])
                 p.kill()
             proc.kill()
+            if plasma_sock_dir:
+                shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
-        import tempfile
-        delay_file = os.environ['DELAY_STATE_FILE'] = os.path.join(
-            tempfile.gettempdir(), 'test-main-delay-%d-%d' % (os.getpid(), id(self)))
+        delay_file = self.add_state_file('DELAY_STATE_FILE')
         open(delay_file, 'w').close()
 
-        terminate_file = os.environ['TERMINATE_STATE_FILE'] = os.path.join(
-            tempfile.gettempdir(), 'test-main-terminate-%d-%d' % (os.getpid(), id(self)))
+        terminate_file = self.add_state_file('TERMINATE_STATE_FILE')
 
         self.start_processes(modules=['mars.scheduler.tests.op_delayer'], log_worker=True)
 
@@ -323,8 +340,6 @@ class Test(unittest.TestCase):
 
         while not os.path.exists(terminate_file):
             actor_client.sleep(0.05)
-        os.unlink(terminate_file)
-        # actor_client.sleep(1.2)
 
         kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
