@@ -368,15 +368,15 @@ class PromiseActor(FunctionActor):
         del self._promises[promise_id]
         del self._promise_ref_keys[promise_id]
 
-    def reject_dead_workers(self, dead_workers, *args, **kwargs):
+    def reject_dead_endpoints(self, dead_endpoints, *args, **kwargs):
         """
         Reject all promises related to given remote address
-        :param dead_workers: list of dead workers
+        :param dead_endpoints: list of dead workers
         """
         dead_refs = []
         for ref_key in self._ref_key_promises.keys():
             uid, addr = ref_key
-            if addr in dead_workers:
+            if addr in dead_endpoints:
                 dead_refs.append(self.ctx.actor_ref(uid, address=addr))
         return self.reject_promise_refs(dead_refs, *args, **kwargs)
 

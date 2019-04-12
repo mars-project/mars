@@ -228,7 +228,10 @@ class LocalChunkMetaActor(SchedulerActor):
         :param broadcast: broadcast meta into registered destinations
         """
         query_key = (session_id, chunk_key)
-        workers = tuple(w for w in workers or () if w not in self._worker_blacklist)
+
+        workers = workers or ()
+        workers = tuple(w for w in workers if w not in self._worker_blacklist)
+
         # update input with existing value
         if query_key in self._meta_store:
             old_meta = self._meta_store[query_key]  # type: WorkerMeta

@@ -917,12 +917,12 @@ class ExecutionActor(WorkerActor):
             return
         self._peer_blacklist.update(removes)
 
-        handled_refs = self.reject_dead_workers(removes, *build_exc_info(DependencyMissing))
+        handled_refs = self.reject_dead_endpoints(removes, *build_exc_info(DependencyMissing))
         logger.debug('Peer worker halt received. Affected promises %r rejected.',
                      [ref.uid for ref in handled_refs])
 
         for sender_slot in self._dispatch_ref.get_slots('sender'):
-            self.ctx.actor_ref(sender_slot).reject_dead_workers(removes, _tell=True)
+            self.ctx.actor_ref(sender_slot).reject_dead_endpoints(removes, _tell=True)
         for receiver_slot in self._dispatch_ref.get_slots('receiver'):
             self.ctx.actor_ref(receiver_slot).notify_dead_senders(removes, _tell=True)
 

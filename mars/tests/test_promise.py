@@ -148,7 +148,7 @@ class PromiseTestActor(promise.PromiseActor):
         ref.serve(0, delay=2, _promise=True) \
             .catch(_rejecter) \
             .then(lambda *_: setattr(self, '_finished', True))
-        self.reject_dead_workers([self.address], *build_exc_info(WorkerDead))
+        self.reject_dead_endpoints([self.address], *build_exc_info(WorkerDead))
 
 
 def _raise_exception(exc):
