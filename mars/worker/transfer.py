@@ -177,14 +177,14 @@ class SenderActor(WorkerActor):
                 )
                 # register finish listeners
                 finish_promises.append(
-                    promise.Promise(done=True)
+                    promise.finished()
                     .then(functools.partial(ref.register_finish_callback, session_id, chunk_key,
                                             _timeout=timeout, _promise=True))
                 )
             # register wait-only listeners
             for ref in wait_refs:
                 finish_promises.append(
-                    promise.Promise(done=True)
+                    promise.finished()
                     .then(functools.partial(ref.register_finish_callback, session_id, chunk_key,
                                             _timeout=timeout, _promise=True))
                 )
@@ -430,7 +430,7 @@ class ReceiverActor(WorkerActor):
             if callback:
                 self.tell_promise(callback, *exc, **dict(_accept=False))
 
-        promise.Promise(done=True) \
+        promise.finished() \
             .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached)) \
             .then(_handle_accept, _handle_reject)
 

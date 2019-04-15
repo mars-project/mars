@@ -17,6 +17,7 @@ from functools import partial
 
 import gevent
 
+from mars import promise
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.actors import create_actor_pool
@@ -72,8 +73,7 @@ class Test(WorkerCase):
             # while the last one will be delayed due to lack of slots
 
             with self.run_actor_test(pool) as test_actor:
-                from mars.promise import Promise
-                p = Promise(done=True)
+                p = promise.finished()
                 _dispatch_ref = test_actor.promise_ref(DispatchActor.default_name())
 
                 def _call_on_dispatched(uid, key=None):

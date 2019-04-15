@@ -35,7 +35,7 @@ def ensure_chunk(promise_actor, session_id, chunk_key, move_to_end=False):
         logger.debug('No need to load key %s from spill.', chunk_key)
         if move_to_end:
             chunk_holder_ref.move_to_end(chunk_key)
-        return promise.Promise(done=True)
+        return promise.finished()
 
     logger.debug('Try starting loading data %s from spill.', chunk_key)
 

@@ -338,7 +338,7 @@ class Test(WorkerCase):
                     dict(chunks=[input_chunks[0].key]), None,
                     succ_keys=[new_add_chunk.op.key], _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_input_op_keys[0], _promise=True)) \
-                    .then(lambda *_: test_actor.set_result(None, destroy=False)) \
+                    .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
                 self.get_result()
 

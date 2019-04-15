@@ -139,7 +139,7 @@ class InProcessCacheActor(WorkerActor):
             data_shape = value[0].shape if isinstance(value, tuple) else value.shape
             del value
             promises.append(
-                promise.Promise(done=True).then(partial(_try_put_chunk, k, data_size, data_shape))
+                promise.finished().then(partial(_try_put_chunk, k, data_size, data_shape))
             )
         promise.all_(promises).then(_finish_store) \
             .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
