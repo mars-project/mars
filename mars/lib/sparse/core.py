@@ -17,17 +17,17 @@
 import numpy as np
 try:
     import cupy.sparse as cps
-except ImportError:
+except ImportError:  # pragma: no cover
     cps = None
 try:
     import scipy.sparse as sps
     import scipy.sparse.linalg as splinalg
-except ImportError:
+except ImportError:  # pragma: no cover
     sps = None
     splinalg = None
 try:
     import cupy as cp
-except ImportError:
+except ImportError:  # pragma: no cover
     cp = None
 
 splinalg = splinalg

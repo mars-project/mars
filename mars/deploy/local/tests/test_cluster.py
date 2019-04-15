@@ -26,7 +26,6 @@ from mars import tensor as mt
 from mars.operands import Operand
 from mars.tensor.expressions.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
-from mars.config import options
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.cluster_info import ClusterInfoActor
@@ -51,16 +50,10 @@ class SerializeMustFailOperand(Operand, TensorElementWise):
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
-    def setUp(self):
-        self._old_cache_memory_limit = options.worker.cache_memory_limit
-        options.worker.cache_memory_limit = '20M'
-
-    def tearDown(self):
-        options.worker.cache_memory_limit = self._old_cache_memory_limit
-
     def testLocalCluster(self):
         endpoint = gen_endpoint('0.0.0.0')
-        with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3) as cluster:
+        with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
+                                     shared_memory='20M') as cluster:
             pool = cluster.pool
 
             self.assertTrue(pool.has_actor(pool.actor_ref(ClusterInfoActor.default_name())))
@@ -79,12 +72,12 @@ class Test(unittest.TestCase):
 
     def testLocalClusterWithWeb(self):
         import psutil
-        with new_cluster(scheduler_n_process=2, worker_n_process=3, web=True) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=3,
+                         shared_memory='20M', web=True) as cluster:
             cluster_proc = psutil.Process(cluster._cluster_process.pid)
             web_proc = psutil.Process(cluster._web_process.pid)
             processes = list(cluster_proc.children(recursive=True)) + \
                 list(web_proc.children(recursive=True))
-
             with cluster.session as session:
                 t = mt.ones((3, 3), chunk_size=2)
                 result = session.run(t)
@@ -127,7 +120,8 @@ class Test(unittest.TestCase):
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
     def testSingleOutputTensorExecute(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
 
             t = mt.random.rand(10)
@@ -144,7 +138,8 @@ class Test(unittest.TestCase):
             self.assertLess(res, 39)
 
     def testMultipleOutputTensorExecute(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             session = cluster.session
 
             t = mt.random.rand(20, 5, chunk_size=5)
@@ -193,7 +188,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_allclose(s_result, s_expected)
 
     def testIndexTensorExecute(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.random.rand(10, 5)
@@ -235,7 +231,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r[10:20], np.ones((10, 5)) * 2)
 
     def testBoolIndexingExecute(self, *_):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
             a = mt.random.rand(8, 8, chunk_size=4)
             a[2:6, 2:6] = mt.ones((4, 4)) * 2
             b = a[a > 1]
@@ -270,14 +267,16 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r, np.ones((16,)) * 2)
 
     def testExecutableTuple(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2, web=True) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default():
                 a = mt.ones((20, 10), chunk_size=10)
                 u, s, v = (mt.linalg.svd(a)).execute()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
     def testRerunTensor(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.ones((10, 10)) + 1
@@ -295,7 +294,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(b_result, np.ones((10, 10)))
 
     def testRunWithoutFetch(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             session = cluster.session
 
             a = mt.ones((10, 20)) + 1
@@ -306,7 +306,8 @@ class Test(unittest.TestCase):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2) as cluster:
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
             with self.assertRaises(SystemError):
                 cluster.session.run(tensor)
 
