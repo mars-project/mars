@@ -31,7 +31,6 @@ from numpy.testing import assert_array_equal
 from mars import tensor as mt
 from mars.actors import new_client
 from mars.config import options
-from mars.errors import ExecutionFailed
 from mars.scheduler import ResourceActor
 from mars.session import new_session
 from mars.serialize.dataserializer import dumps
