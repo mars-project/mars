@@ -134,6 +134,9 @@ class OperandActor(SchedulerActor):
             self._pred_keys.update(op_info['io_meta']['predecessors'])
             self._succ_keys.update(op_info['io_meta']['successors'])
 
+        # remove finished successors and predecessors.
+        # This is a workaround for execute existing operand actor and
+        # will be removed in the next version.
         futures = []
         for pred_key in op_info['io_meta']['predecessors']:
             futures.append(self._get_operand_actor(pred_key).remove_finished_succs(
