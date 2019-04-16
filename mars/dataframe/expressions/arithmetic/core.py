@@ -12,9 +12,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+import operator
+
+import numpy as np
+
+from ....operands import RandomOperand, ShuffleReduce
+from .... import opcodes as OperandDef
+from ....serialize import AnyField, BoolField, Int32Field, KeyField
 from ...core import DATAFRAME_TYPE
-from ..core import DataFrameOperandMixin
+from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import split_monotonic_index_min_max
+
+
+_random_state = np.random.RandomState()
+
+
+class DataFrameIndexAlignMap(RandomOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_MAP
+
+    _index_min = AnyField('index_min')
+    _index_min_close = BoolField('index_min_close')
+    _index_max = AnyField('index_max')
+    _index_max_close = BoolField('index_max_close')
+    _index_shuffle_size = Int32Field('index_shuffle_size')
+    _column_min = AnyField('column_min')
+    _column_min_close = BoolField('column_min_close')
+    _column_max = AnyField('column_max')
+    _column_max_close = BoolField('column_max_close')
+    _column_shuffle_size = Int32Field('column_shuffle_size')
+
+    def __init__(self, index_min_max=None, index_shuffle_size=None, column_min_max=None,
+                 column_shuffle_size=None, sparse=None, dtypes=None, gpu=None, **kw):
+        if index_min_max is not None:
+            kw.update(dict(_index_min=index_min_max[0], _index_min_close=index_min_max[1],
+                           _index_max=index_min_max[2], _index_max_close=index_min_max[3]))
+        if column_min_max is not None:
+            kw.update(dict(_column_min=column_min_max[0], _column_min_close=column_min_max[1],
+                           _column_max=column_min_max[2], _column_max_close=column_min_max[3]))
+        super(DataFrameIndexAlignMap, self).__init__(
+            _index_shuffle_size=index_shuffle_size, _column_shuffle=column_shuffle_size,
+            _sparse=sparse, _dtypes=dtypes, _gpu=gpu, **kw)
+
+    @property
+    def index_min(self):
+        return self._index_min
+
+    @property
+    def index_min_close(self):
+        return self._index_min_close
+
+    @property
+    def index_max(self):
+        return self._index_max
+
+    @property
+    def index_max_close(self):
+        return self._index_max_close
+
+    @property
+    def index_shuffle_size(self):
+        return self._index_shuffle_size
+
+    @property
+    def column_min(self):
+        return self._column_min
+
+    @property
+    def column_min_close(self):
+        return self._column_min_close
+
+    @property
+    def column_max(self):
+        return self._column_max
+
+    @property
+    def column_max_close(self):
+        return self._column_max_close
+
+    @property
+    def column_shuffle_size(self):
+        return self._column_shuffle_size
+
+
+class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_REDUCE
+
+    _input = KeyField('input')
+
+    def _set_inputs(self, inputs):
+        super(DataFrameIndexAlignReduce, self)._set_inputs(inputs)
+        self._input = self._inputs[0]
+
+    def calc_shape(self, *inputs_shape):
+        return self.outputs[0].shape
 
 
 class DataFrameBinOp(DataFrameOperandMixin):
@@ -52,19 +143,164 @@ class DataFrameBinOp(DataFrameOperandMixin):
             chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
 
         if index.is_monotonic_decreasing:
-            chunk_index_min_max = list(reversed(chunk_index_min_max))
+            return list(reversed(chunk_index_min_max)), False
 
         if cls._check_overlap(chunk_index_min_max):
             return
-        return chunk_index_min_max
+        return chunk_index_min_max, True
+
+    @classmethod
+    def _out_chunk_idx_to_origin_chunk_idx(cls, splits):
+        # splits' len is equal to the original chunk size on a specified axis,
+        # splits is sth like [[(0, True, 2, True), (2, False, 3, True)]]
+        # which means there is one input chunk, and will be split into 2 out chunks
+        # in this function, we want to build a new dict from the out chunk index to
+        # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
+        out_idx = itertools.count(0)
+        res = dict()
+        for origin_idx in range(len(splits)):
+            for pos in range(len(splits[origin_idx])):
+                res[next(out_idx)] = origin_idx, pos
+        return res
+
+    @classmethod
+    def _get_dtypes(cls, dtypes, column_min_max):
+        l_filter = operator.ge if column_min_max[1] else operator.gt
+        l = l_filter(dtypes.index, column_min_max[0])
+        r_filter = operator.le if column_min_max[3] else operator.lt
+        r = r_filter(dtypes.index, column_min_max[2])
+        f = l & r
+        return dtypes[f]
+
+    @classmethod
+    def _gen_out_chunks_without_shuffle(cls, op, splits, out_shape, left, right):
+        out_chunks = []
+        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+            if splits[0] is not None:
+                # index does not need shuffle
+                left_row_idx, left_row_inner_idx = splits[0][0][1][out_idx[0]]
+                right_row_idx, right_row_inner_idx = splits[0][1][1][out_idx[0]]
+            else:
+                left_row_idx = left_row_inner_idx = \
+                    right_row_idx = right_row_inner_idx = None
+            if splits[1] is not None:
+                # column does not need shuffle
+                left_column_idx, left_column_inner_idx = splits[1][0][1][out_idx[1]]
+                right_column_idx, right_column_inner_idx = splits[1][1][1][out_idx[1]]
+            else:
+                left_column_idx = left_column_inner_idx = \
+                    right_column_idx = right_column_inner_idx = None
+
+            # does not need shuffle
+            left_chunk = left.cix[left_row_idx, left_column_idx]
+            left_index_min_max = splits[0][0][left_row_idx][left_row_inner_idx]
+            left_column_min_max = splits[1][0][left_column_idx][left_column_inner_idx]
+            left_align_op = DataFrameIndexAlignMap(
+                index_min_max=left_index_min_max, column_min_max=left_column_min_max,
+                dtypes=cls._get_dtypes(left_chunk.dtypes, left_column_min_max),
+                sparse=left_chunk.issparse())
+            left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan))
+
+            right_chunk = right.cix[right_row_idx, right_column_idx]
+            right_index_min_max = splits[0][1][right_row_idx][right_row_inner_idx]
+            right_column_min_max = splits[1][1][right_column_idx][right_column_inner_idx]
+            right_align_op = DataFrameIndexAlignMap(
+                index_min_max=right_index_min_max, column_min_max=right_column_min_max,
+                dtypes=cls._get_dtypes(right.dtypes, right_column_min_max),
+                sparse=right_chunk.issparse())
+            right_out_chunk = right_align_op.new_chunk([right_chunk], (np.nan, np.nan))
+
+            out_op = op.copy().reset_key()
+            out_chunks.append(
+                out_op.new_chunk([left_out_chunk, right_out_chunk], (np.nan, np.nan),
+                                 index=out_idx))
+
+        return out_chunks
+
+    @classmethod
+    def _gen_out_chunks_with_one_shuffle(cls, op, splits, out_shape, left, right):
+        shuffle_axis = 0 if splits[0] is None else 1
+        shuffle_size = out_shape[shuffle_axis]
+        align_axis = 1 - shuffle_axis
+
+        out_chunks = []
+        for align_axis_idx in range(out_shape[align_axis]):
+            reduce_chunks = [[], []]
+            for i in range(2):  # left and right
+                if align_axis == 0:
+                    row_idx, row_inner_idx = splits[align_axis][i][1][align_axis_idx]
+                    kw = {
+                        'index_min_max': splits[align_axis][i][row_idx][row_inner_idx],
+                        'column_shuffle_size': shuffle_size,
+                    }
+                    input_idx = row_idx
+                else:
+                    column_idx, column_inner_idx = splits[align_axis][i][1][align_axis_idx]
+                    kw = {
+                        'index_shuffle_size': shuffle_size,
+                        'column_min_max': splits[align_axis][i][column_idx][column_inner_idx],
+                    }
+                    input_idx = column_idx
+                inp = left if i == 0 else right
+                input_chunks = [c for c in inp.chunks if c.index[align_axis] == input_idx]
+                map_chunks = []
+                for input_chunk in input_chunks:
+                    map_op = DataFrameIndexAlignMap(sparse=input_chunks[0].issparse(), **kw)
+                    map_chunks.append(map_op.new_chunk([input_chunk], (np.nan, np.nan)))
+                proxy_chunk = DataFrameShuffleProxy(dtype=inp.dtype, sparse=inp.issparse())\
+                    .new_chunk(map_chunks, ())
+                for j in range(shuffle_size):
+                    reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
+                    reduce_op = DataFrameIndexAlignReduce(dtype=proxy_chunk.dtype, i=j,
+                                                          sparse=proxy_chunk.issparse())
+                    reduce_chunks[i].append(
+                        reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=reduce_idx))
+
+            assert len(reduce_chunks[0]) == len(reduce_chunks[1])
+            for left_chunk, right_chunk in zip(*reduce_chunks):
+                bin_op = op.copy().reset_key()
+                out_chunk = bin_op.new_chunk([left_chunk, right_chunk], (np.nan, np.nan),
+                                             index=left_chunk.index)
+                out_chunks.append(out_chunk)
+
+        return out_chunks
+
+    @classmethod
+    def _gen_out_chunks_with_all_shuffle(cls, op, splits, out_shape, left, right):
+        out_chunks = []
+
+        # gen map chunks
+        reduce_chunks = [[], []]
+        for i in range(2):  # left, right
+            inp = left if i == 0 else right
+            map_chunks = []
+            for chunk in inp.chunks:
+                map_op = DataFrameIndexAlignMap(
+                    sparse=chunk.issparse(), index_shuffle_size=out_shape[0],
+                    column_shuffle_size=out_shape[1])
+                map_chunks.append(map_op.new_chunk([chunk], (np.nan, np.nan)))
+
+            proxy_chunk = DataFrameShuffleProxy(dtype=inp.dtype).new_chunk(map_chunks, ())
+            for out_idx in itertools.product(*(range(s) for s in out_shape)):
+                reduce_op = DataFrameIndexAlignReduce(dtype=proxy_chunk.dtype, i=out_idx,
+                                                      sparse=proxy_chunk.issparse())
+                reduce_chunks[i].append(
+                    reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=out_idx))
+
+        for left_chunk, right_chunk in zip(*reduce_chunks):
+            bin_op = op.copy().reset_key()
+            out_chunk = bin_op.new_chunk([left_chunk, right_chunk], (np.nan, np.nan),
+                                         index=left_chunk.index)
+            out_chunks.append(out_chunk)
+
+        return out_chunks
 
     @classmethod
     def _tile_both_dataframes(cls, op):
         # if both of the inputs are DataFrames, axis is just ignored
         left, right = op.inputs
         nsplits = [[], []]
-
-        # if both of their index are identical
+        splits = [None, None]
 
         # first, we decide the chunk size on each axis
         # we perform the same logic for both index and columns
@@ -72,11 +308,39 @@ class DataFrameBinOp(DataFrameOperandMixin):
             # if both of the indexes are monotonic increasing or decreasing
             left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
             right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
-            if left_chunk_index_min_max and right_chunk_index_min_max:
+            if left_chunk_index_min_max is not None and right_chunk_index_min_max is not None:
                 # no need to do shuffle on this axis
-                pass
+                left_splits, right_splits = split_monotonic_index_min_max(
+                    *(left_chunk_index_min_max + right_chunk_index_min_max))
+                splits[axis] = (left_splits, cls._out_chunk_idx_to_origin_chunk_idx(left_splits)), \
+                               (right_splits, cls._out_chunk_idx_to_origin_chunk_idx(right_splits))
+                nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
+            else:
+                # do shuffle
+                left_chunk_size = left.chunk_shape[axis]
+                right_chunk_size = right.chunk_shape[axis]
+                out_chunk_size = max(left_chunk_size, right_chunk_size)
+                nsplits[axis].extend(np.nan for _ in out_chunk_size)
+
+        out_shape = tuple(len(ns) for ns in nsplits)
+        if all(split is not None for split in splits):
+            # no shuffle for all axis
+            out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left, right)
+        elif not all(split is None for split in splits):
+            # one axis needs shuffle
+            out_chunks = cls._gen_out_chunks_with_one_shuffle(op, splits, out_shape, left, right)
+        else:
+            # all axes need shuffle
+            out_chunks = cls._gen_out_chunks_with_all_shuffle(op, splits, out_shape, left, right)
+
+        new_op = op.copy()
+        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+                                  nsplits=tuple(tuple(ns) for ns in nsplits),
+                                  chunks=out_chunks)
 
     @classmethod
     def tile(cls, op):
         if all(isinstance(inp, DATAFRAME_TYPE) for inp in op.inputs):
             return cls._tile_both_dataframes(op)
+
+        raise NotImplementedError

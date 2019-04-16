@@ -123,3 +123,11 @@ class Test(unittest.TestCase):
                           [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
                           [(6, False, 7, False), (10, True, 12, False)],
                           [(13, True, 14, False)]])
+
+        # identical index
+        left_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits, [[tuple(it)] for it in left_min_max])
+        self.assertEqual(right_splits, [[tuple(it)] for it in left_min_max])

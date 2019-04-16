@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...operands import ShuffleProxy
 from ...core import TilesableOperandMixin
 from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
 
@@ -48,3 +49,12 @@ class DataFrameOperandMixin(TilesableOperandMixin):
 
         return self.new_dataframes(inputs, shape, dtypes=dtypes,
                                    index_value=index_value, columns_value=columns_value, **kw)[0]
+
+
+class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
+    def __init__(self, dtype=None, **kwargs):
+        kwargs['_dtype'] = kwargs.get('_dtype', dtype)
+        super(DataFrameShuffleProxy, self).__init__(**kwargs)
+
+    def calc_shape(self, *inputs_shape):
+        return ()
