@@ -57,7 +57,7 @@ class OperandActor(SchedulerActor):
         self._chunk_meta_ref = None
 
         self._op_name = op_info['op_name']
-        self._state = OperandState(op_info['state'].lower())
+        self._state = op_info['state']
         self._last_state = self._state
         self._retries = op_info['retries']
         self._is_terminal = is_terminal
@@ -126,10 +126,30 @@ class OperandActor(SchedulerActor):
             self._is_terminal = True
         graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
         self._graph_refs.append(graph_ref)
-        self._pred_keys.update(op_info['io_meta']['predecessors'])
-        self._succ_keys.update(op_info['io_meta']['successors'])
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
-            self._state = OperandState(op_info['state'].lower())
+            self._pred_keys = set(op_info['io_meta']['predecessors'])
+            self._succ_keys = set(op_info['io_meta']['successors'])
+            self._state = op_info['state']
+        else:
+            self._pred_keys.update(op_info['io_meta']['predecessors'])
+            self._succ_keys.update(op_info['io_meta']['successors'])
+
+        futures = []
+        for pred_key in op_info['io_meta']['predecessors']:
+            futures.append(self._get_operand_actor(pred_key).remove_finished_succs(
+                self._op_key, _tell=True, _wait=False))
+        for succ_key in op_info['io_meta']['successors']:
+            futures.append(self._get_operand_actor(succ_key).remove_finished_preds(
+                self._op_key, _tell=True, _wait=False))
+        [future.result() for future in futures]
+
+    def remove_finished_succs(self, op_key):
+        if op_key in self._finish_succs:
+            self._finish_succs.remove(op_key)
+
+    def remove_finished_preds(self, op_key):
+        if op_key in self._finish_preds:
+            self._finish_preds.remove(op_key)
 
     def add_finished_successor(self, op_key):
         self._finish_succs.add(op_key)

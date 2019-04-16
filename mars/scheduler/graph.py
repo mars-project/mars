@@ -658,10 +658,10 @@ class GraphActor(SchedulerActor):
             op_info['io_meta'] = io_meta
 
             if io_meta['predecessors']:
-                state = 'UNSCHEDULED'
+                state = OperandState.UNSCHEDULED
             else:
                 initial_keys.append(op_key)
-                state = 'READY'
+                state = OperandState.READY
             op_info['retries'] = 0
             op_info['state'] = state
 
@@ -673,7 +673,6 @@ class GraphActor(SchedulerActor):
                 uid=op_uid, address=scheduler_addr,
                 wait=False
             )
-            op_info['state'] = getattr(OperandState, state.upper())
             if _clean_io_meta:
                 del op_info['io_meta']
 
@@ -689,7 +688,6 @@ class GraphActor(SchedulerActor):
         append_futures = []
         for op_key in existing_keys:
             op_info = operand_infos[op_key]
-            op_info['state'] = op_info['state'].value
             op_info['io_meta'] = self._collect_operand_io_meta(chunk_graph, self._op_key_to_chunk[op_key])
             op_uid = OperandActor.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
