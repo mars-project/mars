@@ -45,25 +45,25 @@ class OperandActor(SchedulerActor):
         op_info = copy.deepcopy(op_info)
 
         self._session_id = session_id
-        self._graph_id = graph_id
+        self._graph_ids = [graph_id]
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
+        self._graph_refs = []
         self._cluster_info_ref = None
         self._assigner_ref = None
-        self._graph_ref = None
         self._resource_ref = None
         self._kv_store_ref = None
         self._chunk_meta_ref = None
 
         self._op_name = op_info['op_name']
-        self._state = OperandState(op_info['state'].lower())
+        self._state = op_info['state']
         self._last_state = self._state
         self._retries = op_info['retries']
         self._is_terminal = is_terminal
         self._io_meta = op_info['io_meta']
-        self._pred_keys = self._io_meta['predecessors']
-        self._succ_keys = self._io_meta['successors']
+        self._pred_keys = set(self._io_meta['predecessors'])
+        self._succ_keys = set(self._io_meta['successors'])
         self._input_chunks = self._io_meta['input_chunks']
         self._chunks = self._io_meta['chunks']
         self._info = op_info
@@ -93,13 +93,14 @@ class OperandActor(SchedulerActor):
             OperandState.FATAL: self._handle_fatal,
             OperandState.CANCELLING: self._handle_cancelling,
             OperandState.CANCELLED: self._handle_cancelled,
+            OperandState.UNSCHEDULED: self._handle_unscheduled
         }
 
     def post_create(self):
         self.set_cluster_info_ref()
         self._assigner_ref = self.get_promise_ref(AssignerActor.gen_name(self._session_id))
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
-        self._graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_id))
+        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
@@ -117,6 +118,41 @@ class OperandActor(SchedulerActor):
             return True
         self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
         return False
+
+    def append_graph(self, graph_key, op_info, is_terminal):
+        from .graph import GraphActor
+
+        if is_terminal:
+            self._is_terminal = True
+        graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
+        self._graph_refs.append(graph_ref)
+        if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
+            self._pred_keys = set(op_info['io_meta']['predecessors'])
+            self._succ_keys = set(op_info['io_meta']['successors'])
+            self._state = op_info['state']
+        else:
+            self._pred_keys.update(op_info['io_meta']['predecessors'])
+            self._succ_keys.update(op_info['io_meta']['successors'])
+
+        # remove finished successors and predecessors.
+        # This is a workaround for execute existing operand actor and
+        # will be removed in the next version.
+        futures = []
+        for pred_key in op_info['io_meta']['predecessors']:
+            futures.append(self._get_operand_actor(pred_key).remove_finished_succs(
+                self._op_key, _tell=True, _wait=False))
+        for succ_key in op_info['io_meta']['successors']:
+            futures.append(self._get_operand_actor(succ_key).remove_finished_preds(
+                self._op_key, _tell=True, _wait=False))
+        [future.result() for future in futures]
+
+    def remove_finished_succs(self, op_key):
+        if op_key in self._finish_succs:
+            self._finish_succs.remove(op_key)
+
+    def remove_finished_preds(self, op_key):
+        if op_key in self._finish_preds:
+            self._finish_preds.remove(op_key)
 
     def add_finished_successor(self, op_key):
         self._finish_succs.add(op_key)
@@ -214,9 +250,9 @@ class OperandActor(SchedulerActor):
                          self._last_state, value)
         self._state = value
         self._info['state'] = value.name
-        futures = [
-            self._graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False),
-        ]
+        futures = []
+        for graph_ref in self._graph_refs:
+            futures.append(graph_ref.set_operand_state(self._op_key, value.value, _tell=True, _wait=False))
         if self._kv_store_ref is not None:
             futures.append(self._kv_store_ref.write('%s/state' % self._op_path, value.name, _tell=True, _wait=False))
         [f.result() for f in futures]
@@ -371,7 +407,7 @@ class OperandActor(SchedulerActor):
 
             # submit job
             self._execution_ref = self._get_execution_ref()
-            serialized_exec_graph = self._graph_ref.get_executable_operand_dag(self._op_key)
+            serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
             self._execution_ref.execute_graph(self._session_id, self._op_key, serialized_exec_graph,
                                               self._io_meta, data_sizes, send_targets=target_predicts,
                                               _promise=True)
@@ -459,7 +495,7 @@ class OperandActor(SchedulerActor):
             self._assigner_ref.allocate_top_resources(_tell=True)
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            self._graph_ref.mark_terminal_finished(self._op_key, _tell=True)
+            self._mark_finished_terminal()
 
     @log_unhandled
     def _handle_fatal(self):
@@ -470,7 +506,7 @@ class OperandActor(SchedulerActor):
 
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            self._graph_ref.mark_terminal_finished(self._op_key, final_state=GraphState.FAILED, _tell=True)
+            self._mark_finished_terminal(final_state=GraphState.FAILED)
         # set successors to FATAL
         for k in self._succ_keys:
             self._get_operand_actor(k).propagate_state(OperandState.FATAL, _tell=True)
@@ -503,10 +539,18 @@ class OperandActor(SchedulerActor):
         if self._worker_endpoint:
             self._resource_ref.deallocate_resource(self._session_id, self._op_key, self._worker_endpoint)
         if self._is_terminal:
-            self._graph_ref.mark_terminal_finished(self._op_key, final_state=GraphState.CANCELLED, _tell=True)
+            self._mark_finished_terminal(final_state=GraphState.CANCELLED)
         for k in self._succ_keys:
             self._get_operand_actor(k).propagate_state(OperandState.CANCELLING, _tell=True)
 
     @log_unhandled
     def _handle_freed(self):
         pass
+
+    def _handle_unscheduled(self):
+        pass
+
+    def _mark_finished_terminal(self, final_state=None):
+        for graph_ref in self._graph_refs:
+            graph_ref.mark_terminal_finished(
+                self._op_key, final_state=final_state, _tell=True)

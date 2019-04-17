@@ -30,6 +30,7 @@ from ..graph import DAG
 from ..tiles import handler, DataNotReady
 from ..serialize.dataserializer import loads, dumps
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks
+from ..actors.errors import ActorAlreadyExist
 
 logger = logging.getLogger(__name__)
 
@@ -608,6 +609,33 @@ class GraphActor(SchedulerActor):
         else:
             return graph
 
+    @staticmethod
+    def _collect_operand_io_meta(graph, chunks):
+        # collect operand i/o information
+        predecessor_keys = set()
+        successor_keys = set()
+        input_chunk_keys = set()
+        shared_input_chunk_keys = set()
+        chunk_keys = set()
+
+        for c in chunks:
+            for pn in graph.iter_predecessors(c):
+                predecessor_keys.add(pn.op.key)
+                input_chunk_keys.add(pn.key)
+                if graph.count_successors(pn) > 1:
+                    shared_input_chunk_keys.add(pn.key)
+            successor_keys.update(pn.op.key for pn in graph.iter_successors(c))
+            chunk_keys.update(co.key for co in c.op.outputs)
+
+        io_meta = dict(
+            predecessors=list(predecessor_keys),
+            successors=list(successor_keys),
+            input_chunks=list(input_chunk_keys),
+            shared_input_chunks=list(shared_input_chunk_keys),
+            chunks=list(chunk_keys),
+        )
+        return io_meta
+
     def create_operand_actors(self, _clean_io_meta=True):
         """
         Create operand actors for all operands
@@ -625,37 +653,15 @@ class GraphActor(SchedulerActor):
 
             op_info = operand_infos[op_key]
 
-            # collect operand i/o information
-            predecessor_keys = set()
-            successor_keys = set()
-            input_chunk_keys = set()
-            shared_input_chunk_keys = set()
-            chunks = set()
-
-            for c in self._op_key_to_chunk[op_key]:
-                for pn in chunk_graph.iter_predecessors(c):
-                    predecessor_keys.add(pn.op.key)
-                    input_chunk_keys.add(pn.key)
-                    if chunk_graph.count_successors(pn) > 1:
-                        shared_input_chunk_keys.add(pn.key)
-                successor_keys.update(pn.op.key for pn in chunk_graph.iter_successors(c))
-                chunks.update(co.key for co in c.op.outputs)
-
-            io_meta = dict(
-                predecessors=list(predecessor_keys),
-                successors=list(successor_keys),
-                input_chunks=list(input_chunk_keys),
-                shared_input_chunks=list(shared_input_chunk_keys),
-                chunks=list(chunks),
-            )
+            io_meta = self._collect_operand_io_meta(chunk_graph, self._op_key_to_chunk[op_key])
             op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
 
-            if predecessor_keys:
-                state = 'UNSCHEDULED'
+            if io_meta['predecessors']:
+                state = OperandState.UNSCHEDULED
             else:
                 initial_keys.append(op_key)
-                state = 'READY'
+                state = OperandState.READY
             op_info['retries'] = 0
             op_info['state'] = state
 
@@ -667,15 +673,31 @@ class GraphActor(SchedulerActor):
                 uid=op_uid, address=scheduler_addr,
                 wait=False
             )
-            op_info['state'] = getattr(OperandState, state.upper())
             if _clean_io_meta:
                 del op_info['io_meta']
 
         self.state = GraphState.RUNNING
 
-        op_refs = dict((k, v.result()) for k, v in op_refs.items())
-        start_futures = [op_refs[op_key].start_operand(_tell=True, _wait=False)
-                         for op_key in initial_keys]
+        existing_keys = []
+        for op_key, future in op_refs.items():
+            try:
+                op_refs[op_key] = future.result()
+            except ActorAlreadyExist:
+                existing_keys.append(op_key)
+
+        append_futures = []
+        for op_key in existing_keys:
+            op_info = operand_infos[op_key]
+            op_info['io_meta'] = self._collect_operand_io_meta(chunk_graph, self._op_key_to_chunk[op_key])
+            op_uid = OperandActor.gen_uid(self._session_id, op_key)
+            scheduler_addr = self.get_scheduler(op_uid)
+            op_ref = op_refs[op_key] = self.ctx.actor_ref(op_uid, address=scheduler_addr)
+            is_terminal = op_key in self._terminal_chunk_op_tensor
+            append_futures.append(op_ref.append_graph(self._graph_key, op_info,
+                                                      is_terminal=is_terminal, _wait=False))
+        [future.result() for future in append_futures]
+
+        start_futures = [ref.start_operand(_tell=True, _wait=False) for ref in op_refs.values()]
         [future.result() for future in start_futures]
 
     def mark_terminal_finished(self, op_key, final_state=None):

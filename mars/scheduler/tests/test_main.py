@@ -192,14 +192,6 @@ class Test(unittest.TestCase):
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_array_equal(loads(result), expected.sum())
 
-        graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
-
-        # todo this behavior may change when eager mode is introduced
-        state = self.wait_for_termination(session_ref, graph_key)
-        self.assertEqual(state, GraphState.FAILED)
-
         a = mt.ones((100, 50), chunk_size=35) * 2 + 1
         b = mt.ones((50, 200), chunk_size=35) * 2 + 1
         c = a.dot(b)

@@ -352,3 +352,20 @@ class Test(unittest.TestCase):
 
             r = session.run(b)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
+
+    def testExistingOperand(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
+            session = cluster.session
+            a = mt.ones((3, 3), chunk_size=2)
+            a = a.dot(a)
+            r1 = session.run(a)
+            np.testing.assert_array_equal(r1, np.ones((3, 3)) * 3)
+
+            b = a + 1
+            r2 = session.run(b)
+            np.testing.assert_array_equal(r2, np.ones((3, 3)) + 3)
+
+            c = a.dot(a)
+            r3 = session.run(c)
+            np.testing.assert_array_equal(r3, np.ones((3, 3)) * 27)
