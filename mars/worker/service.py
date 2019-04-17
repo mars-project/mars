@@ -77,9 +77,10 @@ class WorkerService(object):
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
-        self._soft_mem_limit = kwargs.pop('soft_mem_limit', '75%')
-        self._hard_mem_limit = kwargs.pop('hard_mem_limit', '90%')
-        self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', False)
+        self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '75%'
+        self._hard_mem_limit = kwargs.pop('hard_mem_limit', None) or '90%'
+        self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', None) or False
+        self._min_mem_size = kwargs.pop('min_mem_size', None) or 128 * 1024 ** 2
 
         self._soft_quota_limit = self._soft_mem_limit
 
@@ -111,6 +112,7 @@ class WorkerService(object):
         else:
             self._total_mem = mem_stats.total
 
+        self._min_mem_size = _calc_size_limit(self._min_mem_size, self._total_mem)
         self._hard_mem_limit = _calc_size_limit(self._hard_mem_limit, self._total_mem)
 
         self._cache_mem_limit = _calc_size_limit(self._cache_mem_limit, self._total_mem)
@@ -123,7 +125,7 @@ class WorkerService(object):
             self._soft_quota_limit = self._soft_mem_limit
         else:
             self._soft_quota_limit = self._soft_mem_limit - self._cache_mem_limit - actual_used
-            if self._soft_quota_limit < 512 * 1024 ** 2:
+            if self._soft_quota_limit < self._min_mem_size:
                 raise MemoryError('Memory not enough. soft_limit=%s, cache_limit=%s, used=%s' %
                                   tuple(readable_size(k) for k in (
                                       self._soft_mem_limit, self._cache_mem_limit, actual_used)))
@@ -228,6 +230,9 @@ class WorkerService(object):
                 uid = 'w:%d:mars-spill-%d-%d' % (start_pid, os.getpid(), spill_id)
                 actor = actor_holder.create_actor(SpillActor, uid=uid)
                 self._spill_actors.append(actor)
+
+        # worker can be registered when everything is ready
+        self._status_ref.enable_status_upload(_tell=True)
 
     def handle_process_down(self, pool, proc_indices):
         logger.debug('Process %r halt. Trying to recover.', proc_indices)
