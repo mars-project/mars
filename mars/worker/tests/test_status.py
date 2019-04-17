@@ -31,6 +31,8 @@ class Test(WorkerCase):
             pool.create_actor(ChunkHolderActor, self.plasma_storage_size, uid=ChunkHolderActor.default_name())
             status_ref = pool.create_actor(StatusActor, '127.0.0.1:1234', uid=StatusActor.default_name())
 
+            status_ref.enable_status_upload()
+
             def delay_read():
                 gevent.sleep(2)
                 return resource_ref.get_workers_meta()

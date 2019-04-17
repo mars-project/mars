@@ -32,6 +32,8 @@ class StatusReporterActor(WorkerActor):
         super(StatusReporterActor, self).__init__()
         self._endpoint = endpoint
 
+        self._upload_status = False
+
         self._status_ref = None
         self._resource_ref = None
 
@@ -43,12 +45,18 @@ class StatusReporterActor(WorkerActor):
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
         self.ref().collect_status(_tell=True)
 
+    def enable_status_upload(self):
+        self._upload_status = True
+
     def collect_status(self):
         """
         Collect worker status and write to kvstore
         """
         meta_dict = dict()
         try:
+            if not self._upload_status:
+                return
+
             cpu_percent = resource.cpu_percent()
             disk_io = resource.disk_io_usage()
             net_io = resource.net_io_usage()
@@ -156,6 +164,9 @@ class StatusActor(WorkerActor):
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)
+
+    def enable_status_upload(self):
+        self._reporter_ref.enable_status_upload(_tell=True)
 
     def get_stats(self, items=None):
         if not items:
