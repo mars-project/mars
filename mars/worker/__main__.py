@@ -39,6 +39,7 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--phy-mem', help='physical memory size limit')
         parser.add_argument('--ignore-avail-mem', action='store_true', help='ignore available memory')
         parser.add_argument('--cache-mem', help='cache memory size limit')
+        parser.add_argument('--min-mem', help='minimal free memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
 
     def validate_arguments(self):
@@ -58,6 +59,7 @@ class WorkerApplication(BaseApplication):
             total_mem=self.args.phy_mem,
             cache_mem_limit=self.args.cache_mem,
             ignore_avail_mem=self.args.ignore_avail_mem,
+            min_mem_size=self.args.min_mem,
         )
         # start plasma
         self._service.start_plasma()
