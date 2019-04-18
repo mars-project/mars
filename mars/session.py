@@ -141,7 +141,7 @@ class Session(object):
                     ret.append(r)
                     continue
                 if t.isscalar() and hasattr(r, 'item'):
-                    ret.append(np.asscalar(r))
+                    ret.append(r.item())
                 else:
                     ret.append(r)
 

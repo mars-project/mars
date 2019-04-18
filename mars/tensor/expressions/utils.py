@@ -425,7 +425,7 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
         dim_size = np.maximum(int(np.power(max_chunk_size / nbytes_occupied, 1 / float(len(left)))), 1)
         for j, ns in six.iteritems(left.copy()):
             unsplit = left_unsplit[j]
-            ns.append(np.minimum(unsplit, dim_size))
+            ns.append(int(np.minimum(unsplit, dim_size)))
             left_unsplit[j] -= ns[-1]
             if left_unsplit[j] <= 0:
                 dim_to_normalized[j] = tuple(ns)
