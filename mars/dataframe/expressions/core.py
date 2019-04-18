@@ -52,8 +52,7 @@ class DataFrameOperandMixin(TilesableOperandMixin):
 
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
-    def __init__(self, dtype=None, **kwargs):
-        kwargs['_dtype'] = kwargs.get('_dtype', dtype)
+    def __init__(self, **kwargs):
         super(DataFrameShuffleProxy, self).__init__(**kwargs)
 
     def calc_shape(self, *inputs_shape):

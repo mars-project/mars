@@ -52,7 +52,7 @@ class DataFrameIndexAlignMap(RandomOperand, DataFrameOperandMixin):
             kw.update(dict(_column_min=column_min_max[0], _column_min_close=column_min_max[1],
                            _column_max=column_min_max[2], _column_max_close=column_min_max[3]))
         super(DataFrameIndexAlignMap, self).__init__(
-            _index_shuffle_size=index_shuffle_size, _column_shuffle=column_shuffle_size,
+            _index_shuffle_size=index_shuffle_size, _column_shuffle_size=column_shuffle_size,
             _sparse=sparse, _dtypes=dtypes, _gpu=gpu, **kw)
 
     @property
@@ -217,7 +217,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 if align_axis == 0:
                     row_idx, row_inner_idx = splits[align_axis][i][1][align_axis_idx]
                     kw = {
-                        'index_min_max': splits[align_axis][i][row_idx][row_inner_idx],
+                        'index_min_max': splits[align_axis][i][0][row_idx][row_inner_idx],
                         'column_shuffle_size': shuffle_size,
                     }
                     input_idx = row_idx
@@ -225,7 +225,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     column_idx, column_inner_idx = splits[align_axis][i][1][align_axis_idx]
                     kw = {
                         'index_shuffle_size': shuffle_size,
-                        'column_min_max': splits[align_axis][i][column_idx][column_inner_idx],
+                        'column_min_max': splits[align_axis][i][0][column_idx][column_inner_idx],
                     }
                     input_idx = column_idx
                 inp = left if i == 0 else right
@@ -234,12 +234,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 for input_chunk in input_chunks:
                     map_op = DataFrameIndexAlignMap(sparse=input_chunks[0].issparse(), **kw)
                     map_chunks.append(map_op.new_chunk([input_chunk], (np.nan, np.nan)))
-                proxy_chunk = DataFrameShuffleProxy(dtype=inp.dtype, sparse=inp.issparse())\
-                    .new_chunk(map_chunks, ())
+                proxy_chunk = DataFrameShuffleProxy(sparse=inp.issparse()).new_chunk(map_chunks, ())
                 for j in range(shuffle_size):
                     reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
-                    reduce_op = DataFrameIndexAlignReduce(dtype=proxy_chunk.dtype, i=j,
-                                                          sparse=proxy_chunk.issparse())
+                    reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse())
                     reduce_chunks[i].append(
                         reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=reduce_idx))
 
@@ -267,9 +265,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     column_shuffle_size=out_shape[1])
                 map_chunks.append(map_op.new_chunk([chunk], (np.nan, np.nan)))
 
-            proxy_chunk = DataFrameShuffleProxy(dtype=inp.dtype).new_chunk(map_chunks, ())
+            proxy_chunk = DataFrameShuffleProxy().new_chunk(map_chunks, ())
             for out_idx in itertools.product(*(range(s) for s in out_shape)):
-                reduce_op = DataFrameIndexAlignReduce(dtype=proxy_chunk.dtype, i=out_idx,
+                reduce_op = DataFrameIndexAlignReduce(i=out_idx,
                                                       sparse=proxy_chunk.issparse())
                 reduce_chunks[i].append(
                     reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=out_idx))

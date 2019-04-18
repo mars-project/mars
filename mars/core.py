@@ -394,6 +394,11 @@ class TilesableData(SerializableWithKey, Tilesable):
             new_entity.params.update({'raw_chunk_size': self.nsplits})
         return new_entity
 
+    def is_sparse(self):
+        return self.op.is_sparse()
+
+    issparse = is_sparse
+
     def tiles(self):
         return handler.tiles(self)
 
