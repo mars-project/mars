@@ -22,7 +22,8 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.config import option_context
-from mars.dataframe.expressions.utils import decide_chunk_sizes, split_monotonic_index_min_max
+from mars.dataframe.expressions.utils import decide_chunk_sizes, \
+    split_monotonic_index_min_max, build_split_idx_to_origin_idx
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -131,3 +132,14 @@ class Test(unittest.TestCase):
             split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
         self.assertEqual(left_splits, [[tuple(it)] for it in left_min_max])
         self.assertEqual(right_splits, [[tuple(it)] for it in left_min_max])
+
+    def testBuildSplitIdxToOriginIdx(self):
+        splits = [[(1, False, 2, False), (2, True, 3, True)], [(5, False, 6, True)]]
+        res = build_split_idx_to_origin_idx(splits)
+
+        self.assertEqual(res, {0: (0, 0), 1: (0, 1), 2: (1, 0)})
+
+        splits = [[(5, False, 6, True)], [(1, False, 2, False), (2, True, 3, True)]]
+        res = build_split_idx_to_origin_idx(splits, increase=False)
+
+        self.assertEqual(res, {0: (1, 0), 1: (1, 1), 2: (0, 0)})

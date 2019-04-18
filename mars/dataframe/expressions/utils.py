@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
 
 from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
 from ...utils import tokenize
@@ -240,3 +246,37 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
         right_idx_to_min_max = list(reversed(right_idx_to_min_max))
 
     return left_idx_to_min_max, right_idx_to_min_max
+
+
+def build_split_idx_to_origin_idx(splits, increase=True):
+    # splits' len is equal to the original chunk size on a specified axis,
+    # splits is sth like [[(0, True, 2, True), (2, False, 3, True)]]
+    # which means there is one input chunk, and will be split into 2 out chunks
+    # in this function, we want to build a new dict from the out chunk index to
+    # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
+    if not increase:
+        splits = list(reversed(splits))
+    out_idx = itertools.count(0)
+    res = dict()
+    for origin_idx in range(len(splits)):
+        for pos in range(len(splits[origin_idx])):
+            if increase:
+                o_idx = origin_idx
+            else:
+                o_idx = len(splits) - origin_idx - 1
+            res[next(out_idx)] = o_idx, pos
+    return res
+
+
+def _build_empty_df(dtypes):
+    columns = dtypes.index.tolist()
+    df = pd.DataFrame(columns=columns)
+    for c, d in zip(columns, dtypes):
+        df[c] = pd.Series(dtype=d)
+    return df
+
+
+def infer_dtypes(left_dtypes, right_dtypes, operator):
+    left = _build_empty_df(left_dtypes)
+    right = _build_empty_df(right_dtypes)
+    return operator(left, right).dtypes

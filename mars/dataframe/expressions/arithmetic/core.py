@@ -22,7 +22,8 @@ from .... import opcodes as OperandDef
 from ....serialize import AnyField, BoolField, Int32Field, KeyField
 from ...core import DATAFRAME_TYPE
 from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
-from ..utils import split_monotonic_index_min_max
+from ..utils import split_monotonic_index_min_max, infer_dtypes, \
+    build_split_idx_to_origin_idx
 
 
 _random_state = np.random.RandomState()
@@ -108,7 +109,7 @@ class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
         return self.outputs[0].shape
 
 
-class DataFrameBinOp(DataFrameOperandMixin):
+class DataFrameBinOpMixin(DataFrameOperandMixin):
     __slots__ = ()
 
     @classmethod
@@ -138,7 +139,7 @@ class DataFrameBinOp(DataFrameOperandMixin):
             min_val_close = chunk_index.min_val_close
             max_val = chunk_index.max_val
             max_val_close = chunk_index.max_val_close
-            if not min_val or not max_val:
+            if min_val is None or max_val is None:
                 return
             chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
 
@@ -148,20 +149,6 @@ class DataFrameBinOp(DataFrameOperandMixin):
         if cls._check_overlap(chunk_index_min_max):
             return
         return chunk_index_min_max, True
-
-    @classmethod
-    def _out_chunk_idx_to_origin_chunk_idx(cls, splits):
-        # splits' len is equal to the original chunk size on a specified axis,
-        # splits is sth like [[(0, True, 2, True), (2, False, 3, True)]]
-        # which means there is one input chunk, and will be split into 2 out chunks
-        # in this function, we want to build a new dict from the out chunk index to
-        # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
-        out_idx = itertools.count(0)
-        res = dict()
-        for origin_idx in range(len(splits)):
-            for pos in range(len(splits[origin_idx])):
-                res[next(out_idx)] = origin_idx, pos
-        return res
 
     @classmethod
     def _get_dtypes(cls, dtypes, column_min_max):
@@ -193,8 +180,8 @@ class DataFrameBinOp(DataFrameOperandMixin):
 
             # does not need shuffle
             left_chunk = left.cix[left_row_idx, left_column_idx]
-            left_index_min_max = splits[0][0][left_row_idx][left_row_inner_idx]
-            left_column_min_max = splits[1][0][left_column_idx][left_column_inner_idx]
+            left_index_min_max = splits[0][0][0][left_row_idx][left_row_inner_idx]
+            left_column_min_max = splits[1][0][0][left_column_idx][left_column_inner_idx]
             left_align_op = DataFrameIndexAlignMap(
                 index_min_max=left_index_min_max, column_min_max=left_column_min_max,
                 dtypes=cls._get_dtypes(left_chunk.dtypes, left_column_min_max),
@@ -202,8 +189,8 @@ class DataFrameBinOp(DataFrameOperandMixin):
             left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan))
 
             right_chunk = right.cix[right_row_idx, right_column_idx]
-            right_index_min_max = splits[0][1][right_row_idx][right_row_inner_idx]
-            right_column_min_max = splits[1][1][right_column_idx][right_column_inner_idx]
+            right_index_min_max = splits[0][1][0][right_row_idx][right_row_inner_idx]
+            right_column_min_max = splits[1][1][0][right_column_idx][right_column_inner_idx]
             right_align_op = DataFrameIndexAlignMap(
                 index_min_max=right_index_min_max, column_min_max=right_column_min_max,
                 dtypes=cls._get_dtypes(right.dtypes, right_column_min_max),
@@ -266,7 +253,7 @@ class DataFrameBinOp(DataFrameOperandMixin):
         return out_chunks
 
     @classmethod
-    def _gen_out_chunks_with_all_shuffle(cls, op, splits, out_shape, left, right):
+    def _gen_out_chunks_with_all_shuffle(cls, op, out_shape, left, right):
         out_chunks = []
 
         # gen map chunks
@@ -312,31 +299,33 @@ class DataFrameBinOp(DataFrameOperandMixin):
                 # no need to do shuffle on this axis
                 left_splits, right_splits = split_monotonic_index_min_max(
                     *(left_chunk_index_min_max + right_chunk_index_min_max))
-                splits[axis] = (left_splits, cls._out_chunk_idx_to_origin_chunk_idx(left_splits)), \
-                               (right_splits, cls._out_chunk_idx_to_origin_chunk_idx(right_splits))
+                left_increase = left_chunk_index_min_max[1]
+                right_increase = right_chunk_index_min_max[1]
+                splits[axis] = (left_splits, build_split_idx_to_origin_idx(left_splits, left_increase)), \
+                               (right_splits, build_split_idx_to_origin_idx(right_splits, right_increase))
                 nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
             else:
                 # do shuffle
                 left_chunk_size = left.chunk_shape[axis]
                 right_chunk_size = right.chunk_shape[axis]
                 out_chunk_size = max(left_chunk_size, right_chunk_size)
-                nsplits[axis].extend(np.nan for _ in out_chunk_size)
+                nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
 
         out_shape = tuple(len(ns) for ns in nsplits)
         if all(split is not None for split in splits):
-            # no shuffle for all axis
+            # no shuffle for all axes
             out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left, right)
         elif not all(split is None for split in splits):
             # one axis needs shuffle
             out_chunks = cls._gen_out_chunks_with_one_shuffle(op, splits, out_shape, left, right)
         else:
             # all axes need shuffle
-            out_chunks = cls._gen_out_chunks_with_all_shuffle(op, splits, out_shape, left, right)
+            out_chunks = cls._gen_out_chunks_with_all_shuffle(op, out_shape, left, right)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
-                                  nsplits=tuple(tuple(ns) for ns in nsplits),
-                                  chunks=out_chunks)
+        return new_op.new_dataframes(op.inputs, op.outputs[0].shape,
+                                     nsplits=tuple(tuple(ns) for ns in nsplits),
+                                     chunks=out_chunks)
 
     @classmethod
     def tile(cls, op):
@@ -344,3 +333,20 @@ class DataFrameBinOp(DataFrameOperandMixin):
             return cls._tile_both_dataframes(op)
 
         raise NotImplementedError
+
+    @property
+    def _operator(self):
+        raise NotImplementedError
+
+    def _call(self, x1, x2):
+        if x1.dtypes is not None and x2.dtypes is not None:
+            dtypes = infer_dtypes(x1.dtypes, x2.dtypes, self._operator)
+        else:
+            dtypes = None
+        return self.new_dataframe([x1, x2], shape=(np.nan, np.nan), dtypes=dtypes)
+
+    def __call__(self, x1, x2):
+        return self._call(x1, x2)
+
+    def rcall(self, x1, x2):
+        return self._call(x1, x2)

@@ -180,8 +180,16 @@ class IndexValue(Serializable):
         return self._index_value.min_val
 
     @property
+    def min_val_close(self):
+        return self._index_value.min_val_close
+
+    @property
     def max_val(self):
         return self._index_value.max_val
+
+    @property
+    def max_val_close(self):
+        return self._index_value.max_val_close
 
 
 class IndexChunkData(ChunkData):
@@ -298,7 +306,10 @@ class DataFrameChunkData(ChunkData):
 
     @property
     def dtypes(self):
-        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+        dt = getattr(self, '_dtypes', None)
+        if dt is not None:
+            return dt
+        return getattr(self.op, 'dtypes', None)
 
     @property
     def index_value(self):
@@ -327,7 +338,10 @@ class DataFrameData(TilesableData):
 
     @property
     def dtypes(self):
-        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+        dt = getattr(self, '_dtypes', None)
+        if dt is not None:
+            return dt
+        return getattr(self.op, 'dtypes', None)
 
     @property
     def index_value(self):

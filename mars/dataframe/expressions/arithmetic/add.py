@@ -11,3 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import operator
+
+from .... import operands
+from ....serialize import AnyField, Float64Field
+from .core import DataFrameBinOpMixin
+
+
+class DataFrameAdd(operands.Add, DataFrameBinOpMixin):
+    _axis = AnyField('axis')
+    _level = AnyField('level')
+    _fill_value = Float64Field('fill_value')
+
+    def __init__(self, axis=None, level=None, fill_value=None, **kw):
+        super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
+                                           _fill_value=fill_value, **kw)
+
+    @property
+    def _operator(self):
+        return operator.add
+
+
+def add(df, other, axis='columns', level=None, fill_value=None):
+    op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value)
+    return op(df, other)
