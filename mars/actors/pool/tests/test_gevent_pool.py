@@ -327,6 +327,10 @@ class Test(unittest.TestCase):
             pool.sleep(0.5)
             self.assertEqual(ref2.send(('get',)), 9)
 
+            # error needed when illegal uids are passed
+            with self.assertRaises(TypeError):
+                ref1.send(('tell', pool.actor_ref(set()), 'add', 3))
+
     def testLocalDestroyHasActor(self):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             ref1 = pool.create_actor(DummyActor, 1)
@@ -334,6 +338,12 @@ class Test(unittest.TestCase):
 
             pool.destroy_actor(ref1)
             self.assertFalse(pool.has_actor(ref1))
+
+            # error needed when illegal uids are passed
+            with self.assertRaises(TypeError):
+                pool.has_actor(pool.actor_ref(set()))
+            with self.assertRaises(TypeError):
+                pool.has_actor(pool.actor_ref(set()), wait=False).result()
 
             ref1 = pool.create_actor(DummyActor, 1)
             future = pool.destroy_actor(ref1, wait=False)
@@ -343,7 +353,7 @@ class Test(unittest.TestCase):
             ref1 = pool.create_actor(DummyActor, 1)
             ref2 = ref1.send(('create', (DummyActor, 2)))
 
-            self.assertTrue(pool.has_actor(ref2))
+            self.assertTrue(pool.has_actor(ref2, wait=False).result())
 
             ref1.send(('delete', ref2))
             self.assertFalse(ref1.send(('has', ref2)))
@@ -515,6 +525,10 @@ class Test(unittest.TestCase):
             pool.sleep(0.5)
             self.assertEqual(ref2.send(('get',)), 9)
 
+            # error needed when illegal uids are passed
+            with self.assertRaises(TypeError):
+                ref1.send(('tell', pool.actor_ref(set()), 'add', 3))
+
     def testProcessDestroyHas(self):
         with create_actor_pool(n_process=2, distributor=DummyDistributor(2),
                                backend='gevent') as pool:
@@ -522,6 +536,12 @@ class Test(unittest.TestCase):
             self.assertTrue(pool.has_actor(ref1))
             pool.destroy_actor(ref1)
             self.assertFalse(pool.has_actor(ref1))
+
+            # error needed when illegal uids are passed
+            with self.assertRaises(TypeError):
+                pool.has_actor(pool.actor_ref(set()))
+            with self.assertRaises(TypeError):
+                pool.has_actor(pool.actor_ref(set()), wait=False).result()
 
             ref1 = pool.create_actor(DummyActor, 1, uid='admin-1')
             self.assertTrue(pool.has_actor(ref1, wait=False).result())
@@ -534,7 +554,7 @@ class Test(unittest.TestCase):
             self.assertTrue(future.result())
 
             ref1.send(('delete', ref2))
-            self.assertFalse(ref1.send(('has', ref2)))
+            self.assertFalse(ref1.send(('has_async', ref2)))
 
             with self.assertRaises(ActorNotExist):
                 pool.destroy_actor(pool.actor_ref('fake_uid'))
@@ -1251,7 +1271,7 @@ class Test(unittest.TestCase):
             ref1 = client.create_actor(DummyActor, 1, address=addr)
             ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr)))
 
-            self.assertTrue(client.has_actor(ref2))
+            self.assertTrue(client.has_actor(ref2, wait=False).result())
 
             ref1.send(('delete', ref2))
             self.assertFalse(ref1.send(('has', ref2)))
@@ -1306,7 +1326,7 @@ class Test(unittest.TestCase):
             ref1 = client.create_actor(DummyActor, 1, address=addr)
             ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr)))
 
-            self.assertTrue(client.has_actor(ref2))
+            self.assertTrue(client.has_actor(ref2, wait=False).result())
 
             ref1.send(('delete', ref2))
             self.assertFalse(ref1.send(('has', ref2)))
@@ -1363,7 +1383,7 @@ class Test(unittest.TestCase):
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr2)))
 
-                self.assertTrue(client.has_actor(ref2))
+                self.assertTrue(client.has_actor(ref2, wait=False).result())
 
                 ref1.send(('delete', ref2))
                 self.assertFalse(ref1.send(('has', ref2)))
@@ -1420,7 +1440,7 @@ class Test(unittest.TestCase):
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr2)))
 
-                self.assertTrue(client.has_actor(ref2))
+                self.assertTrue(client.has_actor(ref2, wait=False).result())
 
                 ref1.send(('delete', ref2))
                 self.assertFalse(ref1.send(('has', ref2)))
@@ -1471,7 +1491,7 @@ class Test(unittest.TestCase):
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr2)))
 
-                self.assertTrue(client.has_actor(ref2))
+                self.assertTrue(client.has_actor(ref2, wait=False).result())
 
                 ref1.send(('delete', ref2))
                 self.assertFalse(ref1.send(('has', ref2)))
@@ -1523,7 +1543,7 @@ class Test(unittest.TestCase):
                 ref1 = client.create_actor(DummyActor, 1, address=addr1)
                 ref2 = ref1.send(('create', (DummyActor, 2), dict(address=addr2)))
 
-                self.assertTrue(client.has_actor(ref2))
+                self.assertTrue(client.has_actor(ref2, wait=False).result())
 
                 ref1.send(('delete', ref2))
                 self.assertFalse(ref1.send(('has', ref2)))

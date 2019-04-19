@@ -61,7 +61,7 @@ cythonize_kw = dict(language_level=sys.version_info[0])
 extension_kw = dict()
 if 'CYTHON_TRACE' in os.environ:
     extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
-    cythonize_kw['compiler_directives'] = {'linetrace': True, 'binding': True}
+    cythonize_kw['compiler_directives'] = {'linetrace': True}
 
 if 'MSC' in sys.version:
     extra_compile_args = ['/Ot', '/I' + os.path.join(repo_root, 'misc')]
