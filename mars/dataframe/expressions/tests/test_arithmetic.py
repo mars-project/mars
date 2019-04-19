@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import numpy as np
@@ -132,8 +133,9 @@ class Test(TestBase):
             left_row_idx, left_row_inner_idx = left_index_idx_to_original_idx[idx[0]]
             left_index_min_max = left_index_splits[left_row_idx][left_row_inner_idx]
             ics = [ic for ic in df1.chunks if ic.index[0] == left_row_idx]
-            for ci, ic in zip(c.inputs[0].inputs[0].inputs, ics):
+            for j, ci, ic in zip(itertools.count(0), c.inputs[0].inputs[0].inputs, ics):
                 self.assertIsInstance(ci.op, DataFrameIndexAlignMap)
+                self.assertEqual(ci.index, (idx[0], j))
                 self.assertEqual(ci.op.index_min, left_index_min_max[0])
                 self.assertEqual(ci.op.index_min_close, left_index_min_max[1])
                 self.assertEqual(ci.op.index_max, left_index_min_max[2])
@@ -146,8 +148,9 @@ class Test(TestBase):
             right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
             right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
             ics = [ic for ic in df2.chunks if ic.index[0] == right_row_idx]
-            for ci, ic in zip(c.inputs[1].inputs[0].inputs, ics):
+            for j, ci, ic in zip(itertools.count(0), c.inputs[1].inputs[0].inputs, ics):
                 self.assertIsInstance(ci.op, DataFrameIndexAlignMap)
+                self.assertEqual(ci.index, (idx[0], j))
                 self.assertEqual(ci.op.index_min, right_index_min_max[0])
                 self.assertEqual(ci.op.index_min_close, right_index_min_max[1])
                 self.assertEqual(ci.op.index_max, right_index_min_max[2])

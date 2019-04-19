@@ -32,6 +32,18 @@ class DataFrameAdd(operands.Add, DataFrameBinOpMixin):
     def _operator(self):
         return operator.add
 
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def fill_value(self):
+        return self._fill_value
+
 
 def add(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value)
