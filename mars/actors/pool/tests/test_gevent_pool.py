@@ -25,8 +25,9 @@ import sys
 import gevent
 
 from mars.compat import six, BrokenPipeError
-from mars.actors import create_actor_pool as new_actor_pool, Actor, \
-    ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client
+from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActor, \
+    ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client, \
+    register_actor_implementation, unregister_actor_implementation
 from mars.actors.pool.gevent_pool import Dispatcher, Connections
 from mars.utils import to_binary
 
@@ -136,6 +137,24 @@ class DummyActor(Actor):
             return self.value
 
 
+class DummyFunctionActor(FunctionActor):
+    def __init__(self, value):
+        super(DummyFunctionActor, self).__init__()
+        self._val = value
+
+    def func(self, value):
+        return value + self._val
+
+
+class SurrogateFunctionActor(DummyFunctionActor):
+    def __init__(self, value):
+        super(SurrogateFunctionActor, self).__init__(value)
+        self._val = value * 2
+
+    def func(self, value):
+        return value * self._val
+
+
 class DummyDistributor(Distributor):
     def distribute(self, uid):
         if str(uid).startswith('admin-'):
@@ -201,6 +220,24 @@ class Test(unittest.TestCase):
     def testLocalPostCreatePreDestroy(self):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             actor_ref = pool.create_actor(EventActor)
+            actor_ref.destroy()
+
+    def testFunctionActor(self):
+        with create_actor_pool(n_process=1, backend='gevent') as pool:
+            actor_ref = pool.create_actor(DummyFunctionActor, 1)
+            self.assertEqual(actor_ref.func(2), 3)
+            actor_ref.destroy()
+
+            try:
+                register_actor_implementation(DummyFunctionActor, SurrogateFunctionActor)
+                actor_ref = pool.create_actor(DummyFunctionActor, 3)
+                self.assertEqual(actor_ref.func(2), 12)
+                actor_ref.destroy()
+            finally:
+                unregister_actor_implementation(DummyFunctionActor)
+
+            actor_ref = pool.create_actor(DummyFunctionActor, 2)
+            self.assertEqual(actor_ref.func(2), 4)
             actor_ref.destroy()
 
     def testLocalCreateActor(self):

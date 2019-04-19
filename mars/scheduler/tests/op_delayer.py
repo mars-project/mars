@@ -15,25 +15,22 @@
 import os
 
 from mars.scheduler.operands import OperandActor, OperandPosition
-
-_old_on_running = OperandActor._on_running
-_old_on_finished = OperandActor._on_finished
+from mars.actors.core import register_actor_implementation
 
 
-def _on_running(self):
-    _old_on_running(self)
-    if 'DELAY_STATE_FILE' in os.environ and os.path.exists(os.environ['DELAY_STATE_FILE']):
-        self.ctx.sleep(1)
+class DelayedOperandActor(OperandActor):
+    def _on_running(self):
+        super(DelayedOperandActor, self)._on_running()
+        if 'DELAY_STATE_FILE' in os.environ and os.path.exists(os.environ['DELAY_STATE_FILE']):
+            self.ctx.sleep(1)
+
+    def _on_finished(self):
+        super(DelayedOperandActor, self)._on_finished()
+        if self._position == OperandPosition.TERMINAL and 'TERMINATE_STATE_FILE' in os.environ:
+            try:
+                open(os.environ['TERMINATE_STATE_FILE'], 'w').close()
+            except OSError:
+                pass
 
 
-def _on_finished(self):
-    _old_on_finished(self)
-    if self._position == OperandPosition.TERMINAL and 'TERMINATE_STATE_FILE' in os.environ:
-        try:
-            open(os.environ['TERMINATE_STATE_FILE'], 'w').close()
-        except OSError:
-            pass
-
-
-OperandActor._on_running = _on_running
-OperandActor._on_finished = _on_finished
+register_actor_implementation(OperandActor, DelayedOperandActor)
