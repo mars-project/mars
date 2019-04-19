@@ -37,7 +37,7 @@ cdef class Actor:
     cpdef pre_destroy(self)
 
 
-cdef class FunctionActor(Actor):
+cdef class _FunctionActor(Actor):
     cpdef on_receive(self, message)
 
 
