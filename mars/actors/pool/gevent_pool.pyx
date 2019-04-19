@@ -243,7 +243,7 @@ cdef class LocalActorPool:
         actor.post_create()
         return ActorRef(self.address, uid)
 
-    cpdef bint has_actor(self, object actor_uid):
+    cpdef bint has_actor(self, object actor_uid) except -128:
         if actor_uid not in self.actors:
             return False
         return True

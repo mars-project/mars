@@ -19,7 +19,8 @@ import multiprocessing
 from .cluster cimport ClusterInfo
 
 
-__all__ = ['ActorRef', 'Actor', 'FunctionActor', 'create_actor_pool', 'new_client']
+__all__ = ['ActorRef', 'Actor', 'FunctionActor', 'create_actor_pool', 'new_client',
+           'register_actor_implementation', 'unregister_actor_implementation']
 
 
 cdef class ActorRef:
@@ -104,10 +105,22 @@ cdef class Actor:
         pass
 
 
-cdef class FunctionActor(Actor):
+cdef dict _actor_implementation = dict()
+
+
+cdef class _FunctionActor(Actor):
     cpdef on_receive(self, message):
         method, args, kwargs = message[0], message[1:-1], message[-1]
         return getattr(self, method)(*args, **kwargs)
+
+
+class FunctionActor(_FunctionActor):
+    def __new__(cls, *args, **kwargs):
+        try:
+            return _actor_implementation[id(cls)](*args, **kwargs)
+        except KeyError:
+            return super(FunctionActor, cls).__new__(cls, *args, **kwargs)
+
 
 
 cpdef object create_actor_pool(str address=None, int n_process=0, object distributor=None,
@@ -138,4 +151,15 @@ cpdef object new_client(object parallel=None, str backend='gevent'):
     from .pool.gevent_pool import ActorClient
 
     return ActorClient(parallel=parallel)
+
+
+def register_actor_implementation(actor_cls, impl_cls):
+    _actor_implementation[id(actor_cls)] = impl_cls
+
+
+def unregister_actor_implementation(actor_cls):
+    try:
+        del _actor_implementation[id(actor_cls)]
+    except KeyError:
+        pass
 
