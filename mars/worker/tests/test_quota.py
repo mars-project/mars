@@ -16,9 +16,10 @@ import functools
 import time
 
 from mars.actors import create_actor_pool
+from mars.cluster_info import ClusterInfoActor
 from mars.tests.core import patch_method
 from mars.utils import get_next_port, build_exc_info
-from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, ProcessHelperActor
+from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, ProcessHelperActor, StatusActor
 from mars.worker.tests.base import WorkerCase
 
 
@@ -26,6 +27,10 @@ class Test(WorkerCase):
     def testQuota(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
+            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
 
             quota_ref.process_quota('non_exist')
@@ -41,13 +46,13 @@ class Test(WorkerCase):
 
             quota_ref.process_quota('0')
             self.assertIn('0', quota_ref.dump_data().proc_sizes)
-            quota_ref.apply_allocation('0', 190, new_key=('0', 0))
+            quota_ref.alter_allocation('0', 190, new_key=('0', 0))
             self.assertEqual(quota_ref.dump_data().allocations[('0', 0)], 190)
 
             quota_ref.hold_quota(('0', 0))
             self.assertIn(('0', 0), quota_ref.dump_data().hold_sizes)
-            quota_ref.apply_allocation(('0', 0), 180, new_key=('0', 1))
-            self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 180)
+            quota_ref.alter_allocation(('0', 0), new_key=('0', 1))
+            self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 190)
 
             with self.run_actor_test(pool) as test_actor:
                 ref = test_actor.promise_ref(QuotaActor.default_name())
@@ -72,6 +77,10 @@ class Test(WorkerCase):
 
             quota_ref.release_quotas([('0', 1)])
             self.assertIn('3', quota_ref.dump_data().allocations)
+
+            self.assertFalse(quota_ref.request_quota('4', 180))
+            quota_ref.alter_allocations(['3'], [50])
+            self.assertIn('4', quota_ref.dump_data().allocations)
 
     def testQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
@@ -137,6 +146,10 @@ class Test(WorkerCase):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
                 patch_method(resource.virtual_memory, new=lambda: mock_mem_stat) as _:
+            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(ProcessHelperActor, uid=ProcessHelperActor.default_name())
             quota_ref = pool.create_actor(MemQuotaActor, 300, refresh_time=0.1,

@@ -313,7 +313,7 @@ class CpuCalcActor(WorkerActor):
                     apply_alloc_sizes[get_chunk_key(k)] += data_size
 
             for k, v in apply_alloc_sizes.items():
-                self._mem_quota_ref.apply_allocation(k, v)
+                self._mem_quota_ref.alter_allocation(k, v)
 
             if self._status_ref:
                 self._status_ref.update_mean_stats(
