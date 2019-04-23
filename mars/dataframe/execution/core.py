@@ -12,8 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..expressions.core import DataFrameShuffleProxy
 from .datasource import register_data_source_handler
+from .arithmetic import register_arithmetic_handler
 
 
 def register_dataframe_execution_handler():
+    from ...executor import register
+    register(DataFrameShuffleProxy, lambda *_: None)
+
     register_data_source_handler()
+    register_arithmetic_handler()

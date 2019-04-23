@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import numpy as np
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
 
 from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
+from ...utils import tokenize
 from ..core import IndexValue
 
 
@@ -84,18 +91,37 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
     return tuple(row_chunk_size), tuple(col_chunk_size)
 
 
-def parse_index(index_value):
+def parse_index(index_value, store_data=False):
     import pandas as pd
 
+    def _extract_property(index, ret_data):
+        kw = {
+            '_is_monotonic_increasing': index.is_monotonic_increasing,
+            '_is_monotonic_decreasing': index.is_monotonic_decreasing,
+            '_is_unique': index.is_unique,
+            '_min_val': index.min(),
+            '_max_val': index.max(),
+            '_min_val_close': True,
+            '_max_val_close': True,
+            '_key': tokenize(index),
+        }
+        if ret_data:
+            kw['_data'] = index.values
+        return kw
+
     def _serialize_index(index):
-        return getattr(IndexValue, type(index).__name__)(_name=index.name)
+        params = _extract_property(index, store_data)
+        return getattr(IndexValue, type(index).__name__)(_name=index.name, **params)
 
     def _serialize_range_index(index):
+        params = _extract_property(index, False)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
-                                     _name=index.name)
+                                     _name=index.name, **params)
 
     def _serialize_multi_index(index):
-        return IndexValue.MultiIndex(_names=index.names)
+        kw = _extract_property(index, store_data)
+        kw['_sortorder'] = index.sortorder
+        return IndexValue.MultiIndex(_names=index.names, **kw)
 
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))
@@ -103,3 +129,158 @@ def parse_index(index_value):
         return IndexValue(_index_value=_serialize_multi_index(index_value))
     else:
         return IndexValue(_index_value=_serialize_index(index_value))
+
+
+def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, right_increase):
+    """
+    Split the original two min_max into new min_max. Each min_max should be a list
+    in which each item should be a 4-tuple indicates that this chunk's min value,
+    whether the min value is close, the max value, and whether the max value is close.
+    The return value would be a nested list, each item is a list
+    indicates that how this chunk should be split into.
+
+    :param left_min_max: the left min_max
+    :param left_increase: if the original data of left is increased
+    :param right_min_max: the right min_max
+    :param right_increase: if the original data of right is increased
+    :return: nested list in which each item indicates how min_max is split
+
+    >>> left_min_max = [(0, True, 3, True), (4, True, 8, True), (12, True, 18, True),
+    >>>                 (20, True, 22, True)]
+    >>> right_min_max = [(2, True, 6, True), (7, True, 9, True), (10, True, 14, True),
+    >>>                  (18, True, 19, True)]
+    >>> l, r = split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+    >>> l
+    [[(0, True, 2, False), (2, True, 3, True)], [(3, False, 4, False), (4, True, 6, True), (6, False, 7, False),
+    (7, True, 8, True)], [(8, False, 9, True), (10, True, 12, False), (12, True, 14, True), (14, False, 18, False),
+    (18, True, 18, True)], [(18, False, 19, True), [20, True, 22, True]]]
+    >>> r
+    [[(0, True, 2, False), (2, True, 3, True), (3, False, 4, False), (4, True, 6, True)],
+    [(6, False, 7, False), (7, True, 8, True), (8, False, 9, True)], [(10, True, 12, False), (12, True, 14, True)],
+    [(14, False, 18, False), (18, True, 18, True), (18, False, 19, True), [20, True, 22, True]]]
+    """
+    left_idx_to_min_max = [[] for _ in left_min_max]
+    right_idx_to_min_max = [[] for _ in right_min_max]
+    left_curr_min_max = list(left_min_max[0])
+    right_curr_min_max = list(right_min_max[0])
+    left_curr_idx = right_curr_idx = 0
+    left_terminate = right_terminate = False
+
+    while not left_terminate or not right_terminate:
+        if left_terminate:
+            left_idx_to_min_max[left_curr_idx].append(tuple(right_curr_min_max))
+            right_idx_to_min_max[right_curr_idx].append(tuple(right_curr_min_max))
+            if right_curr_idx + 1 >= len(right_min_max):
+                right_terminate = True
+            else:
+                right_curr_idx += 1
+                right_curr_min_max = list(right_min_max[right_curr_idx])
+        elif right_terminate:
+            right_idx_to_min_max[right_curr_idx].append(tuple(left_curr_min_max))
+            left_idx_to_min_max[left_curr_idx].append(tuple(left_curr_min_max))
+            if left_curr_idx + 1 >= len(left_min_max):
+                left_terminate = True
+            else:
+                left_curr_idx += 1
+                left_curr_min_max = list(left_min_max[left_curr_idx])
+        elif left_curr_min_max[0] < right_curr_min_max[0]:
+            # left min < right min
+            right_min = [right_curr_min_max[0], not right_curr_min_max[1]]
+            max_val = min(left_curr_min_max[2:], right_min)
+            assert len(max_val) == 2
+            min_max = (left_curr_min_max[0], left_curr_min_max[1],
+                       max_val[0], max_val[1])
+            left_idx_to_min_max[left_curr_idx].append(min_max)
+            right_idx_to_min_max[right_curr_idx].append(min_max)
+            if left_curr_min_max[2:] == max_val:
+                # left max < right min
+                if left_curr_idx + 1 >= len(left_min_max):
+                    left_terminate = True
+                else:
+                    left_curr_idx += 1
+                    left_curr_min_max = list(left_min_max[left_curr_idx])
+            else:
+                # from left min(left min close) to right min(exclude right min close)
+                left_curr_min_max[:2] = right_curr_min_max[:2]
+        elif left_curr_min_max[0] > right_curr_min_max[0]:
+            # left min > right min
+            left_min = [left_curr_min_max[0], not left_curr_min_max[1]]
+            max_val = min(right_curr_min_max[2:], left_min)
+            min_max = (right_curr_min_max[0], right_curr_min_max[1],
+                       max_val[0], max_val[1])
+            left_idx_to_min_max[left_curr_idx].append(min_max)
+            right_idx_to_min_max[right_curr_idx].append(min_max)
+            if right_curr_min_max[2:] == max_val:
+                # right max < left min
+                if right_curr_idx + 1 >= len(right_min_max):
+                    right_terminate = True
+                else:
+                    right_curr_idx += 1
+                    right_curr_min_max = list(right_min_max[right_curr_idx])
+            else:
+                # from left min(left min close) to right min(exclude right min close)
+                right_curr_min_max[:2] = left_curr_min_max[:2]
+        else:
+            # left min == right min
+            max_val = min(left_curr_min_max[2:], right_curr_min_max[2:])
+            assert len(max_val) == 2
+            min_max = (left_curr_min_max[0], left_curr_min_max[1], max_val[0], max_val[1])
+            left_idx_to_min_max[left_curr_idx].append(min_max)
+            right_idx_to_min_max[right_curr_idx].append(min_max)
+            if max_val == left_curr_min_max[2:]:
+                if left_curr_idx + 1 >= len(left_min_max):
+                    left_terminate = True
+                else:
+                    left_curr_idx += 1
+                    left_curr_min_max = list(left_min_max[left_curr_idx])
+            else:
+                left_curr_min_max[:2] = max_val[0], not max_val[1]
+            if max_val == right_curr_min_max[2:]:
+                if right_curr_idx + 1 >= len(right_min_max):
+                    right_terminate = True
+                else:
+                    right_curr_idx += 1
+                    right_curr_min_max = list(right_min_max[right_curr_idx])
+            else:
+                right_curr_min_max[:2] = max_val[0], not max_val[1]
+
+    if not left_increase:
+        left_idx_to_min_max = list(reversed(left_idx_to_min_max))
+    if not right_increase:
+        right_idx_to_min_max = list(reversed(right_idx_to_min_max))
+
+    return left_idx_to_min_max, right_idx_to_min_max
+
+
+def build_split_idx_to_origin_idx(splits, increase=True):
+    # splits' len is equal to the original chunk size on a specified axis,
+    # splits is sth like [[(0, True, 2, True), (2, False, 3, True)]]
+    # which means there is one input chunk, and will be split into 2 out chunks
+    # in this function, we want to build a new dict from the out chunk index to
+    # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
+    if not increase:
+        splits = list(reversed(splits))
+    out_idx = itertools.count(0)
+    res = dict()
+    for origin_idx, _ in enumerate(splits):
+        for pos in range(len(splits[origin_idx])):
+            if increase:
+                o_idx = origin_idx
+            else:
+                o_idx = len(splits) - origin_idx - 1
+            res[next(out_idx)] = o_idx, pos
+    return res
+
+
+def _build_empty_df(dtypes):
+    columns = dtypes.index.tolist()
+    df = pd.DataFrame(columns=columns)
+    for c, d in zip(columns, dtypes):
+        df[c] = pd.Series(dtype=d)
+    return df
+
+
+def infer_dtypes(left_dtypes, right_dtypes, operator):
+    left = _build_empty_df(left_dtypes)
+    right = _build_empty_df(right_dtypes)
+    return operator(left, right).dtypes

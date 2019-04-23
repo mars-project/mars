@@ -16,32 +16,75 @@
 
 from ..core import ChunkData, Chunk, Entity, TilesableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, SeriesField, \
-    BoolField, Int64Field, Int32Field, ListField, SliceField, OneOfField, ReferenceField
+    BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, OneOfField, ReferenceField
 
 
 class IndexValue(Serializable):
     __slots__ = ()
 
-    class Index(Serializable):
+    class IndexBase(Serializable):
+        _key = StringField('key')  # to identify if the index is the same
+        _is_monotonic_increasing = BoolField('is_monotonic_increasing')
+        _is_monotonic_decreasing = BoolField('is_monotonic_decreasing')
+        _is_unique = BoolField('is_unique')
+        _should_be_monotonic = BoolField('should_be_monotonic')
+        _max_val = AnyField('max_val')
+        _max_val_close = BoolField('max_val_close')
+        _min_val = AnyField('min_val')
+        _min_val_close = BoolField('min_val_close')
+
+        @property
+        def is_monotonic_increasing(self):
+            return self._is_monotonic_increasing
+
+        @property
+        def is_monotonic_decreasing(self):
+            return self._is_monotonic_decreasing
+
+        @property
+        def is_unique(self):
+            return self._is_unique
+
+        @property
+        def should_be_monotonic(self):
+            return self._should_be_monotonic
+
+        @property
+        def min_val(self):
+            return self._min_val
+
+        @property
+        def min_val_close(self):
+            return self._min_val_close
+
+        @property
+        def max_val(self):
+            return self._max_val
+
+        @property
+        def max_val_close(self):
+            return self._max_val_close
+
+    class Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class RangeIndex(Serializable):
+    class RangeIndex(IndexBase):
         _name = AnyField('name')
         _slice = SliceField('slice')
 
-    class CategoricalIndex(Serializable):
+    class CategoricalIndex(IndexBase):
         _name = AnyField('name')
         _categories = ListField('categories')
         _ordered = BoolField('ordered')
 
-    class IntervalIndex(Serializable):
+    class IntervalIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _closed = BoolField('closed')
 
-    class DatetimeIndex(Serializable):
+    class DatetimeIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _freq = AnyField('freq')
@@ -53,7 +96,7 @@ class IndexValue(Serializable):
         _dayfirst = BoolField('dayfirst')
         _yearfirst = BoolField('yearfirst')
 
-    class TimedeltaIndex(Serializable):
+    class TimedeltaIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _unit = AnyField('unit')
@@ -63,7 +106,7 @@ class IndexValue(Serializable):
         _end = AnyField('end')
         _closed = AnyField('closed')
 
-    class PeriodIndex(Serializable):
+    class PeriodIndex(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _freq = AnyField('freq')
@@ -80,25 +123,24 @@ class IndexValue(Serializable):
         _tz = AnyField('tz')
         _dtype = DataTypeField('dtype')
 
-    class Int64Index(Serializable):
+    class Int64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class UInt64Index(Serializable):
+    class UInt64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class Float64Index(Serializable):
+    class Float64Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
         _dtype = DataTypeField('dtype')
 
-    class MultiIndex(Serializable):
+    class MultiIndex(IndexBase):
         _names = ListField('name')
-        _levels = ListField('levels')
-        _labels = ListField('labels')
+        _data = ListField('data')
         _sortorder = Int32Field('sortorder')
 
     _index_value = OneOfField('index_value', index=Index,
@@ -112,6 +154,42 @@ class IndexValue(Serializable):
         # return object for tokenize
         v = self._index_value
         return [type(v).__name__] + [getattr(v, f, None) for f in v.__slots__]
+
+    @property
+    def value(self):
+        return self._index_value
+
+    @property
+    def is_monotonic_increasing(self):
+        return self._index_value.is_monotonic_increasing
+
+    @property
+    def is_monotonic_decreasing(self):
+        return self._index_value.is_monotonic_decreasing
+
+    @property
+    def is_monotonic_increasing_or_decreasing(self):
+        return self.is_monotonic_increasing or self.is_monotonic_decreasing
+
+    @property
+    def is_unique(self):
+        return self._index_value.is_unique
+
+    @property
+    def min_val(self):
+        return self._index_value.min_val
+
+    @property
+    def min_val_close(self):
+        return self._index_value.min_val_close
+
+    @property
+    def max_val(self):
+        return self._index_value.max_val
+
+    @property
+    def max_val_close(self):
+        return self._index_value.max_val_close
 
 
 class IndexChunkData(ChunkData):
@@ -224,10 +302,14 @@ class DataFrameChunkData(ChunkData):
     # optional field
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
+    _columns_value = ReferenceField('columns_value', IndexValue)
 
     @property
     def dtypes(self):
-        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+        dt = getattr(self, '_dtypes', None)
+        if dt is not None:
+            return dt
+        return getattr(self.op, 'dtypes', None)
 
     @property
     def index_value(self):
@@ -235,7 +317,7 @@ class DataFrameChunkData(ChunkData):
 
     @property
     def columns(self):
-        return self._columns
+        return self._columns_value
 
 
 class DataFrameChunk(Chunk):
@@ -249,13 +331,17 @@ class DataFrameData(TilesableData):
     # optional field
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
+    _columns_value = ReferenceField('columns_value', IndexValue)
     _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
     @property
     def dtypes(self):
-        return getattr(self, '_dtypes', None) or getattr(self.op, 'dtypes', None)
+        dt = getattr(self, '_dtypes', None)
+        if dt is not None:
+            return dt
+        return getattr(self.op, 'dtypes', None)
 
     @property
     def index_value(self):
@@ -263,7 +349,7 @@ class DataFrameData(TilesableData):
 
     @property
     def columns(self):
-        return self._columns
+        return self._columns_value
 
 
 class DataFrame(Entity):
@@ -271,5 +357,7 @@ class DataFrame(Entity):
     _allow_data_type_ = (DataFrameData,)
 
 
+INDEX_TYPE = (Index, IndexData)
+SERIES_TYPE = (Series, SeriesData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)

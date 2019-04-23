@@ -6,26 +6,74 @@ import "mars/serialize/protos/value.proto";
 message IndexValue {
     message Index {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value dtype = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message RangeIndex {
         Value name = 1;
         Value slice = 2;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message CategoricalIndex {
         Value name = 1;
-        repeated Value categories = 2;
+        Value categories = 2;
         bool ordered = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message IntervalIndex {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         bool closed = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message DatetimeIndex {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value freq = 3;
         Value start = 4;
         int64 periods = 5;
@@ -34,20 +82,44 @@ message IndexValue {
         Value tz = 8;
         bool dayfirst = 9;
         bool yearfirst = 10;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message TimedeltaIndex {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value unit = 3;
         Value freq = 4;
         Value start = 5;
         int64 periods = 6;
         Value end = 7;
         Value closed = 8;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message PeriodIndex {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value freq = 3;
         Value start = 4;
         int64 periods = 5;
@@ -61,27 +133,86 @@ message IndexValue {
         Value second = 13;
         Value tz = 14;
         Value dtype = 15;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message Int64Index {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value dtype = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message UInt64Index {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value dtype = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message Float64Index {
         Value name = 1;
-        repeated Value data = 2;
+        Value data = 2;
         Value dtype = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
     message MultiIndex {
         repeated Value names = 1;
-        repeated Value levels = 2;
-        repeated Value labels = 3;
-        int32 sortorder = 4;
+        Value data = 2;
+        int32 sortorder = 3;
+        // public fields
+        string key = 51;
+        bool is_monotonic_increasing = 52;
+        bool is_monotonic_decreasing = 53;
+        bool is_unique = 54;
+        // this is indication that this index should be monotonic increasing
+        // in pandas, but in Mars, it may be not
+        bool should_be_monotonic = 55;
+        Value max_val = 56;
+        Value min_val = 57;
+        bool max_val_close = 58;
+        bool min_val_close = 59;
     }
 
     oneof index_value {

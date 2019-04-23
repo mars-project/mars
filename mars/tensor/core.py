@@ -105,11 +105,6 @@ class TensorData(TilesableData):
 
     isscalar = is_scalar
 
-    def is_sparse(self):
-        return self.op.is_sparse()
-
-    issparse = is_sparse
-
     def tosparse(self):
         if self.issparse():
             return self

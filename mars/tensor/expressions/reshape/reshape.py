@@ -182,8 +182,7 @@ class TensorReshape(Reshape, TensorOperandMixin):
         for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
                                            itertools.product(*chunk_size_idxes)):
             shuffle_key = ','.join(str(o) for o in chunk_idx)
-            chunk_op = TensorReshapeReduce(_input=proxy_chunk, _dtype=tensor.dtype,
-                                           _shuffle_key=shuffle_key)
+            chunk_op = TensorReshapeReduce(_dtype=tensor.dtype, _shuffle_key=shuffle_key)
             shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], chunk_shape, index=chunk_idx))
 
         new_op = op.copy()

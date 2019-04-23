@@ -13,6 +13,7 @@ message ChunkDef {
     Value dtype = 6;  // chunk of Tensor, Index, Series
     Value dtypes = 10; // chunk of DataFrame
     IndexValue index_value = 11; // chunk of DataFrame and Series
+    IndexValue columns_value = 12; // chunk of DataFrame
     repeated ChunkDef composed = 7;
     Value params = 8;
     string id = 9;

@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/value.proto\"\xc2\x0f\n\nIndexValue\x12\"\n\x05index\x18\x01 \x01(\x0b\x32\x11.IndexValue.IndexH\x00\x12-\n\x0brange_index\x18\x02 \x01(\x0b\x32\x16.IndexValue.RangeIndexH\x00\x12\x39\n\x11\x63\x61tegorical_index\x18\x03 \x01(\x0b\x32\x1c.IndexValue.CategoricalIndexH\x00\x12\x33\n\x0einterval_index\x18\x04 \x01(\x0b\x32\x19.IndexValue.IntervalIndexH\x00\x12\x33\n\x0e\x64\x61tetime_index\x18\x05 \x01(\x0b\x32\x19.IndexValue.DatetimeIndexH\x00\x12\x35\n\x0ftimedelta_index\x18\x06 \x01(\x0b\x32\x1a.IndexValue.TimedeltaIndexH\x00\x12/\n\x0cperiod_index\x18\x07 \x01(\x0b\x32\x17.IndexValue.PeriodIndexH\x00\x12-\n\x0bint64_index\x18\x08 \x01(\x0b\x32\x16.IndexValue.Int64IndexH\x00\x12/\n\x0cuint64_index\x18\t \x01(\x0b\x32\x17.IndexValue.UInt64IndexH\x00\x12\x31\n\rfloat64_index\x18\n \x01(\x0b\x32\x18.IndexValue.Float64IndexH\x00\x12-\n\x0bmulti_index\x18\x0b \x01(\x0b\x32\x16.IndexValue.MultiIndexH\x00\x1aJ\n\x05Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x1a\x39\n\nRangeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x15\n\x05slice\x18\x02 \x01(\x0b\x32\x06.Value\x1aU\n\x10\x43\x61tegoricalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x1a\n\ncategories\x18\x02 \x03(\x0b\x32\x06.Value\x12\x0f\n\x07ordered\x18\x03 \x01(\x08\x1aK\n\rIntervalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x0e\n\x06\x63losed\x18\x03 \x01(\x08\x1a\xdf\x01\n\rDatetimeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x07 \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x08 \x01(\x0b\x32\x06.Value\x12\x10\n\x08\x64\x61yfirst\x18\t \x01(\x08\x12\x11\n\tyearfirst\x18\n \x01(\x08\x1a\xbd\x01\n\x0eTimedeltaIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x14\n\x04unit\x18\x03 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x04 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x05 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x06 \x01(\x03\x12\x13\n\x03\x65nd\x18\x07 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x08 \x01(\x0b\x32\x06.Value\x1a\xd7\x02\n\x0bPeriodIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x14\n\x04year\x18\x07 \x01(\x0b\x32\x06.Value\x12\x15\n\x05month\x18\x08 \x01(\x0b\x32\x06.Value\x12\x16\n\x06quater\x18\t \x01(\x0b\x32\x06.Value\x12\x13\n\x03\x64\x61y\x18\n \x01(\x0b\x32\x06.Value\x12\x14\n\x04hour\x18\x0b \x01(\x0b\x32\x06.Value\x12\x16\n\x06minute\x18\x0c \x01(\x0b\x32\x06.Value\x12\x16\n\x06second\x18\r \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x0e \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x0f \x01(\x0b\x32\x06.Value\x1aO\n\nInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x1aP\n\x0bUInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x1aQ\n\x0c\x46loat64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x03(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x1a\x66\n\nMultiIndex\x12\x15\n\x05names\x18\x01 \x03(\x0b\x32\x06.Value\x12\x16\n\x06levels\x18\x02 \x03(\x0b\x32\x06.Value\x12\x16\n\x06labels\x18\x03 \x03(\x0b\x32\x06.Value\x12\x11\n\tsortorder\x18\x04 \x01(\x05\x42\r\n\x0bindex_valueb\x06proto3')
+  serialized_pb=_b('\n&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/value.proto\"\xc5\"\n\nIndexValue\x12\"\n\x05index\x18\x01 \x01(\x0b\x32\x11.IndexValue.IndexH\x00\x12-\n\x0brange_index\x18\x02 \x01(\x0b\x32\x16.IndexValue.RangeIndexH\x00\x12\x39\n\x11\x63\x61tegorical_index\x18\x03 \x01(\x0b\x32\x1c.IndexValue.CategoricalIndexH\x00\x12\x33\n\x0einterval_index\x18\x04 \x01(\x0b\x32\x19.IndexValue.IntervalIndexH\x00\x12\x33\n\x0e\x64\x61tetime_index\x18\x05 \x01(\x0b\x32\x19.IndexValue.DatetimeIndexH\x00\x12\x35\n\x0ftimedelta_index\x18\x06 \x01(\x0b\x32\x1a.IndexValue.TimedeltaIndexH\x00\x12/\n\x0cperiod_index\x18\x07 \x01(\x0b\x32\x17.IndexValue.PeriodIndexH\x00\x12-\n\x0bint64_index\x18\x08 \x01(\x0b\x32\x16.IndexValue.Int64IndexH\x00\x12/\n\x0cuint64_index\x18\t \x01(\x0b\x32\x17.IndexValue.UInt64IndexH\x00\x12\x31\n\rfloat64_index\x18\n \x01(\x0b\x32\x18.IndexValue.Float64IndexH\x00\x12-\n\x0bmulti_index\x18\x0b \x01(\x0b\x32\x16.IndexValue.MultiIndexH\x00\x1a\xa9\x02\n\x05Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x98\x02\n\nRangeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x15\n\x05slice\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb4\x02\n\x10\x43\x61tegoricalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x1a\n\ncategories\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07ordered\x18\x03 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaa\x02\n\rIntervalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63losed\x18\x03 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xbe\x03\n\rDatetimeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x07 \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x08 \x01(\x0b\x32\x06.Value\x12\x10\n\x08\x64\x61yfirst\x18\t \x01(\x08\x12\x11\n\tyearfirst\x18\n \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x9c\x03\n\x0eTimedeltaIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04unit\x18\x03 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x04 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x05 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x06 \x01(\x03\x12\x13\n\x03\x65nd\x18\x07 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x08 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb6\x04\n\x0bPeriodIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x14\n\x04year\x18\x07 \x01(\x0b\x32\x06.Value\x12\x15\n\x05month\x18\x08 \x01(\x0b\x32\x06.Value\x12\x16\n\x06quater\x18\t \x01(\x0b\x32\x06.Value\x12\x13\n\x03\x64\x61y\x18\n \x01(\x0b\x32\x06.Value\x12\x14\n\x04hour\x18\x0b \x01(\x0b\x32\x06.Value\x12\x16\n\x06minute\x18\x0c \x01(\x0b\x32\x06.Value\x12\x16\n\x06second\x18\r \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x0e \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x0f \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xae\x02\n\nInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaf\x02\n\x0bUInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb0\x02\n\x0c\x46loat64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xab\x02\n\nMultiIndex\x12\x15\n\x05names\x18\x01 \x03(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x11\n\tsortorder\x18\x03 \x01(\x05\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x42\r\n\x0bindex_valueb\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,])
 
@@ -43,8 +43,8 @@ _INDEXVALUE_INDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.Index.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -52,6 +52,69 @@ _INDEXVALUE_INDEX = _descriptor.Descriptor(
       name='dtype', full_name='IndexValue.Index.dtype', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.Index.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.Index.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.Index.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.Index.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.Index.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.Index.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.Index.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.Index.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.Index.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -67,8 +130,8 @@ _INDEXVALUE_INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=638,
-  serialized_end=712,
+  serialized_start=639,
+  serialized_end=936,
 )
 
 _INDEXVALUE_RANGEINDEX = _descriptor.Descriptor(
@@ -92,6 +155,69 @@ _INDEXVALUE_RANGEINDEX = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.RangeIndex.key', index=2,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.RangeIndex.is_monotonic_increasing', index=3,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.RangeIndex.is_monotonic_decreasing', index=4,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.RangeIndex.is_unique', index=5,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.RangeIndex.should_be_monotonic', index=6,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.RangeIndex.max_val', index=7,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.RangeIndex.min_val', index=8,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.RangeIndex.max_val_close', index=9,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.RangeIndex.min_val_close', index=10,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -104,8 +230,8 @@ _INDEXVALUE_RANGEINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=714,
-  serialized_end=771,
+  serialized_start=939,
+  serialized_end=1219,
 )
 
 _INDEXVALUE_CATEGORICALINDEX = _descriptor.Descriptor(
@@ -124,14 +250,77 @@ _INDEXVALUE_CATEGORICALINDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='categories', full_name='IndexValue.CategoricalIndex.categories', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='ordered', full_name='IndexValue.CategoricalIndex.ordered', index=2,
       number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.CategoricalIndex.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.CategoricalIndex.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.CategoricalIndex.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.CategoricalIndex.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.CategoricalIndex.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.CategoricalIndex.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.CategoricalIndex.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.CategoricalIndex.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.CategoricalIndex.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -148,8 +337,8 @@ _INDEXVALUE_CATEGORICALINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=773,
-  serialized_end=858,
+  serialized_start=1222,
+  serialized_end=1530,
 )
 
 _INDEXVALUE_INTERVALINDEX = _descriptor.Descriptor(
@@ -168,14 +357,77 @@ _INDEXVALUE_INTERVALINDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.IntervalIndex.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='closed', full_name='IndexValue.IntervalIndex.closed', index=2,
       number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.IntervalIndex.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.IntervalIndex.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.IntervalIndex.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.IntervalIndex.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.IntervalIndex.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.IntervalIndex.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.IntervalIndex.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.IntervalIndex.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.IntervalIndex.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -192,8 +444,8 @@ _INDEXVALUE_INTERVALINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=860,
-  serialized_end=935,
+  serialized_start=1533,
+  serialized_end=1831,
 )
 
 _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
@@ -212,8 +464,8 @@ _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.DatetimeIndex.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -273,6 +525,69 @@ _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.DatetimeIndex.key', index=10,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.DatetimeIndex.is_monotonic_increasing', index=11,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.DatetimeIndex.is_monotonic_decreasing', index=12,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.DatetimeIndex.is_unique', index=13,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.DatetimeIndex.should_be_monotonic', index=14,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.DatetimeIndex.max_val', index=15,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.DatetimeIndex.min_val', index=16,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.DatetimeIndex.max_val_close', index=17,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.DatetimeIndex.min_val_close', index=18,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -285,8 +600,8 @@ _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=938,
-  serialized_end=1161,
+  serialized_start=1834,
+  serialized_end=2280,
 )
 
 _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
@@ -305,8 +620,8 @@ _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.TimedeltaIndex.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -352,6 +667,69 @@ _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.TimedeltaIndex.key', index=8,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.TimedeltaIndex.is_monotonic_increasing', index=9,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.TimedeltaIndex.is_monotonic_decreasing', index=10,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.TimedeltaIndex.is_unique', index=11,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.TimedeltaIndex.should_be_monotonic', index=12,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.TimedeltaIndex.max_val', index=13,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.TimedeltaIndex.min_val', index=14,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.TimedeltaIndex.max_val_close', index=15,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.TimedeltaIndex.min_val_close', index=16,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -364,8 +742,8 @@ _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1164,
-  serialized_end=1353,
+  serialized_start=2283,
+  serialized_end=2695,
 )
 
 _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
@@ -384,8 +762,8 @@ _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.PeriodIndex.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -480,6 +858,69 @@ _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.PeriodIndex.key', index=15,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.PeriodIndex.is_monotonic_increasing', index=16,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.PeriodIndex.is_monotonic_decreasing', index=17,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.PeriodIndex.is_unique', index=18,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.PeriodIndex.should_be_monotonic', index=19,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.PeriodIndex.max_val', index=20,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.PeriodIndex.min_val', index=21,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.PeriodIndex.max_val_close', index=22,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.PeriodIndex.min_val_close', index=23,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -492,8 +933,8 @@ _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1356,
-  serialized_end=1699,
+  serialized_start=2698,
+  serialized_end=3264,
 )
 
 _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
@@ -512,8 +953,8 @@ _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.Int64Index.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -521,6 +962,69 @@ _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
       name='dtype', full_name='IndexValue.Int64Index.dtype', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.Int64Index.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.Int64Index.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.Int64Index.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.Int64Index.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.Int64Index.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.Int64Index.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.Int64Index.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.Int64Index.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.Int64Index.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -536,8 +1040,8 @@ _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1701,
-  serialized_end=1780,
+  serialized_start=3267,
+  serialized_end=3569,
 )
 
 _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
@@ -556,8 +1060,8 @@ _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.UInt64Index.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -565,6 +1069,69 @@ _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
       name='dtype', full_name='IndexValue.UInt64Index.dtype', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.UInt64Index.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.UInt64Index.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.UInt64Index.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.UInt64Index.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.UInt64Index.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.UInt64Index.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.UInt64Index.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.UInt64Index.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.UInt64Index.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -580,8 +1147,8 @@ _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1782,
-  serialized_end=1862,
+  serialized_start=3572,
+  serialized_end=3875,
 )
 
 _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
@@ -600,8 +1167,8 @@ _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='IndexValue.Float64Index.data', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -609,6 +1176,69 @@ _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
       name='dtype', full_name='IndexValue.Float64Index.dtype', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.Float64Index.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.Float64Index.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.Float64Index.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.Float64Index.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.Float64Index.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.Float64Index.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.Float64Index.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.Float64Index.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.Float64Index.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -624,8 +1254,8 @@ _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1864,
-  serialized_end=1945,
+  serialized_start=3878,
+  serialized_end=4182,
 )
 
 _INDEXVALUE_MULTIINDEX = _descriptor.Descriptor(
@@ -643,23 +1273,79 @@ _INDEXVALUE_MULTIINDEX = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='levels', full_name='IndexValue.MultiIndex.levels', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      name='data', full_name='IndexValue.MultiIndex.data', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='labels', full_name='IndexValue.MultiIndex.labels', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='sortorder', full_name='IndexValue.MultiIndex.sortorder', index=3,
-      number=4, type=5, cpp_type=1, label=1,
+      name='sortorder', full_name='IndexValue.MultiIndex.sortorder', index=2,
+      number=3, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexValue.MultiIndex.key', index=3,
+      number=51, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_increasing', full_name='IndexValue.MultiIndex.is_monotonic_increasing', index=4,
+      number=52, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_monotonic_decreasing', full_name='IndexValue.MultiIndex.is_monotonic_decreasing', index=5,
+      number=53, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='is_unique', full_name='IndexValue.MultiIndex.is_unique', index=6,
+      number=54, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='should_be_monotonic', full_name='IndexValue.MultiIndex.should_be_monotonic', index=7,
+      number=55, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val', full_name='IndexValue.MultiIndex.max_val', index=8,
+      number=56, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val', full_name='IndexValue.MultiIndex.min_val', index=9,
+      number=57, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_val_close', full_name='IndexValue.MultiIndex.max_val_close', index=10,
+      number=58, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='min_val_close', full_name='IndexValue.MultiIndex.min_val_close', index=11,
+      number=59, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
@@ -675,8 +1361,8 @@ _INDEXVALUE_MULTIINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1947,
-  serialized_end=2049,
+  serialized_start=4185,
+  serialized_end=4484,
 )
 
 _INDEXVALUE = _descriptor.Descriptor(
@@ -779,21 +1465,29 @@ _INDEXVALUE = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=78,
-  serialized_end=2064,
+  serialized_end=4499,
 )
 
 _INDEXVALUE_INDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INDEX.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_RANGEINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_RANGEINDEX.fields_by_name['slice'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_RANGEINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_RANGEINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_RANGEINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['categories'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_CATEGORICALINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_CATEGORICALINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_CATEGORICALINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_INTERVALINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INTERVALINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INTERVALINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INTERVALINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INTERVALINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_DATETIMEINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_DATETIMEINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -802,6 +1496,8 @@ _INDEXVALUE_DATETIMEINDEX.fields_by_name['start'].message_type = mars_dot_serial
 _INDEXVALUE_DATETIMEINDEX.fields_by_name['end'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_DATETIMEINDEX.fields_by_name['closed'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_DATETIMEINDEX.fields_by_name['tz'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_DATETIMEINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_DATETIMEINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_DATETIMEINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -810,6 +1506,8 @@ _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['freq'].message_type = mars_dot_serial
 _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['start'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['end'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_TIMEDELTAINDEX.fields_by_name['closed'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_TIMEDELTAINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_TIMEDELTAINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_TIMEDELTAINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_PERIODINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_PERIODINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -825,22 +1523,31 @@ _INDEXVALUE_PERIODINDEX.fields_by_name['minute'].message_type = mars_dot_seriali
 _INDEXVALUE_PERIODINDEX.fields_by_name['second'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_PERIODINDEX.fields_by_name['tz'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_PERIODINDEX.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_PERIODINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_PERIODINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_PERIODINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_INT64INDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INT64INDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INT64INDEX.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INT64INDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_INT64INDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_INT64INDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_UINT64INDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_UINT64INDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_UINT64INDEX.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_UINT64INDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_UINT64INDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_UINT64INDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_FLOAT64INDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_FLOAT64INDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_FLOAT64INDEX.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_FLOAT64INDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_FLOAT64INDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_FLOAT64INDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_MULTIINDEX.fields_by_name['names'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_INDEXVALUE_MULTIINDEX.fields_by_name['levels'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_INDEXVALUE_MULTIINDEX.fields_by_name['labels'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_MULTIINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_MULTIINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_MULTIINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_MULTIINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE.fields_by_name['index'].message_type = _INDEXVALUE_INDEX
 _INDEXVALUE.fields_by_name['range_index'].message_type = _INDEXVALUE_RANGEINDEX

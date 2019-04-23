@@ -50,7 +50,6 @@ class ShuffleMap(Operand):
 
 class ShuffleReduce(Operand):
     _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
-    _rough_nbytes = Int64Field('rough_nbytes')
 
     @property
     def shuffle_key(self):
