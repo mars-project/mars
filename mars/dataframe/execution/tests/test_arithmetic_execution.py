@@ -85,6 +85,26 @@ class Test(TestBase):
 
         pd.testing.assert_frame_equal(expected, result)
 
+        # only 1 axis is monotonic
+        # data1 with columns split into [0...4], [5...9],
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7],
+                             columns=np.arange(10))
+        df1 = from_pandas(data1, chunk_size=5)
+        # data2 with columns split into [6...11], [2, 5],
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2],
+                             columns=np.arange(11, 1, -1))
+        df2 = from_pandas(data2, chunk_size=6)
+
+        df3 = add(df1, df2)
+
+        graph = df3.build_graph(tiled=True)
+        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
+
+        expected = data1 + data2
+        result = self._concat(expected.index, expected.dtypes, results)
+
+        pd.testing.assert_frame_equal(expected, result)
+
     def testAddWithAllShuffleExecution(self):
         # no axis is monotonic
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
