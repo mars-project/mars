@@ -94,7 +94,7 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
 def parse_index(index_value, store_data=False):
     import pandas as pd
 
-    def _parse_property(index, ret_data):
+    def _extract_property(index, ret_data):
         kw = {
             '_is_monotonic_increasing': index.is_monotonic_increasing,
             '_is_monotonic_decreasing': index.is_monotonic_decreasing,
@@ -110,16 +110,16 @@ def parse_index(index_value, store_data=False):
         return kw
 
     def _serialize_index(index):
-        params = _parse_property(index, store_data)
+        params = _extract_property(index, store_data)
         return getattr(IndexValue, type(index).__name__)(_name=index.name, **params)
 
     def _serialize_range_index(index):
-        params = _parse_property(index, False)
+        params = _extract_property(index, False)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
                                      _name=index.name, **params)
 
     def _serialize_multi_index(index):
-        kw = _parse_property(index, store_data)
+        kw = _extract_property(index, store_data)
         kw['_sortorder'] = index.sortorder
         return IndexValue.MultiIndex(_names=index.names, **kw)
 
@@ -133,13 +133,17 @@ def parse_index(index_value, store_data=False):
 
 def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, right_increase):
     """
-    Split the original min_max into new min_max.
+    Split the original two min_max into new min_max. Each min_max should be a list
+    in which each item should be a 4-tuple indicates that this chunk's min value,
+    whether the min value is close, the max value, and whether the max value is close.
+    The return value would be a nested list, each item is a list
+    indicates that how this chunk should be split into.
 
     :param left_min_max: the left min_max
     :param left_increase: if the original data of left is increased
     :param right_min_max: the right min_max
     :param right_increase: if the original data of right is increased
-    :return:
+    :return: nested list in which each item indicates how min_max is split
 
     >>> left_min_max = [(0, True, 3, True), (4, True, 8, True), (12, True, 18, True),
     >>>                 (20, True, 22, True)]
@@ -258,7 +262,7 @@ def build_split_idx_to_origin_idx(splits, increase=True):
         splits = list(reversed(splits))
     out_idx = itertools.count(0)
     res = dict()
-    for origin_idx in range(len(splits)):
+    for origin_idx, _ in enumerate(splits):
         for pos in range(len(splits[origin_idx])):
             if increase:
                 o_idx = origin_idx

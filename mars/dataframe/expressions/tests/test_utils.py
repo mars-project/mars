@@ -125,6 +125,17 @@ class Test(unittest.TestCase):
                           [(6, False, 7, False), (10, True, 12, False)],
                           [(13, True, 14, False)]])
 
+        # left min_max like ([.., .., 4 True], [4, False, ..., ...]
+        # right min_max like ([..., ..., 4 False], [4, True, ..., ...]
+        left_min_max = [[1, False, 4, True], [4, False, 6, True]]
+        right_min_max = [[1, False, 4, False], [4, True, 6, True]]
+        left_splits, right_splits = split_monotonic_index_min_max(
+            left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 4, False), (4, True, 4, True)], [(4, False, 6, True)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 4, False)], [(4, True, 4, True), (4, False, 6, True)]])
+
         # identical index
         left_min_max = [[1, False, 3, True], [4, False, 6, True]]
         right_min_max = [[1, False, 3, True], [4, False, 6, True]]

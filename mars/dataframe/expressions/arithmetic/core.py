@@ -110,6 +110,107 @@ class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
         return self.outputs[0].shape
 
 
+class _AxisMinMaxSplitInfo(object):
+    def __init__(self, left_split, left_increase, right_split, right_increase):
+        self._left_split = left_split
+        self._right_split =right_split
+
+        self._left_split_idx_to_origin_idx = \
+            build_split_idx_to_origin_idx(self._left_split, left_increase)
+        self._right_split_idx_to_origin_idx = \
+            build_split_idx_to_origin_idx(self._right_split, right_increase)
+
+    def get_origin_left_idx(self, idx):
+        return self._left_split_idx_to_origin_idx[idx][0]
+
+    def get_origin_left_split(self, idx):
+        left_idx, left_inner_idx = \
+            self._left_split_idx_to_origin_idx[idx]
+        return self._left_split[left_idx][left_inner_idx]
+
+    def get_origin_right_idx(self, idx):
+        return self._right_split_idx_to_origin_idx[idx][0]
+
+    def get_origin_right_split(self, idx):
+        right_idx, right_inner_idx = \
+            self._right_split_idx_to_origin_idx[idx]
+        return self._right_split[right_idx][right_inner_idx]
+
+
+class _MinMaxSplitInfo(object):
+    def __init__(self):
+        self.row_min_max_split_info = None
+        self.col_min_max_split_info = None
+
+    def all_axes_can_split(self):
+        return self.row_min_max_split_info is not None and \
+               self.col_min_max_split_info is not None
+
+    def one_axis_can_split(self):
+        return (self.row_min_max_split_info is None) ^ \
+               (self.col_min_max_split_info is None)
+
+    def no_axis_can_split(self):
+        return self.row_min_max_split_info is None and \
+               self.col_min_max_split_info is None
+
+    def __getitem__(self, i):
+        return [self.row_min_max_split_info, self.col_min_max_split_info][i]
+
+    def __setitem__(self, axis, axis_min_max_split_info):
+        assert axis in {0, 1}
+        if axis == 0:
+            self.row_min_max_split_info = axis_min_max_split_info
+        else:
+            self.col_min_max_split_info = axis_min_max_split_info
+
+    def get_row_left_idx(self, out_idx):
+        return self.row_min_max_split_info.get_origin_left_idx(out_idx)
+
+    def get_row_left_split(self, out_idx):
+        return self.row_min_max_split_info.get_origin_left_split(out_idx)
+
+    def get_col_left_idx(self, out_idx):
+        return self.col_min_max_split_info.get_origin_left_idx(out_idx)
+
+    def get_col_left_split(self, out_idx):
+        return self.col_min_max_split_info.get_origin_left_split(out_idx)
+
+    def get_row_right_idx(self, out_idx):
+        return self.row_min_max_split_info.get_origin_right_idx(out_idx)
+
+    def get_row_right_split(self, out_idx):
+        return self.row_min_max_split_info.get_origin_right_split(out_idx)
+
+    def get_col_right_idx(self, out_idx):
+        return self.col_min_max_split_info.get_origin_right_idx(out_idx)
+
+    def get_col_right_split(self, out_idx):
+        return self.col_min_max_split_info.get_origin_right_split(out_idx)
+
+    def get_axis_idx(self, axis, left_or_right, out_idx):
+        if axis == 0 and left_or_right == 0:
+            return self.get_row_left_idx(out_idx)
+        elif axis == 0 and left_or_right == 1:
+            return self.get_row_right_idx(out_idx)
+        elif axis == 1 and left_or_right == 0:
+            return self.get_col_left_idx(out_idx)
+        else:
+            assert axis == 1 and left_or_right == 1
+            return self.get_col_right_idx(out_idx)
+
+    def get_axis_split(self, axis, left_or_right, out_idx):
+        if axis == 0 and left_or_right == 0:
+            return self.get_row_left_split(out_idx)
+        elif axis == 0 and left_or_right == 1:
+            return self.get_row_right_split(out_idx)
+        elif axis == 1 and left_or_right == 0:
+            return self.get_col_left_split(out_idx)
+        else:
+            assert axis == 1 and left_or_right == 1
+            return self.get_col_right_split(out_idx)
+
+
 class DataFrameBinOpMixin(DataFrameOperandMixin):
     __slots__ = ()
 
@@ -164,25 +265,12 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _gen_out_chunks_without_shuffle(cls, op, splits, out_shape, left, right):
         out_chunks = []
         for out_idx in itertools.product(*(range(s) for s in out_shape)):
-            if splits[0] is not None:
-                # index does not need shuffle
-                left_row_idx, left_row_inner_idx = splits[0][0][1][out_idx[0]]
-                right_row_idx, right_row_inner_idx = splits[0][1][1][out_idx[0]]
-            else:
-                left_row_idx = left_row_inner_idx = \
-                    right_row_idx = right_row_inner_idx = None
-            if splits[1] is not None:
-                # column does not need shuffle
-                left_column_idx, left_column_inner_idx = splits[1][0][1][out_idx[1]]
-                right_column_idx, right_column_inner_idx = splits[1][1][1][out_idx[1]]
-            else:
-                left_column_idx = left_column_inner_idx = \
-                    right_column_idx = right_column_inner_idx = None
-
             # does not need shuffle
-            left_chunk = left.cix[left_row_idx, left_column_idx]
-            left_index_min_max = splits[0][0][0][left_row_idx][left_row_inner_idx]
-            left_column_min_max = splits[1][0][0][left_column_idx][left_column_inner_idx]
+            left_row_idx = splits.get_row_left_idx(out_idx[0])
+            left_col_idx = splits.get_col_left_idx(out_idx[1])
+            left_index_min_max = splits.get_row_left_split(out_idx[0])
+            left_column_min_max = splits.get_col_left_split(out_idx[1])
+            left_chunk = left.cix[left_row_idx, left_col_idx]
             left_align_op = DataFrameIndexAlignMap(
                 index_min_max=left_index_min_max, column_min_max=left_column_min_max,
                 dtypes=cls._get_dtypes(left_chunk.dtypes, left_column_min_max),
@@ -190,9 +278,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan),
                                                      index=out_idx)
 
-            right_chunk = right.cix[right_row_idx, right_column_idx]
-            right_index_min_max = splits[0][1][0][right_row_idx][right_row_inner_idx]
-            right_column_min_max = splits[1][1][0][right_column_idx][right_column_inner_idx]
+            right_row_idx = splits.get_row_right_idx(out_idx[0])
+            right_col_idx = splits.get_col_right_idx(out_idx[1])
+            right_index_min_max = splits.get_row_right_split(out_idx[0])
+            right_column_min_max = splits.get_col_right_split(out_idx[1])
+            right_chunk = right.cix[right_row_idx, right_col_idx]
             right_align_op = DataFrameIndexAlignMap(
                 index_min_max=right_index_min_max, column_min_max=right_column_min_max,
                 dtypes=cls._get_dtypes(right.dtypes, right_column_min_max),
@@ -216,22 +306,20 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         out_chunks = []
         for align_axis_idx in range(out_shape[align_axis]):
             reduce_chunks = [[], []]
-            for i in range(2):  # left and right
+            for left_or_right in range(2):  # left and right
                 if align_axis == 0:
-                    row_idx, row_inner_idx = splits[align_axis][i][1][align_axis_idx]
                     kw = {
-                        'index_min_max': splits[align_axis][i][0][row_idx][row_inner_idx],
+                        'index_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx),
                         'column_shuffle_size': shuffle_size,
                     }
-                    input_idx = row_idx
+                    input_idx = splits.get_axis_idx(align_axis, left_or_right, align_axis_idx)
                 else:
-                    column_idx, column_inner_idx = splits[align_axis][i][1][align_axis_idx]
                     kw = {
                         'index_shuffle_size': shuffle_size,
-                        'column_min_max': splits[align_axis][i][0][column_idx][column_inner_idx],
+                        'column_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx)
                     }
-                    input_idx = column_idx
-                inp = left if i == 0 else right
+                    input_idx = splits.get_axis_idx(align_axis, left_or_right, align_axis_idx)
+                inp = left if left_or_right == 0 else right
                 input_chunks = [c for c in inp.chunks if c.index[align_axis] == input_idx]
                 map_chunks = []
                 for j, input_chunk in enumerate(input_chunks):
@@ -245,7 +333,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                     reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
                                                           shuffle_key=','.join(str(idx) for idx in reduce_idx))
-                    reduce_chunks[i].append(
+                    reduce_chunks[left_or_right].append(
                         reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=reduce_idx))
 
             assert len(reduce_chunks[0]) == len(reduce_chunks[1])
@@ -293,7 +381,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         # if both of the inputs are DataFrames, axis is just ignored
         left, right = op.inputs
         nsplits = [[], []]
-        splits = [None, None]
+        splits = _MinMaxSplitInfo()
 
         # first, we decide the chunk size on each axis
         # we perform the same logic for both index and columns
@@ -307,8 +395,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     *(left_chunk_index_min_max + right_chunk_index_min_max))
                 left_increase = left_chunk_index_min_max[1]
                 right_increase = right_chunk_index_min_max[1]
-                splits[axis] = (left_splits, build_split_idx_to_origin_idx(left_splits, left_increase)), \
-                               (right_splits, build_split_idx_to_origin_idx(right_splits, right_increase))
+                splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
+                                                    right_splits, right_increase)
                 nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
             else:
                 # do shuffle
@@ -318,14 +406,15 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
 
         out_shape = tuple(len(ns) for ns in nsplits)
-        if all(split is not None for split in splits):
+        if splits.all_axes_can_split():
             # no shuffle for all axes
             out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left, right)
-        elif not all(split is None for split in splits):
+        elif splits.one_axis_can_split():
             # one axis needs shuffle
             out_chunks = cls._gen_out_chunks_with_one_shuffle(op, splits, out_shape, left, right)
         else:
             # all axes need shuffle
+            assert splits.no_axis_can_split()
             out_chunks = cls._gen_out_chunks_with_all_shuffle(op, out_shape, left, right)
 
         new_op = op.copy()
