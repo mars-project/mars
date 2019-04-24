@@ -71,6 +71,10 @@ class IndexValue(Serializable):
         def max_val_close(self):
             return self._max_val_close
 
+        @property
+        def key(self):
+            return self._key
+
         def to_pandas(self):
             kw = {field.tag_name(None): getattr(self, attr, None)
                   for attr, field in self._FIELDS.items()
@@ -87,6 +91,10 @@ class IndexValue(Serializable):
     class RangeIndex(IndexBase):
         _name = AnyField('name')
         _slice = SliceField('slice')
+
+        @property
+        def slice(self):
+            return self._slice
 
         def to_pandas(self):
             slc = self._slice
@@ -185,6 +193,10 @@ class IndexValue(Serializable):
     @property
     def value(self):
         return self._index_value
+
+    @property
+    def key(self):
+        return self._index_value.key
 
     @property
     def is_monotonic_increasing(self):

@@ -21,6 +21,7 @@ try:
 except ImportError:  # pragma: no cover
     pd = None
 
+from mars.dataframe.core import IndexValue
 from mars.dataframe.expressions.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
@@ -46,6 +47,14 @@ class Test(TestBase):
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = add(df1, df2)
+
+        # test df3's index and columns
+        pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df3.index_value.key, df1.index_value.key)
+        self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+
         df3.tiles()
 
         data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
@@ -111,6 +120,14 @@ class Test(TestBase):
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = add(df1, df2)
+
+        # test df3's index and columns
+        pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df3.index_value.key, df1.index_value.key)
+        self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+
         df3.tiles()
 
         data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
@@ -180,6 +197,14 @@ class Test(TestBase):
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = add(df1, df2)
+
+        # test df3's index and columns
+        pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df3.index_value.key, df1.index_value.key)
+        self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+
         df3.tiles()
 
         self.assertEqual(df3.chunk_shape, (2, 2))

@@ -91,7 +91,7 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
     return tuple(row_chunk_size), tuple(col_chunk_size)
 
 
-def parse_index(index_value, store_data=False):
+def parse_index(index_value, store_data=False, key=None):
     import pandas as pd
 
     def _extract_property(index, ret_data):
@@ -103,7 +103,7 @@ def parse_index(index_value, store_data=False):
             '_max_val': index.max(),
             '_min_val_close': True,
             '_max_val_close': True,
-            '_key': tokenize(index),
+            '_key': key or tokenize(index),
         }
         if ret_data:
             kw['_data'] = index.values
@@ -272,15 +272,10 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     return res
 
 
-def _build_empty_df(dtypes):
+def build_empty_df(dtypes):
     columns = dtypes.index
     df = pd.DataFrame(columns=columns)
     for c, d in zip(columns, dtypes):
         df[c] = pd.Series(dtype=d)
     return df
 
-
-def infer_dtypes(left_dtypes, right_dtypes, operator):
-    left = _build_empty_df(left_dtypes)
-    right = _build_empty_df(right_dtypes)
-    return operator(left, right).dtypes

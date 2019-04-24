@@ -22,8 +22,9 @@ from .... import opcodes as OperandDef
 from ....serialize import AnyField, BoolField, Int32Field, KeyField
 from ...core import DATAFRAME_TYPE
 from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
-from ..utils import split_monotonic_index_min_max, infer_dtypes, \
-    build_split_idx_to_origin_idx, parse_index
+from ..utils import parse_index, split_monotonic_index_min_max, \
+    build_split_idx_to_origin_idx
+from .utils import infer_dtypes, infer_index_value
 
 
 class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
@@ -438,7 +439,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         if x1.dtypes is not None and x2.dtypes is not None:
             dtypes = infer_dtypes(x1.dtypes, x2.dtypes, self._operator)
             columns = parse_index(dtypes.index, store_data=True)
-        return self.new_dataframe([x1, x2], shape=(np.nan, np.nan), dtypes=dtypes)
+        if x1.index_value is not None and x2.index_value is not None:
+            index = infer_index_value(x1.index_value, x2.index_value, self._operator)
+        return self.new_dataframe([x1, x2], shape=(np.nan, np.nan), dtypes=dtypes,
+                                  columns_value=columns, index_value=index)
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)
