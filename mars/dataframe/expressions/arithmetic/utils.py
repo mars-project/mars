@@ -1,0 +1,47 @@
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
+
+from ..utils import build_empty_df, parse_index
+from ...core import IndexValue
+from ....utils import tokenize
+
+
+def infer_dtypes(left_dtypes, right_dtypes, operator):
+    left = build_empty_df(left_dtypes)
+    right = build_empty_df(right_dtypes)
+    return operator(left, right).dtypes
+
+
+def infer_index_value(left_index_value, right_index_value, operator):
+    if isinstance(left_index_value.value, IndexValue.RangeIndex) and \
+            isinstance(right_index_value.value, IndexValue.RangeIndex):
+        if left_index_value.value.slice == right_index_value.value.slice:
+            return left_index_value
+        key = tokenize(left_index_value.key, right_index_value.key,
+                       operator.__name__)
+        return parse_index(pd.Int64Index([]), key=key)
+
+    if left_index_value.key == right_index_value.key:
+        return left_index_value
+
+    left = pd.DataFrame(index=left_index_value.to_pandas())
+    right = pd.DataFrame(index=right_index_value.to_pandas())
+    out_index = operator(left, right).index
+    key = tokenize(left_index_value.key, right_index_value.key, operator.__name__)
+    return parse_index(out_index, key=key)
