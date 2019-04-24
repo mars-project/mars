@@ -241,6 +241,14 @@ def _randint(ctx, chunk):
     return _rand(ctx, chunk)
 
 
+def _random_estimate_size(ctx, chunk):
+    if not chunk.is_sparse() or not getattr(chunk.op, '_density', None):
+        raise NotImplementedError
+    # use density to estimate real memory usage
+    nbytes = int(chunk.nbytes * getattr(chunk.op, '_density'))
+    ctx[chunk.key] = (nbytes, nbytes)
+
+
 def register_random_handler():
     from .core import register
     from ...operands import random as random_op
@@ -248,4 +256,4 @@ def register_random_handler():
     register(random_op.SimpleRandomData, _rand)
     register(random_op.Distribution, _distribution)
     register(random.TensorMultivariateNormal, _multivariate_normal)
-    register(random.TensorRandint, _randint)
+    register(random.TensorRandint, _randint, _random_estimate_size)
