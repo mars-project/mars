@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/value.proto\"\xc5\"\n\nIndexValue\x12\"\n\x05index\x18\x01 \x01(\x0b\x32\x11.IndexValue.IndexH\x00\x12-\n\x0brange_index\x18\x02 \x01(\x0b\x32\x16.IndexValue.RangeIndexH\x00\x12\x39\n\x11\x63\x61tegorical_index\x18\x03 \x01(\x0b\x32\x1c.IndexValue.CategoricalIndexH\x00\x12\x33\n\x0einterval_index\x18\x04 \x01(\x0b\x32\x19.IndexValue.IntervalIndexH\x00\x12\x33\n\x0e\x64\x61tetime_index\x18\x05 \x01(\x0b\x32\x19.IndexValue.DatetimeIndexH\x00\x12\x35\n\x0ftimedelta_index\x18\x06 \x01(\x0b\x32\x1a.IndexValue.TimedeltaIndexH\x00\x12/\n\x0cperiod_index\x18\x07 \x01(\x0b\x32\x17.IndexValue.PeriodIndexH\x00\x12-\n\x0bint64_index\x18\x08 \x01(\x0b\x32\x16.IndexValue.Int64IndexH\x00\x12/\n\x0cuint64_index\x18\t \x01(\x0b\x32\x17.IndexValue.UInt64IndexH\x00\x12\x31\n\rfloat64_index\x18\n \x01(\x0b\x32\x18.IndexValue.Float64IndexH\x00\x12-\n\x0bmulti_index\x18\x0b \x01(\x0b\x32\x16.IndexValue.MultiIndexH\x00\x1a\xa9\x02\n\x05Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x98\x02\n\nRangeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x15\n\x05slice\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb4\x02\n\x10\x43\x61tegoricalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x1a\n\ncategories\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07ordered\x18\x03 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaa\x02\n\rIntervalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63losed\x18\x03 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xbe\x03\n\rDatetimeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x07 \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x08 \x01(\x0b\x32\x06.Value\x12\x10\n\x08\x64\x61yfirst\x18\t \x01(\x08\x12\x11\n\tyearfirst\x18\n \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x9c\x03\n\x0eTimedeltaIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04unit\x18\x03 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x04 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x05 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x06 \x01(\x03\x12\x13\n\x03\x65nd\x18\x07 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x08 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb6\x04\n\x0bPeriodIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x14\n\x04year\x18\x07 \x01(\x0b\x32\x06.Value\x12\x15\n\x05month\x18\x08 \x01(\x0b\x32\x06.Value\x12\x16\n\x06quater\x18\t \x01(\x0b\x32\x06.Value\x12\x13\n\x03\x64\x61y\x18\n \x01(\x0b\x32\x06.Value\x12\x14\n\x04hour\x18\x0b \x01(\x0b\x32\x06.Value\x12\x16\n\x06minute\x18\x0c \x01(\x0b\x32\x06.Value\x12\x16\n\x06second\x18\r \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x0e \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x0f \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xae\x02\n\nInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaf\x02\n\x0bUInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb0\x02\n\x0c\x46loat64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xab\x02\n\nMultiIndex\x12\x15\n\x05names\x18\x01 \x03(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x11\n\tsortorder\x18\x03 \x01(\x05\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x42\r\n\x0bindex_valueb\x06proto3')
+  serialized_pb=_b('\n&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/value.proto\"\xdb\"\n\nIndexValue\x12\"\n\x05index\x18\x01 \x01(\x0b\x32\x11.IndexValue.IndexH\x00\x12-\n\x0brange_index\x18\x02 \x01(\x0b\x32\x16.IndexValue.RangeIndexH\x00\x12\x39\n\x11\x63\x61tegorical_index\x18\x03 \x01(\x0b\x32\x1c.IndexValue.CategoricalIndexH\x00\x12\x33\n\x0einterval_index\x18\x04 \x01(\x0b\x32\x19.IndexValue.IntervalIndexH\x00\x12\x33\n\x0e\x64\x61tetime_index\x18\x05 \x01(\x0b\x32\x19.IndexValue.DatetimeIndexH\x00\x12\x35\n\x0ftimedelta_index\x18\x06 \x01(\x0b\x32\x1a.IndexValue.TimedeltaIndexH\x00\x12/\n\x0cperiod_index\x18\x07 \x01(\x0b\x32\x17.IndexValue.PeriodIndexH\x00\x12-\n\x0bint64_index\x18\x08 \x01(\x0b\x32\x16.IndexValue.Int64IndexH\x00\x12/\n\x0cuint64_index\x18\t \x01(\x0b\x32\x17.IndexValue.UInt64IndexH\x00\x12\x31\n\rfloat64_index\x18\n \x01(\x0b\x32\x18.IndexValue.Float64IndexH\x00\x12-\n\x0bmulti_index\x18\x0b \x01(\x0b\x32\x16.IndexValue.MultiIndexH\x00\x1a\xa9\x02\n\x05Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x98\x02\n\nRangeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x15\n\x05slice\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xca\x02\n\x10\x43\x61tegoricalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x1a\n\ncategories\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07ordered\x18\x04 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaa\x02\n\rIntervalIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63losed\x18\x03 \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xbe\x03\n\rDatetimeIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x07 \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x08 \x01(\x0b\x32\x06.Value\x12\x10\n\x08\x64\x61yfirst\x18\t \x01(\x08\x12\x11\n\tyearfirst\x18\n \x01(\x08\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\x9c\x03\n\x0eTimedeltaIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04unit\x18\x03 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x04 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x05 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x06 \x01(\x03\x12\x13\n\x03\x65nd\x18\x07 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x63losed\x18\x08 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb6\x04\n\x0bPeriodIndex\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x66req\x18\x03 \x01(\x0b\x32\x06.Value\x12\x15\n\x05start\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0f\n\x07periods\x18\x05 \x01(\x03\x12\x13\n\x03\x65nd\x18\x06 \x01(\x0b\x32\x06.Value\x12\x14\n\x04year\x18\x07 \x01(\x0b\x32\x06.Value\x12\x15\n\x05month\x18\x08 \x01(\x0b\x32\x06.Value\x12\x16\n\x06quater\x18\t \x01(\x0b\x32\x06.Value\x12\x13\n\x03\x64\x61y\x18\n \x01(\x0b\x32\x06.Value\x12\x14\n\x04hour\x18\x0b \x01(\x0b\x32\x06.Value\x12\x16\n\x06minute\x18\x0c \x01(\x0b\x32\x06.Value\x12\x16\n\x06second\x18\r \x01(\x0b\x32\x06.Value\x12\x12\n\x02tz\x18\x0e \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x0f \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xae\x02\n\nInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xaf\x02\n\x0bUInt64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xb0\x02\n\x0c\x46loat64Index\x12\x14\n\x04name\x18\x01 \x01(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x1a\xab\x02\n\nMultiIndex\x12\x15\n\x05names\x18\x01 \x03(\x0b\x32\x06.Value\x12\x14\n\x04\x64\x61ta\x18\x02 \x01(\x0b\x32\x06.Value\x12\x11\n\tsortorder\x18\x03 \x01(\x05\x12\x0b\n\x03key\x18\x33 \x01(\t\x12\x1f\n\x17is_monotonic_increasing\x18\x34 \x01(\x08\x12\x1f\n\x17is_monotonic_decreasing\x18\x35 \x01(\x08\x12\x11\n\tis_unique\x18\x36 \x01(\x08\x12\x1b\n\x13should_be_monotonic\x18\x37 \x01(\x08\x12\x17\n\x07max_val\x18\x38 \x01(\x0b\x32\x06.Value\x12\x17\n\x07min_val\x18\x39 \x01(\x0b\x32\x06.Value\x12\x15\n\rmax_val_close\x18: \x01(\x08\x12\x15\n\rmin_val_close\x18; \x01(\x08\x42\r\n\x0bindex_valueb\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,])
 
@@ -249,77 +249,84 @@ _INDEXVALUE_CATEGORICALINDEX = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='categories', full_name='IndexValue.CategoricalIndex.categories', index=1,
+      name='data', full_name='IndexValue.CategoricalIndex.data', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='ordered', full_name='IndexValue.CategoricalIndex.ordered', index=2,
-      number=3, type=8, cpp_type=7, label=1,
+      name='categories', full_name='IndexValue.CategoricalIndex.categories', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='ordered', full_name='IndexValue.CategoricalIndex.ordered', index=3,
+      number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='key', full_name='IndexValue.CategoricalIndex.key', index=3,
+      name='key', full_name='IndexValue.CategoricalIndex.key', index=4,
       number=51, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='is_monotonic_increasing', full_name='IndexValue.CategoricalIndex.is_monotonic_increasing', index=4,
+      name='is_monotonic_increasing', full_name='IndexValue.CategoricalIndex.is_monotonic_increasing', index=5,
       number=52, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='is_monotonic_decreasing', full_name='IndexValue.CategoricalIndex.is_monotonic_decreasing', index=5,
+      name='is_monotonic_decreasing', full_name='IndexValue.CategoricalIndex.is_monotonic_decreasing', index=6,
       number=53, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='is_unique', full_name='IndexValue.CategoricalIndex.is_unique', index=6,
+      name='is_unique', full_name='IndexValue.CategoricalIndex.is_unique', index=7,
       number=54, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='should_be_monotonic', full_name='IndexValue.CategoricalIndex.should_be_monotonic', index=7,
+      name='should_be_monotonic', full_name='IndexValue.CategoricalIndex.should_be_monotonic', index=8,
       number=55, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='max_val', full_name='IndexValue.CategoricalIndex.max_val', index=8,
+      name='max_val', full_name='IndexValue.CategoricalIndex.max_val', index=9,
       number=56, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='min_val', full_name='IndexValue.CategoricalIndex.min_val', index=9,
+      name='min_val', full_name='IndexValue.CategoricalIndex.min_val', index=10,
       number=57, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='max_val_close', full_name='IndexValue.CategoricalIndex.max_val_close', index=10,
+      name='max_val_close', full_name='IndexValue.CategoricalIndex.max_val_close', index=11,
       number=58, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='min_val_close', full_name='IndexValue.CategoricalIndex.min_val_close', index=11,
+      name='min_val_close', full_name='IndexValue.CategoricalIndex.min_val_close', index=12,
       number=59, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -338,7 +345,7 @@ _INDEXVALUE_CATEGORICALINDEX = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1222,
-  serialized_end=1530,
+  serialized_end=1552,
 )
 
 _INDEXVALUE_INTERVALINDEX = _descriptor.Descriptor(
@@ -444,8 +451,8 @@ _INDEXVALUE_INTERVALINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1533,
-  serialized_end=1831,
+  serialized_start=1555,
+  serialized_end=1853,
 )
 
 _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
@@ -600,8 +607,8 @@ _INDEXVALUE_DATETIMEINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1834,
-  serialized_end=2280,
+  serialized_start=1856,
+  serialized_end=2302,
 )
 
 _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
@@ -742,8 +749,8 @@ _INDEXVALUE_TIMEDELTAINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2283,
-  serialized_end=2695,
+  serialized_start=2305,
+  serialized_end=2717,
 )
 
 _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
@@ -933,8 +940,8 @@ _INDEXVALUE_PERIODINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2698,
-  serialized_end=3264,
+  serialized_start=2720,
+  serialized_end=3286,
 )
 
 _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
@@ -1040,8 +1047,8 @@ _INDEXVALUE_INT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3267,
-  serialized_end=3569,
+  serialized_start=3289,
+  serialized_end=3591,
 )
 
 _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
@@ -1147,8 +1154,8 @@ _INDEXVALUE_UINT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3572,
-  serialized_end=3875,
+  serialized_start=3594,
+  serialized_end=3897,
 )
 
 _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
@@ -1254,8 +1261,8 @@ _INDEXVALUE_FLOAT64INDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3878,
-  serialized_end=4182,
+  serialized_start=3900,
+  serialized_end=4204,
 )
 
 _INDEXVALUE_MULTIINDEX = _descriptor.Descriptor(
@@ -1361,8 +1368,8 @@ _INDEXVALUE_MULTIINDEX = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4185,
-  serialized_end=4484,
+  serialized_start=4207,
+  serialized_end=4506,
 )
 
 _INDEXVALUE = _descriptor.Descriptor(
@@ -1465,7 +1472,7 @@ _INDEXVALUE = _descriptor.Descriptor(
       index=0, containing_type=None, fields=[]),
   ],
   serialized_start=78,
-  serialized_end=4499,
+  serialized_end=4521,
 )
 
 _INDEXVALUE_INDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -1480,6 +1487,7 @@ _INDEXVALUE_RANGEINDEX.fields_by_name['max_val'].message_type = mars_dot_seriali
 _INDEXVALUE_RANGEINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_RANGEINDEX.containing_type = _INDEXVALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXVALUE_CATEGORICALINDEX.fields_by_name['data'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['categories'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['max_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXVALUE_CATEGORICALINDEX.fields_by_name['min_val'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE

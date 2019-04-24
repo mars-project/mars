@@ -23,7 +23,7 @@ from ....serialize import AnyField, BoolField, Int32Field, KeyField
 from ...core import DATAFRAME_TYPE
 from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import split_monotonic_index_min_max, infer_dtypes, \
-    build_split_idx_to_origin_idx
+    build_split_idx_to_origin_idx, parse_index
 
 
 class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
@@ -434,10 +434,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError
 
     def _call(self, x1, x2):
+        dtypes = columns = index = None
         if x1.dtypes is not None and x2.dtypes is not None:
             dtypes = infer_dtypes(x1.dtypes, x2.dtypes, self._operator)
-        else:
-            dtypes = None
+            columns = parse_index(dtypes.index, store_data=True)
         return self.new_dataframe([x1, x2], shape=(np.nan, np.nan), dtypes=dtypes)
 
     def __call__(self, x1, x2):

@@ -39,8 +39,9 @@ message IndexValue {
     }
     message CategoricalIndex {
         Value name = 1;
-        Value categories = 2;
-        bool ordered = 3;
+        Value data = 2;
+        Value categories = 3;
+        bool ordered = 4;
         // public fields
         string key = 51;
         bool is_monotonic_increasing = 52;

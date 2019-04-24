@@ -273,7 +273,7 @@ def build_split_idx_to_origin_idx(splits, increase=True):
 
 
 def _build_empty_df(dtypes):
-    columns = dtypes.index.tolist()
+    columns = dtypes.index
     df = pd.DataFrame(columns=columns)
     for c, d in zip(columns, dtypes):
         df[c] = pd.Series(dtype=d)

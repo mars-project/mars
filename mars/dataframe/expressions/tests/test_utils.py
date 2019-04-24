@@ -22,8 +22,9 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.config import option_context
+from mars.dataframe.core import IndexValue
 from mars.dataframe.expressions.utils import decide_chunk_sizes, \
-    split_monotonic_index_min_max, build_split_idx_to_origin_idx
+    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -69,6 +70,37 @@ class Test(unittest.TestCase):
             nsplit = decide_chunk_sizes(shape, (10, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
+
+    def testParseIndex(self):
+        index = pd.Int64Index([])
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.Int64Index([1, 2])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.RangeIndex(0, 10, 3)
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.RangeIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b']])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
     def testSplitMonotonicIndexMinMax(self):
         left_min_max = [[0, True, 3, True], [3, False, 5, False]]
