@@ -20,6 +20,7 @@ import numpy as np
 from ....operands import Operand, ShuffleReduce
 from .... import opcodes as OperandDef
 from ....serialize import AnyField, BoolField, Int32Field, KeyField
+from ....utils import classproperty
 from ...core import DATAFRAME_TYPE
 from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
 from ..utils import parse_index, split_monotonic_index_min_max, \
@@ -263,6 +264,16 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return dtypes[f]
 
     @classmethod
+    def _need_align_map(cls, input_chunk, index_min_max, column_min_max):
+        if input_chunk.index_value is None or input_chunk.columns is None:
+            return True
+        if input_chunk.index_value.min_max != index_min_max:
+            return True
+        if input_chunk.columns.min_max != column_min_max:
+            return True
+        return False
+
+    @classmethod
     def _gen_out_chunks_without_shuffle(cls, op, splits, out_shape, left, right):
         out_chunks = []
         for out_idx in itertools.product(*(range(s) for s in out_shape)):
@@ -272,24 +283,30 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             left_index_min_max = splits.get_row_left_split(out_idx[0])
             left_column_min_max = splits.get_col_left_split(out_idx[1])
             left_chunk = left.cix[left_row_idx, left_col_idx]
-            left_align_op = DataFrameIndexAlignMap(
-                index_min_max=left_index_min_max, column_min_max=left_column_min_max,
-                dtypes=cls._get_dtypes(left_chunk.dtypes, left_column_min_max),
-                sparse=left_chunk.issparse())
-            left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan),
-                                                     index=out_idx)
+            if cls._need_align_map(left_chunk, left_index_min_max, left_column_min_max):
+                left_align_op = DataFrameIndexAlignMap(
+                    index_min_max=left_index_min_max, column_min_max=left_column_min_max,
+                    dtypes=cls._get_dtypes(left_chunk.dtypes, left_column_min_max),
+                    sparse=left_chunk.issparse())
+                left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan),
+                                                         index=out_idx)
+            else:
+                left_out_chunk = left_chunk
 
             right_row_idx = splits.get_row_right_idx(out_idx[0])
             right_col_idx = splits.get_col_right_idx(out_idx[1])
             right_index_min_max = splits.get_row_right_split(out_idx[0])
             right_column_min_max = splits.get_col_right_split(out_idx[1])
             right_chunk = right.cix[right_row_idx, right_col_idx]
-            right_align_op = DataFrameIndexAlignMap(
-                index_min_max=right_index_min_max, column_min_max=right_column_min_max,
-                dtypes=cls._get_dtypes(right.dtypes, right_column_min_max),
-                sparse=right_chunk.issparse())
-            right_out_chunk = right_align_op.new_chunk([right_chunk], (np.nan, np.nan),
-                                                       index=out_idx)
+            if cls._need_align_map(right_chunk, right_index_min_max, right_column_min_max):
+                right_align_op = DataFrameIndexAlignMap(
+                    index_min_max=right_index_min_max, column_min_max=right_column_min_max,
+                    dtypes=cls._get_dtypes(right.dtypes, right_column_min_max),
+                    sparse=right_chunk.issparse())
+                right_out_chunk = right_align_op.new_chunk([right_chunk], (np.nan, np.nan),
+                                                           index=out_idx)
+            else:
+                right_out_chunk = right_chunk
 
             out_op = op.copy().reset_key()
             out_chunks.append(
@@ -430,19 +447,52 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         raise NotImplementedError
 
-    @property
+    @classproperty
     def _operator(self):
         raise NotImplementedError
 
-    def _call(self, x1, x2):
+    @classmethod
+    def _calc_properties(cls, x1, x2):
         dtypes = columns = index = None
+        index_shape = column_shape = np.nan
         if x1.dtypes is not None and x2.dtypes is not None:
-            dtypes = infer_dtypes(x1.dtypes, x2.dtypes, self._operator)
+            dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
+            column_shape = len(dtypes)
             columns = parse_index(dtypes.index, store_data=True)
         if x1.index_value is not None and x2.index_value is not None:
-            index = infer_index_value(x1.index_value, x2.index_value, self._operator)
-        return self.new_dataframe([x1, x2], shape=(np.nan, np.nan), dtypes=dtypes,
-                                  columns_value=columns, index_value=index)
+            index = infer_index_value(x1.index_value, x2.index_value, cls._operator)
+            if index.key == x1.index_value.key == x2.index_value.key and \
+                    (not np.isnan(x1.shape[0]) or not np.isnan(x2.shape[0])):
+                index_shape = x1.shape[0] if not np.isnan(x1.shape[0]) else x2.shape[0]
+
+        return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+                'columns_value': columns, 'index_value': index}
+
+    @staticmethod
+    def _merge_shape(*shapes):
+        ret = [np.nan, np.nan]
+        for shape in shapes:
+            for i, s in enumerate(shape):
+                if np.isnan(ret[i]) and not np.isnan(s):
+                    ret[i] = s
+        return tuple(ret)
+
+    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+        properties = self._calc_properties(*inputs)
+        s = properties.pop('shape')
+        shape = self._merge_shape(shape, s)
+        for prop, value in properties.items():
+            if kw.get(prop, None) is None:
+                kw[prop] = value
+
+        return super(DataFrameBinOpMixin, self)._new_chunks(
+            inputs, shape, index=index, output_limit=output_limit,
+            kws=kws, **kw)
+
+    def _call(self, x1, x2):
+        kw = self._calc_properties(x1, x2)
+        shape = kw.pop('shape', None)
+        return self.new_dataframe([x1, x2], shape, **kw)
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)

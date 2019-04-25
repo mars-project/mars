@@ -54,6 +54,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+        self.assertEqual(df3.shape[1], 11)  # columns is recorded, so we can get it
 
         df3.tiles()
 
@@ -76,6 +77,7 @@ class Test(TestBase):
         for c in df3.chunks:
             self.assertIsInstance(c.op, DataFrameAdd)
             self.assertEqual(len(c.inputs), 2)
+            # test shape
             idx = c.index
             # test the left side
             self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlignMap)
@@ -108,6 +110,39 @@ class Test(TestBase):
             self.assertEqual(c.inputs[1].op.column_max, right_column_min_max[2])
             self.assertEqual(c.inputs[1].op.column_max_close, right_column_min_max[3])
 
+    def testAddIdenticalIndexAndColumns(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10),
+                             columns=np.arange(3, 13))
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10),
+                             columns=np.arange(3, 13))
+        df2 = from_pandas(data2, chunk_size=5)
+
+        df3 = add(df1, df2)
+
+        # test df3's index and columns
+        pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertIsInstance(df3.index_value.value, IndexValue.RangeIndex)
+        pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.RangeIndex(0, 10))
+        self.assertEqual(df3.index_value.key, df1.index_value.key)
+        self.assertEqual(df3.index_value.key, df2.index_value.key)
+        self.assertEqual(df3.shape, (10, 10))  # columns is recorded, so we can get it
+
+        df3.tiles()
+
+        self.assertEqual(df3.chunk_shape, (2, 2))
+        for c in df3.chunks:
+            self.assertIsInstance(c.op, DataFrameAdd)
+            self.assertEqual(len(c.inputs), 2)
+            self.assertEqual(c.shape, (5, 5))
+            self.assertEqual(c.index_value.key, df1.cix[c.index].index_value.key)
+            self.assertEqual(c.index_value.key, df2.cix[c.index].index_value.key)
+
+            # test the left side
+            self.assertIs(c.inputs[0], df1.cix[c.index].data)
+            # test the right side
+            self.assertIs(c.inputs[1], df2.cix[c.index].data)
+
     def testAddWithOneShuffle(self):
         # only 1 axis is monotonic
         # data1 with index split into [0...4], [5...9],
@@ -127,6 +162,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+        self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
         df3.tiles()
 
@@ -204,6 +240,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+        self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
         df3.tiles()
 

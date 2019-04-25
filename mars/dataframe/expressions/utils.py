@@ -279,3 +279,18 @@ def build_empty_df(dtypes):
         df[c] = pd.Series(dtype=d)
     return df
 
+
+def filter_index_value(index_value, min_max):
+    min_val, min_val_close, max_val, max_val_close = min_max
+
+    pd_index = index_value.to_pandas()
+    if min_val_close:
+        pd_index = pd_index >= min_val
+    else:
+        pd_index = pd_index > min_val
+    if max_val_close:
+        pd_index = pd_index <= max_val
+    else:
+        pd_index = pd_index < max_val
+
+    return parse_index(pd_index, store_data=True)

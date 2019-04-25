@@ -230,6 +230,11 @@ class IndexValue(Serializable):
     def max_val_close(self):
         return self._index_value.max_val_close
 
+    @property
+    def min_max(self):
+        return self._index_value.min_val, self._index_value.min_val_close, \
+               self._index_value.max_val, self._index_value.max_val_close
+
     def to_pandas(self):
         return self._index_value.to_pandas()
 

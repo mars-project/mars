@@ -37,7 +37,10 @@ def infer_index_value(left_index_value, right_index_value, operator):
                        operator.__name__)
         return parse_index(pd.Int64Index([]), key=key)
 
-    if left_index_value.key == right_index_value.key:
+    # when left index and right index is identical, and both of them are elements unique,
+    # we can infer that the out index should be identical also
+    if left_index_value.is_unique and right_index_value.is_unique and \
+            left_index_value.key == right_index_value.key:
         return left_index_value
 
     left_index = left_index_value.to_pandas()

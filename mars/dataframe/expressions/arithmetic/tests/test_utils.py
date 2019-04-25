@@ -58,7 +58,7 @@ class Test(unittest.TestCase):
         self.assertNotEqual(oival.key, ival1.key)
         self.assertNotEqual(oival.key, ival2.key)
 
-        # same int64 index
+        # same int64 index, all unique
         index1 = pd.Int64Index([1, 2])
         index2 = pd.Int64Index([1, 2])
 
@@ -66,8 +66,21 @@ class Test(unittest.TestCase):
         ival2 = parse_index(index2)
         oival = infer_index_value(ival1, ival2, operator.add)
 
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
         self.assertEqual(oival.key, ival1.key)
         self.assertEqual(oival.key, ival2.key)
+
+        # same int64 index, not all unique
+        index1 = pd.Int64Index([1, 2, 2])
+        index2 = pd.Int64Index([1, 2, 2])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2, operator.add)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
 
         # different int64 index
         index1 = pd.Int64Index([1, 2])
