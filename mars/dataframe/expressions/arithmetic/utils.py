@@ -40,8 +40,8 @@ def infer_index_value(left_index_value, right_index_value, operator):
     if left_index_value.key == right_index_value.key:
         return left_index_value
 
-    left = pd.DataFrame(index=left_index_value.to_pandas())
-    right = pd.DataFrame(index=right_index_value.to_pandas())
-    out_index = operator(left, right).index
+    left_index = left_index_value.to_pandas()
+    right_index = right_index_value.to_pandas()
+    out_index = operator(left_index, right_index)
     key = tokenize(left_index_value.key, right_index_value.key, operator.__name__)
     return parse_index(out_index, key=key)
