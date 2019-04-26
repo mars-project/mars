@@ -157,8 +157,28 @@ class Test(unittest.TestCase):
             value = sess.run(c)
             assert_array_equal(value, np.ones((100, 100)) * 100)
 
+            # check resubmission
             value2 = sess.run(c)
             assert_array_equal(value, value2)
+
+            # check when local compression libs are missing
+            from mars.serialize import dataserializer
+            try:
+                a = mt.ones((10, 10), chunk_size=30)
+                b = mt.ones((10, 10), chunk_size=30)
+                c = a.dot(b)
+                value = sess.run(c)
+                assert_array_equal(value, np.ones((10, 10)) * 10)
+
+                dataserializer.decompressors[dataserializer.COMPRESS_FLAG_LZ4] = None
+                dataserializer.decompressobjs[dataserializer.COMPRESS_FLAG_LZ4] = None
+                dataserializer.compress_openers[dataserializer.COMPRESS_FLAG_LZ4] = None
+
+                assert_array_equal(sess.fetch(c), np.ones((10, 10)) * 10)
+            finally:
+                dataserializer.decompressors[dataserializer.COMPRESS_FLAG_LZ4] = dataserializer.lz4_decompress
+                dataserializer.decompressobjs[dataserializer.COMPRESS_FLAG_LZ4] = dataserializer.lz4_decompressobj
+                dataserializer.compress_openers[dataserializer.COMPRESS_FLAG_LZ4] = dataserializer.lz4_open
 
             va = np.random.randint(0, 10000, (100, 100))
             vb = np.random.randint(0, 10000, (100, 100))

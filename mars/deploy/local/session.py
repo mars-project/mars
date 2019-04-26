@@ -113,7 +113,8 @@ class LocalClusterSession(object):
                 raise ValueError('Cannot fetch the unexecuted tensor')
 
             graph_key = self._get_tensor_graph_key(tensor.key)
-            future = self._api.fetch_data(self._session_id, graph_key, key, wait=False)
+            compressions = dataserializer.get_supported_compressions()
+            future = self._api.fetch_data(self._session_id, graph_key, key, compressions, wait=False)
             futures.append(future)
         return [dataserializer.loads(f.result()) for f in futures]
 

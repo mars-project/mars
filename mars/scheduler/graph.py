@@ -35,7 +35,7 @@ from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy
-from ..serialize.dataserializer import loads, dumps
+from ..serialize import dataserializer
 from ..tensor.core import ChunkData
 from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
@@ -58,7 +58,7 @@ class ResultReceiverActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
-    def fetch_tensor(self, session_id, graph_key, tensor_key):
+    def fetch_tensor(self, session_id, graph_key, tensor_key, compressions):
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
@@ -70,7 +70,13 @@ class ResultReceiverActor(SchedulerActor):
             worker_ip = self._chunk_meta_ref.get_workers(session_id, c.key)[-1]
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
             future = sender_ref.fetch_data(session_id, c.key, _wait=False)
-            return future.result()
+
+            data = future.result()
+            header = dataserializer.read_file_header(data)
+            if header.compress in compressions:
+                return data
+            else:
+                return dataserializer.dumps(dataserializer.loads(data), compress=max(compressions))
         else:
             ctx = dict()
             target_keys = set()
@@ -84,10 +90,10 @@ class ResultReceiverActor(SchedulerActor):
                     ctx[c.key] = future
                 else:
                     target_keys.add(c.key)
-            ctx = dict((k, loads(future.result())) for k, future in six.iteritems(ctx))
+            ctx = dict((k, dataserializer.loads(future.result())) for k, future in six.iteritems(ctx))
             executor = Executor(storage=ctx)
             concat_result = executor.execute_graph(fetch_graph, keys=target_keys)
-            return dumps(concat_result[0])
+            return dataserializer.dumps(concat_result[0], compress=max(compressions))
 
 
 class GraphMetaActor(SchedulerActor):
@@ -936,8 +942,8 @@ class GraphActor(SchedulerActor):
                 continue
             endpoints = self._chunk_meta_ref.get_workers(self._session_id, chunk_key)
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
-            ctx[chunk_key] = loads(sender_ref.fetch_data(self._session_id, chunk_key))
-        return dumps(merge_tensor_chunks(tiled_tensor, ctx))
+            ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
+        return dataserializer.dumps(merge_tensor_chunks(tiled_tensor, ctx))
 
     @log_unhandled
     def check_operand_can_be_freed(self, succ_op_keys):

@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import functools
+import gzip
 import struct
+import sys
+import zlib
+from collections import namedtuple
 
-from ..compat import six, BytesIO
+from ..compat import BytesIO
 
 try:
     import numpy as np
@@ -69,50 +73,105 @@ except ImportError:  # pragma: no cover
     lz4_compress, lz4_compressobj = None, None
     lz4_decompress, lz4_decompressobj = None, None
 
+if sys.version_info[0] < 3:
+    # we don't support gzip in Python 2.7 as
+    # there are many limitations in the gzip module
+    gz_open = None
+    gz_compressobj = gz_decompressobj = None
+    gz_compress = gz_decompress = None
+else:
+    gz_open = gzip.open
+    gz_compressobj = functools.partial(
+        lambda level=-1: zlib.compressobj(level, zlib.DEFLATED, 16 + zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0)
+    )
+    gz_decompressobj = functools.partial(lambda: zlib.decompressobj(16 + zlib.MAX_WBITS))
+    gz_compress = gzip.compress
+    gz_decompress = gzip.decompress
+
 SERIAL_VERSION = 0
-
-
-DATA_FLAG_DENSE = 0
-DATA_FLAG_CSR = 1
 
 COMPRESS_FLAG_NONE = 0
 COMPRESS_FLAG_LZ4 = 1
+COMPRESS_FLAG_GZIP = 2
 
 
 compressors = {
     COMPRESS_FLAG_LZ4: lz4_compress,
+    COMPRESS_FLAG_GZIP: gz_compress,
 }
 compressobjs = {
     COMPRESS_FLAG_NONE: DummyCompress,
     COMPRESS_FLAG_LZ4: lz4_compressobj,
+    COMPRESS_FLAG_GZIP: gz_compressobj,
 }
 decompressors = {
     COMPRESS_FLAG_LZ4: lz4_decompress,
+    COMPRESS_FLAG_GZIP: gz_decompress,
 }
 decompressobjs = {
     COMPRESS_FLAG_NONE: DummyCompress,
     COMPRESS_FLAG_LZ4: lz4_decompressobj,
+    COMPRESS_FLAG_GZIP: gz_decompressobj,
 }
 compress_openers = {
     COMPRESS_FLAG_LZ4: lz4_open,
+    COMPRESS_FLAG_GZIP: gz_open,
 }
 
 
-def load(file, raw=False):
-    # version bytes
-    file.read(2)
-    # total size
-    file.read(8)
+def get_supported_compressions():
+    return set(k for k, v in decompressors.items() if v is not None)
 
-    compress = struct.unpack('<H', file.read(2))[0]
 
+def get_compressobj(compress):
+    return compressobjs[compress]()
+
+
+def get_decompressobj(compress):
+    return decompressobjs[compress]()
+
+
+def open_compression_file(file, compress):
+    if compress != COMPRESS_FLAG_NONE:
+        file = compress_openers[compress](file, 'wb')
+    return file
+
+
+def open_decompression_file(file, compress):
     if compress != COMPRESS_FLAG_NONE:
         file = compress_openers[compress](file, 'rb')
+    return file
+
+
+file_header = namedtuple('FileHeader', 'version nbytes compress')
+HEADER_LENGTH = 12
+
+
+def read_file_header(file):
+    if hasattr(file, 'read'):
+        header_bytes = file.read(HEADER_LENGTH)
+    else:
+        header_bytes = file[:HEADER_LENGTH]
+    version, = struct.unpack('<H', header_bytes[:2])
+    nbytes, = struct.unpack('<Q', header_bytes[2:10])
+    compress, = struct.unpack('<H', header_bytes[10:12])
+    return file_header(version, nbytes, compress)
+
+
+def write_file_header(file, header):
+    file.write(struct.pack('<H', header.version))
+    file.write(struct.pack('<Q', header.nbytes))
+    file.write(struct.pack('<H', header.compress))
+
+
+def load(file, raw=False):
+    header = read_file_header(file)
+    file = open_decompression_file(file, header.compress)
 
     try:
         buf = file.read()
     finally:
-        if compress != COMPRESS_FLAG_NONE:
+        if header.compress != COMPRESS_FLAG_NONE:
             file.close()
 
     if raw:
@@ -146,7 +205,8 @@ class CompressBufferReader(object):
             bio.write(struct.pack('<H', SERIAL_VERSION)
                       + struct.pack('<Q', self._total_bytes)
                       + struct.pack('<H', self._compress_method))
-            bio.write(self._compressor.begin())
+            if hasattr(self._compressor, 'begin'):
+                bio.write(self._compressor.begin())
         while self._pos < self._total_bytes and bio.tell() < byte_num:
             end_pos = min(self._pos + byte_num, self._total_bytes)
             bio.write(self._compressor.compress(self._mv[self._pos:end_pos]))
@@ -199,12 +259,13 @@ class DecompressBufferWriter(object):
 
 def loads(buf, raw=False):
     mv = memoryview(buf)
-    compress = struct.unpack('<H', mv[10:12])[0]
+    header = read_file_header(mv)
+    compress = header.compress
 
     if compress == COMPRESS_FLAG_NONE:
-        data = buf[12:]
+        data = buf[HEADER_LENGTH:]
     else:
-        data = decompressors[compress](mv[12:])
+        data = decompressors[compress](mv[HEADER_LENGTH:])
     if raw:
         return data
     else:
@@ -219,14 +280,8 @@ def dump(obj, file, compress=COMPRESS_FLAG_NONE, raw=False):
         serialized = pyarrow.serialize(obj, mars_serialize_context())
         data_size = serialized.total_bytes
 
-    # version bytes
-    file.write(struct.pack('<H', SERIAL_VERSION))
-    file.write(struct.pack('<Q', data_size))
-    file.write(struct.pack('<H', compress))
-
-    if compress != COMPRESS_FLAG_NONE:
-        file = compress_openers[compress](file, 'wb')
-
+    write_file_header(file, file_header(SERIAL_VERSION, data_size, compress))
+    file = open_compression_file(file, compress)
     try:
         if raw:
             file.write(serialized)
@@ -239,7 +294,7 @@ def dump(obj, file, compress=COMPRESS_FLAG_NONE, raw=False):
 
 
 def dumps(obj, compress=COMPRESS_FLAG_NONE, raw=False):
-    sio = six.BytesIO()
+    sio = BytesIO()
     dump(obj, sio, compress=compress, raw=raw)
     return sio.getvalue()
 
