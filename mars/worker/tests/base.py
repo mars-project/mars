@@ -19,6 +19,8 @@ import unittest
 
 import gevent.event
 
+from mars import promise
+from mars.actors import create_actor_pool
 from mars.config import options
 from mars.compat import six
 from mars.utils import classproperty
@@ -50,6 +52,23 @@ class WorkerTestActor(WorkerActor):
     def set_result(self, result, accept=True):
         self.test_obj._result_store = (result, accept)
         self.test_obj._result_event.set()
+
+
+class StorageClientActor(WorkerActor):
+    def __getattr__(self, item):
+        if item.startswith('_'):
+            return object.__getattribute__(self, item)
+
+        def _wrapped_call(*args, **kwargs):
+            callback = kwargs.pop('callback', None)
+            ret = getattr(self.storage_client, item)(*args, **kwargs)
+            if isinstance(ret, promise.Promise):
+                if callback:
+                    ret.then(lambda *a, **k: self.tell_promise(callback, *a, **k))
+            else:
+                return ret
+
+        return _wrapped_call
 
 
 class WorkerCase(unittest.TestCase):
@@ -108,6 +127,16 @@ class WorkerCase(unittest.TestCase):
         finally:
             gen.send(None)
 
+    def waitp(self, *promises, **kw):
+        timeout = kw.pop('timeout', 10)
+        if len(promises) > 1:
+            p = promise.all_(promises)
+        else:
+            p = promises[0]
+        p.then(lambda *s: self._test_actor_ref.set_result(s, _tell=True),
+               lambda *exc: self._test_actor_ref.set_result(exc, accept=False, _tell=True))
+        self.get_result(timeout)
+
     def get_result(self, timeout=None):
         self._result_event.wait(timeout)
         self._result_event.clear()
@@ -125,3 +154,15 @@ class WorkerCase(unittest.TestCase):
             spill_dirs = [spill_dirs]
         for d in spill_dirs:
             shutil.rmtree(d, ignore_errors=True)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def create_pool(*args, **kwargs):
+        from mars.worker import SharedHolderActor
+
+        pool = create_actor_pool(*args, **kwargs)
+        yield pool
+
+        shared_ref = pool.actor_ref(SharedHolderActor.default_uid())
+        if pool.has_actor(shared_ref):
+            shared_ref.destroy()

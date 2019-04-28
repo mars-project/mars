@@ -109,6 +109,8 @@ if six.PY3:
     ConnectionRefusedError = ConnectionRefusedError
     TimeoutError = TimeoutError
 
+    intern = sys.intern
+
     from itertools import accumulate
 
     def sbytes(x):
@@ -196,6 +198,8 @@ else:
     BrokenPipeError = type('BrokenPipeError', (socket.error, ), {})
     ConnectionRefusedError = type('ConnectionRefusedError', (socket.error, ), {})
     ConnectionResetError = type('ConnectionResetError', (socket.error,), {})
+
+    intern = intern
 
 
     def accumulate(iterable, func=lambda a, b: a + b):
@@ -524,5 +528,5 @@ __all__ = ['PY27', 'sys', 'builtins', 'long_type', 'OrderedDict', 'dictconfig', 
            'Queue', 'PriorityQueue', 'Empty', 'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote',
            'quote', 'quote_plus', 'parse_qsl', 'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES',
            'FixedOffset', 'utc', 'finalize', 'functools32', 'zip_longest', 'OrderedDict3', 'BrokenPipeError',
-           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate', 'sbytes',
-           'apply_pyarrow_serialization_patch']
+           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate', 'BytesIO',
+           'intern', 'sbytes', 'apply_pyarrow_serialization_patch']

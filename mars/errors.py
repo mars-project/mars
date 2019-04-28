@@ -35,10 +35,6 @@ class StartArgumentError(MarsError):
     pass
 
 
-class StorageExhausted(MarsError):
-    pass
-
-
 class WorkerDead(MarsError):
     pass
 
@@ -47,11 +43,11 @@ class DependencyMissing(MarsError):
     pass
 
 
-class StoreFull(MarsError):
+class StorageFull(MarsError):
     pass
 
 
-class StoreKeyExists(MarsError):
+class StorageDataExists(MarsError):
     pass
 
 

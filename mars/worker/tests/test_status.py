@@ -22,7 +22,7 @@ from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker import ChunkHolderActor, StatusActor
+from mars.worker import SharedHolderActor, StatusActor
 from mars.worker.utils import WorkerClusterInfoActor
 from mars.utils import get_next_port
 
@@ -40,8 +40,8 @@ class Test(WorkerCase):
                                   uid=WorkerClusterInfoActor.default_uid())
 
                 resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
-                pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                  uid=ChunkHolderActor.default_uid())
+                pool.create_actor(SharedHolderActor, self.plasma_storage_size,
+                                  uid=SharedHolderActor.default_uid())
                 status_ref = pool.create_actor(StatusActor, pool_address,
                                                uid=StatusActor.default_uid())
                 status_ref.enable_status_upload()

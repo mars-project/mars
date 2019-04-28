@@ -162,8 +162,6 @@ class BaseOperandActor(SchedulerActor):
         Free data on single worker
         :param data_keys: keys of data in chunk meta
         """
-        from ...worker.chunkholder import ChunkHolderActor
-
         if not workers_list:
             workers_list = self.chunk_meta.batch_get_workers(self._session_id, data_keys)
         worker_data = defaultdict(list)
@@ -177,8 +175,8 @@ class BaseOperandActor(SchedulerActor):
 
         worker_futures = []
         for ep, data_keys in worker_data.items():
-            worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_uid(), address=ep)
-            worker_futures.append((ep, worker_cache_ref.unregister_chunks(
+            ref = self._get_raw_execution_ref(address=ep)
+            worker_futures.append((ep, ref.delete_data_by_keys(
                 self._session_id, data_keys, _tell=True, _wait=False)))
 
         return self._wait_worker_futures(worker_futures)

@@ -254,8 +254,12 @@ def dumps(obj, compress=CompressType.NONE, raw=False):
     return sio.getvalue()
 
 
-def peek_serialized_size(file):
-    return peek_file_header(file).nbytes
+def serialize(data):
+    return pyarrow.serialize(data, mars_serialize_context())
+
+
+def deserialize(data):
+    return pyarrow.deserialize(data, mars_serialize_context())
 
 
 def _serialize_numpy_array_list(obj):

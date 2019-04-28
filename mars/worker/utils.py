@@ -43,6 +43,10 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     """
     Base class of all worker actors, providing necessary utils
     """
+    def __init__(self):
+        super(WorkerActor, self).__init__()
+        self._proc_id = None
+
     @classmethod
     def default_uid(cls):
         return 'w:0:{0}'.format(cls.__name__)
@@ -53,18 +57,34 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
             self.set_cluster_info_ref()
         except ActorNotExist:
             pass
-        self._init_chunk_store()
+        self._init_shared_store()
+        self._proc_id = self.ctx.distributor.distribute(self.uid)
 
-    def _init_chunk_store(self):
+    def _init_shared_store(self):
         import pyarrow.plasma as plasma
-        from .chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
+        from .storage.sharedstore import PlasmaSharedStore, PlasmaKeyMapActor
 
         mapper_ref = self.ctx.actor_ref(uid=PlasmaKeyMapActor.default_uid())
         try:
             self._plasma_client = plasma.connect(options.worker.plasma_socket)
         except TypeError:  # pragma: no cover
             self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
-        self._chunk_store = PlasmaChunkStore(self._plasma_client, mapper_ref)
+        self._shared_store = PlasmaSharedStore(self._plasma_client, mapper_ref)
+
+    @property
+    def proc_id(self):
+        return self._proc_id
+
+    @property
+    def shared_store(self):
+        return self._shared_store
+
+    @property
+    def storage_client(self):
+        if not getattr(self, '_storage_client', None):
+            from .storage.client import StorageClient
+            self._storage_client = StorageClient(self)
+        return self._storage_client
 
     def get_meta_client(self):
         from ..scheduler.chunkmeta import ChunkMetaClient
@@ -84,7 +104,8 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
 
         daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(daemon_ref):
-            daemon_ref.register_callback(self.ref(), self.handle_actors_down.__name__, _tell=True)
+            daemon_ref.register_actor_callback(self.ref(), self.handle_actors_down.__name__,
+                                               _tell=True)
 
 
 class ExpMeanHolder(object):
@@ -164,7 +185,44 @@ def get_chunk_key(key):
     return key[0] if isinstance(key, tuple) else key
 
 
-def build_load_key(graph_key, chunk_key):
-    if isinstance(chunk_key, tuple):
-        chunk_key = '@'.join(chunk_key)
-    return '%s_load_memory_%s' % (graph_key, chunk_key)
+def build_quota_key(session_id, data_key, owner=None):
+    owner = str(owner)
+    if isinstance(data_key, tuple):
+        return data_key + (session_id, owner)
+    return data_key, session_id, owner
+
+
+def parse_spill_dirs(dir_str):
+    """
+    Parse paths from a:b to list while resolving asterisks in path
+    """
+    import glob
+
+    def _validate_dir(path):
+        try:
+            if not os.path.isdir(path):
+                os.makedirs(path)
+            touch_file = os.path.join(path, '.touch')
+            open(touch_file, 'wb').close()
+            os.unlink(touch_file)
+            return True
+        except OSError:  # pragma: no cover
+            logger.exception('Fail to access directory %s', path)
+            return False
+
+    final_dirs = []
+    for pattern in dir_str.split(os.path.pathsep):
+        pattern = pattern.strip()
+        if not pattern:
+            continue
+        sub_patterns = pattern.split(os.path.sep)
+        pos = 0
+        while pos < len(sub_patterns) and '*' not in sub_patterns[pos]:
+            pos += 1
+        if pos == len(sub_patterns):
+            final_dirs.append(pattern)
+            continue
+        left_pattern = os.path.sep.join(sub_patterns[:pos + 1])
+        for match in glob.glob(left_pattern):
+            final_dirs.append(os.path.sep.join([match] + sub_patterns[pos + 1:]))
+    return sorted(d for d in final_dirs if _validate_dir(d))

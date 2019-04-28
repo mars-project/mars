@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
+import tempfile
 import time
 import unittest
 
 import numpy as np
 
-from mars.worker.utils import ExpMeanHolder, ExpiringCache
+from mars.worker.utils import ExpMeanHolder, ExpiringCache, parse_spill_dirs
 
 
 class Test(unittest.TestCase):
@@ -59,3 +62,26 @@ class Test(unittest.TestCase):
         self.assertNotIn('v1', cache)
         self.assertIn('v2', cache)
         self.assertIn('v3', cache)
+
+    def testParseSpillDirs(self):
+        self.assertEqual([], parse_spill_dirs(os.path.pathsep))
+        temp_dir = tempfile.mkdtemp(prefix='test_mars_spill_')
+        try:
+            dirs = [
+                os.path.join(temp_dir, 'select_dir'),
+                os.path.join(temp_dir, 'dir1'),
+                os.path.join(temp_dir, 'dir2'),
+                os.path.join(temp_dir, 'dir3'),
+                os.path.join(temp_dir, 'non_dir4'),
+            ]
+            for p in dirs:
+                os.makedirs(p)
+
+            spill_dirs = os.path.pathsep.join([
+                os.path.join(temp_dir, 'select_dir'),
+                os.path.join(temp_dir, 'dir*', 'subdir1'),
+            ])
+            expected = sorted([dirs[0]] + [os.path.join(p, 'subdir1') for p in dirs[1:-1]])
+            self.assertEqual(expected, parse_spill_dirs(spill_dirs))
+        finally:
+            shutil.rmtree(temp_dir)

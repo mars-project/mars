@@ -14,7 +14,6 @@
 
 import functools
 import logging
-import os
 import sys
 import time
 import zlib
@@ -26,12 +25,11 @@ import pyarrow
 from .. import promise
 from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..serialize import dataserializer
 from ..errors import *
+from ..serialize import dataserializer
 from ..utils import log_unhandled, build_exc_info
-from .dataio import FileBufferIO, ArrowBufferIO
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
-from .spill import build_spill_file_name, get_spill_data_size, read_spill_file
+from .storage import DataStorageDevice
 from .utils import WorkerActor, ExpiringCache
 
 logger = logging.getLogger(__name__)
@@ -52,14 +50,12 @@ class SenderActor(WorkerActor):
         super(SenderActor, self).__init__()
         self._dispatch_ref = None
         self._events_ref = None
-        self._mem_quota_ref = None
 
         self._serialize_pool = None
 
     def post_create(self):
         from .dispatcher import DispatchActor
         from .events import EventsActor
-        from .quota import MemQuotaActor
 
         super(SenderActor, self).post_create()
 
@@ -69,7 +65,6 @@ class SenderActor(WorkerActor):
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
         self._serialize_pool = self.ctx.threadpool(1)
 
@@ -80,16 +75,9 @@ class SenderActor(WorkerActor):
         :param chunk_key: chunk key
         :return: size of data
         """
-        nbytes = None
-        try:
-            nbytes = self._chunk_store.get_actual_size(session_id, chunk_key)
-        except KeyError:
-            pass
+        nbytes = self.storage_client.get_data_size(session_id, chunk_key)
         if nbytes is None:
-            try:
-                nbytes = get_spill_data_size(chunk_key)
-            except KeyError:
-                raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
+            raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
         return nbytes
 
     def _filter_targets(self, session_id, chunk_key, target_endpoints, timeout=None):
@@ -181,6 +169,8 @@ class SenderActor(WorkerActor):
         try:
             create_write_promises = []
             finish_promises = []
+            source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+
             for ref in filtered_refs:
                 # register transfer actions
                 create_write_promises.append(
@@ -205,10 +195,13 @@ class SenderActor(WorkerActor):
 
             if create_write_promises:
                 promise.all_(create_write_promises) \
-                    .then(lambda *_: self._compress_and_send(
+                    .then(lambda *_: self.storage_client.create_reader(
+                        session_id, chunk_key, source_devices, packed=True,
+                        packed_compression=compression)) \
+                    .then(lambda reader: self._compress_and_send(
                         session_id, chunk_key,
                         [ref for ref in filtered_refs if ref.address not in already_started],
-                        compression=compression, timeout=timeout,
+                        reader, timeout=timeout,
                     )) \
                     .catch(_handle_rejection)
             else:
@@ -222,43 +215,22 @@ class SenderActor(WorkerActor):
         promise.all_(finish_promises).then(_finalize).catch(_handle_rejection)
 
     @log_unhandled
-    def _compress_and_send(self, session_id, chunk_key, target_refs, compression, timeout=None):
+    def _compress_and_send(self, session_id, chunk_key, target_refs, reader, timeout=None):
         """
         Compress and send data to receivers in chunked manner
         :param session_id: session id
         :param chunk_key: chunk key
         :param target_refs: refs to send data to
-        :param compression: compression type when transfer in network
         """
         # start compress and send data into targets
         logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
         block_size = options.worker.transfer_block_size
-        reader = None
 
         # filter out endpoints we need to send to
         try:
             if not target_refs:
                 self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
                 return
-
-            # try load data from plasma store
-            buf = None
-            try:
-                buf = self._chunk_store.get_buffer(session_id, chunk_key)
-                # create a stream compressor from shared buffer
-                reader = ArrowBufferIO(
-                    buf, 'r', compress_out=compression, block_size=block_size)
-            except KeyError:
-                pass
-            finally:
-                del buf
-            if reader is None:
-                # no reader created from plasma store, we load directly from spill
-                file_name = build_spill_file_name(chunk_key)
-                if not file_name:
-                    raise SpillNotConfigured('Spill not configured')
-                reader = FileBufferIO(
-                    open(file_name, 'rb'), 'r', compress_out=compression, block_size=block_size)
 
             futures = []
             checksum = 0
@@ -286,9 +258,7 @@ class SenderActor(WorkerActor):
                 ref.cancel_receive(session_id, chunk_key, _tell=True, _wait=False)
             raise
         finally:
-            if reader:
-                reader.close()
-            del reader
+            reader.close()
 
 
 class ReceiverDataMeta(object):
@@ -317,7 +287,6 @@ class ReceiverActor(WorkerActor):
     def __init__(self):
         super(ReceiverActor, self).__init__()
         self._chunk_holder_ref = None
-        self._mem_quota_ref = None
         self._dispatch_ref = None
         self._events_ref = None
         self._status_ref = None
@@ -329,15 +298,11 @@ class ReceiverActor(WorkerActor):
         self._serialize_pool = None
 
     def post_create(self):
-        from .chunkholder import ChunkHolderActor
-        from .quota import MemQuotaActor
         from .events import EventsActor
         from .status import StatusActor
         from .dispatcher import DispatchActor
 
         super(ReceiverActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -359,19 +324,13 @@ class ReceiverActor(WorkerActor):
         :param session_id: session id
         :param chunk_key: chunk key
         """
-        from .spill import build_spill_file_name
         session_chunk_key = (session_id, chunk_key)
 
-        if self._chunk_holder_ref.is_stored(chunk_key):
-            # data in plasma
+        if self.storage_client.get_data_locations(session_id, chunk_key):
             return ReceiveStatus.RECEIVED
         if session_chunk_key in self._data_writers:
             # data still being transferred
             return ReceiveStatus.RECEIVING
-        fn = build_spill_file_name(chunk_key)
-        if fn and os.path.exists(fn) and session_chunk_key not in self._data_writers:
-            # data in plasma store
-            return ReceiveStatus.RECEIVED
         return ReceiveStatus.NOT_STARTED
 
     @promise.reject_on_exception
@@ -448,108 +407,41 @@ class ReceiverActor(WorkerActor):
         if timeout:
             self.ref().handle_receive_timeout(session_id, chunk_key, _delay=timeout, _tell=True)
 
-        @log_unhandled
-        def _handle_accept(result):
-            address, state = result
-            if state == ReceiveStatus.RECEIVED:
-                self._invoke_finish_callbacks(session_id, chunk_key)
+        device_order = [DataStorageDevice.SHARED_MEMORY]
+        if not ensure_cached:
+            device_order += [DataStorageDevice.DISK]
+
+        def _handle_accept(writer):
+            self._data_writers[session_chunk_key] = writer
             if callback is not None:
-                self.tell_promise(callback, address, state)
+                self.tell_promise(callback, self.address, None)
 
         @log_unhandled
         def _handle_reject(*exc):
-            logger.debug('Rejecting %s from putting into plasma.', chunk_key)
-            self._stop_transfer_with_exc(session_id, chunk_key, exc)
-            if callback:
-                self.tell_promise(callback, *exc, **dict(_accept=False))
+            if self.check_status(session_id, chunk_key) == ReceiveStatus.RECEIVED:
+                logger.debug('Chunk %s already received', chunk_key)
+                self._invoke_finish_callbacks(session_id, chunk_key)
+                if callback is not None:
+                    self.tell_promise(callback, self.address, ReceiveStatus.RECEIVED)
+            else:
+                logger.debug('Rejecting %s from putting into plasma.', chunk_key)
+                self._stop_transfer_with_exc(session_id, chunk_key, exc)
+                if callback is not None:
+                    self.tell_promise(callback, *exc, **dict(_accept=False))
 
         if use_promise:
-            promise.finished() \
-                .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached)) \
+            self.storage_client.create_writer(
+                session_id, chunk_key, data_size, device_order, packed=True) \
                 .then(_handle_accept, _handle_reject)
         else:
             try:
-                result = self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached,
-                                             use_promise=False)
-                _handle_accept(result)
-                return result
+                writer = self.storage_client.create_writer(
+                    session_id, chunk_key, data_size, device_order, packed=True, _promise=False)
+                _handle_accept(writer)
+                return self.address, None
             except:  # noqa: E722
                 _handle_reject(*sys.exc_info())
                 raise
-
-    @log_unhandled
-    def _create_writer(self, session_id, chunk_key, ensure_cached=True, spill_times=1,
-                       use_promise=True):
-        """
-        Create data writer for chunk
-        :param session_id: session id
-        :param chunk_key: chunk key
-        :param ensure_cached: True if we need to make sure that data are written into the shared cache
-        :param spill_times: spill scale
-        :param use_promise: if True, we use promise callback to notify accomplishment of writer creation,
-            otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
-        :return:
-        """
-        block_size = options.worker.transfer_block_size
-        disk_compression = dataserializer.CompressType(options.worker.disk_compression)
-
-        # actual create data writer
-        session_chunk_key = (session_id, chunk_key)
-        data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-        data_size = data_meta.chunk_size
-        buf = None
-        try:
-            # attempt to create data chunk on shared store
-            buf = self._chunk_store.create(session_id, chunk_key, data_size)
-            data_meta.start_time = time.time()
-            logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
-                         data_size, chunk_key)
-            # create a writer for the chunk
-            self._data_writers[session_chunk_key] = ArrowBufferIO(buf, 'w', block_size=block_size)
-            if self._events_ref is not None:
-                data_meta.transfer_event_id = self._events_ref.add_open_event(
-                    EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.NETWORK, self.uid)
-            return self.address, None
-        except (KeyError, StoreKeyExists):
-            if self.check_status(session_id, chunk_key) != ReceiveStatus.RECEIVED:
-                raise
-            # data already registered
-            logger.debug('Chunk %s already registered', chunk_key)
-            self._invoke_finish_callbacks(session_id, chunk_key)
-            return self.address, ReceiveStatus.RECEIVED
-        except StoreFull:
-            # no space left in the shared store
-            if ensure_cached:
-                # if promise is disabled, we have to raise an error
-                if not use_promise:
-                    raise
-                # spill and try again
-                return self._chunk_holder_ref.spill_size(data_size, spill_times, _promise=True) \
-                    .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=True,
-                                                         spill_times=min(spill_times + 1, 1024)))
-            else:
-                # create a writer for spill
-                logger.debug('Writing data %s directly into spill.', chunk_key)
-                data_meta.write_shared = False
-                self._chunk_holder_ref.spill_size(data_size, _tell=True)
-                spill_file_name = build_spill_file_name(chunk_key, writing=True)
-                try:
-                    spill_file = FileBufferIO(
-                        open(spill_file_name, 'wb'), 'w', compress_in=disk_compression,
-                        block_size=block_size)
-                    data_meta.start_time = time.time()
-                    self._data_writers[session_chunk_key] = spill_file
-                    if self._events_ref is not None:
-                        data_meta.transfer_event_id = self._events_ref.add_open_event(
-                            EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.NETWORK, self.uid)
-                except (KeyError, IOError):
-                    if self.check_status(session_id, chunk_key) == ReceiveStatus.RECEIVED:
-                        logger.debug('Chunk %s already stored', chunk_key)
-                        return self.address, ReceiveStatus.RECEIVED
-                    raise ObjectNotInPlasma([chunk_key])
-                return self.address, None
-        finally:
-            del buf
 
     @log_unhandled
     def receive_data_part(self, session_id, chunk_key, data_part, checksum):
@@ -602,22 +494,12 @@ class ReceiverActor(WorkerActor):
                     'net_transfer_speed', data_meta.chunk_size * 1.0 / time_delta,
                     _tell=True, _wait=False)
 
+            self._data_writers[session_chunk_key].close()
+            del self._data_writers[session_chunk_key]
+
             if not isinstance(chunk_key, tuple):
                 self.get_meta_client().set_chunk_meta(
                     session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,))
-
-            if data_meta.write_shared:
-                # seal data on shared store
-                self._chunk_store.seal(session_id, chunk_key)
-                self._chunk_holder_ref.register_chunk(session_id, chunk_key)
-            else:
-                # move spill data to 'ready' place
-                src_dir = build_spill_file_name(chunk_key, writing=True)
-                dest_dir = build_spill_file_name(chunk_key, writing=False)
-                os.rename(src_dir, dest_dir)
-
-            self._data_writers[session_chunk_key].close()
-            del self._data_writers[session_chunk_key]
 
             data_meta.status = ReceiveStatus.RECEIVED
             self._invoke_finish_callbacks(session_id, chunk_key)
@@ -680,28 +562,14 @@ class ReceiverActor(WorkerActor):
 
         # stop and close data writer
         try:
-            self._data_writers[session_chunk_key].close()
-            del self._data_writers[session_chunk_key]
             # transfer is not finished yet, we need to clean up unfinished stuffs
-            has_write_failure = True
+            self._data_writers[session_chunk_key].close(finished=False)
+            del self._data_writers[session_chunk_key]
         except KeyError:
             # transfer finished and writer cleaned, no need to clean up
-            has_write_failure = False
+            pass
 
         data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-        # clean up unfinished transfers
-        if data_meta.write_shared:
-            try:
-                self._chunk_store.seal(session_id, chunk_key)
-            except KeyError:
-                pass
-            if has_write_failure:
-                self._chunk_store.delete(session_id, chunk_key)
-        else:
-            src_dir = build_spill_file_name(chunk_key, writing=True)
-            if has_write_failure and os.path.exists(src_dir):
-                os.unlink(src_dir)
-
         data_meta.status = ReceiveStatus.ERROR
         self._invoke_finish_callbacks(session_id, chunk_key, *exc, **dict(_accept=False))
 
@@ -734,45 +602,33 @@ class ResultSenderActor(WorkerActor):
         self._serialize_pool = self.ctx.threadpool(1)
 
     def fetch_data(self, session_id, chunk_key, index_obj=None):
-        buf = None
-        try:
-            compression_type = dataserializer.CompressType(options.worker.transfer_compression)
-            if self._chunk_store.contains(session_id, chunk_key):
-                if index_obj is None:
-                    buf = self._chunk_store.get_buffer(session_id, chunk_key)
-                    compressed = self._serialize_pool.submit(
-                        dataserializer.dumps, buf, compression_type, raw=True).result()
-                else:
-                    value = self._chunk_store.get(session_id, chunk_key)
-                    if isinstance(value, (pd.DataFrame, pd.Series)):
-                        sliced_value = value.iloc[index_obj]
-                    else:
-                        sliced_value = value[index_obj]
-                    compressed = self._serialize_pool.submit(
-                        dataserializer.dumps, sliced_value, compression_type).result()
+        compression_type = dataserializer.CompressType(options.worker.transfer_compression)
+        if index_obj is None:
+            reader = self.storage_client.create_reader(
+                session_id, chunk_key, [DataStorageDevice.DISK, DataStorageDevice.SHARED_MEMORY],
+                packed=True, packed_compression=compression_type, _promise=False)
+
+            with reader:
+                pool = reader.get_io_pool()
+                return pool.submit(reader.read).result()
+        else:
+            try:
+                value = self.storage_client.get_object(
+                    session_id, chunk_key, [DataStorageDevice.SHARED_MEMORY], _promise=False)
+            except ValueError:
+                reader = self.storage_client.create_reader(
+                    session_id, chunk_key, [DataStorageDevice.DISK], packed=False, _promise=False)
+                with reader:
+                    pool = reader.get_io_pool()
+                    value = dataserializer.deserialize(pool.submit(reader.read).result())
+
+            if isinstance(value, (pd.DataFrame, pd.Series)):
+                sliced_value = value.iloc[index_obj]
             else:
-                file_name = build_spill_file_name(chunk_key)
-                if not file_name:
-                    raise SpillNotConfigured('Spill not configured')
-                if index_obj is None:
-                    with open(file_name, 'rb') as inf:
-                        compressed = self._serialize_pool.submit(inf.read).result()
-                else:
-                    # TODO: may have potential memory issue
-                    def get_data_slices_from_file(file_name, index_obj, compression_type):
-                        value = read_spill_file(file_name)
-                        if isinstance(value, (pd.DataFrame, pd.Series)):
-                            sliced_value = value.iloc[index_obj]
-                        else:
-                            sliced_value = value[index_obj]
-                        return dataserializer.dumps(sliced_value, compression_type)
+                sliced_value = value[index_obj]
 
-                    compressed = self._serialize_pool.submit(
-                        get_data_slices_from_file, file_name, index_obj, compression_type).result()
-
-        finally:
-            del buf
-        return compressed
+            return self._serialize_pool.submit(
+                dataserializer.dumps, sliced_value, compression_type).result()
 
 
 def put_remote_chunk(session_id, chunk_key, data, receiver_ref):
@@ -780,12 +636,12 @@ def put_remote_chunk(session_id, chunk_key, data, receiver_ref):
     Put a chunk to target machine using given receiver_ref
     """
     from .dataio import ArrowBufferIO
-    buf = pyarrow.serialize(data).to_buffer()
+    buf = dataserializer.serialize(data).to_buffer()
     receiver_ref.create_data_writer(session_id, chunk_key, buf.size, None,
                                     ensure_cached=False, use_promise=False)
-
     block_size = options.worker.transfer_block_size
 
+    reader = None
     try:
         reader = ArrowBufferIO(buf, 'r', block_size=block_size)
         checksum = 0
@@ -797,7 +653,7 @@ def put_remote_chunk(session_id, chunk_key, data, receiver_ref):
                 break
             checksum = zlib.crc32(next_chunk, checksum)
             receiver_ref.receive_data_part(session_id, chunk_key, next_chunk, checksum)
-    except:
+    except:  # noqa: E722
         receiver_ref.cancel_receive(session_id, chunk_key)
         raise
     finally:

@@ -313,8 +313,8 @@ class GraphActor(SchedulerActor):
                 graph = self.get_chunk_graph()
                 for n in graph:
                     outf.write(
-                        '%s[%s] -> %s\n' % (
-                            n.op.key, n.key,
+                        '%s(%s)[%s] -> %s\n' % (
+                            n.op.key, n.key, type(n.op).__name__,
                             ','.join(succ.op.key for succ in graph.iter_successors(n)))
                     )
 

@@ -58,7 +58,7 @@ class DaemonTestActor(WorkerActor):
         else:
             return val
 
-    def handle_process_down(self, halt_refs):
+    def handle_process_down_for_actors(self, halt_refs):
         self.reject_promise_refs(halt_refs, *build_exc_info(WorkerProcessStopped))
 
 
@@ -73,7 +73,8 @@ class Test(WorkerCase):
                                                   uid='w:1:DaemonSleeperActor')
             daemon_ref.create_actor(ProcessHelperActor, uid='w:1:ProcHelper')
             test_actor = pool.create_actor(DaemonTestActor)
-            daemon_ref.register_callback(test_actor, 'handle_process_down')
+            daemon_ref.register_actor_callback(
+                test_actor, DaemonTestActor.handle_process_down_for_actors.__name__)
 
             test_actor.run_test_sleep(sleeper_ref, 10, _tell=True)
             self.assertTrue(daemon_ref.is_actor_process_alive(sleeper_ref))

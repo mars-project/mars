@@ -29,9 +29,8 @@ from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
     calc_data_size, get_chunk_shuffle_key
-from .chunkholder import ensure_chunk
-from .spill import spill_exists, get_spill_data_size
-from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_load_key
+from .storage import DataStorageDevice
+from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_quota_key
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +48,13 @@ class GraphExecutionRecord(object):
     """
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'data_targets',
                  'chunk_targets', 'io_meta', 'data_sizes', 'shared_input_chunks',
-                 'state_time', 'mem_request', 'pin_request', 'est_finish_time',
+                 'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'finish_callbacks',
                  'stop_requested')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_sizes=None, mem_request=None,
-                 shared_input_chunks=None, pin_request=None, est_finish_time=None,
+                 shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False):
 
@@ -70,7 +69,7 @@ class GraphExecutionRecord(object):
         self.data_sizes = data_sizes or dict()
         self.shared_input_chunks = shared_input_chunks or set()
         self.mem_request = mem_request or dict()
-        self.pin_request = pin_request or set()
+        self.pinned_keys = pinned_keys or set()
         self.est_finish_time = est_finish_time or time.time()
         self.calc_actor_uid = calc_actor_uid
         self.send_addresses = send_addresses
@@ -118,7 +117,6 @@ class ExecutionActor(WorkerActor):
 
     def __init__(self):
         super(ExecutionActor, self).__init__()
-        self._chunk_holder_ref = None
         self._dispatch_ref = None
         self._mem_quota_ref = None
         self._status_ref = None
@@ -132,7 +130,6 @@ class ExecutionActor(WorkerActor):
         self._peer_blacklist = BlacklistSet(options.worker.peer_blacklist_time)
 
     def post_create(self):
-        from .chunkholder import ChunkHolderActor
         from .daemon import WorkerDaemonActor
         from .dispatcher import DispatchActor
         from .quota import MemQuotaActor
@@ -141,7 +138,6 @@ class ExecutionActor(WorkerActor):
         super(ExecutionActor, self).post_create()
         self.set_cluster_info_ref()
 
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
@@ -180,6 +176,7 @@ class ExecutionActor(WorkerActor):
         size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
+
         targets = graph_record.chunk_targets
         target_sizes = dict(zip(targets, res))
 
@@ -203,6 +200,7 @@ class ExecutionActor(WorkerActor):
             return None
 
         graph = graph_record.graph
+        storage_client = self.storage_client
         input_data_sizes = graph_record.data_sizes
         alloc_mem_batch = dict()
         alloc_cache_batch = dict()
@@ -229,19 +227,22 @@ class ExecutionActor(WorkerActor):
                         pass
             elif chunk.key in graph_record.chunk_targets:
                 # use estimated size as potential allocation size
-                cache_batch, alloc_mem_batch[chunk.key] = memory_estimations[chunk.key]
+                cache_batch, alloc_mem_batch[build_quota_key(session_id, chunk.key, graph_key)] = \
+                    memory_estimations[chunk.key]
                 if not isinstance(chunk.key, tuple):
                     alloc_cache_batch[chunk.key] = cache_batch
 
         keys_to_pin = list(input_chunk_keys.keys())
-        graph_record.pin_request = set(self._chunk_holder_ref.pin_chunks(graph_key, keys_to_pin))
+        graph_record.pinned_keys = set(storage_client.pin_data_keys(session_id, keys_to_pin, graph_key))
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
-                                if k not in graph_record.pin_request)
-        alloc_mem_batch.update((build_load_key(graph_key, k), v) for k, v in load_chunk_sizes.items()
+                                if k not in graph_record.pinned_keys)
+        alloc_mem_batch.update((build_quota_key(session_id, k, graph_key), v)
+                               for k, v in load_chunk_sizes.items()
                                if k not in graph_record.shared_input_chunks)
         if alloc_cache_batch:
-            self._chunk_holder_ref.spill_size(sum(alloc_cache_batch.values()), _tell=True)
+            # todo change when compute with gpu
+            storage_client.spill_size(sum(alloc_cache_batch.values()), [DataStorageDevice.SHARED_MEMORY])
 
         if alloc_mem_batch:
             graph_record.mem_request = alloc_mem_batch
@@ -266,12 +267,15 @@ class ExecutionActor(WorkerActor):
                                            address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
         timeout = options.worker.prepare_data_timeout
+        storage_client = self.storage_client
+        graph_record = self._graph_records[(session_id, graph_key)]
 
         @log_unhandled
         def _finish_fetch(*_):
-            self._chunk_holder_ref.pin_chunks(graph_key, chunk_key)
-            if self._chunk_holder_ref.is_stored(chunk_key):
-                self._mem_quota_ref.release_quota(build_load_key(graph_key, chunk_key))
+            locations = storage_client.get_data_locations(session_id, chunk_key)
+            if (0, DataStorageDevice.SHARED_MEMORY) in locations:
+                graph_record.pinned_keys.update(storage_client.pin_data_keys(session_id, chunk_key, graph_key))
+                self._mem_quota_ref.release_quota(build_quota_key(session_id, chunk_key, owner=graph_key))
 
         @log_unhandled
         def _handle_network_error(*exc):
@@ -279,9 +283,9 @@ class ExecutionActor(WorkerActor):
                 logger.warning('Communicating to %s encountered %s when fetching %s',
                                remote_addr, exc[0].__name__, chunk_key)
 
-                if not self._chunk_holder_ref.is_stored(chunk_key):
+                if not storage_client.get_data_locations(session_id, chunk_key):
                     logger.debug('Deleting chunk %s from worker because of failure of transfer', chunk_key)
-                    self._chunk_store.delete(session_id, chunk_key)
+                    self._shared_store.delete(session_id, chunk_key)
                 else:
                     # as data already transferred, we can skip the error
                     logger.debug('Chunk %s already transferred', chunk_key)
@@ -300,7 +304,7 @@ class ExecutionActor(WorkerActor):
             if remote_addr in self._peer_blacklist:
                 raise DependencyMissing((session_id, chunk_key))
 
-            if self._graph_records[(session_id, graph_key)].stop_requested:
+            if graph_record.stop_requested:
                 remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
@@ -356,9 +360,10 @@ class ExecutionActor(WorkerActor):
                     break
                 data_size = calc_data_size(c)
                 input_size += data_size
-                if self._chunk_holder_ref.is_stored(c.key):
+                data_locations = self.storage_client.get_data_locations(session_id, c.key) or ()
+                if (0, DataStorageDevice.SHARED_MEMORY) in data_locations:
                     continue
-                if spill_exists(c.key):
+                elif (0, DataStorageDevice.DISK) in data_locations:
                     disk_size += data_size
                 else:
                     net_size += data_size
@@ -462,12 +467,7 @@ class ExecutionActor(WorkerActor):
             self._invoke_finish_callbacks(session_id, graph_key)
 
         # collect target data already computed
-        save_sizes = dict()
-        for target_key in graph_record.data_targets:
-            if self._chunk_store.contains(session_id, target_key):
-                save_sizes[target_key] = self._chunk_store.get_actual_size(session_id, target_key)
-            elif spill_exists(target_key):
-                save_sizes[target_key] = get_spill_data_size(target_key)
+        save_sizes = self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
 
         # when all target data are computed, report success directly
         if all(k in save_sizes for k in graph_record.data_targets):
@@ -493,7 +493,7 @@ class ExecutionActor(WorkerActor):
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
                 .then(_wait_free_slot) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
-                .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
+                .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
                 .then(_handle_success, _handle_rejection)
 
     @log_unhandled
@@ -503,6 +503,7 @@ class ExecutionActor(WorkerActor):
         :param session_id: session id
         :param graph_key: key of the execution graph
         """
+        storage_client = self.storage_client
         graph_record = self._graph_records[(session_id, graph_key)]
         graph = graph_record.graph
         input_metas = graph_record.io_meta.get('input_data_metas', dict())
@@ -510,7 +511,7 @@ class ExecutionActor(WorkerActor):
         if graph_record.stop_requested:
             raise ExecutionInterrupted
 
-        unspill_keys = []
+        loaded_keys = []
         transfer_keys = []
 
         logger.debug('Start preparing input data for graph %s', graph_key)
@@ -532,23 +533,16 @@ class ExecutionActor(WorkerActor):
                     shuffle_keys.add(part_key)
 
         for input_key in input_keys:
-            if self._chunk_holder_ref.is_stored(input_key):
-                # data already in plasma: we just pin it
-                pinned_keys = self._chunk_holder_ref.pin_chunks(graph_key, (input_key,))
-                if input_key in pinned_keys:
-                    self._mem_quota_ref.release_quota(build_load_key(graph_key, input_key))
-                    continue
-
-            if spill_exists(input_key):
-                if input_key not in shared_input_chunks or input_key in shuffle_keys:
-                    # input only use in current operand, we only need to load it into process memory
-                    continue
-                self._mem_quota_ref.release_quota(build_load_key(graph_key, input_key))
-                load_fun = functools.partial(lambda gk, ck, *_: self._chunk_holder_ref.pin_chunks(gk, ck),
-                                             graph_key, input_key)
-                unspill_keys.append(input_key)
-                prepare_promises.append(ensure_chunk(self, session_id, input_key, move_to_end=True) \
-                                        .then(load_fun))
+            if storage_client.get_data_locations(session_id, input_key):
+                loaded_keys.append(input_key)
+                pin_fun = functools.partial(
+                    lambda k, *_: graph_record.pinned_keys.update(
+                        storage_client.pin_data_keys(session_id, k, graph_key)), input_key)
+                prepare_promises.append(
+                    storage_client.copy_to(session_id, input_key, [DataStorageDevice.SHARED_MEMORY],
+                                           ensure=input_key in graph_record.shared_input_chunks)
+                        .then(pin_fun)
+                )
                 continue
 
             # load data from another worker
@@ -572,8 +566,8 @@ class ExecutionActor(WorkerActor):
                                               ensure_cached=input_key in shared_input_chunks))
             prepare_promises.append(p)
 
-        logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
-                     graph_key, graph_record.chunk_targets, unspill_keys, transfer_keys)
+        logger.debug('Graph key %s: Targets %r, loaded keys %r, transfer keys %r',
+                     graph_key, graph_record.chunk_targets, loaded_keys, transfer_keys)
         p = promise.all_(prepare_promises) \
             .then(lambda *_: logger.debug('Data preparation for graph %s finished', graph_key))
         return p
@@ -586,6 +580,7 @@ class ExecutionActor(WorkerActor):
         :param graph_key: key of the execution graph
         :param calc_uid: uid of the allocated CpuCalcActor
         """
+        storage_client = self.storage_client
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
 
@@ -597,23 +592,25 @@ class ExecutionActor(WorkerActor):
             # get allocation for calc, in case that memory exhausts
             target_allocs = dict()
             for chunk in graph_record.graph:
+                alloc_key = None
                 if isinstance(chunk.op, Fetch):
-                    if not self._chunk_holder_ref.is_stored(chunk.key):
-                        alloc_key = build_load_key(graph_key, chunk.key)
-                        if alloc_key in graph_record.mem_request:
-                            target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
+                    locations = storage_client.get_data_locations(session_id, chunk.key) or ()
+                    if (0, DataStorageDevice.SHARED_MEMORY) not in locations:
+                        alloc_key = build_quota_key(session_id, chunk.key, owner=graph_key)
                 elif chunk.key in graph_record.chunk_targets:
-                    target_allocs[chunk.key] = graph_record.mem_request[chunk.key]
+                    alloc_key = build_quota_key(session_id, chunk.key, owner=graph_key)
 
-            logger.debug('Start calculation for graph %s in actor %s', graph_key, calc_uid)
+                if alloc_key is not None and alloc_key in graph_record.mem_request:
+                    target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
 
             self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
             raw_calc_ref = self.ctx.actor_ref(calc_uid)
             calc_ref = self.promise_ref(raw_calc_ref)
 
             def _start_calc(*_):
+                logger.debug('Submit calculation for graph %s in actor %s', graph_key, calc_uid)
                 if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref):
-                    return calc_ref.calc(session_id, graph_record.graph_serialized,
+                    return calc_ref.calc(session_id, graph_key, graph_record.graph_serialized,
                                          graph_record.chunk_targets, _promise=True)
                 else:
                     raise WorkerProcessStopped
@@ -624,6 +621,7 @@ class ExecutionActor(WorkerActor):
             raise
 
         # make sure that memory suffices before actually run execution
+        logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
         return self._mem_quota_ref.request_batch_quota(target_allocs, _promise=True) \
             .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
             .then(_start_calc)
@@ -664,53 +662,52 @@ class ExecutionActor(WorkerActor):
         return promise.all_(promises)
 
     @log_unhandled
-    def _dump_cache(self, session_id, graph_key, inproc_uid, save_sizes):
+    def _store_results(self, session_id, graph_key, saved_keys):
         """
-        Dump calc results into shared cache or spill
+        Store calc results into shared cache or spill
         :param session_id: session id
         :param graph_key: key of the execution graph
-        :param inproc_uid: uid of the InProcessCacheActor
-        :param save_sizes: sizes of data
         """
+        storage_client = self.storage_client
+
         self._deallocate_scheduler_resource(session_id, graph_key)
 
         graph_record = self._graph_records[session_id, graph_key]
         chunk_keys = graph_record.chunk_targets
-        calc_keys = list(save_sizes.keys())
         send_addresses = graph_record.send_addresses
 
-        logger.debug('Graph %s: Start putting %r into shared cache. Target actor uid %s.',
-                     graph_key, chunk_keys, inproc_uid)
+        logger.debug('Graph %s: Start putting %r into shared cache using actor uid %s.',
+                     graph_key, chunk_keys, graph_record.calc_actor_uid)
         self._update_state(session_id, graph_key, ExecutionState.STORING)
 
-        raw_inproc_ref = self.ctx.actor_ref(inproc_uid)
-        inproc_ref = self.promise_ref(raw_inproc_ref)
+        raw_calc_ref = self.ctx.actor_ref(graph_record.calc_actor_uid)
+        calc_ref = self.promise_ref(raw_calc_ref)
 
         if graph_record.stop_requested:
             logger.debug('Graph %s already marked for stop, quit.', graph_key)
-            if (self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_inproc_ref)) \
-                    and self.ctx.has_actor(raw_inproc_ref):
+            if (self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref)) \
+                    and self.ctx.has_actor(raw_calc_ref):
                 logger.debug('Try remove keys for graph %s.', graph_key)
-                raw_inproc_ref.remove_cache(session_id, list(calc_keys), _tell=True)
+                raw_calc_ref.remove_cache(session_id, list(saved_keys), _tell=True)
             logger.debug('Graph %s already marked for stop, quit.', graph_key)
             raise ExecutionInterrupted
 
-        self._chunk_holder_ref.unpin_chunks(
-            graph_key, list(set(c.key for c in graph_record.graph)), _tell=True)
+        storage_client.unpin_data_keys(
+            session_id, list(set(c.key for c in graph_record.graph)), graph_key)
         self._dump_execution_states()
 
-        if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_inproc_ref):
+        if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_calc_ref):
             raise WorkerProcessStopped
 
-        def _cache_result(result_sizes):
-            save_sizes.update(result_sizes)
+        def _cache_result(*_):
+            save_sizes = storage_client.get_data_sizes(session_id, saved_keys)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if not send_addresses:
             # no endpoints to send, dump keys into shared memory and return
             logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma...',
                          graph_key, graph_record.op_string)
-            return inproc_ref.dump_cache(session_id, calc_keys, _promise=True) \
+            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
                 .then(_cache_result)
         else:
             # dump keys into shared memory and send
@@ -722,9 +719,9 @@ class ExecutionActor(WorkerActor):
                          graph_key, graph_record.op_string, all_addresses)
 
             data_to_addresses = dict((k, v) for k, v in send_addresses.items()
-                                     if k in save_sizes)
+                                     if k in saved_keys)
 
-            return inproc_ref.dump_cache(session_id, calc_keys, _promise=True) \
+            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
                 .then(_cache_result) \
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses))
@@ -751,8 +748,8 @@ class ExecutionActor(WorkerActor):
         self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), _tell=True)
         if graph_record.mem_request:
             self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
-        if graph_record.pin_request:
-            self._chunk_holder_ref.unpin_chunks(graph_key, graph_record.pin_request, _tell=True)
+        if graph_record.pinned_keys:
+            self.storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
 
         if self._status_ref:
             self._status_ref.remove_progress(session_id, graph_key, _tell=True, _wait=False)
@@ -809,6 +806,11 @@ class ExecutionActor(WorkerActor):
         elif graph_record.state == ExecutionState.CALCULATING:
             if self._daemon_ref is not None and graph_record.calc_actor_uid is not None:
                 self._daemon_ref.kill_actor_process(self.ctx.actor_ref(graph_record.calc_actor_uid), _tell=True)
+
+    @log_unhandled
+    def delete_data_by_keys(self, session_id, keys):
+        for k in keys:
+            self.storage_client.delete(session_id, k, _tell=True)
 
     @log_unhandled
     def handle_worker_change(self, _adds, removes):

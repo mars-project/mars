@@ -33,29 +33,10 @@ from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
-from mars.worker.chunkstore import PlasmaKeyMapActor
+from mars.worker.storage import PlasmaKeyMapActor
 from mars.distributor import MarsDistributor
 from mars.worker.prochelper import ProcessHelperActor
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
-
-
-class MockInProcessCacheActor(WorkerActor):
-    def __init__(self, session_id, mock_data):
-        super(MockInProcessCacheActor, self).__init__()
-        self._session_id = session_id
-        self._mock_data = mock_data
-        self._chunk_holder_ref = None
-
-    def post_create(self):
-        super(MockInProcessCacheActor, self).post_create()
-        self._chunk_holder_ref = self.ctx.actor_ref(ChunkHolderActor.default_uid())
-
-    def dump_cache(self, session_id, keys, callback):
-        for k in keys:
-            ref = self._chunk_store.put(self._session_id, k, self._mock_data)
-            self._chunk_holder_ref.register_chunk(self._session_id, k)
-            del ref
-        self.tell_promise(callback, {})
 
 
 class MockCpuCalcActor(WorkerActor):
@@ -64,25 +45,16 @@ class MockCpuCalcActor(WorkerActor):
         self._delay = delay
         self._session_id = session_id
         self._mock_data = mock_data
-        self._inproc_ref = None
         self._dispatch_ref = None
 
     def post_create(self):
-        uid_parts = self.uid.split(':')
-        inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + str(uuid.uuid4())
-        self._inproc_ref = self.ctx.create_actor(
-            MockInProcessCacheActor, self._session_id, self._mock_data, uid=inproc_uid)
-        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
-        if self.ctx.has_actor(daemon_ref):
-            daemon_ref.register_child_actor(self._inproc_ref, _tell=True)
-
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
     @promise.reject_on_exception
-    def calc(self, session_id, ser_graph, targets, callback):
+    def calc(self, session_id, graph_key, ser_graph, targets, callback):
         self.ctx.sleep(self._delay)
-        self.tell_promise(callback, self._inproc_ref.uid)
+        self.tell_promise(callback)
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
 
@@ -102,12 +74,14 @@ class MockSenderActor(WorkerActor):
     def send_data(self, session_id, chunk_key, target_endpoints, ensure_cached=True,
                   timeout=0, callback=None):
         if self._mode == 'in':
-            self._chunk_store.put(session_id, chunk_key, self._mock_data)
+            self._dispatch_ref.register_free_slot(self.uid, 'sender')
+            self.storage_client.put_object(session_id, chunk_key, self._mock_data, [DataStorageDevice.SHARED_MEMORY]) \
+                .then(lambda *_: self.tell_promise(callback))
         else:
-            data = self._chunk_store.get(session_id, chunk_key)
+            data = self._shared_store.get(session_id, chunk_key)
             assert_array_equal(self._mock_data, data)
-        self.tell_promise(callback, self._mock_data.nbytes)
-        self._dispatch_ref.register_free_slot(self.uid, 'sender')
+            self.tell_promise(callback, self._mock_data.nbytes)
+            self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
 
 class ExecutionTestActor(WorkerActor):
@@ -143,7 +117,7 @@ class ExecutionTestActor(WorkerActor):
         if not self._results:
             return None
         if self._results[0][0]:
-            return self._chunk_store.get(self._session_id, self._array_key)
+            return self._shared_store.get(self._session_id, self._array_key)
         else:
             six.reraise(*self._results[0][1])
 
@@ -166,6 +140,7 @@ class Test(WorkerCase):
                           uid=WorkerClusterInfoActor.default_uid())
 
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+        pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
         if with_resource:
             pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
         if with_daemon:
@@ -174,7 +149,7 @@ class Test(WorkerCase):
             pool.create_actor(StatusActor, address, uid=StatusActor.default_uid())
 
         pool.create_actor(
-            ChunkHolderActor, cls.plasma_storage_size, uid=ChunkHolderActor.default_uid())
+            SharedHolderActor, cls.plasma_storage_size, uid=SharedHolderActor.default_uid())
         pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         pool.create_actor(QuotaActor, quota_size, uid=MemQuotaActor.default_uid())
@@ -193,6 +168,7 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False)
             pool.create_actor(CpuCalcActor, uid='w:1:calc-a')
+            pool.create_actor(InProcHolderActor)
 
             import mars.tensor as mt
             from mars.tensor.datasource import TensorOnes
@@ -209,24 +185,18 @@ class Test(WorkerCase):
                         _key=chunk.op.key)
 
             with self.run_actor_test(pool) as test_actor:
-
                 session_id = str(uuid.uuid4())
-                chunk_holder_ref = test_actor.promise_ref(ChunkHolderActor.default_uid())
 
-                refs = test_actor._chunk_store.put(session_id, arr.chunks[0].key,
-                                                   np.ones((10, 8), dtype=np.int16))
-                chunk_holder_ref.register_chunk(session_id, arr.chunks[0].key)
-                del refs
-
-                refs = test_actor._chunk_store.put(session_id, arr_add.chunks[0].key,
-                                                   np.ones((10, 8), dtype=np.int16))
-                chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
-                del refs
+                storage_client = test_actor.storage_client
+                self.waitp(
+                    storage_client.put_object(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16),
+                                              [DataStorageDevice.SHARED_MEMORY]),
+                )
 
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, arr2.chunks[0].key)
+                    data = test_actor.shared_store.get(session_id, arr2.chunks[0].key)
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
                 graph_key = str(uuid.uuid4())
@@ -242,7 +212,7 @@ class Test(WorkerCase):
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, arr2.chunks[0].key)
+                    data = test_actor.shared_store.get(session_id, arr2.chunks[0].key)
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
                 execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
@@ -252,17 +222,17 @@ class Test(WorkerCase):
 
             self.get_result()
 
-    @patch_method(ChunkHolderActor.pin_chunks)
+    @patch_method(SharedHolderActor.pin_data_keys)
     def testPrepareQuota(self, *_):
         pinned = [True]
 
-        def _mock_pin(_graph_key, chunk_keys):
+        def _mock_pin(_session_id, chunk_keys, _token):
             from mars.errors import PinChunkFailed
             if pinned[0]:
                 raise PinChunkFailed
             return chunk_keys
 
-        ChunkHolderActor.pin_chunks.side_effect = _mock_pin
+        SharedHolderActor.pin_data_keys.side_effect = _mock_pin
 
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
@@ -302,17 +272,15 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
                 def _delay_fun():
-                    time.sleep(1)
+                    time.sleep(0.5)
                     pinned[0] = False
 
                 threading.Thread(target=_delay_fun).start()
 
             finish_time = self.get_result()
-            self.assertGreaterEqual(finish_time, start_time + 1)
+            self.assertGreaterEqual(finish_time, start_time + 0.5)
 
     def testPrepareSpilled(self):
-        from mars.worker.spill import write_spill_file
-
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
@@ -321,11 +289,12 @@ class Test(WorkerCase):
 
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
-            pool.create_actor(SpillActor)
+            pool.create_actor(IORunnerActor)
             pool.create_actor(CpuCalcActor)
+            pool.create_actor(InProcHolderActor)
+
             cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
-            pool.actor_ref(ChunkHolderActor.default_uid())
 
             import mars.tensor as mt
             from mars.tensor.fetch import TensorFetch
@@ -353,12 +322,20 @@ class Test(WorkerCase):
 
             chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
                                              shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
-            write_spill_file(modified_chunk.key, mock_data)
 
             # test read from spilled file
             with self.run_actor_test(pool) as test_actor:
+                self.waitp(
+                    test_actor.storage_client.put_object(
+                        session_id, modified_chunk.key, mock_data, [DataStorageDevice.PROC_MEMORY]) \
+                        .then(lambda *_: test_actor.storage_client.copy_to(
+                            session_id, modified_chunk.key, [DataStorageDevice.DISK]))
+                )
+                test_actor.storage_client.delete(session_id, modified_chunk.key,
+                                                 [DataStorageDevice.PROC_MEMORY])
+
                 def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                    data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
@@ -469,6 +446,7 @@ class Test(WorkerCase):
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False,
                                         with_resource=True)
             pool.create_actor(CpuCalcActor)
+            pool.create_actor(InProcHolderActor)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
             cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
@@ -517,7 +495,7 @@ class Test(WorkerCase):
                                              shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                    data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
@@ -540,6 +518,7 @@ class Test(WorkerCase):
                                address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(CpuCalcActor)
+            pool.create_actor(InProcHolderActor)
 
             import mars.tensor as mt
             arr = mt.ones((4,), chunk_size=4)
@@ -551,7 +530,7 @@ class Test(WorkerCase):
             pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
-                    data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                    data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
@@ -576,7 +555,8 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent',
                                address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
-            pool.create_actor(CpuCalcActor)
+            pool.create_actor(CpuCalcActor, uid='w:1:cpu-calc')
+            pool.create_actor(InProcHolderActor, uid=InProcHolderActor.gen_uid(1))
 
             import mars.tensor as mt
             arr = mt.ones((4,), chunk_size=4)
@@ -587,7 +567,7 @@ class Test(WorkerCase):
             pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
 
             def _validate(_):
-                data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)
+                data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
                 assert_array_equal(data, mock_data + np.ones((4,)))
 
             with self.run_actor_test(pool) as test_actor:

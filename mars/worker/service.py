@@ -27,7 +27,6 @@ from ..utils import parse_readable_size, readable_size
 from ..compat import six
 from .status import StatusActor
 from .quota import QuotaActor, MemQuotaActor
-from .chunkholder import ChunkHolderActor
 from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
@@ -35,7 +34,7 @@ from .calc import CpuCalcActor
 from .transfer import ReceiverActor, SenderActor
 from .prochelper import ProcessHelperActor
 from .transfer import ResultSenderActor
-from .spill import SpillActor
+from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, InProcHolderActor
 from .utils import WorkerClusterInfoActor
 
 
@@ -46,7 +45,8 @@ class WorkerService(object):
     def __init__(self, **kwargs):
         self._plasma_store = None
 
-        self._chunk_holder_ref = None
+        self._storage_manager_ref = None
+        self._shared_holder_ref = None
         self._task_queue_ref = None
         self._mem_quota_ref = None
         self._dispatch_ref = None
@@ -57,6 +57,7 @@ class WorkerService(object):
 
         self._cluster_info_ref = None
         self._cpu_calc_actors = []
+        self._inproc_holder_actors = []
         self._sender_actors = []
         self._receiver_actors = []
         self._spill_actors = []
@@ -71,7 +72,7 @@ class WorkerService(object):
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
             if isinstance(self._spill_dirs, six.string_types):
-                from .spill import parse_spill_dirs
+                from .utils import parse_spill_dirs
                 self._spill_dirs = options.worker.spill_directory = parse_spill_dirs(self._spill_dirs)
             else:
                 options.worker.spill_directory = self._spill_dirs
@@ -146,7 +147,7 @@ class WorkerService(object):
 
     def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
         # create plasma key mapper
-        from .chunkstore import PlasmaKeyMapActor
+        from .storage import PlasmaKeyMapActor
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
 
         # create WorkerClusterInfoActor
@@ -181,9 +182,12 @@ class WorkerService(object):
             self._mem_quota_ref = pool.create_actor(
                 MemQuotaActor, self._soft_quota_limit, self._hard_mem_limit, uid=MemQuotaActor.default_uid())
 
-        # create ChunkHolderActor
-        self._chunk_holder_ref = pool.create_actor(
-            ChunkHolderActor, self._cache_mem_limit, uid=ChunkHolderActor.default_uid())
+        # create StorageManagerActor
+        self._storage_manager_ref = pool.create_actor(
+            StorageManagerActor, uid=StorageManagerActor.default_uid())
+        # create SharedHolderActor
+        self._shared_holder_ref = pool.create_actor(
+            SharedHolderActor, self._cache_mem_limit, uid=SharedHolderActor.default_uid())
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create EventsActor
@@ -191,7 +195,7 @@ class WorkerService(object):
         # create ExecutionActor
         self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
-        # create CpuCalcActor
+        # create CpuCalcActor and InProcHolderActor
         if not distributed:
             self._n_cpu_process = pool.cluster_info.n_process - 1 - process_start_index
 
@@ -199,6 +203,10 @@ class WorkerService(object):
             uid = 'w:%d:mars-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
             actor = actor_holder.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
+
+            uid = 'w:%d:mars-inproc-holder-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            actor = actor_holder.create_actor(InProcHolderActor, uid=uid)
+            self._inproc_holder_actors.append(actor)
 
         start_pid = 1 + process_start_index + self._n_cpu_process
 
@@ -227,9 +235,9 @@ class WorkerService(object):
         # create SpillActor
         start_pid = pool.cluster_info.n_process - 1
         if options.worker.spill_directory:
-            for spill_id in range(len(options.worker.spill_directory) * 2):
-                uid = 'w:%d:mars-spill-%d-%d' % (start_pid, os.getpid(), spill_id)
-                actor = actor_holder.create_actor(SpillActor, uid=uid)
+            for spill_id in range(len(options.worker.spill_directory)):
+                uid = 'w:%d:mars-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
+                actor = actor_holder.create_actor(IORunnerActor, uid=uid)
                 self._spill_actors.append(actor)
 
         # worker can be registered when everything is ready
@@ -243,21 +251,23 @@ class WorkerService(object):
 
     def stop(self):
         try:
+            for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
+                          + self._receiver_actors + self._spill_actors + self._process_helper_actors):
+                actor.destroy(wait=False)
+
             if self._result_sender_ref:
                 self._result_sender_ref.destroy(wait=False)
             if self._status_ref:
                 self._status_ref.destroy(wait=False)
-            if self._chunk_holder_ref:
-                self._chunk_holder_ref.destroy(wait=False)
+            if self._shared_holder_ref:
+                self._shared_holder_ref.destroy(wait=False)
+            if self._storage_manager_ref:
+                self._storage_manager_ref.destroy(wait=False)
             if self._events_ref:
                 self._events_ref.destroy(wait=False)
             if self._dispatch_ref:
                 self._dispatch_ref.destroy(wait=False)
             if self._execution_ref:
                 self._execution_ref.destroy(wait=False)
-
-            for actor in (self._cpu_calc_actors + self._sender_actors
-                          + self._receiver_actors + self._spill_actors + self._process_helper_actors):
-                actor.destroy(wait=False)
         finally:
             self._plasma_store.__exit__(None, None, None)
