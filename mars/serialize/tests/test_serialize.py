@@ -370,21 +370,33 @@ class Test(unittest.TestCase):
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.COMPRESS_FLAG_LZ4)))
+            if not six.PY2:
+                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                    array, compress=dataserializer.COMPRESS_FLAG_GZIP)))
 
             array = np.random.rand(1000, 100)
             assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(array))))
             assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
                 array, compress=dataserializer.COMPRESS_FLAG_LZ4))))
+            if not six.PY2:
+                assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
+                    array, compress=dataserializer.COMPRESS_FLAG_GZIP))))
 
             array = np.random.rand(1000, 100).T  # test non c-contiguous
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.COMPRESS_FLAG_LZ4)))
+            if not six.PY2:
+                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                    array, compress=dataserializer.COMPRESS_FLAG_GZIP)))
 
             array = np.float64(0.2345)
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.COMPRESS_FLAG_LZ4)))
+            if not six.PY2:
+                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                    array, compress=dataserializer.COMPRESS_FLAG_GZIP)))
 
             fn = os.path.join(tempfile.gettempdir(), 'test_dump_file_%d.bin' % id(self))
             try:
@@ -393,11 +405,19 @@ class Test(unittest.TestCase):
                     dataserializer.dump(array, dump_file)
                 with open(fn, 'rb') as dump_file:
                     assert_array_equal(array, dataserializer.load(dump_file))
+
                 with open(fn, 'wb') as dump_file:
                     dataserializer.dump(array, dump_file,
                                         compress=dataserializer.COMPRESS_FLAG_LZ4)
                 with open(fn, 'rb') as dump_file:
                     assert_array_equal(array, dataserializer.load(dump_file))
+
+                if not six.PY2:
+                    with open(fn, 'wb') as dump_file:
+                        dataserializer.dump(array, dump_file,
+                                            compress=dataserializer.COMPRESS_FLAG_GZIP)
+                    with open(fn, 'rb') as dump_file:
+                        assert_array_equal(array, dataserializer.load(dump_file))
             finally:
                 if os.path.exists(fn):
                     os.unlink(fn)
@@ -411,6 +431,11 @@ class Test(unittest.TestCase):
                 mat, compress=dataserializer.COMPRESS_FLAG_LZ4))
             self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
 
+            if not six.PY2:
+                des_mat = dataserializer.loads(dataserializer.dumps(
+                    mat, compress=dataserializer.COMPRESS_FLAG_GZIP))
+                self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
+
             vector = sparse.SparseVector(sps.csr_matrix(np.random.rand(2)), shape=(2,))
             des_vector = dataserializer.loads(dataserializer.dumps(vector))
             self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
@@ -418,6 +443,11 @@ class Test(unittest.TestCase):
             des_vector = dataserializer.loads(dataserializer.dumps(
                 vector, compress=dataserializer.COMPRESS_FLAG_LZ4))
             self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
+
+            if not six.PY2:
+                des_vector = dataserializer.loads(dataserializer.dumps(
+                    vector, compress=dataserializer.COMPRESS_FLAG_GZIP))
+                self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):
@@ -459,28 +489,31 @@ class Test(unittest.TestCase):
         import pyarrow
         from numpy.testing import assert_array_equal
 
-        data = np.random.random((1000, 100))
-        serialized = pyarrow.serialize(data).to_buffer()
+        for compress in [dataserializer.COMPRESS_FLAG_LZ4, dataserializer.COMPRESS_FLAG_GZIP]:
+            if compress not in dataserializer.get_supported_compressions():
+                continue
 
-        bio = BytesIO()
-        reader = dataserializer.CompressBufferReader(pyarrow.py_buffer(serialized),
-                                                     dataserializer.COMPRESS_FLAG_LZ4)
-        while True:
-            block = reader.read(128)
-            if not block:
-                break
-            bio.write(block)
+            data = np.random.random((1000, 100))
+            serialized = pyarrow.serialize(data).to_buffer()
 
-        compressed = bio.getvalue()
-        assert_array_equal(data, dataserializer.loads(compressed))
+            bio = BytesIO()
+            reader = dataserializer.CompressBufferReader(pyarrow.py_buffer(serialized), compress)
+            while True:
+                block = reader.read(128)
+                if not block:
+                    break
+                bio.write(block)
 
-        data_sink = bytearray(len(serialized))
-        compressed_mv = memoryview(compressed)
-        writer = dataserializer.DecompressBufferWriter(pyarrow.py_buffer(data_sink))
-        pos = 0
-        while pos < len(compressed):
-            endpos = min(pos + 128, len(compressed))
-            writer.write(compressed_mv[pos:endpos])
-            pos = endpos
+            compressed = bio.getvalue()
+            assert_array_equal(data, dataserializer.loads(compressed))
 
-        assert_array_equal(data, pyarrow.deserialize(data_sink))
+            data_sink = bytearray(len(serialized))
+            compressed_mv = memoryview(compressed)
+            writer = dataserializer.DecompressBufferWriter(pyarrow.py_buffer(data_sink))
+            pos = 0
+            while pos < len(compressed):
+                endpos = min(pos + 128, len(compressed))
+                writer.write(compressed_mv[pos:endpos])
+                pos = endpos
+
+            assert_array_equal(data, pyarrow.deserialize(data_sink))
