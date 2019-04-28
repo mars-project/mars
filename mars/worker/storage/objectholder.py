@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import logging
+import time
+import uuid
 
 from ... import promise
 from ...compat import OrderedDict3, six, functools32
 from ...config import options
-from ...utils import parse_readable_size, log_unhandled, readable_size
+from ...utils import parse_readable_size, log_unhandled, readable_size, tokenize
 from ...errors import *
 from ..utils import WorkerActor
 from .core import DataStorageDevice
@@ -90,7 +92,10 @@ class ObjectHolderActor(WorkerActor):
             raise NoDataToSpill
         request_size = min(request_size, self._max_spill_size)
 
-        logger.debug('Start spilling %d(x%d) bytes from shared cache.', request_size, multiplier)
+        spill_ref_key = tokenize((time.time(), size, multiplier))
+
+        logger.debug('Start spilling %d(x%d) bytes from shared cache on token=%s.',
+                     request_size, multiplier, spill_ref_key)
 
         if request_size + self._total_hold > self._size_limit:
             acc_free = 0
@@ -105,32 +110,26 @@ class ObjectHolderActor(WorkerActor):
                     break
 
             if not free_keys:
-                logger.warning('Cannot spill further. Rejected. request=%d', request_size)
+                logger.warning('Cannot spill further. Rejected. request=%d ref_key=%s',
+                               request_size, spill_ref_key)
                 raise NoDataToSpill
 
-            logger.debug('Decide to spill %d chunks. request=%d', len(free_keys), request_size)
+            logger.debug('Decide to spill %d chunks. request=%d ref_key=%s',
+                         len(free_keys), request_size, spill_ref_key)
 
             @log_unhandled
             def _release_spill_allocations(key):
-                if key in self._spill_pending_keys:
-                    self._spill_pending_keys.remove(key)
-                if key in self._pinned_counter:
-                    return
-                if key not in self._data_holder:
-                    return
-
-                logger.debug('Removing reference of chunk %s from %s when spilling', key, self.uid)
-                if key in self._data_holder:
-                    self._total_hold -= self._data_sizes[key]
-                    del self._data_holder[key]
-                    del self._data_sizes[key]
-                    self.post_delete(*key)
+                logger.debug('Removing reference of chunk %s from %s when spilling. ref_key=%s',
+                             key, self.uid, spill_ref_key)
+                self.delete_object(*key)
 
             @log_unhandled
             def _handle_spill_reject(*exc, **kwargs):
                 key = kwargs['data_key']
-                if key in self._spill_pending_keys:
+                try:
                     self._spill_pending_keys.remove(key)
+                except KeyError:
+                    pass
                 six.reraise(*exc)
 
             @log_unhandled
@@ -139,14 +138,14 @@ class ObjectHolderActor(WorkerActor):
                     return
                 if key not in self._data_holder:
                     return
-                logger.debug('Spilling key %s', key)
+                logger.debug('Spilling key %s. ref_key=%s', key, spill_ref_key)
                 return self._storage_client.copy_to(*(key + (self._spill_devices,))) \
-                    .then(lambda *_: _release_spill_allocations(key)) \
-                    .catch(functools32.partial(_handle_spill_reject, data_key=key))
+                    .then(lambda *_: _release_spill_allocations(key),
+                          functools32.partial(_handle_spill_reject, data_key=key))
 
             @log_unhandled
             def _finalize_spill(*_):
-                logger.debug('Finish spilling %d chunks.', len(free_keys))
+                logger.debug('Finish spilling %d chunks. ref_key=%s', len(free_keys), spill_ref_key)
                 self._plasma_client.evict(request_size)
                 if callback:
                     self.tell_promise(callback)
@@ -155,7 +154,7 @@ class ObjectHolderActor(WorkerActor):
             promise.all_(_spill_key(k) for k in free_keys).then(_finalize_spill) \
                 .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
         else:
-            logger.debug('No need to spill. request=%d', request_size)
+            logger.debug('No need to spill. request=%d ref_key=%s', request_size, spill_ref_key)
 
             self._plasma_client.evict(request_size)
             if callback:
@@ -181,6 +180,11 @@ class ObjectHolderActor(WorkerActor):
     def delete_object(self, session_id, data_key):
         session_data_key = (session_id, data_key)
 
+        try:
+            self._spill_pending_keys.remove(session_data_key)
+        except KeyError:
+            pass
+
         if session_data_key in self._data_holder:
             logger.debug('Chunk %s unregistered in %s. total_hold=%d', data_key, self.uid, self._total_hold)
 
@@ -204,7 +208,7 @@ class ObjectHolderActor(WorkerActor):
     def pin_data_keys(self, session_id, data_keys, token):
         spilling_keys = list(k for k in data_keys if (session_id, k) in self._spill_pending_keys)
         if spilling_keys:
-            logger.warning('Cannot pin chunks %r', spilling_keys)
+            logger.warning('Cannot pin data key %r', spilling_keys)
             raise PinChunkFailed
         pinned = []
         for k in data_keys:
@@ -219,8 +223,6 @@ class ObjectHolderActor(WorkerActor):
 
     @log_unhandled
     def unpin_data_keys(self, session_id, data_keys, token):
-        if isinstance(data_keys, six.string_types):
-            data_keys = (data_keys,)
         for k in data_keys:
             session_k = (session_id, k)
             try:
@@ -252,9 +254,13 @@ class SharedHolderActor(ObjectHolderActor):
         self._shared_store.delete(session_id, data_key)
         self._storage_handler.unregister_data(session_id, data_key)
 
-    def put_object_by_key(self, session_id, data_key):
+    def put_object_by_key(self, session_id, data_key, pinned=False):
         buf = self._shared_store.get_buffer(session_id, data_key)
         self._internal_put_object(session_id, data_key, buf, len(buf))
+        if pinned:
+            token = tokenize(time.time(), str(uuid.uuid4()))
+            self.pin_data_keys(session_id, [data_key], token)
+            return token
 
 
 class InProcHolderActor(ObjectHolderActor):

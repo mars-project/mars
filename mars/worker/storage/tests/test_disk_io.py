@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import functools
+import os
 import uuid
 
 import numpy as np
@@ -51,8 +51,13 @@ class Test(WorkerCase):
                 storage_client = test_actor.storage_client
                 handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
 
-                compress_types = [dataserializer.CompressType.NONE, dataserializer.CompressType.LZ4]
+                compress_types = {dataserializer.CompressType.NONE} \
+                    | dataserializer.get_supported_compressions()
                 for handler._compress in compress_types:
+                    storage_client.delete(session_id, data_key1)
+                    storage_client.delete(session_id, data_key2)
+                    self.rm_spill_dirs()
+
                     file_names = []
 
                     def _write_data(ser, writer):
@@ -66,9 +71,9 @@ class Test(WorkerCase):
                         .then(lambda *_: test_actor.set_result(None),
                               lambda *exc: test_actor.set_result(exc, accept=False))
                     self.get_result(5)
-                    self.assertTrue(os.path.exists(file_names[-1]))
                     self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
                                      [(0, DataStorageDevice.DISK)])
+                    self.assertTrue(os.path.exists(file_names[-1]))
 
                     def _read_data(reader):
                         with reader:
@@ -132,6 +137,9 @@ class Test(WorkerCase):
 
                 compress_types = [dataserializer.CompressType.NONE, dataserializer.CompressType.LZ4]
                 for handler._compress in compress_types:
+                    storage_client.delete(session_id, data_key1)
+                    self.rm_spill_dirs()
+
                     file_names = []
 
                     def _write_data(ser, writer):
@@ -145,9 +153,9 @@ class Test(WorkerCase):
                         .then(lambda *_: test_actor.set_result(None),
                               lambda *exc: test_actor.set_result(exc, accept=False))
                     self.get_result(5)
-                    self.assertTrue(os.path.exists(file_names[-1]))
                     self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
                                      [(0, DataStorageDevice.DISK)])
+                    self.assertTrue(os.path.exists(file_names[-1]))
 
                     def _read_data(reader):
                         with reader:

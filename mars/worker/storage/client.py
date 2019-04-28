@@ -76,7 +76,7 @@ class StorageClient(object):
         return getattr(self._manager_ref, item)
 
     def _get_stored_devices(self, session_id, data_key):
-        return [loc[1] for loc in self._manager_ref.get_data_locations(session_id, data_key)
+        return [loc[1] for loc in (self._manager_ref.get_data_locations(session_id, data_key) or ())
                 if loc[0] == self._proc_id or loc[1] in DataStorageDevice.GLOBAL_DEVICES]
 
     def _do_with_spill(self, action, total_bytes, device_order,
@@ -95,8 +95,7 @@ class StorageClient(object):
                             device_pos=device_pos, spill_multiplier=min(spill_multiplier + 1, 1024),
                             ensure=ensure,
                         ))
-            else:
-                six.reraise(*exc_info)
+            six.reraise(*exc_info)
 
         cur_device_type = device_order[device_pos]
         handler = self.get_storage_handler(cur_device_type)
@@ -186,6 +185,9 @@ class StorageClient(object):
         existing_devs = set(self._get_stored_devices(session_id, data_key))
         data_size = self._manager_ref.get_data_size(session_id, data_key)
 
+        if not existing_devs or not data_size:
+            raise KeyError('Data key (%s, %s) invalid.' % (session_id, data_key))
+
         target = next((d for d in device_order if d in existing_devs), None)
         if target is not None:
             handler = self.get_storage_handler(target)
@@ -211,6 +213,11 @@ class StorageClient(object):
         for dev_type in devices:
             handler = self.get_storage_handler(dev_type)
             handler.delete(session_id, data_key, _tell=_tell)
+
+    def filter_exist_keys(self, session_id, data_keys, devices=None):
+        devices = [d.build_location(self.proc_id)
+                   for d in (devices or DataStorageDevice.__members__.values())]
+        return self.manager_ref.filter_exist_keys(session_id, data_keys, devices)
 
     def pin_data_keys(self, session_id, data_keys, token, devices=None):
         devices = devices or DataStorageDevice.__members__.values()

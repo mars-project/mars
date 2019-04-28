@@ -69,6 +69,11 @@ class DiskIO(BytesStorageIO):
 
         filename = self._dest_filename = self._filename = _build_file_name(session_id, data_key)
         if self.is_writable:
+            if os.path.exists(self._dest_filename):
+                exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, data_key) or ()
+                if (0, DataStorageDevice.DISK) in exist_devs:
+                    raise IOError('File for data (%s, %s) already exists.' % (session_id, data_key))
+
             filename = self._filename = _build_file_name(session_id, data_key, writing=True)
             buf = self._raw_buf = open(filename, 'wb')
 

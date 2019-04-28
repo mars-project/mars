@@ -185,11 +185,16 @@ def get_chunk_key(key):
     return key[0] if isinstance(key, tuple) else key
 
 
-def build_quota_key(session_id, data_key, owner=None):
+def build_quota_key(session_id, data_key, owner):
     owner = str(owner)
     if isinstance(data_key, tuple):
         return data_key + (session_id, owner)
     return data_key, session_id, owner
+
+
+def change_quota_key_owner(quota_key, owner):
+    owner = str(owner)
+    return quota_key[:-1] + (owner,)
 
 
 def parse_spill_dirs(dir_str):

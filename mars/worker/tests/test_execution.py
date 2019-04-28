@@ -52,7 +52,7 @@ class MockCpuCalcActor(WorkerActor):
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
     @promise.reject_on_exception
-    def calc(self, session_id, graph_key, ser_graph, targets, callback):
+    def calc(self, session_id, graph_key, ser_graph, targets, mem_requests, callback):
         self.ctx.sleep(self._delay)
         self.tell_promise(callback)
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
@@ -127,7 +127,7 @@ class Test(WorkerCase):
         super(Test, self).tearDown()
         logger = logging.getLogger(ExecutionActor.__module__)
         logger.setLevel(logging.WARNING)
-        self.rm_spill_dirs(options.worker.spill_directory)
+        self.rm_spill_dirs()
 
     @classmethod
     def create_standard_actors(cls, pool, address, quota_size=None, with_daemon=True,

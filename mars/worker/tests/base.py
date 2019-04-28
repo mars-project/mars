@@ -24,7 +24,7 @@ from mars.actors import create_actor_pool
 from mars.config import options
 from mars.compat import six
 from mars.utils import classproperty
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, parse_spill_dirs
 
 
 class WorkerTestActor(WorkerActor):
@@ -100,7 +100,6 @@ class WorkerCase(unittest.TestCase):
         cls._plasma_store.__exit__(None, None, None)
 
         cls.rm_spill_dirs(cls.spill_dir)
-        cls.rm_spill_dirs(options.worker.spill_directory)
 
         if os.path.exists(cls.plasma_socket):
             os.unlink(cls.plasma_socket)
@@ -147,11 +146,13 @@ class WorkerCase(unittest.TestCase):
             six.reraise(*r)
 
     @staticmethod
-    def rm_spill_dirs(spill_dirs):
+    def rm_spill_dirs(spill_dirs=None):
         import shutil
         spill_dirs = spill_dirs or []
         if not isinstance(spill_dirs, list):
             spill_dirs = [spill_dirs]
+        option_dirs = parse_spill_dirs(options.worker.spill_directory or '')
+        spill_dirs = list(set(spill_dirs + option_dirs))
         for d in spill_dirs:
             shutil.rmtree(d, ignore_errors=True)
 

@@ -80,8 +80,11 @@ class SharedStorageIO(BytesStorageIO):
         if self.is_writable and self._shared_buf is not None:
             self._shared_store.seal(self._session_id, self._data_key)
             if finished:
-                self._holder_ref.put_object_by_key(self._session_id, self._data_key)
+                # make sure data is not spilled before registration
+                pin_token = self._holder_ref.put_object_by_key(
+                    self._session_id, self._data_key, pinned=True)
                 self.register(self._nbytes)
+                self._holder_ref.unpin_data_keys(self._session_id, [self._data_key], pin_token)
             else:
                 self._shared_store.delete(self._session_id, self._data_key)
 
@@ -126,11 +129,13 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         buf = None
         try:
             buf = self._shared_store.put(session_id, data_key, o)
-            self._holder_ref.put_object_by_key(session_id, data_key)
+            # make sure data is not spilled before registration
+            pin_token = self._holder_ref.put_object_by_key(session_id, data_key, pinned=True)
         finally:
             del buf
         data_size = self._shared_store.get_actual_size(session_id, data_key)
         self.register_data(session_id, data_key, data_size, shape=getattr(o, 'shape', None))
+        self._holder_ref.unpin_data_keys(session_id, [data_key], pin_token)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)

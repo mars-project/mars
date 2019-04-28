@@ -150,9 +150,9 @@ class CpuCalcActor(WorkerActor):
             apply_alloc_sizes[get_chunk_key(k)] += calc_data_size(v)
 
         for k, v in apply_alloc_sizes.items():
-            alloc_key = build_quota_key(session_id, k, owner=self.proc_id)
-            self._mem_quota_ref.alter_allocation(alloc_key, v, _tell=True)
-            self._mem_quota_ref.hold_quota(alloc_key, _tell=True)
+            quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+            self._mem_quota_ref.alter_allocation(quota_key, v, _tell=True)
+            self._mem_quota_ref.hold_quota(quota_key, _tell=True)
 
         if self._status_ref:
             self._status_ref.update_mean_stats(
@@ -168,7 +168,7 @@ class CpuCalcActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def calc(self, session_id, graph_key, ser_graph, chunk_targets, callback):
+    def calc(self, session_id, graph_key, ser_graph, chunk_targets, mem_requests, callback):
         """
         Do actual calculation. This method should be called when all data
         is available (i.e., either in shared cache or in memory)
@@ -180,19 +180,29 @@ class CpuCalcActor(WorkerActor):
         graph = deserialize_graph(ser_graph)
         chunk_targets = set(chunk_targets)
         keys_to_fetch = self._get_keys_to_fetch(graph)
+        shared_keys = self.storage_client.filter_exist_keys(
+            session_id, keys_to_fetch, [DataStorageDevice.SHARED_MEMORY])
 
         for k in keys_to_fetch:
-            old_alloc_key = build_quota_key(session_id, k, owner=graph_key)
-            new_alloc_key = build_quota_key(session_id, k, owner=self.proc_id)
-            self._mem_quota_ref.alter_allocation(old_alloc_key, new_key=new_alloc_key)
-            self._mem_quota_ref.process_quota(new_alloc_key, _tell=True)
+            if k in shared_keys:
+                continue
+            old_quota_key = build_quota_key(session_id, k, owner=graph_key)
+            new_quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+            self._mem_quota_ref.alter_allocation(old_quota_key, new_key=new_quota_key)
+            self._mem_quota_ref.process_quota(new_quota_key, _tell=True)
 
-        # mark targets as processing
+        # mark targets as processing and build calc memory requirements
+        calc_quotas = dict()
         for k in chunk_targets:
-            old_alloc_key = build_quota_key(session_id, k, owner=graph_key)
-            new_alloc_key = build_quota_key(session_id, k, owner=self.proc_id)
-            self._mem_quota_ref.alter_allocation(old_alloc_key, new_key=new_alloc_key)
-            self._mem_quota_ref.process_quota(new_alloc_key, _tell=True)
+            old_quota_key = build_quota_key(session_id, k, owner=graph_key)
+            new_quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+            calc_quotas[new_quota_key] = mem_requests[old_quota_key]
+            self._mem_quota_ref.alter_allocation(old_quota_key, new_key=new_quota_key)
+
+        def _start_calc(context_dict):
+            for k in calc_quotas.keys():
+                self._mem_quota_ref.process_quota(k)
+            return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
             self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True)
@@ -211,8 +221,8 @@ class CpuCalcActor(WorkerActor):
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
 
         return self._fetch_keys_to_process(session_id, keys_to_fetch) \
-            .then(lambda context_dict: self._calc_results(
-                session_id, graph_key, graph, context_dict, chunk_targets)) \
+            .then(lambda context_dict: self._mem_quota_ref.request_batch_quota(calc_quotas, _promise=True)
+                .then(lambda *_: _start_calc(context_dict))) \
             .then(lambda keys: _finalize(keys, None), lambda *exc_info: _finalize(None, exc_info))
 
     @promise.reject_on_exception

@@ -24,7 +24,7 @@ from mars.worker import WorkerDaemonActor, DispatchActor, StorageManagerActor, \
     InProcHolderActor, QuotaActor, MemQuotaActor
 from mars.worker.storage import DataStorageDevice
 from mars.worker.tests.base import WorkerCase
-from mars.worker.utils import WorkerClusterInfoActor
+from mars.worker.utils import WorkerClusterInfoActor, build_quota_key
 
 
 class Test(WorkerCase):
@@ -86,15 +86,18 @@ class Test(WorkerCase):
                                  [(0, DataStorageDevice.SHARED_MEMORY)])
                 self.assertEqual(list(storage_client.get_data_locations(session_id, fetch_chunk2.key)),
                                  [(0, DataStorageDevice.DISK)])
+
+                quota_batch = {
+                    build_quota_key(session_id, fetch_chunk2.key, add_chunk.op.key): data2.nbytes,
+                    build_quota_key(session_id, add_chunk.key, add_chunk.op.key): data2.nbytes,
+                }
+
                 self.waitp(
-                    quota_ref_p.request_quota((fetch_chunk1.key, session_id, add_chunk.op.key),
-                                              data1.nbytes, _promise=True),
-                    quota_ref_p.request_quota((fetch_chunk2.key, session_id, add_chunk.op.key),
-                                              data2.nbytes, _promise=True),
+                    quota_ref_p.request_batch_quota(quota_batch, _promise=True),
                 )
                 self.waitp(
                     calc_ref_p.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
-                                    [add_chunk.key], _promise=True)
+                                    [add_chunk.key], quota_batch, _promise=True)
                         .then(lambda *_: calc_ref_p.store_results(session_id, [add_chunk.key], _promise=True))
                 )
 

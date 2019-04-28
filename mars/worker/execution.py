@@ -30,7 +30,8 @@ from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
     calc_data_size, get_chunk_shuffle_key
 from .storage import DataStorageDevice
-from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_quota_key
+from .utils import WorkerActor, ExpiringCache, concat_operand_keys, \
+    build_quota_key, change_quota_key_owner
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ class GraphExecutionRecord(object):
         self.data_sizes = data_sizes or dict()
         self.shared_input_chunks = shared_input_chunks or set()
         self.mem_request = mem_request or dict()
-        self.pinned_keys = pinned_keys or set()
+        self.pinned_keys = set(pinned_keys or [])
         self.est_finish_time = est_finish_time or time.time()
         self.calc_actor_uid = calc_actor_uid
         self.send_addresses = send_addresses
@@ -171,6 +172,14 @@ class ExecutionActor(WorkerActor):
                 self._dump_execution_states()
         self.ref().periodical_dump(_tell=True, _delay=10)
 
+    def _pin_data_keys(self, session_id, graph_key, data_keys):
+        try:
+            graph_record = self._graph_records[(session_id, graph_key)]
+        except KeyError:
+            return
+        graph_record.pinned_keys.update(self.storage_client.pin_data_keys(
+            session_id, data_keys, graph_key))
+
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
         size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
@@ -227,7 +236,7 @@ class ExecutionActor(WorkerActor):
                         pass
             elif chunk.key in graph_record.chunk_targets:
                 # use estimated size as potential allocation size
-                cache_batch, alloc_mem_batch[build_quota_key(session_id, chunk.key, graph_key)] = \
+                cache_batch, alloc_mem_batch[build_quota_key(session_id, chunk.key, owner=graph_key)] = \
                     memory_estimations[chunk.key]
                 if not isinstance(chunk.key, tuple):
                     alloc_cache_batch[chunk.key] = cache_batch
@@ -237,7 +246,7 @@ class ExecutionActor(WorkerActor):
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
                                 if k not in graph_record.pinned_keys)
-        alloc_mem_batch.update((build_quota_key(session_id, k, graph_key), v)
+        alloc_mem_batch.update((build_quota_key(session_id, k, owner=graph_key), v)
                                for k, v in load_chunk_sizes.items()
                                if k not in graph_record.shared_input_chunks)
         if alloc_cache_batch:
@@ -274,7 +283,7 @@ class ExecutionActor(WorkerActor):
         def _finish_fetch(*_):
             locations = storage_client.get_data_locations(session_id, chunk_key)
             if (0, DataStorageDevice.SHARED_MEMORY) in locations:
-                graph_record.pinned_keys.update(storage_client.pin_data_keys(session_id, chunk_key, graph_key))
+                self._pin_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quota(build_quota_key(session_id, chunk_key, owner=graph_key))
 
         @log_unhandled
@@ -285,7 +294,7 @@ class ExecutionActor(WorkerActor):
 
                 if not storage_client.get_data_locations(session_id, chunk_key):
                     logger.debug('Deleting chunk %s from worker because of failure of transfer', chunk_key)
-                    self._shared_store.delete(session_id, chunk_key)
+                    storage_client.delete(session_id, chunk_key)
                 else:
                     # as data already transferred, we can skip the error
                     logger.debug('Chunk %s already transferred', chunk_key)
@@ -535,13 +544,16 @@ class ExecutionActor(WorkerActor):
         for input_key in input_keys:
             if storage_client.get_data_locations(session_id, input_key):
                 loaded_keys.append(input_key)
+                ensure_shared = input_key in graph_record.shared_input_chunks or input_key in shuffle_keys
+                if ensure_shared:
+                    self._mem_quota_ref.release_quota(build_quota_key(session_id, input_key, owner=graph_key))
+
                 pin_fun = functools.partial(
-                    lambda k, *_: graph_record.pinned_keys.update(
-                        storage_client.pin_data_keys(session_id, k, graph_key)), input_key)
+                    lambda k, *_: self._pin_data_keys(session_id, graph_key, [k]), input_key)
                 prepare_promises.append(
-                    storage_client.copy_to(session_id, input_key, [DataStorageDevice.SHARED_MEMORY],
-                                           ensure=input_key in graph_record.shared_input_chunks)
-                        .then(pin_fun)
+                    storage_client.copy_to(
+                        session_id, input_key, [DataStorageDevice.SHARED_MEMORY], ensure=ensure_shared)
+                        .then(pin_fun, lambda *_: None)
                 )
                 continue
 
@@ -592,16 +604,16 @@ class ExecutionActor(WorkerActor):
             # get allocation for calc, in case that memory exhausts
             target_allocs = dict()
             for chunk in graph_record.graph:
-                alloc_key = None
+                quota_key = None
                 if isinstance(chunk.op, Fetch):
                     locations = storage_client.get_data_locations(session_id, chunk.key) or ()
                     if (0, DataStorageDevice.SHARED_MEMORY) not in locations:
-                        alloc_key = build_quota_key(session_id, chunk.key, owner=graph_key)
+                        quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
                 elif chunk.key in graph_record.chunk_targets:
-                    alloc_key = build_quota_key(session_id, chunk.key, owner=graph_key)
+                    quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
 
-                if alloc_key is not None and alloc_key in graph_record.mem_request:
-                    target_allocs[alloc_key] = graph_record.mem_request[alloc_key]
+                if quota_key is not None and quota_key in graph_record.mem_request:
+                    target_allocs[quota_key] = graph_record.mem_request[quota_key]
 
             self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
             raw_calc_ref = self.ctx.actor_ref(calc_uid)
@@ -610,8 +622,10 @@ class ExecutionActor(WorkerActor):
             def _start_calc(*_):
                 logger.debug('Submit calculation for graph %s in actor %s', graph_key, calc_uid)
                 if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref):
-                    return calc_ref.calc(session_id, graph_key, graph_record.graph_serialized,
-                                         graph_record.chunk_targets, _promise=True)
+                    return calc_ref.calc(
+                        session_id, graph_key, graph_record.graph_serialized, graph_record.chunk_targets,
+                        graph_record.mem_request.copy(), _promise=True
+                    )
                 else:
                     raise WorkerProcessStopped
 
@@ -692,8 +706,7 @@ class ExecutionActor(WorkerActor):
             logger.debug('Graph %s already marked for stop, quit.', graph_key)
             raise ExecutionInterrupted
 
-        storage_client.unpin_data_keys(
-            session_id, list(set(c.key for c in graph_record.graph)), graph_key)
+        storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
         self._dump_execution_states()
 
         if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_calc_ref):
@@ -745,9 +758,16 @@ class ExecutionActor(WorkerActor):
         except KeyError:
             return
 
-        self._mem_quota_ref.cancel_requests(tuple(graph_record.mem_request.keys()), _tell=True)
+        mem_quota_keys = tuple(graph_record.mem_request.keys())
+        self._mem_quota_ref.cancel_requests(mem_quota_keys, _tell=True)
         if graph_record.mem_request:
-            self._mem_quota_ref.release_quotas(tuple(graph_record.mem_request.keys()), _tell=True)
+            self._mem_quota_ref.release_quotas(mem_quota_keys, _tell=True)
+            if graph_record.calc_actor_uid:
+                target_proc_id = self.ctx.distributor.distribute(graph_record.calc_actor_uid)
+                owned_quota_keys = tuple(change_quota_key_owner(k, target_proc_id)
+                                         for k in mem_quota_keys)
+                self._mem_quota_ref.release_quotas(owned_quota_keys, _tell=True)
+
         if graph_record.pinned_keys:
             self.storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
 

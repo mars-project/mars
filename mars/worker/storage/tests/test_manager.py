@@ -59,6 +59,9 @@ class Test(WorkerCase):
             self.assertEqual([(1, DataStorageDevice.PROC_MEMORY)],
                              sorted(manager_ref.get_data_locations(session_id, data_key2)))
             self.assertEqual(1024, manager_ref.get_data_size(session_id, data_key2))
+            self.assertEqual([data_key1],
+                             list(manager_ref.filter_exist_keys(session_id, [data_key1, data_key2],
+                                                                [(0, DataStorageDevice.SHARED_MEMORY)])))
 
             manager_ref.unregister_data(session_id, data_key2,
                                         (1, DataStorageDevice.PROC_MEMORY))

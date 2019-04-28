@@ -28,7 +28,7 @@ class DataAttrs(object):
 class StorageManagerActor(WorkerActor):
     def __init__(self):
         super(StorageManagerActor, self).__init__()
-        self._data_to_locations = defaultdict(set)
+        self._data_to_locations = dict()
         self._data_attrs = dict()
         self._proc_to_data = defaultdict(set)
 
@@ -51,7 +51,12 @@ class StorageManagerActor(WorkerActor):
 
     def register_data(self, session_id, data_key, location, size, shape=None):
         session_data_key = (session_id, data_key)
-        self._data_to_locations[session_data_key].add(location)
+        try:
+            location_set = self._data_to_locations[session_data_key]
+        except KeyError:
+            location_set = self._data_to_locations[session_data_key] = set()
+
+        location_set.add(location)
         try:
             attrs = self._data_attrs[session_data_key]
             attrs.size = max(size, attrs.size)
@@ -67,19 +72,21 @@ class StorageManagerActor(WorkerActor):
         session_data_key = (session_id, data_key)
         if location[0] > 0:
             self._proc_to_data[location[0]].difference_update([session_data_key])
-        self._data_to_locations[session_data_key].difference_update([location])
-        if not self._data_to_locations[session_data_key]:
-            del self._data_to_locations[session_data_key]
-            try:
-                del self._data_attrs[session_data_key]
-            except KeyError:
-                pass
+        try:
+            self._data_to_locations[session_data_key].difference_update([location])
+            if not self._data_to_locations[session_data_key]:
+                del self._data_to_locations[session_data_key]
+                try:
+                    del self._data_attrs[session_data_key]
+                except KeyError:
+                    pass
+        except KeyError:
+            pass
 
     def get_data_locations(self, session_id, data_key):
-        session_data_key = (session_id, data_key)
-        if session_data_key in self._data_to_locations:
+        try:
             return self._data_to_locations[(session_id, data_key)]
-        else:
+        except KeyError:
             return None
 
     def get_data_size(self, session_id, data_key):
@@ -108,12 +115,31 @@ class StorageManagerActor(WorkerActor):
                 pass
         return res
 
+    def filter_exist_keys(self, session_id, data_keys, devices):
+        devices = set(devices)
+        keys = []
+        for k in data_keys:
+            try:
+                if devices & self._data_to_locations[(session_id, k)]:
+                    keys.append(k)
+            except KeyError:
+                pass
+        return keys
+
     def handle_process_down(self, proc_indices):
         affected_keys = set()
         for proc_id in proc_indices:
             affected_keys.update(self._proc_to_data[proc_id])
+            del self._proc_to_data[proc_id]
         proc_indices_set = set(proc_indices)
         for k in affected_keys:
             affected_locs = [loc for loc in self._data_to_locations[k]
                              if loc[0] in proc_indices_set]
-            self._data_to_locations[k].difference_update(affected_locs)
+            location_set = self._data_to_locations[k]
+            location_set.difference_update(affected_locs)
+            if not location_set:
+                del self._data_to_locations[k]
+                try:
+                    del self._data_attrs[k]
+                except KeyError:
+                    pass
