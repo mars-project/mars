@@ -132,9 +132,15 @@ class GraphApiHandler(ApiRequestHandler):
 class GraphDataHandler(ApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tensor_key):
-        type_argument = self.request.arguments.get('type')
-        if type_argument:
-            data_type = to_str(type_argument[0])
+        type_arg = self.request.arguments.get('type')
+        try:
+            compressions_arg = self.request.arguments.get('compressions')
+            if compressions_arg:
+                compressions_arg = [int(s) for s in to_str(compressions_arg[0]).split(',') if s]
+        except (TypeError, ValueError):
+            raise web.HTTPError(403, 'Malformed encodings')
+        if type_arg:
+            data_type = to_str(type_arg[0])
             if data_type == 'nsplits':
                 nsplits = self.web_api.get_tensor_nsplits(session_id, graph_key, tensor_key)
                 self.write(json.dumps(nsplits))
@@ -145,7 +151,7 @@ class GraphDataHandler(ApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tensor_key)
+                return web_api.fetch_data(session_id, graph_key, tensor_key, compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)
