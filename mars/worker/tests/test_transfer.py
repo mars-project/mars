@@ -225,8 +225,8 @@ class Test(WorkerCase):
                 # send when data missing
                 sender_ref_p = test_actor.promise_ref(sender_ref)
                 sender_ref_p.send_data(session_id, str(uuid.uuid4()), recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 with self.assertRaises(DependencyMissing):
                     self.get_result(5)
 
@@ -234,8 +234,8 @@ class Test(WorkerCase):
                 write_spill_file(chunk_key1, mock_data)
 
                 sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
                 os.unlink(build_spill_file_name(chunk_key1))
@@ -245,8 +245,8 @@ class Test(WorkerCase):
                 chunk_holder_ref.register_chunk(session_id, chunk_key1)
 
                 sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
 
@@ -260,8 +260,8 @@ class Test(WorkerCase):
                     # send data to already transferred / transferring
                     sender_ref_p.send_data(session_id, chunk_key1,
                                            [recv_pool_addr, recv_pool_addr2], _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                     self.get_result(5)
                     assert_array_equal(mock_data, recv_ref2.get_result_data(session_id, chunk_key1))
 
@@ -270,8 +270,8 @@ class Test(WorkerCase):
                 chunk_holder_ref.register_chunk(session_id, chunk_key2)
 
                 sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 with self.assertRaises(BrokenPipeError):
                     self.get_result(5)
 
@@ -280,8 +280,8 @@ class Test(WorkerCase):
 
                 with patch_method(MockReceiverActor.receive_data_part, new=mocked_receive_data_part):
                     sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                     with self.assertRaises(ChecksumMismatch):
                         self.get_result(5)
 
@@ -333,15 +333,15 @@ class Test(WorkerCase):
 
                 # start creating writer
                 receiver_ref_p.create_data_writer(session_id, chunk_key1, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVING))
 
                 receiver_ref_p.cancel_receive(session_id, chunk_key2)
@@ -350,11 +350,11 @@ class Test(WorkerCase):
 
                 # test checksum error on receive_data_part
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data, 0)
 
@@ -363,15 +363,15 @@ class Test(WorkerCase):
 
                 # test checksum error on finish_receive
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data, serialized_crc32)
                 receiver_ref_p.finish_receive(session_id, chunk_key2, 0)
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 with self.assertRaises(ChecksumMismatch):
                     self.get_result(5)
@@ -380,12 +380,12 @@ class Test(WorkerCase):
 
                 # test intermediate cancellation
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data[:64],
                                                  zlib.crc32(serialized_mock_data[:64]))
@@ -397,11 +397,11 @@ class Test(WorkerCase):
 
                 # test transfer in memory
                 receiver_ref_p.register_finish_callback(session_id, chunk_key3, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key3, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key3, serialized_mock_data[:64],
@@ -412,7 +412,7 @@ class Test(WorkerCase):
                 self.assertTupleEqual((), self.get_result(5))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key3, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
 
                 # test transfer in spill file
@@ -423,12 +423,12 @@ class Test(WorkerCase):
                     # test receive aborted
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s))
                     self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                     receiver_ref_p.register_finish_callback(session_id, chunk_key4, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                     receiver_ref_p.receive_data_part(session_id, chunk_key4, serialized_mock_data[:64],
                                                      zlib.crc32(serialized_mock_data[:64]))
@@ -439,12 +439,12 @@ class Test(WorkerCase):
                     # test receive into spill
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s))
                     self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
                     receiver_ref_p.register_finish_callback(session_id, chunk_key4, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                     receiver_ref_p.receive_data_part(session_id, chunk_key4, serialized_mock_data, serialized_crc32)
                     receiver_ref_p.finish_receive(session_id, chunk_key4, serialized_crc32)
@@ -458,20 +458,20 @@ class Test(WorkerCase):
                 with patch_method(PlasmaChunkStore.create, new=mocked_store_create):
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key5, data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s, destroy=False),
-                              lambda *s: test_actor.set_result(s, accept=False, destroy=False))
+                        .then(lambda *s: test_actor.set_result(s),
+                              lambda *s: test_actor.set_result(s, accept=False))
 
                     with self.assertRaises(SpillNotConfigured):
                         self.get_result(5)
 
                 # test receive timeout
                 receiver_ref_p.register_finish_callback(session_id, chunk_key6, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key6, data_size, test_actor,
                                                   timeout=2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
                 receiver_ref_p.receive_data_part(session_id, chunk_key6, serialized_mock_data[:64],
                                                  zlib.crc32(serialized_mock_data[:64]))
@@ -481,13 +481,13 @@ class Test(WorkerCase):
 
                 # test sender halt
                 receiver_ref_p.register_finish_callback(session_id, chunk_key7, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s)) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
                 receiver_ref_p.create_data_writer(
                     session_id, chunk_key7, data_size, mock_ref, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s, destroy=False))
+                    .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
                 receiver_ref_p.receive_data_part(session_id, chunk_key7, serialized_mock_data[:64],
                                                  zlib.crc32(serialized_mock_data[:64]))

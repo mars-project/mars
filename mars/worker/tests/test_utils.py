@@ -49,12 +49,12 @@ class Test(unittest.TestCase):
         cache['v1'] = 1
         cache['v2'] = 2
 
-        time.sleep(0.2)
+        time.sleep(0.3)
         cache['v2'] = 2
         self.assertIn('v1', cache)
         self.assertIn('v2', cache)
 
-        time.sleep(0.4)
+        time.sleep(0.3)
         cache['v3'] = 3
         self.assertNotIn('v1', cache)
         self.assertIn('v2', cache)

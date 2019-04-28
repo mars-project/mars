@@ -139,7 +139,7 @@ class InProcessCacheActor(WorkerActor):
             data_shape = value[0].shape if isinstance(value, tuple) else value.shape
             del value
             promises.append(
-                promise.Promise(done=True).then(partial(_try_put_chunk, k, data_size, data_shape))
+                promise.finished().then(partial(_try_put_chunk, k, data_size, data_shape))
             )
         promise.all_(promises).then(_finish_store) \
             .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
@@ -313,7 +313,7 @@ class CpuCalcActor(WorkerActor):
                     apply_alloc_sizes[get_chunk_key(k)] += data_size
 
             for k, v in apply_alloc_sizes.items():
-                self._mem_quota_ref.apply_allocation(k, v)
+                self._mem_quota_ref.alter_allocation(k, v)
 
             if self._status_ref:
                 self._status_ref.update_mean_stats(

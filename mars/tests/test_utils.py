@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import copy
+import os
 import time
 import unittest
 
@@ -84,9 +85,31 @@ class Test(unittest.TestCase):
             utils.to_text(utils)
 
     def testTokenize(self):
-        v = (1, 2.3, '456', u'789', b'101112', None, np.ndarray,
-             [912, 'uvw'], np.arange(0, 10), np.int64)
-        self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+        import shutil
+        import tempfile
+
+        tempdir = tempfile.mkdtemp('mars_test_utils_')
+        try:
+            filename = os.path.join(tempdir, 'test_npa.dat')
+            mmp_array = np.memmap(filename, dtype=float, mode='w+', shape=(3, 4))
+            mmp_array[:] = np.random.random((3, 4)).astype(float)
+            mmp_array.flush()
+            del mmp_array
+
+            mmp_array1 = np.memmap(filename, dtype=float, shape=(3, 4))
+            mmp_array2 = np.memmap(filename, dtype=float, shape=(3, 4))
+
+            try:
+                v = [1, 2.3, '456', u'789', b'101112', None, np.ndarray, [912, 'uvw'],
+                     np.arange(0, 10), np.array(10), np.array([b'\x01\x32\xff']),
+                     np.int64]
+                copy_v = copy.deepcopy(v)
+                self.assertEqual(utils.tokenize(v + [mmp_array1], ext_data=1234),
+                                 utils.tokenize(copy_v + [mmp_array2], ext_data=1234))
+            finally:
+                del mmp_array1, mmp_array2
+        finally:
+            shutil.rmtree(tempdir)
 
         v = {'a', 'xyz', 'uvw'}
         self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
@@ -100,6 +123,17 @@ class Test(unittest.TestCase):
                               index=['a'], columns=['中文', 'data'])
             v = [df, df.index, df.columns, df['data']]
             self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+
+        non_tokenizable_cls = type('non_tokenizable_cls', (object,), {})
+        with self.assertRaises(TypeError):
+            utils.tokenize(non_tokenizable_cls())
+
+        class CustomizedTokenize(object):
+            def __mars_tokenize__(self):
+                return id(type(self)), id(non_tokenizable_cls)
+
+        self.assertEqual(utils.tokenize(CustomizedTokenize()),
+                         utils.tokenize(CustomizedTokenize()))
 
     def testBuildGraph(self):
         a = mt.ones((10, 10), chunk_size=8)

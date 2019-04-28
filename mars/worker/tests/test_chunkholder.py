@@ -66,7 +66,7 @@ class CacheTestActor(WorkerActor):
 
         data_promises = []
         for data_id, data in data_list:
-            data_promises.append(promise.Promise(done=True) \
+            data_promises.append(promise.finished()
                                  .then(partial(_put_chunk, data_id, data)))
 
         def assert_true(v):

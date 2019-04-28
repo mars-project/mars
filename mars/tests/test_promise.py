@@ -220,7 +220,7 @@ class Test(unittest.TestCase):
 
             # immediate error
             value_list = []
-            p = promise.Promise(done=True) \
+            p = promise.finished() \
                 .then(lambda *_: 5 / 0)
             p.catch(lambda *_: gen_promise(0)) \
                 .wait()
@@ -231,7 +231,7 @@ class Test(unittest.TestCase):
 
             # chained errors
             value_list = []
-            p = promise.Promise(failed=True) \
+            p = promise.finished(_accept=False) \
                 .catch(lambda *_: 1 / 0) \
                 .catch(lambda *_: 2 / 0) \
                 .catch(lambda *_: gen_promise(0)) \

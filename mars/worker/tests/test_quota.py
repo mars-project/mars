@@ -16,8 +16,10 @@ import functools
 import time
 
 from mars.actors import create_actor_pool
-from mars.utils import get_next_port
-from mars.worker import QuotaActor
+from mars.cluster_info import ClusterInfoActor
+from mars.tests.core import patch_method
+from mars.utils import get_next_port, build_exc_info
+from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, ProcessHelperActor, StatusActor
 from mars.worker.tests.base import WorkerCase
 
 
@@ -25,30 +27,92 @@ class Test(WorkerCase):
     def testQuota(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
+            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+
+            quota_ref.process_quota('non_exist')
+            quota_ref.hold_quota('non_exist')
+            quota_ref.release_quota('non_exist')
+
+            with self.assertRaises(ValueError):
+                quota_ref.request_quota('ERROR', 1000)
+
+            self.assertTrue(quota_ref.request_quota('0', 100))
+            self.assertTrue(quota_ref.request_quota('0', 50))
+            self.assertTrue(quota_ref.request_quota('0', 200))
+
+            quota_ref.process_quota('0')
+            self.assertIn('0', quota_ref.dump_data().proc_sizes)
+            quota_ref.alter_allocation('0', 190, new_key=('0', 0))
+            self.assertEqual(quota_ref.dump_data().allocations[('0', 0)], 190)
+
+            quota_ref.hold_quota(('0', 0))
+            self.assertIn(('0', 0), quota_ref.dump_data().hold_sizes)
+            quota_ref.alter_allocation(('0', 0), new_key=('0', 1))
+            self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 190)
+
+            with self.run_actor_test(pool) as test_actor:
+                ref = test_actor.promise_ref(QuotaActor.default_name())
+
+                ref.request_quota('1', 150, _promise=True) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+
+                self.assertFalse(quota_ref.request_quota('2', 50))
+                self.assertFalse(quota_ref.request_quota('3', 200))
+
+                self.assertFalse(quota_ref.request_quota('3', 180))
+
+                self.assertNotIn('2', quota_ref.dump_data().allocations)
+
+                ref.cancel_requests(('1',), reject_exc=build_exc_info(ValueError))
+                with self.assertRaises(ValueError):
+                    self.get_result(5)
+
+            self.assertNotIn('1', quota_ref.dump_data().requests)
+            self.assertIn('2', quota_ref.dump_data().allocations)
+            self.assertNotIn('3', quota_ref.dump_data().allocations)
+
+            quota_ref.release_quotas([('0', 1)])
+            self.assertIn('3', quota_ref.dump_data().allocations)
+
+            self.assertFalse(quota_ref.request_quota('4', 180))
+            quota_ref.alter_allocations(['3'], [50])
+            self.assertIn('4', quota_ref.dump_data().allocations)
+
+    def testQuotaAllocation(self):
+        local_pool_addr = 'localhost:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
 
             end_time = []
-            for idx in range(4):
-                x = str(idx)
-                with self.run_actor_test(pool) as test_actor:
-                    ref = test_actor.promise_ref(QuotaActor.default_name())
+            finished = set()
+            with self.run_actor_test(pool) as test_actor:
+                ref = test_actor.promise_ref(QuotaActor.default_name())
 
-                    def actual_exec(x):
-                        test_actor.ctx.sleep(1)
-                        ref.release_quota(x)
-                        end_time.append(time.time())
+                def actual_exec(x):
+                    ref.release_quota(x)
+                    end_time.append(time.time())
+                    finished.add(x)
+                    if len(finished) == 5:
                         test_actor.set_result(None)
 
-                    ref.request_quota(x, 100, _promise=True) \
-                        .then(functools.partial(actual_exec, x))
+                for idx in range(5):
+                    x = str(idx)
 
-            pool.sleep(2.5)
+                    ref.request_quota(x, 100, _promise=True) \
+                        .then(functools.partial(test_actor.run_later, actual_exec, x, _delay=0.5))
+                self.get_result(10)
+
             self.assertLess(abs(end_time[0] - end_time[1]), 0.1)
             self.assertLess(abs(end_time[0] - end_time[2]), 0.1)
-            self.assertGreater(abs(end_time[0] - end_time[3]), 0.9)
+            self.assertGreater(abs(end_time[0] - end_time[3]), 0.4)
+            self.assertLess(abs(end_time[3] - end_time[4]), 0.1)
             self.assertEqual(quota_ref.get_allocated_size(), 0)
 
-    def testBatchQuota(self):
+    def testBatchQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
@@ -60,7 +124,6 @@ class Test(WorkerCase):
                     ref = test_actor.promise_ref(QuotaActor.default_name())
 
                     def actual_exec(keys):
-                        test_actor.ctx.sleep(1)
                         for k in keys:
                             ref.release_quota(k)
                         end_time.append(time.time())
@@ -69,8 +132,46 @@ class Test(WorkerCase):
                     keys = [x + '_0', x + '_1']
                     batch = dict((k, 100) for k in keys)
                     ref.request_batch_quota(batch, _promise=True) \
-                        .then(functools.partial(actual_exec, keys))
+                        .then(functools.partial(test_actor.run_later, actual_exec, keys, _delay=0.5))
+                    self.get_result(10)
 
-            pool.sleep(2.5)
-            self.assertGreater(abs(end_time[0] - end_time[1]), 0.9)
+            self.assertGreater(abs(end_time[0] - end_time[1]), 0.4)
             self.assertEqual(quota_ref.get_allocated_size(), 0)
+
+    def testMemQuotaAllocation(self):
+        from mars import resource
+        from mars.utils import AttributeDict
+
+        mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
+        local_pool_addr = 'localhost:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
+                patch_method(resource.virtual_memory, new=lambda: mock_mem_stat) as _:
+            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            pool.create_actor(ProcessHelperActor, uid=ProcessHelperActor.default_name())
+            quota_ref = pool.create_actor(MemQuotaActor, 300, refresh_time=0.1,
+                                          uid=MemQuotaActor.default_name())
+
+            time_recs = []
+            with self.run_actor_test(pool) as test_actor:
+                ref = test_actor.promise_ref(quota_ref)
+                time_recs.append(time.time())
+
+                def actual_exec(x):
+                    ref.release_quota(x)
+                    time_recs.append(time.time())
+                    test_actor.set_result(None)
+
+                ref.request_quota('req', 100, _promise=True) \
+                    .then(functools.partial(actual_exec, 'req'))
+
+                pool.sleep(0.5)
+                mock_mem_stat['available'] = 150
+                mock_mem_stat['free'] = 150
+
+                self.get_result(2)
+
+            self.assertGreater(abs(time_recs[0] - time_recs[1]), 0.4)

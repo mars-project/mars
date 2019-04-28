@@ -34,7 +34,8 @@ class Promise(object):
     """
     Object representing a promised result
     """
-    def __init__(self, resolve=None, reject=None, done=False, failed=False):
+    def __init__(self, resolve=None, reject=None, done=False, failed=False,
+                 args=None, kwargs=None):
         # use random promise id
         self._id = struct.pack('<Q', id(self)) + np.random.bytes(32)
         # register in global pool to reject gc collection
@@ -61,8 +62,8 @@ class Promise(object):
             self._accepted = False
         else:
             self._accepted = None
-        self._args = ()
-        self._kwargs = {}
+        self._args = args or ()
+        self._kwargs = kwargs or {}
 
         self.post_create()
 
@@ -472,3 +473,18 @@ def all_(promises):
     else:
         new_promise.step_next()
         return new_promise
+
+
+def finished(*args, **kwargs):
+    """
+    Create a promise already finished
+    :return: Promise object if _promise is True, otherwise args[0] will be returned
+    """
+    promise = kwargs.pop('_promise', True)
+    accept = kwargs.pop('_accept', True)
+    if not promise:
+        return args[0] if args else None
+    if accept:
+        return Promise(done=True, args=args, kwargs=kwargs)
+    else:
+        return Promise(failed=True, args=args, kwargs=kwargs)

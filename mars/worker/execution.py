@@ -449,7 +449,7 @@ class ExecutionActor(WorkerActor):
             except:  # noqa: E722
                 _handle_network_error(*sys.exc_info())
 
-        return promise.Promise(done=True) \
+        return promise.finished() \
             .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True, _timeout=timeout)) \
             .then(_fetch_step) \
             .catch(_handle_network_error)
@@ -588,7 +588,7 @@ class ExecutionActor(WorkerActor):
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
             _handle_success()
         else:
-            promise.Promise(done=True) \
+            promise.finished() \
                 .then(lambda: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(_wait_free_slot) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
@@ -671,7 +671,7 @@ class ExecutionActor(WorkerActor):
 
             # fetch data from other workers, if one fails, try another
             sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
-            p = promise.Promise(failed=True)
+            p = promise.finished(_accept=False)
             for wp in sorted_workers:
                 p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, input_key, wp[0],
                                               ensure_cached=input_key in shared_input_chunks))
@@ -761,7 +761,7 @@ class ExecutionActor(WorkerActor):
 
         promises = []
         for key, targets in data_to_addresses.items():
-            promises.append(promise.Promise(done=True)
+            promises.append(promise.finished()
                             .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
                             .then(functools.partial(_send_chunk, data_key=key, target_addrs=targets))
                             .catch(lambda *_: None))
