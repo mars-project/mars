@@ -445,8 +445,6 @@ class Test(TestBase):
         for c in df3.chunks:
             self.assertIsInstance(c.op, DataFrameAdd)
             self.assertEqual(len(c.inputs), 2)
-            # test shape
-            idx = c.index
             # test the left side
             self.assertIs(c.inputs[0], df1.chunks[0].data)
             # test the right side
