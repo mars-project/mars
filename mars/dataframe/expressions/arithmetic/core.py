@@ -316,7 +316,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     @classmethod
     def _get_chunk_index_min_max(cls, df, index_type, axis):
         index = getattr(df, index_type)
-        if not index.is_monotonic_increasing_or_decreasing:
+        if not index.is_monotonic_increasing_or_decreasing and \
+                df.chunk_shape[axis] > 1:
             return
 
         chunk_index_min_max = []
@@ -486,8 +487,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
             if left_chunk_index_min_max is not None and right_chunk_index_min_max is not None:
                 # no need to do shuffle on this axis
-                left_splits, right_splits = split_monotonic_index_min_max(
-                    *(left_chunk_index_min_max + right_chunk_index_min_max))
+                if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
+                    # both left and right has only 1 chunk
+                    left_splits, right_splits = \
+                        [left_chunk_index_min_max[0]],  [right_chunk_index_min_max[0]]
+                else:
+                    left_splits, right_splits = split_monotonic_index_min_max(
+                        *(left_chunk_index_min_max + right_chunk_index_min_max))
                 left_increase = left_chunk_index_min_max[1]
                 right_increase = right_chunk_index_min_max[1]
                 splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
