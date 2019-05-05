@@ -185,7 +185,7 @@ class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
                 kw['columns_value'] = filter_index_value(index_align_map_chunks[0].columns,
                                                          index_align_map_chunks[0].op.column_min_max,
                                                          store_data=True)
-                kw['dtypes'] = index_align_map_chunks[0].dtypes[kw['columns_value']]
+                kw['dtypes'] = index_align_map_chunks[0].dtypes[kw['columns_value'].to_pandas()]
             else:
                 # shuffle on columns
                 all_dtypes = [c.op.column_shuffle_segments[index[1]] for c in index_align_map_chunks
