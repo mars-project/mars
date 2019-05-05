@@ -25,3 +25,8 @@ def hash_index(index, size):
     grouped = sorted(index.groupby(index.map(f)).items(),
                      key=operator.itemgetter(0))
     return [g[1] for g in grouped]
+
+
+def hash_dtypes(dtypes, size):
+    hashed_indexes = hash_index(dtypes.index, size)
+    return [dtypes[index] for index in hashed_indexes]

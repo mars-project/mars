@@ -14,8 +14,6 @@
 
 import operator
 import itertools
-import hashlib
-import functools
 
 try:
     import pandas as pd
