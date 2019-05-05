@@ -22,8 +22,9 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.dataframe.core import IndexValue
+from mars.dataframe.utils import hash_index
 from mars.dataframe.expressions.utils import split_monotonic_index_min_max, \
-    build_split_idx_to_origin_idx
+    build_split_idx_to_origin_idx, filter_index_value
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
 from mars.dataframe.expressions.arithmetic import add, DataFrameAdd
 from mars.dataframe.expressions.arithmetic.core import DataFrameIndexAlignMap, \
@@ -50,7 +51,9 @@ class Test(TestBase):
 
         # test df3's index and columns
         pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertTrue(df3.columns.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
@@ -83,32 +86,42 @@ class Test(TestBase):
             self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlignMap)
             left_row_idx, left_row_inner_idx = left_index_idx_to_original_idx[idx[0]]
             left_col_idx, left_col_inner_idx = left_columns_idx_to_original_idx[idx[1]]
-            self.assertIs(c.inputs[0].inputs[0], df1.cix[left_row_idx, left_col_idx].data)
+            expect_df1_input = df1.cix[left_row_idx, left_col_idx].data
+            self.assertIs(c.inputs[0].inputs[0], expect_df1_input)
             left_index_min_max = left_index_splits[left_row_idx][left_row_inner_idx]
             self.assertEqual(c.inputs[0].op.index_min, left_index_min_max[0])
             self.assertEqual(c.inputs[0].op.index_min_close, left_index_min_max[1])
             self.assertEqual(c.inputs[0].op.index_max, left_index_min_max[2])
             self.assertEqual(c.inputs[0].op.index_max_close, left_index_min_max[3])
+            self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             left_column_min_max = left_columns_splits[left_col_idx][left_col_inner_idx]
             self.assertEqual(c.inputs[0].op.column_min, left_column_min_max[0])
             self.assertEqual(c.inputs[0].op.column_min_close, left_column_min_max[1])
             self.assertEqual(c.inputs[0].op.column_max, left_column_min_max[2])
             self.assertEqual(c.inputs[0].op.column_max_close, left_column_min_max[3])
+            expect_left_columns = filter_index_value(expect_df1_input.columns, left_column_min_max,
+                                                     store_data=True)
+            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), expect_left_columns.to_pandas())
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignMap)
             right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
             right_col_idx, right_col_inner_idx = right_columns_idx_to_original_idx[idx[1]]
-            self.assertIs(c.inputs[1].inputs[0], df2.cix[right_row_idx, right_col_idx].data)
+            expect_df2_input = df2.cix[right_row_idx, right_col_idx].data
+            self.assertIs(c.inputs[1].inputs[0], expect_df2_input)
             right_index_min_max = right_index_splits[right_row_idx][right_row_inner_idx]
             self.assertEqual(c.inputs[1].op.index_min, right_index_min_max[0])
             self.assertEqual(c.inputs[1].op.index_min_close, right_index_min_max[1])
             self.assertEqual(c.inputs[1].op.index_max, right_index_min_max[2])
             self.assertEqual(c.inputs[1].op.index_max_close, right_index_min_max[3])
+            self.assertIsInstance(c.inputs[1].index_value.to_pandas(), type(data2.index))
             right_column_min_max = right_columns_splits[right_col_idx][right_col_inner_idx]
             self.assertEqual(c.inputs[1].op.column_min, right_column_min_max[0])
             self.assertEqual(c.inputs[1].op.column_min_close, right_column_min_max[1])
             self.assertEqual(c.inputs[1].op.column_max, right_column_min_max[2])
             self.assertEqual(c.inputs[1].op.column_max_close, right_column_min_max[3])
+            expect_right_columns = filter_index_value(expect_df2_input.columns, left_column_min_max,
+                                                      store_data=True)
+            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), expect_right_columns.to_pandas())
 
     def testAddIdenticalIndexAndColumns(self):
         data1 = pd.DataFrame(np.random.rand(10, 10),
@@ -122,7 +135,9 @@ class Test(TestBase):
 
         # test df3's index and columns
         pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertTrue(df3.columns.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.RangeIndex)
+        self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.RangeIndex(0, 10))
         self.assertEqual(df3.index_value.key, df1.index_value.key)
         self.assertEqual(df3.index_value.key, df2.index_value.key)
@@ -137,6 +152,10 @@ class Test(TestBase):
             self.assertEqual(c.shape, (5, 5))
             self.assertEqual(c.index_value.key, df1.cix[c.index].index_value.key)
             self.assertEqual(c.index_value.key, df2.cix[c.index].index_value.key)
+            self.assertEqual(c.columns.key, df1.cix[c.index].columns.key)
+            self.assertEqual(c.columns.key, df2.cix[c.index].columns.key)
+            pd.testing.assert_index_equal(c.columns.to_pandas(), df1.cix[c.index].columns.to_pandas())
+            pd.testing.assert_index_equal(c.columns.to_pandas(), df2.cix[c.index].columns.to_pandas())
 
             # test the left side
             self.assertIs(c.inputs[0], df1.cix[c.index].data)
@@ -158,7 +177,9 @@ class Test(TestBase):
 
         # test df3's index and columns
         pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertTrue(df3.columns.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
@@ -193,7 +214,13 @@ class Test(TestBase):
                 self.assertEqual(ci.op.index_min_close, left_index_min_max[1])
                 self.assertEqual(ci.op.index_max, left_index_min_max[2])
                 self.assertEqual(ci.op.index_max_close, left_index_min_max[3])
+                self.assertIsInstance(ci.index_value.to_pandas(), type(data1.index))
                 self.assertTrue(ci.op.column_shuffle_size, 2)
+                shuffle_segments = ci.op.column_shuffle_segments
+                expected_shuffle_segments = hash_index(ic.data.columns.to_pandas(), 2)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_index_equal(ss, ess)
                 self.assertIs(ci.inputs[0], ic.data)
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
@@ -209,6 +236,11 @@ class Test(TestBase):
                 self.assertEqual(ci.op.index_max, right_index_min_max[2])
                 self.assertEqual(ci.op.index_max_close, right_index_min_max[3])
                 self.assertTrue(ci.op.column_shuffle_size, 2)
+                shuffle_segments = ci.op.column_shuffle_segments
+                expected_shuffle_segments = hash_index(ic.data.columns.to_pandas(), 2)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_index_equal(ss, ess)
                 self.assertIs(ci.inputs[0], ic.data)
 
         # make sure shuffle proxies' key are different
@@ -236,7 +268,9 @@ class Test(TestBase):
 
         # test df3's index and columns
         pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertTrue(df3.columns.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertNotEqual(df3.index_value.key, df1.index_value.key)
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
@@ -256,7 +290,13 @@ class Test(TestBase):
             for ic, ci in zip(c.inputs[0].inputs[0].inputs, df1.chunks):
                 self.assertIsInstance(ic.op, DataFrameIndexAlignMap)
                 self.assertEqual(ic.op.index_shuffle_size, 2)
+                self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 2)
+                shuffle_segments = ic.op.column_shuffle_segments
+                expected_shuffle_segments = hash_index(ci.data.columns.to_pandas(), 2)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_index_equal(ss, ess)
                 self.assertIs(ic.inputs[0], ci.data)
             # test right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
@@ -265,7 +305,13 @@ class Test(TestBase):
             for ic, ci in zip(c.inputs[1].inputs[0].inputs, df2.chunks):
                 self.assertIsInstance(ic.op, DataFrameIndexAlignMap)
                 self.assertEqual(ic.op.index_shuffle_size, 2)
+                self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 2)
+                shuffle_segments = ic.op.column_shuffle_segments
+                expected_shuffle_segments = hash_index(ci.data.columns.to_pandas(), 2)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_index_equal(ss, ess)
                 self.assertIs(ic.inputs[0], ci.data)
 
         self.assertEqual(len(proxy_keys), 2)

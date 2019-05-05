@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import operator
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -48,3 +50,12 @@ def infer_index_value(left_index_value, right_index_value, operator):
     out_index = operator(left_index, right_index)
     key = tokenize(left_index_value.key, right_index_value.key, operator.__name__)
     return parse_index(out_index, key=key)
+
+
+def filter_dtypes(dtypes, column_min_max):
+    l_filter = operator.ge if column_min_max[1] else operator.gt
+    l = l_filter(dtypes.index, column_min_max[0])
+    r_filter = operator.le if column_min_max[3] else operator.lt
+    r = r_filter(dtypes.index, column_min_max[2])
+    f = l & r
+    return dtypes[f]

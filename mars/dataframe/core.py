@@ -20,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..core import ChunkData, Chunk, Entity, TilesableData
+from ..core import ChunkData, Chunk, Entity, TileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, SeriesField, \
     BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, OneOfField, ReferenceField
 
@@ -54,6 +54,10 @@ class IndexValue(Serializable):
         @property
         def should_be_monotonic(self):
             return self._should_be_monotonic
+
+        @should_be_monotonic.setter
+        def should_be_monotonic(self, val):
+            self._should_be_monotonic = val
 
         @property
         def min_val(self):
@@ -211,6 +215,10 @@ class IndexValue(Serializable):
         return self.is_monotonic_increasing or self.is_monotonic_decreasing
 
     @property
+    def should_be_monotonic(self):
+        return self._index_value.should_be_monotonic
+
+    @property
     def is_unique(self):
         return self._index_value.is_unique
 
@@ -260,7 +268,7 @@ class IndexChunk(Chunk):
     _allow_data_type_ = (IndexChunkData,)
 
 
-class IndexData(TilesableData):
+class IndexData(TileableData):
     __slots__ = ()
 
     # optional field
@@ -314,7 +322,7 @@ class SeriesChunk(Chunk):
     _allow_data_type_ = (SeriesChunkData,)
 
 
-class SeriesData(TilesableData):
+class SeriesData(TileableData):
     __slots__ = ()
 
     # optional field
@@ -372,7 +380,7 @@ class DataFrameChunk(Chunk):
     _allow_data_type_ = (DataFrameChunkData,)
 
 
-class DataFrameData(TilesableData):
+class DataFrameData(TileableData):
     __slots__ = ()
 
     # optional field

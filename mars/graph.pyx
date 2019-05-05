@@ -414,9 +414,9 @@ cdef class DirectedGraph:
     def deserialize(cls, s_graph):
         cdef DirectedGraph graph = cls()
 
-        from .core import ChunkData, TilesableData
+        from .core import ChunkData, TileableData
 
-        node_type = TilesableData if s_graph.level == SerializableGraph.Level.ENTITY else ChunkData
+        node_type = TileableData if s_graph.level == SerializableGraph.Level.ENTITY else ChunkData
         for node in s_graph.nodes:
             if isinstance(node, node_type):
                 graph._add_node(node)

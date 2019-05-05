@@ -20,7 +20,7 @@ from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TilesableData, enter_build_mode, is_eager_mode
+from ..core import Entity, ChunkData, Chunk, TileableData, enter_build_mode, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField
 from .expressions.utils import get_chunk_slices
@@ -47,7 +47,7 @@ class TensorChunk(Chunk):
     _allow_data_type_ = (TensorChunkData,)
 
 
-class TensorData(TilesableData):
+class TensorData(TileableData):
     __slots__ = ()
 
     # required fields

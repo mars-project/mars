@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import operator
 
 import numpy as np
 try:
@@ -280,17 +281,47 @@ def build_empty_df(dtypes):
     return df
 
 
-def filter_index_value(index_value, min_max):
+def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
+    raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), pd_range_index._step
+
+    # seek min range
+    greater_func = operator.gt if min_val_close else operator.ge
+    actual_min = raw_min
+    while greater_func(min_val, actual_min):
+        actual_min += abs(step)
+    if step < 0:
+        actual_min += step  # on the right side
+
+    # seek max range
+    less_func = operator.lt if max_val_close else operator.le
+    actual_max = raw_max
+    while less_func(max_val, actual_max):
+        actual_max -= abs(step)
+    if step > 0:
+        actual_max += step  # on the right side
+
+    if step > 0:
+        return pd.RangeIndex(actual_min, actual_max, step)
+    return pd.RangeIndex(actual_max, actual_min, step)
+
+
+def filter_index_value(index_value, min_max, store_data=False):
     min_val, min_val_close, max_val, max_val_close = min_max
 
     pd_index = index_value.to_pandas()
-    if min_val_close:
-        pd_index = pd_index >= min_val
-    else:
-        pd_index = pd_index > min_val
-    if max_val_close:
-        pd_index = pd_index <= max_val
-    else:
-        pd_index = pd_index < max_val
 
-    return parse_index(pd_index, store_data=True)
+    if isinstance(index_value.value, IndexValue.RangeIndex):
+        pd_filtered_index = _filter_range_index(pd_index, min_val, min_val_close,
+                                                max_val, max_val_close)
+        return parse_index(pd_filtered_index, store_data=store_data)
+
+    if min_val_close:
+        f = pd_index >= min_val
+    else:
+        f = pd_index > min_val
+    if max_val_close:
+        f = f & (pd_index <= max_val)
+    else:
+        f = f & (pd_index < max_val)
+
+    return parse_index(pd_index[f], store_data=store_data)
