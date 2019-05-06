@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from ...operands import ShuffleProxy
-from ...core import TilesableOperandMixin
+from ...core import TileableOperandMixin
 from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
 
 
-class DataFrameOperandMixin(TilesableOperandMixin):
+class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'dataframe'
 
@@ -28,7 +28,7 @@ class DataFrameOperandMixin(TilesableOperandMixin):
                                   _columns_value=kw.pop('columns_value', None), **kw)
         return DataFrameChunk(data)
 
-    def _create_entity(self, output_idx, shape, nsplits, chunks, **kw):
+    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
         if nsplits is not None:
             kw['_nsplits'] = nsplits
         data = DataFrameData(_shape=shape, _op=self, _chunks=chunks,
@@ -39,9 +39,9 @@ class DataFrameOperandMixin(TilesableOperandMixin):
 
     def new_dataframes(self, inputs, shape, dtypes=None, index_value=None, columns_value=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
-        return self.new_entities(inputs, shape, dtypes=dtypes, index_value=index_value,
-                                 columns_value=columns_value, chunks=chunks, nsplits=nsplits,
-                                 output_limit=output_limit, kws=kws, **kw)
+        return self.new_tileables(inputs, shape, dtypes=dtypes, index_value=index_value,
+                                  columns_value=columns_value, chunks=chunks, nsplits=nsplits,
+                                  output_limit=output_limit, kws=kws, **kw)
 
     def new_dataframe(self, inputs, shape, dtypes=None, index_value=None, columns_value=None, **kw):
         if getattr(self, 'output_limit') != 1:

@@ -95,9 +95,9 @@ class TensorReduction(TensorOperandMixin):
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return chunks
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
-        tensors = super(TensorReduction, self)._new_entities(
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
+        tensors = super(TensorReduction, self)._new_tileables(
             inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return tensors

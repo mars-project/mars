@@ -64,10 +64,10 @@ class TensorElementWiseWithInputs(TensorElementWise):
     def _handle_params(self, inputs):
         raise NotImplementedError
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorElementWiseWithInputs, self)._new_entities(
+            return super(TensorElementWiseWithInputs, self)._new_tileables(
                 inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
     def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):

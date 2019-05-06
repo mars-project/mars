@@ -25,7 +25,7 @@ from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, is_eager_mode
 from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, DictField, KeyField, BoolField, StringField
-from .tiles import Tilesable, handler
+from .tiles import Tileable, handler
 from .graph import DAG
 
 
@@ -285,7 +285,7 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
-class TileableData(SerializableWithKey, Tilesable):
+class TileableData(SerializableWithKey, Tileable):
     __slots__ = '__weakref__', '_siblings', '_cix'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
@@ -477,30 +477,30 @@ class TileableData(SerializableWithKey, Tilesable):
 
 
 class ChunksIndexer(object):
-    __slots__ = '_tilesable',
+    __slots__ = '_tileable',
 
-    def __init__(self, tilesable):
-        self._tilesable = tilesable
+    def __init__(self, tileable):
+        self._tileable = tileable
 
     def __getitem__(self, item):
         if isinstance(item, tuple):
-            if len(item) == 0 and self._tilesable.is_scalar():
-                return self._tilesable.chunks[0]
+            if len(item) == 0 and self._tileable.is_scalar():
+                return self._tileable.chunks[0]
             elif all(np.issubdtype(type(it), np.integer) for it in item):
-                if len(item) != self._tilesable.ndim:
+                if len(item) != self._tileable.ndim:
                     raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
-                        item, self._tilesable.ndim))
+                        item, self._tileable.ndim))
 
-                s = self._tilesable.chunk_shape
+                s = self._tileable.chunk_shape
                 item = tuple(i if i >= 0 else i + s for i, s in zip(item, s))
                 idx = sum(idx * reduce(mul, s[i+1:], 1) for i, idx
                           in zip(itertools.count(0), item))
-                return self._tilesable._chunks[idx]
+                return self._tileable._chunks[idx]
 
         raise ValueError('Cannot get tensor chunk by {0}'.format(item))
 
 
-class TilesableOperandMixin(object):
+class TileableOperandMixin(object):
     __slots__ = ()
 
     def check_inputs(self, inputs):
@@ -554,11 +554,11 @@ class TilesableOperandMixin(object):
         """
         return self._new_chunks(inputs, shape, **kwargs)
 
-    def _create_entity(self, output_idx, shape, nsplits, chunks, **kw):
+    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
         raise NotImplementedError
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
         output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
 
         self.check_inputs(inputs)
@@ -573,7 +573,7 @@ class TilesableOperandMixin(object):
         else:
             shape = [shape] * output_limit
 
-        entities = []
+        tileables = []
         raw_chunks = chunks
         raw_nsplits = nsplits
         for j, s in enumerate(shape):
@@ -582,36 +582,36 @@ class TilesableOperandMixin(object):
                 create_tensor_kw.update(kws[j])
             chunks = create_tensor_kw.pop('chunks', raw_chunks)
             nsplits = create_tensor_kw.pop('nsplits', raw_nsplits)
-            entity = self._create_entity(j, s, nsplits, chunks, **create_tensor_kw)
-            entities.append(entity)
+            tileable = self._create_tileable(j, s, nsplits, chunks, **create_tensor_kw)
+            tileables.append(tileable)
 
-        setattr(self, 'outputs', entities)
-        if len(entities) > 1:
+        setattr(self, 'outputs', tileables)
+        if len(tileables) > 1:
             # for each output tensor, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
-            for j, t in enumerate(entities):
-                t.data._siblings = [tensor.data for tensor in entities[:j] + entities[j+1:]]
-        return entities
+            for j, t in enumerate(tileables):
+                t.data._siblings = [tensor.data for tensor in tileables[:j] + tileables[j + 1:]]
+        return tileables
 
-    def new_entities(self, inputs, shape, **kwargs):
+    def new_tileables(self, inputs, shape, **kwargs):
         """
-        Create entities(Tensors or DataFrames).
-        This is a base function for create entities like tensors or dataframes, it will be called
-        inside the `new_tensors` and `new_dataframes`.
-        If eager mode is on, it will trigger the execution after entities are created.
-        :param inputs: input entities
+        Create tileable objects(Tensors or DataFrames).
+        This is a base function for create tileable objects like tensors or dataframes,
+        it will be called inside the `new_tensors` and `new_dataframes`.
+        If eager mode is on, it will trigger the execution after tileable objects are created.
+        :param inputs: input tileables
         :param shape: outputs' shapes
         :param kwargs: kwargs
 
         .. note::
             It's a final method, do not override.
-            Override the method `_new_entities` if needed.
+            Override the method `_new_tileables` if needed.
         """
 
-        entities = self._new_entities(inputs, shape, **kwargs)
+        tileables = self._new_tileables(inputs, shape, **kwargs)
         if is_eager_mode():
-            ExecutableTuple(entities).execute(fetch=False)
-        return entities
+            ExecutableTuple(tileables).execute(fetch=False)
+        return tileables
 
     def new_chunk(self, inputs, shape, index=None, **kw):
         if getattr(self, 'output_limit') != 1:

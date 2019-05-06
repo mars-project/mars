@@ -41,11 +41,11 @@ class TensorFetch(Fetch, TensorFetchMixin):
         return super(TensorFetch, self)._new_chunks(
             inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_entities(
+        return super(TensorFetch, self)._new_tileables(
             inputs, shape, chunks=chunks, nsplits=nsplits,
             output_limit=output_limit, kws=kws, **kw)
 

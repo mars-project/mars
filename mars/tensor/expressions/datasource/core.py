@@ -76,10 +76,10 @@ class TensorNoInput(TensorDataSource):
         return super(TensorNoInput, self)._new_chunks(
             inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
         self.params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_entities(
+        return super(TensorNoInput, self)._new_tileables(
             inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit,
             kws=kws, **kw)
 

@@ -17,11 +17,11 @@
 from __future__ import absolute_import
 
 from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
-from ...core import TilesableOperandMixin
+from ...core import TileableOperandMixin
 from ...operands import ShuffleProxy
 
 
-class TensorOperandMixin(TilesableOperandMixin):
+class TensorOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'tensor'
 
@@ -36,7 +36,7 @@ class TensorOperandMixin(TilesableOperandMixin):
                                _dtype=dt, **kw)
         return TensorChunk(data)
 
-    def _create_entity(self, output_idx, shape, nsplits, chunks, **kw):
+    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
         tensor_cls = SparseTensor if getattr(self, 'issparse')() else Tensor
         dt = self._get_dtype(kw, output_idx)
         if nsplits is not None:
@@ -46,8 +46,8 @@ class TensorOperandMixin(TilesableOperandMixin):
 
     def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
-        return self.new_entities(inputs, shape, chunks=chunks, nsplits=nsplits,
-                                 output_limit=output_limit, kws=kws, dtype=dtype, **kw)
+        return self.new_tileables(inputs, shape, chunks=chunks, nsplits=nsplits,
+                                  output_limit=output_limit, kws=kws, dtype=dtype, **kw)
 
     def new_tensor(self, inputs, shape, dtype=None, **kw):
         if getattr(self, 'output_limit') != 1:

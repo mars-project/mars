@@ -208,11 +208,11 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             if field in field_to_obj:
                 setattr(self, field, next(inputs_iter))
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
+                       kws=None, **kw):
         raw_chunk_size = kw.get('chunk_size', None)
         with self._get_inputs_shape_by_given_fields(inputs, shape, raw_chunk_size, True) as (inputs, shape):
-            return super(TensorRandomOperandMixin, self)._new_entities(
+            return super(TensorRandomOperandMixin, self)._new_tileables(
                 inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
 
     def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
