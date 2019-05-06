@@ -26,7 +26,7 @@ from ...serialize import dataserializer
 
 
 class LocalClusterSession(object):
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, **kwargs):
         self._session_id = uuid.uuid4()
         self._endpoint = endpoint
         self._tensor_to_graph = dict()
@@ -34,6 +34,10 @@ class LocalClusterSession(object):
 
         # create session on the cluster side
         self._api.create_session(self._session_id)
+
+        if kwargs:
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError('Local cluster session got unexpected arguments: %s' % unexpected_keys)
 
     @property
     def endpoint(self):

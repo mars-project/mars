@@ -24,11 +24,15 @@ except ImportError:  # pragma: no cover
 
 
 class LocalSession(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         from .tensor.execution.core import Executor
 
         self._executor = Executor()
         self._endpoint = None
+
+        if kwargs:
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError('Local session got unexpected arguments: %s' % unexpected_keys)
 
     @property
     def endpoint(self):
@@ -72,20 +76,20 @@ class LocalSession(object):
 class Session(object):
     _default_session = None
 
-    def __init__(self, endpoint=None):
+    def __init__(self, endpoint=None, **kwargs):
         if endpoint is not None:
             if 'http' in endpoint:
                 # connect to web
                 from .web.session import Session as WebSession
 
-                self._sess = WebSession(endpoint)
+                self._sess = WebSession(endpoint, **kwargs)
             else:
                 # connect to local cluster
                 from .deploy.local.session import LocalClusterSession
 
-                self._sess = LocalClusterSession(endpoint)
+                self._sess = LocalClusterSession(endpoint, **kwargs)
         else:
-            self._sess = LocalSession()
+            self._sess = LocalSession(**kwargs)
 
         self._executed_keys = set()
 
@@ -209,5 +213,5 @@ class Session(object):
         return cls._default_session
 
 
-def new_session(scheduler=None):
-    return Session(scheduler)
+def new_session(scheduler=None, **kwargs):
+    return Session(scheduler, **kwargs)
