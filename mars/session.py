@@ -23,11 +23,15 @@ except ImportError:  # pragma: no cover
 
 
 class LocalSession(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         from .executor import Executor
 
         self._executor = Executor()
         self._endpoint = None
+
+        if kwargs:
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError('Local session got unexpected arguments: %s' % unexpected_keys)
 
     @property
     def endpoint(self):
@@ -90,9 +94,9 @@ class Session(object):
                 # connect to local cluster
                 from .deploy.local.session import LocalClusterSession
 
-                self._sess = LocalClusterSession(endpoint)
+                self._sess = LocalClusterSession(endpoint, **kwargs)
         else:
-            self._sess = LocalSession()
+            self._sess = LocalSession(**kwargs)
 
     def run(self, *tensors, **kw):
         from . import tensor as mt
