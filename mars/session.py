@@ -79,13 +79,13 @@ class LocalSession(object):
 class Session(object):
     _default_session = None
 
-    def __init__(self, endpoint=None):
+    def __init__(self, endpoint=None, **kwargs):
         if endpoint is not None:
             if 'http' in endpoint:
                 # connect to web
                 from .web.session import Session as WebSession
 
-                self._sess = WebSession(endpoint)
+                self._sess = WebSession(endpoint, **kwargs)
             else:
                 # connect to local cluster
                 from .deploy.local.session import LocalClusterSession
@@ -185,5 +185,5 @@ class Session(object):
         return cls._default_session
 
 
-def new_session(scheduler=None):
-    return Session(scheduler)
+def new_session(scheduler=None, **kwargs):
+    return Session(scheduler, **kwargs)
