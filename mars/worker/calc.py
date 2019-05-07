@@ -294,12 +294,7 @@ class CpuCalcActor(WorkerActor):
             logger.debug('Start calculating operand %s.', op_key)
             start_time = time.time()
 
-            try:
-                result_pairs = self._calc_results(graph, context_dict, chunk_targets)
-            finally:
-                # release memory alloc for load keys
-                for k in direct_load_keys:
-                    self._mem_quota_ref.release_quota(k)
+            result_pairs = self._calc_results(graph, context_dict, chunk_targets)
 
             end_time = time.time()
 
