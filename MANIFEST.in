@@ -4,6 +4,7 @@ global-include *.pyx
 global-include *.pxd
 global-exclude *.c*
 include mars/.git-branch
+include mars/lib/mmh3_src/*
 recursive-include mars/web/static *
 recursive-include mars/web/templates *
 global-exclude .DS_Store

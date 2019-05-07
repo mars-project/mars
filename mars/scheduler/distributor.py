@@ -15,14 +15,10 @@
 # limitations under the License.
 
 
-import hashlib
-import logging
-
-from ..compat import six, functools32
-from ..utils import to_binary
 from ..actors import Distributor
-
-logger = logging.getLogger(__name__)
+from ..compat import six, functools32
+from ..lib.mmh3 import hash as mmh_hash
+from ..utils import to_binary
 
 
 class SchedulerDistributor(Distributor):
@@ -33,7 +29,7 @@ class SchedulerDistributor(Distributor):
         id_parts = uid.split(':')
         if id_parts[0] == 's':
             # get process id by hashing uid
-            allocate_id = int(hashlib.md5(to_binary(uid)).hexdigest(), 16) % (self.n_process - 1) + 1
+            allocate_id = mmh_hash(to_binary(uid)) % (self.n_process - 1) + 1
             return allocate_id
         else:
             return 0

@@ -16,7 +16,6 @@
 
 import pickle
 import itertools
-import hashlib
 import uuid
 import time
 import unittest
@@ -29,6 +28,7 @@ from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActo
     ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client, \
     register_actor_implementation, unregister_actor_implementation
 from mars.actors.pool.gevent_pool import Dispatcher, Connections
+from mars.lib.mmh3 import hash as mmh_hash
 from mars.utils import to_binary
 
 
@@ -190,7 +190,7 @@ class AdminDistributor(Distributor):
         if isinstance(uid, uuid.UUID):
             return uid.int % (self.n_process - 1) + 1
 
-        return int(hashlib.sha1(to_binary(uid)).hexdigest(), 16) % (self.n_process - 1) + 1
+        return mmh_hash(to_binary(uid)) % (self.n_process - 1) + 1
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
