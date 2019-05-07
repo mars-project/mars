@@ -14,26 +14,15 @@
 
 import operator
 import itertools
-import hashlib
-import functools
 
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
     pass
 
+from ..utils import hash_index
 from ..expressions.arithmetic.core import DataFrameIndexAlignMap, DataFrameIndexAlignReduce
 from ..expressions.arithmetic import DataFrameAdd
-
-
-def _hash(index, size):
-    def func(x, size):
-        return int(hashlib.md5(bytes(x)).hexdigest(), 16) % size
-
-    f = functools.partial(func, size=size)
-    grouped = sorted(index.groupby(index.map(f)).items(),
-                     key=operator.itemgetter(0))
-    return [g[1] for g in grouped]
 
 
 def _index_align_map(ctx, chunk):
@@ -52,7 +41,7 @@ def _index_align_map(ctx, chunk):
     else:
         # shuffle on index
         shuffle_size = chunk.op.index_shuffle_size
-        filters[0].extend(_hash(df.index, shuffle_size))
+        filters[0].extend(hash_index(df.index, shuffle_size))
 
     if chunk.op.column_shuffle_size is None:
         # no shuffle on columns
@@ -64,7 +53,7 @@ def _index_align_map(ctx, chunk):
     else:
         # shuffle on columns
         shuffle_size = chunk.op.column_shuffle_size
-        filters[1].extend(_hash(df.columns, shuffle_size))
+        filters[1].extend(hash_index(df.columns, shuffle_size))
 
     if all(len(it) == 1 for it in filters):
         # no shuffle

@@ -16,6 +16,7 @@ import operator
 
 from .... import operands
 from ....serialize import AnyField, Float64Field
+from ....utils import classproperty
 from .core import DataFrameBinOpMixin
 
 
@@ -28,7 +29,7 @@ class DataFrameAdd(operands.Add, DataFrameBinOpMixin):
         super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
                                            _fill_value=fill_value, **kw)
 
-    @property
+    @classproperty
     def _operator(self):
         return operator.add
 

@@ -285,7 +285,7 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
-class TilesableData(SerializableWithKey, Tilesable):
+class TileableData(SerializableWithKey, Tilesable):
     __slots__ = '__weakref__', '_siblings', '_cix'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
@@ -304,7 +304,7 @@ class TilesableData(SerializableWithKey, Tilesable):
         if '_nsplits' in kwargs:
             kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
 
-        super(TilesableData, self).__init__(*args, **kwargs)
+        super(TileableData, self).__init__(*args, **kwargs)
 
         if hasattr(self, '_chunks') and self._chunks:
             self._chunks = sorted(self._chunks, key=attrgetter('index'))

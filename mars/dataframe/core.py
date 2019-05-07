@@ -14,7 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..core import ChunkData, Chunk, Entity, TilesableData
+import numpy as np
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
+
+from ..core import ChunkData, Chunk, Entity, TileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, SeriesField, \
     BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, OneOfField, ReferenceField
 
@@ -49,6 +55,10 @@ class IndexValue(Serializable):
         def should_be_monotonic(self):
             return self._should_be_monotonic
 
+        @should_be_monotonic.setter
+        def should_be_monotonic(self, val):
+            self._should_be_monotonic = val
+
         @property
         def min_val(self):
             return self._min_val
@@ -65,6 +75,18 @@ class IndexValue(Serializable):
         def max_val_close(self):
             return self._max_val_close
 
+        @property
+        def key(self):
+            return self._key
+
+        def to_pandas(self):
+            kw = {field.tag_name(None): getattr(self, attr, None)
+                  for attr, field in self._FIELDS.items()
+                  if attr not in super(type(self), self)._FIELDS}
+            if kw['data'] is None:
+                kw['data'] = []
+            return getattr(pd, type(self).__name__)(**kw)
+
     class Index(IndexBase):
         _name = AnyField('name')
         _data = ListField('data')
@@ -74,8 +96,17 @@ class IndexValue(Serializable):
         _name = AnyField('name')
         _slice = SliceField('slice')
 
+        @property
+        def slice(self):
+            return self._slice
+
+        def to_pandas(self):
+            slc = self._slice
+            return pd.RangeIndex(slc.start, slc.stop, slc.step)
+
     class CategoricalIndex(IndexBase):
         _name = AnyField('name')
+        _data = ListField('data')
         _categories = ListField('categories')
         _ordered = BoolField('ordered')
 
@@ -143,6 +174,14 @@ class IndexValue(Serializable):
         _data = ListField('data')
         _sortorder = Int32Field('sortorder')
 
+        def to_pandas(self):
+            data = getattr(self, '_data', None)
+            if data is None:
+                return pd.MultiIndex.from_arrays([[], []], sortorder=self._sortorder,
+                                                 names=self._names)
+            return pd.MultiIndex.from_tuples(np.asarray(data), sortorder=self._sortorder,
+                                             names=self._names)
+
     _index_value = OneOfField('index_value', index=Index,
                               range_index=RangeIndex, categorical_index=CategoricalIndex,
                               interval_index=IntervalIndex, datetime_index=DatetimeIndex,
@@ -160,6 +199,10 @@ class IndexValue(Serializable):
         return self._index_value
 
     @property
+    def key(self):
+        return self._index_value.key
+
+    @property
     def is_monotonic_increasing(self):
         return self._index_value.is_monotonic_increasing
 
@@ -170,6 +213,10 @@ class IndexValue(Serializable):
     @property
     def is_monotonic_increasing_or_decreasing(self):
         return self.is_monotonic_increasing or self.is_monotonic_decreasing
+
+    @property
+    def should_be_monotonic(self):
+        return self._index_value.should_be_monotonic
 
     @property
     def is_unique(self):
@@ -190,6 +237,14 @@ class IndexValue(Serializable):
     @property
     def max_val_close(self):
         return self._index_value.max_val_close
+
+    @property
+    def min_max(self):
+        return self._index_value.min_val, self._index_value.min_val_close, \
+               self._index_value.max_val, self._index_value.max_val_close
+
+    def to_pandas(self):
+        return self._index_value.to_pandas()
 
 
 class IndexChunkData(ChunkData):
@@ -213,7 +268,7 @@ class IndexChunk(Chunk):
     _allow_data_type_ = (IndexChunkData,)
 
 
-class IndexData(TilesableData):
+class IndexData(TileableData):
     __slots__ = ()
 
     # optional field
@@ -267,7 +322,7 @@ class SeriesChunk(Chunk):
     _allow_data_type_ = (SeriesChunkData,)
 
 
-class SeriesData(TilesableData):
+class SeriesData(TileableData):
     __slots__ = ()
 
     # optional field
@@ -325,7 +380,7 @@ class DataFrameChunk(Chunk):
     _allow_data_type_ = (DataFrameChunkData,)
 
 
-class DataFrameData(TilesableData):
+class DataFrameData(TileableData):
     __slots__ = ()
 
     # optional field

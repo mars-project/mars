@@ -27,7 +27,6 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from ..compat import six, OrderedDict, izip
-from ..core import BaseWithKey
 from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
@@ -339,6 +338,8 @@ cdef class JsonSerializeProvider(Provider):
             raise TypeError('Unknown type to serialize: {0}'.format(tp))
 
     cdef inline object _serialize_untyped_value(self, value, bint weak_ref=False):
+        from ..core import BaseWithKey
+
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
             # not iterable, and is weak ref
             value = value()

@@ -28,7 +28,6 @@ except ImportError:  # pragma: no cover
 from cpython.version cimport PY_MAJOR_VERSION
 
 from ..compat import six, OrderedDict
-from ..core import BaseWithKey
 from .._utils cimport to_str
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
@@ -370,6 +369,8 @@ cdef class ProtobufSerializeProvider(Provider):
             raise TypeError('Unknown type to serialize: {0}'.format(tp))
 
     cdef inline void _set_untyped_value(self, value, obj, bint weak_ref=False) except *:
+        from ..core import BaseWithKey
+
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
             # not iterable, and is weak ref
             value = value()
@@ -695,6 +696,8 @@ cdef class ProtobufSerializeProvider(Provider):
             setattr(model_instance, field.attr, self._on_deserial(field, getattr(obj, tag)))
 
     def deserialize_attribute_as_dict(self, model_cls, obj, list callbacks, dict key_to_instance):
+        from ..core import BaseWithKey
+
         cdef str attr
         cdef object d_obj
         cdef object kw

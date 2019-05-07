@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# do imports to register operands
-from .expressions import arithmetic
-from .expressions import datasource
-del arithmetic
-del datasource
+import hashlib
+import functools
+import operator
 
+
+def hash_index(index, size):
+    def func(x, size):
+        return int(hashlib.md5(bytes(x)).hexdigest(), 16) % size
+
+    f = functools.partial(func, size=size)
+    grouped = sorted(index.groupby(index.map(f)).items(),
+                     key=operator.itemgetter(0))
+    return [g[1] for g in grouped]
+
+
+def hash_dtypes(dtypes, size):
+    hashed_indexes = hash_index(dtypes.index, size)
+    return [dtypes[index] for index in hashed_indexes]

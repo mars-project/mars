@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import operator
 
 import numpy as np
 try:
@@ -91,7 +92,7 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
     return tuple(row_chunk_size), tuple(col_chunk_size)
 
 
-def parse_index(index_value, store_data=False):
+def parse_index(index_value, store_data=False, key=None):
     import pandas as pd
 
     def _extract_property(index, ret_data):
@@ -103,7 +104,7 @@ def parse_index(index_value, store_data=False):
             '_max_val': index.max(),
             '_min_val_close': True,
             '_max_val_close': True,
-            '_key': tokenize(index),
+            '_key': key or tokenize(index),
         }
         if ret_data:
             kw['_data'] = index.values
@@ -272,15 +273,55 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     return res
 
 
-def _build_empty_df(dtypes):
-    columns = dtypes.index.tolist()
+def build_empty_df(dtypes):
+    columns = dtypes.index
     df = pd.DataFrame(columns=columns)
     for c, d in zip(columns, dtypes):
         df[c] = pd.Series(dtype=d)
     return df
 
 
-def infer_dtypes(left_dtypes, right_dtypes, operator):
-    left = _build_empty_df(left_dtypes)
-    right = _build_empty_df(right_dtypes)
-    return operator(left, right).dtypes
+def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
+    raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), pd_range_index._step
+
+    # seek min range
+    greater_func = operator.gt if min_val_close else operator.ge
+    actual_min = raw_min
+    while greater_func(min_val, actual_min):
+        actual_min += abs(step)
+    if step < 0:
+        actual_min += step  # on the right side
+
+    # seek max range
+    less_func = operator.lt if max_val_close else operator.le
+    actual_max = raw_max
+    while less_func(max_val, actual_max):
+        actual_max -= abs(step)
+    if step > 0:
+        actual_max += step  # on the right side
+
+    if step > 0:
+        return pd.RangeIndex(actual_min, actual_max, step)
+    return pd.RangeIndex(actual_max, actual_min, step)
+
+
+def filter_index_value(index_value, min_max, store_data=False):
+    min_val, min_val_close, max_val, max_val_close = min_max
+
+    pd_index = index_value.to_pandas()
+
+    if isinstance(index_value.value, IndexValue.RangeIndex):
+        pd_filtered_index = _filter_range_index(pd_index, min_val, min_val_close,
+                                                max_val, max_val_close)
+        return parse_index(pd_filtered_index, store_data=store_data)
+
+    if min_val_close:
+        f = pd_index >= min_val
+    else:
+        f = pd_index > min_val
+    if max_val_close:
+        f = f & (pd_index <= max_val)
+    else:
+        f = f & (pd_index < max_val)
+
+    return parse_index(pd_index[f], store_data=store_data)

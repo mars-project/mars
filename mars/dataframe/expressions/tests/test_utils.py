@@ -22,8 +22,9 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.config import option_context
+from mars.dataframe.core import IndexValue
 from mars.dataframe.expressions.utils import decide_chunk_sizes, \
-    split_monotonic_index_min_max, build_split_idx_to_origin_idx
+    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -69,6 +70,37 @@ class Test(unittest.TestCase):
             nsplit = decide_chunk_sizes(shape, (10, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
+
+    def testParseIndex(self):
+        index = pd.Int64Index([])
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.Int64Index([1, 2])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.RangeIndex(0, 10, 3)
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.RangeIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b']])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
+
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
     def testSplitMonotonicIndexMinMax(self):
         left_min_max = [[0, True, 3, True], [3, False, 5, False]]
@@ -154,3 +186,62 @@ class Test(unittest.TestCase):
         res = build_split_idx_to_origin_idx(splits, increase=False)
 
         self.assertEqual(res, {0: (1, 0), 1: (1, 1), 2: (0, 0)})
+
+    def testFilterIndexValue(self):
+        pd_index = pd.RangeIndex(10)
+        index_value = parse_index(pd_index)
+
+        min_max = (0, True, 9, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist())
+
+        min_max = (0, False, 9, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 0) & (pd_index < 9)].tolist())
+
+        pd_index = pd.RangeIndex(1, 11, 3)
+        index_value = parse_index(pd_index)
+
+        min_max = (2, True, 10, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist())
+
+        min_max = (2, False, 10, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 2) & (pd_index < 10)].tolist())
+
+        pd_index = pd.RangeIndex(9, -1, -1)
+        index_value = parse_index(pd_index)
+
+        min_max = (0, True, 9, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist())
+
+        min_max = (0, False, 9, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 0) & (pd_index < 9)].tolist())
+
+        pd_index = pd.RangeIndex(10, 0, -3)
+        index_value = parse_index(pd_index, store_data=False)
+
+        min_max = (2, True, 10, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist())
+
+        min_max = (2, False, 10, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 2) & (pd_index < 10)].tolist())
+
+        pd_index = pd.Int64Index([0, 3, 8])
+        index_value = parse_index(pd_index, store_data=True)
+
+        min_max = (2, True, 8, False)
+        self.assertEqual(filter_index_value(index_value, min_max, store_data=True).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index < 8)].tolist())
+
+        index_value = parse_index(pd_index)
+
+        min_max = (2, True, 8, False)
+        filtered = filter_index_value(index_value, min_max)
+        self.assertEqual(len(filtered.to_pandas().tolist()), 0)
+        self.assertIsInstance(filtered.value, IndexValue.Int64Index)
