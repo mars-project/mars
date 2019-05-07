@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
+from mars.lib.mmh3 import hash as mmh_hash
 
 
 cdef class Distributor(object):
@@ -25,4 +25,4 @@ cdef class Distributor(object):
         if not isinstance(uid, bytes):
             uid = str(uid).encode('utf-8')
 
-        return int(hashlib.md5(uid).hexdigest(), 16) % self.n_process
+        return mmh_hash(uid) % self.n_process

@@ -15,9 +15,11 @@
 import os
 import pickle
 import uuid
-from hashlib import md5
+from binascii import hexlify
 from datetime import date, datetime, timedelta
 from collections import deque
+
+from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
 
 import numpy as np
 try:
@@ -69,10 +71,25 @@ cpdef unicode to_text(s, encoding='utf-8'):
         raise TypeError("Could not convert to unicode.")
 
 
-def tokenize(*args, **kwargs):
+cdef inline build_canonical_bytes(tuple args, kwargs):
     if kwargs:
         args = args + (kwargs,)
-    return md5(str([h(arg) for arg in args]).encode('utf-8')).hexdigest()
+    return str([h(arg) for arg in args]).encode('utf-8')
+
+
+def tokenize(*args, **kwargs):
+    return to_hex(mmh_hash_bytes(build_canonical_bytes(args, kwargs)))
+
+
+def tokenize_int(*args, **kwargs):
+    return mmh_hash(build_canonical_bytes(args, kwargs))
+
+
+cdef inline to_hex(bytes s):
+    if PY_MAJOR_VERSION >= 3:
+        return s.hex()
+    else:
+        return hexlify(s)
 
 
 cdef inline object h(object ob):
@@ -137,20 +154,20 @@ cdef h_numpy(ob):
                 ob.shape, ob.strides, offset)
     if ob.dtype.hasobject:
         try:
-            data = md5('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')).hexdigest()
+            data = to_hex(mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')))
         except UnicodeDecodeError:
-            data = md5(b'-'.join([to_binary(x) for x in ob.flat])).hexdigest()
+            data = to_hex(mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat])))
         except TypeError:
             try:
-                data = md5(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)).hexdigest()
+                data = to_hex(mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)))
             except:
                 # nothing can do, generate uuid
                 data = uuid.uuid4().hex
     else:
         try:
-            data = md5(ob.ravel().view('i1').data).hexdigest()
+            data = to_hex(mmh_hash_bytes(ob.ravel().view('i1').data))
         except (BufferError, AttributeError, ValueError):
-            data = md5(ob.copy().ravel().view('i1').data).hexdigest()
+            data = to_hex(mmh_hash_bytes(ob.copy().ravel().view('i1').data))
     return data, ob.dtype, ob.shape, ob.strides
 
 
@@ -173,4 +190,4 @@ cdef h_pandas_dataframe(ob):
     return h_iterative(l)
 
 
-__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize']
+__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int']

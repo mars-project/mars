@@ -13,12 +13,30 @@
 # limitations under the License.
 
 import os
+import platform
 import sys
+from distutils.sysconfig import get_config_var
+from distutils.version import LooseVersion
 from setuptools import setup, find_packages, Extension
 
 import numpy as np
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext
+
+
+# From https://github.com/pandas-dev/pandas/pull/24274:
+# For mac, ensure extensions are built for macos 10.9 when compiling on a
+# 10.9 system or above, overriding distuitls behaviour which is to target
+# the version that python was built for. This may be overridden by setting
+# MACOSX_DEPLOYMENT_TARGET before calling setup.py
+if sys.platform == 'darwin':
+    if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
+        current_system = LooseVersion(platform.mac_ver()[0])
+        python_target = LooseVersion(
+            get_config_var('MACOSX_DEPLOYMENT_TARGET'))
+        if python_target < '10.9' and current_system >= '10.9':
+            os.environ['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
+
 
 repo_root = os.path.dirname(os.path.abspath(__file__))
 
@@ -58,34 +76,37 @@ if os.path.exists(os.path.join(repo_root, '.git')):
             git_file.write('%s %s' % git_info)
 
 cythonize_kw = dict(language_level=sys.version_info[0])
-extension_kw = dict()
+cy_extension_kw = dict()
 if 'CYTHON_TRACE' in os.environ:
-    extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
+    cy_extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
     cythonize_kw['compiler_directives'] = {'linetrace': True}
 
 if 'MSC' in sys.version:
     extra_compile_args = ['/Ot', '/I' + os.path.join(repo_root, 'misc')]
-    extension_kw['extra_compile_args'] = extra_compile_args
+    cy_extension_kw['extra_compile_args'] = extra_compile_args
 else:
     extra_compile_args = ['-O3']
-    extension_kw['extra_compile_args'] = extra_compile_args
+    cy_extension_kw['extra_compile_args'] = extra_compile_args
 
-extension_kw['include_dirs'] = [np.get_include()]
-extensions = [
-    Extension('mars.graph', ['mars/graph.pyx'], **extension_kw),
-    Extension('mars.fuse', ['mars/fuse.pyx'], **extension_kw),
-    Extension('mars._utils', ['mars/_utils.pyx'], **extension_kw),
-    Extension('mars.lib.gipc', ['mars/lib/gipc.pyx'], **extension_kw),
-    Extension('mars.actors.core', ['mars/actors/core.pyx'], **extension_kw),
-    Extension('mars.actors.distributor', ['mars/actors/distributor.pyx'], **extension_kw),
-    Extension('mars.actors.cluster', ['mars/actors/cluster.pyx'], **extension_kw),
-    Extension('mars.actors.pool.messages', ['mars/actors/pool/messages.pyx'], **extension_kw),
-    Extension('mars.actors.pool.utils', ['mars/actors/pool/utils.pyx'], **extension_kw),
-    Extension('mars.actors.pool.gevent_pool', ['mars/actors/pool/gevent_pool.pyx'], **extension_kw),
-    Extension('mars.serialize.core', ['mars/serialize/core.pyx'], **extension_kw),
-    Extension('mars.serialize.pbserializer', ['mars/serialize/pbserializer.pyx'], **extension_kw),
-    Extension('mars.serialize.jsonserializer', ['mars/serialize/jsonserializer.pyx'], **extension_kw),
+cy_extension_kw['include_dirs'] = [np.get_include()]
+cy_extensions = [
+    Extension('mars.graph', ['mars/graph.pyx'], **cy_extension_kw),
+    Extension('mars.fuse', ['mars/fuse.pyx'], **cy_extension_kw),
+    Extension('mars._utils', ['mars/_utils.pyx'], **cy_extension_kw),
+    Extension('mars.lib.gipc', ['mars/lib/gipc.pyx'], **cy_extension_kw),
+    Extension('mars.actors.core', ['mars/actors/core.pyx'], **cy_extension_kw),
+    Extension('mars.actors.distributor', ['mars/actors/distributor.pyx'], **cy_extension_kw),
+    Extension('mars.actors.cluster', ['mars/actors/cluster.pyx'], **cy_extension_kw),
+    Extension('mars.actors.pool.messages', ['mars/actors/pool/messages.pyx'], **cy_extension_kw),
+    Extension('mars.actors.pool.utils', ['mars/actors/pool/utils.pyx'], **cy_extension_kw),
+    Extension('mars.actors.pool.gevent_pool', ['mars/actors/pool/gevent_pool.pyx'], **cy_extension_kw),
+    Extension('mars.serialize.core', ['mars/serialize/core.pyx'], **cy_extension_kw),
+    Extension('mars.serialize.pbserializer', ['mars/serialize/pbserializer.pyx'], **cy_extension_kw),
+    Extension('mars.serialize.jsonserializer', ['mars/serialize/jsonserializer.pyx'], **cy_extension_kw),
 ]
+
+extensions = cythonize(cy_extensions, **cythonize_kw) + \
+    [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
 
 
 setup_options = dict(
@@ -120,7 +141,7 @@ setup_options = dict(
     ]},
     install_requires=requirements,
     cmdclass={'build_ext': build_ext},
-    ext_modules=cythonize(extensions, **cythonize_kw),
+    ext_modules=extensions,
     extras_require={
         'distributed': extra_requirements,
         'dev': extra_requirements + dev_requirements,
