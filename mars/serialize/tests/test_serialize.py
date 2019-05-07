@@ -363,7 +363,7 @@ class Test(unittest.TestCase):
         except ImportError:
             sps = None
 
-        from mars.serialize.dataserializer import DataTuple, mars_serialize_context
+        from mars.serialize.dataserializer import mars_serialize_context
         context = mars_serialize_context()
 
         if np:
@@ -378,7 +378,7 @@ class Test(unittest.TestCase):
         if np and sps:
             array = np.random.rand(1000, 100)
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
-            tp = DataTuple((array, mat))
+            tp = (array, mat)
             des_tp = pyarrow.deserialize(pyarrow.serialize(tp, context).to_buffer(), context)
             assert_array_equal(tp[0], des_tp[0])
             self.assertTrue((tp[1].spmatrix != des_tp[1].spmatrix).nnz == 0)
