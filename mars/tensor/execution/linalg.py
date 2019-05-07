@@ -125,8 +125,16 @@ def _tensordot(ctx, chunk):
 def _tensordot_estimate_size(ctx, chunk):
     if chunk.is_sparse():
         raise NotImplementedError
+
     # empirical value in real environments
-    ctx[chunk.key] = (chunk.nbytes, int(chunk.nbytes * 2.5))
+    calc_usage = chunk.nbytes
+
+    # add input sizes when sparse-to-dense is needed
+    for inp in chunk.inputs:
+        if inp.is_sparse():
+            calc_usage += inp.nbytes
+
+    ctx[chunk.key] = (chunk.nbytes, calc_usage)
 
 
 def _dot(ctx, chunk):

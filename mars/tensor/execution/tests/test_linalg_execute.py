@@ -699,12 +699,15 @@ class Test(unittest.TestCase):
         size_res = size_executor.execute_tensor(c, mock=True)
         res = self.executor.execute_tensor(c, concat=True)[0]
         self.assertEqual(sum(s[0] for s in size_res), 0)
+        self.assertGreaterEqual(sum(s[1] for s in size_res), 0)
         self.assertTrue(issparse(res))
         np.testing.assert_allclose(res.toarray(), a_data.dot(b_data).toarray())
 
         c2 = dot(a, b, sparse=False)
 
+        size_res = size_executor.execute_tensor(c2, mock=True)
         res = self.executor.execute_tensor(c2, concat=True)[0]
+        self.assertEqual(sum(s[0] for s in size_res), c2.nbytes)
         self.assertFalse(issparse(res))
         np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
