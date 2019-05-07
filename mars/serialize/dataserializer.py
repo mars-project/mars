@@ -91,9 +91,6 @@ else:
 SERIAL_VERSION = 0
 
 
-DATA_FLAG_DENSE = 0
-DATA_FLAG_CSR = 1
-
 COMPRESS_FLAG_NONE = 0
 COMPRESS_FLAG_LZ4 = 1
 COMPRESS_FLAG_GZIP = 2
@@ -311,10 +308,6 @@ def peek_serialized_size(file):
         file.seek(0)
 
 
-class DataTuple(tuple):
-    pass
-
-
 def _serialize_numpy_array_list(obj):
     if obj.dtype.str != '|O':
         # Make the array c_contiguous if necessary so that we can call change
@@ -366,37 +359,6 @@ def _deserialize_sparse_csr_list(data):
     return SparseNDArray(target_csr, shape=shape)
 
 
-def _serialize_data_tuple(obj):
-    data_meta = []
-    outputs = [None]
-    for item in obj:
-        if isinstance(item, np.ndarray):
-            serialized_items = _serialize_numpy_array_list(item)
-            outputs.extend(serialized_items)
-            data_meta.append(DATA_FLAG_DENSE)
-            data_meta.append(len(serialized_items))
-        else:
-            serialized_items = _serialize_sparse_csr_list(item)
-            outputs.extend(serialized_items)
-            data_meta.append(DATA_FLAG_CSR)
-            data_meta.append(len(serialized_items))
-    outputs[0] = struct.pack('<' + 'B' * len(data_meta), *data_meta)
-    return tuple(outputs)
-
-
-def _deserialize_data_tuple(data):
-    data_meta = struct.unpack('<' + 'B' * len(data[0]), data[0])
-    pos = 1
-    data_parts = []
-    for flag, size in zip(data_meta[0::2], data_meta[1::2]):
-        if flag == DATA_FLAG_DENSE:
-            data_parts.append(_deserialize_numpy_array_list(data[pos:pos + size]))
-        elif flag == DATA_FLAG_CSR:
-            data_parts.append(_deserialize_sparse_csr_list(data[pos:pos + size]))
-        pos += size
-    return DataTuple(data_parts)
-
-
 _serialize_context = None
 
 
@@ -407,8 +369,5 @@ def mars_serialize_context():
         ctx.register_type(SparseNDArray, 'mars.SparseNDArray',
                           custom_serializer=_serialize_sparse_csr_list,
                           custom_deserializer=_deserialize_sparse_csr_list)
-        ctx.register_type(DataTuple, 'mars.DataTuple',
-                          custom_serializer=_serialize_data_tuple,
-                          custom_deserializer=_deserialize_data_tuple)
         _serialize_context = ctx
     return _serialize_context
