@@ -391,7 +391,7 @@ class MemQuotaActor(QuotaActor):
     def _has_space(self, delta):
         mem_stats = resource.virtual_memory()
         # calc available physical memory
-        available_size = mem_stats.available - min(0, mem_stats.total - self._overall_size) \
+        available_size = mem_stats.available - max(0, mem_stats.total - self._overall_size) \
             - self._total_proc
         if max(delta, 0) >= available_size:
             logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
@@ -404,7 +404,7 @@ class MemQuotaActor(QuotaActor):
     def _log_allocate(self, msg, *args, **kwargs):
         mem_stats = resource.virtual_memory()
         # calc available physical memory
-        available_size = mem_stats.available - min(0, mem_stats.total - self._overall_size) \
+        available_size = mem_stats.available - max(0, mem_stats.total - self._overall_size) \
             - self._total_proc
         args += (self._allocated_size, self._total_size, mem_stats.available, available_size,
                  self._overall_size, self._total_proc)
