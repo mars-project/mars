@@ -28,7 +28,7 @@ typedef unsigned __int64 uint64_t;
 
 static int
 _GetMemoryViewDataAndSize(PyObject *mview, const char **target_str,
-                         Py_ssize_t *target_str_len) {
+                          Py_ssize_t *target_str_len) {
     Py_buffer *mview_buffer = NULL;
 
     if (!PyMemoryView_Check(mview)) {
@@ -135,7 +135,7 @@ mmh3_hash_from_buffer(PyObject *self, PyObject *args, PyObject *keywds)
 
         target_buf_ptr = PyMemoryView_GET_BUFFER(target_mview);
     } else {
-      target_buf_ptr = &target_buf;
+        target_buf_ptr = &target_buf;
     }
 
     MurmurHash3_x86_32(target_buf_ptr->buf, target_buf_ptr->len, seed, result);
