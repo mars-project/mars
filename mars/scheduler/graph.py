@@ -402,7 +402,7 @@ class GraphActor(SchedulerActor):
 
             op = tensor.op.copy()
             _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],  # noqa: F841
-                               dtype=[o.dtype for o in tensor.op.outputs], **tensor.params)
+                               dtype=[o.dtype for o in tensor.op.outputs], **tensor.extra_params)
 
             total_tiled = []
             for j, t, to_tile in zip(itertools.count(0), tensor.op.outputs, op.outputs):

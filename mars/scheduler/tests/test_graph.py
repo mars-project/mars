@@ -127,7 +127,7 @@ class Test(unittest.TestCase):
     def testShufflePreparation(self, *_):
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
-        b.op.params['_reshape_with_shuffle'] = True
+        b.op.extra_params['_reshape_with_shuffle'] = True
         with self.prepare_graph_in_pool(b, compose=False):
             pass
 

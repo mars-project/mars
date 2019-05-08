@@ -262,7 +262,7 @@ class Test(unittest.TestCase):
 
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
-        b.op.params['_reshape_with_shuffle'] = True
+        b.op.extra_params['_reshape_with_shuffle'] = True
         graph = b.build_graph()
         targets = [b.key]
         graph_key = uuid.uuid1()
