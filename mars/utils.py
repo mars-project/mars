@@ -32,7 +32,7 @@ import threading
 import numpy as np
 
 from .compat import irange, functools32, getargspec
-from ._utils import to_binary, to_str, to_text, tokenize
+from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int
 from .config import options
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,7 @@ def get_next_port(typ=None):
 
 @functools32.lru_cache(200)
 def mod_hash(val, modulus):
-    return int(tokenize(val), 16) % modulus
+    return tokenize_int(val) % modulus
 
 
 class classproperty(object):

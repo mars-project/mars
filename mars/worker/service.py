@@ -79,7 +79,7 @@ class WorkerService(object):
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
-        self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '75%'
+        self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'
         self._hard_mem_limit = kwargs.pop('hard_mem_limit', None) or '90%'
         self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', None) or False
         self._min_mem_size = kwargs.pop('min_mem_size', None) or 128 * 1024 ** 2

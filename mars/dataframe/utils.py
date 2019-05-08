@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
 import functools
 import operator
+
+from mars.lib.mmh3 import hash as mmh_hash
 
 
 def hash_index(index, size):
     def func(x, size):
-        return int(hashlib.md5(bytes(x)).hexdigest(), 16) % size
+        return mmh_hash(bytes(x)) % size
 
     f = functools.partial(func, size=size)
     grouped = sorted(index.groupby(index.map(f)).items(),

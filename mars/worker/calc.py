@@ -299,7 +299,7 @@ class CpuCalcActor(WorkerActor):
             finally:
                 # release memory alloc for load keys
                 for k in direct_load_keys:
-                    self._mem_quota_ref.release_quota(k)
+                    self._mem_quota_ref.release_quota(build_load_key(op_key, k))
 
             end_time = time.time()
 
