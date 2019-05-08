@@ -285,7 +285,7 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
-class TileableData(SerializableWithKey, Tilesable):
+class TileableData(SerializableWithKey, Tileable):
     __slots__ = '__weakref__', '_siblings', '_cix'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
