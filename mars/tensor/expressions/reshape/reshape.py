@@ -214,7 +214,7 @@ class TensorReshape(Reshape, TensorOperandMixin):
                                       chunks=out_chunks, nsplits=reshape_nsplits)
         except ValueError:
             # TODO: make this as default when shuffle is mature
-            if getattr(op.params, '_reshape_with_shuffle', False):
+            if getattr(op.extra_params, '_reshape_with_shuffle', False):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape

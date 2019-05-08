@@ -227,7 +227,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
 
         y4 = x.reshape(60, 25, 40)
-        y4.op.params['_reshape_with_shuffle'] = True
+        y4.op.extra_params['_reshape_with_shuffle'] = True
 
         size_res = self.executor.execute_tensor(y4, mock=True)
         res = self.executor.execute_tensor(y4, concat=True)

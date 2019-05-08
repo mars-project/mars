@@ -89,7 +89,7 @@ def randn(random_state, *dn, **kw):
 
     op = TensorRandn(state=random_state._state, size=dn, **kw)
 
-    for key in op.params:
+    for key in op.extra_params:
         if not key.startswith('_'):
             raise ValueError('randn got unexpected key arguments {0}'.format(key))
 

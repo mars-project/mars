@@ -89,7 +89,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
         nsplits = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
         fields = getattr(op, '_input_fields_', [])
         to_one_chunk_fields = set(getattr(op, '_into_one_chunk_fields_', list()))

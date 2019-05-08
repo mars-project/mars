@@ -158,12 +158,12 @@ class Test(TestBase):
         serials = self._pb_serial(t)
         dt = self._pb_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
+        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
 
         serials = self._json_serial(t)
         dt = self._json_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
+        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
 
         t2, _ = split(t, 2)
 

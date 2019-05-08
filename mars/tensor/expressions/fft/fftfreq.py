@@ -37,7 +37,7 @@ class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         in_tensor = arange(op.n, gpu=op.gpu, dtype=op.dtype,
-                           chunks=tensor.params.raw_chunk_size).single_tiles()
+                           chunks=tensor.extra_params.raw_chunk_size).single_tiles()
 
         out_chunks = []
         for c in in_tensor.chunks:
@@ -48,7 +48,7 @@ class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, tensor.shape,
                                   chunks=out_chunks, nsplits=in_tensor.nsplits,
-                                  **tensor.params)
+                                  **tensor.extra_params)
 
 
 class TensorFFTFreqChunk(fftop.FFTFreqChunk, TensorOperandMixin):

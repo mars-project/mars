@@ -69,7 +69,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _inputs = ListField('inputs', ValueType.key)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
-    _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
+    _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __new__(cls, *args, **kwargs):
         if '_op_id' in kwargs and kwargs['_op_id']:
@@ -80,7 +80,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
 
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_params'] = kwargs.pop('_params', extras)
+        kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super(Operand, self).__init__(*args, **kwargs)
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
             self._op_id = '{0}.{1}'.format(getattr(self, OP_MODULE_KEY), getattr(self, OP_TYPE_KEY))
@@ -130,12 +130,12 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         return getattr(self, '_device', None)
 
     @property
-    def params(self):
-        return self._params
+    def extra_params(self):
+        return self._extra_params
 
-    @params.setter
-    def params(self, params):
-        self._params = params
+    @extra_params.setter
+    def extra_params(self, extra_params):
+        self._extra_params = extra_params
 
     @property
     def sparse(self):

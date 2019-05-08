@@ -214,11 +214,11 @@ class ChunkData(SerializableWithKey):
     # optional fields
     _index = TupleField('index', ValueType.uint32)
     _cached = BoolField('cached')
-    _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
+    _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_params'] = kwargs.pop('_params', extras)
+        kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super(ChunkData, self).__init__(*args, **kwargs)
 
     def __repr__(self):
@@ -296,11 +296,11 @@ class TileableData(SerializableWithKey, Tileable):
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
-    _params = DictField('params', key_type=ValueType.string, on_deserialize=AttributeDict)
+    _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
-        kwargs['_params'] = kwargs.pop('_params', extras)
+        kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         if '_nsplits' in kwargs:
             kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
 
@@ -366,8 +366,8 @@ class TileableData(SerializableWithKey, Tileable):
         self.op.inputs = new_inputs
 
     @property
-    def params(self):
-        return self._params
+    def extra_params(self):
+        return self._extra_params
 
     @property
     def cix(self):
@@ -391,7 +391,7 @@ class TileableData(SerializableWithKey, Tileable):
         new_entity._obj_set('_id', self._id)
         new_entity._chunks = None
         if self.inputs is None or len(self.inputs) == 0:
-            new_entity.params.update({'raw_chunk_size': self.nsplits})
+            new_entity.extra_params.update({'raw_chunk_size': self.nsplits})
         return new_entity
 
     def is_sparse(self):

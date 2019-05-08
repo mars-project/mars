@@ -12,7 +12,7 @@ message IndexDef {
     Value op = 4; // store operand's key and id
     Value nsplits = 5;
     repeated ChunkDef chunks = 6;
-    Value params = 7;
+    Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
 }
@@ -25,7 +25,7 @@ message SeriesDef {
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
     repeated ChunkDef chunks = 6;
-    Value params = 7;
+    Value extra_params = 7;
     string id = 8;
     Value name = 9;
     IndexValue index_value = 10;
@@ -39,7 +39,7 @@ message DataFrameDef {
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
     repeated ChunkDef chunks = 6;
-    Value params = 7;
+    Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
     IndexValue columns_value = 10;

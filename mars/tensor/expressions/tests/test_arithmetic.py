@@ -189,7 +189,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t1.op.out.key, t1.op.lhs.key)
         self.assertIs(t3, t1)
         self.assertEqual(t3.shape, (3, 4))
-        self.assertEqual(t3.op.lhs.params.raw_chunk_size, 2)
+        self.assertEqual(t3.op.lhs.extra_params.raw_chunk_size, 2)
         self.assertIs(t3.op.rhs, t2.data)
         self.assertNotEqual(t3.key, t3.op.lhs.key)
         self.assertEqual(calc_shape(t3), t3.shape)
@@ -231,7 +231,7 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t2.op, Log)
         self.assertEqual(t1.op.out.key, t1.op.input.key)
         self.assertIs(t2, t1)
-        self.assertEqual(t2.op.input.params.raw_chunk_size, 2)
+        self.assertEqual(t2.op.input.extra_params.raw_chunk_size, 2)
         self.assertNotEqual(t2.key, t2.op.input.key)
 
     def testCopyAdd(self):

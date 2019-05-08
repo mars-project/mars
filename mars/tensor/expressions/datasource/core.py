@@ -36,14 +36,14 @@ class TensorDataSource(DataSource, TensorOperandMixin):
     def to_chunk_op(self, *args):
         chunk_shape, _, chunk_size = args
         chunk_op = self.copy().reset_key()
-        chunk_op.params = {'size': chunk_shape}  # to make op key different
+        chunk_op.extra_params = {'size': chunk_shape}  # to make op key different
         return chunk_op
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
 
-        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
         chunk_size = decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
@@ -72,13 +72,13 @@ class TensorNoInput(TensorDataSource):
         return self.outputs[0].shape
 
     def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
-        self.params['shape'] = shape  # set shape to make the operand key different
+        self.extra_params['shape'] = shape  # set shape to make the operand key different
         return super(TensorNoInput, self)._new_chunks(
             inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
 
     def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
                        kws=None, **kw):
-        self.params['shape'] = shape  # set shape to make the operand key different
+        self.extra_params['shape'] = shape  # set shape to make the operand key different
         return super(TensorNoInput, self)._new_tileables(
             inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit,
             kws=kws, **kw)

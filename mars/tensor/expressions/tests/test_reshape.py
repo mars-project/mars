@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
     def testShuffleReshape(self):
         a = ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
-        b.op.params['_reshape_with_shuffle'] = True
+        b.op.extra_params['_reshape_with_shuffle'] = True
 
         b.tiles()
 
