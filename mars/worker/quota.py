@@ -55,6 +55,10 @@ class QuotaActor(WorkerActor):
     def _has_space(self, delta):
         return self._allocated_size + delta <= self._total_size
 
+    def _log_allocate(self, msg, *args, **kwargs):
+        args += (self._allocated_size, self._total_size)
+        logger.debug(msg + ' Allocated: %s, Total size: %s', *args, **kwargs)
+
     @log_unhandled
     def request_batch_quota(self, batch, callback):
         """
@@ -76,8 +80,7 @@ class QuotaActor(WorkerActor):
                 self.tell_promise(callback)
             return True
 
-        logger.debug('Receive batch quota request %r on %s. Allocated: %s. Total size: %s',
-                     batch, self.uid, self._allocated_size, self._total_size)
+        self._log_allocate('Receive batch quota request %r on %s.', batch, self.uid)
         sorted_req = sorted(batch.items(), key=lambda tp: tp[0])
         keys = tuple(tp[0] for tp in sorted_req)
         values = tuple(tp[1] for tp in sorted_req)
@@ -94,8 +97,7 @@ class QuotaActor(WorkerActor):
         :param callback: promise callback
         :return: if request is returned immediately, return True, otherwise False
         """
-        logger.debug('Receive quota request for key %s on %s. Allocated: %s. Total size: %s',
-                     key, self.uid, self._allocated_size, self._total_size)
+        self._log_allocate('Receive quota request for key %s on %s.', key, self.uid)
         quota_size = int(quota_size)
         make_first = False
         # check if the request is already allocated
@@ -138,15 +140,13 @@ class QuotaActor(WorkerActor):
         if self._has_space(delta):
             if not self._requests:
                 # if no previous requests, we can apply directly
-                logger.debug('Quota request met for key %r on %s. Allocated: %s. Total size: %s',
-                             keys, self.uid, self._allocated_size, self._total_size)
+                self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
                 self.apply_allocation(keys, quota_sizes)
                 if callback:
                     self.tell_promise(callback)
             else:
                 # otherwise, previous requests are satisfied first
-                logger.debug('Quota request queued for key %r on %s. Allocated: %s. Total size: %s',
-                             keys, self.uid, self._allocated_size, self._total_size)
+                self._log_allocate('Quota request queued for key %r on %s.', keys, self.uid)
                 if keys not in self._requests:
                     self._requests[keys] = (quota_sizes, delta, time.time(), [])
                     if make_first:
@@ -160,8 +160,7 @@ class QuotaActor(WorkerActor):
             return True
         else:
             # current free space cannot satisfy the request, the request is queued
-            logger.debug('Quota request unmet for key %r on %s. Allocated: %s. Total size: %s',
-                         keys, self.uid, self._allocated_size, self._total_size)
+            self._log_allocate('Quota request unmet for key %r on %s.', keys, self.uid)
             if keys not in self._requests:
                 self._requests[keys] = (quota_sizes, delta, time.time(), [])
                 if make_first:
@@ -243,8 +242,7 @@ class QuotaActor(WorkerActor):
             del self._hold_sizes[key]
 
         self._process_requests()
-        logger.debug('Quota key %s released on %s. Allocated: %s. Total size: %s',
-                     key, self.uid, self._allocated_size, self._total_size)
+        self._log_allocate('Quota key %s released on %s.', key, self.uid)
 
     @log_unhandled
     def release_quotas(self, keys):
@@ -285,8 +283,7 @@ class QuotaActor(WorkerActor):
         if key in self._hold_sizes:
             self._total_hold += quota_size - self._hold_sizes[key]
             self._hold_sizes[key] = quota_size
-        logger.debug('Quota key %s applied on %s. Allocated: %s. Total size: %s',
-                     key, self.uid, self._allocated_size, self._total_size)
+        self._log_allocate('Quota key %s applied on %s.', key, self.uid)
         if handle_shrink and quota_size < old_size:
             self._process_requests()
 
@@ -351,8 +348,8 @@ class MemQuotaActor(QuotaActor):
     def _has_space(self, delta):
         mem_stats = resource.virtual_memory()
         # calc available physical memory
-        available_size = mem_stats.available - min(0, mem_stats.total - self._overall_size) \
-                         - self._total_proc
+        available_size = mem_stats.available - max(0, mem_stats.total - self._overall_size) \
+            - self._total_proc
         if delta >= available_size:
             logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
                            self.uid, delta, available_size, self._overall_size)
@@ -360,6 +357,20 @@ class MemQuotaActor(QuotaActor):
                 self.ctx.actor_ref(slot).free_mkl_buffers(_tell=True, _wait=False)
             return False
         return super(MemQuotaActor, self)._has_space(delta)
+
+    def _log_allocate(self, msg, *args, **kwargs):
+        mem_stats = resource.virtual_memory()
+        # calc available physical memory
+        available_size = mem_stats.available - max(0, mem_stats.total - self._overall_size) \
+            - self._total_proc
+        args += (self._allocated_size, self._total_size, mem_stats.available, available_size,
+                 self._overall_size, self._total_proc)
+
+        logger.debug(
+            msg + ' Allocated: %s, Total size: %s, Phy available: %s, Hard available: %s,'
+                  ' Hard limit: %s, Processing: %s',
+            *args, **kwargs
+        )
 
     def apply_allocation(self, key, quota_size, handle_shrink=True):
         ret = super(MemQuotaActor, self).apply_allocation(
