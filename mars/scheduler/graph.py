@@ -402,7 +402,9 @@ class GraphActor(SchedulerActor):
 
             op = tensor.op.copy()
             _ = op.new_tileables(inputs,  # noqa: F841
-                                 kws=[o.params for o in tensor.op.outputs], **tensor.extra_params)
+                                 kws=[o.params for o in tensor.op.outputs],
+                                 output_limit=len(tensor.op.outputs),
+                                 **tensor.extra_params)
 
             total_tiled = []
             for j, t, to_tile in zip(itertools.count(0), tensor.op.outputs, op.outputs):
@@ -909,7 +911,7 @@ class GraphActor(SchedulerActor):
         chunks = []
         for c in tiled_tensor.chunks:
             fetch_op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-            fetch_chunk = fetch_op.new_chunk(None, c.shape, c.index, _key=c.key)
+            fetch_chunk = fetch_op.new_chunk(None, c.shape, index=c.index, _key=c.key)
             chunks.append(fetch_chunk)
 
         new_op = TensorFetch(dtype=tiled_tensor.dtype, sparse=tiled_tensor.op.sparse)

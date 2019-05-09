@@ -85,14 +85,17 @@ class TensorSVD(operands.SVD, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            svd_chunks = chunk_op.new_chunks([in_chunk], (U_shape, s_shape, V_shape),
+            svd_chunks = chunk_op.new_chunks([in_chunk],
                                              kws=[
                                                  {'side': 'U', 'dtype': U_dtype,
-                                                  'index': in_chunk.index},
+                                                  'index': in_chunk.index,
+                                                  'shape': U_shape},
                                                  {'side': 's', 'dtype': s_dtype,
-                                                  'index': in_chunk.index[1:]},
+                                                  'index': in_chunk.index[1:],
+                                                  'shape': s_shape},
                                                  {'side': 'V', 'dtype': V_dtype,
-                                                  'index': in_chunk.index}
+                                                  'index': in_chunk.index,
+                                                  'shape': V_shape}
                                              ])
             U_chunk, s_chunk, V_chunk = svd_chunks
 
