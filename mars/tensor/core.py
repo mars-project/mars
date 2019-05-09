@@ -92,6 +92,14 @@ class TensorData(TileableData):
                                                                 self.shape, self.key)
 
     @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype
+        }
+
+    @property
     def real(self):
         from .expressions.arithmetic import real
         return real(self)

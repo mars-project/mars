@@ -356,6 +356,13 @@ class TileableData(SerializableWithKey, Tileable):
         self.op.inputs = new_inputs
 
     @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape
+        }
+
+    @property
     def extra_params(self):
         return self._extra_params
 

@@ -405,6 +405,16 @@ class DataFrameData(TileableData):
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
     @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtypes': self.dtypes,
+            'index_value': self.index_value,
+            'columns_value': self.columns
+        }
+
+    @property
     def dtypes(self):
         dt = getattr(self, '_dtypes', None)
         if dt is not None:
