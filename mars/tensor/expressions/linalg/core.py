@@ -74,10 +74,10 @@ class SFQR(object):
         q_nsplits = ((q_chunk.shape[0],), (q_chunk.shape[1],))
         r_nsplits = ((1,), (c.shape[1] for c in r_chunks))
         kws = [
-            {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype},
-            {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype}
+            {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype, 'shape': q.shape},
+            {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype, 'shape': r.shape}
         ]
-        return new_op.new_tensors(op.inputs, [q.shape, r.shape], kws=kws)
+        return new_op.new_tensors(op.inputs, kws=kws)
 
 
 class TSQR(object):
@@ -108,9 +108,9 @@ class TSQR(object):
             x, y = c.shape
             q_shape, r_shape = (c.shape, (y, y)) if x > y else ((x, x), c.shape)
             qr_op = TensorQR()
-            qr_chunks = qr_op.new_chunks([c], [q_shape, r_shape], index=c.index,
-                                         kws=[{'side': 'q', 'dtype': q_dtype},
-                                              {'side': 'r', 'dtype': r_dtype}])
+            qr_chunks = qr_op.new_chunks([c], index=c.index,
+                                         kws=[{'side': 'q', 'dtype': q_dtype, 'shape': q_shape},
+                                              {'side': 'r', 'dtype': r_dtype, 'shape': r_shape}])
             stage1_chunks[0].append(qr_chunks[0])
             stage1_chunks[1].append(qr_chunks[1])
 
@@ -120,10 +120,11 @@ class TSQR(object):
         concat_op = TensorConcatenate(axis=0, dtype=stage1_r_chunks[0].dtype)
         concat_r_chunk = concat_op.new_chunk(stage1_r_chunks, shape, index=(0, 0))
         qr_op = TensorQR()
-        qr_shapes = concat_r_chunk.shape, (concat_r_chunk.shape[1],) * 2
-        qr_chunks = qr_op.new_chunks([concat_r_chunk], qr_shapes, index=concat_r_chunk.index,
-                                     kws=[{'side': 'q', 'dtype': q_dtype},
-                                          {'side': 'r', 'dtype': r_dtype}])
+        qr_chunks = qr_op.new_chunks([concat_r_chunk], index=concat_r_chunk.index,
+                                     kws=[{'side': 'q', 'dtype': q_dtype,
+                                           'shape': concat_r_chunk.shape},
+                                          {'side': 'r', 'dtype': r_dtype,
+                                           'shape': (concat_r_chunk.shape[1],) * 2}])
         stage2_q_chunk, stage2_r_chunk = qr_chunks
 
         # stage 3, map phase
@@ -149,11 +150,11 @@ class TSQR(object):
             r_nsplits = ((stage2_r_chunk.shape[0],), (stage2_r_chunk.shape[1],))
             kws = [
                 # Q
-                {'chunks': stage3_q_chunks, 'nsplits': q_nsplits, 'dtype': q.dtype},
+                {'chunks': stage3_q_chunks, 'nsplits': q_nsplits, 'dtype': q.dtype, 'shape': q.shape},
                 # R, calculate from stage2
-                {'chunks': [stage2_r_chunk], 'nsplits': r_nsplits, 'dtype': r.dtype}
+                {'chunks': [stage2_r_chunk], 'nsplits': r_nsplits, 'dtype': r.dtype, 'shape': r.shape}
             ]
-            return new_op.new_tensors(op.inputs, [q.shape, r.shape], kws=kws)
+            return new_op.new_tensors(op.inputs, kws=kws)
         else:
             U, s, V = op.outputs
             U_dtype, s_dtype, V_dtype = U.dtype, s.dtype, V.dtype
@@ -163,13 +164,16 @@ class TSQR(object):
             u_shape = stage2_r_chunk.shape
             s_shape = (stage2_r_chunk.shape[1],)
             v_shape = (stage2_r_chunk.shape[1],) * 2
-            stage2_usv_chunks = svd_op.new_chunks([stage2_r_chunk], [u_shape, s_shape, v_shape],
+            stage2_usv_chunks = svd_op.new_chunks([stage2_r_chunk],
                                                   kws=[{'side': 'U', 'dtype': U_dtype,
-                                                        'index': stage2_r_chunk.index},
+                                                        'index': stage2_r_chunk.index,
+                                                        'shape': u_shape},
                                                        {'side': 's', 'dtype': s_dtype,
-                                                        'index': stage2_r_chunk.index[1:]},
+                                                        'index': stage2_r_chunk.index[1:],
+                                                        'shape': s_shape},
                                                        {'side': 'V', 'dtype': V_dtype,
-                                                        'index': stage2_r_chunk.index}])
+                                                        'index': stage2_r_chunk.index,
+                                                        'shape': v_shape}])
             stage2_u_chunk, stage2_s_chunk, stage2_v_chunk = stage2_usv_chunks
 
             # stage 4, U = Q @ u
@@ -186,8 +190,11 @@ class TSQR(object):
             s_nsplits = ((stage2_s_chunk.shape[0],),)
             v_nsplits = ((stage2_v_chunk.shape[0],), (stage2_v_chunk.shape[1],))
             kws = [
-                {'chunks': stage4_u_chunks, 'nsplits': u_nsplits, 'dtype': U_dtype},   # U
-                {'chunks': [stage2_s_chunk], 'nsplits': s_nsplits, 'dtype': s_dtype},  # s
-                {'chunks': [stage2_v_chunk], 'nsplits': v_nsplits, 'dtype': V_dtype},  # V
+                {'chunks': stage4_u_chunks, 'nsplits': u_nsplits,
+                 'dtype': U_dtype, 'shape': U_shape},   # U
+                {'chunks': [stage2_s_chunk], 'nsplits': s_nsplits,
+                 'dtype': s_dtype, 'shape': s_shape},  # s
+                {'chunks': [stage2_v_chunk], 'nsplits': v_nsplits,
+                 'dtype': V_dtype, 'shape': V_shape},  # V
             ]
-            return new_op.new_tensors(op.inputs, [U_shape, s_shape, V_shape], kws=kws)
+            return new_op.new_tensors(op.inputs, kws=kws)

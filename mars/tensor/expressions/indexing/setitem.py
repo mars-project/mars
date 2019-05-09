@@ -55,20 +55,17 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         if isinstance(self._value, (BaseWithKey, Entity)):
             self._value = next(inputs_iter)
 
-    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                       kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw):
         indexes = kw.pop('indexes', None)
         value = kw.pop('value', None)
         with self._handle_params(inputs, indexes, value) as mix_inputs:
-            return super(TensorIndexSetValue, self)._new_tileables(
-                mix_inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
+            return super(TensorIndexSetValue, self)._new_tileables(mix_inputs, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape,  index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         indexes = kw.pop('indexes', None)
         value = kw.pop('value', None)
         with self._handle_params(inputs, indexes, value) as mix_inputs:
-            return super(TensorIndexSetValue, self)._new_chunks(
-                mix_inputs, shape,  index=index, output_limit=output_limit, kws=kws, **kw)
+            return super(TensorIndexSetValue, self)._new_chunks(mix_inputs, kws=kws, **kw)
 
     def calc_shape(self, *inputs_shape):
         return inputs_shape[0]

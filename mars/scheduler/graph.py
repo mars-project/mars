@@ -401,8 +401,9 @@ class GraphActor(SchedulerActor):
             inputs = [tensor_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tensor.inputs or ()]
 
             op = tensor.op.copy()
-            _ = op.new_tensors(inputs, [o.shape for o in tensor.op.outputs],  # noqa: F841
-                               dtype=[o.dtype for o in tensor.op.outputs], **tensor.extra_params)
+            _ = op.new_tensors(inputs,  # noqa: F841
+                               kws=[{'shape': o.shape, 'dtype': o.dtype} for o in tensor.op.outputs],
+                               **tensor.extra_params)
 
             total_tiled = []
             for j, t, to_tile in zip(itertools.count(0), tensor.op.outputs, op.outputs):
@@ -601,10 +602,10 @@ class GraphActor(SchedulerActor):
                                                    dtype=com.dtype, _key=com.key)
                     composed.append(new_com)
                 kw['_composed'] = composed
+                kw['shape'] = o.shape
                 kws.append(kw)
 
-            new_outputs = new_op.new_chunks(inputs, [o.shape for o in c.op.outputs],
-                                            kws=kws)
+            new_outputs = new_op.new_chunks(inputs, kws=kws)
             for co in new_outputs:
                 exec_chunk = co.data
                 graph.add_node(exec_chunk)

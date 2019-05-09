@@ -209,8 +209,6 @@ class ChunkData(SerializableWithKey):
 
     # required fields
     _op = KeyField('op')  # store key of operand here
-    _shape = TupleField('shape', ValueType.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _index = TupleField('index', ValueType.uint32)
     _cached = BoolField('cached')
@@ -230,14 +228,6 @@ class ChunkData(SerializableWithKey):
             from .serialize.protos.chunk_pb2 import ChunkDef
             return ChunkDef
         return super(ChunkData, cls).cls(provider)
-
-    @property
-    def shape(self):
-        return getattr(self, '_shape', None)
-
-    @property
-    def ndim(self):
-        return len(self.shape)
 
     @property
     def index(self):
@@ -290,9 +280,9 @@ class TileableData(SerializableWithKey, Tileable):
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
     # required fields
+    _op = KeyField('op')
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _op = KeyField('op')
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
@@ -506,38 +496,32 @@ class TileableOperandMixin(object):
     def check_inputs(self, inputs):
         pass
 
-    def _create_chunk(self, output_idx, index, shape, **kw):
+    def _create_chunk(self, output_idx, index, **kw):
         raise NotImplementedError
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
-        output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
+    def _new_chunks(self, inputs, kws=None, **kw):
+        output_limit = kw.pop('output_limit', None)
+        if output_limit is None:
+            output_limit = getattr(self, 'output_limit')
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
-            getattr(self, '_update_key')()  # update key when inputs are set
-
-        if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
-            if len(shape) != output_limit:
-                raise ValueError('shape size must be equal to output limit, expect {0}, got {1}'.format(
-                    output_limit, len(shape)))
-        else:
-            shape = [shape] * output_limit
+            getattr(self, '_update_key')()
 
         chunks = []
-        raw_index = index
-        for j, s in enumerate(shape):
+        for j in range(output_limit):
             create_chunk_kw = kw.copy()
             if kws:
                 create_chunk_kw.update(kws[j])
-            index = create_chunk_kw.pop('index', raw_index)
-            chunk = self._create_chunk(j, index, s, **create_chunk_kw)
+            index = create_chunk_kw.pop('index', None)
+            chunk = self._create_chunk(j, index, **create_chunk_kw)
             chunks.append(chunk)
 
         setattr(self, 'outputs', chunks)
         return chunks
 
-    def new_chunks(self, inputs, shape, **kwargs):
+    def new_chunks(self, inputs, kws=None, **kwargs):
         """
         Create chunks.
         A chunk is a node in a fine grained graph, all the chunk objects are created by
@@ -545,44 +529,40 @@ class TileableOperandMixin(object):
         The generated chunks will be set as this operand's outputs and each chunk will
         hold this operand as it's op.
         :param inputs: input chunks
-        :param shape: output chunks' shapes
-        :param kwargs: kwargs
+        :param kws: kwargs for each output
+        :param kwargs: common kwargs for all outputs
 
         .. note::
             It's a final method, do not override.
             Override the method `_new_chunks` if needed.
         """
-        return self._new_chunks(inputs, shape, **kwargs)
+        return self._new_chunks(inputs, kws=kws, **kwargs)
 
-    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
+    def new_chunk(self, inputs, kws=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new chunk with more than 1 outputs')
+
+        return self.new_chunks(inputs, kws=kws, **kw)[0]
+
+    def _create_tileable(self, output_idx, **kw):
         raise NotImplementedError
 
-    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                       kws=None, **kw):
-        output_limit = getattr(self, 'output_limit') if output_limit is None else output_limit
+    def _new_tileables(self, inputs, kws=None, **kw):
+        output_limit = kw.pop('output_limit', None)
+        if output_limit is None:
+            output_limit = getattr(self, 'output_limit')
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
         if getattr(self, '_key', None) is None:
             getattr(self, '_update_key')()  # update key when inputs are set
 
-        if isinstance(shape, (list, tuple)) and len(shape) > 0 and isinstance(shape[0], (list, tuple)):
-            if not np.isinf(output_limit) and len(shape) != output_limit:
-                raise ValueError('shape size must be equal to output limit, expect {0}, got {1}'.format(
-                    output_limit, len(shape)))
-        else:
-            shape = [shape] * output_limit
-
         tileables = []
-        raw_chunks = chunks
-        raw_nsplits = nsplits
-        for j, s in enumerate(shape):
+        for j in range(output_limit):
             create_tensor_kw = kw.copy()
             if kws:
                 create_tensor_kw.update(kws[j])
-            chunks = create_tensor_kw.pop('chunks', raw_chunks)
-            nsplits = create_tensor_kw.pop('nsplits', raw_nsplits)
-            tileable = self._create_tileable(j, s, nsplits, chunks, **create_tensor_kw)
+            tileable = self._create_tileable(j, **create_tensor_kw)
             tileables.append(tileable)
 
         setattr(self, 'outputs', tileables)
@@ -593,31 +573,25 @@ class TileableOperandMixin(object):
                 t.data._siblings = [tensor.data for tensor in tileables[:j] + tileables[j + 1:]]
         return tileables
 
-    def new_tileables(self, inputs, shape, **kwargs):
+    def new_tileables(self, inputs, kws=None, **kw):
         """
         Create tileable objects(Tensors or DataFrames).
         This is a base function for create tileable objects like tensors or dataframes,
         it will be called inside the `new_tensors` and `new_dataframes`.
         If eager mode is on, it will trigger the execution after tileable objects are created.
         :param inputs: input tileables
-        :param shape: outputs' shapes
-        :param kwargs: kwargs
+        :param kws: kwargs for each output
+        :param kw: common kwargs for all outputs
 
         .. note::
             It's a final method, do not override.
             Override the method `_new_tileables` if needed.
         """
 
-        tileables = self._new_tileables(inputs, shape, **kwargs)
+        tileables = self._new_tileables(inputs, kws=kws, **kw)
         if is_eager_mode():
             ExecutableTuple(tileables).execute(fetch=False)
         return tileables
-
-    def new_chunk(self, inputs, shape, index=None, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
-
-        return self.new_chunks(inputs, shape, index=index, **kw)[0]
 
 
 class ExecutableTuple(tuple):

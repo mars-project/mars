@@ -71,17 +71,15 @@ class TensorNoInput(TensorDataSource):
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
+        shape = kw.get('shape', None)
         self.extra_params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_chunks(
-            inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
+        return super(TensorNoInput, self)._new_chunks(inputs, kws=kws, **kw)
 
-    def _new_tileables(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                       kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw):
+        shape = kw.get('shape', None)
         self.extra_params['shape'] = shape  # set shape to make the operand key different
-        return super(TensorNoInput, self)._new_tileables(
-            inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit,
-            kws=kws, **kw)
+        return super(TensorNoInput, self)._new_tileables(inputs, kws=kws, **kw)
 
     def __call__(self, shape, chunk_size=None):
         shape = normalize_shape(shape)

@@ -30,30 +30,42 @@ class TensorOperandMixin(TileableOperandMixin):
         dtype = kw.pop('dtype', None)
         return dtype[i] if isinstance(dtype, (list, tuple)) else dtype
 
-    def _create_chunk(self, output_idx, index, shape, **kw):
+    def _create_chunk(self, output_idx, index, **kw):
         dt = self._get_dtype(kw, output_idx)
+        shape = kw.pop('shape', None)
         data = TensorChunkData(_index=index, _shape=shape, _op=self,
                                _dtype=dt, **kw)
         return TensorChunk(data)
 
-    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
+    def _create_tileable(self, output_idx, **kw):
         tensor_cls = SparseTensor if getattr(self, 'issparse')() else Tensor
         dt = self._get_dtype(kw, output_idx)
+        nsplits = kw.pop('nsplits', None)
+        shape = kw.pop('shape', None)
+        chunks = kw.pop('chunks', None)
         if nsplits is not None:
             kw['_nsplits'] = nsplits
         data = TensorData(_shape=shape, _dtype=dt, _op=self, _chunks=chunks, **kw)
         return tensor_cls(data)
 
-    def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,
+    def new_tensors(self, inputs, shape=None, dtype=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
-        return self.new_tileables(inputs, shape, chunks=chunks, nsplits=nsplits,
+        return self.new_tileables(inputs, shape=shape, chunks=chunks, nsplits=nsplits,
                                   output_limit=output_limit, kws=kws, dtype=dtype, **kw)
 
     def new_tensor(self, inputs, shape, dtype=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new tensor with more than 1 outputs')
 
-        return self.new_tensors(inputs, shape, dtype=dtype, **kw)[0]
+        return self.new_tensors(inputs, shape=shape, dtype=dtype, **kw)[0]
+
+    def new_chunks(self, inputs, shape=None, kws=None, **kwargs):
+        kwargs['shape'] = shape
+        return super(TensorOperandMixin, self).new_chunks(inputs, kws=kws, **kwargs)
+
+    def new_chunk(self, inputs, shape=None, kws=None, **kw):
+        kw['shape'] = shape
+        return super(TensorOperandMixin, self).new_chunk(inputs, kws=kws, **kw)
 
     def calc_shape(self, *inputs_shape):
         raise NotImplementedError

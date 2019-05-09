@@ -21,33 +21,42 @@ class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'dataframe'
 
-    def _create_chunk(self, output_idx, index, shape, **kw):
-        data = DataFrameChunkData(_index=index, _shape=shape, _op=self,
+    def _create_chunk(self, output_idx, index, **kw):
+        data = DataFrameChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
                                   _dtypes=kw.pop('dtypes', None),
                                   _index_value=kw.pop('index_value', None),
                                   _columns_value=kw.pop('columns_value', None), **kw)
         return DataFrameChunk(data)
 
-    def _create_tileable(self, output_idx, shape, nsplits, chunks, **kw):
-        if nsplits is not None:
-            kw['_nsplits'] = nsplits
-        data = DataFrameData(_shape=shape, _op=self, _chunks=chunks,
+    def _create_tileable(self, output_idx, **kw):
+        if kw.get('nsplits', None) is not None:
+            kw['_nsplits'] = kw['nsplits']
+        data = DataFrameData(_shape=kw.pop('shape', None), _op=self,
+                             _chunks=kw.pop('chunks', None),
                              _dtypes=kw.pop('dtypes', None),
                              _index_value=kw.pop('index_value', None),
                              _columns_value=kw.pop('columns_value', None), **kw)
         return DataFrame(data)
 
-    def new_dataframes(self, inputs, shape, dtypes=None, index_value=None, columns_value=None,
+    def new_chunks(self, inputs, shape=None, kws=None, **kwargs):
+        kwargs['shape'] = shape
+        return super(DataFrameOperandMixin, self).new_chunks(inputs, kws=kws, **kwargs)
+
+    def new_chunk(self, inputs, shape=None, kws=None, **kw):
+        kw['shape'] = shape
+        return super(DataFrameOperandMixin, self).new_chunk(inputs, kws=kws, **kw)
+
+    def new_dataframes(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
-        return self.new_tileables(inputs, shape, dtypes=dtypes, index_value=index_value,
+        return self.new_tileables(inputs, shape=shape, dtypes=dtypes, index_value=index_value,
                                   columns_value=columns_value, chunks=chunks, nsplits=nsplits,
                                   output_limit=output_limit, kws=kws, **kw)
 
-    def new_dataframe(self, inputs, shape, dtypes=None, index_value=None, columns_value=None, **kw):
+    def new_dataframe(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new tensor with more than 1 outputs')
 
-        return self.new_dataframes(inputs, shape, dtypes=dtypes,
+        return self.new_dataframes(inputs, shape=shape, dtypes=dtypes,
                                    index_value=index_value, columns_value=columns_value, **kw)[0]
 
 

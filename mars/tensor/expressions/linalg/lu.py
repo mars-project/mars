@@ -46,11 +46,11 @@ class TensorLU(operands.LU, TensorOperandMixin):
 
         tiny_p, tiny_l, tiny_u = scipy.linalg.lu(np.array([[1, 2], [2, 5]], dtype=a.dtype))
 
-        p, l, u = self.new_tensors([a], (a.shape, a.shape, a.shape),
+        p, l, u = self.new_tensors([a],
                                    kws=[
-                                       {'side': 'p', 'dtype': tiny_p.dtype},
-                                       {'side': 'l', 'dtype': tiny_l.dtype},
-                                       {'side': 'u', 'dtype': tiny_u.dtype},
+                                       {'side': 'p', 'dtype': tiny_p.dtype, 'shape': a.shape},
+                                       {'side': 'l', 'dtype': tiny_l.dtype, 'shape': a.shape},
+                                       {'side': 'u', 'dtype': tiny_u.dtype, 'shape': a.shape},
                                    ])
         return ExecutableTuple([p, l, u])
 
@@ -120,12 +120,12 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         target = TensorSubtract(dtype=L.dtype).new_chunk(
                             [target, s, None, None], target.shape)
                     new_op = TensorLU(dtype=op.dtype, sparse=target.op.sparse)
-                    lu_chunks = new_op.new_chunks([target], (target.shape, target.shape, target.shape),
+                    lu_chunks = new_op.new_chunks([target],
                                                   index=(i, j),
                                                   kws=[
-                                                      {'side': 'p', 'dtype': P.dtype},
-                                                      {'side': 'l', 'dtype': L.dtype},
-                                                      {'side': 'u', 'dtype': U.dtype},
+                                                      {'side': 'p', 'dtype': P.dtype, 'shape': target.shape},
+                                                      {'side': 'l', 'dtype': L.dtype, 'shape': target.shape},
+                                                      {'side': 'u', 'dtype': U.dtype, 'shape': target.shape},
                                                   ])
                     p_chunk, lower_chunk, upper_chunk = lu_chunks
                     # transposed p equals to inverted p
@@ -179,11 +179,14 @@ class TensorLU(operands.LU, TensorOperandMixin):
 
         new_op = op.copy()
         kws = [
-            {'chunks': list(p_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': P.dtype},
-            {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': L.dtype},
-            {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': U.dtype}
+            {'chunks': list(p_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': P.dtype, 'shape': P.shape},
+            {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': L.dtype, 'shape': L.shape},
+            {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': U.dtype, 'shape': L.shape}
         ]
-        return new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+        return new_op.new_tensors(op.inputs, kws=kws)
 
 
 def lu(a):
