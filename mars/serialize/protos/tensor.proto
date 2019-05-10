@@ -11,6 +11,6 @@ message TensorDef {
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
     repeated ChunkDef chunks = 6;
-    Value params = 7;
+    Value extra_params = 7;
     string id = 8;
 }

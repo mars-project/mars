@@ -111,13 +111,13 @@ def parse_index(index_value, store_data=False, key=None):
         return kw
 
     def _serialize_index(index):
-        params = _extract_property(index, store_data)
-        return getattr(IndexValue, type(index).__name__)(_name=index.name, **params)
+        properties = _extract_property(index, store_data)
+        return getattr(IndexValue, type(index).__name__)(_name=index.name, **properties)
 
     def _serialize_range_index(index):
-        params = _extract_property(index, False)
+        properties = _extract_property(index, False)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
-                                     _name=index.name, **params)
+                                     _name=index.name, **properties)
 
     def _serialize_multi_index(index):
         kw = _extract_property(index, store_data)

@@ -20,7 +20,7 @@ from .graph import DirectedGraph
 from .utils import kernel_mode
 
 
-class Tilesable(object):
+class Tileable(object):
     __slots__ = ()
 
     def is_coarse(self):
@@ -145,7 +145,7 @@ class OperandTilesHandler(object):
                 loose_requires.add(to_tiles)
             objs = to_tiles.inputs or []
             for o in objs:
-                if not isinstance(o, Tilesable):
+                if not isinstance(o, Tileable):
                     continue
                 if o not in graph:
                     graph.add_node(o)

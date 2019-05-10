@@ -57,18 +57,15 @@ class TensorIndex(Index, TensorOperandMixin):
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_entities(
-                mix_inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
+            return super(TensorIndex, self)._new_tileables(mix_inputs, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         indexes = kw.pop('indexes', None)
         with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_chunks(
-                mix_inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
+            return super(TensorIndex, self)._new_chunks(mix_inputs, kws=kws, **kw)
 
     def __call__(self, a, index, shape):
         return self.new_tensor([a], shape, indexes=index)
@@ -182,7 +179,8 @@ class TensorIndex(Index, TensorOperandMixin):
 
             chunk_input = in_tensor.cix[tuple(chunk_idx)]
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([chunk_input], tuple(chunk_shape), indexes=chunk_index, index=output_idx)
+            chunk = chunk_op.new_chunk([chunk_input], shape=tuple(chunk_shape),
+                                       indexes=chunk_index, index=output_idx)
             out_chunks.append(chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
@@ -212,9 +210,9 @@ class TensorIndex(Index, TensorOperandMixin):
                 s[axis] = len(output_index)
                 concat_chunk_op = TensorConcatenate(
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
-                concat_chunk = concat_chunk_op.new_chunk(chunks, tuple(s), index=new_idx)
+                concat_chunk = concat_chunk_op.new_chunk(chunks, shape=tuple(s), index=new_idx)
                 out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk = out_chunk_op.new_chunk([concat_chunk], tuple(s), indexes=indexobj, index=new_idx)
+                out_chunk = out_chunk_op.new_chunk([concat_chunk], shape=tuple(s), indexes=indexobj, index=new_idx)
                 output_chunks.append(out_chunk)
 
             new_op = tensor.op.copy()

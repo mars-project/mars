@@ -119,7 +119,7 @@ class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
     def column_shuffle_segments(self):
         return self._column_shuffle_segments
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         if kw.get('index_value', None) is None and inputs[0].index_value is not None:
             input_index_value = inputs[0].index_value
             index_min_max = self.index_min_max
@@ -145,9 +145,7 @@ class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
             if column_shuffle_size is not None:
                 self._column_shuffle_segments = hash_dtypes(input_dtypes, column_shuffle_size)
 
-        return super(DataFrameIndexAlignMap, self)._new_chunks(inputs, shape, index=index,
-                                                               output_limit=output_limit, kws=kws,
-                                                               **kw)
+        return super(DataFrameIndexAlignMap, self)._new_chunks(inputs, kws=kws, **kw)
 
 
 class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
@@ -166,7 +164,7 @@ class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         if kw.get('index_value', None) is None and inputs[0].inputs[0].index_value is not None:
             index_align_map_chunks = inputs[0].inputs
             if index_align_map_chunks[0].op.index_min_max is not None:
@@ -188,14 +186,13 @@ class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
                 kw['dtypes'] = index_align_map_chunks[0].dtypes[kw['columns_value'].to_pandas()]
             else:
                 # shuffle on columns
+                index = kw.get('index')
                 all_dtypes = [c.op.column_shuffle_segments[index[1]] for c in index_align_map_chunks
                               if c.index[0] == index_align_map_chunks[0].index[0]]
                 kw['dtypes'] = pd.concat(all_dtypes)
                 kw['columns_value'] = parse_index(kw['dtypes'].index, store_data=True)
 
-        return super(DataFrameIndexAlignReduce, self)._new_chunks(inputs, shape, index=index,
-                                                                  output_limit=output_limit, kws=kws,
-                                                                  **kw)
+        return super(DataFrameIndexAlignReduce, self)._new_chunks(inputs, kws=kws, **kw)
 
 
 class _AxisMinMaxSplitInfo(object):
@@ -366,7 +363,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     index_min_max=left_index_min_max, column_min_max=left_column_min_max,
                     dtypes=filter_dtypes(left_chunk.dtypes, left_column_min_max),
                     sparse=left_chunk.issparse())
-                left_out_chunk = left_align_op.new_chunk([left_chunk], (np.nan, np.nan),
+                left_out_chunk = left_align_op.new_chunk([left_chunk], shape=(np.nan, np.nan),
                                                          index=out_idx)
             else:
                 left_out_chunk = left_chunk
@@ -381,14 +378,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     index_min_max=right_index_min_max, column_min_max=right_column_min_max,
                     dtypes=filter_dtypes(right.dtypes, right_column_min_max),
                     sparse=right_chunk.issparse())
-                right_out_chunk = right_align_op.new_chunk([right_chunk], (np.nan, np.nan),
+                right_out_chunk = right_align_op.new_chunk([right_chunk], shape=(np.nan, np.nan),
                                                            index=out_idx)
             else:
                 right_out_chunk = right_chunk
 
             out_op = op.copy().reset_key()
             out_chunks.append(
-                out_op.new_chunk([left_out_chunk, right_out_chunk], (np.nan, np.nan),
+                out_op.new_chunk([left_out_chunk, right_out_chunk], shape=(np.nan, np.nan),
                                  index=out_idx))
 
         return out_chunks
@@ -423,19 +420,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     idx = [None, None]
                     idx[align_axis] = align_axis_idx
                     idx[shuffle_axis] = j
-                    map_chunks.append(map_op.new_chunk([input_chunk], (np.nan, np.nan), index=tuple(idx)))
-                proxy_chunk = DataFrameShuffleProxy(sparse=inp.issparse()).new_chunk(map_chunks, ())
+                    map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx)))
+                proxy_chunk = DataFrameShuffleProxy(sparse=inp.issparse()).new_chunk(map_chunks, shape=())
                 for j in range(shuffle_size):
                     reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                     reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
                                                           shuffle_key=','.join(str(idx) for idx in reduce_idx))
                     reduce_chunks[left_or_right].append(
-                        reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=reduce_idx))
+                        reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx))
 
             assert len(reduce_chunks[0]) == len(reduce_chunks[1])
             for left_chunk, right_chunk in zip(*reduce_chunks):
                 bin_op = op.copy().reset_key()
-                out_chunk = bin_op.new_chunk([left_chunk, right_chunk], (np.nan, np.nan),
+                out_chunk = bin_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, np.nan),
                                              index=left_chunk.index)
                 out_chunks.append(out_chunk)
 
@@ -454,19 +451,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 map_op = DataFrameIndexAlignMap(
                     sparse=chunk.issparse(), index_shuffle_size=out_shape[0],
                     column_shuffle_size=out_shape[1])
-                map_chunks.append(map_op.new_chunk([chunk], (np.nan, np.nan), index=chunk.index))
+                map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index))
 
-            proxy_chunk = DataFrameShuffleProxy().new_chunk(map_chunks, ())
+            proxy_chunk = DataFrameShuffleProxy().new_chunk(map_chunks, shape=())
             for out_idx in itertools.product(*(range(s) for s in out_shape)):
                 reduce_op = DataFrameIndexAlignReduce(i=out_idx,
                                                       sparse=proxy_chunk.issparse(),
                                                       shuffle_key=','.join(str(idx) for idx in out_idx))
                 reduce_chunks[i].append(
-                    reduce_op.new_chunk([proxy_chunk], (np.nan, np.nan), index=out_idx))
+                    reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))
 
         for left_chunk, right_chunk in zip(*reduce_chunks):
             bin_op = op.copy().reset_key()
-            out_chunk = bin_op.new_chunk([left_chunk, right_chunk], (np.nan, np.nan),
+            out_chunk = bin_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, np.nan),
                                          index=left_chunk.index)
             out_chunks.append(out_chunk)
 
@@ -562,17 +559,16 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     ret[i] = s
         return tuple(ret)
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         properties = self._calc_properties(*inputs)
         s = properties.pop('shape')
-        shape = self._merge_shape(shape, s)
+        shape = self._merge_shape(kw.pop('shape', None), s)
         for prop, value in properties.items():
             if kw.get(prop, None) is None:
                 kw[prop] = value
 
         return super(DataFrameBinOpMixin, self)._new_chunks(
-            inputs, shape, index=index, output_limit=output_limit,
-            kws=kws, **kw)
+            inputs, shape=shape, kws=kws, **kw)
 
     def _call(self, x1, x2):
         kw = self._calc_properties(x1, x2)

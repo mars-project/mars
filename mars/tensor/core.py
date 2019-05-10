@@ -22,16 +22,28 @@ import numpy as np
 
 from ..core import Entity, ChunkData, Chunk, TileableData, enter_build_mode, is_eager_mode
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField
+from ..utils import on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
 
 class TensorChunkData(ChunkData):
     __slots__ = ()
 
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtype = DataTypeField('dtype')
     _composed = ListField('composed', ValueType.reference('self'))
+
+    @property
+    def shape(self):
+        return getattr(self, '_shape', None)
+
+    @property
+    def ndim(self):
+        return len(self.shape)
 
     @property
     def dtype(self):
@@ -78,6 +90,14 @@ class TensorData(TileableData):
         else:
             return 'Tensor <op={0}, shape={1}, key={2}>'.format(self.op.__class__.__name__,
                                                                 self.shape, self.key)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype
+        }
 
     @property
     def real(self):

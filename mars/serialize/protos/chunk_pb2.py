@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n!mars/serialize/protos/chunk.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\"\x93\x02\n\x08\x43hunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x64types\x18\n \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\x0c \x01(\x0b\x32\x0b.IndexValue\x12\x1b\n\x08\x63omposed\x18\x07 \x03(\x0b\x32\t.ChunkDef\x12\x16\n\x06params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\tb\x06proto3')
+  serialized_pb=_b('\n!mars/serialize/protos/chunk.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\"\x99\x02\n\x08\x43hunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12\x16\n\x06\x64types\x18\n \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\x0c \x01(\x0b\x32\x0b.IndexValue\x12\x1b\n\x08\x63omposed\x18\x07 \x03(\x0b\x32\t.ChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\tb\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_indexvalue__pb2.DESCRIPTOR,])
 
@@ -106,7 +106,7 @@ _CHUNKDEF = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='params', full_name='ChunkDef.params', index=10,
+      name='extra_params', full_name='ChunkDef.extra_params', index=10,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -132,7 +132,7 @@ _CHUNKDEF = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=113,
-  serialized_end=388,
+  serialized_end=394,
 )
 
 _CHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
@@ -141,7 +141,7 @@ _CHUNKDEF.fields_by_name['dtypes'].message_type = mars_dot_serialize_dot_protos_
 _CHUNKDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 _CHUNKDEF.fields_by_name['columns_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 _CHUNKDEF.fields_by_name['composed'].message_type = _CHUNKDEF
-_CHUNKDEF.fields_by_name['params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_CHUNKDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 DESCRIPTOR.message_types_by_name['ChunkDef'] = _CHUNKDEF
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 

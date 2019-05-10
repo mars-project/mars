@@ -45,7 +45,7 @@ class TensorFFTBaseMixin(TensorOperandMixin):
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
             chunk_shape = cls._get_shape(op, c.shape)
-            out_chunk = chunk_op.new_chunk([c], chunk_shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=c.index)
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks

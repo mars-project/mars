@@ -71,7 +71,7 @@ class TensorNorm(operands.Norm, TensorOperandMixin):
 
                 c = x.cix[in_idx]
                 chunk_op = op.copy().reset_key()
-                out_chunk = chunk_op.new_chunk([c], get_shape(c.shape), index=idx)
+                out_chunk = chunk_op.new_chunk([c], shape=get_shape(c.shape), index=idx)
                 out_chunks.append(out_chunk)
 
             nsplits = [tuple(c.shape[i] for c in out_chunks

@@ -35,19 +35,15 @@ class TensorFetch(Fetch, TensorFetchMixin):
         super(TensorFetch, self).__init__(
             _dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_chunks(
-            inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
+        return super(TensorFetch, self)._new_chunks(inputs, kws=kws, **kw)
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        return super(TensorFetch, self)._new_entities(
-            inputs, shape, chunks=chunks, nsplits=nsplits,
-            output_limit=output_limit, kws=kws, **kw)
+        return super(TensorFetch, self)._new_tileables(inputs, kws=kws, **kw)
 
 
 class TensorFetchShuffle(FetchShuffle, TensorFetchMixin):

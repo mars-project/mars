@@ -79,9 +79,8 @@ class TensorSplit(Split, TensorOperandMixin):
         else:
             self._indices_or_sections = indices_or_sections
 
-        shapes = [a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1:] for i in range(nparts)]
-        kws = [{'i': i} for i in range(len(shapes))]
-        return ExecutableTuple(self.new_tensors(inputs, shapes, kws=kws, output_limit=len(shapes)))
+        kws = [{'i': i, 'shape': a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1:]} for i in range(nparts)]
+        return ExecutableTuple(self.new_tensors(inputs, kws=kws, output_limit=nparts))
 
     @classmethod
     def tile(cls, op):
@@ -94,14 +93,15 @@ class TensorSplit(Split, TensorOperandMixin):
 
         acc_shapes = np.cumsum([s.shape[axis] for s in splits])
         out_kws = [dict() for _ in splits]
-        for i in range(len(splits)):
+        for i, split in enumerate(splits):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
             new_s = in_tensor[(slice(None),) * axis + (slc,)].single_tiles()
             out_kws[i]['chunks'] = new_s.chunks
             out_kws[i]['nsplits'] = new_s.nsplits
+            out_kws[i]['shape'] = split.shape
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, [s.shape for s in splits], kws=out_kws)
+        return new_op.new_tensors(op.inputs, kws=out_kws, output_limit=len(out_kws))
 
 
 def _split(a, indices_or_sections, axis=0, is_split=False):

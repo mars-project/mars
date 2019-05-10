@@ -68,11 +68,11 @@ class TensorSVD(operands.SVD, TensorOperandMixin):
             U_shape = (x, x)
             s_shape = (x, )
             V_shape = (x, y)
-        U, s, V = self.new_tensors([a], (U_shape, s_shape, V_shape),
+        U, s, V = self.new_tensors([a],
                                    kws=[
-                                       {'side': 'U', 'dtype': tiny_U.dtype},
-                                       {'side': 's', 'dtype': tiny_s.dtype},
-                                       {'side': 'V', 'dtype': tiny_V.dtype}
+                                       {'side': 'U', 'dtype': tiny_U.dtype, 'shape': U_shape},
+                                       {'side': 's', 'dtype': tiny_s.dtype, 'shape': s_shape},
+                                       {'side': 'V', 'dtype': tiny_V.dtype, 'shape': V_shape}
                                    ])
         return ExecutableTuple([U, s, V])
 
@@ -85,24 +85,30 @@ class TensorSVD(operands.SVD, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            svd_chunks = chunk_op.new_chunks([in_chunk], (U_shape, s_shape, V_shape),
+            svd_chunks = chunk_op.new_chunks([in_chunk],
                                              kws=[
                                                  {'side': 'U', 'dtype': U_dtype,
-                                                  'index': in_chunk.index},
+                                                  'index': in_chunk.index,
+                                                  'shape': U_shape},
                                                  {'side': 's', 'dtype': s_dtype,
-                                                  'index': in_chunk.index[1:]},
+                                                  'index': in_chunk.index[1:],
+                                                  'shape': s_shape},
                                                  {'side': 'V', 'dtype': V_dtype,
-                                                  'index': in_chunk.index}
+                                                  'index': in_chunk.index,
+                                                  'shape': V_shape}
                                              ])
             U_chunk, s_chunk, V_chunk = svd_chunks
 
             new_op = op.copy()
             kws = [
-                {'chunks': [U_chunk], 'nsplits': tuple((s,) for s in U_shape), 'dtype': U_dtype},
-                {'chunks': [s_chunk], 'nsplits': tuple((s,) for s in s_shape), 'dtype': s_dtype},
-                {'chunks': [V_chunk], 'nsplits': tuple((s,) for s in V_shape), 'dtype': V_dtype}
+                {'chunks': [U_chunk], 'nsplits': tuple((s,) for s in U_shape),
+                 'dtype': U_dtype, 'shape': U_shape},
+                {'chunks': [s_chunk], 'nsplits': tuple((s,) for s in s_shape),
+                 'dtype': s_dtype, 'shape': s_shape},
+                {'chunks': [V_chunk], 'nsplits': tuple((s,) for s in V_shape),
+                 'dtype': V_dtype, 'shape': V_shape}
             ]
-            return new_op.new_tensors(op.inputs, [U_shape, s_shape, V_shape], kws=kws)
+            return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':
             return TSQR.tile(op)
         else:

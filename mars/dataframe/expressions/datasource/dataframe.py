@@ -61,7 +61,7 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
         raw_df = op.data
 
         memory_usage = raw_df.memory_usage(index=False, deep=True)
-        chunk_size = df.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = df.extra_params.raw_chunk_size or options.tensor.chunk_size
         chunk_size = decide_chunk_sizes(df.shape, chunk_size, memory_usage)
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
@@ -72,7 +72,7 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
             slc = get_chunk_slices(chunk_size, chunk_idx)
             chunk_op._data = raw_df.iloc[slc]
             chunk_op._dtypes = chunk_op._data.dtypes
-            out_chunk = chunk_op.new_chunk(None, chunk_shape, index=chunk_idx,
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
                                            index_value=parse_index(chunk_op.data.index),
                                            columns_value=parse_index(chunk_op.data.columns,
                                                                      store_data=True),

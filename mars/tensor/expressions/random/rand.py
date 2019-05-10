@@ -75,7 +75,7 @@ def rand(random_state, *dn, **kw):
     chunk_size = kw.pop('chunk_size', None)
     op = TensorRand(state=random_state._state, size=dn, **kw)
 
-    for key in op.params:
+    for key in op.extra_params:
         if not key.startswith('_'):
             raise ValueError('rand got unexpected key arguments {0}'.format(key))
 

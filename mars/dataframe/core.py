@@ -20,9 +20,11 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
+from ..utils import on_serialize_shape, on_deserialize_shape
 from ..core import ChunkData, Chunk, Entity, TileableData
-from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, SeriesField, \
-    BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, OneOfField, ReferenceField
+from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
+    SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
+    TupleField, OneOfField, ReferenceField
 
 
 class IndexValue(Serializable):
@@ -354,10 +356,21 @@ class Series(Entity):
 class DataFrameChunkData(ChunkData):
     __slots__ = ()
 
-    # optional field
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    # optional fields
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
+
+    @property
+    def shape(self):
+        return getattr(self, '_shape', None)
+
+    @property
+    def ndim(self):
+        return len(self.shape)
 
     @property
     def dtypes(self):
@@ -383,13 +396,23 @@ class DataFrameChunk(Chunk):
 class DataFrameData(TileableData):
     __slots__ = ()
 
-    # optional field
+    # optional fields
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
     _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtypes': self.dtypes,
+            'index_value': self.index_value,
+            'columns_value': self.columns
+        }
 
     @property
     def dtypes(self):

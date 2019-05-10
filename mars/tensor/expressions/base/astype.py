@@ -47,7 +47,7 @@ class TensorAstype(Astype, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([c], c.shape, index=c.index)
+            chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index)
             out_chunks.append(chunk)
 
         new_op = op.copy()

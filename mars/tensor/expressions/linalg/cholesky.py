@@ -27,9 +27,9 @@ def _H(chunk):
     from ..arithmetic.conj import TensorConj
 
     trans_op = TensorTranspose(dtype=chunk.dtype)
-    c = trans_op.new_chunk([chunk], chunk.shape[::-1], index=chunk.index[::-1])
+    c = trans_op.new_chunk([chunk], shape=chunk.shape[::-1], index=chunk.index[::-1])
     conj_op = TensorConj(dtype=c.dtype)
-    return conj_op.new_chunk([c, None, None], c.shape, index=c.index)
+    return conj_op.new_chunk([c, None, None], shape=c.shape, index=c.index)
 
 
 class TensorCholesky(operands.Cholesky, TensorOperandMixin):
@@ -66,9 +66,9 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
             for j in range(in_tensor.chunk_shape[1]):
                 if i < j:
                     lower_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]), index=(i, j))
+                        None, shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]), index=(i, j))
                     upper_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, (in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]), index=(j, i))
+                        None, shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]), index=(j, i))
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
@@ -78,7 +78,7 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                         for p in range(i):
                             a, b = lower_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], (a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]))
                             prev_chunks.append(prev_chunk)
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
@@ -86,9 +86,9 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
                         target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                            [target, s, None, None], shape=target.shape)
                     lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
-                        [target], target.shape, index=(i, j))
+                        [target], shape=target.shape, index=(i, j))
                     upper_chunk = _H(lower_chunk)
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
@@ -99,7 +99,7 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                         for p in range(j):
                             a, b = lower_chunks[j, p], upper_chunks[p, i]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], (a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]))
                             prev_chunks.append(prev_chunk)
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
@@ -107,9 +107,9 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
                         target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                            [target, s, None, None], shape=target.shape)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
-                        [lower_chunks[j, j], target], target.shape, index=(j, i))
+                        [lower_chunks[j, j], target], shape=target.shape, index=(j, i))
                     lower_chunk = _H(upper_chunk)
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk

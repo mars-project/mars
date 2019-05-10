@@ -50,7 +50,7 @@ class Test(TestBase):
                 self.assertIsInstance(tensor.op, TensorTileDBDataSource)
                 self.assertEqual(tensor.op.issparse(), sparse)
                 self.assertEqual(tensor.shape, (30, 20, 10))
-                self.assertEqual(tensor.params.raw_chunk_size, (7, 3, 4))
+                self.assertEqual(tensor.extra_params.raw_chunk_size, (7, 3, 4))
                 self.assertIsNone(tensor.op.tiledb_config)
                 self.assertEqual(tensor.op.tiledb_uri, tempdir)
                 self.assertIsNone(tensor.op.tiledb_key)

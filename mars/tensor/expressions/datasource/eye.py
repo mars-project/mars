@@ -40,13 +40,13 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     @classmethod
     def _get_nsplits(cls, op):
         tensor = op.outputs[0]
-        chunk_size = tensor.params.raw_chunk_size or options.tensor.chunk_size
+        chunk_size = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
         return decide_chunk_sizes(tensor.shape, chunk_size, tensor.dtype.itemsize)
 
     @classmethod
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
         chunk_op = TensorEye(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-        return chunk_op.new_chunk(None, chunk_shape, index=chunk_idx)
+        return chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx)
 
     @classmethod
     def tile(cls, op):

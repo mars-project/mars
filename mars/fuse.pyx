@@ -42,7 +42,7 @@ class Fusion(object):
             head_node = c[0]
             tail_node = c[-1]
             fuse_op = TensorFuseChunk(dtype=tail_node.dtype, sparse=tail_node.op.sparse, _key=tail_node.op.key)
-            fuse_chunk = fuse_op.new_chunk(head_node.inputs, tail_node.shape,
+            fuse_chunk = fuse_op.new_chunk(head_node.inputs, shape=tail_node.shape,
                                            index=tail_node.index, _key=tail_node.key,
                                            _composed=c)
             self._graph.add_node(fuse_chunk)

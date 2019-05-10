@@ -479,7 +479,7 @@ class Executor(object):
                 from .tensor.expressions.merge.concatenate import TensorConcatenate
 
                 op = TensorConcatenate(dtype=tensor.op.dtype)
-                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
+                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, shape=tensor.shape)
                 tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
                                        nsplits=[(s,) for s in tensor.shape])
 
@@ -514,7 +514,7 @@ class Executor(object):
 
                 # if need to fetch data and chunks more than 1, we concatenate them into 1
                 op = TensorConcatenate(dtype=tensor.op.dtype)
-                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, tensor.shape)
+                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, shape=tensor.shape)
                 result_keys.append(chunk.key)
                 # the concatenated key
                 concat_keys.append(chunk.key)
@@ -563,7 +563,7 @@ class Executor(object):
             chunks = []
             for c in tensor.chunks:
                 op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-                chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key)
+                chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key)
                 chunks.append(chunk)
 
             new_op = TensorFetch(dtype=tensor.dtype, sparse=tensor.op.sparse)

@@ -50,7 +50,7 @@ class TensorTranspose(Transpose, TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = _reorder(c.shape, op.axes)
             chunk_idx = _reorder(c.index, op.axes)
-            out_chunk = chunk_op.new_chunk([c], chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

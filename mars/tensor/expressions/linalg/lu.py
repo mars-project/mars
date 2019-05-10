@@ -46,11 +46,11 @@ class TensorLU(operands.LU, TensorOperandMixin):
 
         tiny_p, tiny_l, tiny_u = scipy.linalg.lu(np.array([[1, 2], [2, 5]], dtype=a.dtype))
 
-        p, l, u = self.new_tensors([a], (a.shape, a.shape, a.shape),
+        p, l, u = self.new_tensors([a],
                                    kws=[
-                                       {'side': 'p', 'dtype': tiny_p.dtype},
-                                       {'side': 'l', 'dtype': tiny_l.dtype},
-                                       {'side': 'u', 'dtype': tiny_u.dtype},
+                                       {'side': 'p', 'dtype': tiny_p.dtype, 'shape': a.shape},
+                                       {'side': 'l', 'dtype': tiny_l.dtype, 'shape': a.shape},
+                                       {'side': 'u', 'dtype': tiny_u.dtype, 'shape': a.shape},
                                    ])
         return ExecutableTuple([p, l, u])
 
@@ -76,21 +76,21 @@ class TensorLU(operands.LU, TensorOperandMixin):
             for j in range(in_tensor.chunk_shape[1]):
                 if i < j:
                     chunk_shape = (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j])
-                    p_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, chunk_shape, index=(i, j))
-                    lower_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, chunk_shape, index=(i, j))
+                    p_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, shape=chunk_shape, index=(i, j))
+                    lower_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, shape=chunk_shape, index=(i, j))
                     p_chunks[p_chunk.index] = p_chunk
                     lower_chunks[lower_chunk.index] = lower_chunk
 
                     target_u = in_tensor.cix[i, j]
                     p_invert = p_invert_chunks[i, i]
                     target = TensorDot(dtype=U.dtype, sparse=U.op.sparse).new_chunk(
-                        [p_invert, target_u], (p_invert.shape[0], target_u.shape[1]))
+                        [p_invert, target_u], shape=(p_invert.shape[0], target_u.shape[1]))
                     if i > 0:
                         prev_chunks_u = []
                         for p in range(i):
                             a, b = lower_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=U.dtype, sparse=U.op.sparse).new_chunk(
-                                [a, b], (a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]))
                             prev_chunks_u.append(prev_chunk)
                         if len(prev_chunks_u) == 1:
                             s = prev_chunks_u[0]
@@ -98,10 +98,10 @@ class TensorLU(operands.LU, TensorOperandMixin):
                             s = tree_add(prev_chunks_u[0].dtype, prev_chunks_u,
                                          None, prev_chunks_u[0].shape, sparse=op.sparse)
                         target = TensorSubtract(dtype=U.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                            [target, s, None, None], shape=target.shape)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype,
                                                         sparse=lower_chunks[i, i].op.sparse).new_chunk(
-                        [lower_chunks[i, i], target], target.shape, index=(i, j))
+                        [lower_chunks[i, i], target], shape=target.shape, index=(i, j))
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
                     target = in_tensor.cix[i, j]
@@ -110,7 +110,7 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         for p in range(i):
                             a, b = l_permuted_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=a.dtype, sparse=op.sparse).new_chunk(
-                                [a, b], (a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]))
                             prev_chunks.append(prev_chunk)
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
@@ -118,19 +118,19 @@ class TensorLU(operands.LU, TensorOperandMixin):
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape, sparse=op.sparse)
                         target = TensorSubtract(dtype=L.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                            [target, s, None, None], shape=target.shape)
                     new_op = TensorLU(dtype=op.dtype, sparse=target.op.sparse)
-                    lu_chunks = new_op.new_chunks([target], (target.shape, target.shape, target.shape),
+                    lu_chunks = new_op.new_chunks([target],
                                                   index=(i, j),
                                                   kws=[
-                                                      {'side': 'p', 'dtype': P.dtype},
-                                                      {'side': 'l', 'dtype': L.dtype},
-                                                      {'side': 'u', 'dtype': U.dtype},
+                                                      {'side': 'p', 'dtype': P.dtype, 'shape': target.shape},
+                                                      {'side': 'l', 'dtype': L.dtype, 'shape': target.shape},
+                                                      {'side': 'u', 'dtype': U.dtype, 'shape': target.shape},
                                                   ])
                     p_chunk, lower_chunk, upper_chunk = lu_chunks
                     # transposed p equals to inverted p
                     p_chunk_invert = TensorTranspose(dtype=p_chunk.dtype, sparse=op.sparse).new_chunk(
-                        [p_chunk], p_chunk.shape, index=p_chunk.index)
+                        [p_chunk], shape=p_chunk.shape, index=p_chunk.index)
                     p_chunks[p_chunk.index] = p_chunk
                     p_invert_chunks[p_chunk_invert.index] = p_chunk_invert
                     lower_chunks[lower_chunk.index] = lower_chunk
@@ -141,14 +141,14 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         l_permuted_chunk = l_permuted_chunks[i, p]
                         l_chunk = TensorDot(dtype=L.dtype, sparse=L.op.sparse).new_chunk(
                             [p_chunk_invert, l_permuted_chunk],
-                            (p_chunk_invert.shape[0], l_permuted_chunk.shape[1]),
+                            shape=(p_chunk_invert.shape[0], l_permuted_chunk.shape[1]),
                             index=l_permuted_chunk.index
                         )
                         lower_chunks[l_permuted_chunk.index] = l_chunk
                 else:
                     chunk_shape = (in_tensor.nsplits[0][i], in_tensor.nsplits[1][j])
-                    p_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, chunk_shape, index=(i, j))
-                    upper_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, chunk_shape, index=(i, j))
+                    p_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, shape=chunk_shape, index=(i, j))
+                    upper_chunk = TensorZeros(sparse=op.sparse).new_chunk(None, shape=chunk_shape, index=(i, j))
                     p_chunks[p_chunk.index] = p_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                     target_l = in_tensor.cix[i, j]
@@ -157,7 +157,7 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         for p in range(j):
                             a, b = l_permuted_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=L.dtype, sparse=L.op.sparse).new_chunk(
-                                [a, b], (a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]))
                             prev_chunks_l.append(prev_chunk)
                         if len(prev_chunks_l) == 1:
                             s = prev_chunks_l[0]
@@ -165,25 +165,28 @@ class TensorLU(operands.LU, TensorOperandMixin):
                             s = tree_add(prev_chunks_l[0].dtype, prev_chunks_l,
                                          None, prev_chunks_l[0].shape, sparse=op.sparse)
                         target_l = TensorSubtract(dtype=L.dtype).new_chunk(
-                            [target_l, s, None, None], target_l.shape)
+                            [target_l, s, None, None], shape=target_l.shape)
                     u = upper_chunks[j, j]
-                    a_transpose = TensorTranspose(dtype=u.dtype, sparse=op.sparse).new_chunk([u], u.shape)
+                    a_transpose = TensorTranspose(dtype=u.dtype, sparse=op.sparse).new_chunk([u], shape=u.shape)
                     target_transpose = TensorTranspose(dtype=target_l.dtype, sparse=op.sparse).new_chunk(
-                        [target_l], target_l.shape)
+                        [target_l], shape=target_l.shape)
                     lower_permuted_chunk = TensorSolveTriangular(
                         lower=True, dtype=L.dtype, sparse=op.sparse).new_chunk(
-                        [a_transpose, target_transpose], target_l.shape, index=(i, j))
+                        [a_transpose, target_transpose], shape=target_l.shape, index=(i, j))
                     lower_transpose = TensorTranspose(dtype=lower_permuted_chunk.dtype, sparse=op.sparse).new_chunk(
-                        [lower_permuted_chunk], lower_permuted_chunk.shape, index=lower_permuted_chunk.index)
+                        [lower_permuted_chunk], shape=lower_permuted_chunk.shape, index=lower_permuted_chunk.index)
                     l_permuted_chunks[lower_permuted_chunk.index] = lower_transpose
 
         new_op = op.copy()
         kws = [
-            {'chunks': list(p_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': P.dtype},
-            {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': L.dtype},
-            {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': U.dtype}
+            {'chunks': list(p_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': P.dtype, 'shape': P.shape},
+            {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': L.dtype, 'shape': L.shape},
+            {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits,
+             'dtype': U.dtype, 'shape': L.shape}
         ]
-        return new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+        return new_op.new_tensors(op.inputs, kws=kws)
 
 
 def lu(a):

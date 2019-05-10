@@ -139,7 +139,7 @@ class TensorRepeat(Repeat, TensorOperandMixin):
             if len(chunk_inputs) < 2:
                 # repeats is not chunk
                 chunk_op._repeats = rp
-            out_chunk = chunk_op.new_chunk(chunk_inputs, chunk_shape, index=out_idx)
+            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk_shape, index=out_idx)
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks

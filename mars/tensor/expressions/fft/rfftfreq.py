@@ -36,13 +36,13 @@ class TensorRFFTFreq(fftop.RFFTFreq, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         t = arange(tensor.shape[0], dtype=op.dtype, gpu=op.gpu,
-                   chunk_size=tensor.params.raw_chunk_size).single_tiles()
+                   chunk_size=tensor.extra_params.raw_chunk_size).single_tiles()
         t = t / (op.n * op.d)
         t.single_tiles()
 
         new_op = op.copy()
         return new_op.new_tensors(None, tensor.shape,
-                                  chunks=t.chunks, nsplits=t.nsplits, **tensor.params)
+                                  chunks=t.chunks, nsplits=t.nsplits, **tensor.extra_params)
 
 
 def rfftfreq(n, d=1.0, gpu=False, chunk_size=None):

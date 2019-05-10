@@ -45,7 +45,7 @@ class TensorElementWise(TensorOperandMixin):
                          for t in inputs]
             chunk_op = op.copy().reset_key()
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
-            chunks = chunk_op.new_chunks(in_chunks, chunk_shape, index=out_index,
+            chunks = chunk_op.new_chunks(in_chunks, shape=chunk_shape, index=out_index,
                                          dtype=[o.dtype for o in op.outputs],
                                          kws=[{'side': str(i)} for i in range(len(op.outputs))])
             for i, out_chunk in enumerate(chunks):
@@ -54,26 +54,24 @@ class TensorElementWise(TensorOperandMixin):
                 nsplits[i][idx] = s
 
         new_op = op.copy()
-        kws = [{'chunks': out_chunk, 'nsplits': nsplits} for out_chunk in out_chunks]
-        return new_op.new_tensors(list(inputs), [o.shape for o in op.outputs],
-                                  dtype=[o.dtype for o in op.outputs],
-                                  kws=kws, output_limit=len(op.outputs))
+        kws = [{'chunks': out_chunk, 'nsplits': nsplits, 'shape': o.shape, 'dtype': o.dtype}
+               for out_chunk, o in zip(out_chunks, op.outputs)]
+        return new_op.new_tensors(list(inputs), kws=kws, output_limit=len(op.outputs))
 
 
 class TensorElementWiseWithInputs(TensorElementWise):
     def _handle_params(self, inputs):
         raise NotImplementedError
 
-    def _new_entities(self, inputs, shape, chunks=None, nsplits=None, output_limit=None,
-                      kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
-            return super(TensorElementWiseWithInputs, self)._new_entities(
-                inputs, shape, chunks=chunks, nsplits=nsplits, output_limit=output_limit, kws=kws, **kw)
+            return super(TensorElementWiseWithInputs, self)._new_tileables(
+                inputs, kws=kws, **kw)
 
-    def _new_chunks(self, inputs, shape, index=None, output_limit=None, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw):
         with self._handle_params(inputs) as inputs:
             return super(TensorElementWiseWithInputs, self)._new_chunks(
-                inputs, shape, index=index, output_limit=output_limit, kws=kws, **kw)
+                inputs, kws=kws, **kw)
 
 
 class TensorBinOp(TensorElementWiseWithInputs):

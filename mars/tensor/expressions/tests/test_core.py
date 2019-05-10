@@ -103,7 +103,7 @@ class Test(TestBase):
         chunk1 = t.chunks[0]
         chunk2 = t.chunks[1]
         fuse_op = TensorFuseChunk()
-        composed_chunk = fuse_op.new_chunk(chunk1.inputs, chunk2.shape,
+        composed_chunk = fuse_op.new_chunk(chunk1.inputs, shape=chunk2.shape,
                                            _key=chunk2.key, _composed=[chunk1.data, chunk2.data])
         serials = self._pb_serial(composed_chunk)
         op, pb = serials[composed_chunk.op, composed_chunk.data]
@@ -124,7 +124,7 @@ class Test(TestBase):
         chunk1 = t.chunks[0]
         chunk2 = t.chunks[1]
         fuse_op = TensorFuseChunk()
-        composed_chunk = fuse_op.new_chunk(chunk1.inputs, chunk2.shape, _key=chunk2.key,
+        composed_chunk = fuse_op.new_chunk(chunk1.inputs, shape=chunk2.shape, _key=chunk2.key,
                                            _composed=[chunk1.data, chunk2.data])
         serials = self._json_serial(composed_chunk)
 
@@ -158,12 +158,12 @@ class Test(TestBase):
         serials = self._pb_serial(t)
         dt = self._pb_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
+        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
 
         serials = self._json_serial(t)
         dt = self._json_deserial(serials)[t.data]
 
-        self.assertEqual(dt.params.raw_chunk_size, (3, 3, 5))
+        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
 
         t2, _ = split(t, 2)
 
@@ -226,9 +226,9 @@ class Test(TestBase):
 
         # test create chunk op of ones manually
         chunk_op1 = TensorOnes(dtype=tensor.dtype)
-        chunk1 = chunk_op1.new_chunk(None, (3, 3), index=(0, 0))
+        chunk1 = chunk_op1.new_chunk(None, shape=(3, 3), index=(0, 0))
         chunk_op2 = TensorOnes(dtype=tensor.dtype)
-        chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
+        chunk2 = chunk_op2.new_chunk(None, shape=(3, 4), index=(0, 1))
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
 
@@ -252,9 +252,9 @@ class Test(TestBase):
 
         # test create chunk op of zeros manually
         chunk_op1 = TensorZeros(dtype=tensor.dtype)
-        chunk1 = chunk_op1.new_chunk(None, (3, 3), index=(0, 0))
+        chunk1 = chunk_op1.new_chunk(None, shape=(3, 3), index=(0, 0))
         chunk_op2 = TensorZeros(dtype=tensor.dtype)
-        chunk2 = chunk_op2.new_chunk(None, (3, 4), index=(0, 1))
+        chunk2 = chunk_op2.new_chunk(None, shape=(3, 4), index=(0, 1))
         self.assertNotEqual(chunk1.op.key, chunk2.op.key)
         self.assertNotEqual(chunk1.key, chunk2.key)
 

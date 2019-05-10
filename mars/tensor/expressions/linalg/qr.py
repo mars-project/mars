@@ -48,9 +48,9 @@ class TensorQR(operands.QR, TensorOperandMixin):
 
         x, y = a.shape
         q_shape, r_shape = (a.shape, (y, y)) if x > y else ((x, x), a.shape)
-        q, r = self.new_tensors([a], (q_shape, r_shape),
-                                kws=[{'side': 'q', 'dtype': tiny_q.dtype},
-                                     {'side': 'r', 'dtype': tiny_r.dtype}])
+        q, r = self.new_tensors([a],
+                                kws=[{'side': 'q', 'dtype': tiny_q.dtype, 'shape': q_shape},
+                                     {'side': 'r', 'dtype': tiny_r.dtype, 'shape': r_shape}])
         return ExecutableTuple([q, r])
 
     @classmethod
@@ -62,16 +62,16 @@ class TensorQR(operands.QR, TensorOperandMixin):
         if in_tensor.chunk_shape == (1, 1):
             in_chunk = in_tensor.chunks[0]
             chunk_op = op.copy().reset_key()
-            qr_chunks = chunk_op.new_chunks([in_chunk], (q_shape, r_shape), index=in_chunk.index,
+            qr_chunks = chunk_op.new_chunks([in_chunk], shape=(q_shape, r_shape), index=in_chunk.index,
                                             kws=[{'side': 'q'}, {'side': 'r'}])
             q_chunk, r_chunk = qr_chunks
 
             new_op = op.copy()
             kws = [
-                {'chunks': [q_chunk], 'nsplits': ((1,), (1,)), 'dtype': q_dtype},
-                {'chunks': [r_chunk], 'nsplits': ((1,), (1,)), 'dtype': r_dtype}
+                {'chunks': [q_chunk], 'nsplits': ((1,), (1,)), 'dtype': q_dtype, 'shape': q_shape},
+                {'chunks': [r_chunk], 'nsplits': ((1,), (1,)), 'dtype': r_dtype, 'shape': r_shape}
             ]
-            return new_op.new_tensors(op.inputs, [q_shape, r_shape], kws=kws)
+            return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':
             return TSQR.tile(op)
         elif op.method == 'sfqr':

@@ -36,7 +36,7 @@ class Scalar(TensorNoInput):
     @classmethod
     def tile(cls, op):
         chunk_op = op.copy().reset_key()
-        chunk = chunk_op.new_chunk(None, (), index=())
+        chunk = chunk_op.new_chunk(None, shape=(), index=())
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=[chunk], nsplits=())

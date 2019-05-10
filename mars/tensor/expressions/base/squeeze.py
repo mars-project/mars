@@ -64,7 +64,7 @@ class TensorSqueeze(Squeeze, TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = _get_squeeze_shape(c.shape, op.axis)[0]
             chunk_idx = tuple(idx for i, idx in enumerate(c.index) if i not in axis_set)
-            out_chunk = chunk_op.new_chunk([c], chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
             out_chunks.append(out_chunk)
         nsplits = [nsplit for i, nsplit in enumerate(in_tensor.nsplits) if i not in axis_set]
 
