@@ -271,11 +271,11 @@ class Test(WorkerCase):
         input_chunks = []
         for a in arr_inputs:
             fetch_op = TensorFetch(dtype=a.dtype)
-            inp_chunk = fetch_op.new_chunk(None, a.shape, _key=a.chunks[0].key).data
+            inp_chunk = fetch_op.new_chunk(None, shape=a.shape, _key=a.chunks[0].key).data
             input_chunks.append(inp_chunk)
 
         new_op = arr_add.chunks[0].op.copy()
-        new_add_chunk = new_op.new_chunk(input_chunks, arr_add.shape, index=arr_add.chunks[0].index,
+        new_add_chunk = new_op.new_chunk(input_chunks, shape=arr_add.shape, index=arr_add.chunks[0].index,
                                          dtype=arr_add.dtype, _key=arr_add.chunks[0].key)
         graph_add.add_node(new_add_chunk)
         for inp_chunk in input_chunks:

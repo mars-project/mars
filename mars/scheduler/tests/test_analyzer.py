@@ -61,12 +61,12 @@ class Test(unittest.TestCase):
         from mars.tensor.expressions.random import TensorRandint
         from mars.tensor.expressions.arithmetic import TensorTreeAdd
 
-        n1 = TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10))
-        n2 = TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10))
+        n1 = TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10))
+        n2 = TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10))
 
-        n3 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10))
+        n3 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10))
         n3.op._inputs = [n1, n2]
-        n4 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10))
+        n4 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10))
         n4.op._inputs = [n3]
 
         graph = DAG()
@@ -97,10 +97,10 @@ class Test(unittest.TestCase):
         """
 
         inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(2))
+            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
             for _ in range(6)
         ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(6)]
+        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(6)]
         for inp, r in zip(inputs, results):
             r.op._inputs = list(inp)
 
@@ -130,10 +130,10 @@ class Test(unittest.TestCase):
         """
 
         inputs = [
-            tuple(TensorRandint(_key=str(i), dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(2))
+            tuple(TensorRandint(_key=str(i), dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
             for i in range(6)
         ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(6)]
+        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(6)]
         for inp, r in zip(inputs, results):
             r.op._inputs = list(inp)
 
@@ -163,10 +163,11 @@ class Test(unittest.TestCase):
         """
 
         inputs = [
-            tuple(TensorRandint(_key=str(i * 2 + j), dtype=np.float32()).new_chunk(None, (10, 10)) for j in range(2))
+            tuple(TensorRandint(_key=str(i * 2 + j), dtype=np.float32()).new_chunk(
+                None, shape=(10, 10)) for j in range(2))
             for i in range(3)
         ]
-        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(3)]
+        results = [TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(3)]
         for inp, r in zip(inputs, results):
             r.op._inputs = list(inp)
 
@@ -266,11 +267,11 @@ class Test(unittest.TestCase):
         """
 
         inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(2))
+            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
             for _ in range(6)
         ]
         results = [
-            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, (10, 10))
+            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, shape=(10, 10))
                   for j in range(2)) for i in range(6)
         ]
         for inp, outp in zip(inputs, results):
@@ -332,11 +333,11 @@ class Test(unittest.TestCase):
 
         op_states = dict()
         inputs = [
-            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, (10, 10)) for _ in range(2))
+            tuple(TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10)) for _ in range(2))
             for _ in range(6)
         ]
         results = [
-            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, (10, 10))
+            tuple(TensorTreeAdd(_key='%d_%d' % (i, j), dtype=np.float32()).new_chunk(None, shape=(10, 10))
                   for j in range(2)) for i in range(6)
         ]
         for inp, outp in zip(inputs, results):
