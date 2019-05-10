@@ -48,7 +48,7 @@ class TensorUnravelIndex(UnravelIndex, TensorOperandMixin):
         for in_chunk in indices.chunks:
             chunk_op = op.copy().reset_key()
             chunk_kws = [{'pos': i, 'index': in_chunk.index} for i in range(len(dims))]
-            chunks = chunk_op.new_chunks([in_chunk], in_chunk.shape, kws=chunk_kws,
+            chunks = chunk_op.new_chunks([in_chunk], shape=in_chunk.shape, kws=chunk_kws,
                                          output_limit=len(dims))
             for out_chunk, c in zip(out_chunks, chunks):
                 out_chunk.append(c)

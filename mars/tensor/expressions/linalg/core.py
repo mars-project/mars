@@ -56,16 +56,15 @@ class SFQR(object):
         x, y = first_chunk.shape
         q_shape, r_shape = (first_chunk.shape, (y, y)) if x > y else ((x, x), first_chunk.shape)
         qr_op = TensorQR()
-        q_chunk, r_chunk = qr_op.new_chunks([first_chunk], (q_shape, r_shape),
-                                            index=(0, 0),
-                                            kws=[{'side': 'q', 'dtype': q_dtype},
-                                                 {'side': 'r', 'dtype': r_dtype}])
+        q_chunk, r_chunk = qr_op.new_chunks([first_chunk], index=(0, 0),
+                                            kws=[{'side': 'q', 'dtype': q_dtype, 'shape': q_shape},
+                                                 {'side': 'r', 'dtype': r_dtype, 'shape': r_shape}])
         # q is an orthogonal matrix, so q.T and inverse of q is equal
         trans_op = TensorTranspose()
-        q_transpose = trans_op.new_chunk([q_chunk], q_chunk.shape)
+        q_transpose = trans_op.new_chunk([q_chunk], shape=q_chunk.shape)
         r_chunks.append(r_chunk)
 
-        r_rest = [TensorDot().new_chunk([q_transpose, c], (q_transpose.shape[0], c.shape[1]),
+        r_rest = [TensorDot().new_chunk([q_transpose, c], shape=(q_transpose.shape[0], c.shape[1]),
                                         index=c.index) for c in a.chunks[1:]]
         r_chunks.extend(r_rest)
 
@@ -118,7 +117,7 @@ class TSQR(object):
         # concatenate all r chunks into one
         shape = (sum(c.shape[0] for c in stage1_r_chunks), stage1_r_chunks[0].shape[1])
         concat_op = TensorConcatenate(axis=0, dtype=stage1_r_chunks[0].dtype)
-        concat_r_chunk = concat_op.new_chunk(stage1_r_chunks, shape, index=(0, 0))
+        concat_r_chunk = concat_op.new_chunk(stage1_r_chunks, shape=shape, index=(0, 0))
         qr_op = TensorQR()
         qr_chunks = qr_op.new_chunks([concat_r_chunk], index=concat_r_chunk.index,
                                      kws=[{'side': 'q', 'dtype': q_dtype,
@@ -135,12 +134,12 @@ class TSQR(object):
         stage2_q_chunks = []
         for c, s in zip(stage1_q_chunks, q_slices):
             slice_op = TensorSlice(slices=[s], dtype=c.dtype)
-            stage2_q_chunks.append(slice_op.new_chunk([stage2_q_chunk], c.shape, index=c.index))
+            stage2_q_chunks.append(slice_op.new_chunk([stage2_q_chunk], shape=c.shape, index=c.index))
         stage3_q_chunks = []
         for c1, c2 in izip(stage1_q_chunks, stage2_q_chunks):
             dot_op = TensorDot(dtype=q_dtype)
             shape = (c1.shape[0], c2.shape[1])
-            stage3_q_chunks.append(dot_op.new_chunk([c1, c2], shape, index=c1.index))
+            stage3_q_chunks.append(dot_op.new_chunk([c1, c2], shape=shape, index=c1.index))
 
         if not calc_svd:
             q, r = op.outputs
@@ -182,7 +181,7 @@ class TSQR(object):
                 for c1 in stage3_q_chunks:
                     dot_op = TensorDot(dtype=U_dtype)
                     shape = (c1.shape[0], stage2_u_chunk.shape[1])
-                    stage4_u_chunks.append(dot_op.new_chunk([c1, stage2_u_chunk], shape,
+                    stage4_u_chunks.append(dot_op.new_chunk([c1, stage2_u_chunk], shape=shape,
                                                             index=c1.index))
 
             new_op = op.copy()

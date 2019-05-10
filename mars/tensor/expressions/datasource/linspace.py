@@ -67,7 +67,7 @@ class TensorLinspace(TensorNoInput):
             chunk_op = op.to_chunk_op(chunk_start, chunk_stop, cs, True)
             chunk_shape = (cs,)
             chunk_idx = (i,)
-            chunk = chunk_op.new_chunk(None, chunk_shape, index=chunk_idx)
+            chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx)
             chunks.append(chunk)
             nsplit.append(cs)
             chunk_start = chunk_start + cs * step

@@ -59,14 +59,6 @@ class TensorOperandMixin(TileableOperandMixin):
 
         return self.new_tensors(inputs, shape=shape, dtype=dtype, **kw)[0]
 
-    def new_chunks(self, inputs, shape=None, kws=None, **kwargs):
-        kwargs['shape'] = shape
-        return super(TensorOperandMixin, self).new_chunks(inputs, kws=kws, **kwargs)
-
-    def new_chunk(self, inputs, shape=None, kws=None, **kw):
-        kw['shape'] = shape
-        return super(TensorOperandMixin, self).new_chunk(inputs, kws=kws, **kw)
-
     def calc_shape(self, *inputs_shape):
         raise NotImplementedError
 

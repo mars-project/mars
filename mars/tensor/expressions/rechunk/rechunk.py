@@ -386,15 +386,15 @@ def compute_rechunk(tensor, chunk_size):
             old_chunk = tensor.cix[chunk_index]
             merge_chunk_shape = tuple(calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape)
             merge_chunk_op = TensorSlice(chunk_slice, dtype=old_chunk.dtype, sparse=old_chunk.op.sparse)
-            merge_chunk = merge_chunk_op.new_chunk([old_chunk], merge_chunk_shape, index=merge_idx)
+            merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape, index=merge_idx)
             to_merge.append(merge_chunk)
         if len(to_merge) == 1:
             chunk_op = to_merge[0].op.copy()
-            out_chunk = chunk_op.new_chunk(to_merge[0].op.inputs, chunk_shape, index=idx)
+            out_chunk = chunk_op.new_chunk(to_merge[0].op.inputs, shape=chunk_shape, index=idx)
             result_chunks.append(out_chunk)
         else:
             chunk_op = TensorConcatenate(dtype=to_merge[0].dtype, sparse=to_merge[0].op.sparse)
-            out_chunk = chunk_op.new_chunk(to_merge, chunk_shape, index=idx)
+            out_chunk = chunk_op.new_chunk(to_merge, shape=chunk_shape, index=idx)
             result_chunks.append(out_chunk)
 
     op = TensorRechunk(chunk_size, sparse=tensor.issparse())

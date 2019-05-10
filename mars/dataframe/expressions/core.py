@@ -38,14 +38,6 @@ class DataFrameOperandMixin(TileableOperandMixin):
                              _columns_value=kw.pop('columns_value', None), **kw)
         return DataFrame(data)
 
-    def new_chunks(self, inputs, shape=None, kws=None, **kwargs):
-        kwargs['shape'] = shape
-        return super(DataFrameOperandMixin, self).new_chunks(inputs, kws=kws, **kwargs)
-
-    def new_chunk(self, inputs, shape=None, kws=None, **kw):
-        kw['shape'] = shape
-        return super(DataFrameOperandMixin, self).new_chunk(inputs, kws=kws, **kw)
-
     def new_dataframes(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
         return self.new_tileables(inputs, shape=shape, dtypes=dtypes, index_value=index_value,

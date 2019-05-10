@@ -67,7 +67,7 @@ class TensorTileDBDataStore(TensorDataStore):
             axis_offsets.append(sum(nsplits[axis][:idx]))
         chunk_op._axis_offsets = tuple(axis_offsets)
         out_chunk_shape = (0,) * in_chunk.ndim
-        return chunk_op.new_chunk([in_chunk], out_chunk_shape,
+        return chunk_op.new_chunk([in_chunk], shape=out_chunk_shape,
                                   index=in_chunk.index)
 
     @classmethod

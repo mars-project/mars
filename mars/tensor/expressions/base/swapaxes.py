@@ -52,7 +52,7 @@ class TensorSwapAxes(SwapAxes, TensorOperandMixin):
             chunk_shape = _swap(c.shape, axis1, axis2)
             chunk_idx = _swap(c.index, axis1, axis2)
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([c], chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

@@ -242,8 +242,8 @@ class Test(unittest.TestCase):
 
         c = t3.chunks[0]
         inputs = c.op.lhs, TensorFetch().new_chunk(
-            c.op.rhs.inputs, c.op.rhs.shape, index=c.op.rhs.index, _key=c.op.rhs.key)
-        new_c = c.op.copy().reset_key().new_chunk(inputs, c.shape, _key='new_key')
+            c.op.rhs.inputs, shape=c.op.rhs.shape, index=c.op.rhs.index, _key=c.op.rhs.key)
+        new_c = c.op.copy().reset_key().new_chunk(inputs, shape=c.shape, _key='new_key')
         self.assertEqual(new_c.key, 'new_key')
         self.assertIs(new_c.inputs[1], new_c.op.rhs)
         self.assertIsInstance(new_c.inputs[1].op, TensorFetch)

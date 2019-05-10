@@ -51,7 +51,7 @@ class TensorDataSource(DataSource, TensorOperandMixin):
         for chunk_shape, chunk_idx in izip(itertools.product(*chunk_size),
                                            itertools.product(*chunk_size_idxes)):
             chunk_op = op.to_chunk_op(chunk_shape, chunk_idx, chunk_size)
-            out_chunk = chunk_op.new_chunk(None, chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -108,7 +108,7 @@ class TensorHasInput(TensorDataSource):
     def tile(cls, op):
         out_chunks = []
         for c in op.input.chunks:
-            out_chunk = op.copy().reset_key().new_chunk([c], c.shape, index=c.index)
+            out_chunk = op.copy().reset_key().new_chunk([c], shape=c.shape, index=c.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

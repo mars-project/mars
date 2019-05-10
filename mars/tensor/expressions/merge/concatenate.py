@@ -89,7 +89,7 @@ class TensorConcatenate(Concatenate, TensorOperandMixin):
             else:
                 chunk_op = TensorSlice(slices=[slice(None) for _ in range(in_chunk.ndim)],
                                        dtype=in_chunk.dtype, sparse=in_chunk.op.sparse)
-                out_chunk = chunk_op.new_chunk([in_chunk], in_chunk.shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([in_chunk], shape=in_chunk.shape, index=out_idx)
 
                 out_chunks.append(out_chunk)
 

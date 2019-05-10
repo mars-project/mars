@@ -62,7 +62,7 @@ class TensorDigitize(Digitize, TensorOperandMixin):
             input_chunks = [c]
             if len(op.inputs) == 2:
                 input_chunks.append(bins)
-            out_chunk = op.copy().reset_key().new_chunk(input_chunks, c.shape, index=c.index)
+            out_chunk = op.copy().reset_key().new_chunk(input_chunks, shape=c.shape, index=c.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

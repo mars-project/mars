@@ -465,7 +465,7 @@ def convert_to_fetch(entity):
 
     if isinstance(entity, CHUNK_TYPE):
         new_op = TensorFetch(dtype=entity.dtype, sparse=entity.op.sparse)
-        return new_op.new_chunk(None, entity.shape, index=entity.index,
+        return new_op.new_chunk(None, shape=entity.shape, index=entity.index,
                                 _key=entity.key, _id=entity.id)
     elif isinstance(entity, TENSOR_TYPE):
         new_op = TensorFetch(dtype=entity.dtype, sparse=entity.op.sparse)

@@ -53,7 +53,7 @@ class TensorIsIn(IsIn, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([c, test_elements_chunk], c.shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c, test_elements_chunk], shape=c.shape, index=c.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

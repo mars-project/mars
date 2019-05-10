@@ -46,7 +46,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     @classmethod
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
         chunk_op = TensorEye(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-        return chunk_op.new_chunk(None, chunk_shape, index=chunk_idx)
+        return chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx)
 
     @classmethod
     def tile(cls, op):

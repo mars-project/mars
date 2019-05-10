@@ -57,7 +57,7 @@ class TensorStack(Stack, TensorOperandMixin):
             slices = [slice(None)] * axis + [np.newaxis] + [slice(None)] * (len(input_idx) - axis)
             shape = input_chunk.shape[:axis] + (1,) + input_chunk.shape[axis:]
             chunk_op = TensorSlice(slices=slices, dtype=op.dtype, sparse=op.sparse)
-            out_chunk = chunk_op.new_chunk([input_chunk], shape, index=idx)
+            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

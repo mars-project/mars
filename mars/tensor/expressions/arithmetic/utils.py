@@ -99,9 +99,9 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
                 chk = chks[0]
             else:
                 chk_op = TensorTreeAdd(dtype=dtype, sparse=sparse)
-                chk = chk_op.new_chunk(chks, shape)
+                chk = chk_op.new_chunk(chks, shape=shape)
             new_chunks.append(chk)
         chunks = new_chunks
 
     op = TensorTreeAdd(dtype=dtype, sparse=sparse)
-    return op.new_chunk(chunks, shape, index=idx)
+    return op.new_chunk(chunks, shape=shape, index=idx)

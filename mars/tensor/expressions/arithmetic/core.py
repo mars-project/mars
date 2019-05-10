@@ -45,7 +45,7 @@ class TensorElementWise(TensorOperandMixin):
                          for t in inputs]
             chunk_op = op.copy().reset_key()
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
-            chunks = chunk_op.new_chunks(in_chunks, chunk_shape, index=out_index,
+            chunks = chunk_op.new_chunks(in_chunks, shape=chunk_shape, index=out_index,
                                          dtype=[o.dtype for o in op.outputs],
                                          kws=[{'side': str(i)} for i in range(len(op.outputs))])
             for i, out_chunk in enumerate(chunks):

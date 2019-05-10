@@ -174,16 +174,16 @@ class TensorReshape(Reshape, TensorOperandMixin):
             chunk_op = TensorReshapeMap(_input=inp, _axis_offsets=offset, _oldshape=in_tensor.shape,
                                         _newshape=new_shape, _new_chunk_size=(max_chunk_size,) * len(new_shape),
                                         _dtype=inp.dtype)
-            shuffle_inputs.append(chunk_op.new_chunk([inp], (np.nan,), index=inp.index))
+            shuffle_inputs.append(chunk_op.new_chunk([inp], shape=(np.nan,), index=inp.index))
 
         proxy_chunk = TensorShuffleProxy(dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]) \
-            .new_chunk(shuffle_inputs, ())
+            .new_chunk(shuffle_inputs, shape=())
 
         for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
                                            itertools.product(*chunk_size_idxes)):
             shuffle_key = ','.join(str(o) for o in chunk_idx)
             chunk_op = TensorReshapeReduce(_dtype=tensor.dtype, _shuffle_key=shuffle_key)
-            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], chunk_shape, index=chunk_idx))
+            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape, index=chunk_idx))
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, new_shape, chunks=shuffle_outputs,
@@ -206,7 +206,7 @@ class TensorReshape(Reshape, TensorOperandMixin):
                 in_chunk = rechunked_tensor.cix[input_idx]
                 chunk_op = op.copy().reset_key()
                 chunk_op._newshape = out_shape
-                out_chunk = chunk_op.new_chunk([in_chunk], out_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([in_chunk], shape=out_shape, index=out_idx)
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()

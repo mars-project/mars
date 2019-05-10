@@ -62,7 +62,7 @@ class TensorArgwhere(Argwhere, TensorOperandMixin):
             dim_ind_chunk = dim_indices[out_index[1]].chunks[out_index[0]]
             chunk_shape = dim_ind_chunk.shape + (1,)
             chunk_op = TensorReshape(newshape=(-1, 1), dtype=dim_ind_chunk.dtype)
-            out_chunk = chunk_op.new_chunk([dim_ind_chunk], chunk_shape, index=out_index)
+            out_chunk = chunk_op.new_chunk([dim_ind_chunk], shape=chunk_shape, index=out_index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

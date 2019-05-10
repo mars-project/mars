@@ -72,7 +72,7 @@ class DataFrameDataSource(DataSource, DataFrameOperandMixin):
             slc = get_chunk_slices(chunk_size, chunk_idx)
             chunk_op._data = raw_df.iloc[slc]
             chunk_op._dtypes = chunk_op._data.dtypes
-            out_chunk = chunk_op.new_chunk(None, chunk_shape, index=chunk_idx,
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
                                            index_value=parse_index(chunk_op.data.index),
                                            columns_value=parse_index(chunk_op.data.columns,
                                                                      store_data=True),

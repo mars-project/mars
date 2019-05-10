@@ -179,7 +179,8 @@ class TensorIndex(Index, TensorOperandMixin):
 
             chunk_input = in_tensor.cix[tuple(chunk_idx)]
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([chunk_input], tuple(chunk_shape), indexes=chunk_index, index=output_idx)
+            chunk = chunk_op.new_chunk([chunk_input], shape=tuple(chunk_shape),
+                                       indexes=chunk_index, index=output_idx)
             out_chunks.append(chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
@@ -209,9 +210,9 @@ class TensorIndex(Index, TensorOperandMixin):
                 s[axis] = len(output_index)
                 concat_chunk_op = TensorConcatenate(
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
-                concat_chunk = concat_chunk_op.new_chunk(chunks, tuple(s), index=new_idx)
+                concat_chunk = concat_chunk_op.new_chunk(chunks, shape=tuple(s), index=new_idx)
                 out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk = out_chunk_op.new_chunk([concat_chunk], tuple(s), indexes=indexobj, index=new_idx)
+                out_chunk = out_chunk_op.new_chunk([concat_chunk], shape=tuple(s), indexes=indexobj, index=new_idx)
                 output_chunks.append(out_chunk)
 
             new_op = tensor.op.copy()

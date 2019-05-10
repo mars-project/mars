@@ -60,14 +60,14 @@ class TensorTri(TensorHasInput):
             if (is_triu and ld_fx > 0 and ru_fx > 0) or (not is_triu and ld_fx < 0 and ru_fx < 0):
                 # does not cross, fill with zeros
                 chunk_op = TensorZeros(dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-                out_chunk = chunk_op.new_chunk(None, chunk_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=out_idx)
             else:
                 lu_pos = ru_pos[0], ld_pos[1]
                 chunk_k = fx(*lu_pos)
 
                 input_chunk = m.cix[out_idx]
                 chunk_op = op.to_chunk_op(chunk_k)
-                out_chunk = chunk_op.new_chunk([input_chunk], chunk_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([input_chunk], shape=chunk_shape, index=out_idx)
 
             out_chunks.append(out_chunk)
 

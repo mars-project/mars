@@ -78,7 +78,7 @@ class TensorDiagBase(object):
             if (ld_fx > 0 and ru_fx > 0) or (ld_fx < 0 and ru_fx < 0):
                 # does not cross, fill with zeros
                 chunk_op = TensorZeros(dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-                chunk = chunk_op.new_chunk(None, chunk_shape, index=out_idx)
+                chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=out_idx)
             else:
                 lu_pos = ru_pos[0], ld_pos[1]
                 chunk_k = fx(*lu_pos)
@@ -128,7 +128,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         input_idx = chunk_idx[1] if op.k < 0 else chunk_idx[0]
         input_chunk = op.inputs[0].cix[input_idx,]
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-        return op.new_chunk([input_chunk], chunk_shape, index=chunk_idx)
+        return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 
     def calc_shape(self, *inputs_shape):
         input_shape = inputs_shape[0]
@@ -172,7 +172,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
                 chunk_shape = _get_diag_shape(c.shape, chunk_k)
                 chunk_idx = (next(idx),)
                 chunk_op = op.to_chunk_op(chunk_k)
-                chunk = chunk_op.new_chunk([c], chunk_shape, index=chunk_idx)
+                chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
                 nsplit.append(chunk_shape[0])
                 chunks.append(chunk)
 

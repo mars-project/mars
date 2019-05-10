@@ -70,7 +70,7 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
             chunk_op = op.copy().reset_key()
             chunk_op._state = state
             chunk_op._size = shape[:-1]
-            out_chunk = chunk_op.new_chunk([mean_chunk, cov_chunk], shape, index=out_idx)
+            out_chunk = chunk_op.new_chunk([mean_chunk, cov_chunk], shape=shape, index=out_idx)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

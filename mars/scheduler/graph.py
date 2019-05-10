@@ -581,7 +581,7 @@ class GraphActor(SchedulerActor):
                     # for shuffle nodes, we build Fetch chunks
                     # to replace original chunk
                     op = TensorFetch(dtype=inp.dtype, sparse=inp.op.sparse)
-                inp_chunk = op.new_chunk(None, inp.shape, _key=inp.key).data
+                inp_chunk = op.new_chunk(None, shape=inp.shape, _key=inp.key).data
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
             inputs = [inputs_to_copied[inp] for inp in (c.inputs or ())]
@@ -599,7 +599,7 @@ class GraphActor(SchedulerActor):
                     else:
                         # if more than 1 inputs, means they are exactly the same object
                         inps = [composed[j - 1]] * len(com.inputs)
-                    new_com = new_com_op.new_chunk(inps, com.shape, index=com.index,
+                    new_com = new_com_op.new_chunk(inps, shape=com.shape, index=com.index,
                                                    dtype=com.dtype, _key=com.key)
                     composed.append(new_com)
                 kw['_composed'] = composed
@@ -883,17 +883,17 @@ class GraphActor(SchedulerActor):
             # only one chunk, just trigger fetch
             c = tiled_tensor.chunks[0]
             op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-            fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
+            fetch_chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key).data
             graph.add_node(fetch_chunk)
         else:
             fetch_chunks = []
             for c in tiled_tensor.chunks:
                 op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-                fetch_chunk = op.new_chunk(None, c.shape, index=c.index, _key=c.key).data
+                fetch_chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key).data
                 graph.add_node(fetch_chunk)
                 fetch_chunks.append(fetch_chunk)
             chunk = TensorConcatenate(dtype=tiled_tensor.op.dtype).new_chunk(
-                fetch_chunks, tiled_tensor.shape).data
+                fetch_chunks, shape=tiled_tensor.shape).data
             graph.add_node(chunk)
             [graph.add_edge(fetch_chunk, chunk) for fetch_chunk in fetch_chunks]
 
@@ -911,7 +911,7 @@ class GraphActor(SchedulerActor):
         chunks = []
         for c in tiled_tensor.chunks:
             fetch_op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-            fetch_chunk = fetch_op.new_chunk(None, c.shape, index=c.index, _key=c.key)
+            fetch_chunk = fetch_op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key)
             chunks.append(fetch_chunk)
 
         new_op = TensorFetch(dtype=tiled_tensor.dtype, sparse=tiled_tensor.op.sparse)

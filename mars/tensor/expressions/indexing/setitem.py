@@ -99,7 +99,7 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
 
             value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([chunk], chunk.shape, indexes=index_chunk.op.indexes,
+            out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, indexes=index_chunk.op.indexes,
                                            value=value_chunk, index=chunk.index)
             out_chunks.append(out_chunk)
 

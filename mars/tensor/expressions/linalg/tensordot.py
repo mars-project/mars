@@ -85,13 +85,13 @@ class TensorTensorDot(operands.TensorDot, TensorOperandMixin):
 
                 tensordot_chunk_op = op.copy().reset_key()
                 tensordot_chunk = tensordot_chunk_op.new_chunk(
-                    [a.cix[tuple(a_indices)], b.cix[tuple(b_indices)]], tensor_shape)
+                    [a.cix[tuple(a_indices)], b.cix[tuple(b_indices)]], shape=tensor_shape)
                 tensordot_chunks.append(tensordot_chunk)
 
             if len(tensordot_chunks) == 1:
                 c = tensordot_chunks[0]
                 chunk_op = c.op.copy()
-                chunk = chunk_op.new_chunk(c.inputs, c.shape, index=out_idx)
+                chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx)
             else:
                 chunk = tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
             out_chunks.append(chunk)

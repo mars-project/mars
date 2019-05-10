@@ -115,13 +115,13 @@ class TensorMatmul(operands.Matmul, TensorOperandMixin):
                 b_idx = get_idx(b, out_idx[: b.ndim - 2] + (contract_idx,) + out_idx[-1:])
                 b_chunk = b.cix[b_idx]
                 chunk_op = op.copy().reset_key()
-                c = chunk_op.new_chunk([a_chunk, b_chunk], shape)
+                c = chunk_op.new_chunk([a_chunk, b_chunk], shape=shape)
                 chunks.append(c)
 
             if len(chunks) == 1:
                 c = chunks[0]
                 out_chunk_op = c.op.copy()
-                out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, c.shape, index=out_idx)
+                out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, shape=c.shape, index=out_idx)
             else:
                 out_chunk = tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
 

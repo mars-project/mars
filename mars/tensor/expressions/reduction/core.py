@@ -211,7 +211,7 @@ class TensorReduction(TensorOperandMixin):
             shape = tuple(s for s in shape if s is not None)
             nsplits = tuple(ns for ns in nsplits if ns is not None)
 
-            chunks = new_op.new_chunks([c], shape, index=c.index)
+            chunks = new_op.new_chunks([c], shape=shape, index=c.index)
             return op.copy().new_tensors(op.inputs, op.outputs[0].shape, chunks=chunks, nsplits=nsplits)
 
         chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
@@ -221,7 +221,7 @@ class TensorReduction(TensorOperandMixin):
         for c in in_tensor.chunks:
             chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, keepdims=True,
                                      combine_size=op.combine_size, **kw)
-            chunks.append(chunk_op.new_chunk([c], cls._reduced_shape(c.shape, axis), index=c.index))
+            chunks.append(chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis), index=c.index))
 
         new_op = op.copy()
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
@@ -266,7 +266,7 @@ class TensorArgReduction(TensorReduction):
             chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, keepdims=True,
                                      offset=offset, total_shape=in_tensor.shape,
                                      combine_size=op.combine_size)
-            chunk = chunk_op.new_chunk([c], cls._reduced_shape(c.shape, axis), index=c.index)
+            chunk = chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis), index=c.index)
             chunks.append(chunk)
         new_op = op.copy()
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
@@ -302,7 +302,7 @@ class TensorCumReduction(TensorReduction):
         chunks = []
         for c in in_tensor.chunks:
             chunk_op = op_type(axis=op.axis, dtype=op.dtype)
-            chunks.append(chunk_op.new_chunk([c], c.shape, index=c.index))
+            chunks.append(chunk_op.new_chunk([c], shape=c.shape, index=c.index))
         inter_tensor = copy.copy(in_tensor)
         inter_tensor._chunks = chunks
 
@@ -320,11 +320,11 @@ class TensorCumReduction(TensorReduction):
                 shape = chunk.shape[:axis] + (1,) + chunk.shape[axis + 1:]
                 to_cum_chunk = inter_tensor.cix[to_cum_index]
                 slice_op = TensorSlice(slices=slc, dtype=chunk.dtype)
-                sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape, index=to_cum_index)
+                sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape=shape, index=to_cum_index)
                 to_cum_chunks.append(sliced_chunk)
 
             binop = binop_type(dtype=chunk.dtype)
-            output_chunk = binop.new_chunk(to_cum_chunks, chunk.shape, index=chunk.index)
+            output_chunk = binop.new_chunk(to_cum_chunks, shape=chunk.shape, index=chunk.index)
             output_chunks.append(output_chunk)
 
         nsplits = tuple((builtins.sum(c),) if i == axis else c for i, c in enumerate(in_tensor.nsplits))

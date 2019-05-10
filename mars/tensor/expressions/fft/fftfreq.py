@@ -42,7 +42,7 @@ class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = TensorFFTFreqChunk(n=op.n, d=op.d, dtype=op.dtype)
-            out_chunk = chunk_op.new_chunk([c], c.shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
