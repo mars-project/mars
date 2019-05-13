@@ -305,6 +305,64 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         np.testing.assert_allclose(res, data)
 
+        # shape[0] < shape[1]
+        data = np.random.randint(1, 10, (6, 10))
+
+        a = tensor(data)
+        P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, data)
+
+        a = tensor(data, chunk_size=2)
+        P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, data)
+
+        a = tensor(data, chunk_size=(2, 3))
+        P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l = self.executor.execute_tensor(L, concat=True)[0]
+        result_u = self.executor.execute_tensor(U, concat=True)[0]
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, data)
+
+        a = tensor(data, chunk_size=4)
+        P, L, U = lu(a)
+
+        # check lower and upper triangular matrix
+        result_l, result_u = self.executor.execute_tensors([L, U])
+
+        np.testing.assert_allclose(np.tril(result_l), result_l)
+        np.testing.assert_allclose(np.triu(result_u), result_u)
+
+        t = P.dot(L).dot(U)
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, data)
+
         # test for sparse
         data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
                                [0, 6, 1, 0, 0, 6],
