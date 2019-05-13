@@ -205,7 +205,7 @@ class AttributeAsDictKey(BaseWithKey, AttributeAsDict):
 
 
 class ChunkData(SerializableWithKey):
-    __slots__ = '__weakref__',
+    __slots__ = '__weakref__', '_siblings'
 
     # required fields
     _op = KeyField('op')  # store key of operand here
@@ -526,6 +526,11 @@ class TileableOperandMixin(object):
             chunks.append(chunk)
 
         setattr(self, 'outputs', chunks)
+        if len(chunks) > 1:
+            # for each output chunk, hold the reference to the other outputs
+            # so that either no one or everyone are gc collected
+            for j, t in enumerate(chunks):
+                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
         return chunks
 
     def new_chunks(self, inputs, kws=None, **kwargs):
@@ -574,10 +579,10 @@ class TileableOperandMixin(object):
 
         setattr(self, 'outputs', tileables)
         if len(tileables) > 1:
-            # for each output tensor, hold the reference to the other outputs
+            # for each output tileable, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for j, t in enumerate(tileables):
-                t.data._siblings = [tensor.data for tensor in tileables[:j] + tileables[j + 1:]]
+                t.data._siblings = [t.data for t in tileables[:j] + tileables[j + 1:]]
         return tileables
 
     def new_tileables(self, inputs, kws=None, **kw):
