@@ -22,7 +22,7 @@ import scipy.sparse as sps
 from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
-    solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul
+    solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.expressions.random import uniform
 from mars.lib.sparse import issparse, SparseNDArray
 
@@ -120,6 +120,53 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(s, concat=True)[0]
         expected = np.linalg.svd(a)[1]
         np.testing.assert_array_almost_equal(res, expected)
+
+    def testRandomizedSVDExecution(self):
+        n_samples = 100
+        n_features = 500
+        k = 10
+        for dtype in (np.int32, np.int64, np.float32, np.float64):
+            X = np.random.rand(n_samples, n_features).astype(dtype, copy=False)
+            dtype = np.dtype(dtype)
+            decimal = 5 if dtype == np.float32 else 7
+
+            # compute the singular values of X using the slow exact method
+            U, s, V = np.linalg.svd(X, full_matrices=False)
+
+            # Convert the singular values to the specific dtype
+            U = U.astype(dtype, copy=False)
+            s = s.astype(dtype, copy=False)
+            V = V.astype(dtype, copy=False)
+
+            # TODO: test "auto" and "LU" when lu decomposition supports non-square matrix
+            for normalizer in ['QR']:
+                # compute the singular values of X using the fast approximate method
+                Ua, sa, Va = randomized_svd(
+                    X, k, power_iteration_normalizer=normalizer, random_state=0)
+
+                # If the input dtype is float, then the output dtype is float of the
+                # same bit size (f32 is not upcast to f64)
+                # But if the input dtype is int, the output dtype is float64
+                if dtype.kind == 'f':
+                    self.assertEqual(Ua.dtype, dtype)
+                    self.assertEqual(sa.dtype, dtype)
+                    self.assertEqual(Va.dtype, dtype)
+                else:
+                    self.assertEqual(Ua.dtype, np.float64)
+                    self.assertEqual(sa.dtype, np.float64)
+                    self.assertEqual(Va.dtype, np.float64)
+
+                self.assertEqual(Ua.shape, (n_samples, k))
+                self.assertEqual(sa.shape, (k,))
+                self.assertEqual(Va.shape, (k, n_features))
+
+                # ensure that the singular values of both methods are equal up to the
+                # real rank of the matrix
+                np.testing.assert_almost_equal(s[:k], sa.execute(), decimal=decimal)
+
+                # check the singular vectors too (while not checking the sign)
+                np.testing.assert_almost_equal(np.dot(U[:, :k], V[:k, :]), dot(Ua, Va).execute(),
+                                               decimal=decimal)
 
     def testCholeskyExecution(self):
         data = np.random.randint(1, 10, (10, 10))

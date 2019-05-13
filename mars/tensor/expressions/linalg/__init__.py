@@ -25,6 +25,7 @@ from .qr import qr, TensorQR
 from .solve import solve
 from .solve_triangular import solve_triangular, TensorSolveTriangular
 from .svd import svd, TensorSVD
+from .randomized_svd import randomized_svd
 from .tensordot import tensordot, TensorTensorDot
 from .vdot import vdot
 

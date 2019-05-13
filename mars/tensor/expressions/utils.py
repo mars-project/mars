@@ -489,6 +489,31 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
     return tuple(dim_to_normalized[i] for i in range(len(dim_to_normalized)))
 
 
+def check_random_state(seed):
+    """
+    Turn seed into a mt.random.RandomState instance
+
+    :param seed:
+        If seed is None, return the RandomState singleton used by mt.random.
+        If seed is an int, return a new RandomState instance seeded with seed.
+        If seed is already a RandomState instance, return it.
+        Otherwise raise ValueError.
+    :return:
+    """
+    from . import random as mtrand
+
+    if seed is None or seed is mtrand:
+        return mtrand._random_state
+    if isinstance(seed, (Integral, np.integer)):
+        return mtrand.RandomState(seed)
+    if isinstance(seed, np.random.RandomState):
+        return mtrand.RandomState.from_numpy(seed)
+    if isinstance(seed, mtrand.RandomState):
+        return seed
+    raise ValueError('%r cannot be used to seed a mt.random.RandomState'
+                     ' instance' % seed)
+
+
 def concat_tileable_chunks(tensor):
     from .merge.concatenate import TensorConcatenate
 

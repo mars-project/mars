@@ -59,6 +59,12 @@ class RandomState(object):
         return State(self._random_state)
 
     @classmethod
+    def from_numpy(cls, np_random_state):
+        state = RandomState()
+        state._random_state = np_random_state
+        return state
+
+    @classmethod
     def _handle_size(cls, size):
         if size is None:
             return size
