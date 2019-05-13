@@ -229,6 +229,22 @@ class Test(unittest.TestCase):
         self.assertEqual(l.nsplits, ((4, 3), (4, 3)))
         self.assertEqual(u.nsplits, ((4, 3), (4, 3)))
 
+        a = mt.random.randint(1, 10, (7, 5), chunk_size=4)
+        p, l, u = mt.linalg.lu(a)
+        l.tiles()
+
+        self.assertEqual(l.shape, (7, 5))
+        self.assertEqual(u.shape, (5, 5))
+        self.assertEqual(p.shape, (7, 7))
+
+        a = mt.random.randint(1, 10, (5, 7), chunk_size=4)
+        p, l, u = mt.linalg.lu(a)
+        l.tiles()
+
+        self.assertEqual(l.shape, (5, 5))
+        self.assertEqual(u.shape, (5, 7))
+        self.assertEqual(p.shape, (5, 5))
+
         # test sparse
         data = sps.csr_matrix([[2, 0, 0, 0, 5, 2],
                                [0, 6, 1, 0, 0, 6],

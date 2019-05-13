@@ -71,7 +71,12 @@ def _solve_triangular(ctx, chunk):
         if xp is np:
             import scipy.linalg
 
-            ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
+            try:
+                ctx[chunk.key] = scipy.linalg.solve_triangular(a, b, lower=chunk.op.lower)
+            except np.linalg.LinAlgError:
+                if chunk.op.strict is not False:
+                    raise
+                ctx[chunk.key] = np.linalg.lstsq(a, b, rcond=-1)[0]
         elif xp is cp:
             import cupyx
 
