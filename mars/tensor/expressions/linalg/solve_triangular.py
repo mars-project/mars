@@ -18,13 +18,17 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from .... import operands
+from ....serialize import BoolField
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
 class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
-    def __init__(self, lower=None, dtype=None, sparse=False, **kw):
-        super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, _sparse=sparse, **kw)
+    _strict = BoolField('strict')
+
+    def __init__(self, lower=None, dtype=None, sparse=False, strict=None, **kw):
+        super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, _sparse=sparse,
+                                                    _strict=strict, **kw)
 
     def _set_inputs(self, inputs):
         super(TensorSolveTriangular, self)._set_inputs(inputs)
@@ -38,6 +42,10 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
     def __call__(self, a, b):
         shape = (a.shape[1],) if len(b.shape) == 1 else (a.shape[1], b.shape[1])
         return self.new_tensor([a, b], shape)
+
+    @property
+    def strict(self):
+        return self._strict
 
     @classmethod
     def tile(cls, op):
