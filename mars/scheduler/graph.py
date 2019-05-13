@@ -186,6 +186,8 @@ class GraphActor(SchedulerActor):
             self._target_tensor_chunk_ops = dict()
             self._target_tensor_finished = dict()
 
+        self._graph_analyze_pool = None
+
     def post_create(self):
         super(GraphActor, self).post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -205,6 +207,8 @@ class GraphActor(SchedulerActor):
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
+
+        self._graph_analyze_pool = self.ctx.threadpool(1)
 
     @contextlib.contextmanager
     def _open_dump_file(self, prefix):  # pragma: no cover
@@ -410,7 +414,7 @@ class GraphActor(SchedulerActor):
                         if isinstance(to_tile.op, Fetch):
                             td = self.tile_fetch_tensor(tensor)
                         else:
-                            td = handler.dispatch(to_tile)
+                            td = self._graph_analyze_pool.submit(handler.dispatch, to_tile).result()
                     except DataNotReady:
                         continue
 
@@ -516,10 +520,15 @@ class GraphActor(SchedulerActor):
         # collect external inputs for eager mode
         ext_chunks_to_inputs = analyzer.collect_external_input_chunks(initial=True)
         input_chunk_metas = self._collect_external_input_metas(ext_chunks_to_inputs)
-        # do placements
-        return self.assign_operand_workers(
-            analyzer.get_initial_operand_keys(), input_chunk_metas=input_chunk_metas, analyzer=analyzer
-        )
+
+        def _do_assign():
+            # do placements
+            return self.assign_operand_workers(
+                analyzer.get_initial_operand_keys(), input_chunk_metas=input_chunk_metas,
+                analyzer=analyzer
+            )
+
+        return self._graph_analyze_pool.submit(_do_assign).result()
 
     @log_unhandled
     def analyze_graph(self, **kwargs):
