@@ -83,7 +83,7 @@ class OperandActor(BaseOperandActor):
 
         if self._position != OperandPosition.TERMINAL:
             self._position = op_info.get('position')
-        graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
+        graph_ref = self.get_actor_ref(GraphActor.gen_uid(self._session_id, graph_key))
         self._graph_refs.append(graph_ref)
         self._pred_keys.update(op_info['io_meta']['predecessors'])
         self._succ_keys.update(op_info['io_meta']['successors'])

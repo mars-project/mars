@@ -30,7 +30,6 @@ from numpy.testing import assert_allclose
 import gevent
 
 from mars import tensor as mt
-from mars.cluster_info import ClusterInfoActor
 from mars.compat import reduce
 from mars.serialize.dataserializer import loads
 from mars.config import options
@@ -39,6 +38,7 @@ from mars.utils import get_next_port
 from mars.actors.core import new_client
 from mars.scheduler import SessionManagerActor, ResourceActor
 from mars.scheduler.graph import GraphState
+from mars.scheduler.utils import SchedulerClusterInfoActor
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
 
         actor_client = new_client()
         self.cluster_info = actor_client.actor_ref(
-            ClusterInfoActor.default_name(), address=self.scheduler_endpoints[0])
+            SchedulerClusterInfoActor.default_name(), address=self.scheduler_endpoints[0])
 
         check_time = time.time()
         while True:

@@ -48,10 +48,6 @@ class ResultReceiverActor(SchedulerActor):
         super(ResultReceiverActor, self).__init__()
         self._chunk_meta_ref = None
 
-    @classmethod
-    def default_name(cls):
-        return 's:%s' % cls.__name__
-
     def post_create(self):
         super(ResultReceiverActor, self).post_create()
 
@@ -62,7 +58,7 @@ class ResultReceiverActor(SchedulerActor):
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
-        graph_actor = self.ctx.actor_ref(GraphActor.gen_name(session_id, graph_key))
+        graph_actor = self.ctx.actor_ref(GraphActor.gen_uid(session_id, graph_key))
         fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
 
         if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, Fetch):
@@ -101,8 +97,8 @@ class GraphMetaActor(SchedulerActor):
     Actor storing metadata of a graph
     """
     @staticmethod
-    def gen_name(session_id, graph_key):
-        return 's:graph_meta$%s$%s' % (session_id, graph_key)
+    def gen_uid(session_id, graph_key):
+        return 's:0:graph_meta$%s$%s' % (session_id, graph_key)
 
     def __init__(self, session_id, graph_key):
         super(GraphMetaActor, self).__init__()
@@ -144,8 +140,8 @@ class GraphActor(SchedulerActor):
     Actor handling execution and status of a Mars graph
     """
     @staticmethod
-    def gen_name(session_id, graph_key):
-        return 'graph$%s$%s' % (session_id, graph_key)
+    def gen_uid(session_id, graph_key):
+        return 's:0:graph$%s$%s' % (session_id, graph_key)
 
     def __init__(self, session_id, graph_key, serialized_tensor_graph,
                  target_tensors=None, serialized_chunk_graph=None,
@@ -199,9 +195,9 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
-        self._session_ref = self.ctx.actor_ref(SessionActor.gen_name(self._session_id))
+        self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
-        uid = GraphMetaActor.gen_name(self._session_id, self._graph_key)
+        uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
             GraphMetaActor, self._session_id, self._graph_key,
             uid=uid, address=self.get_scheduler(uid))

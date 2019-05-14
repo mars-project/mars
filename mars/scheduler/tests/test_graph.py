@@ -17,10 +17,10 @@ import uuid
 import unittest
 
 import mars.tensor as mt
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
     AssignerActor, GraphState
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
 from mars.tests.core import patch_method
@@ -39,13 +39,13 @@ class Test(unittest.TestCase):
 
         addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             graph_ref.prepare_graph(compose=compose)
             fetched_graph = graph_ref.get_chunk_graph()
@@ -181,8 +181,8 @@ class Test(unittest.TestCase):
 
         addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
@@ -197,7 +197,7 @@ class Test(unittest.TestCase):
             serialized_graph = serialize_graph(graph)
 
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             def _mock_raises(*_, **__):
                 raise RuntimeError
@@ -211,10 +211,10 @@ class Test(unittest.TestCase):
             # interrupted during create_operand_actors
             graph_key = str(uuid.uuid4())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             def _mock_cancels(*_, **__):
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
                 graph_meta_ref.set_state(GraphState.CANCELLING)
 
             with patch_method(GraphActor.create_operand_actors, new=_mock_cancels):
@@ -224,10 +224,10 @@ class Test(unittest.TestCase):
             # interrupted during previous steps
             graph_key = str(uuid.uuid4())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             def _mock_cancels(*_, **__):
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
                 graph_meta_ref.set_state(GraphState.CANCELLING)
                 return dict()
 

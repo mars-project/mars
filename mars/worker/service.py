@@ -25,7 +25,6 @@ from ..config import options
 from .. import resource
 from ..utils import parse_readable_size, readable_size
 from ..compat import six
-from ..cluster_info import ClusterInfoActor
 from .status import StatusActor
 from .taskqueue import TaskQueueActor
 from .quota import QuotaActor, MemQuotaActor
@@ -37,6 +36,7 @@ from .transfer import ReceiverActor, SenderActor
 from .prochelper import ProcessHelperActor
 from .transfer import ResultSenderActor
 from .spill import SpillActor
+from .utils import WorkerClusterInfoActor
 
 
 logger = logging.getLogger(__name__)
@@ -151,12 +151,12 @@ class WorkerService(object):
         from .chunkstore import PlasmaKeyMapActor
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
 
-        if distributed:
-            # create ClusterInfoActor
-            self._cluster_info_ref = pool.create_actor(
-                ClusterInfoActor, schedulers=schedulers, service_discover_addr=service_discover_addr,
-                uid=ClusterInfoActor.default_name())
+        # create WorkerClusterInfoActor
+        self._cluster_info_ref = pool.create_actor(
+            WorkerClusterInfoActor, schedulers=schedulers, service_discover_addr=service_discover_addr,
+            uid=WorkerClusterInfoActor.default_name())
 
+        if distributed:
             # create process daemon
             from .daemon import WorkerDaemonActor
             actor_holder = self._daemon_ref = pool.create_actor(

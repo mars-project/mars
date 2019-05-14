@@ -16,7 +16,7 @@ import logging
 
 from .. import resource
 from ..base_app import BaseApplication
-from .distributor import SchedulerDistributor
+from ..distributor import MarsDistributor
 from .service import SchedulerService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class SchedulerApplication(BaseApplication):
     def create_pool(self, *args, **kwargs):
         self._service = SchedulerService()
         self.n_process = int(self.args.nproc or resource.cpu_count())
-        kwargs['distributor'] = SchedulerDistributor(self.n_process)
+        kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
     def start(self):

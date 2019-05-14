@@ -20,11 +20,10 @@ from collections import defaultdict
 
 from mars import promise, tensor as mt
 from mars.config import options
-from mars.cluster_info import ClusterInfoActor
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \
     ChunkMetaActor, GraphMetaActor
-from mars.scheduler.utils import GraphState
+from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor
 from mars.worker.execution import GraphExecutionRecord
 from mars.utils import serialize_graph, log_unhandled, build_exc_info
 from mars.actors import create_actor_pool
@@ -165,13 +164,13 @@ class Test(unittest.TestCase):
         graph = tensor.build_graph(compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
             addr_dict = dict()
 
             def _build_mock_ref(uid=None, address=None):
@@ -201,7 +200,7 @@ class Test(unittest.TestCase):
 
             graph_ref.create_operand_actors()
 
-            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
             start_time = time.time()
             while True:
                 pool.sleep(0.1)
@@ -281,13 +280,13 @@ class Test(unittest.TestCase):
         graph = arr2.build_graph(compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
             addr_dict = dict()
 
             def _build_mock_ref(uid=None, address=None):
@@ -317,7 +316,7 @@ class Test(unittest.TestCase):
                     final_keys.add(c.op.key)
 
             graph_ref.create_operand_actors()
-            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+            graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
             start_time = time.time()
             cancel_called = False
             while True:

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class BaseOperandActor(SchedulerActor):
     @staticmethod
     def gen_uid(session_id, op_key):
-        return 's:operand$%s$%s' % (session_id, op_key)
+        return 's:h1:operand$%s$%s' % (session_id, op_key)
 
     def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
         super(BaseOperandActor, self).__init__()
@@ -81,7 +81,7 @@ class BaseOperandActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
-        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_ids[0])))
+        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())

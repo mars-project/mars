@@ -21,10 +21,10 @@ from collections import defaultdict
 from mars import promise, tensor as mt
 from mars.actors import create_actor_pool
 from mars.compat import TimeoutError
-from mars.cluster_info import ClusterInfoActor
 from mars.graph import DAG
 from mars.scheduler import OperandState, ResourceActor, ChunkMetaActor, AssignerActor, \
     GraphActor, OperandActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.utils import get_next_port, serialize_graph
 
@@ -90,13 +90,13 @@ class Test(unittest.TestCase):
         v2.build_graph(graph=graph, compose=False)
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             for w in mock_workers:
                 resource_ref.set_worker_meta(w, dict(hardware=dict(cpu_total=4)))

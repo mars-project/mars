@@ -22,13 +22,12 @@ from mars.config import options
 from mars.utils import get_next_port, calc_data_size
 from mars import promise
 from mars.errors import StoreFull, NoDataToSpill
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.kvstore import KVStoreActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.chunkstore import PlasmaKeyMapActor
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 
 
 class CacheTestActor(WorkerActor):
@@ -119,8 +118,8 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-            pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+                              uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
@@ -146,8 +145,8 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-            pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+                              uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())

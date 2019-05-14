@@ -29,8 +29,8 @@ from mars.serialize import Int64Field
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
 from mars.deploy.local.session import LocalClusterSession
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import SessionManagerActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
 from mars.config import option_context
@@ -60,7 +60,8 @@ class Test(unittest.TestCase):
                                      shared_memory='20M') as cluster:
             pool = cluster.pool
 
-            self.assertTrue(pool.has_actor(pool.actor_ref(ClusterInfoActor.default_name())))
+            self.assertTrue(pool.has_actor(pool.actor_ref(
+                SchedulerClusterInfoActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_name())))
             self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_name())))
 
