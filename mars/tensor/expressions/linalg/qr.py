@@ -68,8 +68,10 @@ class TensorQR(operands.QR, TensorOperandMixin):
 
             new_op = op.copy()
             kws = [
-                {'chunks': [q_chunk], 'nsplits': ((1,), (1,)), 'dtype': q_dtype, 'shape': q_shape},
-                {'chunks': [r_chunk], 'nsplits': ((1,), (1,)), 'dtype': r_dtype, 'shape': r_shape}
+                {'chunks': [q_chunk], 'nsplits': ((q_shape[0],), (q_shape[1],)),
+                 'dtype': q_dtype, 'shape': q_shape},
+                {'chunks': [r_chunk], 'nsplits': ((r_shape[0],), (r_shape[1],)),
+                 'dtype': r_dtype, 'shape': r_shape}
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':

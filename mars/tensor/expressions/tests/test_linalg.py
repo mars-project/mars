@@ -39,6 +39,8 @@ class Test(unittest.TestCase):
 
         self.assertEqual(len(q.chunks), 3)
         self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(q.nsplits, ((3, 3, 3), (6,)))
+        self.assertEqual(r.nsplits, ((6,), (6,)))
         self.assertEqual(calc_shape(q.chunks[0]), q.chunks[0].shape)
         self.assertEqual(calc_shape(r.chunks[0]), ((9, 6), (6, 6)))
 
@@ -54,6 +56,8 @@ class Test(unittest.TestCase):
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 3)
+        self.assertEqual(q.nsplits, ((6,), (6,)))
+        self.assertEqual(r.nsplits, ((6,), (6, 6, 6)))
         self.assertEqual(calc_shape(q.chunks[0]), ((6, 6), (6, 6)))
         self.assertEqual(calc_shape(r.chunks[0]), ((6, 6), (6, 6)))
         self.assertEqual(calc_shape(r.chunks[1]), r.chunks[1].shape)
@@ -71,6 +75,8 @@ class Test(unittest.TestCase):
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 2)
+        self.assertEqual(q.nsplits, ((6,), (6,)))
+        self.assertEqual(r.nsplits, ((6,), (6, 3)))
         self.assertEqual(calc_shape(q.chunks[0]), ((6, 6), (6, 6)))
         self.assertEqual(calc_shape(r.chunks[0]), ((6, 6), (6, 6)))
         self.assertEqual(calc_shape(r.chunks[1]), r.chunks[1].shape)
@@ -87,6 +93,8 @@ class Test(unittest.TestCase):
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(q.nsplits, ((9,), (6,)))
+        self.assertEqual(r.nsplits, ((6,), (6,)))
         self.assertEqual(calc_shape(q.chunks[0]), ((9, 6), (6, 6)))
         self.assertEqual(calc_shape(r.chunks[0]), ((9, 6), (6, 6)))
 
