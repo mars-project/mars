@@ -71,7 +71,7 @@ class SFQR(object):
         q, r = op.outputs
         new_op = op.copy()
         q_nsplits = ((q_chunk.shape[0],), (q_chunk.shape[1],))
-        r_nsplits = ((1,), (c.shape[1] for c in r_chunks))
+        r_nsplits = ((r_chunks[0].shape[0],), (c.shape[1] for c in r_chunks))
         kws = [
             {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype, 'shape': q.shape},
             {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype, 'shape': r.shape}
@@ -134,7 +134,8 @@ class TSQR(object):
         stage2_q_chunks = []
         for c, s in zip(stage1_q_chunks, q_slices):
             slice_op = TensorSlice(slices=[s], dtype=c.dtype)
-            stage2_q_chunks.append(slice_op.new_chunk([stage2_q_chunk], shape=c.shape, index=c.index))
+            stage2_q_chunks.append(slice_op.new_chunk([stage2_q_chunk], index=c.index,
+                                                      shape=(c.shape[0], stage2_q_chunk.shape[1])))
         stage3_q_chunks = []
         for c1, c2 in izip(stage1_q_chunks, stage2_q_chunks):
             dot_op = TensorDot(dtype=q_dtype)
@@ -144,8 +145,7 @@ class TSQR(object):
         if not calc_svd:
             q, r = op.outputs
             new_op = op.copy()
-            # unify_nsplits will get nsplits by chunk shape if it was set to (1,)
-            q_nsplits = ((c.shape[0] for c in stage3_q_chunks), (1,))
+            q_nsplits = ((c.shape[0] for c in stage3_q_chunks), (stage3_q_chunks[0].shape[1],))
             r_nsplits = ((stage2_r_chunk.shape[0],), (stage2_r_chunk.shape[1],))
             kws = [
                 # Q
@@ -185,7 +185,7 @@ class TSQR(object):
                                                             index=c1.index))
 
             new_op = op.copy()
-            u_nsplits = ((c.shape[0] for c in stage4_u_chunks), (1,))
+            u_nsplits = ((c.shape[0] for c in stage4_u_chunks), (stage4_u_chunks[0].shape[1],))
             s_nsplits = ((stage2_s_chunk.shape[0],),)
             v_nsplits = ((stage2_v_chunk.shape[0],), (stage2_v_chunk.shape[1],))
             kws = [
