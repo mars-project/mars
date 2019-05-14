@@ -139,7 +139,7 @@ class Test(unittest.TestCase):
             V = V.astype(dtype, copy=False)
 
             # TODO: test "auto" and "LU" when lu decomposition supports non-square matrix
-            for normalizer in ['QR']:
+            for normalizer in ['auto', 'LU', 'QR']:
                 # compute the singular values of X using the fast approximate method
                 Ua, sa, Va = randomized_svd(
                     X, k, power_iteration_normalizer=normalizer, random_state=0)
