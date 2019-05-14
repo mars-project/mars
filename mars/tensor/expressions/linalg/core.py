@@ -71,7 +71,7 @@ class SFQR(object):
         q, r = op.outputs
         new_op = op.copy()
         q_nsplits = ((q_chunk.shape[0],), (q_chunk.shape[1],))
-        r_nsplits = ((r_chunks[0].shape[0],), (c.shape[1] for c in r_chunks))
+        r_nsplits = ((r_chunks[0].shape[0],), tuple(c.shape[1] for c in r_chunks))
         kws = [
             {'chunks': [q_chunk], 'nsplits': q_nsplits, 'dtype': q.dtype, 'shape': q.shape},
             {'chunks': r_chunks, 'nsplits': r_nsplits, 'dtype': r.dtype, 'shape': r.shape}
@@ -185,7 +185,7 @@ class TSQR(object):
                                                             index=c1.index))
 
             new_op = op.copy()
-            u_nsplits = ((c.shape[0] for c in stage4_u_chunks), (stage4_u_chunks[0].shape[1],))
+            u_nsplits = (tuple(c.shape[0] for c in stage4_u_chunks), (stage4_u_chunks[0].shape[1],))
             s_nsplits = ((stage2_s_chunk.shape[0],),)
             v_nsplits = ((stage2_v_chunk.shape[0],), (stage2_v_chunk.shape[1],))
             kws = [
