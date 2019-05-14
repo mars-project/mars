@@ -582,7 +582,7 @@ class TileableOperandMixin(object):
             # for each output tileable, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for j, t in enumerate(tileables):
-                t.data._siblings = [t.data for t in tileables[:j] + tileables[j + 1:]]
+                t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
         return tileables
 
     def new_tileables(self, inputs, kws=None, **kw):
