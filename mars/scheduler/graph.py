@@ -107,14 +107,27 @@ class GraphMetaActor(SchedulerActor):
 
         self._kv_store_ref = None
 
+        self._start_time = None
+        self._end_time = None
         self._state = None
         self._final_state = None
+
+        self._op_states = dict()
 
     def post_create(self):
         super(GraphMetaActor, self).post_create()
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
+
+    def get_graph_info(self):
+        return self._start_time, self._end_time, len(self._op_states)
+
+    def set_graph_start(self):
+        self._start_time = time.time()
+
+    def set_graph_end(self):
+        self._end_time = time.time()
 
     def set_state(self, state):
         self._state = state
@@ -133,6 +146,52 @@ class GraphMetaActor(SchedulerActor):
 
     def get_final_state(self):
         return self._final_state
+
+    def update_op_state(self, op_key, op_name, op_state):
+        self._op_states[op_key] = dict(op_name=op_name, state=op_state)
+
+    def update_op_states(self, op_stats):
+        self._op_states.update(op_stats)
+
+    @log_unhandled
+    def calc_stats(self):
+        states = list(OperandState.__members__.values())
+        state_mapping = OrderedDict((v, idx) for idx, v in enumerate(states))
+        state_names = [s.name for s in state_mapping]
+
+        op_stats = OrderedDict()
+        finished = 0
+        total_count = len(self._op_states)
+        for operand_info in self._op_states.values():
+            if operand_info.get('virtual'):
+                total_count -= 1
+                continue
+            op_name = operand_info['op_name']
+            state = operand_info['state']
+            if state in (OperandState.FINISHED, OperandState.FREED):
+                finished += 1
+            try:
+                stats_list = op_stats[op_name]
+            except KeyError:
+                stats_list = op_stats[op_name] = [0] * len(state_mapping)
+            stats_list[state_mapping[state]] += 1
+
+        data_src = OrderedDict([('states', state_names), ])
+        for op, state_stats in op_stats.items():
+            sum_chunks = sum(state_stats)
+            data_src[op] = [v * 100.0 / sum_chunks for v in state_stats]
+
+        ops = list(data_src)[1:]
+        states = data_src['states']
+        transposed = OrderedDict()
+        transposed['ops'] = ops
+        for sid, state in enumerate(states):
+            transposed[state] = list()
+            for op in ops:
+                transposed[state].append(data_src[op][sid])
+
+        percentage = finished * 100.0 / total_count if total_count != 0 else 1
+        return ops, transposed, percentage
 
 
 class GraphActor(SchedulerActor):
@@ -155,10 +214,6 @@ class GraphActor(SchedulerActor):
         self._final_state = final_state
 
         self._operand_free_paused = False
-
-        self._start_time = None
-        self._end_time = None
-        self._nodes_num = None
 
         self._cluster_info_ref = None
         self._assigner_actor_ref = None
@@ -201,14 +256,17 @@ class GraphActor(SchedulerActor):
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
-            GraphMetaActor, self._session_id, self._graph_key,
-            uid=uid, address=self.get_scheduler(uid))
+            GraphMetaActor, self._session_id, self._graph_key, uid=uid)
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
         self._graph_analyze_pool = self.ctx.threadpool(1)
+
+    def pre_destroy(self):
+        super(GraphActor, self).pre_destroy()
+        self._graph_meta_ref.destroy()
 
     @contextlib.contextmanager
     def _open_dump_file(self, prefix):  # pragma: no cover
@@ -263,11 +321,11 @@ class GraphActor(SchedulerActor):
                 if callback:
                     callback()
                 else:
-                    self._end_time = time.time()
+                    self._graph_meta_ref.set_graph_end(_tell=True)
                     self.state = GraphState.CANCELLED
                 raise ExecutionInterrupted
 
-        self._start_time = time.time()
+        self._graph_meta_ref.set_graph_start(_tell=True)
         self.state = GraphState.PREPARING
 
         try:
@@ -485,7 +543,6 @@ class GraphActor(SchedulerActor):
             self._kv_store_ref.write('%s/chunk_graph' % graph_path,
                                      serialize_graph(chunk_graph, compress=True), _tell=True, _wait=False)
 
-        self._nodes_num = len(chunk_graph)
         self._chunk_graph_cache = chunk_graph
         for n in self._chunk_graph_cache:
             self._op_key_to_chunk[n.op.key].append(n)
@@ -672,6 +729,7 @@ class GraphActor(SchedulerActor):
         operand_infos = self._operand_infos
 
         op_refs = dict()
+        op_states = dict()
         initial_keys = []
         for op_key in self._op_key_to_chunk:
             chunks = self._op_key_to_chunk[op_key]
@@ -682,9 +740,10 @@ class GraphActor(SchedulerActor):
 
             op_name = type(op).__name__
             op_info = operand_infos[op_key]
+            op_state = op_states[op_key] = dict()
 
             io_meta = self._collect_operand_io_meta(chunk_graph, chunks)
-            op_info['op_name'] = op_name
+            op_info['op_name'] = op_state['op_name'] = op_name
             op_info['io_meta'] = io_meta
 
             if io_meta['predecessors']:
@@ -693,7 +752,7 @@ class GraphActor(SchedulerActor):
                 initial_keys.append(op_key)
                 state = OperandState.READY
             op_info['retries'] = 0
-            op_info['state'] = state
+            op_info['state'] = op_state['state'] = state
 
             position = None
             if op_key in self._terminal_chunk_op_tensor:
@@ -714,6 +773,7 @@ class GraphActor(SchedulerActor):
                 del op_info['io_meta']
 
         self.state = GraphState.RUNNING
+        self._graph_meta_ref.update_op_states(op_states, _tell=True, _wait=False)
 
         if _start:
             existing_keys = []
@@ -760,7 +820,7 @@ class GraphActor(SchedulerActor):
                 self._terminated_tensors.add(tensor_key)
                 if len(self._terminated_tensors) == len(self._target_tensor_chunk_ops):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
-                    self._end_time = time.time()
+                    self._graph_meta_ref.set_graph_end(_tell=True)
 
     @log_unhandled
     def remove_finished_terminal(self, op_key):
@@ -788,15 +848,14 @@ class GraphActor(SchedulerActor):
     def get_state(self):
         return self.state
 
-    def get_graph_info(self):
-        return self._start_time, self._end_time, len(self._operand_infos)
-
     def get_operand_states(self, op_keys):
         return [self._operand_infos[k]['state'] for k in op_keys if k in self._operand_infos]
 
     def set_operand_state(self, op_key, state):
         op_info = self._operand_infos[op_key]
-        op_info['state'] = OperandState(state)
+        op_info['state'] = state
+        self._graph_meta_ref.update_op_state(op_key, op_info['op_name'], state,
+                                             _tell=True, _wait=False)
         try:
             del op_info['failover_state']
         except KeyError:
@@ -824,45 +883,6 @@ class GraphActor(SchedulerActor):
         op_uid = OperandActor.gen_uid(self._session_id, key)
         scheduler_addr = self.get_scheduler(op_uid)
         return self.ctx.actor_ref(op_uid, address=scheduler_addr)
-
-    @log_unhandled
-    def calc_stats(self):
-        states = list(OperandState.__members__.values())
-        state_mapping = OrderedDict((v, idx) for idx, v in enumerate(states))
-        state_names = [s.name for s in state_mapping]
-
-        op_stats = OrderedDict()
-        finished = 0
-        total_count = len(self._operand_infos)
-        for operand_info in self._operand_infos.values():
-            if operand_info.get('virtual'):
-                total_count -= 1
-                continue
-            op_name = operand_info['op_name']
-            state = operand_info['state']
-            if state in (OperandState.FINISHED, OperandState.FREED):
-                finished += 1
-            if op_name not in op_stats:
-                op_stats[op_name] = [0] * len(state_mapping)
-            stats_list = op_stats[op_name]
-            stats_list[state_mapping[state]] += 1
-
-        data_src = OrderedDict([('states', state_names), ])
-        for op, state_stats in op_stats.items():
-            sum_chunks = sum(state_stats)
-            data_src[op] = [v * 100.0 / sum_chunks for v in state_stats]
-
-        ops = list(data_src)[1:]
-        states = data_src['states']
-        transposed = OrderedDict()
-        transposed['ops'] = ops
-        for sid, state in enumerate(states):
-            transposed[state] = list()
-            for op in ops:
-                transposed[state].append(data_src[op][sid])
-
-        percentage = finished * 100.0 / total_count if total_count != 0 else 1
-        return ops, transposed, percentage
 
     def _get_tensor_by_key(self, key):
         tid = self._tensor_key_to_opid[key]
