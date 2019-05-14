@@ -121,9 +121,9 @@ class TSQR(object):
         qr_op = TensorQR()
         qr_chunks = qr_op.new_chunks([concat_r_chunk], index=concat_r_chunk.index,
                                      kws=[{'side': 'q', 'dtype': q_dtype,
-                                           'shape': concat_r_chunk.shape},
+                                           'shape': (concat_r_chunk.shape[0], min(concat_r_chunk.shape))},
                                           {'side': 'r', 'dtype': r_dtype,
-                                           'shape': (concat_r_chunk.shape[1],) * 2}])
+                                           'shape': (min(concat_r_chunk.shape), concat_r_chunk.shape[1])}])
         stage2_q_chunk, stage2_r_chunk = qr_chunks
 
         # stage 3, map phase
@@ -145,7 +145,7 @@ class TSQR(object):
         if not calc_svd:
             q, r = op.outputs
             new_op = op.copy()
-            q_nsplits = ((c.shape[0] for c in stage3_q_chunks), (stage3_q_chunks[0].shape[1],))
+            q_nsplits = (tuple(c.shape[0] for c in stage3_q_chunks), (stage3_q_chunks[0].shape[1],))
             r_nsplits = ((stage2_r_chunk.shape[0],), (stage2_r_chunk.shape[1],))
             kws = [
                 # Q
