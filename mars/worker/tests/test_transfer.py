@@ -26,12 +26,12 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from mars.actors import create_actor_pool
-from mars.cluster_info import ClusterInfoActor
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
     SpillNotConfigured, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
@@ -41,7 +41,7 @@ from mars.worker.chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 from mars.worker.spill import build_spill_file_name, write_spill_file
 from mars.worker.tests.base import WorkerCase
 from mars.worker.transfer import ReceiveStatus, ReceiverDataMeta
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 from pyarrow import plasma
 
 
@@ -127,9 +127,12 @@ def start_transfer_test_pool(**kwargs):
     address = kwargs.pop('address')
     plasma_size = kwargs.pop('plasma_size')
     with create_actor_pool(n_process=1, backend='gevent', address=address, **kwargs) as pool:
+        pool.create_actor(SchedulerClusterInfoActor, schedulers=[address],
+                          uid=SchedulerClusterInfoActor.default_name())
+        pool.create_actor(WorkerClusterInfoActor, schedulers=[address],
+                          uid=WorkerClusterInfoActor.default_name())
+
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-        pool.create_actor(ClusterInfoActor, schedulers=[address],
-                          uid=ClusterInfoActor.default_name())
         pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
         pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
         pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())

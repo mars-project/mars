@@ -29,15 +29,15 @@ from mars.compat import six
 from mars.config import options
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ChunkMetaActor, ResourceActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.chunkstore import PlasmaKeyMapActor
-from mars.worker.distributor import WorkerDistributor
+from mars.distributor import MarsDistributor
 from mars.worker.prochelper import ProcessHelperActor
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 
 
 class MockInProcessCacheActor(WorkerActor):
@@ -159,10 +159,13 @@ class Test(WorkerCase):
     def create_standard_actors(cls, pool, address, quota_size=None, with_daemon=True,
                                with_status=True, with_resource=False):
         quota_size = quota_size or (1024 * 1024)
-        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-        pool.create_actor(ClusterInfoActor, schedulers=[address],
-                          uid=ClusterInfoActor.default_name())
 
+        pool.create_actor(SchedulerClusterInfoActor, schedulers=[address],
+                          uid=SchedulerClusterInfoActor.default_name())
+        pool.create_actor(WorkerClusterInfoActor, schedulers=[address],
+                          uid=WorkerClusterInfoActor.default_name())
+
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
         if with_resource:
             pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
         if with_daemon:
@@ -509,7 +512,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=2, backend='gevent',
-                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+                               address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_status=False)
 
             daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name())
@@ -518,7 +521,7 @@ class Test(WorkerCase):
                 MockCpuCalcActor, session_id, mock_data, 10, uid='w:1:cpu-calc-a')
             daemon_ref.create_actor(ProcessHelperActor, uid='w:1:proc-helper-a')
 
-            test_actor = pool.create_actor(ExecutionTestActor, uid='w:test_actor')
+            test_actor = pool.create_actor(ExecutionTestActor, uid='w:0:test_actor')
             test_actor.run_simple_calc(session_id, _tell=True)
 
             pool.sleep(2)
@@ -537,7 +540,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=2, backend='gevent',
-                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+                               address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_status=False)
 
             daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name())
@@ -547,7 +550,7 @@ class Test(WorkerCase):
                 MockCpuCalcActor, session_id, mock_data, 10, uid='w:1:cpu-calc-a')
             daemon_ref.create_actor(ProcessHelperActor, uid='w:1:proc-helper-a')
 
-            test_actor = pool.create_actor(ExecutionTestActor, uid='w:test_actor')
+            test_actor = pool.create_actor(ExecutionTestActor, uid='w:0:test_actor')
             test_actor.run_simple_calc(session_id, _tell=True)
 
             pool.sleep(2)
@@ -566,7 +569,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
-                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+                               address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False,
                                         with_resource=True)
             pool.create_actor(CpuCalcActor)
@@ -634,7 +637,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
-                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+                               address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(CpuCalcActor)
 
@@ -668,7 +671,7 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
         with create_actor_pool(n_process=1, backend='gevent',
-                               address=pool_address, distributor=WorkerDistributor(2)) as pool:
+                               address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(CpuCalcActor)
 

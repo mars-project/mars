@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,23 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import logging
+import os
 
-from ..compat import six, functools32
-from ..actors import Distributor
+from ..actors import FunctionActor
+from ..node_info import gather_node_info
 
 logger = logging.getLogger(__name__)
 
 
-class WorkerDistributor(Distributor):
-    @functools32.lru_cache(100)
-    def distribute(self, uid):
-        if not isinstance(uid, six.string_types):
-            return 0
-        id_parts = uid.split(':')
-        if id_parts[0] == 'w' and len(id_parts) == 3:
-            # to tell distributor the exact process id
-            return int(id_parts[1])
-        else:
-            return 0
+class NodeInfoActor(FunctionActor):
+    def __init__(self):
+        super(NodeInfoActor, self).__init__()
+        self._node_info = None
+
+    @classmethod
+    def default_name(cls):
+        return 's:h1:' + cls.__name__
+
+    def post_create(self):
+        logger.debug('Actor %s running in process %d', self.uid, os.getpid())
+
+        self.ref().gather_info()
+
+    def gather_info(self):
+        self._node_info = gather_node_info(self.ctx)
+        self.ref().gather_info(_tell=True, _delay=1)
+
+    def get_info(self):
+        return self._node_info

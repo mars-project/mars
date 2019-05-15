@@ -49,10 +49,6 @@ class ResourceActor(SchedulerActor):
 
         self.ref().detect_dead_workers(_tell=True)
 
-    @classmethod
-    def default_name(cls):
-        return 's:%s' % cls.__name__
-
     def detect_dead_workers(self):
         """
         Remove worker when it does not update its status for a long time

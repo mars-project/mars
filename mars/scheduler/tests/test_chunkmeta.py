@@ -18,9 +18,9 @@ import unittest
 import uuid
 
 from mars.actors import create_actor_pool, new_client
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler.chunkmeta import WorkerMeta, ChunkMetaStore, ChunkMetaCache, \
     ChunkMetaActor, LocalChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
 
@@ -109,11 +109,13 @@ class Test(unittest.TestCase):
         session1 = str(uuid.uuid4())
         session2 = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
-            pool1.create_actor(ClusterInfoActor, endpoints, uid=ClusterInfoActor.default_name())
+            pool1.create_actor(SchedulerClusterInfoActor, endpoints,
+                               uid=SchedulerClusterInfoActor.default_name())
             pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
             with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
-                pool2.create_actor(ClusterInfoActor, endpoints, uid=ClusterInfoActor.default_name())
+                pool2.create_actor(SchedulerClusterInfoActor, endpoints,
+                                   uid=SchedulerClusterInfoActor.default_name())
                 pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
                 client = new_client()
@@ -201,11 +203,13 @@ class Test(unittest.TestCase):
 
         session_id = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
-            pool1.create_actor(ClusterInfoActor, endpoints, uid=ClusterInfoActor.default_name())
+            pool1.create_actor(SchedulerClusterInfoActor, endpoints,
+                               uid=SchedulerClusterInfoActor.default_name())
             pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
             with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
-                pool2.create_actor(ClusterInfoActor, endpoints, uid=ClusterInfoActor.default_name())
+                pool2.create_actor(SchedulerClusterInfoActor, endpoints,
+                                   uid=SchedulerClusterInfoActor.default_name())
                 pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
                 client = new_client()

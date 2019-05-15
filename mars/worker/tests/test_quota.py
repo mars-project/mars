@@ -16,10 +16,11 @@ import functools
 import time
 
 from mars.actors import create_actor_pool
-from mars.cluster_info import ClusterInfoActor
 from mars.tests.core import patch_method
 from mars.utils import get_next_port, build_exc_info
-from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, ProcessHelperActor, StatusActor
+from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, \
+    ProcessHelperActor, StatusActor
+from mars.worker.utils import WorkerClusterInfoActor
 from mars.worker.tests.base import WorkerCase
 
 
@@ -27,8 +28,8 @@ class Test(WorkerCase):
     def testQuota(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
 
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
@@ -146,8 +147,8 @@ class Test(WorkerCase):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
                 patch_method(resource.virtual_memory, new=lambda: mock_mem_stat) as _:
-            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
 
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())

@@ -30,7 +30,7 @@ class Test(unittest.TestCase):
         idx = distributor.distribute(SessionActor.default_name())
         self.assertEqual(idx, 1)
 
-        idx = distributor.distribute(GraphActor.gen_name('fake_session_id', 'fake_graph_key'))
+        idx = distributor.distribute(GraphActor.gen_uid('fake_session_id', 'fake_graph_key'))
         self.assertEqual(idx, 0)
 
         idx = distributor.distribute(DispatchActor.default_name())

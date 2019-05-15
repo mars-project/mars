@@ -18,9 +18,9 @@ import uuid
 
 from mars.actors import create_actor_pool, FunctionActor
 from mars.config import options
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import AssignerActor, ChunkMetaActor, GraphActor, \
     ResourceActor, SessionManagerActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import mock
 from mars.utils import get_next_port
 
@@ -30,8 +30,8 @@ class MockGraphActor(FunctionActor):
         self._worker_change_args = None
 
     @staticmethod
-    def gen_name(session_id, graph_key):
-        return GraphActor.gen_name(session_id, graph_key)
+    def gen_uid(session_id, graph_key):
+        return GraphActor.gen_uid(session_id, graph_key)
 
     def execute_graph(self):
         pass
@@ -58,8 +58,8 @@ class Test(unittest.TestCase):
         options.scheduler.worker_blacklist_time = 0.5
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             session_manager_ref = pool.create_actor(
                 SessionManagerActor, uid=SessionManagerActor.default_name())
@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
 
             with mock.patch(GraphActor.__module__ + '.' + GraphActor.__name__, new=MockGraphActor):
                 session_ref.submit_tensor_graph(None, mock_graph_key)
-                graph_ref = pool.actor_ref(GraphActor.gen_name(mock_session_id, mock_graph_key))
+                graph_ref = pool.actor_ref(GraphActor.gen_uid(mock_session_id, mock_graph_key))
 
                 expire_time = time.time() - options.scheduler.status_timeout - 1
                 resource_ref.set_worker_meta(mock_worker_addr, dict(update_time=expire_time))

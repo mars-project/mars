@@ -27,10 +27,6 @@ class KVStoreActor(SchedulerActor):
     """
     Actor handling reading and writing to an external KV store.
     """
-    @classmethod
-    def default_name(cls):
-        return cls.__name__
-
     def __init__(self):
         super(KVStoreActor, self).__init__()
         self._store = kvstore.get(options.kv_store)
