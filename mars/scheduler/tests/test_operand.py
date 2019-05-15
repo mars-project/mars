@@ -22,11 +22,10 @@ import gevent
 
 from mars import promise, tensor as mt
 from mars.config import options
-from mars.cluster_info import ClusterInfoActor
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \
     ChunkMetaActor, GraphMetaActor
-from mars.scheduler.utils import GraphState
+from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor
 from mars.utils import serialize_graph, deserialize_graph
 from mars.actors import create_actor_pool
 from mars.tests.core import mock
@@ -102,13 +101,13 @@ class Test(unittest.TestCase):
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             def execute_case():
-                pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                                  uid=ClusterInfoActor.default_name())
+                pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                                  uid=SchedulerClusterInfoActor.default_name())
                 resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+                pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
                 graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                              uid=GraphActor.gen_name(session_id, graph_key))
+                                              uid=GraphActor.gen_uid(session_id, graph_key))
                 execution_ref = execution_creator(pool)
 
                 # handle mock objects
@@ -136,7 +135,7 @@ class Test(unittest.TestCase):
 
                 graph_ref.create_operand_actors()
 
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
                 start_time = time.time()
                 while True:
                     gevent.sleep(0.1)
@@ -220,13 +219,13 @@ class Test(unittest.TestCase):
 
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             def execute_case():
-                pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                                  uid=ClusterInfoActor.default_name())
+                pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                                  uid=SchedulerClusterInfoActor.default_name())
                 resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+                pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
                 graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
-                                              uid=GraphActor.gen_name(session_id, graph_key))
+                                              uid=GraphActor.gen_uid(session_id, graph_key))
                 execution_ref = pool.create_actor(FakeExecutionActor, sleep=1)
 
                 # handle mock objects
@@ -253,7 +252,7 @@ class Test(unittest.TestCase):
                         final_keys.add(c.op.key)
 
                 graph_ref.create_operand_actors()
-                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_name(session_id, graph_key))
+                graph_meta_ref = pool.actor_ref(GraphMetaActor.gen_uid(session_id, graph_key))
                 start_time = time.time()
                 cancel_called = False
                 while True:

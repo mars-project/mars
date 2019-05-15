@@ -96,8 +96,8 @@ class AssignerActor(SchedulerActor):
     Note that this actor does not assign workers itself.
     """
     @staticmethod
-    def gen_name(session_id):
-        return 's:assigner$%s' % session_id
+    def gen_uid(session_id):
+        return 's:h1:assigner$%s' % session_id
 
     def __init__(self):
         super(AssignerActor, self).__init__()
@@ -118,8 +118,13 @@ class AssignerActor(SchedulerActor):
 
         self.set_cluster_info_ref()
         # the ref of the actor actually handling assignment work
-        self._actual_ref = self.ctx.create_actor(AssignEvaluationActor, self.ref())
+        session_id = self.uid.rsplit('$', 1)[-1]
+        self._actual_ref = self.ctx.create_actor(AssignEvaluationActor, self.ref(),
+                                                 uid=AssignEvaluationActor.gen_uid(session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
+
+    def pre_destroy(self):
+        self._actual_ref.destroy()
 
     def allocate_top_resources(self):
         self._actual_ref.allocate_top_resources(_tell=True)
@@ -196,6 +201,10 @@ class AssignEvaluationActor(SchedulerActor):
     """
     Actor assigning operands to workers
     """
+    @classmethod
+    def gen_uid(cls, session_id):
+        return 's:h1:%s$%s' % (cls.__name__, session_id)
+
     def __init__(self, assigner_ref):
         super(AssignEvaluationActor, self).__init__()
         self._worker_metrics = None

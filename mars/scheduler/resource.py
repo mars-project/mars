@@ -47,10 +47,6 @@ class ResourceActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
-    @classmethod
-    def default_name(cls):
-        return 's:%s' % cls.__name__
-
     def clean_worker(self):
         """
         Remove worker when it does not update its status for a long time

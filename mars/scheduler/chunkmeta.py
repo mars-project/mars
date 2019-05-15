@@ -164,10 +164,6 @@ class LocalChunkMetaActor(SchedulerActor):
     """
     Actor storing chunk metas and chunk cache
     """
-    @classmethod
-    def default_name(cls):
-        return 's:' + cls.__name__
-
     def __init__(self, chunk_info_uid=None):
         super(LocalChunkMetaActor, self).__init__()
         self._meta_store = ChunkMetaStore()
@@ -328,10 +324,6 @@ class ChunkMetaActor(SchedulerActor):
     """
     Actor dispatches chunk meta requests to different scheduler hosts
     """
-    @classmethod
-    def default_name(cls):
-        return 's:' + cls.__name__
-
     def __init__(self):
         super(ChunkMetaActor, self).__init__()
         self._local_meta_store_ref = None

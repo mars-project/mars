@@ -112,6 +112,7 @@ class LocalDistributedCluster(object):
 
         # start worker next
         self._worker_service.start(self._endpoint, self._pool, distributed=False,
+                                   schedulers=[self._endpoint],
                                    process_start_index=self._scheduler_n_process)
 
         # make sure scheduler is ready

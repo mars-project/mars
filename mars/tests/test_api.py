@@ -19,8 +19,9 @@ import unittest
 from mars.compat import OrderedDict
 from mars.actors import create_actor_pool
 from mars.utils import get_next_port
-from mars.cluster_info import ClusterInfoActor
-from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor, GraphState, ChunkMetaActor
+from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
+    GraphState, ChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.api import MarsAPI
 from mars.tests.core import patch_method
 
@@ -30,7 +31,8 @@ class Test(unittest.TestCase):
         endpoint = '127.0.0.1:%d' % get_next_port()
         self.endpoint = endpoint
         self.pool = create_actor_pool(n_process=1, backend='gevent', address=endpoint)
-        self.pool.create_actor(ClusterInfoActor, [endpoint], uid=ClusterInfoActor.default_name())
+        self.pool.create_actor(SchedulerClusterInfoActor, [endpoint],
+                               uid=SchedulerClusterInfoActor.default_name())
         self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
         self.pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
 
@@ -54,7 +56,7 @@ class Test(unittest.TestCase):
         graph_key = 'mock_graph_key'
         targets = 'mock_targets'
         self.api.submit_graph(session_id, serialized_graph, graph_key, targets)
-        graph_uid = GraphActor.gen_name(session_id, graph_key)
+        graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.api.get_actor_ref(graph_uid)
         self.assertTrue(self.pool.has_actor(graph_ref))
 
@@ -76,7 +78,7 @@ class Test(unittest.TestCase):
         tensor_key = 'mock_tensor_key'
         serialized_graph = 'mock_serialized_graph'
 
-        graph_uid = GraphActor.gen_name(session_id, graph_key)
+        graph_uid = GraphActor.gen_uid(session_id, graph_key)
         self.pool.create_actor(GraphActor, session_id, serialized_graph, graph_key, uid=graph_uid)
         self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 

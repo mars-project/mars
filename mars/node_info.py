@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import logging
-import os
 import platform
 import socket
 import sys
 import time
 
 from . import resource
-from .actors import FunctionActor
 from .compat import six
 from .utils import git_info
 
@@ -78,25 +76,3 @@ def gather_node_info():
         node_info['git_info'] = 'Not available'
 
     return node_info
-
-
-class NodeInfoActor(FunctionActor):
-    def __init__(self):
-        super(NodeInfoActor, self).__init__()
-        self._node_info = None
-
-    @classmethod
-    def default_name(cls):
-        return 's:' + cls.__name__
-
-    def post_create(self):
-        logger.debug('Actor %s running in process %d', self.uid, os.getpid())
-
-        self.ref().gather_info()
-
-    def gather_info(self):
-        self._node_info = gather_node_info()
-        self.ref().gather_info(_tell=True, _delay=1)
-
-    def get_info(self):
-        return self._node_info

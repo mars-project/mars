@@ -37,7 +37,7 @@ class OperandActor(SchedulerActor):
     """
     @staticmethod
     def gen_uid(session_id, op_key):
-        return 's:operator$%s$%s' % (session_id, op_key)
+        return 's:h1:operator$%s$%s' % (session_id, op_key)
 
     def __init__(self, session_id, graph_id, op_key, op_info, worker_endpoint=None,
                  is_terminal=False):
@@ -98,9 +98,9 @@ class OperandActor(SchedulerActor):
 
     def post_create(self):
         self.set_cluster_info_ref()
-        self._assigner_ref = self.get_promise_ref(AssignerActor.gen_name(self._session_id))
+        self._assigner_ref = self.get_promise_ref(AssignerActor.gen_uid(self._session_id))
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
-        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_name(self._session_id, self._graph_ids[0])))
+        self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
         self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
@@ -124,7 +124,7 @@ class OperandActor(SchedulerActor):
 
         if is_terminal:
             self._is_terminal = True
-        graph_ref = self.get_actor_ref(GraphActor.gen_name(self._session_id, graph_key))
+        graph_ref = self.get_actor_ref(GraphActor.gen_uid(self._session_id, graph_key))
         self._graph_refs.append(graph_ref)
         if self._state not in OperandState.STORED_STATES and self._state != OperandState.RUNNING:
             self._pred_keys = set(op_info['io_meta']['predecessors'])

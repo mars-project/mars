@@ -16,7 +16,7 @@ import array
 
 from .. import compat
 from ..compat import six
-from ..cluster_info import HasClusterInfoActor
+from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
 from ..utils import classproperty
 from ..promise import PromiseActor
 
@@ -71,7 +71,17 @@ class GraphState(compat.Enum):
         return self.SUCCEEDED, self.FAILED
 
 
-class SchedulerActor(HasClusterInfoActor, PromiseActor):
+class SchedulerClusterInfoActor(ClusterInfoActor):
+    @classmethod
+    def default_name(cls):
+        return 's:h1:%s' % cls.__name__
+
+
+class SchedulerHasClusterInfoActor(HasClusterInfoActor):
+    cluster_info_uid = SchedulerClusterInfoActor.default_name()
+
+
+class SchedulerActor(SchedulerHasClusterInfoActor, PromiseActor):
     def __init__(self, **kwargs):
         super(SchedulerActor, self).__init__()
 
@@ -80,7 +90,7 @@ class SchedulerActor(HasClusterInfoActor, PromiseActor):
 
     @classmethod
     def default_name(cls):
-        return 's:{0}'.format(cls.__name__)
+        return 's:h1:{0}'.format(cls.__name__)
 
 
 def remove_shuffle_chunks(chunks):

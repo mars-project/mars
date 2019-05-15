@@ -20,12 +20,12 @@ import logging
 from .. import kvstore
 from ..compat import six
 from ..config import options
-from ..cluster_info import ClusterInfoActor
 from .session import SessionManagerActor
 from .resource import ResourceActor
 from .chunkmeta import ChunkMetaActor
 from .kvstore import KVStoreActor
-from ..node_info import NodeInfoActor
+from .node_info import NodeInfoActor
+from .utils import SchedulerClusterInfoActor
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,8 @@ class SchedulerService(object):
 
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
-            ClusterInfoActor, all_schedulers, service_discover_addr, uid=ClusterInfoActor.default_name())
+            SchedulerClusterInfoActor, all_schedulers, service_discover_addr,
+            uid=SchedulerClusterInfoActor.default_name())
         # create ChunkMetaActor
         self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
         # create SessionManagerActor

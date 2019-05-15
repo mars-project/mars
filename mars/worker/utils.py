@@ -19,6 +19,7 @@ import sys
 from collections import OrderedDict
 
 from ..actors import ActorNotExist
+from ..cluster_info import ClusterInfoActor
 from ..errors import WorkerProcessStopped
 from ..config import options
 from ..promise import PromiseActor
@@ -28,13 +29,23 @@ from ..cluster_info import HasClusterInfoActor
 logger = logging.getLogger(__name__)
 
 
-class WorkerActor(HasClusterInfoActor, PromiseActor):
+class WorkerClusterInfoActor(ClusterInfoActor):
+    @classmethod
+    def default_name(cls):
+        return 'w:0:%s' % cls.__name__
+
+
+class WorkerHasClusterInfoActor(HasClusterInfoActor):
+    cluster_info_uid = WorkerClusterInfoActor.default_name()
+
+
+class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     """
     Base class of all worker actors, providing necessary utils
     """
     @classmethod
     def default_name(cls):
-        return 'w:{0}'.format(cls.__name__)
+        return 'w:0:{0}'.format(cls.__name__)
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())

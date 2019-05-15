@@ -25,8 +25,8 @@ import gevent
 from mars.actors import FunctionActor, create_actor_pool
 from mars.config import options
 from mars.utils import get_next_port, serialize_graph
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ResourceActor, ChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.execution import ExecutionActor
 
 
@@ -65,8 +65,9 @@ class Test(unittest.TestCase):
             session_id = str(uuid.uuid4())
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
-                pool.create_actor(ClusterInfoActor, schedulers=[mock_scheduler_addr],
-                                  uid=ClusterInfoActor.default_name())
+                pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
+                                  uid=SchedulerClusterInfoActor.default_name())
+
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
                 resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
 

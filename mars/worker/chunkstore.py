@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class PlasmaKeyMapActor(FunctionActor):
     @classmethod
     def default_name(cls):
-        return 'w:' + cls.__name__
+        return 'w:0:' + cls.__name__
 
     def __init__(self):
         super(PlasmaKeyMapActor, self).__init__()

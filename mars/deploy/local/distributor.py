@@ -16,16 +16,15 @@
 
 from ...compat import functools32, six
 from ...actors import Distributor
-from ...scheduler.distributor import SchedulerDistributor
-from ...worker.distributor import WorkerDistributor
+from ...distributor import MarsDistributor
 
 
 def gen_distributor(scheduler_n_process, worker_n_process):
     class LocalClusterDistributor(Distributor):
         def __init__(self, n_process):
             super(LocalClusterDistributor, self).__init__(n_process)
-            self._scheduler_distributor = SchedulerDistributor(scheduler_n_process)
-            self._worker_distributor = WorkerDistributor(worker_n_process)
+            self._scheduler_distributor = MarsDistributor(scheduler_n_process, 's:h1:')
+            self._worker_distributor = MarsDistributor(worker_n_process, 'w:0:')
 
         @functools32.lru_cache(100)
         def distribute(self, uid):

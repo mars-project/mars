@@ -78,7 +78,7 @@ class ClusterInfoActor(FunctionActor):
 
     @classmethod
     def default_name(cls):
-        return cls.__name__
+        raise NotImplementedError
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -116,6 +116,8 @@ class ClusterInfoActor(FunctionActor):
 
 
 class HasClusterInfoActor(PromiseActor):
+    cluster_info_uid = None
+
     def __init__(self):
         super(HasClusterInfoActor, self).__init__()
 
@@ -134,7 +136,7 @@ class HasClusterInfoActor(PromiseActor):
         set_schedulers_fun_name = set_schedulers_fun_name or self.set_schedulers.__name__
 
         # cluster_info_actor is created when scheduler initialized
-        self._cluster_info_ref = self.ctx.actor_ref(ClusterInfoActor.default_name())
+        self._cluster_info_ref = self.ctx.actor_ref(self.cluster_info_uid)
         # when some schedulers lost, notification will be received
         self._cluster_info_ref.register_observer(self.ref(), set_schedulers_fun_name)
         self.set_schedulers(self._cluster_info_ref.get_schedulers())

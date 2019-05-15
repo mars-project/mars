@@ -22,12 +22,12 @@ from numpy.testing import assert_array_equal
 from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.utils import get_next_port, serialize_graph
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import ChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.chunkstore import PlasmaKeyMapActor
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 
 
 class ExecuteTestActor(WorkerActor):
@@ -83,8 +83,10 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-            pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, schedulers=[pool_address],
+                              uid=SchedulerClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+                              uid=WorkerClusterInfoActor.default_name())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
                                           uid=ChunkHolderActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
