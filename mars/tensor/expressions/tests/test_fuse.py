@@ -26,7 +26,6 @@ from mars.tensor.expressions.arithmetic import TensorAddConstant, TensorMulConst
     TensorTDivConstant, TensorDivConstant, TensorSubConstant
 from mars.tensor.expressions.merge import TensorConcatenate
 from mars.tensor.expressions.reduction import TensorSum
-from mars import operands
 
 
 class Test(unittest.TestCase):
