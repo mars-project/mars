@@ -146,7 +146,7 @@ class Test(WorkerCase):
         mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
-                patch_method(resource.virtual_memory, new=lambda: mock_mem_stat) as _:
+                patch_method(resource.virtual_memory, new=lambda: mock_mem_stat):
             pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
                               uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
