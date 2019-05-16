@@ -20,7 +20,7 @@ import contextlib
 import numpy as np
 
 from ....operands import IndexSetValue
-from ....core import BaseWithKey, Entity
+from ....core import Base, Entity
 from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..core import TensorOperandMixin
 from .core import process_index, get_index_and_shape
@@ -49,10 +49,10 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         yield inputs
 
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
+        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        if isinstance(self._value, (BaseWithKey, Entity)):
+        if isinstance(self._value, (Base, Entity)):
             self._value = next(inputs_iter)
 
     def _new_tileables(self, inputs, kws=None, **kw):

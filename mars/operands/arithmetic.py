@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from .core import Operand
-from ..core import BaseWithKey
+from ..core import Base
 from .. import opcodes as OperandDef
 from ..serialize import ValueType, AnyField, KeyField, TupleField, \
     StringField, Int32Field, BoolField, DictField, Float64Field
@@ -41,15 +41,15 @@ class Constant(ElementWise):
 
     @property
     def constant(self):
-        if isinstance(self._lhs, BaseWithKey):
+        if isinstance(self._lhs, Base):
             return [self._rhs]
-        elif isinstance(self._rhs, BaseWithKey):
+        elif isinstance(self._rhs, Base):
             return [self._lhs]
         return [self._lhs, self._rhs]
 
     @property
     def reverse(self):
-        return isinstance(self._rhs, BaseWithKey)
+        return isinstance(self._rhs, Base)
 
     @property
     def casting(self):

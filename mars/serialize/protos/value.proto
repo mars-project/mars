@@ -36,7 +36,7 @@ message Value {
         Slice slice = 9;
         bytes arr = 10;  // ndarray
         bytes dtype = 11;  // data type
-        Key key = 12;  // BaseWithKey object, only save `key`
+        Key key = 12;  // Base object, only save `key`
         bytes datetime64 = 13; // numpy datetime64
         bytes timedelta64 = 14; // numpy timedelta64
         bytes index = 15; // pandas Index

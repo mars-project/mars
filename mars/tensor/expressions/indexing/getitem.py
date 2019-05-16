@@ -22,7 +22,7 @@ import contextlib
 import numpy as np
 
 from ....operands import Index
-from ....core import BaseWithKey, Entity
+from ....core import Base, Entity
 from ....compat import reduce, irange, izip
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
@@ -48,12 +48,12 @@ class TensorIndex(Index, TensorOperandMixin):
         """
         if indexes is not None:
             self._indexes = indexes
-            indexes_inputs = [ind for ind in indexes if isinstance(ind, (BaseWithKey, Entity))]
+            indexes_inputs = [ind for ind in indexes if isinstance(ind, (Base, Entity))]
             inputs = inputs + indexes_inputs
         yield inputs
 
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
+        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
 

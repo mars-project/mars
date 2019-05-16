@@ -41,7 +41,7 @@ from mars.serialize.core import Serializable, IdentityField, StringField, Unicod
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
-from mars.core import BaseWithKey
+from mars.core import Base
 from mars.utils import to_binary, to_text
 
 
@@ -81,7 +81,7 @@ class Node8(Node1):
     pass
 
 
-class Node2(BaseWithKey, Serializable):
+class Node2(Base, Serializable):
     a = ListField('a', ValueType.list(ValueType.string))
     _key = StringField('key')
     _id = StringField('id')

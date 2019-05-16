@@ -23,15 +23,16 @@ import numpy as np
 from .compat import six, izip, builtins, reduce
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, is_eager_mode
-from .serialize import ValueType, ProviderType, Serializable, AttributeAsDict, \
+from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
 from .graph import DAG
 
 
-class Base(object):
+class Base(HasKey):
     __slots__ = ()
-    _no_copy_attrs_ = set()
+    _no_copy_attrs_ = {'_id'}
+    _init_update_key_ = True
 
     def __init__(self, *args, **kwargs):
         for slot, arg in izip(self.__slots__, args):
@@ -39,6 +40,11 @@ class Base(object):
 
         for key, val in six.iteritems(kwargs):
             object.__setattr__(self, key, val)
+
+        if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
+            self._update_key()
+        if not hasattr(self, '_id') or not self._id:
+            self._id = str(id(self))
 
     @property
     def _keys_(self):
@@ -55,20 +61,6 @@ class Base(object):
     def _values_(self):
         return [getattr(self, k, None) for k in self._keys_
                 if k not in self._no_copy_attrs_]
-
-
-class BaseWithKey(Base):
-    __slots__ = '_key', '_id'
-    _no_copy_attrs_ = {'_id'}
-    _init_update_key_ = True
-
-    def __init__(self, *args, **kwargs):
-        super(BaseWithKey, self).__init__(*args, **kwargs)
-
-        if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
-            self._update_key()
-        if not hasattr(self, '_id') or not self._id:
-            self._id = str(id(self))
 
     def _obj_set(self, k, v):
         object.__setattr__(self, k, v)
@@ -194,12 +186,12 @@ def enter_build_mode(func):
     return inner
 
 
-class SerializableWithKey(BaseWithKey, Serializable):
+class SerializableWithKey(Base, Serializable):
     _key = StringField('key')
     _id = StringField('id')
 
 
-class AttributeAsDictKey(BaseWithKey, AttributeAsDict):
+class AttributeAsDictKey(Base, AttributeAsDict):
     _key = StringField('key')
     _id = StringField('id')
 

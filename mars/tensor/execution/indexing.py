@@ -32,7 +32,7 @@ def _index(ctx, chunk):
 
 
 def _index_estimate_size(ctx, chunk):
-    from mars.core import BaseWithKey, Entity
+    from mars.core import Base, Entity
 
     op = chunk.op
     shape = op.outputs[0].shape
@@ -40,7 +40,7 @@ def _index_estimate_size(ctx, chunk):
 
     new_shape = []
     for index in new_indexes:
-        if isinstance(index, (BaseWithKey, Entity)) and index.dtype == np.bool_:
+        if isinstance(index, (Base, Entity)) and index.dtype == np.bool_:
             new_shape.append(ctx[index.key][0] // index.dtype.itemsize)
 
     rough_shape = []

@@ -31,6 +31,7 @@ from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField
+from .core import HasKey
 from .dataserializer import dumps as datadumps, loads as dataloads
 
 
@@ -338,8 +339,6 @@ cdef class JsonSerializeProvider(Provider):
             raise TypeError('Unknown type to serialize: {0}'.format(tp))
 
     cdef inline object _serialize_untyped_value(self, value, bint weak_ref=False):
-        from ..core import BaseWithKey
-
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
             # not iterable, and is weak ref
             value = value()
@@ -371,7 +370,7 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_series(value)
         elif pd is not None and isinstance(value, pd.DataFrame):
             return self._serialize_dataframe(value)
-        elif isinstance(value, BaseWithKey):
+        elif isinstance(value, HasKey):
             return self._serialize_key(value)
         elif isinstance(value, list):
             return self._serialize_list(value, tp=None, weak_ref=weak_ref)

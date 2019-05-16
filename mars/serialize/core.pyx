@@ -294,7 +294,7 @@ cdef class UnicodeField(Field):
 
 
 cdef class KeyField(Field):
-    # this field is to store the BaseWithKey object
+    # this field is to store the HasKey object
     # we only store the key when pickling the serializable object
 
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
@@ -615,6 +615,10 @@ class AttributeAsDict(Serializable):
         if call_cb:
             [cb(key_to_instance) for cb in callbacks]
         return obj
+
+
+class HasKey(object):
+    __slots__ = '_key', '_id'
 
 
 cdef class KeyPlaceholder:

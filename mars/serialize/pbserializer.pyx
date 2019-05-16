@@ -33,6 +33,7 @@ from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
     OneOfField, ReferenceField, IdentityField, \
     ListField, TupleField
+from .core import HasKey
 from .protos.value_pb2 import Value
 from .dataserializer import dumps as datadumps, loads as dataloads
 
@@ -369,8 +370,6 @@ cdef class ProtobufSerializeProvider(Provider):
             raise TypeError('Unknown type to serialize: {0}'.format(tp))
 
     cdef inline void _set_untyped_value(self, value, obj, bint weak_ref=False) except *:
-        from ..core import BaseWithKey
-
         if not isinstance(value, (list, tuple, dict)) and weak_ref:
             # not iterable, and is weak ref
             value = value()
@@ -403,7 +402,7 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_series(value, obj)
         elif pd is not None and isinstance(value, pd.DataFrame):
             self._set_dataframe(value, obj)
-        elif isinstance(value, BaseWithKey):
+        elif isinstance(value, HasKey):
             self._set_key(value, obj)
         elif isinstance(value, list):
             self._set_list(value, obj, tp=None, weak_ref=weak_ref)
@@ -696,7 +695,7 @@ cdef class ProtobufSerializeProvider(Provider):
             setattr(model_instance, field.attr, self._on_deserial(field, getattr(obj, tag)))
 
     def deserialize_attribute_as_dict(self, model_cls, obj, list callbacks, dict key_to_instance):
-        from ..core import BaseWithKey
+        from ..core import Base
 
         cdef str attr
         cdef object d_obj
@@ -759,6 +758,6 @@ cdef class ProtobufSerializeProvider(Provider):
                 it_field.deserialize(self, model_instance, AttrWrapper(d_obj),
                                      callbacks, key_to_instance)
 
-        if isinstance(model_instance, BaseWithKey):
+        if isinstance(model_instance, Base):
             key_to_instance[model_instance.key, model_instance.id] = model_instance
         return model_instance
