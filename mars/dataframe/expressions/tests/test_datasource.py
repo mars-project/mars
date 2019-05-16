@@ -49,7 +49,6 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
 
         # json
         chunk = df.chunks[0]
@@ -60,7 +59,6 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
 
     def testDataFrameGraphSerialize(self):
         df = from_pandas(pd.DataFrame(np.random.rand(10, 10)))
