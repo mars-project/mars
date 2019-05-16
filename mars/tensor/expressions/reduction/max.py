@@ -14,12 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorReduction
+from .core import TensorReduction, TensorReductionMixin
 
 
-class TensorMax(operands.Max, TensorReduction):
+class TensorMax(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.MAX
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMax, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                         _combine_size=combine_size, **kw)

@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from .sum import TensorSum
-from .core import TensorReduction
+from .core import TensorReduction, TensorReductionMixin
 
 
-class TensorCountNonzero(operands.CountNonzero, TensorReduction):
+class TensorCountNonzero(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.COUNT_NONZERO
+
     def __init__(self, axis=None, dtype=np.intp, keepdims=None, combine_size=None, **kw):
         super(TensorCountNonzero, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                  _combine_size=combine_size, **kw)

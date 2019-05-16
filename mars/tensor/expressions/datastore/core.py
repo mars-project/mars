@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....operands import DataStore
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
-class TensorDataStore(DataStore, TensorOperandMixin):
+class TensorDataStore(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorDataStore, self)._set_inputs(inputs)
         self._input = inputs[0]

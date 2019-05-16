@@ -14,11 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
-from .core import TensorFuseChunkMixin
+from ....serialize import DataTypeField
+from .core import TensorFuse, TensorFuseChunkMixin
 
 
-class TensorNeFuseChunk(operands.NeFuse, TensorFuseChunkMixin):
+class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
+    _op_type_ = None  # no opcode, cannot be serialized
+    _dtype = DataTypeField('dtype')
+
     # use for numexpr-fused operand
     def __init__(self, dtype=None, **kw):
         super(TensorNeFuseChunk, self).__init__(_dtype=dtype, **kw)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)

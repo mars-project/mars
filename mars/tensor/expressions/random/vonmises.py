@@ -16,18 +16,36 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorVonmises(operands.Vonmises, TensorRandomOperandMixin):
+class TensorVonmises(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_mu', '_kappa', '_size'
     _input_fields_ = ['_mu', '_kappa']
+    _op_type_ = OperandDef.RAND_VONMISES
+
+    _mu = AnyField('mu')
+    _kappa = AnyField('kappa')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorVonmises, self).__init__(_size=size, _state=state, _dtype=dtype,
                                              _gpu=gpu, **kw)
+
+    @property
+    def mu(self):
+        return self._mu
+
+    @property
+    def kappa(self):
+        return self._kappa
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, mu, kappa, chunk_size=None):
         return self.new_tensor([mu, kappa], None, raw_chunk_size=chunk_size)

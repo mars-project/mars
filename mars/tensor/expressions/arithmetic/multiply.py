@@ -16,22 +16,25 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
+from ..core import TensorOperand
 from .core import TensorBinOp, TensorConstant, TensorElementWise
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_or')
-class TensorMultiply(operands.Multiply, TensorBinOp):
+class TensorMultiply(TensorBinOp):
+    _op_type_ = OperandDef.MUL
+
     @classmethod
     def constant_cls(cls):
         return TensorMulConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorMulConstant(operands.MulConstant, TensorConstant):
-    pass
+class TensorMulConstant(TensorConstant):
+    _op_type_ = OperandDef.MUL_CONSTANT
 
 
 @infer_dtype(np.multiply)
@@ -87,6 +90,6 @@ def rmultiply(x1, x2, **kwargs):
     return op.rcall(x1, x2)
 
 
-class TensorTreeMultiply(operands.TreeMultiply, TensorElementWise):
+class TensorTreeMultiply(TensorOperand, TensorElementWise):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorTreeMultiply, self).__init__(_dtype=dtype, _sparse=sparse, **kw)

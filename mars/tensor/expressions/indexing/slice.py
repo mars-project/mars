@@ -16,15 +16,25 @@
 
 import numpy as np
 
-from ....operands import Slice
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, ListField
+from ..core import TensorHasInput, TensorOperandMixin
 from ..utils import calc_sliced_size
 
 
-class TensorSlice(Slice, TensorOperandMixin):
+class TensorSlice(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.SLICE
+
+    _input = KeyField('input')
+    _slices = ListField('slices')
+
     def __init__(self, slices=None, dtype=None, sparse=False, **kw):
         super(TensorSlice, self).__init__(_slices=slices, _dtype=dtype,
                                           _sparse=sparse, **kw)
+
+    @property
+    def slices(self):
+        return self._slices
 
     def calc_shape(self, *inputs_shape):
         input_shape = inputs_shape[0]

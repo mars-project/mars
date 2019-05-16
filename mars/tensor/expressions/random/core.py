@@ -15,17 +15,18 @@
 # limitations under the License.
 
 import itertools
-from collections import Iterable
+from collections import Iterable, namedtuple
 from contextlib import contextmanager
 
 import numpy as np
 
 from ....config import options
-from ....compat import irange, izip
-from ....operands.random import State
+from ....compat import irange, izip, zip_longest
+from ....serialize import TupleField
+from ....utils import tokenize
 from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
 
@@ -81,6 +82,48 @@ def handle_array(arg):
         return arg.op.data[(0,) * max(1, arg.ndim)]
 
     return np.empty((0,), dtype=arg.dtype)
+
+
+STATE = namedtuple('State', 'label keys pos has_gauss cached_gaussian')
+
+
+class State(STATE):
+    def __new__(cls, random_state=None, *args, **kwargs):
+        if isinstance(random_state, np.random.RandomState) and not kwargs:
+            return super(State, cls).__new__(cls, *random_state.get_state())
+        elif isinstance(random_state, tuple) and not kwargs:
+            return super(State, cls).__new__(cls, *random_state)
+        elif args:
+            return super(State, cls).__new__(cls, *((random_state,) + args))
+        elif not kwargs:
+            return super(State, cls).__new__(cls, *random_state)
+        else:
+            assert random_state is None
+            return super(State, cls).__new__(cls, **kwargs)
+
+    def __eq__(self, other):
+        if not isinstance(other, tuple):
+            return False
+
+        for it, other_it in zip_longest(self, other):
+            if isinstance(it, np.ndarray):
+                if not np.array_equal(it, other_it):
+                    return False
+            elif it != other_it:
+                return False
+
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    @property
+    def random_state(self):
+        rs = np.random.RandomState()
+        s = (self.label, self.keys, self.pos, self.has_gauss, self.cached_gaussian)
+        rs.set_state(s)
+
+        return rs
 
 
 class TensorRandomOperandMixin(TensorOperandMixin):
@@ -220,3 +263,36 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         with self._get_inputs_shape_by_given_fields(inputs, shape, None, False) as (inputs, shape):
             kw['shape'] = shape
             return super(TensorRandomOperandMixin, self)._new_chunks(inputs, kws=kws, **kw)
+
+
+class TensorRandomOperand(TensorOperand):
+    _state = TupleField('state', on_serialize=lambda x: tuple(x) if x is not None else x,
+                        on_deserialize=lambda x: State(x) if x is not None else x)
+
+    @property
+    def state(self):
+        return getattr(self, '_state', None)
+
+    def __setattr__(self, attr, value):
+        if attr == '_state' and value is not None and not isinstance(value, State):
+            value = State(value)
+        super(TensorRandomOperand, self).__setattr__(attr, value)
+
+    @property
+    def args(self):
+        return [slot for slot in self.__slots__
+                if slot not in set(TensorRandomOperand.__slots__)]
+
+    def _update_key(self):
+        args = tuple(getattr(self, k, None) for k in self._keys_)
+        if self.state is None:
+            args += (np.random.random(),)
+        self._key = tokenize(type(self), *args)
+
+
+class TensorDistribution(TensorRandomOperand):
+    __slots__ = ()
+
+
+class TensorSimpleRandomData(TensorRandomOperand):
+    __slots__ = ()

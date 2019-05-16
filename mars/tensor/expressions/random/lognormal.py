@@ -16,13 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorLognormal(operands.Lognormal, TensorRandomOperandMixin):
+class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_mean', '_sigma', '_size'
     _input_fields_ = ['_mean', '_sigma']
+    _op_type_ = OperandDef.RAND_LOGNORMAL
+
+    _mean = AnyField('mean')
+    _sigma = AnyField('sigma')
+    _size = TupleField('size', ValueType.int64)
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    @property
+    def size(self):
+        return self._size
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

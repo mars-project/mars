@@ -18,14 +18,19 @@ import itertools
 
 import numpy as np
 
-from ....operands import Argwhere
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ..utils import recursive_tile
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .ravel import ravel
 
 
-class TensorArgwhere(Argwhere, TensorOperandMixin):
+class TensorArgwhere(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.ARGWHERE
+
+    _input = KeyField('input')
+
     def __init__(self, dtype=None, **kw):
         super(TensorArgwhere, self).__init__(_dtype=dtype, **kw)
 

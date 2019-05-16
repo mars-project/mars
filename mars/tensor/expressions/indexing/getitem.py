@@ -21,19 +21,29 @@ import contextlib
 
 import numpy as np
 
-from ....operands import Index
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, ListField
 from ....core import Base, Entity
 from ....compat import reduce, irange, izip
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
     slice_split, calc_sliced_size
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from .core import process_index, get_index_and_shape
 
 
-class TensorIndex(Index, TensorOperandMixin):
+class TensorIndex(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.INDEX
+
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
 
     def calc_shape(self, *inputs_shape):
         return tuple(get_index_and_shape(inputs_shape[0], self._indexes)[1])

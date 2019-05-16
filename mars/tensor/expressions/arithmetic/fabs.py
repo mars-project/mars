@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
+from .... import opcodes as OperandDef
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorFabs(operands.Fabs, TensorUnaryOp):
-    pass
+class TensorFabs(TensorUnaryOp):
+    _op_type_ = OperandDef.FABS
 
 
 def fabs(x, out=None, where=None, **kwargs):

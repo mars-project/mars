@@ -18,18 +18,42 @@ import itertools
 
 import numpy as np
 
-from ....operands import CopyTo
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, StringField
 from ....compat import lrange
 from ..utils import unify_chunks, broadcast_shape
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .broadcast_to import broadcast_to
 
 
-class TensorCopyTo(CopyTo, TensorOperandMixin):
+class TensorCopyTo(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.COPYTO
+
+    _src = KeyField('src')
+    _dst = KeyField('dest')
+    _casting = StringField('casting')
+    _where = KeyField('where')
+
     def __init__(self, casting=None, dtype=None, gpu=None, sparse=None, **kw):
         super(TensorCopyTo, self).__init__(_casting=casting, _dtype=dtype,
                                            _gpu=gpu, _sparse=sparse, **kw)
+
+    @property
+    def src(self):
+        return self._src
+
+    @property
+    def dst(self):
+        return self._dst
+
+    @property
+    def casting(self):
+        return self._casting
+
+    @property
+    def where(self):
+        return self._where
 
     def check_inputs(self, inputs):
         if not 2 <= len(inputs) <= 3:

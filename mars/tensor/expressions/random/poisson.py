@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorPoisson(operands.Poisson, TensorRandomOperandMixin):
+class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_lam', '_size'
     _input_fields_ = ['_lam']
+    _op_type_ = OperandDef.RAND_POSSION
+
+    _lam = AnyField('lam')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorPoisson, self).__init__(_size=size, _state=state, _dtype=dtype,
                                             _gpu=gpu, **kw)
+
+    @property
+    def lam(self):
+        return self._lam
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, lam, chunk_size=None):
         return self.new_tensor([lam], None, raw_chunk_size=chunk_size)

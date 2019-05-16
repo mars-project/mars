@@ -66,7 +66,7 @@ class TestBase(unittest.TestCase):
 
     @classmethod
     def _serial(cls, obj):
-        from mars.operands.core import Operand
+        from mars.operands import Operand
         from mars.tensor.core import Tensor, TensorData, Chunk, ChunkData
 
         if isinstance(obj, (Tensor, Chunk)):

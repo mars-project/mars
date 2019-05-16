@@ -23,15 +23,35 @@ import numpy as np
 
 from ....config import options
 from ....compat import six, izip, lzip, reduce
-from ....operands import Rechunk
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, AnyField, Int32Field, Int64Field
 from ..utils import decide_chunk_sizes, calc_sliced_size
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
-class TensorRechunk(Rechunk, TensorOperandMixin):
+class TensorRechunk(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.RECHUNK
+
+    _input = KeyField('input')
+    _chunk_size = AnyField('chunk_size')
+    _threshold = Int32Field('threshold')
+    _chunk_size_limit = Int64Field('chunk_size_limit')
+
     def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, dtype=None, sparse=False, **kw):
         super(TensorRechunk, self).__init__(_chunk_size=chunk_size, _threshold=threshold,
                                             _chunk_size_limit=chunk_size_limit, _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def chunk_size(self):
+        return self._chunk_size
+
+    @property
+    def threshold(self):
+        return self._threshold
+
+    @property
+    def chunk_size_limit(self):
+        return self._chunk_size_limit
 
     def _set_inputs(self, inputs):
         super(TensorRechunk, self)._set_inputs(inputs)

@@ -17,16 +17,30 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, StringField
 from ....core import ExecutableTuple
 from ..datasource import tensor as astensor
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from .core import TSQR
 
 
-class TensorSVD(operands.SVD, TensorOperandMixin):
+class TensorSVD(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.SVD
+
+    _input = KeyField('input')
+    _method = StringField('method')
+
     def __init__(self, method=None, dtype=None, **kw):
         super(TensorSVD, self).__init__(_method=method, _dtype=dtype, **kw)
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def output_limit(self):
+        return 3
 
     @classmethod
     def _is_svd(cls):

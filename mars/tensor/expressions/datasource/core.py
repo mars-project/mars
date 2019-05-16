@@ -18,14 +18,13 @@ import itertools
 
 import numpy as np
 
-from ....operands import DataSource
 from ....compat import izip
 from ....config import options
 from ..utils import normalize_shape, decide_chunk_sizes
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 
 
-class TensorDataSource(DataSource, TensorOperandMixin):
+class TensorDataSource(TensorOperand, TensorOperandMixin):
     """
     Tensor data source base class, provide universal tile logic,
     subclass can overwrite tile method.

@@ -18,23 +18,45 @@ from numbers import Integral
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField, KeyField, BoolField
 from ...core import TENSOR_TYPE
 from ..datasource import arange, array
-from .core import TensorRandomOperandMixin
+from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
-class TensorChoice(operands.Choice, TensorRandomOperandMixin):
+class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     __slots__ = '_a', '_size', '_replace', '_p'
-
     _into_one_chunk_fields_ = ['_a', '_p']
     _input_fields_ = ['_a', '_p']
+    _op_type_ = OperandDef.RAND_CHOICE
+
+    _a = AnyField('a')
+    _size = TupleField('size', ValueType.int64)
+    _replace = BoolField('replace')
+    _p = KeyField('p')
 
     def __init__(self, state=None, size=None, replace=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorChoice, self).__init__(_state=state, _size=size,
                                            _replace=replace, _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def replace(self):
+        return self._replace
+
+    @property
+    def p(self):
+        return self._p
 
     def calc_shape(self, *inputs_shape):
         return self._size or ()

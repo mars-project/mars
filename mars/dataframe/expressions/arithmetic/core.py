@@ -20,19 +20,18 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ....operands import Operand, ShuffleReduce
 from .... import opcodes as OperandDef
 from ....serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
 from ....utils import classproperty, tokenize
 from ...core import DATAFRAME_TYPE
 from ...utils import hash_dtypes
-from ..core import DataFrameOperandMixin, DataFrameShuffleProxy
+from ..core import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, DataFrameShuffleReduce
 from ..utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from .utils import infer_dtypes, infer_index_value, filter_dtypes
 
 
-class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
+class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_MAP
 
     _index_min = AnyField('index_min')
@@ -148,7 +147,7 @@ class DataFrameIndexAlignMap(Operand, DataFrameOperandMixin):
         return super(DataFrameIndexAlignMap, self)._new_chunks(inputs, kws=kws, **kw)
 
 
-class DataFrameIndexAlignReduce(ShuffleReduce, DataFrameOperandMixin):
+class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_REDUCE
 
     _input = KeyField('input')

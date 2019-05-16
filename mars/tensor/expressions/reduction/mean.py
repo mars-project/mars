@@ -16,24 +16,30 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorReduction
+from .core import TensorReduction, TensorReductionMixin
 
 
-class TensorMeanChunk(operands.MeanChunk, TensorReduction):
+class TensorMeanChunk(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.MEAN_CHUNK
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMeanChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                               _combine_size=combine_size, **kw)
 
 
-class TensorMeanCombine(operands.MeanCombine, TensorReduction):
+class TensorMeanCombine(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.MEAN_COMBINE
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMeanCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                 _combine_size=combine_size, **kw)
 
 
-class TensorMean(operands.Mean, TensorReduction):
+class TensorMean(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.MEAN
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMean, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                          _combine_size=combine_size, **kw)

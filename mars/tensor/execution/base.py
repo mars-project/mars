@@ -148,18 +148,19 @@ def _isin(ctx, chunk):
 
 def register_basic_handler():
     from ... import operands
+    from ..expressions import base
     from ...executor import register
 
     register(operands.VirtualOperand, _virtual, _virtual)
 
-    register(operands.CopyTo, _copyto)
-    register(operands.Astype, _astype)
-    register(operands.Transpose, _transpose)
-    register(operands.SwapAxes, _swapaxes)
-    register(operands.BroadcastTo, _broadcast_to)
-    register(operands.Where, _where)
-    register(operands.Split, _split)
-    register(operands.Squeeze, _squeeze)
-    register(operands.Digitize, _digitize)
-    register(operands.Repeat, _repeat)
-    register(operands.IsIn, _isin)
+    register(base.TensorCopyTo, _copyto)
+    register(base.TensorAstype, _astype)
+    register(base.TensorTranspose, _transpose)
+    register(base.TensorSwapAxes, _swapaxes)
+    register(base.TensorBroadcastTo, _broadcast_to)
+    register(base.TensorWhere, _where)
+    register(base.TensorSplit, _split)
+    register(base.TensorSqueeze, _squeeze)
+    register(base.TensorDigitize, _digitize)
+    register(base.TensorRepeat, _repeat)
+    register(base.TensorIsIn, _isin)

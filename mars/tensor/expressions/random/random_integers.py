@@ -16,12 +16,18 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, Int64Field, TupleField
+from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
-class TensorRandomIntegers(operands.RandomIntegers, TensorRandomOperandMixin):
+class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     __slots__ = '_low', '_high', '_size'
+    _op_type_ = OperandDef.RAND_RANDOM_INTEGERS
+
+    _low = Int64Field('low')
+    _high = Int64Field('high')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None,
                  low=None, high=None, gpu=None, **kw):
@@ -29,6 +35,18 @@ class TensorRandomIntegers(operands.RandomIntegers, TensorRandomOperandMixin):
         super(TensorRandomIntegers, self).__init__(_state=state, _size=size,
                                                    _dtype=dtype, _low=low, _high=high,
                                                    _gpu=gpu, **kw)
+
+    @property
+    def low(self):
+        return self._low
+
+    @property
+    def high(self):
+        return self._high
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

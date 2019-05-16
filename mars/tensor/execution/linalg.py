@@ -167,16 +167,15 @@ def _matmul(ctx, chunk):
 
 
 def register_linalg_handler():
-    from ...operands.arithmetic import TensorDot, Dot, Matmul
-    from ...operands.linalg import QR, SVD, Cholesky, SolveTriangular, Norm, LU
+    from ..expressions import linalg
     from ...executor import register
 
-    register(QR, _qr)
-    register(SVD, _svd)
-    register(Cholesky, _cholesky)
-    register(SolveTriangular, _solve_triangular)
-    register(LU, _lu)
-    register(Norm, _norm)
-    register(TensorDot, _tensordot, _tensordot_estimate_size)
-    register(Dot, _dot)
-    register(Matmul, _matmul)
+    register(linalg.TensorQR, _qr)
+    register(linalg.TensorSVD, _svd)
+    register(linalg.TensorCholesky, _cholesky)
+    register(linalg.TensorSolveTriangular, _solve_triangular)
+    register(linalg.TensorLU, _lu)
+    register(linalg.TensorNorm, _norm)
+    register(linalg.TensorTensorDot, _tensordot, _tensordot_estimate_size)
+    register(linalg.TensorDot, _dot)
+    register(linalg.TensorMatmul, _matmul)

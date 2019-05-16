@@ -18,16 +18,25 @@ import itertools
 
 import numpy as np
 
-from ....operands import Concatenate
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 
 
-class TensorConcatenate(Concatenate, TensorOperandMixin):
+class TensorConcatenate(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.CONCATENATE
+
+    _axis = AnyField('axis')
+
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
         super(TensorConcatenate, self).__init__(_axis=axis, _dtype=dtype,
                                                 _sparse=sparse, **kw)
+
+    @property
+    def axis(self):
+        return getattr(self, '_axis', None)
 
     def calc_shape(self, *inputs_shape):
         inputs_shape = [s for s in inputs_shape if 0 not in s]

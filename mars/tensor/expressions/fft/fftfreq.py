@@ -16,15 +16,29 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
 from ....tiles import NotSupportTile
-from ..core import TensorOperandMixin
+from ....serialize import Int32Field, Float64Field, KeyField
+from ..core import TensorOperand, TensorHasInput, TensorOperandMixin
 from ..datasource import arange
 
 
-class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
+class TensorFFTFreq(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.FFTFREQ
+
+    _n = Int32Field('n')
+    _d = Float64Field('d')
+
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
         super(TensorFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def d(self):
+        return self._d
 
     def __call__(self, chunk_size=None):
         shape = (self.n,)
@@ -51,9 +65,23 @@ class TensorFFTFreq(fftop.FFTFreq, TensorOperandMixin):
                                   **tensor.extra_params)
 
 
-class TensorFFTFreqChunk(fftop.FFTFreqChunk, TensorOperandMixin):
+class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.FFTFREQ_CHUNK
+
+    _input = KeyField('input')
+    _n = Int32Field('n')
+    _d = Float64Field('d')
+
     def __init__(self, n=None, d=None, dtype=None, **kw):
         super(TensorFFTFreqChunk, self).__init__(_n=n, _d=d, _dtype=dtype, **kw)
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def d(self):
+        return self._d
 
     def calc_shape(self, *inputs_shape):
         return inputs_shape[0]

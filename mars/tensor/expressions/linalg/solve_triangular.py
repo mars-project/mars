@@ -17,18 +17,35 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from .... import operands
-from ....serialize import BoolField
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import BoolField, KeyField
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
+class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.SOLVE_TRIANGULAR
+
+    _a = KeyField('a')
+    _b = KeyField('b')
+    _lower = BoolField('lower')
     _strict = BoolField('strict')
 
     def __init__(self, lower=None, dtype=None, sparse=False, strict=None, **kw):
         super(TensorSolveTriangular, self).__init__(_lower=lower, _dtype=dtype, _sparse=sparse,
                                                     _strict=strict, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def lower(self):
+        return self._lower
 
     def _set_inputs(self, inputs):
         super(TensorSolveTriangular, self)._set_inputs(inputs)

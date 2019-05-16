@@ -18,15 +18,29 @@ from collections import Iterable
 
 import numpy as np
 
-from ....operands import UnravelIndex
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, KeyField, TupleField
 from ....core import ExecutableTuple
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorUnravelIndex(UnravelIndex, TensorOperandMixin):
+class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.UNRAVEL_INDEX
+
+    _input = KeyField('input')
+    _dims = TupleField('dims', ValueType.int32)
+
     def __init__(self, dims=None, dtype=None, **kw):
         super(TensorUnravelIndex, self).__init__(_dims=dims, _dtype=dtype, **kw)
+
+    @property
+    def dims(self):
+        return self._dims
+
+    @property
+    def output_limit(self):
+        return float('inf')
 
     def _set_inputs(self, inputs):
         super(TensorUnravelIndex, self)._set_inputs(inputs)

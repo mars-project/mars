@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorLog10(operands.Log10, TensorUnaryOp):
-    pass
+class TensorLog10(TensorUnaryOp):
+    _op_type_ = OperandDef.LOG10
 
 
 @infer_dtype(np.log10)

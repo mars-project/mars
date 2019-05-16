@@ -16,18 +16,36 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorF(operands.F, TensorRandomOperandMixin):
+class TensorF(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_dfnum', '_dfden', '_size'
     _input_fields_ = ['_dfnum', '_dfden']
+    _op_type_ = OperandDef.RAND_F
+
+    _dfnum = AnyField('dfnum')
+    _dfden = AnyField('dfden')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorF, self).__init__(_state=state, _size=size, _dtype=dtype,
                                       _gpu=gpu, **kw)
+
+    @property
+    def dfnum(self):
+        return self._dfnum
+
+    @property
+    def dfden(self):
+        return self._dfden
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, dfnum, dfden, chunk_size=None):
         return self.new_tensor([dfnum, dfden], None, raw_chunk_size=chunk_size)

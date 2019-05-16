@@ -87,11 +87,11 @@ def _unravel_index(ctx, chunk):
 
 
 def register_indexing_handler():
-    from ...operands import Slice, Index, IndexSetValue, Choose, UnravelIndex
+    from ..expressions import indexing
     from ...executor import register
 
-    register(Slice, _slice)
-    register(Index, _index, _index_estimate_size)
-    register(IndexSetValue, _index_set_value)
-    register(Choose, _choose)
-    register(UnravelIndex, _unravel_index)
+    register(indexing.TensorSlice, _slice)
+    register(indexing.TensorIndex, _index, _index_estimate_size)
+    register(indexing.TensorIndexSetValue, _index_set_value)
+    register(indexing.TensorChoose, _choose)
+    register(indexing.TensorUnravelIndex, _unravel_index)

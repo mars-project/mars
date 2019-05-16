@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import inject_dtype
 from .core import TensorCompare, TensorCompareConstant
 
 
-class TensorLessEqual(operands.LessEqual, TensorCompare):
+class TensorLessEqual(TensorCompare):
+    _op_type_ = OperandDef.LE
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorLessEqual, self).__init__(_casting=casting, _err=err,
@@ -32,7 +34,9 @@ class TensorLessEqual(operands.LessEqual, TensorCompare):
         return TensorLeConstant
 
 
-class TensorLeConstant(operands.LeConstant, TensorCompareConstant):
+class TensorLeConstant(TensorCompareConstant):
+    _op_type_ = OperandDef.LE_CONSTANT
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorLeConstant, self).__init__(_casting=casting, _err=err,

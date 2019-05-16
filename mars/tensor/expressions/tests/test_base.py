@@ -20,8 +20,7 @@ import numpy as np
 
 from mars.tensor.expressions.datasource import ones, tensor, arange, array, asarray
 from mars.tensor.expressions.base import transpose, broadcast_to, where, argwhere, array_split, \
-    split, squeeze, digitize, result_type, repeat, copyto, isin
-from mars.operands.base import CopyTo
+    split, squeeze, digitize, result_type, repeat, copyto, isin, TensorCopyTo
 from mars.tests.core import calc_shape
 
 
@@ -52,14 +51,14 @@ class Test(unittest.TestCase):
         b = ones(20, chunk_size=4)
         copyto(a, b)
 
-        self.assertIsInstance(a.op, CopyTo)
+        self.assertIsInstance(a.op, TensorCopyTo)
         self.assertIs(a.inputs[0], b.data)
         self.assertIsInstance(a.inputs[1].op, tp)
         self.assertEqual(calc_shape(a), a.shape)
 
         a.tiles()
 
-        self.assertIsInstance(a.chunks[0].op, CopyTo)
+        self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
         self.assertEqual(len(a.chunks[0].inputs), 2)
         self.assertEqual(calc_shape(a.chunks[0]), a.chunks[0].shape)
 
@@ -77,7 +76,7 @@ class Test(unittest.TestCase):
 
         a.tiles()
 
-        self.assertIsInstance(a.chunks[0].op, CopyTo)
+        self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
         self.assertEqual(len(a.chunks[0].inputs), 3)
         self.assertEqual(calc_shape(a.chunks[0]), a.chunks[0].shape)
 

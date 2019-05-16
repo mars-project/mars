@@ -16,22 +16,24 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='always_false')
-class TensorLogAddExp(operands.LogAddExp, TensorBinOp):
+class TensorLogAddExp(TensorBinOp):
+    _op_type_ = OperandDef.LOGADDEXP
+
     @classmethod
     def constant_cls(cls):
         return TensorLAEConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorLAEConstant(operands.LAEConstant, TensorConstant):
-    pass
+class TensorLAEConstant(TensorConstant):
+    _op_type_ = OperandDef.LAE_CONSTANT
 
 
 @infer_dtype(np.logaddexp)

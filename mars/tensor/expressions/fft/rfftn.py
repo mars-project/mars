@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorRealFFTNMixin, validate_fftn
+from .core import TensorRealFFTNMixin, validate_fftn, TensorRealFFTN
 
 
-class TensorRFFTN(fftop.RFFTN, TensorRealFFTNMixin):
+class TensorRFFTN(TensorRealFFTN, TensorRealFFTNMixin):
+    _op_type_ = OperandDef.RFFTN
+
     def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
         super(TensorRFFTN, self).__init__(_shape=shape, _axes=axes, _norm=norm,
                                           _dtype=dtype, **kw)

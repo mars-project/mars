@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 from mars.executor import Executor
-from mars.operands.random import State
+from mars.tensor.expressions.random.core import State
 from mars.tensor.expressions.datasource import tensor as from_ndarray
 from mars.lib.sparse.core import issparse
 from mars import tensor

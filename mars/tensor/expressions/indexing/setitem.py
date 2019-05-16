@@ -19,17 +19,32 @@ import contextlib
 
 import numpy as np
 
-from ....operands import IndexSetValue
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, ListField, AnyField
 from ....core import Base, Entity
 from ...core import TENSOR_TYPE, CHUNK_TYPE
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
 
 
-class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
+class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.INDEXSETVALUE
+
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
+    _value = AnyField('value')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @property
+    def value(self):
+        return self._value
 
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes, value):

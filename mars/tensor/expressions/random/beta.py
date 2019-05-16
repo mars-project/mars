@@ -16,18 +16,36 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorBeta(operands.Beta, TensorRandomOperandMixin):
+class TensorBeta(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_a', '_b', '_size'
     _input_fields_ = ['_a', '_b']
+    _op_type_ = OperandDef.RAND_BETA
+
+    _a = AnyField('a')
+    _b = AnyField('b')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorBeta, self).__init__(_state=state, _size=size,
                                          _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, a, b, chunk_size=None):
         return self.new_tensor([a, b], None, raw_chunk_size=chunk_size)

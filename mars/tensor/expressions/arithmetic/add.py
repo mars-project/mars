@@ -16,22 +16,25 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype, broadcast_shape
+from ..core import TensorOperand
 from .core import TensorBinOp, TensorConstant, TensorElementWise
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
-class TensorAdd(operands.Add, TensorBinOp):
+class TensorAdd(TensorBinOp):
+    _op_type_ = OperandDef.ADD
+
     @classmethod
     def constant_cls(cls):
         return TensorAddConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorAddConstant(operands.AddConstant, TensorConstant):
-    pass
+class TensorAddConstant(TensorConstant):
+    _op_type_ = OperandDef.ADD_CONSTANT
 
 
 @infer_dtype(np.add)
@@ -88,7 +91,9 @@ def radd(x1, x2, **kwargs):
     return op.rcall(x1, x2)
 
 
-class TensorTreeAdd(operands.TreeAdd, TensorElementWise):
+class TensorTreeAdd(TensorOperand, TensorElementWise):
+    _op_type_ = OperandDef.TREE_ADD
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorTreeAdd, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 

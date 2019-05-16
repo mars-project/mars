@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import weakref
 
-from ..compat import six
-from ..serialize import SerializableMetaclass, ValueType, ProviderType, \
-    IdentityField, ListField, DataTypeField, Int32Field, BoolField, DictField
-from ..core import Entity, AttributeAsDictKey
-from ..utils import AttributeDict
+from .compat import six
+from .serialize import SerializableMetaclass, ValueType, ProviderType, \
+    IdentityField, ListField, DictField, Int32Field, BoolField, StringField
+from .core import Entity, AttributeAsDictKey
+from .utils import AttributeDict, to_str
+from . import opcodes as OperandDef
 
 
 operand_type_to_oprand_cls = {}
@@ -64,8 +64,6 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _gpu = BoolField('gpu')
     _device = Int32Field('device')
 
-    _dtype = DataTypeField('dtype')
-
     _inputs = ListField('inputs', ValueType.key)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
 
@@ -88,7 +86,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.operand_pb2 import OperandDef
+            from .serialize.protos.operand_pb2 import OperandDef
             return OperandDef
         return super(Operand, cls).cls(provider)
 
@@ -114,12 +112,8 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     def output_limit(self):
         return 1
 
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
     def get_dependent_data_keys(self):
-        return [chunk.key for chunk in self.inputs or ()]
+        return [dep.key for dep in self.inputs or ()]
 
     @property
     def gpu(self):
@@ -178,3 +172,73 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         new_op.outputs = []
 
         return new_op
+
+
+class HasInput(Operand):
+    __slots__ = ()
+
+    @property
+    def input(self):
+        return self._input
+
+    def _set_inputs(self, inputs):
+        super(HasInput, self)._set_inputs(inputs)
+        self._input = self._inputs[0]
+
+
+class VirtualOperand(Operand):
+    def get_dependent_data_keys(self):
+        return []
+
+
+class ShuffleProxy(VirtualOperand):
+    _op_type_ = OperandDef.SHUFFLE_PROXY
+    _broadcaster = True
+
+
+class ShuffleMap(Operand):
+    pass
+
+
+class ShuffleReduce(Operand):
+    _shuffle_key = StringField('shuffle_key', on_serialize=to_str)
+
+    @property
+    def shuffle_key(self):
+        return getattr(self, '_shuffle_key', None)
+
+    def get_dependent_data_keys(self):
+        inputs = self.inputs or ()
+        return [(chunk.key, self._shuffle_key)
+                for proxy in inputs for chunk in proxy.inputs or ()]
+
+
+class Fetch(Operand):
+    _op_type_ = OperandDef.FETCH
+
+    _to_fetch_key = StringField('to_fetch_key', on_serialize=to_str)
+
+    @property
+    def to_fetch_key(self):
+        return self._to_fetch_key
+
+
+class Fuse(Operand):
+    _op_type_ = OperandDef.FUSE
+
+    _operands = ListField('operands', ValueType.key)
+
+    @property
+    def operands(self):
+        return self._operands
+
+
+class FetchShuffle(Operand):
+    _op_type_ = OperandDef.FETCH_SHUFFLE
+
+    _to_fetch_keys = ListField('to_fetch_keys', ValueType.string,
+                               on_serialize=lambda v: [to_str(i) for i in v])
+
+    @property
+    def to_fetch_keys(self):
+        return self._to_fetch_keys

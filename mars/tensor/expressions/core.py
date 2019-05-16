@@ -16,9 +16,10 @@
 
 from __future__ import absolute_import
 
-from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
+from ...serialize import DataTypeField
 from ...core import TileableOperandMixin
-from ...operands import ShuffleProxy
+from ...operands import Operand, HasInput, ShuffleProxy, ShuffleMap, ShuffleReduce, Fuse
+from ..core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
 
 
 class TensorOperandMixin(TileableOperandMixin):
@@ -63,10 +64,56 @@ class TensorOperandMixin(TileableOperandMixin):
         raise NotImplementedError
 
 
+class TensorOperand(Operand):
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
+
+class TensorHasInput(HasInput):
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
+
 class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
+    _dtype = DataTypeField('dtype')
+
     def __init__(self, dtype=None, **kwargs):
         kwargs['_dtype'] = kwargs.get('_dtype', dtype)
         super(TensorShuffleProxy, self).__init__(**kwargs)
 
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
     def calc_shape(self, *inputs_shape):
         return ()
+
+
+class TensorShuffleMap(ShuffleMap):
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
+
+class TensorShuffleReduce(ShuffleReduce):
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
+
+class TensorFuse(Fuse):
+    _dtype = DataTypeField('dtype')
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)

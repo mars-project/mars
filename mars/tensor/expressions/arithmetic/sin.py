@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorSin(operands.Sin, TensorUnaryOp):
-    pass
+class TensorSin(TensorUnaryOp):
+    _op_type_ = OperandDef.SIN
 
 
 @infer_dtype(np.sin)

@@ -16,13 +16,26 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorStandardGamma(operands.StandardGamma, TensorRandomOperandMixin):
+class TensorStandardGamma(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_shape', '_size'
     _input_fields_ = ['_shape']
+    _op_type_ = OperandDef.RAND_STANDARD_GAMMMA
+
+    _shape = AnyField('shape')
+    _size = TupleField('size', ValueType.int64)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def size(self):
+        return self._size
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

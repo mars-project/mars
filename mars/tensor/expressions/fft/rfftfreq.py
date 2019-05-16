@@ -16,14 +16,28 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
+from ....serialize import Int32Field, Float64Field
 from ..datasource import arange
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 
 
-class TensorRFFTFreq(fftop.RFFTFreq, TensorOperandMixin):
+class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.RFFTFREQ
+
+    _n = Int32Field('n')
+    _d = Float64Field('d')
+
     def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
         super(TensorRFFTFreq, self).__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def d(self):
+        return self._d
 
     def __call__(self, chunk_size=None):
         shape = (self.n // 2 + 1,)

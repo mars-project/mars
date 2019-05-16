@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 from mars.tensor.expressions.datasource import ones, tensor
-from mars.operands import MeanCombine, MeanChunk, Mean, Concatenate, Argmax, Argmin,\
-    ArgmaxChunk, ArgmaxCombine, ArgminChunk, ArgminCombine
-from mars.tensor.expressions.reduction import all
+from mars.tensor.expressions.merge import TensorConcatenate
+from mars.tensor.expressions.reduction import all, TensorMean, TensorMeanChunk, TensorMeanCombine, \
+    TensorArgmax, TensorArgmaxChunk, TensorArgmaxCombine, TensorArgmin, TensorArgminChunk, TensorArgminCombine
 from mars.tests.core import calc_shape
 
 
@@ -96,9 +96,9 @@ class Test(unittest.TestCase):
         res = mean(ones((10, 8), chunk_size=3))
         self.assertEqual(res.shape, ())
         self.assertIsNotNone(res.dtype)
-        self.assertIsInstance(res.chunks[0].op, Mean)
-        self.assertIsInstance(res.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, MeanCombine)
+        self.assertIsInstance(res.chunks[0].op, TensorMean)
+        self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMeanCombine)
 
         res = mean(ones((8, 8), chunk_size=8))
         self.assertEqual(res.shape, ())
@@ -133,9 +133,9 @@ class Test(unittest.TestCase):
         res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res.shape, (10, 1))
         self.assertEqual(calc_shape(res), res.shape)
-        self.assertIsInstance(res.chunks[0].op, Mean)
-        self.assertIsInstance(res.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, MeanChunk)
+        self.assertIsInstance(res.chunks[0].op, TensorMean)
+        self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMeanChunk)
         self.assertEqual(calc_shape(res.chunks[0]), res.chunks[0].shape)
 
     def testArgReduction(self):
@@ -149,12 +149,12 @@ class Test(unittest.TestCase):
         self.assertIsNotNone(res1.dtype)
         self.assertEqual(res2.shape, ())
         self.assertEqual(calc_shape(res2), res2.shape)
-        self.assertIsInstance(res1.chunks[0].op, Argmax)
-        self.assertIsInstance(res2.chunks[0].op, Argmin)
-        self.assertIsInstance(res1.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res2.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxCombine)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminCombine)
+        self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
+        self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
+        self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxCombine)
+        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminCombine)
         self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
         self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
@@ -164,12 +164,12 @@ class Test(unittest.TestCase):
         self.assertEqual(calc_shape(res1), res1.shape)
         self.assertEqual(res2.shape, (10, 1))
         self.assertEqual(calc_shape(res2), res2.shape)
-        self.assertIsInstance(res1.chunks[0].op, Argmax)
-        self.assertIsInstance(res2.chunks[0].op, Argmin)
-        self.assertIsInstance(res1.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res2.chunks[0].inputs[0].op, Concatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxChunk)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminChunk)
+        self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
+        self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
+        self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
+        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxChunk)
+        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminChunk)
         self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
         self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 

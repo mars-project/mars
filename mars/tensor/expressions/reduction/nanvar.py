@@ -16,39 +16,77 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import Int32Field
 from ..datasource import tensor as astensor
-from .core import TensorReduction
+from .core import TensorReduction, TensorReductionMixin
 
 
-class TensorNanMoment(operands.NanMoment, TensorReduction):
+class TensorNanMoment(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMOMENT
+
+    _moment = Int32Field('moment', default=2)
+    _ddof = Int32Field('ddof')
+
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
         super(TensorNanMoment, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                               _ddof=ddof, _combine_size=combine_size, **kw)
 
+    @property
+    def moment(self):
+        return getattr(self, '_moment', 2)
 
-class TensorNanMomentChunk(operands.NanMomentChunk, TensorReduction):
+    @property
+    def ddof(self):
+        return self._ddof
+
+
+class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMOMENT_CHUNK
+
+    _moment = Int32Field('moment', default=2)
+
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
         super(TensorNanMomentChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                    _combine_size=combine_size, **kw)
 
+    @property
+    def moment(self):
+        return getattr(self, '_moment', 2)
 
-class TensorNanMomentCombine(operands.NanMomentCombine, TensorReduction):
+
+class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMOMENT_COMBINE
+
+    _moment = Int32Field('moment')
+
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
         super(TensorNanMomentCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                      _combine_size=combine_size, **kw)
 
+    @property
+    def moment(self):
+        return getattr(self, '_moment', 2)
 
-class TensorNanVar(operands.NanVar, TensorReduction):
+
+class TensorNanVar(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANVAR
+
+    _ddof = Int32Field('ddof')
+
     def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
         super(TensorNanVar, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
                                            _combine_size=combine_size, **kw)
+
+    @property
+    def ddof(self):
+        return self._ddof
 
     @staticmethod
     def _get_op_types():

@@ -17,14 +17,29 @@
 
 import numpy as np
 
-from ....operands import Astype
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, DataTypeField, StringField
+from ..core import TensorHasInput, TensorOperandMixin
 
 
-class TensorAstype(Astype, TensorOperandMixin):
+class TensorAstype(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.ASTYPE
+
+    _input = KeyField('input')
+    _dtype = DataTypeField('dtype')
+    _casting = StringField('casting')
+
     def __init__(self, dtype=None, casting=None, sparse=False, **kw):
         super(TensorAstype, self).__init__(_dtype=dtype, _casting=casting,
                                            _sparse=sparse, **kw)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def casting(self):
+        return self._casting
 
     def _set_inputs(self, inputs):
         super(TensorAstype, self)._set_inputs(inputs)

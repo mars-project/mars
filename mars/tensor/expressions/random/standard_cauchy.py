@@ -16,17 +16,25 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, TupleField
+from .core import TensorRandomOperandMixin, TensorDistribution
 
 
-class TensorStandardCauchy(operands.StandardCauchy, TensorRandomOperandMixin):
+class TensorStandardCauchy(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_size',
+    _op_type_ = OperandDef.RAND_STANDARD_CAUCHY
+
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorStandardCauchy, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                    _gpu=gpu, **kw)
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

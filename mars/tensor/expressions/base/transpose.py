@@ -16,8 +16,9 @@
 
 import numpy as np
 
-from ....operands import Transpose
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, KeyField, ListField
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
@@ -27,10 +28,19 @@ def _reorder(x, axes):
     return type(x)(np.array(x)[list(axes)].tolist())
 
 
-class TensorTranspose(Transpose, TensorOperandMixin):
+class TensorTranspose(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.TRANSPOSE
+
+    _input = KeyField('input')
+    _axes = ListField('axes', ValueType.int32)
+
     def __init__(self, axes=None, dtype=None, sparse=False, **kw):
         super(TensorTranspose, self).__init__(_axes=axes, _dtype=dtype,
                                               _sparse=sparse, **kw)
+
+    @property
+    def axes(self):
+        return getattr(self, '_axes', None)
 
     def calc_shape(self, *inputs_shape):
         return _reorder(inputs_shape[0], self._axes)

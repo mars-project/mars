@@ -14,6 +14,7 @@
 
 from ...operands import ShuffleProxy
 from ...core import TileableOperandMixin
+from ...operands import Operand, ShuffleMap, ShuffleReduce
 from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
 
 
@@ -52,9 +53,21 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                    index_value=index_value, columns_value=columns_value, **kw)[0]
 
 
+class DataFrameOperand(Operand):
+    pass
+
+
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     def __init__(self, **kwargs):
         super(DataFrameShuffleProxy, self).__init__(**kwargs)
 
     def calc_shape(self, *inputs_shape):
         return ()
+
+
+class DataFrameShuffleMap(ShuffleMap):
+    pass
+
+
+class DataFrameShuffleReduce(ShuffleReduce):
+    pass

@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorTan(operands.Tan, TensorUnaryOp):
-    pass
+class TensorTan(TensorUnaryOp):
+    _op_type_ = OperandDef.TAN
 
 
 @infer_dtype(np.tan)

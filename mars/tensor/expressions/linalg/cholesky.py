@@ -17,8 +17,9 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from .... import operands
-from ..core import TensorOperandMixin
+from ....serialize import KeyField, BoolField
+from .... import opcodes as OperandDef
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
@@ -32,9 +33,18 @@ def _H(chunk):
     return conj_op.new_chunk([c, None, None], shape=c.shape, index=c.index)
 
 
-class TensorCholesky(operands.Cholesky, TensorOperandMixin):
+class TensorCholesky(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.CHOLESKY
+
+    _input = KeyField('input')
+    _lower = BoolField('lower')
+
     def __init__(self, lower=None, dtype=None, **kw):
         super(TensorCholesky, self).__init__(_lower=lower, _dtype=dtype, **kw)
+
+    @property
+    def lower(self):
+        return self._lower
 
     def _set_inputs(self, inputs):
         super(TensorCholesky, self)._set_inputs(inputs)

@@ -16,21 +16,25 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='always_false')
-class TensorTrueDiv(operands.TrueDiv, TensorBinOp):
+class TensorTrueDiv(TensorBinOp):
+    _op_type_ = OperandDef.TRUEDIV
+
     @classmethod
     def constant_cls(cls):
         return TensorTDivConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorTDivConstant(operands.TDivConstant, TensorConstant):
+class TensorTDivConstant(TensorConstant):
+    _op_type_ = OperandDef.TDIV_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():

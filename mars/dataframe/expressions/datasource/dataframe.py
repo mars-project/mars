@@ -14,17 +14,16 @@
 
 import itertools
 
-from ....operands.datasource import DataSource
 from .... import opcodes as OperandDef
 from ....serialize import DataFrameField, SeriesField
 from ....config import options
 from ....compat import izip
 from ....tensor.expressions.utils import get_chunk_slices
 from ..utils import decide_chunk_sizes, parse_index
-from ..core import DataFrameOperandMixin
+from ..core import DataFrameOperand, DataFrameOperandMixin
 
 
-class DataFrameDataSource(DataSource, DataFrameOperandMixin):
+class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     """
     Represents data from pandas DataFrame
     """

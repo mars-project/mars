@@ -15,18 +15,24 @@
 # limitations under the License.
 
 from ....compat import izip
-from ....operands import BroadcastTo
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, TupleField
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorBroadcastTo(BroadcastTo, TensorOperandMixin):
+class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.BROADCAST_TO
+
+    _input = KeyField('input')
+    _shape = TupleField('shape')
+
     def __init__(self, shape=None, dtype=None, sparse=False, **kw):
         super(TensorBroadcastTo, self).__init__(_shape=shape, _dtype=dtype, _sparse=sparse, **kw)
 
-    def _set_inputs(self, inputs):
-        super(TensorBroadcastTo, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
+    @property
+    def shape(self):
+        return self._shape
 
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape

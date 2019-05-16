@@ -16,15 +16,40 @@
 
 import numpy as np
 
-from ....operands import Choose
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, KeyField, ListField, StringField
 from ..utils import broadcast_shape
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorChoose(Choose, TensorOperandMixin):
+class TensorChoose(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.CHOOSE
+
+    _a = KeyField('a')
+    _choices = ListField('choices', ValueType.key)
+    _mode = StringField('mode')
+
     def __init__(self, mode=None, dtype=None, **kw):
         super(TensorChoose, self).__init__(_mode=mode, _dtype=dtype, **kw)
+
+    def __setattr__(self, key, value):
+        if key == '_mode' and value not in ('raise', 'wrap', 'clip'):
+            raise ValueError('mode should be raise, wrap or clip')
+
+        super(TensorChoose, self).__setattr__(key, value)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def choices(self):
+        return self._choices
+
+    @property
+    def mode(self):
+        return self._mode
 
     def _set_inputs(self, inputs):
         super(TensorChoose, self)._set_inputs(inputs)

@@ -22,6 +22,8 @@ from .unravel_index import unravel_index, TensorUnravelIndex
 from .nonzero import nonzero, TensorNonzero
 from .flatnonzero import flatnonzero
 from .slice import TensorSlice
+from .getitem import TensorIndex
+from .setitem import TensorIndexSetValue
 
 
 def _install():

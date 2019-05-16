@@ -14,21 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .fft import fft
-from .ifft import ifft
-from .fft2 import fft2
-from .ifft2 import ifft2
-from .fftn import fftn
-from .ifftn import ifftn
-from .rfft import rfft
-from .irfft import irfft
-from .rfft2 import rfft2
-from .irfft2 import irfft2
-from .rfftn import rfftn
-from .irfftn import irfftn
-from .hfft import hfft
-from .ihfft import ihfft
-from .fftfreq import fftfreq
-from .rfftfreq import rfftfreq
-from .fftshift import fftshift
-from .ifftshift import ifftshift
+from .fft import fft, TensorFFT
+from .ifft import ifft, TensorIFFT
+from .fft2 import fft2, TensorFFT2
+from .ifft2 import ifft2, TensorIFFT2
+from .fftn import fftn, TensorFFTN
+from .ifftn import ifftn, TensorIFFTN
+from .rfft import rfft, TensorRFFT
+from .irfft import irfft, TensorIRFFT
+from .rfft2 import rfft2, TensorRFFT2
+from .irfft2 import irfft2, TensorIRFFT2
+from .rfftn import rfftn, TensorRFFTN
+from .irfftn import irfftn, TensorIRFFTN
+from .hfft import hfft, TensorHFFT
+from .ihfft import ihfft, TensorIHFFT
+from .fftfreq import fftfreq, TensorFFTFreq
+from .rfftfreq import rfftfreq, TensorRFFTFreq
+from .fftshift import fftshift, TensorFFTShift
+from .ifftshift import ifftshift, TensorIFFTShift

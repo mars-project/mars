@@ -16,14 +16,16 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import inject_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
-class TensorFloatPower(operands.FloatPower, TensorBinOp):
+class TensorFloatPower(TensorBinOp):
+    _op_type_ = OperandDef.FLOAT_POWER
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         return x1.issparse() and not x2.issparse()
@@ -34,7 +36,9 @@ class TensorFloatPower(operands.FloatPower, TensorBinOp):
 
 
 @arithmetic_operand
-class TensorFloatPowerConstant(operands.FloatPowerConstant, TensorConstant):
+class TensorFloatPowerConstant(TensorConstant):
+    _op_type_ = OperandDef.FLOAT_POWER_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():

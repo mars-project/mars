@@ -16,14 +16,16 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
-class TensorArctan2(operands.Arctan2, TensorBinOp):
+class TensorArctan2(TensorBinOp):
+    _op_type_ = OperandDef.ARCTAN2
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         # x2 is sparse or not does not matter
@@ -35,7 +37,9 @@ class TensorArctan2(operands.Arctan2, TensorBinOp):
 
 
 @arithmetic_operand
-class TensorArct2Constant(operands.Arct2Constant, TensorConstant):
+class TensorArct2Constant(TensorConstant):
+    _op_type_ = OperandDef.ARCT2_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2):

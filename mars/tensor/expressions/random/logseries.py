@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, AnyField, TupleField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorLogseries(operands.Logseries, TensorRandomOperandMixin):
+class TensorLogseries(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_p', '_size'
     _input_fields_ = ['_p']
+    _op_type_ = OperandDef.RAND_LOGSERIES
+
+    _p = AnyField('p')
+    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorLogseries, self).__init__(_state=state, _size=size, _dtype=dtype,
                                               _gpu=gpu, **kw)
+
+    @property
+    def p(self):
+        return self._p
+
+    @property
+    def size(self):
+        return self._size
 
     def __call__(self, p, chunk_size=None):
         return self.new_tensor([p], None, raw_chunk_size=chunk_size)

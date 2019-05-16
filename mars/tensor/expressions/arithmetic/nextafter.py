@@ -16,22 +16,24 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
-class TensorNextafter(operands.Nextafter, TensorBinOp):
+class TensorNextafter(TensorBinOp):
+    _op_type_ = OperandDef.NEXTAFTER
+
     @classmethod
     def constant_cls(cls):
         return TensorNextafterConstant
 
 
 @arithmetic_operand(sparse_mode='binary_and_const')
-class TensorNextafterConstant(operands.NextafterConstant, TensorConstant):
-    pass
+class TensorNextafterConstant(TensorConstant):
+    _op_type_ = OperandDef.NEXTAFTER_CONSTANT
 
 
 @infer_dtype(np.nextafter)

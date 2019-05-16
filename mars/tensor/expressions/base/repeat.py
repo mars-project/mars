@@ -19,17 +19,32 @@ from numbers import Integral
 
 import numpy as np
 
-from ....operands import Repeat
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, AnyField, Int32Field
 from ...core import Tensor, TENSOR_TYPE, CHUNK_TYPE
 from ..utils import broadcast_shape, unify_chunks
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .ravel import ravel
 
 
-class TensorRepeat(Repeat, TensorOperandMixin):
+class TensorRepeat(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.REPEAT
+
+    _input = KeyField('input')
+    _repeats = AnyField('repeats')
+    _axis = Int32Field('axis')
+
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
         super(TensorRepeat, self).__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def repeats(self):
+        return self._repeats
+
+    @property
+    def axis(self):
+        return self._axis
 
     def _set_inputs(self, inputs):
         super(TensorRepeat, self)._set_inputs(inputs)

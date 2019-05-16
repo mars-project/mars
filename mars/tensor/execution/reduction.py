@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover
 import numpy as np
 
 from ...compat import getargspec, numpy_compat, reduce
-from ...operands import Mean
+from ..expressions.reduction import TensorMean
 from .array import get_array_module, as_same_device, device, cp
 
 
@@ -149,7 +149,7 @@ def _mean(ctx, chunk):
             [a], device=chunk.op.device, ret_extra=True)
 
         with device(device_id):
-            func = xp.mean if isinstance(chunk.op, Mean) else xp.nanmean
+            func = xp.mean if isinstance(chunk.op, TensorMean) else xp.nanmean
             ctx[chunk.key] = func(inp, axis=axis, dtype=chunk.op.dtype,
                                   keepdims=bool(chunk.op.keepdims))
     else:
@@ -427,55 +427,50 @@ def _var(ctx, chunk):
 
 def register_reduction_handler():
     from ...executor import register
-    from ...operands import Sum, Prod, Min, Max, All, Any, Mean, MeanChunk, MeanCombine, \
-        Argmax, ArgmaxChunk, ArgmaxCombine, Argmin, ArgminChunk, ArgminCombine, NanSum,\
-        NanProd, NanMax, NanMin, NanMeanChunk, NanMean, NanArgmax, NanArgmaxChunk, NanArgmin,\
-        NanArgminChunk, NanArgmaxCombine, NanArgminCombine, Moment, NanMomentChunk, MomentChunk, \
-        MomentCombine, NanMomentCombine, NanMoment, Var, NanVar, CountNonzero, \
-        Cumsum, Cumprod, NanCumsum, NanCumprod
+    from ..expressions import reduction
 
-    register(Sum, _handle_reduction(sum))
-    register(NanSum, _handle_reduction(nansum))
-    register(Prod, _handle_reduction(prod))
-    register(NanProd, _handle_reduction(nanprod))
-    register(Max, _handle_reduction(max))
-    register(NanMax, _handle_reduction(nanmax))
-    register(Min, _handle_reduction(min))
-    register(NanMin, _handle_reduction(nanmin))
-    register(All, _handle_reduction(all))
-    register(Any, _handle_reduction(any))
+    register(reduction.TensorSum, _handle_reduction(sum))
+    register(reduction.TensorNanSum, _handle_reduction(nansum))
+    register(reduction.TensorProd, _handle_reduction(prod))
+    register(reduction.TensorNanProd, _handle_reduction(nanprod))
+    register(reduction.TensorMax, _handle_reduction(max))
+    register(reduction.TensorNanMax, _handle_reduction(nanmax))
+    register(reduction.TensorMin, _handle_reduction(min))
+    register(reduction.TensorNanMin, _handle_reduction(nanmin))
+    register(reduction.TensorAll, _handle_reduction(all))
+    register(reduction.TensorAny, _handle_reduction(any))
 
-    register(Mean, _mean)
-    register(NanMean, _mean)
-    register(Var, _var)
-    register(NanVar, _var)
-    register(MeanChunk, _mean_chunk)
-    register(NanMeanChunk, _mean_chunk)
-    register(MeanCombine, _mean_combine)
+    register(reduction.TensorMean, _mean)
+    register(reduction.TensorNanMean, _mean)
+    register(reduction.TensorVar, _var)
+    register(reduction.TensorNanVar, _var)
+    register(reduction.TensorMeanChunk, _mean_chunk)
+    register(reduction.TensorNanMeanChunk, _mean_chunk)
+    register(reduction.TensorMeanCombine, _mean_combine)
 
-    register(Moment, _moment)
-    register(NanMoment, _moment)
-    register(MomentChunk, _moment_chunk)
-    register(NanMomentChunk, _moment_chunk)
-    register(MomentCombine, _moment_combine)
-    register(NanMomentCombine, _moment_combine)
+    register(reduction.TensorMoment, _moment)
+    register(reduction.TensorNanMoment, _moment)
+    register(reduction.TensorMomentChunk, _moment_chunk)
+    register(reduction.TensorNanMomentChunk, _moment_chunk)
+    register(reduction.TensorMomentCombine, _moment_combine)
+    register(reduction.TensorNanMomentCombine, _moment_combine)
 
-    register(CountNonzero, _count_nonzero)
+    register(reduction.TensorCountNonzero, _count_nonzero)
 
-    register(Argmax, _handle_arg(argmax))
-    register(NanArgmax, _handle_arg(_nanargmax))
-    register(ArgmaxChunk, _handle_arg_chunk(max, argmax))
-    register(NanArgmaxChunk, _handle_arg_chunk(nanmax, _nanargmax))
-    register(ArgmaxCombine, _handle_arg_combine(argmax))
-    register(NanArgmaxCombine, _handle_arg_combine(_nanargmax))
-    register(Argmin, _handle_arg(argmin))
-    register(NanArgmin, _handle_arg(_nanargmin))
-    register(ArgminChunk, _handle_arg_chunk(min, argmin))
-    register(NanArgminChunk, _handle_arg_chunk(nanmin, _nanargmin))
-    register(ArgminCombine, _handle_arg_combine(argmin))
-    register(NanArgminCombine, _handle_arg_combine(_nanargmin))
+    register(reduction.TensorArgmax, _handle_arg(argmax))
+    register(reduction.TensorNanArgmax, _handle_arg(_nanargmax))
+    register(reduction.TensorArgmaxChunk, _handle_arg_chunk(max, argmax))
+    register(reduction.TensorNanArgmaxChunk, _handle_arg_chunk(nanmax, _nanargmax))
+    register(reduction.TensorArgmaxCombine, _handle_arg_combine(argmax))
+    register(reduction.TensorNanArgmaxCombine, _handle_arg_combine(_nanargmax))
+    register(reduction.TensorArgmin, _handle_arg(argmin))
+    register(reduction.TensorNanArgmin, _handle_arg(_nanargmin))
+    register(reduction.TensorArgminChunk, _handle_arg_chunk(min, argmin))
+    register(reduction.TensorNanArgminChunk, _handle_arg_chunk(nanmin, _nanargmin))
+    register(reduction.TensorArgminCombine, _handle_arg_combine(argmin))
+    register(reduction.TensorNanArgminCombine, _handle_arg_combine(_nanargmin))
 
-    register(Cumsum, _handle_cum(np.cumsum))
-    register(Cumprod, _handle_cum(np.cumprod))
-    register(NanCumsum, _handle_cum(nancumsum))
-    register(NanCumprod, _handle_cum(nancumprod))
+    register(reduction.TensorCumsum, _handle_cum(np.cumsum))
+    register(reduction.TensorCumprod, _handle_cum(np.cumprod))
+    register(reduction.TensorNanCumsum, _handle_cum(nancumsum))
+    register(reduction.TensorNanCumprod, _handle_cum(nancumprod))

@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import inject_dtype
 from .core import TensorCompare, TensorCompareConstant
 
 
-class TensorGreaterEqual(operands.GreaterEqual, TensorCompare):
+class TensorGreaterEqual(TensorCompare):
+    _op_type_ = OperandDef.GE
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorGreaterEqual, self).__init__(_casting=casting, _err=err,
@@ -32,7 +34,9 @@ class TensorGreaterEqual(operands.GreaterEqual, TensorCompare):
         return TensorGeConstant
 
 
-class TensorGeConstant(operands.GeConstant, TensorCompareConstant):
+class TensorGeConstant(TensorCompareConstant):
+    _op_type_ = OperandDef.GE_CONSTANT
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorGeConstant, self).__init__(_casting=casting, _err=err,

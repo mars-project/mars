@@ -16,14 +16,16 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
-class TensorPower(operands.Power, TensorBinOp):
+class TensorPower(TensorBinOp):
+    _op_type_ = OperandDef.POW
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         return x1.issparse() and not x2.issparse()
@@ -34,7 +36,9 @@ class TensorPower(operands.Power, TensorBinOp):
 
 
 @arithmetic_operand
-class TensorPowConstant(operands.PowConstant, TensorConstant):
+class TensorPowConstant(TensorConstant):
+    _op_type_ = OperandDef.POW_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():

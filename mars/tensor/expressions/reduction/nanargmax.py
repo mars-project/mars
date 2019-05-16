@@ -16,25 +16,43 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorArgReduction
+from .... import opcodes as OperandDef
+from ....serialize import Int64Field, TupleField
+from .core import TensorReduction, TensorArgReductionMixin
 
 
-class TensorNanArgmaxChunk(operands.NanArgmaxChunk, TensorArgReduction):
+class TensorNanArgmaxChunk(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.NANARGMAX_CHUNK
+
+    _offset = Int64Field('offset')
+    _total_shape = TupleField('total_shape')
+
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
                  combine_size=None, offset=None, total_shape=None,**kw):
         super(TensorNanArgmaxChunk, self).__init__(_axis=axis, _dtype=dtype,
                                                    _keepdims=keepdims, _combine_size=combine_size,
                                                    _offset=offset, _total_shape=total_shape, **kw)
 
+    @property
+    def offset(self):
+        return getattr(self, '_offset', None)
 
-class TensorNanArgmaxCombine(operands.NanArgmaxCombine, TensorArgReduction):
+    @property
+    def total_shape(self):
+        return getattr(self, '_total_shape', None)
+
+
+class TensorNanArgmaxCombine(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.NANARGMAX_COMBINE
+
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
         super(TensorNanArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                      _combine_size=combine_size, **kw)
 
 
-class TensorNanArgmax(operands.NanArgmax, TensorArgReduction):
+class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
+    _op_type_ = OperandDef.NANARGMAX
+
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
         super(TensorNanArgmax, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                               _combine_size=combine_size, **kw)

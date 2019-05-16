@@ -14,11 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
-from .core import TensorFuseChunkMixin
+from .core import TensorFuse, TensorFuseChunkMixin
 
 
-class TensorCpFuseChunk(operands.CpFuse, TensorFuseChunkMixin):
+class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
+    _op_type_ = None  # no opcode, cannot be serialized
+
     # use for cupy-fused operand
     def __init__(self, dtype=None, **kw):
         super(TensorCpFuseChunk, self).__init__(_dtype=dtype, **kw)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)

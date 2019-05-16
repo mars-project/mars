@@ -19,17 +19,26 @@ import itertools
 import numpy as np
 from mars.tensor.expressions.utils import decide_chunk_sizes
 
-from .... import opcodes
+from .... import opcodes as OperandDef
 from ....compat import six, izip
 from ....serialize import KeyField, TupleField, ValueType
-from ....operands import Reshape, ShuffleMap, ShuffleReduce
 from ..datasource import tensor as astensor
-from ..core import TensorOperandMixin, TensorShuffleProxy
+from ..core import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
+    TensorShuffleMap, TensorShuffleReduce
 
 
-class TensorReshape(Reshape, TensorOperandMixin):
+class TensorReshape(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.RESHAPE
+
+    _input = KeyField('input')
+    _newshape = TupleField('newshape', ValueType.int64)
+
     def __init__(self, newshape=None, dtype=None, **kw):
         super(TensorReshape, self).__init__(_newshape=newshape, _dtype=dtype, **kw)
+
+    @property
+    def newshape(self):
+        return self._newshape
 
     def _set_inputs(self, inputs):
         super(TensorReshape, self)._set_inputs(inputs)
@@ -221,8 +230,8 @@ class TensorReshape(Reshape, TensorOperandMixin):
             return [in_tensor.reshape(-1).single_tiles().reshape(tensor.shape).single_tiles()]
 
 
-class TensorReshapeMap(ShuffleMap, TensorOperandMixin):
-    _op_type_ = opcodes.RESHAPE_MAP
+class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
+    _op_type_ = OperandDef.RESHAPE_MAP
 
     _input = KeyField('input')
     _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
@@ -254,8 +263,8 @@ class TensorReshapeMap(ShuffleMap, TensorOperandMixin):
         return np.nan,
 
 
-class TensorReshapeReduce(ShuffleReduce, TensorOperandMixin):
-    _op_type_ = opcodes.RESHAPE_REDUCE
+class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
+    _op_type_ = OperandDef.RESHAPE_REDUCE
 
     _input = KeyField('input')
 

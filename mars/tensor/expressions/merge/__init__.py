@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .concatenate import concatenate
-from .stack import stack
+from .concatenate import concatenate, TensorConcatenate
+from .stack import stack, TensorStack
 from .hstack import hstack
 from .vstack import vstack
 from .dstack import dstack

@@ -14,12 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
 from ....tiles import NotSupportTile
-from ..core import TensorOperandMixin
+from ..core import TensorFuse, TensorOperandMixin
 
 
-class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
+class TensorFuseChunk(TensorFuse, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorFuseChunk, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 

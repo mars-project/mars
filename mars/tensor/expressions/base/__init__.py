@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from .result_type import result_type
+from .astype import TensorAstype
 from .copyto import copyto, TensorCopyTo
 from .transpose import transpose, TensorTranspose
 from .where import where, TensorWhere
