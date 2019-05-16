@@ -37,9 +37,12 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             distributor.distribute('Actor')
+        with self.assertRaises(ValueError):
+            distributor.distribute('w:x:Actor')
 
         distributor = MarsDistributor(3, 'w:2:')
         self.assertEqual(distributor.distribute('Actor'), 2)
+        self.assertEqual(distributor.distribute('w:x:Actor'), 2)
 
         distributor = MarsDistributor(3)
         ref_uid = 'w:h1:Actor2'

@@ -328,11 +328,10 @@ def build_graph(tensors, graph=None, executed_keys=None, tiled=False, compose=Tr
 
 
 _kernel_mode = threading.local()
-_kernel_mode.eager = None
 
 
 def is_eager_mode():
-    if _kernel_mode.eager is None:
+    if getattr(_kernel_mode, 'eager', None) is None:
         return options.eager_mode
     return _kernel_mode.eager
 

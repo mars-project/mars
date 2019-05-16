@@ -36,6 +36,12 @@ class MarsAPI(object):
         actor_address = self.cluster_info.get_scheduler(uid)
         return self.actor_client.actor_ref(uid, address=actor_address)
 
+    def get_graph_meta_ref(self, session_id, graph_key):
+        graph_uid = GraphActor.gen_uid(session_id, graph_key)
+        graph_meta_uid = GraphMetaActor.gen_uid(session_id, graph_key)
+        graph_addr = self.cluster_info.get_scheduler(graph_uid)
+        return self.actor_client.actor_ref(graph_meta_uid, address=graph_addr)
+
     def get_schedulers_info(self):
         schedulers = self.cluster_info.get_schedulers()
         infos = dict()
@@ -69,8 +75,8 @@ class MarsAPI(object):
 
     def stop_graph(self, session_id, graph_key):
         from .scheduler import GraphState
-        graph_meta_uid = GraphMetaActor.gen_uid(session_id, graph_key)
-        self.get_actor_ref(graph_meta_uid).set_state(GraphState.CANCELLING)
+        graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
+        graph_meta_ref.set_state(GraphState.CANCELLING)
 
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
@@ -79,8 +85,7 @@ class MarsAPI(object):
     def get_graph_state(self, session_id, graph_key):
         from .scheduler import GraphState
 
-        graph_meta_uid = GraphMetaActor.gen_uid(session_id, graph_key)
-        graph_meta_ref = self.get_actor_ref(graph_meta_uid)
+        graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
         if self.actor_client.has_actor(graph_meta_ref):
             state_obj = graph_meta_ref.get_state()
             state = state_obj.value if state_obj else 'preparing'

@@ -30,6 +30,7 @@ class SessionActor(SchedulerActor):
         self._cluster_info_ref = None
         self._manager_ref = None
         self._graph_refs = dict()
+        self._graph_meta_refs = dict()
         self._tensor_to_graph = dict()
 
     @staticmethod
@@ -41,6 +42,9 @@ class SessionActor(SchedulerActor):
 
     def get_graph_refs(self):
         return self._graph_refs
+
+    def get_graph_meta_refs(self):
+        return self._graph_meta_refs
 
     def get_graph_ref_by_tensor_key(self, tensor_key):
         return self._tensor_to_graph[tensor_key]
@@ -59,14 +63,18 @@ class SessionActor(SchedulerActor):
 
     @log_unhandled
     def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
-        from .graph import GraphActor
+        from .graph import GraphActor, GraphMetaActor
 
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
+        graph_addr = self.get_scheduler(graph_uid)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tensors=target_tensors,
-                                          uid=graph_uid, address=self.get_scheduler(graph_uid))
-        graph_ref.execute_graph(_tell=True, compose=compose)
+                                          uid=graph_uid, address=graph_addr)
         self._graph_refs[graph_key] = graph_ref
+        self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
+            GraphMetaActor.gen_uid(self._session_id, graph_key), address=graph_addr)
+
+        graph_ref.execute_graph(_tell=True, compose=compose)
         for tensor_key in target_tensors or ():
             if tensor_key not in self._tensor_to_graph:
                 self._tensor_to_graph[tensor_key] = graph_ref

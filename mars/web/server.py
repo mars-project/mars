@@ -29,7 +29,7 @@ from .. import kvstore
 from ..compat import six
 from ..utils import get_next_port
 from ..config import options
-from ..scheduler import GraphActor, ResourceActor
+from ..scheduler import ResourceActor
 from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class MarsWebAPI(MarsAPI):
             session_desc['name'] = session_id
             session_desc['tasks'] = dict()
             session_ref = self.actor_client.actor_ref(session_ref)
-            for graph_key, graph_ref in six.iteritems(session_ref.get_graph_refs()):
+            for graph_key, graph_meta_ref in six.iteritems(session_ref.get_graph_meta_refs()):
                 task_desc = dict()
 
                 state = self.get_graph_state(session_id, graph_key)
@@ -95,10 +95,10 @@ class MarsWebAPI(MarsAPI):
                     session_desc['tasks'][graph_key] = task_desc
                     continue
 
-                graph_ref = self.actor_client.actor_ref(graph_ref)
+                graph_meta_ref = self.actor_client.actor_ref(graph_meta_ref)
                 task_desc['id'] = graph_key
-                task_desc['state'] = graph_ref.get_state().value
-                start_time, end_time, graph_size = graph_ref.get_graph_info()
+                task_desc['state'] = graph_meta_ref.get_state().value
+                start_time, end_time, graph_size = graph_meta_ref.get_graph_info()
                 task_desc['start_time'] = start_time
                 task_desc['end_time'] = end_time
                 task_desc['graph_size'] = graph_size
@@ -107,9 +107,8 @@ class MarsWebAPI(MarsAPI):
         return sessions
 
     def get_task_detail(self, session_id, task_id):
-        graph_uid = GraphActor.gen_uid(session_id, task_id)
-        graph_ref = self.get_actor_ref(graph_uid)
-        return graph_ref.calc_stats()
+        graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
+        return graph_meta_ref.calc_stats()
 
     def get_workers_meta(self):
         resource_uid = ResourceActor.default_name()
