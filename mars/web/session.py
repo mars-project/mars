@@ -221,7 +221,7 @@ class Session(object):
         resp = self._req_session.post(session_url + '/graph', dict(
             graph=json.dumps(graph_json),
             target=targets,
-            compose=compose
+            compose='1' if compose else '0'
         ))
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
