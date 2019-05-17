@@ -39,7 +39,7 @@ class LocalSession(object):
 
     @property
     def executed_tensors(self):
-        return self._executor.stored_tensors.keys()
+        return self._executor.stored_tileables.keys()
 
     @endpoint.setter
     def endpoint(self, endpoint):

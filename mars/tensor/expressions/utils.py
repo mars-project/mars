@@ -472,3 +472,15 @@ def convert_to_fetch(entity):
         return new_op.new_tensor(None, entity.shape, _key=entity.key, _id=entity.id)
     else:
         raise ValueError('Now only support tensor or chunk type.')
+
+
+def concat_tileable_chunks(tensor):
+    from .merge.concatenate import TensorConcatenate
+
+    assert not tensor.is_coarse()
+
+    op = TensorConcatenate(dtype=tensor.op.dtype)
+    chunk = TensorConcatenate(dtype=op.dtype).new_chunk(
+        tensor.chunks, shape=tensor.shape)
+    return op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                         nsplits=tuple((s,) for s in tensor.shape))

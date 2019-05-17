@@ -401,3 +401,11 @@ class BlacklistSet(object):
                 rmv_list.append(k)
         for k in rmv_list:
             del self._key_time[k]
+
+
+def concat_tileable_chunks(tileable):
+    module_name = tileable.op._op_module_
+    # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
+    expr_module_name = '{0}.expressions'.format(module_name)
+    expr_module = __import__(expr_module_name, dict(), dict(), list())
+    return expr_module.concat_tileable_chunks(tileable)

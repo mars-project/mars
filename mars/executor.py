@@ -410,11 +410,11 @@ class Executor(object):
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
 
-        # only record the executed tensor
-        self.tensor_to_tiled = weakref.WeakKeyDictionary()
-        # dict structure: {tensor_key -> chunk_keys, tensor_ids}
-        # dict value is a tuple object which records chunk keys and tensor id
-        self.stored_tensors = dict()
+        # only record the executed tileable
+        self.tileable_to_tiled = weakref.WeakKeyDictionary()
+        # dict structure: {tileable_key -> chunk_keys, tileable_ids}
+        # dict value is a tuple object which records chunk keys and tileable id
+        self.stored_tileables = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
         # synchronous provider
@@ -457,7 +457,7 @@ class Executor(object):
                       mock=False, retval=True):
         optimized_graph = self._preprocess(graph, keys)
 
-        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
+        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
         graph_execution = GraphExecution(self._chunk_result, optimized_graph,
                                          keys, executed_keys, self._sync_provider,
                                          n_parallel=n_parallel, prefetch=self._prefetch,
@@ -502,10 +502,10 @@ class Executor(object):
             chunk_keys = [c.key for c in tensor.chunks]
             result_keys.extend(chunk_keys)
 
-            if tensor.key in self.stored_tensors:
-                self.stored_tensors[tensor.key][0].add(tensor.id)
+            if tensor.key in self.stored_tileables:
+                self.stored_tileables[tensor.key][0].add(tensor.id)
             else:
-                self.stored_tensors[tensor.key] = tuple([{tensor.id}, set(chunk_keys)])
+                self.stored_tileables[tensor.key] = tuple([{tensor.id}, set(chunk_keys)])
             if not fetch:
                 # no need to generate concat keys
                 pass
@@ -549,7 +549,7 @@ class Executor(object):
         to_concat_tensors = OrderedDict()
 
         for i, tensor in enumerate(tensors):
-            if tensor.key not in self.stored_tensors:
+            if tensor.key not in self.stored_tileables:
                 # check if the tensor is executed before
                 raise ValueError(
                     'Tensor to fetch must be executed before, got {0}'.format(tensor))
@@ -601,9 +601,9 @@ class Executor(object):
     def decref(self, *keys):
         for key in keys:
             tensor_key, tensor_id = key
-            if key[0] not in self.stored_tensors:
+            if key[0] not in self.stored_tileables:
                 continue
-            ids, chunk_keys = self.stored_tensors[key[0]]
+            ids, chunk_keys = self.stored_tileables[key[0]]
             if tensor_id in ids:
                 ids.remove(tensor_id)
                 # for those same key tensors, do decref only when all those tensors are garbage collected
@@ -612,7 +612,7 @@ class Executor(object):
                 for chunk_key in chunk_keys:
                     if chunk_key in self.chunk_result:
                         del self.chunk_result[chunk_key]
-                del self.stored_tensors[tensor_key]
+                del self.stored_tileables[tensor_key]
 
 
 def ignore(*_):
