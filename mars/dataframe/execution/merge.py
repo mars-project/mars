@@ -44,9 +44,9 @@ def _base_concat(chunk, inputs):
             concats.append(concat)
 
         ret = pd.concat(concats)
-        if chunk.index_value.should_be_monotonic:
+        if getattr(chunk.index_value, 'should_be_monotonic', False):
             ret.sort_index(inplace=True)
-        if chunk.columns.should_be_monotonic:
+        if getattr(chunk.columns, 'should_be_monotonic', False):
             ret.sort_index(axis=1, inplace=True)
         return ret
 
