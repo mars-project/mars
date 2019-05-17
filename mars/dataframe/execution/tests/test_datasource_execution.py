@@ -33,13 +33,7 @@ class Test(TestBase):
 
     def testPandasExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
-        df = from_pandas(pdf, chunk_size = (13, 21))
+        df = from_pandas(pdf, chunk_size=(13, 21))
 
-        graph = df.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df.chunks])
-
-        self.assertEqual(len(results), 4)
-        pd.testing.assert_frame_equal(pdf.iloc[:13, :21], results[0])
-        pd.testing.assert_frame_equal(pdf.iloc[:13, 21:], results[1])
-        pd.testing.assert_frame_equal(pdf.iloc[13:, :21], results[2])
-        pd.testing.assert_frame_equal(pdf.iloc[13:, 21:], results[3])
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(pdf, result)

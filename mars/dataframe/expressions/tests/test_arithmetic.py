@@ -61,6 +61,16 @@ class Test(TestBase):
 
         df3.tiles()
 
+        # test df3's index and columns after tiling
+        pd.testing.assert_index_equal(df3.columns.to_pandas(), (data1 + data2).columns)
+        self.assertTrue(df3.columns.should_be_monotonic)
+        self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df3.index_value.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df3.index_value.key, df1.index_value.key)
+        self.assertNotEqual(df3.index_value.key, df2.index_value.key)
+        self.assertEqual(df3.shape[1], 11)  # columns is recorded, so we can get it
+
         data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
         data1_columns_min_max = [[3, True, 7, True], [8, True, 12, True]]
         data2_index_min_max = [(2, True, 5, True), (6, True, 11, True)]

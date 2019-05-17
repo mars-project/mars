@@ -28,6 +28,7 @@ import sys
 import time
 import zlib
 import threading
+import importlib
 
 import numpy as np
 
@@ -406,6 +407,6 @@ class BlacklistSet(object):
 def concat_tileable_chunks(tileable):
     module_name = tileable.op._op_module_
     # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
-    expr_module_name = '{0}.expressions'.format(module_name)
-    expr_module = __import__(expr_module_name, dict(), dict(), list())
+    expr_module_name = 'mars.{0}.expressions'.format(module_name)
+    expr_module = importlib.import_module(expr_module_name)
     return expr_module.concat_tileable_chunks(tileable)

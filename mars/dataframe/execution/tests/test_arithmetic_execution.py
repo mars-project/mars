@@ -32,15 +32,6 @@ class Test(TestBase):
         super(Test, self).setUp()
         self.executor = Executor()
 
-    @staticmethod
-    def _concat(index, dtypes, results):
-        empty = pd.DataFrame(index=index)
-        for c, d in zip(dtypes.index, dtypes):
-            empty[c] = pd.Series(dtype=d)
-        for df in results:
-            empty.loc[df.index, df.columns] = df
-        return empty
-
     def testAddWithoutShuffleExecution(self):
         # all the axes are monotonic
         # data1 with index split into [0...4], [5...9],
@@ -56,11 +47,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -77,11 +65,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -97,11 +82,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -116,11 +98,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True, compose=False)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True, compose=False)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -137,11 +116,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -157,11 +133,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -178,11 +151,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -198,11 +168,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -219,11 +186,8 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True, compose=False)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True, compose=False)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -239,10 +203,7 @@ class Test(TestBase):
 
         df3 = add(df1, df2)
 
-        graph = df3.build_graph(tiled=True, compose=False)
-        results = self.executor.execute_graph(graph, keys=[c.key for c in df3.chunks])
-
         expected = data1 + data2
-        result = self._concat(expected.index, expected.dtypes, results)
+        result = self.executor.execute_dataframe(df3, concat=True, compose=False)[0]
 
         pd.testing.assert_frame_equal(expected, result)
