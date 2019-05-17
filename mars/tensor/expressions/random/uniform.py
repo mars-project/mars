@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -28,7 +28,6 @@ class TensorUniform(TensorDistribution, TensorRandomOperandMixin):
 
     _low = AnyField('low')
     _high = AnyField('high')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -42,10 +41,6 @@ class TensorUniform(TensorDistribution, TensorRandomOperandMixin):
     @property
     def high(self):
         return self._high
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, low, high, chunk_size=None):
         return self.new_tensor([low, high], None, raw_chunk_size=chunk_size)

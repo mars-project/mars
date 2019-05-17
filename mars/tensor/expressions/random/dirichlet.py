@@ -20,7 +20,7 @@ from collections import Iterable
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, TupleField
+from ....serialize import TupleField
 from ....config import options
 from ....compat import irange, izip
 from ..utils import decide_chunk_sizes, random_state_data
@@ -32,7 +32,6 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_DIRICHLET
 
     _alpha = TupleField('alpha')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, alpha=None, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -42,10 +41,6 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     @property
     def alpha(self):
         return self._alpha
-
-    @property
-    def size(self):
-        return self._size
 
     def _get_shape(self, shapes):
         shape = super(TensorDirichlet, self)._get_shape(shapes)

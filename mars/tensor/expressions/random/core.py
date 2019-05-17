@@ -22,7 +22,7 @@ import numpy as np
 
 from ....config import options
 from ....compat import irange, izip, zip_longest
-from ....serialize import TupleField
+from ....serialize import ValueType, TupleField
 from ....utils import tokenize
 from ...core import TENSOR_TYPE, CHUNK_TYPE
 from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
@@ -291,8 +291,16 @@ class TensorRandomOperand(TensorOperand):
 
 
 class TensorDistribution(TensorRandomOperand):
-    __slots__ = ()
+    _size = TupleField('size', ValueType.int64)
+
+    @property
+    def size(self):
+        return self._size
 
 
 class TensorSimpleRandomData(TensorRandomOperand):
-    __slots__ = ()
+    _size = TupleField('size', ValueType.int64)
+
+    @property
+    def size(self):
+        return self._size

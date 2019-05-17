@@ -19,7 +19,7 @@ from numbers import Integral
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField, KeyField, BoolField
+from ....serialize import AnyField, KeyField, BoolField
 from ...core import TENSOR_TYPE
 from ..datasource import arange, array
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
@@ -32,7 +32,6 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_CHOICE
 
     _a = AnyField('a')
-    _size = TupleField('size', ValueType.int64)
     _replace = BoolField('replace')
     _p = KeyField('p')
 
@@ -45,10 +44,6 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     @property
     def a(self):
         return self._a
-
-    @property
-    def size(self):
-        return self._size
 
     @property
     def replace(self):

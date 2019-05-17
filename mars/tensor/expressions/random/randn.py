@@ -17,23 +17,16 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, TupleField
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
 class TensorRandn(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDN
 
-    _size = TupleField('size', ValueType.int64)
-
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorRandn, self).__init__(_state=state, _size=size,
                                           _dtype=dtype, _gpu=gpu, **kw)
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

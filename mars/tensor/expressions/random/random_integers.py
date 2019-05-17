@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, Int64Field, TupleField
+from ....serialize import Int64Field
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
@@ -27,7 +27,6 @@ class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
 
     _low = Int64Field('low')
     _high = Int64Field('high')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None,
                  low=None, high=None, gpu=None, **kw):
@@ -43,10 +42,6 @@ class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     @property
     def high(self):
         return self._high
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)

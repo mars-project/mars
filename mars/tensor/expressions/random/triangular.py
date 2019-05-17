@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,7 +29,6 @@ class TensorTriangular(TensorDistribution, TensorRandomOperandMixin):
     _left = AnyField('left')
     _mode = AnyField('mode')
     _right = AnyField('right')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -47,10 +46,6 @@ class TensorTriangular(TensorDistribution, TensorRandomOperandMixin):
     @property
     def right(self):
         return self._right
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, left, mode, right, chunk_size=None):
         return self.new_tensor([left, mode, right], None, raw_chunk_size=chunk_size)

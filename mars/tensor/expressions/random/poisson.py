@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -27,7 +27,6 @@ class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_POSSION
 
     _lam = AnyField('lam')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -37,10 +36,6 @@ class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
     @property
     def lam(self):
         return self._lam
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, lam, chunk_size=None):
         return self.new_tensor([lam], None, raw_chunk_size=chunk_size)

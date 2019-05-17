@@ -27,7 +27,6 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
 
     _n = Int64Field('n')
     _pvals = TupleField('pvals', ValueType.float64)
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, n=None, pvals=None, state=None, size=None,
                  dtype=None, gpu=None, **kw):
@@ -42,10 +41,6 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     @property
     def pvals(self):
         return self._pvals
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, chunk_size=None):
         if self._size is None:

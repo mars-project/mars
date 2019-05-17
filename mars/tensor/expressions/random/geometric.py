@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -27,15 +27,10 @@ class TensorGeometric(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_GEOMETRIC
 
     _p = AnyField('p')
-    _size = TupleField('size', ValueType.int64)
 
     @property
     def p(self):
         return self._p
-
-    @property
-    def size(self):
-        return self._size
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

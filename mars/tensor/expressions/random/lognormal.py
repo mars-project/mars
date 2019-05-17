@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -28,7 +28,6 @@ class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
 
     _mean = AnyField('mean')
     _sigma = AnyField('sigma')
-    _size = TupleField('size', ValueType.int64)
 
     @property
     def mean(self):
@@ -37,10 +36,6 @@ class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
     @property
     def sigma(self):
         return self._sigma
-
-    @property
-    def size(self):
-        return self._size
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

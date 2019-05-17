@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -28,7 +28,6 @@ class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
 
     _df = AnyField('df')
     _nonc = AnyField('nonc')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -42,10 +41,6 @@ class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
     @property
     def nonc(self):
         return self._nonc
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, df, nonc, chunk_size=None):
         return self.new_tensor([df, nonc], None, raw_chunk_size=chunk_size)

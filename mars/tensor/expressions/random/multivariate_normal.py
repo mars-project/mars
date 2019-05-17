@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, NDArrayField, TupleField, StringField, Float64Field
+from ....serialize import NDArrayField, StringField, Float64Field
 from ....config import options
 from ....compat import irange, izip
 from ..utils import decide_chunk_sizes, random_state_data
@@ -32,7 +32,6 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
 
     _mean = NDArrayField('mean')
     _cov = NDArrayField('cov')
-    _size = TupleField('size', ValueType.int64)
     _check_valid = StringField('check_valid')
     _tol = Float64Field('tol')
 
@@ -50,10 +49,6 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     @property
     def cov(self):
         return self._cov
-
-    @property
-    def size(self):
-        return self._size
 
     @property
     def check_valid(self):

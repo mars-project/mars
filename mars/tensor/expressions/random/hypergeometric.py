@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, AnyField, TupleField
+from ....serialize import AnyField
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,7 +29,6 @@ class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
     _ngood = AnyField('ngood')
     _nbad = AnyField('nbad')
     _nsample = AnyField('nsample')
-    _size = TupleField('size', ValueType.int64)
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -47,10 +46,6 @@ class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
     @property
     def nsample(self):
         return self._nsample
-
-    @property
-    def size(self):
-        return self._size
 
     def __call__(self, ngood, nbad, nsample, chunk_size=None):
         return self.new_tensor([ngood, nbad, nsample], None, raw_chunk_size=chunk_size)
