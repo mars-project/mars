@@ -93,7 +93,7 @@ class GraphsApiHandler(ApiRequestHandler):
         try:
             graph = self.get_argument('graph')
             target = self.get_argument('target').split(',')
-            compose = self.get_argument('compose', True)
+            compose = bool(int(self.get_argument('compose', '1')))
         except web.MissingArgumentError as ex:
             self.write(json.dumps(dict(msg=str(ex))))
             raise web.HTTPError(400, 'Argument missing')
