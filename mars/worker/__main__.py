@@ -16,7 +16,7 @@ import logging
 
 from ..base_app import BaseApplication
 from ..errors import StartArgumentError
-from .distributor import WorkerDistributor
+from ..distributor import MarsDistributor
 from .service import WorkerService
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class WorkerApplication(BaseApplication):
         self._service.start_plasma(one_mapped_file=self.args.plasma_one_mapped_file or False)
 
         self.n_process = self._service.n_process
-        kwargs['distributor'] = WorkerDistributor(self.n_process)
+        kwargs['distributor'] = MarsDistributor(self.n_process, 'w:0:')
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
     def start_service(self):

@@ -20,7 +20,7 @@ from mars.compat import six
 from mars.errors import WorkerProcessStopped
 from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor, DispatchActor, ProcessHelperActor
-from mars.worker.distributor import WorkerDistributor
+from mars.distributor import MarsDistributor
 from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
 
@@ -72,7 +72,7 @@ class DaemonTestActor(WorkerActor):
 class Test(WorkerCase):
     def testDaemon(self):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
-        with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
+        with create_actor_pool(n_process=2, backend='gevent', distributor=MarsDistributor(2, 'w:0:'),
                                address=mock_scheduler_addr) as pool:
             daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())

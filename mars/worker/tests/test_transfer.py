@@ -22,16 +22,16 @@ from functools import partial
 import gevent
 from mars import promise
 from mars.actors import FunctionActor, create_actor_pool
-from mars.cluster_info import ClusterInfoActor
 from mars.config import options
 from mars.errors import StoreFull
 from mars.scheduler import ChunkMetaActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import get_next_port, calc_data_size
 from mars.worker import *
-from mars.worker.distributor import WorkerDistributor
+from mars.distributor import MarsDistributor
 from mars.worker.chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 from pyarrow import plasma
 
 
@@ -90,12 +90,15 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     with plasma.start_plasma_store(plasma_size) as store_args:
         options.worker.plasma_socket = plasma_socket = store_args[0]
 
-        with create_actor_pool(n_process=2, backend='gevent', distributor=WorkerDistributor(2),
+        with create_actor_pool(n_process=2, backend='gevent', distributor=MarsDistributor(2, 'w:0:'),
                                address=pool_address) as pool:
             try:
+                pool.create_actor(SchedulerClusterInfoActor, schedulers=[pool_address],
+                                  uid=SchedulerClusterInfoActor.default_name())
+                pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+                                  uid=WorkerClusterInfoActor.default_name())
+
                 pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-                pool.create_actor(ClusterInfoActor, schedulers=[pool_address],
-                                  uid=ClusterInfoActor.default_name())
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
                 pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
                 pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
@@ -164,11 +167,13 @@ class Test(WorkerCase):
                 proc.terminate()
             raise
 
-        with create_actor_pool(n_process=1, distributor=WorkerDistributor(1),
+        with create_actor_pool(n_process=1, distributor=MarsDistributor(1, 'w:0:'),
                                backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-            pool.create_actor(ClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=SchedulerClusterInfoActor.default_name())
+            pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
+                              uid=WorkerClusterInfoActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
             pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())

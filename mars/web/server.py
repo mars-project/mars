@@ -107,7 +107,7 @@ class MarsWebAPI(MarsAPI):
         return sessions
 
     def get_task_detail(self, session_id, task_id):
-        graph_uid = GraphActor.gen_name(session_id, task_id)
+        graph_uid = GraphActor.gen_uid(session_id, task_id)
         graph_ref = self.get_actor_ref(graph_uid)
         return graph_ref.calc_stats()
 

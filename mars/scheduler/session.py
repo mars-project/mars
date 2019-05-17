@@ -32,8 +32,8 @@ class SessionActor(SchedulerActor):
         self._graph_refs = dict()
 
     @staticmethod
-    def gen_name(session_id):
-        return 's:session$%s' % session_id
+    def gen_uid(session_id):
+        return 's:h1:session$%s' % session_id
 
     def get_argument(self, key):
         return self._args[key]
@@ -46,7 +46,7 @@ class SessionActor(SchedulerActor):
         self.set_cluster_info_ref()
 
         from .assigner import AssignerActor
-        assigner_uid = AssignerActor.gen_name(self._session_id)
+        assigner_uid = AssignerActor.gen_uid(self._session_id)
         assigner_addr = self.get_scheduler(assigner_uid)
         self._assigner_ref = self.ctx.create_actor(
             AssignerActor, uid=assigner_uid, address=assigner_addr)
@@ -57,7 +57,7 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(graph_ref)
 
     def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
-        graph_uid = GraphActor.gen_name(self._session_id, graph_key)
+        graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
                                           serialized_graph, target_tensors=target_tensors,
                                           uid=graph_uid, address=self.get_scheduler(graph_uid))
@@ -78,10 +78,6 @@ class SessionManagerActor(SchedulerActor):
         super(SessionManagerActor, self).__init__()
         self._sessions = dict()
 
-    @classmethod
-    def default_name(cls):
-        return 's:%s' % cls.__name__
-
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
@@ -91,7 +87,7 @@ class SessionManagerActor(SchedulerActor):
         return self._sessions
 
     def create_session(self, session_id, **kwargs):
-        uid = SessionActor.gen_name(session_id)
+        uid = SessionActor.gen_uid(session_id)
         scheduler_address = self.get_scheduler(uid)
         session_ref = self.ctx.create_actor(SessionActor, uid=uid, address=scheduler_address,
                                             session_id=session_id, **kwargs)

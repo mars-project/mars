@@ -18,8 +18,8 @@ import unittest
 import gevent
 
 import mars.tensor as mt
-from mars.cluster_info import ClusterInfoActor
 from mars.scheduler import GraphActor, ResourceActor, ChunkMetaActor, AssignerActor
+from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
 
@@ -35,13 +35,13 @@ class Test(unittest.TestCase):
 
         addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(ClusterInfoActor, [pool.cluster_info.address],
-                              uid=ClusterInfoActor.default_name())
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.gen_name(session_id))
+            pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
-                                          uid=GraphActor.gen_name(session_id, graph_key))
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
 
             graph_ref.prepare_graph(compose=compose)
             fetched_graph = graph_ref.get_chunk_graph()
