@@ -325,3 +325,17 @@ def filter_index_value(index_value, min_max, store_data=False):
         f = f & (pd_index < max_val)
 
     return parse_index(pd_index[f], store_data=store_data)
+
+
+def concat_tileable_chunks(df):
+    from .merge.concat import DataFrameConcat
+
+    assert not df.is_coarse()
+
+    op = DataFrameConcat()
+    chunk = DataFrameConcat().new_chunk(df.chunks, shape=df.shape, dtypes=df.dtypes,
+                                        index_value=df.index_value,
+                                        columns_value=df.columns)
+    return op.new_dataframe([df], shape=df.shape, chunks=[chunk],
+                            nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
+                            index_value=df.index_value, columns_value=df.columns)

@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode
+from .utils import kernel_mode, concat_tileable_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -410,11 +410,11 @@ class Executor(object):
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
 
-        # only record the executed tensor
-        self.tensor_to_tiled = weakref.WeakKeyDictionary()
-        # dict structure: {tensor_key -> chunk_keys, tensor_ids}
-        # dict value is a tuple object which records chunk keys and tensor id
-        self.stored_tensors = dict()
+        # only record the executed tileable
+        self.tileable_to_tiled = weakref.WeakKeyDictionary()
+        # dict structure: {tileable_key -> chunk_keys, tileable_ids}
+        # dict value is a tuple object which records chunk keys and tileable id
+        self.stored_tileables = dict()
         # executed key to ref counts
         self.key_to_ref_counts = defaultdict(lambda: 0)
         # synchronous provider
@@ -457,7 +457,7 @@ class Executor(object):
                       mock=False, retval=True):
         optimized_graph = self._preprocess(graph, keys)
 
-        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tensors.values()]))
+        executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
         graph_execution = GraphExecution(self._chunk_result, optimized_graph,
                                          keys, executed_keys, self._sync_provider,
                                          n_parallel=n_parallel, prefetch=self._prefetch,
@@ -470,63 +470,57 @@ class Executor(object):
         return res
 
     @kernel_mode
-    def execute_tensor(self, tensor, n_parallel=None, n_thread=None, concat=False,
-                       print_progress=False, mock=False):
+    def execute_tileable(self, tileable, n_parallel=None, n_thread=None, concat=False,
+                         print_progress=False, mock=False, compose=True):
         if concat:
             # only for tests
-            tensor.tiles()
-            if len(tensor.chunks) > 1:
-                from .tensor.expressions.merge.concatenate import TensorConcatenate
+            tileable.tiles()
+            if len(tileable.chunks) > 1:
+                tileable = concat_tileable_chunks(tileable)
 
-                op = TensorConcatenate(dtype=tensor.op.dtype)
-                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, shape=tensor.shape)
-                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                       nsplits=[(s,) for s in tensor.shape])
+        graph = tileable.build_graph(cls=DirectedGraph, tiled=True, compose=compose)
 
-        graph = tensor.build_graph(cls=DirectedGraph, tiled=True)
-
-        return self.execute_graph(graph, [c.key for c in tensor.chunks],
+        return self.execute_graph(graph, [c.key for c in tileable.chunks],
                                   n_parallel=n_parallel or n_thread,
                                   print_progress=print_progress, mock=mock)
 
+    execute_tensor = execute_tileable
+    execute_dataframe = execute_tileable
+
     @kernel_mode
-    def execute_tensors(self, tensors, fetch=True, n_parallel=None, n_thread=None,
-                        print_progress=False, mock=False, compose=True):
+    def execute_tileables(self, tileables, fetch=True, n_parallel=None, n_thread=None,
+                          print_progress=False, mock=False, compose=True):
         graph = DirectedGraph()
 
         result_keys = []
         to_release_keys = []
         concat_keys = []
-        for tensor in tensors:
-            tensor.tiles()
-            chunk_keys = [c.key for c in tensor.chunks]
+        for tileable in tileables:
+            tileable.tiles()
+            chunk_keys = [c.key for c in tileable.chunks]
             result_keys.extend(chunk_keys)
 
-            if tensor.key in self.stored_tensors:
-                self.stored_tensors[tensor.key][0].add(tensor.id)
+            if tileable.key in self.stored_tileables:
+                self.stored_tileables[tileable.key][0].add(tileable.id)
             else:
-                self.stored_tensors[tensor.key] = tuple([{tensor.id}, set(chunk_keys)])
+                self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
             if not fetch:
                 # no need to generate concat keys
                 pass
-            elif len(tensor.chunks) > 1:
-                from .tensor.expressions.merge.concatenate import TensorConcatenate
-
+            elif len(tileable.chunks) > 1:
                 # if need to fetch data and chunks more than 1, we concatenate them into 1
-                op = TensorConcatenate(dtype=tensor.op.dtype)
-                chunk = TensorConcatenate(dtype=op.dtype).new_chunk(tensor.chunks, shape=tensor.shape)
+                tileable = concat_tileable_chunks(tileable)
+                chunk = tileable.chunks[0]
                 result_keys.append(chunk.key)
                 # the concatenated key
                 concat_keys.append(chunk.key)
                 # after return the data to user, we release the reference
                 to_release_keys.append(chunk.key)
-                tensor = op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                                       nsplits=[(s,) for s in tensor.shape])
             else:
-                concat_keys.append(tensor.chunks[0].key)
+                concat_keys.append(tileable.chunks[0].key)
 
-            tensor.build_graph(graph=graph, tiled=True, compose=compose,
-                               executed_keys=list(self._chunk_result.keys()))
+            tileable.build_graph(graph=graph, tiled=True, compose=compose,
+                                 executed_keys=list(self._chunk_result.keys()))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
                            print_progress=print_progress, mock=mock)
@@ -541,6 +535,9 @@ class Executor(object):
             for k in to_release_keys:
                 del results[k]
 
+    execute_tensors = execute_tileables
+    execute_dataframes = execute_tileables
+
     @kernel_mode
     def fetch_tensors(self, tensors, **kw):
         from .tensor.expressions.fetch import TensorFetch
@@ -549,7 +546,7 @@ class Executor(object):
         to_concat_tensors = OrderedDict()
 
         for i, tensor in enumerate(tensors):
-            if tensor.key not in self.stored_tensors:
+            if tensor.key not in self.stored_tileables:
                 # check if the tensor is executed before
                 raise ValueError(
                     'Tensor to fetch must be executed before, got {0}'.format(tensor))
@@ -601,9 +598,9 @@ class Executor(object):
     def decref(self, *keys):
         for key in keys:
             tensor_key, tensor_id = key
-            if key[0] not in self.stored_tensors:
+            if key[0] not in self.stored_tileables:
                 continue
-            ids, chunk_keys = self.stored_tensors[key[0]]
+            ids, chunk_keys = self.stored_tileables[key[0]]
             if tensor_id in ids:
                 ids.remove(tensor_id)
                 # for those same key tensors, do decref only when all those tensors are garbage collected
@@ -612,7 +609,7 @@ class Executor(object):
                 for chunk_key in chunk_keys:
                     if chunk_key in self.chunk_result:
                         del self.chunk_result[chunk_key]
-                del self.stored_tensors[tensor_key]
+                del self.stored_tileables[tensor_key]
 
 
 def ignore(*_):

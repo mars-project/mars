@@ -472,6 +472,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _tile_both_dataframes(cls, op):
         # if both of the inputs are DataFrames, axis is just ignored
         left, right = op.inputs
+        df = op.outputs[0]
         nsplits = [[], []]
         splits = _MinMaxSplitInfo()
 
@@ -515,9 +516,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             out_chunks = cls._gen_out_chunks_with_all_shuffle(op, out_shape, left, right)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, op.outputs[0].shape,
+        return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
-                                     chunks=out_chunks)
+                                     chunks=out_chunks, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns)
 
     @classmethod
     def tile(cls, op):

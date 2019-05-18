@@ -47,7 +47,7 @@ def _index_align_map(ctx, chunk):
         # no shuffle on columns
         op = operator.ge if chunk.op.column_min_close else operator.gt
         columns_cond = op(df.columns, chunk.op.column_min)
-        op = operator.le if chunk.op.column_max_close else operator.ge
+        op = operator.le if chunk.op.column_max_close else operator.lt
         columns_cond = columns_cond & op(df.columns, chunk.op.column_max)
         filters[1].append(columns_cond)
     else:

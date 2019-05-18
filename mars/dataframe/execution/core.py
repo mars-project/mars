@@ -15,6 +15,7 @@
 from ..expressions.core import DataFrameShuffleProxy
 from .datasource import register_data_source_handler
 from .arithmetic import register_arithmetic_handler
+from .merge import register_merge_handler
 
 
 def register_dataframe_execution_handler():
@@ -23,3 +24,4 @@ def register_dataframe_execution_handler():
 
     register_data_source_handler()
     register_arithmetic_handler()
+    register_merge_handler()
