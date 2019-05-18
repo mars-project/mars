@@ -58,6 +58,11 @@ class TensorOperandMixin(object):
             chunks.append(Chunk(data))
 
         setattr(self, 'outputs', chunks)
+        if len(chunks) > 1:
+            # for each output chunk, hold the reference to the other outputs
+            # so that either no one or everyone are gc collected
+            for j, t in enumerate(chunks):
+                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
         return chunks
 
     def new_tensors(self, inputs, shape, dtype=None, chunks=None, nsplits=None,

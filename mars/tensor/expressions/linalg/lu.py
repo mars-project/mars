@@ -19,6 +19,7 @@ from numpy.linalg import LinAlgError
 
 from .... import operands
 from ...core import ExecutableTuple
+from ..utils import recursive_tile
 from ..core import TensorOperandMixin
 from ..datasource import tensor as astensor
 
@@ -41,12 +42,21 @@ class TensorLU(operands.LU, TensorOperandMixin):
         if a.ndim != 2:
             raise LinAlgError('{0}-dimensional array given. '
                               'Tensor must be two-dimensional'.format(a.ndim))
-        if a.shape[0] != a.shape[1]:
-            raise LinAlgError('Input must be square')
+
+        if a.shape[0] > a.shape[1]:
+            p_shape = (a.shape[0],) * 2
+            l_shape = a.shape
+            u_shape = (a.shape[1],) * 2
+        elif a.shape[0] < a.shape[1]:
+            p_shape = (a.shape[0],) * 2
+            l_shape = (a.shape[0],) * 2
+            u_shape = a.shape
+        else:
+            p_shape, l_shape, u_shape = (a.shape,) * 3
 
         tiny_p, tiny_l, tiny_u = scipy.linalg.lu(np.array([[1, 2], [2, 5]], dtype=a.dtype))
 
-        p, l, u = self.new_tensors([a], (a.shape, a.shape, a.shape),
+        p, l, u = self.new_tensors([a], [p_shape, l_shape, u_shape],
                                    kws=[
                                        {'side': 'p', 'dtype': tiny_p.dtype},
                                        {'side': 'l', 'dtype': tiny_l.dtype},
@@ -59,12 +69,29 @@ class TensorLU(operands.LU, TensorOperandMixin):
         from ..arithmetic.subtract import TensorSubtract
         from ..arithmetic.utils import tree_add
         from ..base.transpose import TensorTranspose
-        from ..datasource.zeros import TensorZeros
+        from ..merge.vstack import vstack
+        from ..merge.hstack import hstack
+        from ..datasource.zeros import TensorZeros, zeros
         from .dot import TensorDot
         from .solve_triangular import TensorSolveTriangular
 
         P, L, U = op.outputs
-        in_tensor = op.input
+        raw_in_tensor = in_tensor = op.input
+
+        if in_tensor.shape[0] > in_tensor.shape[1]:
+            zero_tensor = zeros((in_tensor.shape[0], in_tensor.shape[0] - in_tensor.shape[1]),
+                                dtype=in_tensor.dtype, sparse=in_tensor.issparse(),
+                                gpu=in_tensor.op.gpu,
+                                chunk_size=(in_tensor.nsplits[0], max(in_tensor.nsplits[1])))
+            in_tensor = hstack([in_tensor, zero_tensor])
+            recursive_tile(in_tensor)
+        elif in_tensor.shape[0] < in_tensor.shape[1]:
+            zero_tensor = zeros((in_tensor.shape[1] - in_tensor.shape[0], in_tensor.shape[1]),
+                                dtype=in_tensor.dtype, sparse=in_tensor.issparse(),
+                                gpu=in_tensor.op.gpu,
+                                chunk_size=(max(in_tensor.nsplits[0]), in_tensor.nsplits[1]))
+            in_tensor = vstack([in_tensor, zero_tensor])
+            recursive_tile(in_tensor)
 
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
@@ -99,7 +126,7 @@ class TensorLU(operands.LU, TensorOperandMixin):
                                          None, prev_chunks_u[0].shape, sparse=op.sparse)
                         target = TensorSubtract(dtype=U.dtype).new_chunk(
                             [target, s, None, None], target.shape)
-                    upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype,
+                    upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype, strict=False,
                                                         sparse=lower_chunks[i, i].op.sparse).new_chunk(
                         [lower_chunks[i, i], target], target.shape, index=(i, j))
                     upper_chunks[upper_chunk.index] = upper_chunk
@@ -171,7 +198,7 @@ class TensorLU(operands.LU, TensorOperandMixin):
                     target_transpose = TensorTranspose(dtype=target_l.dtype, sparse=op.sparse).new_chunk(
                         [target_l], target_l.shape)
                     lower_permuted_chunk = TensorSolveTriangular(
-                        lower=True, dtype=L.dtype, sparse=op.sparse).new_chunk(
+                        lower=True, dtype=L.dtype, strict=False, sparse=op.sparse).new_chunk(
                         [a_transpose, target_transpose], target_l.shape, index=(i, j))
                     lower_transpose = TensorTranspose(dtype=lower_permuted_chunk.dtype, sparse=op.sparse).new_chunk(
                         [lower_permuted_chunk], lower_permuted_chunk.shape, index=lower_permuted_chunk.index)
@@ -183,7 +210,23 @@ class TensorLU(operands.LU, TensorOperandMixin):
             {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': L.dtype},
             {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': U.dtype}
         ]
-        return new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+        if raw_in_tensor.shape[0] == raw_in_tensor.shape[1]:
+            return new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+
+        p, l, u = new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+        if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
+            l = l[:, :raw_in_tensor.shape[1]].single_tiles()
+            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]].single_tiles()
+        else:
+            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]].single_tiles()
+            l = l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]].single_tiles()
+            u = u[:raw_in_tensor.shape[0], :].single_tiles()
+        kws = [
+            {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype},
+            {'chunks': l.chunks, 'nsplits': l.nsplits, 'dtype': l.dtype},
+            {'chunks': u.chunks, 'nsplits': u.nsplits, 'dtype': u.dtype}
+        ]
+        return new_op.new_tensors(op.inputs, [p.shape, l.shape, u.shape], kws=kws)
 
 
 def lu(a):

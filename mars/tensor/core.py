@@ -34,7 +34,7 @@ from .expressions.utils import get_chunk_slices
 
 
 class ChunkData(SerializableWithKey):
-    __slots__ = '__weakref__',
+    __slots__ = '__weakref__', '_siblings'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
