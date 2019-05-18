@@ -183,7 +183,7 @@ class TensorLU(operands.LU, TensorOperandMixin):
             {'chunks': list(lower_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': L.dtype},
             {'chunks': list(upper_chunks.values()), 'nsplits': in_tensor.nsplits, 'dtype': U.dtype}
         ]
-        return new_op.new_tensors(op.inputs, [P.shape, L.shape, U.shape], kws=kws)
+        return new_op.new_tensors(op.inputs, [p.shape, l.shape, u.shape], kws=kws)
 
 
 def lu(a):
