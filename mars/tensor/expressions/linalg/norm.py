@@ -19,19 +19,39 @@ from collections import Iterable
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, KeyField, AnyField, TupleField, BoolField
 from ..utils import recursive_tile
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..arithmetic import sqrt
 from ..datasource import empty
 from ..datasource import tensor as astensor
 from .svd import svd
 
 
-class TensorNorm(operands.Norm, TensorOperandMixin):
+class TensorNorm(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.NORM
+
+    _input = KeyField('input')
+    _ord = AnyField('ord')
+    _axis = TupleField('axis', ValueType.int32)
+    _keepdims = BoolField('keepdims')
+
     def __init__(self, ord=None, axis=None, keepdims=None, dtype=None, sparse=False, **kw):
         super(TensorNorm, self).__init__(_ord=ord, _axis=axis, _keepdims=keepdims,
                                          _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def ord(self):
+        return getattr(self, '_ord', None)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def keepdims(self):
+        return self._keepdims
 
     def _set_inputs(self, inputs):
         super(TensorNorm, self)._set_inputs(inputs)

@@ -16,18 +16,37 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import Float64Field, BoolField
 from ..utils import inject_dtype
 from .core import TensorBinOp, TensorConstant
 
 
-class TensorIsclose(operands.Isclose, TensorBinOp):
+class TensorIsclose(TensorBinOp):
+    _op_type_ = OperandDef.ISCLOSE
+
+    _rtol = Float64Field('rtol')
+    _atol = Float64Field('atol')
+    _equal_nan = BoolField('equal_nan')
+
     def __init__(self, rtol=None, atol=None, equal_nan=None,
                  casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
         super(TensorIsclose, self).__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
                                             _casting=casting, _err=err,
                                             _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def rtol(self):
+        return self._rtol
+
+    @property
+    def atol(self):
+        return self._atol
+
+    @property
+    def equal_nan(self):
+        return self._equal_nan
 
     @classmethod
     def _is_sparse(cls, x1, x2):
@@ -45,13 +64,31 @@ class TensorIsclose(operands.Isclose, TensorBinOp):
         return constant_op(x1, x2)
 
 
-class TensorIscloseConstant(operands.IscloseConstant, TensorConstant):
+class TensorIscloseConstant(TensorConstant):
+    _op_type_ = OperandDef.ISCLOSE_CONSTANT
+
+    _rtol = Float64Field('rtol')
+    _atol = Float64Field('atol')
+    _equal_nan = BoolField('equal_nan')
+
     def __init__(self, rtol=None, atol=None, equal_nan=None,
                  casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
         super(TensorIscloseConstant, self).__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
                                                     _casting=casting, _err=err,
                                                     _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def rtol(self):
+        return self._rtol
+
+    @property
+    def atol(self):
+        return self._atol
+
+    @property
+    def equal_nan(self):
+        return self._equal_nan
 
     @classmethod
     def _is_sparse(cls, x1, x2):

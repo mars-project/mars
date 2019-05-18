@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorLaplace(operands.Laplace, TensorRandomOperandMixin):
+class TensorLaplace(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_loc', '_scale', '_size'
     _input_fields_ = ['_loc', '_scale']
+    _op_type_ = OperandDef.RAND_LAPLACE
+
+    _loc = AnyField('loc')
+    _scale = AnyField('scale')
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorLaplace, self).__init__(_state=state, _size=size,
                                             _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def loc(self):
+        return self._loc
+
+    @property
+    def scale(self):
+        return self._scale
 
     def __call__(self, loc, scale, chunk_size=None):
         return self.new_tensor([loc, scale], None, raw_chunk_size=chunk_size)

@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from ..datasource import tensor as astensor
 from .core import TensorBinOp, TensorConstant
@@ -24,7 +24,9 @@ from .utils import arithmetic_operand
 
 
 @arithmetic_operand
-class TensorLdexp(operands.Ldexp, TensorBinOp):
+class TensorLdexp(TensorBinOp):
+    _op_type_ = OperandDef.LDEXP
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         return x1.issparse()
@@ -35,7 +37,9 @@ class TensorLdexp(operands.Ldexp, TensorBinOp):
 
 
 @arithmetic_operand
-class TensorLdexpConstant(operands.LdexpConstant, TensorConstant):
+class TensorLdexpConstant(TensorConstant):
+    _op_type_ = OperandDef.LDEXP_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse():

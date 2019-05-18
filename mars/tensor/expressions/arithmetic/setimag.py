@@ -14,21 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
+from .... import opcodes as OperandDef
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
-class TensorSetImag(operands.SetImag, TensorBinOp):
+class TensorSetImag(TensorBinOp):
+    _op_type_ = OperandDef.SET_IMAG
+
     @classmethod
     def constant_cls(cls):
         return TensorSetImagConstant
 
 
 @arithmetic_operand(sparse_mode='binary_and_const')
-class TensorSetImagConstant(operands.SetImagConstant, TensorConstant):
-    pass
+class TensorSetImagConstant(TensorConstant):
+    _op_type_ = OperandDef.SET_IMAG_CONSTANT
 
 
 def set_imag(val, imag):

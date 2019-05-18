@@ -16,21 +16,26 @@
 
 import numpy as np
 
-from ....operands import Nonzero
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ..utils import recursive_tile
 from ....core import ExecutableTuple
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .unravel_index import unravel_index
 
 
-class TensorNonzero(Nonzero, TensorOperandMixin):
+class TensorNonzero(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.NONZERO
+
+    _input = KeyField('input')
+
     def __init__(self, dtype=None, **kw):
         super(TensorNonzero, self).__init__(_dtype=dtype, **kw)
 
-    def _set_inputs(self, inputs):
-        super(TensorNonzero, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
+    @property
+    def output_limit(self):
+        return float('inf')
 
     def calc_shape(self, *inputs_shape):
         return np.nan,

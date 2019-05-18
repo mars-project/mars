@@ -19,17 +19,32 @@ import contextlib
 
 import numpy as np
 
-from ....operands import IndexSetValue
-from ....core import BaseWithKey, Entity
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, ListField, AnyField
+from ....core import Base, Entity
 from ...core import TENSOR_TYPE, CHUNK_TYPE
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
 
 
-class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
+class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.INDEXSETVALUE
+
+    _input = KeyField('input')
+    _indexes = ListField('indexes')
+    _value = AnyField('value')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @property
+    def value(self):
+        return self._value
 
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes, value):
@@ -49,10 +64,10 @@ class TensorIndexSetValue(IndexSetValue, TensorOperandMixin):
         yield inputs
 
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, (BaseWithKey, Entity)) else index
+        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        if isinstance(self._value, (BaseWithKey, Entity)):
+        if isinstance(self._value, (Base, Entity)):
             self._value = next(inputs_iter)
 
     def _new_tileables(self, inputs, kws=None, **kw):

@@ -16,18 +16,36 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorNoncentralF(operands.NoncentralF, TensorRandomOperandMixin):
+class TensorNoncentralF(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_dfnum', '_dfden', '_nonc', '_size'
     _input_fields_ = ['_dfnum', '_dfden', '_nonc']
+    _op_type_ = OperandDef.RAND_NONCENTRAL_F
+
+    _dfnum = AnyField('dfnum')
+    _dfden = AnyField('dfden')
+    _nonc = AnyField('nonc')
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorNoncentralF, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                 _gpu=gpu, **kw)
+
+    @property
+    def dfnum(self):
+        return self._dfnum
+
+    @property
+    def dfden(self):
+        return self._dfden
+
+    @property
+    def nonc(self):
+        return self._nonc
 
     def __call__(self, dfnum, dfden, nonc, chunk_size=None):
         return self.new_tensor([dfnum, dfden, nonc], None, raw_chunk_size=chunk_size)

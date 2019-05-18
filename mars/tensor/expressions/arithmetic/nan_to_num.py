@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from ...core import Tensor
 from .core import TensorUnaryOp
@@ -24,8 +24,8 @@ from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorNanToNum(operands.NanToNum, TensorUnaryOp):
-    pass
+class TensorNanToNum(TensorUnaryOp):
+    _op_type_ = OperandDef.NAN_TO_NUM
 
 
 @infer_dtype(np.nan_to_num)

@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import inject_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorIsComplex(operands.IsComplex, TensorUnaryOp):
-    pass
+class TensorIsComplex(TensorUnaryOp):
+    _op_type_ = OperandDef.ISCOMPLEX
 
 
 @inject_dtype(np.bool_)

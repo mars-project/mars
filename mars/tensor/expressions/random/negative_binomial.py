@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorNegativeBinomial(operands.NegativeBinomial, TensorRandomOperandMixin):
+class TensorNegativeBinomial(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_n', '_p', '_size'
     _input_fields_ = ['_n', '_p']
+    _op_type_ = OperandDef.RAND_NEGATIVE_BINOMIAL
+
+    _n = AnyField('n')
+    _p = AnyField('p')
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorNegativeBinomial, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                      _gpu=gpu, **kw)
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def p(self):
+        return self._p
 
     def __call__(self, n, p, chunk_size=None):
         return self.new_tensor([n, p], None, raw_chunk_size=chunk_size)

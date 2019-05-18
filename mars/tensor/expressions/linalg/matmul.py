@@ -18,18 +18,32 @@ import itertools
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ....compat import lrange
 from ...core import Tensor
 from ..utils import broadcast_shape, check_out_param, unify_chunks
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..arithmetic.utils import tree_add
 from ..datasource import tensor as astensor
 
 
-class TensorMatmul(operands.Matmul, TensorOperandMixin):
+class TensorMatmul(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.MATMUL
+
+    _a = KeyField('a')
+    _b = KeyField('b')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorMatmul, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
 
     def _set_inputs(self, inputs):
         super(TensorMatmul, self)._set_inputs(inputs)

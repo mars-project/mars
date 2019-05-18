@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorRad2deg(operands.Rad2deg, TensorUnaryOp):
-    pass
+class TensorRad2deg(TensorUnaryOp):
+    _op_type_ = OperandDef.RAD2DEG
 
 
 @infer_dtype(np.rad2deg)

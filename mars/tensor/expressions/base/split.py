@@ -16,17 +16,36 @@
 
 import numpy as np
 
-from ....operands import Split
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, AnyField, Int32Field
 from ....lib.sparse.core import get_array_module
 from ....core import ExecutableTuple
 from ...core import Tensor
 from ..utils import calc_sliced_size
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
-class TensorSplit(Split, TensorOperandMixin):
+class TensorSplit(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.ARRAY_SPLIT
+
+    _input = KeyField('input')
+    _indices_or_sections = AnyField('indices_or_sections')
+    _axis = Int32Field('axis')
+
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorSplit, self).__init__(_axis=axis, _dtype=dtype, **kw)
+
+    @property
+    def indices_or_sections(self):
+        return self._indices_or_sections
+
+    @property
+    def axis(self):
+        return getattr(self, '_axis', 0)
+
+    @property
+    def output_limit(self):
+        return float('inf')
 
     def _set_inputs(self, inputs):
         super(TensorSplit, self)._set_inputs(inputs)

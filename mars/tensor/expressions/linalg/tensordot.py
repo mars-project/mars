@@ -19,18 +19,42 @@ from collections import Iterable
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, KeyField, TupleField
 from ....compat import izip
 from ..utils import unify_chunks
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..arithmetic.utils import tree_add
 from ..datasource import tensor as astensor
 
 
-class TensorTensorDot(operands.TensorDot, TensorOperandMixin):
+class TensorTensorDot(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.TENSORDOT
+
+    _a = KeyField('a')
+    _b = KeyField('b')
+    _a_axes = TupleField('a_axes', ValueType.int32)
+    _b_axes = TupleField('b_axes', ValueType.int32)
+
     def __init__(self, a_axes=None, b_axes=None, dtype=None, sparse=False, **kw):
         super(TensorTensorDot, self).__init__(_a_axes=a_axes, _b_axes=b_axes,
                                               _dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
+
+    @property
+    def a_axes(self):
+        return self._a_axes
+
+    @property
+    def b_axes(self):
+        return self._b_axes
 
     def _set_inputs(self, inputs):
         super(TensorTensorDot, self)._set_inputs(inputs)

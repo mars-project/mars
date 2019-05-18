@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import inject_dtype
 from .core import TensorCompare, TensorCompareConstant
 
 
-class TensorGreaterThan(operands.GreaterThan, TensorCompare):
+class TensorGreaterThan(TensorCompare):
+    _op_type_ = OperandDef.GT
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorGreaterThan, self).__init__(_casting=casting, _err=err,
@@ -32,7 +34,9 @@ class TensorGreaterThan(operands.GreaterThan, TensorCompare):
         return TensorGtConstant
 
 
-class TensorGtConstant(operands.GtConstant, TensorCompareConstant):
+class TensorGtConstant(TensorCompareConstant):
+    _op_type_ = OperandDef.GT_CONSTANT
+
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorGtConstant, self).__init__(_casting=casting, _err=err,

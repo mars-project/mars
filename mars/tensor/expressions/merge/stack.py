@@ -18,16 +18,25 @@ import itertools
 
 import numpy as np
 
-from ....operands import Stack
+from .... import opcodes as OperandDef
+from ....serialize import Int32Field
 from ..utils import unify_chunks
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorStack(Stack, TensorOperandMixin):
+class TensorStack(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.STACK
+
+    _axis = Int32Field('axis')
+
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
         super(TensorStack, self).__init__(_axis=axis, _dtype=dtype,
                                           _sparse=sparse, **kw)
+
+    @property
+    def axis(self):
+        return self._axis
 
     def calc_shape(self, *inputs_shape):
         fisrt_shape = inputs_shape[0]

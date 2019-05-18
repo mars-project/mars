@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorFFTShiftMixin
+from .core import TensorFFTShiftMixin, TensorFFTShiftBase
 
 
-class TensorFFTShift(fftop.FFTShift, TensorFFTShiftMixin):
+class TensorFFTShift(TensorFFTShiftBase, TensorFFTShiftMixin):
+    _op_type_ = OperandDef.FFTSHIFT
+
     def __init__(self, axes=None, dtype=None, **kw):
         super(TensorFFTShift, self).__init__(_axes=axes, _dtype=dtype, **kw)
 

@@ -14,18 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .cholesky import cholesky
-from .dot import dot
+from .cholesky import cholesky, TensorCholesky
+from .dot import dot, TensorDot
 from .inner import inner, innerproduct
-from .inv import inv
-from .lu import lu
-from .matmul import matmul
-from .norm import norm
-from .qr import qr
+from .inv import inv, TensorInv
+from .lu import lu, TensorLU
+from .matmul import matmul, TensorMatmul
+from .norm import norm, TensorNorm
+from .qr import qr, TensorQR
 from .solve import solve
-from .solve_triangular import solve_triangular
-from .svd import svd
-from .tensordot import tensordot
+from .solve_triangular import solve_triangular, TensorSolveTriangular
+from .svd import svd, TensorSVD
+from .tensordot import tensordot, TensorTensorDot
 from .vdot import vdot
 
 

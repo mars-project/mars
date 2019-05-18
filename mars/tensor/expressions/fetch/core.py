@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ....operands import Fetch, FetchShuffle
+from ....serialize import DataTypeField
 from ..core import TensorOperandMixin
 
 
@@ -31,9 +32,15 @@ class TensorFetchMixin(TensorOperandMixin):
 
 
 class TensorFetch(Fetch, TensorFetchMixin):
+    _dtype = DataTypeField('dtype')
+
     def __init__(self, dtype=None, to_fetch_key=None, sparse=False, **kw):
         super(TensorFetch, self).__init__(
             _dtype=dtype, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
@@ -47,6 +54,12 @@ class TensorFetch(Fetch, TensorFetchMixin):
 
 
 class TensorFetchShuffle(FetchShuffle, TensorFetchMixin):
+    _dtype = DataTypeField('dtype')
+
     def __init__(self, dtype=None, to_fetch_keys=None, **kw):
         super(TensorFetchShuffle, self).__init__(
             _dtype=dtype, _to_fetch_keys=to_fetch_keys, **kw)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)

@@ -16,12 +16,13 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
-class TensorRandomSample(operands.RandomSample, TensorRandomOperandMixin):
+class TensorRandomSample(TensorSimpleRandomData, TensorRandomOperandMixin):
     __slots__ = '_size',
+    _op_type_ = OperandDef.RAND_RANDOM_SAMPLE
 
     def __init__(self, state=None, size=None, dtype=None,
                  gpu=None, **kw):

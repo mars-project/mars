@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorComplexFFTMixin, validate_fft
+from .core import TensorComplexFFTMixin, validate_fft, TensorStandardFFT
 
 
-class TensorFFT(fftop.FFT, TensorComplexFFTMixin):
+class TensorFFT(TensorStandardFFT, TensorComplexFFTMixin):
+    _op_type_ = OperandDef.FFT
+
     def __init__(self, n=None, axis=-1, norm=None, dtype=None, **kw):
         super(TensorFFT, self).__init__(_n=n, _axis=axis, _norm=norm,
                                         _dtype=dtype, **kw)

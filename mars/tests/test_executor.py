@@ -19,9 +19,8 @@ import numpy as np
 
 import mars.tensor as mt
 from mars.executor import Executor, register
-from mars.operands import Operand
 from mars.serialize import Int64Field
-from mars.tensor.expressions.core import TensorOperandMixin
+from mars.tensor.expressions.core import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
 from mars.actors import create_actor_pool, Distributor, Actor
 
@@ -52,7 +51,7 @@ class ExecutorActor(Actor):
         assert res[0] == message + 1
 
 
-class FakeOperand(Operand, TensorOperandMixin):
+class FakeOperand(TensorOperand, TensorOperandMixin):
     _num = Int64Field('num')
 
     @property

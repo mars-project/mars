@@ -16,17 +16,41 @@
 
 import numpy as np
 
-from ....operands import IsIn
-from ..core import TensorOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, BoolField
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .ravel import ravel
 
 
-class TensorIsIn(IsIn, TensorOperandMixin):
+class TensorIsIn(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.ISIN
+
+    _element = KeyField('element')
+    _test_elements = KeyField('test_elements')
+    _assume_unique = BoolField('assume_unique')
+    _invert = BoolField('invert')
+
     def __init__(self, assume_unique=None, invert=None, dtype=None, **kw):
         dtype = np.dtype(bool) if dtype is None else dtype
         super(TensorIsIn, self).__init__(_assume_unique=assume_unique, _invert=invert,
                                          _dtype=dtype, **kw)
+
+    @property
+    def element(self):
+        return self._element
+
+    @property
+    def test_elements(self):
+        return self._test_elements
+
+    @property
+    def assume_unique(self):
+        return self._assume_unique
+
+    @property
+    def invert(self):
+        return self._invert
 
     def _set_inputs(self, inputs):
         super(TensorIsIn, self)._set_inputs(inputs)

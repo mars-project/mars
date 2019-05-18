@@ -32,7 +32,7 @@ def _index(ctx, chunk):
 
 
 def _index_estimate_size(ctx, chunk):
-    from mars.core import BaseWithKey, Entity
+    from mars.core import Base, Entity
 
     op = chunk.op
     shape = op.outputs[0].shape
@@ -40,7 +40,7 @@ def _index_estimate_size(ctx, chunk):
 
     new_shape = []
     for index in new_indexes:
-        if isinstance(index, (BaseWithKey, Entity)) and index.dtype == np.bool_:
+        if isinstance(index, (Base, Entity)) and index.dtype == np.bool_:
             new_shape.append(ctx[index.key][0] // index.dtype.itemsize)
 
     rough_shape = []
@@ -87,11 +87,11 @@ def _unravel_index(ctx, chunk):
 
 
 def register_indexing_handler():
-    from ...operands import Slice, Index, IndexSetValue, Choose, UnravelIndex
+    from ..expressions import indexing
     from ...executor import register
 
-    register(Slice, _slice)
-    register(Index, _index, _index_estimate_size)
-    register(IndexSetValue, _index_set_value)
-    register(Choose, _choose)
-    register(UnravelIndex, _unravel_index)
+    register(indexing.TensorSlice, _slice)
+    register(indexing.TensorIndex, _index, _index_estimate_size)
+    register(indexing.TensorIndexSetValue, _index_set_value)
+    register(indexing.TensorChoose, _choose)
+    register(indexing.TensorUnravelIndex, _unravel_index)

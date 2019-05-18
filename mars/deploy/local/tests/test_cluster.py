@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 from mars import tensor as mt
-from mars.operands import Operand
+from mars.tensor.expressions.core import TensorOperand
 from mars.tensor.expressions.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
 from mars.session import new_session, Session
@@ -43,7 +43,7 @@ def _on_deserialize_fail(x):
     raise TypeError('intend to throw error on' + str(x))
 
 
-class SerializeMustFailOperand(Operand, TensorElementWise):
+class SerializeMustFailOperand(TensorOperand, TensorElementWise):
     _op_type_ = 356789
 
     _f = Int64Field('f', on_deserialize=_on_deserialize_fail)

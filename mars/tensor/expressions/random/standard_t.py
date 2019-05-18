@@ -16,18 +16,26 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorStandardT(operands.StandardT, TensorRandomOperandMixin):
+class TensorStandardT(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_df', '_size'
     _input_fields_ = ['_df']
+    _op_type_ = OperandDef.RAND_STANDARD_T
+
+    _df = AnyField('df')
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorStandardT, self).__init__(_size=size, _state=state, _dtype=dtype,
                                               _gpu=gpu, **kw)
+
+    @property
+    def df(self):
+        return self._df
 
     def __call__(self, df, chunk_size=None):
         return self.new_tensor([df], None, raw_chunk_size=chunk_size)

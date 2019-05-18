@@ -18,16 +18,22 @@ import itertools
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import NDArrayField, StringField, Float64Field
 from ....config import options
 from ....compat import irange, izip
-from ....operands.random import State
 from ..utils import decide_chunk_sizes, random_state_data
-from .core import TensorRandomOperandMixin
+from .core import TensorRandomOperandMixin, TensorDistribution, State
 
 
-class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandMixin):
+class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_mean', '_cov', '_size', '_check_valid', '_tol'
+    _op_type_ = OperandDef.RAND_MULTIVARIATE_NORMAL
+
+    _mean = NDArrayField('mean')
+    _cov = NDArrayField('cov')
+    _check_valid = StringField('check_valid')
+    _tol = Float64Field('tol')
 
     def __init__(self, mean=None, cov=None, size=None, check_valid=None, tol=None,
                  state=None, dtype=None, gpu=None, **kw):
@@ -35,6 +41,22 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
         super(TensorMultivariateNormal, self).__init__(_mean=mean, _cov=cov, _size=size,
                                                        _check_valid=check_valid, _tol=tol,
                                                        _state=state, _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def cov(self):
+        return self._cov
+
+    @property
+    def check_valid(self):
+        return self._check_valid
+
+    @property
+    def tol(self):
+        return self._tol
 
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape

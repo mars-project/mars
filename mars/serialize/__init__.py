@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-from .core import ValueType, Serializable, SerializableMetaclass, AttributeAsDict, \
+from .core import HasKey, ValueType, Serializable, SerializableMetaclass, AttributeAsDict, \
     serializes, deserializes, ProviderType, Provider, \
     AnyField, IdentityField, BoolField, Int8Field, Int16Field, Int32Field, Int64Field, \
     UInt8Field, UInt16Field, UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, \

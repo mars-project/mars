@@ -20,11 +20,12 @@ import contextlib
 import numpy as np
 
 from ....compat import lrange
-from ..utils import unify_chunks, broadcast_shape, check_out_param
-from ....core import ExecutableTuple
+from ....core import Base, ExecutableTuple
+from ....serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ...core import Tensor
-from ..core import TensorOperandMixin
+from ..core import TensorOperandMixin, TensorOperand
 from ..datasource import tensor as astensor
+from ..utils import unify_chunks, broadcast_shape, check_out_param
 
 
 class TensorElementWise(TensorOperandMixin):
@@ -74,7 +75,7 @@ class TensorElementWiseWithInputs(TensorElementWise):
                 inputs, kws=kws, **kw)
 
 
-class TensorBinOp(TensorElementWiseWithInputs):
+class TensorBinOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
     def check_inputs(self, inputs):
@@ -187,7 +188,40 @@ class TensorBinOp(TensorElementWiseWithInputs):
         return self._call(x2, x1, out=out, where=where)
 
 
-class TensorConstant(TensorElementWiseWithInputs):
+class TensorBinOp(TensorOperand, TensorBinOpMixin):
+    _lhs = KeyField('lhs')
+    _rhs = KeyField('rhs')
+    _out = KeyField('out')
+    _where = KeyField('where')
+    _casting = StringField('casting')
+    _err = DictField('err', ValueType.string, ValueType.string)
+
+    @property
+    def lhs(self):
+        return self._lhs
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    @property
+    def out(self):
+        return getattr(self, '_out', None)
+
+    @property
+    def where(self):
+        return getattr(self, '_where', None)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
+
+    @property
+    def err(self):
+        return getattr(self, '_err', dict())
+
+
+class TensorConstantMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
     @classmethod
@@ -259,7 +293,42 @@ class TensorConstant(TensorElementWiseWithInputs):
         return self._call(x2, x1)
 
 
-class TensorUnaryOp(TensorElementWiseWithInputs):
+class TensorConstant(TensorOperand, TensorConstantMixin):
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
+    _casting = StringField('casting')
+    _err = DictField('err', ValueType.string, ValueType.string)
+
+    @property
+    def lhs(self):
+        return self._lhs
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    @property
+    def constant(self):
+        if isinstance(self._lhs, Base):
+            return [self._rhs]
+        elif isinstance(self._rhs, Base):
+            return [self._lhs]
+        return [self._lhs, self._rhs]
+
+    @property
+    def reverse(self):
+        return isinstance(self._rhs, Base)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
+
+    @property
+    def err(self):
+        return getattr(self, '_err', dict())
+
+
+class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
     @staticmethod
@@ -348,6 +417,34 @@ class TensorUnaryOp(TensorElementWiseWithInputs):
         return self._call(x, out=out, where=where)
 
 
+class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
+    _input = KeyField('input')
+    _out = KeyField('out')
+    _where = KeyField('where')
+    _casting = StringField('casting')
+    _err = DictField('err', ValueType.string, ValueType.string)
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def out(self):
+        return getattr(self, '_out', None)
+
+    @property
+    def where(self):
+        return getattr(self, '_where', None)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
+
+    @property
+    def err(self):
+        return getattr(self, '_err', dict())
+
+
 class TensorCompare(TensorBinOp):
     @classmethod
     def _is_sparse(cls, x1, x2):
@@ -366,7 +463,7 @@ class TensorCompareConstant(TensorConstant):
         return False
 
 
-class TensorOutBinOp(TensorElementWiseWithInputs):
+class TensorOutBinOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
     @staticmethod

@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....operands import SwapAxes
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, Int32Field
 from ..utils import validate_axis
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
 def _swap(it, axis1, axis2):
@@ -26,10 +27,24 @@ def _swap(it, axis1, axis2):
     return tuple(new_it)
 
 
-class TensorSwapAxes(SwapAxes, TensorOperandMixin):
+class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.SWAPAXES
+
+    _input = KeyField('input')
+    _axis1 = Int32Field('axis1')
+    _axis2 = Int32Field('axis2')
+
     def __init__(self, axis1=None, axis2=None, dtype=None, sparse=False, **kw):
         super(TensorSwapAxes, self).__init__(_axis1=axis1, _axis2=axis2, _dtype=dtype,
                                              _sparse=sparse, **kw)
+
+    @property
+    def axis1(self):
+        return self._axis1
+
+    @property
+    def axis2(self):
+        return self._axis2
 
     def calc_shape(self, *inputs_shape):
         return _swap(inputs_shape[0], self.axis1, self.axis2)

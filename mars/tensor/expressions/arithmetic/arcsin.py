@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorArcsin(operands.Arcsin, TensorUnaryOp):
-    pass
+class TensorArcsin(TensorUnaryOp):
+    _op_type_ = OperandDef.ARCSIN
 
 
 @infer_dtype(np.arcsin)

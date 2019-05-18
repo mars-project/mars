@@ -16,19 +16,23 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorReduction
+from .core import TensorReduction, TensorReductionMixin
 from .mean import TensorMeanCombine
 
 
-class TensorNanMeanChunk(operands.NanMeanChunk, TensorReduction):
+class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMEAN_CHUNK
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorNanMeanChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                  _combine_size=combine_size, **kw)
 
 
-class TensorNanMean(operands.NanMean, TensorReduction):
+class TensorNanMean(TensorReduction, TensorReductionMixin):
+    _op_type_ = OperandDef.NANMEAN
+
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorNanMean, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                             _combine_size=combine_size, **kw)

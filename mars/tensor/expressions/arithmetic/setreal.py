@@ -14,21 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
+from .... import opcodes as OperandDef
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
-class TensorSetReal(operands.SetReal, TensorBinOp):
+class TensorSetReal(TensorBinOp):
+    _op_type_ = OperandDef.SET_REAL
+
     @classmethod
     def constant_cls(cls):
         return TensorSetRealConstant
 
 
 @arithmetic_operand(sparse_mode='binary_and_const')
-class TensorSetRealConstant(operands.SetRealConstant, TensorConstant):
-    pass
+class TensorSetRealConstant(TensorConstant):
+    _op_type_ = OperandDef.SET_REAL_CONSTANT
 
 
 def set_real(val, real):

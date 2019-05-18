@@ -16,13 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..arithmetic.add import TensorTreeAdd
-from .core import TensorCumReduction
+from .core import TensorCumReduction, TensorCumReductionMixin
 
 
-class TensorNanCumsum(operands.NanCumsum, TensorCumReduction):
+class TensorNanCumsum(TensorCumReduction, TensorCumReductionMixin):
+    _op_type_ = OperandDef.NANCUMSUM
+
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorNanCumsum, self).__init__(_axis=axis, _dtype=dtype, **kw)
 

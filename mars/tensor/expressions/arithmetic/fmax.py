@@ -16,21 +16,25 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
-class TensorFMax(operands.FMax, TensorBinOp):
+class TensorFMax(TensorBinOp):
+    _op_type_ = OperandDef.FMAX
+
     @classmethod
     def constant_cls(cls):
         return TensorFMaxConstant
 
 
 @arithmetic_operand
-class TensorFMaxConstant(operands.FMaxConstant, TensorConstant):
+class TensorFMaxConstant(TensorConstant):
+    _op_type_ = OperandDef.FMAX_CONSTANT
+
     @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2) and x2 <= 0:

@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from ....serialize import ValueType, Int64Field, TupleField
+from .core import TensorRandomOperandMixin, TensorDistribution
 
 
-class TensorMultinomial(operands.Multinomial, TensorRandomOperandMixin):
+class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_n', '_pvals', '_size'
+    _op_type_ = OperandDef.RAND_MULTINOMIAL
+
+    _n = Int64Field('n')
+    _pvals = TupleField('pvals', ValueType.float64)
 
     def __init__(self, n=None, pvals=None, state=None, size=None,
                  dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorMultinomial, self).__init__(_n=n, _pvals=pvals, _state=state,
                                                 _size=size, _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def pvals(self):
+        return self._pvals
 
     def __call__(self, chunk_size=None):
         if self._size is None:

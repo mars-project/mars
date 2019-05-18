@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorWald(operands.Wald, TensorRandomOperandMixin):
+class TensorWald(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_mean', '_scale', '_size'
     _input_fields_ = ['_mean', '_scale']
+    _op_type_ = OperandDef.RAND_WALD
+
+    _mean = AnyField('mean')
+    _scale = AnyField('scale')
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorWald, self).__init__(_size=size, _state=state, _dtype=dtype,
                                          _gpu=gpu, **kw)
+
+    @property
+    def mean(self):
+        return self._mean
+
+    @property
+    def scale(self):
+        return self._scale
 
     def __call__(self, mean, scale, chunk_size=None):
         return self.new_tensor([mean, scale], None, raw_chunk_size=chunk_size)

@@ -16,13 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..arithmetic.multiply import TensorTreeMultiply
-from .core import TensorCumReduction
+from .core import TensorCumReduction, TensorCumReductionMixin
 
 
-class TensorNanCumprod(operands.NanCumprod, TensorCumReduction):
+class TensorNanCumprod(TensorCumReduction, TensorCumReductionMixin):
+    _op_type_ = OperandDef.NANCUMPROD
+
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorNanCumprod, self).__init__(_axis=axis, _dtype=dtype, **kw)
 

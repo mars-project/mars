@@ -16,13 +16,21 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorExponential(operands.Exponential, TensorRandomOperandMixin):
+class TensorExponential(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_scale', '_size'
     _input_fields_ = ['_scale']
+    _op_type_ = OperandDef.RAND_EXPONENTIAL
+
+    _scale = AnyField('scale')
+
+    @property
+    def scale(self):
+        return self._scale
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

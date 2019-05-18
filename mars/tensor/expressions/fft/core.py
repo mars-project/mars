@@ -17,8 +17,10 @@
 from collections import Iterable
 
 from ....compat import izip
+from ....serialize import ValueType, KeyField, StringField, Int32Field, \
+    Int64Field, ListField
 from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
 class TensorFFTBaseMixin(TensorOperandMixin):
@@ -178,3 +180,72 @@ class TensorFFTShiftMixin(TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=x.chunks, nsplits=x.nsplits)
+
+
+class TensorDiscreteFourierTransform(TensorHasInput):
+    __slots__ = ()
+
+
+class TensorBaseFFT(TensorDiscreteFourierTransform):
+    _input = KeyField('input')
+    _norm = StringField('norm')
+
+    @property
+    def norm(self):
+        return getattr(self, '_norm', None)
+
+
+class TensorBaseSingleDimensionFFT(TensorBaseFFT):
+    _n = Int64Field('n')
+    _axis = Int32Field('axis')
+
+    @property
+    def n(self):
+        return self._n
+
+    @property
+    def axis(self):
+        return self._axis
+
+
+class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
+    _shape = ListField('shape', ValueType.int64)
+    _axes = ListField('axes', ValueType.int32)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def axes(self):
+        return self._axes
+
+
+class TensorStandardFFT(TensorBaseSingleDimensionFFT):
+    pass
+
+
+class TensorStandardFFTN(TensorBaseMultipleDimensionFFT):
+    pass
+
+
+class TensorFFTShiftBase(TensorHasInput):
+    _input = KeyField('input')
+    _axes = ListField('axes', ValueType.int32)
+
+    @property
+    def axes(self):
+        return self._axes
+
+
+class TensorRealFFT(TensorBaseSingleDimensionFFT):
+    pass
+
+
+class TensorRealFFTN(TensorBaseMultipleDimensionFFT):
+    pass
+
+
+class TensorHermitianFFT(TensorBaseSingleDimensionFFT):
+    pass
+

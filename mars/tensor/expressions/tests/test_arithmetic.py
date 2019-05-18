@@ -18,15 +18,14 @@ import unittest
 
 import numpy as np
 
-from mars import operands
 from mars.tensor.expressions.datasource import array, ones, tensor, empty
 from mars.tensor.expressions.fetch import TensorFetch
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \
-    isclose, isfinite, negative, cos
+    isclose, isfinite, negative, cos, TensorAdd, TensorAddConstant, TensorSubConstant, \
+    TensorLog, TensorIsclose, TensorIscloseConstant, TensorGreaterThan
 from mars.tensor.expressions.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
 from mars.core import build_mode
-from mars.operands import Add, AddConstant, SubConstant, Log, IscloseConstant, Isclose
 from mars.tests.core import calc_shape
 
 
@@ -164,11 +163,11 @@ class Test(unittest.TestCase):
         t1 = array([np.datetime64('2005-02-02'), np.datetime64('2005-02-03')])
         t2 = t1 + np.timedelta64(1)
 
-        self.assertIsInstance(t2.op, AddConstant)
+        self.assertIsInstance(t2.op, TensorAddConstant)
 
         t3 = t1 - np.datetime64('2005-02-02')
 
-        self.assertIsInstance(t3.op, SubConstant)
+        self.assertIsInstance(t3.op, TensorSubConstant)
         self.assertEqual(t3.dtype,
                          (np.array(['2005-02-02', '2005-02-03'], dtype=np.datetime64) -
                           np.datetime64('2005-02-02')).dtype)
@@ -185,7 +184,7 @@ class Test(unittest.TestCase):
 
         t3 = add(t1, t2, out=t1)
 
-        self.assertIsInstance(t1.op, Add)
+        self.assertIsInstance(t1.op, TensorAdd)
         self.assertEqual(t1.op.out.key, t1.op.lhs.key)
         self.assertIs(t3, t1)
         self.assertEqual(t3.shape, (3, 4))
@@ -196,7 +195,7 @@ class Test(unittest.TestCase):
 
         t3.tiles()
 
-        self.assertIsInstance(t1.chunks[0].op, Add)
+        self.assertIsInstance(t1.chunks[0].op, TensorAdd)
         self.assertEqual(t1.chunks[0].op.out.key, t1.chunks[0].op.lhs.key)
         self.assertEqual(calc_shape(t1.chunks[0]), t1.chunks[0].shape)
 
@@ -228,7 +227,7 @@ class Test(unittest.TestCase):
 
         t2 = log(t1, out=t1)
 
-        self.assertIsInstance(t2.op, Log)
+        self.assertIsInstance(t2.op, TensorLog)
         self.assertEqual(t1.op.out.key, t1.op.input.key)
         self.assertIs(t2, t1)
         self.assertEqual(t2.op.input.extra_params.raw_chunk_size, 2)
@@ -254,7 +253,7 @@ class Test(unittest.TestCase):
         t3 = t1 > t2
         t3.tiles()
         self.assertEqual(len(t3.chunks), 2)
-        self.assertIsInstance(t3.op, operands.GreaterThan)
+        self.assertIsInstance(t3.op, TensorGreaterThan)
 
     def testUnifyChunkAdd(self):
         t1 = ones(4, chunk_size=2)
@@ -409,7 +408,7 @@ class Test(unittest.TestCase):
 
         t = isclose(t1, 2, atol=atol, rtol=rtol, equal_nan=equal_nan)
 
-        self.assertIsInstance(t.op, IscloseConstant)
+        self.assertIsInstance(t.op, TensorIscloseConstant)
         self.assertEqual(t.op.atol, atol)
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
@@ -417,7 +416,7 @@ class Test(unittest.TestCase):
 
         t.tiles()
 
-        self.assertIsInstance(t.chunks[0].op, IscloseConstant)
+        self.assertIsInstance(t.chunks[0].op, TensorIscloseConstant)
         self.assertEqual(t.chunks[0].op.atol, atol)
         self.assertEqual(t.chunks[0].op.rtol, rtol)
         self.assertEqual(t.chunks[0].op.equal_nan, equal_nan)
@@ -432,7 +431,7 @@ class Test(unittest.TestCase):
 
         t = isclose(t1, t2, atol=atol, rtol=rtol, equal_nan=equal_nan)
 
-        self.assertIsInstance(t.op, Isclose)
+        self.assertIsInstance(t.op, TensorIsclose)
         self.assertEqual(t.op.atol, atol)
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
@@ -440,7 +439,7 @@ class Test(unittest.TestCase):
 
         t.tiles()
 
-        self.assertIsInstance(t.chunks[0].op, Isclose)
+        self.assertIsInstance(t.chunks[0].op, TensorIsclose)
         self.assertEqual(t.chunks[0].op.atol, atol)
         self.assertEqual(t.chunks[0].op.rtol, rtol)
         self.assertEqual(t.chunks[0].op.equal_nan, equal_nan)

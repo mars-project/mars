@@ -17,12 +17,17 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ..datasource import tensor as astensor
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 
 
-class TensorInv(operands.Inv, TensorOperandMixin):
+class TensorInv(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.INV
+
+    _input = KeyField('input')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorInv, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 

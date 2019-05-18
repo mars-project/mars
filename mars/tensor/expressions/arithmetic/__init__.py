@@ -97,7 +97,7 @@ from .copysign import copysign, TensorCopysign
 from .nextafter import nextafter, TensorNextafter, TensorNextafterConstant
 from .spacing import spacing, TensorSpacing
 from .clip import clip, TensorClip
-from .isclose import isclose, TensorIsclose
+from .isclose import isclose, TensorIsclose, TensorIscloseConstant
 from .ldexp import ldexp, TensorLdexp, TensorLdexpConstant
 from .frexp import frexp, TensorFrexp
 from .modf import modf, TensorModf

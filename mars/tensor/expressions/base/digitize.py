@@ -16,15 +16,30 @@
 
 import numpy as np
 
-from ....operands import Digitize
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, AnyField, BoolField
 from ....lib.sparse.core import get_array_module
-from ..core import TensorOperandMixin, Tensor
+from ..core import TensorHasInput, TensorOperandMixin, Tensor
 from ..datasource import tensor as astensor
 
 
-class TensorDigitize(Digitize, TensorOperandMixin):
+class TensorDigitize(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.DIGITIZE
+
+    _input = KeyField('input')
+    _bins = AnyField('bins')
+    _right = BoolField('right')
+
     def __init__(self, right=False, dtype=None, **kw):
         super(TensorDigitize, self).__init__(_right=right, _dtype=dtype, **kw)
+
+    @property
+    def bins(self):
+        return self._bins
+
+    @property
+    def right(self):
+        return self._right
 
     def _set_inputs(self, inputs):
         super(TensorDigitize, self)._set_inputs(inputs)

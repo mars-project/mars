@@ -20,14 +20,14 @@ try:
 except ImportError:  # pragma: no cover
     scifft = None
 
-from ...operands import fft as fftop
+from ..expressions import fft as fftop
 from .array import get_array_module
 
 
 def _get_fft_func(op, xp):
     fun_name = type(op).__name__.lower()[6:]  # all op starts with tensor
-    if type(op) in (fftop.FFT, fftop.IFFT, fftop.FFT2, fftop.IFFT2,
-                    fftop.FFTN, fftop.IFFTN):
+    if type(op) in (fftop.TensorFFT, fftop.TensorIFFT, fftop.TensorFFT2, fftop.TensorIFFT2,
+                    fftop.TensorFFTN, fftop.TensorIFFTN):
         if xp is np and scifft and op.norm is None:
             def f(*args, **kwargs):
                 kwargs.pop('norm', None)
@@ -70,12 +70,13 @@ def _fftfreq_chunk(ctx, chunk):
 
 
 def register_fft_handler():
-    from ... import operands
+    from ..expressions.fft import core as fftop
+    from ..expressions.fft.fftfreq import TensorFFTFreqChunk
     from ...executor import register
 
-    register(operands.StandardFFT, _fft)
-    register(operands.StandardFFTN, _fftn)
-    register(operands.RealFFT, _fft)
-    register(operands.RealFFTN, _fftn)
-    register(operands.HermitianFFT, _fft)
-    register(operands.FFTFreqChunk, _fftfreq_chunk)
+    register(fftop.TensorStandardFFT, _fft)
+    register(fftop.TensorStandardFFTN, _fftn)
+    register(fftop.TensorRealFFT, _fft)
+    register(fftop.TensorRealFFTN, _fftn)
+    register(fftop.TensorHermitianFFT, _fft)
+    register(TensorFFTFreqChunk, _fftfreq_chunk)

@@ -17,20 +17,25 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ....core import ExecutableTuple
 from ..utils import recursive_tile
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorLU(operands.LU, TensorOperandMixin):
+class TensorLU(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.LU
+
+    _input = KeyField('input')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorLU, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
-    def _set_inputs(self, inputs):
-        super(TensorLU, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
+    @property
+    def output_limit(self):
+        return 3
 
     def calc_shape(self, *inputs_shape):
         return inputs_shape[0]

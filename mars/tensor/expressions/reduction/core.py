@@ -21,13 +21,14 @@ from math import ceil, log
 
 from ....compat import lrange, izip, irange, builtins, six
 from ....config import options
+from ....serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
 from ...core import Tensor
 from ..utils import check_out_param, validate_axis
-from ..core import TensorOperandMixin
+from ..core import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 
-class TensorReduction(TensorOperandMixin):
+class TensorReductionMixin(TensorOperandMixin):
     __slots__ = ()
 
     @classmethod
@@ -90,12 +91,12 @@ class TensorReduction(TensorOperandMixin):
         return out
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        chunks = super(TensorReduction, self)._new_chunks(inputs, kws=kws, **kw)
+        chunks = super(TensorReductionMixin, self)._new_chunks(inputs, kws=kws, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return chunks
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        tensors = super(TensorReduction, self)._new_tileables(inputs, kws=kws, **kw)
+        tensors = super(TensorReductionMixin, self)._new_tileables(inputs, kws=kws, **kw)
         setattr(self, '_input', getattr(self, '_inputs')[0])
         return tensors
 
@@ -229,7 +230,7 @@ class TensorReduction(TensorOperandMixin):
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
 
-class TensorArgReduction(TensorReduction):
+class TensorArgReductionMixin(TensorReductionMixin):
     __slots__ = ()
 
     @staticmethod
@@ -274,7 +275,7 @@ class TensorArgReduction(TensorReduction):
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
 
-class TensorCumReduction(TensorReduction):
+class TensorCumReductionMixin(TensorReductionMixin):
     __slots__ = ()
 
     @classmethod
@@ -330,3 +331,42 @@ class TensorCumReduction(TensorReduction):
         nsplits = tuple((builtins.sum(c),) if i == axis else c for i, c in enumerate(in_tensor.nsplits))
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, in_tensor.shape, chunks=output_chunks, nsplits=nsplits)
+
+
+class TensorReduction(TensorHasInput):
+    _input = KeyField('input')
+    _out = KeyField('out')
+    _axis = AnyField('axis')  # can be None or int or tuple of ints, just infer the data
+    _dtype = DataTypeField('dtype')
+    _keepdims = BoolField('keepdims')
+    _combine_size = Int32Field('combine_size')
+
+    @property
+    def axis(self):
+        return getattr(self, '_axis', None)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)
+
+    @property
+    def keepdims(self):
+        return getattr(self, '_keepdims', None)
+
+    @property
+    def combine_size(self):
+        return getattr(self, '_combine_size', None)
+
+
+class TensorCumReduction(TensorHasInput):
+    _input = KeyField('input')
+    _axis = Int32Field('axis')
+    _out = KeyField('out')
+
+    @property
+    def axis(self):
+        return getattr(self, '_axis', None)
+
+    @property
+    def dtype(self):
+        return getattr(self, '_dtype', None)

@@ -251,9 +251,9 @@ def _random_estimate_size(ctx, chunk):
 
 def register_random_handler():
     from ...executor import register
-    from ...operands import random as random_op
+    from ..expressions.random.core import TensorSimpleRandomData, TensorDistribution
 
-    register(random_op.SimpleRandomData, _rand)
-    register(random_op.Distribution, _distribution)
+    register(TensorSimpleRandomData, _rand)
+    register(TensorDistribution, _distribution)
     register(random.TensorMultivariateNormal, _multivariate_normal)
     register(random.TensorRandint, _randint, _random_estimate_size)

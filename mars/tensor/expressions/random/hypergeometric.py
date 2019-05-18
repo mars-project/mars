@@ -16,18 +16,36 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorHypergeometric(operands.Hypergeometric, TensorRandomOperandMixin):
+class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_ngood', '_nbad', '_nsample', '_size'
     _input_fields_ = ['_ngood', '_nbad', '_nsample']
+    _op_type_ = OperandDef.RAND_HYPERGEOMETRIC
+
+    _ngood = AnyField('ngood')
+    _nbad = AnyField('nbad')
+    _nsample = AnyField('nsample')
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorHypergeometric, self).__init__(_state=state, _size=size,
                                                    _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def ngood(self):
+        return self._ngood
+
+    @property
+    def nbad(self):
+        return self._nbad
+
+    @property
+    def nsample(self):
+        return self._nsample
 
     def __call__(self, ngood, nbad, nsample, chunk_size=None):
         return self.new_tensor([ngood, nbad, nsample], None, raw_chunk_size=chunk_size)

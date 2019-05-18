@@ -16,12 +16,13 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from .core import TensorRandomOperandMixin, TensorDistribution
 
 
-class TensorStandardNormal(operands.StandardNormal, TensorRandomOperandMixin):
+class TensorStandardNormal(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_size',
+    _op_type_ = OperandDef.RAND_STANDARD_NORMAL
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

@@ -16,8 +16,9 @@
 
 from collections import Iterable
 
-from ....operands import Squeeze
-from ..core import TensorOperandMixin
+from ....serialize import ValueType, KeyField, TupleField
+from .... import opcodes as OperandDef
+from ..core import TensorHasInput, TensorOperandMixin
 
 
 def _get_squeeze_shape(shape, axis):
@@ -39,14 +40,19 @@ def _get_squeeze_shape(shape, axis):
     return shape, axis
 
 
-class TensorSqueeze(Squeeze, TensorOperandMixin):
+class TensorSqueeze(TensorHasInput, TensorOperandMixin):
+    _op_type_ = OperandDef.SQUEEZE
+
+    _input = KeyField('input')
+    _axis = TupleField('axis', ValueType.int32)
+
     def __init__(self, axis=None, dtype=None, sparse=False, **kw):
         super(TensorSqueeze, self).__init__(_axis=axis, _dtype=dtype,
                                             _sparse=sparse, **kw)
 
-    def _set_inputs(self, inputs):
-        super(TensorSqueeze, self)._set_inputs(inputs)
-        self._input = self._inputs[0]
+    @property
+    def axis(self):
+        return self._axis
 
     def calc_shape(self, *inputs_shape):
         return _get_squeeze_shape(inputs_shape[0], self.axis)[0]

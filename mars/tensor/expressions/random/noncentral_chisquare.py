@@ -16,18 +16,31 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorNoncentralChisquare(operands.NoncentralChisquare, TensorRandomOperandMixin):
+class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_df', '_nonc', '_size'
     _input_fields_ = ['_df', '_nonc']
+    _op_type_ = OperandDef.RAND_NONCENTRAL_CHISQURE
+
+    _df = AnyField('df')
+    _nonc = AnyField('nonc')
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorNoncentralChisquare, self).__init__(_size=size, _state=state, _dtype=dtype,
                                                         _gpu=gpu, **kw)
+
+    @property
+    def df(self):
+        return self._df
+
+    @property
+    def nonc(self):
+        return self._nonc
 
     def __call__(self, df, nonc, chunk_size=None):
         return self.new_tensor([df, nonc], None, raw_chunk_size=chunk_size)

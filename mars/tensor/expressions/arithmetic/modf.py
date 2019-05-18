@@ -16,14 +16,48 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorOutBinOp
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, StringField
+from ..core import TensorOperand
+from .core import TensorOutBinOpMixin
 
 
-class TensorModf(operands.Modf, TensorOutBinOp):
+class TensorModf(TensorOperand, TensorOutBinOpMixin):
+    _op_type_ = OperandDef.MODF
+
+    _input = KeyField('input')
+    _out1 = KeyField('out1')
+    _out2 = KeyField('out2')
+    _where = KeyField('where')
+    _casting = StringField('casting')
+
     def __init__(self, casting='same_kind', dtype=None, sparse=False, **kw):
         super(TensorModf, self).__init__(_casting=casting, _dtype=dtype,
                                          _sparse=sparse, **kw)
+
+    @property
+    def output_limit(self):
+        return 2
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def out1(self):
+        return getattr(self, '_out1', None)
+
+    @property
+    def out2(self):
+        return getattr(self, '_out2', None)
+
+    @property
+    def where(self):
+        return getattr(self, '_where', None)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
 
     @property
     def _fun(self):

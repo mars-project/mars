@@ -16,22 +16,24 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_or')
-class TensorRshift(operands.Rshift, TensorBinOp):
+class TensorRshift(TensorBinOp):
+    _op_type_ = OperandDef.RSHIFT
+
     @classmethod
     def constant_cls(cls):
         return TensorRshiftConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorRshiftConstant(operands.RshiftConstant, TensorConstant):
-    pass
+class TensorRshiftConstant(TensorConstant):
+    _op_type_ = OperandDef.RSHIFT_CONSTANT
 
 
 @infer_dtype(np.right_shift)

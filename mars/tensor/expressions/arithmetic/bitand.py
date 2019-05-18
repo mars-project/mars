@@ -16,22 +16,24 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_or')
-class TensorBitand(operands.Bitand, TensorBinOp):
+class TensorBitand(TensorBinOp):
+    _op_type_ = OperandDef.BITAND
+
     @classmethod
     def constant_cls(cls):
         return TensorBitandConstant
 
 
 @arithmetic_operand(sparse_mode='binary_or_const')
-class TensorBitandConstant(operands.BitandConstant, TensorConstant):
-    pass
+class TensorBitandConstant(TensorConstant):
+    _op_type_ = OperandDef.BITAND_CONSTANT
 
 
 @infer_dtype(np.bitwise_and)

@@ -19,14 +19,38 @@ from numbers import Number
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField, AnyField
 from ...core import TENSOR_TYPE, CHUNK_TYPE, Tensor
 from ..utils import broadcast_shape
 from ..datasource import tensor as astensor
-from .core import TensorElementWise
+from .core import TensorOperand, TensorElementWise
 
 
-class TensorClip(operands.Clip, TensorElementWise):
+class TensorClip(TensorOperand, TensorElementWise):
+    _op_type_ = OperandDef.CLIP
+
+    _a = KeyField('a')
+    _a_min = AnyField('a_min')
+    _a_max = AnyField('a_max')
+    _out = KeyField('out')
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def a_min(self):
+        return self._a_min
+
+    @property
+    def a_max(self):
+        return self._a_max
+
+    @property
+    def out(self):
+        return getattr(self, '_out', None)
+
     @contextlib.contextmanager
     def _handle_params(self, inputs):
         inps = inputs[:1]

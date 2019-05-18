@@ -16,12 +16,14 @@
 
 import numpy as np
 
-from ....operands import fft as fftop
+from .... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .core import TensorFFTMixin, validate_fft
+from .core import TensorFFTMixin, validate_fft, TensorRealFFT
 
 
-class TensorIRFFT(fftop.IRFFT, TensorFFTMixin):
+class TensorIRFFT(TensorRealFFT, TensorFFTMixin):
+    _op_type_ = OperandDef.IRFFT
+
     def __init__(self, n=None, axis=-1, norm=None, dtype=None, **kw):
         super(TensorIRFFT, self).__init__(_n=n, _axis=axis, _norm=norm,
                                           _dtype=dtype, **kw)

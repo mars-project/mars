@@ -16,15 +16,15 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='always_false')
-class TensorSpacing(operands.Spacing, TensorUnaryOp):
-    pass
+class TensorSpacing(TensorUnaryOp):
+    _op_type_ = OperandDef.SPACING
 
 
 @infer_dtype(np.spacing)

@@ -14,16 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ...core import Tensor
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .tensordot import tensordot
 
 
-class TensorDot(operands.Dot, TensorOperandMixin):
+class TensorDot(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.DOT
+
+    _a = KeyField('a')
+    _b = KeyField('b')
+
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorDot, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+
+    @property
+    def a(self):
+        return self._a
+
+    @property
+    def b(self):
+        return self._b
 
     def calc_shape(self, *inputs_shape):
         a_shape = inputs_shape[0]

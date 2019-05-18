@@ -16,18 +16,26 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin, handle_array
+from .... import opcodes as OperandDef
+from ....serialize import AnyField
+from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
-class TensorChisquare(operands.Chisquare, TensorRandomOperandMixin):
+class TensorChisquare(TensorDistribution, TensorRandomOperandMixin):
     __slots__ = '_df', '_size'
     _input_fields_ = ['_df']
+    _op_type_ = OperandDef.RAND_CHISQUARE
+
+    _df = AnyField('df')
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorChisquare, self).__init__(_state=state, _size=size,
                                               _dtype=dtype, _gpu=gpu, **kw)
+
+    @property
+    def df(self):
+        return self._df
 
     def __call__(self, df, chunk_size=None):
         return self.new_tensor([df], self._size, raw_chunk_size=chunk_size)

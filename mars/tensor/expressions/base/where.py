@@ -18,18 +18,37 @@ import itertools
 
 import numpy as np
 
-from ....operands import Where
+from .... import opcodes as OperandDef
+from ....serialize import KeyField
 from ....compat import lrange
 from ..utils import broadcast_shape, unify_chunks
 from ...core import TENSOR_TYPE
-from ..core import TensorOperandMixin
+from ..core import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .broadcast_to import broadcast_to
 
 
-class TensorWhere(Where, TensorOperandMixin):
+class TensorWhere(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.WHERE
+
+    _condition = KeyField('condition')
+    _x = KeyField('x')
+    _y = KeyField('y')
+
     def __init__(self, dtype=None, **kw):
         super(TensorWhere, self).__init__(_dtype=dtype, **kw)
+
+    @property
+    def condition(self):
+        return self._condition
+
+    @property
+    def x(self):
+        return self._x
+
+    @property
+    def y(self):
+        return self._y
 
     def _set_inputs(self, inputs):
         super(TensorWhere, self)._set_inputs(inputs)

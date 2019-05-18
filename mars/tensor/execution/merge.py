@@ -19,7 +19,7 @@ import operator
 from collections import Iterable
 
 from ...compat import six, lrange, lmap
-from ...operands import Slice
+from ..expressions.indexing import TensorSlice
 from .array import as_same_device, device
 
 
@@ -27,7 +27,7 @@ def _get_index(chunk):
     try:
         return chunk.index
     except AttributeError:
-        if isinstance(chunk.op, Slice):
+        if isinstance(chunk.op, TensorSlice):
             return chunk.inputs[0].index
         raise
 
@@ -86,8 +86,8 @@ def _stack(ctx, chunk):
 
 
 def register_merge_handler():
-    from ...operands import Concatenate, Stack
+    from ..expressions.merge import TensorConcatenate, TensorStack
     from ...executor import register
 
-    register(Concatenate, _concatenate)
-    register(Stack, _stack)
+    register(TensorConcatenate, _concatenate)
+    register(TensorStack, _stack)

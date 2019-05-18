@@ -16,14 +16,23 @@
 
 import numpy as np
 
-from .... import operands
+from .... import opcodes as OperandDef
+from ....serialize import BoolField
 from ..utils import infer_dtype
 from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(init=False, sparse_mode='unary')
-class TensorAngle(operands.Angle, TensorUnaryOp):
+class TensorAngle(TensorUnaryOp):
+    _op_type_ = OperandDef.ANGLE
+
+    _deg = BoolField('deg')
+
+    @property
+    def deg(self):
+        return self._deg
+
     def __init__(self, deg=None, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
         super(TensorAngle, self).__init__(_deg=deg, _casting=casting, _err=err,

@@ -16,11 +16,13 @@
 
 import numpy as np
 
-from .... import operands
-from .core import TensorRandomOperandMixin
+from .... import opcodes as OperandDef
+from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
-class TensorRandn(operands.Randn, TensorRandomOperandMixin):
+class TensorRandn(TensorSimpleRandomData, TensorRandomOperandMixin):
+    _op_type_ = OperandDef.RAND_RANDN
+
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super(TensorRandn, self).__init__(_state=state, _size=size,
