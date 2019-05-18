@@ -120,7 +120,8 @@ class TSQR(object):
         concat_op = TensorConcatenate(axis=0, dtype=stage1_r_chunks[0].dtype)
         concat_r_chunk = concat_op.new_chunk(stage1_r_chunks, shape, index=(0, 0))
         qr_op = TensorQR()
-        qr_shapes = concat_r_chunk.shape, (concat_r_chunk.shape[1],) * 2
+        qr_shapes = (concat_r_chunk.shape[0], min(concat_r_chunk.shape)), \
+                    (min(concat_r_chunk.shape), concat_r_chunk.shape[1])
         qr_chunks = qr_op.new_chunks([concat_r_chunk], qr_shapes, index=concat_r_chunk.index,
                                      kws=[{'side': 'q', 'dtype': q_dtype},
                                           {'side': 'r', 'dtype': r_dtype}])
