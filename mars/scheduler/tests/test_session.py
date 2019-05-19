@@ -72,7 +72,7 @@ class Test(unittest.TestCase):
                                           size=80, shape=(10,), workers=(mock_worker_addr,))
 
             with mock.patch(GraphActor.__module__ + '.' + GraphActor.__name__, new=MockGraphActor):
-                session_ref.submit_tensor_graph(None, mock_graph_key)
+                session_ref.submit_tileable_graph(None, mock_graph_key)
                 graph_ref = pool.actor_ref(GraphActor.gen_uid(mock_session_id, mock_graph_key))
 
                 expire_time = time.time() - options.scheduler.status_timeout - 1

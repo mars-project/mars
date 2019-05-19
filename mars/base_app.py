@@ -103,7 +103,7 @@ class BaseApplication(object):
             load_module_str = os.environ.get('MARS_LOAD_MODULES')
             if load_module_str:
                 load_modules = load_module_str.split(',')
-        load_modules.append('mars.tensor')
+        load_modules.append('mars.executor')
         for m in load_modules:
             __import__(m, globals(), locals(), [])
         self.service_logger.info('Modules %s loaded', ','.join(load_modules))

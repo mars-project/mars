@@ -15,12 +15,11 @@
 # limitations under the License.
 
 
-from weakref import WeakKeyDictionary, ref
 from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TileableData, enter_build_mode, is_eager_mode
+from ..core import Entity, ChunkData, Chunk, TileableData, is_eager_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField
 from ..utils import on_serialize_shape, on_deserialize_shape
@@ -36,6 +35,15 @@ class TensorChunkData(ChunkData):
     # optional fields
     _dtype = DataTypeField('dtype')
     _composed = ListField('composed', ValueType.reference('self'))
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'index': self.index,
+        }
 
     @property
     def shape(self):
@@ -176,25 +184,6 @@ class TensorData(TileableData):
         from .expressions.datastore import totiledb
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
-
-    def execute(self, session=None, **kw):
-        from ..session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.run(self, **kw)
-
-    def fetch(self, session=None, **kw):
-        from ..session import Session
-
-        if session is None:
-            session = Session.default_or_local()
-        return session.fetch(self, **kw)
-
-    def _set_execute_session(self, session):
-        _cleaner.register(self, session)
-
-    _execute_session = property(fset=_set_execute_session)
 
 
 class Tensor(Entity):
@@ -401,31 +390,3 @@ class SparseTensor(Tensor):
 
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (TensorChunk, TensorChunkData)
-
-
-class _TensorSession(object):
-    def __init__(self, tensor, session):
-        key = tensor.key, tensor.id
-
-        def cb(_, sess=ref(session)):
-            s = sess()
-            if s:
-                s.decref(key)
-        self._tensor = ref(tensor, cb)
-
-
-class _TensorCleaner(object):
-    def __init__(self):
-        self._tensor_to_sessions = WeakKeyDictionary()
-
-    @enter_build_mode
-    def register(self, tensor, session):
-        if tensor in self._tensor_to_sessions:
-            self._tensor_to_sessions[tensor].append(_TensorSession(tensor, session))
-        else:
-            self._tensor_to_sessions[tensor] = [_TensorSession(tensor, session)]
-
-
-# we don't use __del__ to decref because a tensor holds an op,
-# and op's outputs contains the tensor, so a circular references exists
-_cleaner = _TensorCleaner()

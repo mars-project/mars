@@ -193,7 +193,10 @@ class IndexValue(Serializable):
 
     def __mars_tokenize__(self):
         # return object for tokenize
-        v = self._index_value
+        try:
+            v = self._index_value
+        except AttributeError:
+            return None
         return [type(v).__name__] + [getattr(v, f, None) for f in v.__slots__]
 
     @property
@@ -363,6 +366,17 @@ class DataFrameChunkData(ChunkData):
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtypes': self.dtypes,
+            'index': self.index,
+            'index_value': self.index_value,
+            'columns_value': self.columns,
+        }
 
     @property
     def shape(self):

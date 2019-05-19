@@ -234,28 +234,6 @@ def deserialize_graph(graph_b64, graph_cls=None):
         return graph_cls.from_pb(g)
 
 
-def merge_tensor_chunks(input_tensor, ctx):
-    from .executor import Executor
-    from .tensor.expressions.fetch import TensorFetch
-
-    if len(input_tensor.chunks) == 1:
-        return ctx[input_tensor.chunks[0].key]
-
-    chunks = []
-    for c in input_tensor.chunks:
-        op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-        chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key)
-        chunks.append(chunk)
-
-    new_op = TensorFetch(dtype=input_tensor.dtype, sparse=input_tensor.op.sparse)
-    tensor = new_op.new_tensor(None, shape=input_tensor.shape, chunks=chunks,
-                               nsplits=input_tensor.nsplits)
-
-    executor = Executor(storage=ctx)
-    concat_result = executor.execute_tensor(tensor, concat=True)
-    return concat_result[0]
-
-
 if sys.version_info[0] < 3:
     def wraps(fun):
         if isinstance(fun, functools.partial):
@@ -267,9 +245,19 @@ else:
 
 def calc_data_size(dt):
     if isinstance(dt, tuple):
-        return sum(c.nbytes for c in dt)
-    else:
+        return sum(calc_data_size(c) for c in dt)
+
+    try:
         return dt.nbytes
+    except AttributeError:
+        pass
+
+    if hasattr(dt, 'memory_usage'):
+        return sys.getsizeof(dt)
+    if hasattr(dt, 'dtypes') and hasattr(dt, 'shape'):
+        return dt.shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
+
+    raise ValueError('Cannot support calculating size of %s', type(dt))
 
 
 def _get_mod_logger():
@@ -404,9 +392,78 @@ class BlacklistSet(object):
             del self._key_time[k]
 
 
+_expr_modules = dict()
+
+
+def get_expr_module(op):
+    module_name = op._op_module_
+    try:
+        return _expr_modules[module_name]
+    except KeyError:
+        # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
+        expr_module_name = '.{0}.expressions'.format(module_name)
+        expr_module = _expr_modules[module_name] = importlib.import_module(expr_module_name, __package__)
+        return expr_module
+
+
 def concat_tileable_chunks(tileable):
-    module_name = tileable.op._op_module_
-    # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
-    expr_module_name = 'mars.{0}.expressions'.format(module_name)
-    expr_module = importlib.import_module(expr_module_name)
-    return expr_module.concat_tileable_chunks(tileable)
+    return get_expr_module(tileable.op).concat_tileable_chunks(tileable)
+
+
+def get_fetch_op_cls(op):
+    return get_expr_module(op).get_fetch_op_cls(op)
+
+
+def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
+    from .operands import ShuffleProxy
+
+    chunk_op = chunk.op
+    params = chunk.params.copy()
+    params.pop('index', None)
+
+    # todo currently not supported
+    params.pop('index_value', None)
+    params.pop('columns_value', None)
+
+    if isinstance(chunk_op, ShuffleProxy):
+        # for shuffle nodes, we build FetchShuffle chunks
+        # to replace ShuffleProxy
+        to_fetch_keys = [pinp.key for pinp in chunk.inputs
+                         if input_chunk_keys is None or pinp.key in input_chunk_keys]
+        op = get_fetch_op_cls(chunk_op)(to_fetch_keys=to_fetch_keys, **params)
+    else:
+        # for non-shuffle nodes, we build Fetch chunks
+        # to replace original chunk
+        op = get_fetch_op_cls(chunk_op)(sparse=chunk.op.sparse, **params)
+    return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
+
+
+def build_fetch_tileable(tileable, coarse=False):
+    if coarse or tileable.is_coarse():
+        chunks = None
+    else:
+        chunks = []
+        for c in tileable.chunks:
+            fetch_chunk = build_fetch_chunk(c, index=c.index)
+            chunks.append(fetch_chunk)
+
+    tileable_op = tileable.op
+    params = tileable.params.copy()
+
+    # todo currently not supported
+    params.pop('index_value', None)
+    params.pop('columns_value', None)
+
+    new_op = get_fetch_op_cls(tileable_op)(**params)
+    return new_op.new_tileables(None, chunks=chunks, nsplits=tileable.nsplits,
+                                _key=tileable.key, _id=tileable.id, **params)[0]
+
+
+def build_fetch(entity, coarse=False):
+    from .core import Chunk, ChunkData
+    if isinstance(entity, (Chunk, ChunkData)):
+        return build_fetch_chunk(entity)
+    elif hasattr(entity, 'tiles'):
+        return build_fetch_tileable(entity, coarse=coarse)
+    else:
+        raise TypeError('Type %s not supported' % type(entity).__name__)

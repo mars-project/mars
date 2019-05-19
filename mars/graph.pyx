@@ -319,7 +319,7 @@ cdef class DirectedGraph:
             list nodes = []
 
         from .tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
-        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
+        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE, DataFrame
 
         level = None
 
@@ -341,7 +341,7 @@ cdef class DirectedGraph:
                     for c in node.composed:
                         nodes.append(SerializableGraphNode(_node=c.op))
             elif isinstance(node, TENSOR_TYPE + DATAFRAME_TYPE):
-                node = node.data if isinstance(node, Tensor) else node
+                node = node.data if isinstance(node, (Tensor, DataFrame)) else node
                 if level is None:
                     level = SerializableGraph.Level.ENTITY
                 for c in (node.chunks or ()):

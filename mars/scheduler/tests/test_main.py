@@ -206,7 +206,7 @@ class Test(unittest.TestCase):
             if session_ref.graph_state(graph_key) in GraphState.TERMINATED_STATES:
                 return session_ref.graph_state(graph_key)
 
-    def testMainWithoutEtcd(self):
+    def testMainTensorWithoutEtcd(self):
         self.start_processes()
 
         session_id = uuid.uuid1()
@@ -220,8 +220,8 @@ class Test(unittest.TestCase):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
@@ -236,8 +236,8 @@ class Test(unittest.TestCase):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
@@ -250,8 +250,8 @@ class Test(unittest.TestCase):
         graph = sumv.build_graph()
         targets = [sumv.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
@@ -266,8 +266,8 @@ class Test(unittest.TestCase):
         graph = b.build_graph()
         targets = [b.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
@@ -275,7 +275,7 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, b.key)
         assert_allclose(loads(result), np.ones((27, 31)))
 
-    def testMainWithEtcd(self):
+    def testMainTensorWithEtcd(self):
         self.start_processes(etcd=True)
 
         session_id = uuid.uuid1()
@@ -289,8 +289,8 @@ class Test(unittest.TestCase):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(json.dumps(graph.to_json()),
-                                        graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
@@ -299,18 +299,53 @@ class Test(unittest.TestCase):
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
+    def testMainDataFrameWithoutEtcd(self):
+        import pandas as pd
+        from mars.dataframe.expressions.datasource.dataframe import from_pandas
+        from mars.dataframe.expressions.arithmetic import add
+
+        self.start_processes(etcd=False)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        data1 = pd.DataFrame(np.random.rand(10, 10))
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10))
+        df2 = from_pandas(data2, chunk_size=6)
+
+        df3 = add(df1, df2)
+
+        graph = df3.build_graph()
+        targets = [df3.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        expected = data1 + data2
+        result = session_ref.fetch_result(graph_key, df3.key)
+        pd.testing.assert_frame_equal(expected, loads(result))
+
     def testWorkerFailOver(self):
         def kill_process_tree(proc):
             import psutil
             proc = psutil.Process(proc.pid)
             plasma_sock_dir = None
             for p in proc.children(recursive=True):
-                if 'plasma' in p.name():
-                    socks = [conn.laddr for conn in p.connections('unix')
-                             if 'plasma' in conn.laddr]
-                    if socks:
-                        plasma_sock_dir = os.path.dirname(socks[0])
-                p.kill()
+                try:
+                    if 'plasma' in p.name():
+                        socks = [conn.laddr for conn in p.connections('unix')
+                                 if 'plasma' in conn.laddr]
+                        if socks:
+                            plasma_sock_dir = os.path.dirname(socks[0])
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    continue
             proc.kill()
             if plasma_sock_dir:
                 shutil.rmtree(plasma_sock_dir, ignore_errors=True)
@@ -335,8 +370,8 @@ class Test(unittest.TestCase):
         graph = c.build_graph()
         targets = [c.key]
         graph_key = uuid.uuid1()
-        session_ref.submit_tensor_graph(
-            json.dumps(graph.to_json()), graph_key, target_tensors=targets)
+        session_ref.submit_tileable_graph(
+            json.dumps(graph.to_json()), graph_key, target_tileables=targets)
 
         while not os.path.exists(terminate_file):
             actor_client.sleep(0.05)

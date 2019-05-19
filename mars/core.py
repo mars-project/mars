@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from operator import attrgetter, mul
 import threading
 import itertools
+from operator import attrgetter, mul
+from weakref import WeakKeyDictionary, ref
 
 import numpy as np
 
@@ -395,7 +396,7 @@ class TileableData(SerializableWithKey, Tileable):
         return handler.single_tiles(self)
 
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
-        from .tensor.expressions.utils import convert_to_fetch
+        from .utils import build_fetch
 
         executed_keys = executed_keys or []
         if tiled and self.is_coarse():
@@ -416,7 +417,7 @@ class TileableData(SerializableWithKey, Tileable):
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
-                node = convert_to_fetch(node).data
+                node = build_fetch(node, coarse=True).data
 
             visited.add(node)
             if not graph.contains(node):
@@ -463,6 +464,25 @@ class TileableData(SerializableWithKey, Tileable):
         dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs)
 
         return Source(dot)
+
+    def execute(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.run(self, **kw)
+
+    def fetch(self, session=None, **kw):
+        from .session import Session
+
+        if session is None:
+            session = Session.default_or_local()
+        return session.fetch(self, **kw)
+
+    def _set_execute_session(self, session):
+        _cleaner.register(self, session)
+
+    _execute_session = property(fset=_set_execute_session)
 
 
 class ChunksIndexer(object):
@@ -605,3 +625,31 @@ class ExecutableTuple(tuple):
         if session is None:
             session = Session.default_or_local()
         return session.run(*self, **kw)
+
+
+class _TileableSession(object):
+    def __init__(self, tensor, session):
+        key = tensor.key, tensor.id
+
+        def cb(_, sess=ref(session)):
+            s = sess()
+            if s:
+                s.decref(key)
+        self._tensor = ref(tensor, cb)
+
+
+class _TileableDataCleaner(object):
+    def __init__(self):
+        self._tileable_to_sessions = WeakKeyDictionary()
+
+    @enter_build_mode
+    def register(self, tensor, session):
+        if tensor in self._tileable_to_sessions:
+            self._tileable_to_sessions[tensor].append(_TileableSession(tensor, session))
+        else:
+            self._tileable_to_sessions[tensor] = [_TileableSession(tensor, session)]
+
+
+# we don't use __del__ to decref because a tensor holds an op,
+# and op's outputs contains the tensor, so a circular references exists
+_cleaner = _TileableDataCleaner()

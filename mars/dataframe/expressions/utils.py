@@ -339,3 +339,12 @@ def concat_tileable_chunks(df):
     return op.new_dataframe([df], shape=df.shape, chunks=[chunk],
                             nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
                             index_value=df.index_value, columns_value=df.columns)
+
+
+def get_fetch_op_cls(op):
+    from ...operands import ShuffleProxy
+    from .fetch import DataFrameFetchShuffle, DataFrameFetch
+    if isinstance(op, ShuffleProxy):
+        return DataFrameFetchShuffle
+    else:
+        return DataFrameFetch

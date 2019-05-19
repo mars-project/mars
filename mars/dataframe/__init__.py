@@ -15,8 +15,6 @@
 # limitations under the License.
 
 # do imports to register operands
-from .expressions import arithmetic
-from .expressions import datasource
-del arithmetic
-del datasource
+from . import expressions
+del expressions
 

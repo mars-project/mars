@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, concat_tileable_chunks
+from .utils import kernel_mode, calc_data_size , concat_tileable_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -619,10 +619,13 @@ def ignore(*_):
 def default_size_estimator(ctx, chunk, multiplier=1):
     exec_size = 0
     for inp in chunk.inputs or ():
-        if chunk.is_sparse() or np.isnan(inp.nbytes):
+        try:
             exec_size += ctx[inp.key][0]
-        else:
-            exec_size += inp.nbytes
+        except KeyError:
+            if not chunk.is_sparse():
+                inp_size = calc_data_size(inp)
+                if not np.isnan(inp_size):
+                    exec_size += inp_size
     exec_size = int(exec_size * multiplier)
 
     total_out_size = 0
@@ -630,7 +633,7 @@ def default_size_estimator(ctx, chunk, multiplier=1):
     outputs = chunk.op.outputs
     for out in outputs:
         try:
-            chunk_size = out.nbytes if not out.is_sparse() else exec_size
+            chunk_size = calc_data_size(out) if not out.is_sparse() else exec_size
             if np.isnan(chunk_size):
                 raise TypeError
             chunk_sizes[out.key] = chunk_size
@@ -647,7 +650,10 @@ def default_size_estimator(ctx, chunk, multiplier=1):
             store_size = max(exec_size // len(outputs),
                              total_out_size // max(len(chunk_sizes), 1))
         try:
-            max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+            if out.is_sparse():
+                max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+            else:
+                max_sparse_size = np.nan
         except TypeError:  # pragma: no cover
             max_sparse_size = np.nan
         if not np.isnan(max_sparse_size):
