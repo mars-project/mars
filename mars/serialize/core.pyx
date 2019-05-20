@@ -466,6 +466,10 @@ cdef class OneOfField(Field):
             self._type = ValueType.oneof(*[f.type for f in self.fields])
         return self._type
 
+    @property
+    def attrs(self):
+        return [f.attr for f in self.fields]
+
 
 class SerializableMetaclass(type):
     def __new__(mcs, str name, tuple bases, dict kv):

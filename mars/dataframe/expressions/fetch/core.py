@@ -15,7 +15,6 @@
 from ....serialize.core import TupleField, SeriesField, ReferenceField, ValueType
 from ....operands import Fetch, FetchShuffle
 from ....utils import on_serialize_shape, on_deserialize_shape
-from ...core import IndexValue
 from ..core import DataFrameOperandMixin
 
 

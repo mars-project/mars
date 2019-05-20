@@ -435,15 +435,21 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object field_obj
         cdef object add
         cdef object it_obj
+        cdef bint matched
         cdef OneOfField oneoffield
 
         if isinstance(field, OneOfField):
             oneoffield = <OneOfField> field
             value = getattr(model_instance, oneoffield.attr, None)
+            matched = False
             for f in oneoffield.fields:
                 if isinstance(value, f.type.model):
                     f.serialize(self, model_instance, obj)
+                    matched = True
                     return
+            if not matched and value is not None:
+                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
+                    value, field.tag_name(self)))
             return
 
         value = getattr(model_instance, field.attr, field.default)

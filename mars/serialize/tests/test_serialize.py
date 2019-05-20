@@ -206,6 +206,9 @@ class Test(unittest.TestCase):
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertNotIsInstance(node3.value.i[0], Node8)
 
+        with self.assertRaises(ValueError):
+            serializes(provider, [Node3(value='sth else')])
+
     def testJSONSerialize(self):
         provider = JsonSerializeProvider()
 
@@ -255,6 +258,9 @@ class Test(unittest.TestCase):
         self.assertEqual(node3.value.h[2], True)
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertNotIsInstance(node3.value.i[0], Node8)
+
+        with self.assertRaises(ValueError):
+            serializes(provider, [Node3(value='sth else')])
 
     def testAttributeAsDict(self):
         other_data = {}
