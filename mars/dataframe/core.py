@@ -188,7 +188,7 @@ class IndexValue(Serializable):
                               range_index=RangeIndex, categorical_index=CategoricalIndex,
                               interval_index=IntervalIndex, datetime_index=DatetimeIndex,
                               timedelta_index=TimedeltaIndex, period_index=PeriodIndex,
-                              int64_index=Int64Field, uint64_index=UInt64Index,
+                              int64_index=Int64Index, uint64_index=UInt64Index,
                               float64_index=Float64Index, multi_index=MultiIndex)
 
     def __mars_tokenize__(self):
