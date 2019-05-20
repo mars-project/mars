@@ -306,8 +306,6 @@ cdef class JsonSerializeProvider(Provider):
             }
         elif tp in PRIMITIVE_TYPE_TO_NAME:
             # primitive type, we do not do any type check here
-            if isinstance(value, np.generic):
-                value = value.item()
             return value
         elif type(tp) is Identity:
             return self._serialize_typed_value(value, tp.type, weak_ref=weak_ref)
@@ -346,10 +344,6 @@ cdef class JsonSerializeProvider(Provider):
             value = value()
         if value is None:
             return
-
-        # handle numpy type
-        if isinstance(value, np.generic):
-            value = value.item()
 
         if isinstance(value, bool):
             return value

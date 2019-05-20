@@ -37,8 +37,6 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtypes = SeriesField('dtypes')
-    _index_value = ReferenceField('index_value', IndexValue)
-    _columns_value = ReferenceField('columns_value', IndexValue)
 
     def __init__(self, dtypes=None, to_fetch_key=None, sparse=False, **kw):
         super(DataFrameFetch, self).__init__(
@@ -65,8 +63,6 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtypes = SeriesField('dtypes')
-    _index_value = ReferenceField('index_value', IndexValue)
-    _columns_value = ReferenceField('columns_value', IndexValue)
 
     def __init__(self, dtypes=None, to_fetch_keys=None, **kw):
         super(DataFrameFetchShuffle, self).__init__(

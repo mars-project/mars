@@ -20,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..utils import on_serialize_shape, on_deserialize_shape
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type
 from ..core import ChunkData, Chunk, Entity, TileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
@@ -36,9 +36,9 @@ class IndexValue(Serializable):
         _is_monotonic_decreasing = BoolField('is_monotonic_decreasing')
         _is_unique = BoolField('is_unique')
         _should_be_monotonic = BoolField('should_be_monotonic')
-        _max_val = AnyField('max_val')
+        _max_val = AnyField('max_val', on_serialize=on_serialize_numpy_type)
         _max_val_close = BoolField('max_val_close')
-        _min_val = AnyField('min_val')
+        _min_val = AnyField('min_val', on_serialize=on_serialize_numpy_type)
         _min_val_close = BoolField('min_val_close')
 
         @property

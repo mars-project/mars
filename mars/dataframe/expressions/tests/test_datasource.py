@@ -50,7 +50,6 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
         pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
 
@@ -63,7 +62,6 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
         pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
 
