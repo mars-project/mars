@@ -339,6 +339,13 @@ class SeriesData(TileableData):
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
 
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesDef
+            return SeriesDef
+        return super(SeriesData, cls).cls(provider)
+
     @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
@@ -418,6 +425,13 @@ class DataFrameData(TileableData):
     _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameDef
+            return DataFrameDef
+        return super(DataFrameData, cls).cls(provider)
 
     @property
     def params(self):

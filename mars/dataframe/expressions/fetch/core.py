@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....serialize.core import TupleField, SeriesField, ReferenceField, ValueType
+from ....serialize.core import TupleField, SeriesField, ValueType
 from ....operands import Fetch, FetchShuffle
 from ....utils import on_serialize_shape, on_deserialize_shape
 from ..core import DataFrameOperandMixin
