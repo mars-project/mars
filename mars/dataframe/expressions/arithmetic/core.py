@@ -562,8 +562,12 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     def _new_chunks(self, inputs, kws=None, **kw):
         properties = self._calc_properties(*inputs)
-        s = properties.pop('shape')
-        shape = self._merge_shape(kw.pop('shape', None), s)
+        shapes = [properties.pop('shape')]
+        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
+        if 'shape' in kw:
+            shapes.append(kw.pop('shape'))
+        shape = self._merge_shape(*shapes)
+
         for prop, value in properties.items():
             if kw.get(prop, None) is None:
                 kw[prop] = value

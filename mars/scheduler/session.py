@@ -31,7 +31,7 @@ class SessionActor(SchedulerActor):
         self._manager_ref = None
         self._graph_refs = dict()
         self._graph_meta_refs = dict()
-        self._tensor_to_graph = dict()
+        self._tileable_to_graph = dict()
 
     @staticmethod
     def gen_uid(session_id):
@@ -46,8 +46,8 @@ class SessionActor(SchedulerActor):
     def get_graph_meta_refs(self):
         return self._graph_meta_refs
 
-    def get_graph_ref_by_tensor_key(self, tensor_key):
-        return self._tensor_to_graph[tensor_key]
+    def get_graph_ref_by_tleable_key(self, tileable_key):
+        return self._tileable_to_graph[tileable_key]
 
     def post_create(self):
         super(SessionActor, self).post_create()
@@ -62,31 +62,31 @@ class SessionActor(SchedulerActor):
             self.ctx.destroy_actor(graph_ref)
 
     @log_unhandled
-    def submit_tensor_graph(self, serialized_graph, graph_key, target_tensors=None, compose=True):
+    def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, compose=True):
         from .graph import GraphActor, GraphMetaActor
 
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
         graph_addr = self.get_scheduler(graph_uid)
         graph_ref = self.ctx.create_actor(GraphActor, self._session_id, graph_key,
-                                          serialized_graph, target_tensors=target_tensors,
+                                          serialized_graph, target_tileables=target_tileables,
                                           uid=graph_uid, address=graph_addr)
         self._graph_refs[graph_key] = graph_ref
         self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=graph_addr)
 
         graph_ref.execute_graph(_tell=True, compose=compose)
-        for tensor_key in target_tensors or ():
-            if tensor_key not in self._tensor_to_graph:
-                self._tensor_to_graph[tensor_key] = graph_ref
+        for tileable_key in target_tileables or ():
+            if tileable_key not in self._tileable_to_graph:
+                self._tileable_to_graph[tileable_key] = graph_ref
         return graph_ref
 
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()
 
-    def fetch_result(self, graph_key, tensor_key):
+    def fetch_result(self, graph_key, tileable_key):
         # TODO just for test, should move to web handler
         graph_ref = self._graph_refs[graph_key]
-        return graph_ref.fetch_tensor_result(tensor_key)
+        return graph_ref.fetch_tileable_result(tileable_key)
 
     @log_unhandled
     def handle_worker_change(self, adds, removes):

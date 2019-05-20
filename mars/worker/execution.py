@@ -27,7 +27,7 @@ from ..errors import PinChunkFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
-from ..utils import deserialize_graph, log_unhandled, build_exc_info, BlacklistSet
+from ..utils import deserialize_graph, log_unhandled, build_exc_info, calc_data_size, BlacklistSet
 from .chunkholder import ensure_chunk
 from .spill import spill_exists, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_load_key
@@ -315,7 +315,7 @@ class ExecutionActor(WorkerActor):
             op = chunk.op
             if isinstance(op, Fetch):
                 # use actual size as potential allocation size
-                input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key, chunk.nbytes)
+                input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key, calc_data_size(chunk))
             elif isinstance(op, FetchShuffle):
                 shuffle_key = graph.successors(chunk)[0].op.shuffle_key
                 for k in op.to_fetch_keys:
@@ -488,13 +488,14 @@ class ExecutionActor(WorkerActor):
             for c in graph:
                 if not isinstance(c.op, Fetch):
                     break
-                input_size += c.nbytes
+                data_size = calc_data_size(c)
+                input_size += data_size
                 if self._chunk_holder_ref.is_stored(c.key):
                     continue
                 if spill_exists(c.key):
-                    disk_size += c.nbytes
+                    disk_size += data_size
                 else:
-                    net_size += c.nbytes
+                    net_size += data_size
 
             if stats['net_transfer_speed']['count'] >= options.optimize.min_stats_count:
                 base_time += net_size * 1.0 / stats['net_transfer_speed']['mean']

@@ -13,4 +13,4 @@
 # limitations under the License.
 
 
-from .utils import concat_tileable_chunks
+from .utils import concat_tileable_chunks, get_fetch_op_cls

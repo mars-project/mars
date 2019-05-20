@@ -36,9 +36,10 @@ from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy
 from ..serialize import dataserializer
-from ..tensor.core import ChunkData
+from ..core import ChunkData
 from ..tiles import handler, DataNotReady
-from ..utils import serialize_graph, deserialize_graph, merge_tensor_chunks, log_unhandled
+from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
+    concat_tileable_chunks, build_fetch_chunk, build_fetch_tileable
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +55,12 @@ class ResultReceiverActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
-    def fetch_tensor(self, session_id, graph_key, tensor_key, compressions):
+    def fetch_tileable(self, session_id, graph_key, tileable_key, compressions):
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
         graph_actor = self.ctx.actor_ref(GraphActor.gen_uid(session_id, graph_key))
-        fetch_graph = deserialize_graph(graph_actor.build_tensor_merge_graph(tensor_key))
+        fetch_graph = deserialize_graph(graph_actor.build_tileable_merge_graph(tileable_key))
 
         if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, Fetch):
             c = next(fetch_graph.iter_nodes())
@@ -202,13 +203,13 @@ class GraphActor(SchedulerActor):
     def gen_uid(session_id, graph_key):
         return 's:0:graph$%s$%s' % (session_id, graph_key)
 
-    def __init__(self, session_id, graph_key, serialized_tensor_graph,
-                 target_tensors=None, serialized_chunk_graph=None,
+    def __init__(self, session_id, graph_key, serialized_tileable_graph,
+                 target_tileables=None, serialized_chunk_graph=None,
                  state=GraphState.UNSCHEDULED, final_state=None):
         super(GraphActor, self).__init__()
         self._graph_key = graph_key
         self._session_id = session_id
-        self._serialized_tensor_graph = serialized_tensor_graph
+        self._serialized_tileable_graph = serialized_tileable_graph
         self._serialized_chunk_graph = serialized_chunk_graph
         self._state = state
         self._final_state = final_state
@@ -223,23 +224,23 @@ class GraphActor(SchedulerActor):
         self._graph_meta_ref = None
         self._session_ref = None
 
-        self._tensor_graph_cache = None
+        self._tileable_graph_cache = None
         self._chunk_graph_cache = None
 
         self._op_key_to_chunk = defaultdict(list)
 
         self._resource_actor = None
-        self._tensor_key_opid_to_tiled = defaultdict(list)
-        self._tensor_key_to_opid = dict()
-        self._terminal_chunk_op_tensor = defaultdict(set)
-        self._terminated_tensors = set()
+        self._tileable_key_opid_to_tiled = defaultdict(list)
+        self._tileable_key_to_opid = dict()
+        self._terminal_chunk_op_tileable = defaultdict(set)
+        self._terminated_tileables = set()
         self._operand_infos = dict()
-        if target_tensors:
-            self._target_tensor_chunk_ops = dict((k, set()) for k in target_tensors)
-            self._target_tensor_finished = dict((k, set()) for k in self._target_tensor_chunk_ops)
+        if target_tileables:
+            self._target_tileable_chunk_ops = dict((k, set()) for k in target_tileables)
+            self._target_tileable_finished = dict((k, set()) for k in self._target_tileable_chunk_ops)
         else:
-            self._target_tensor_chunk_ops = dict()
-            self._target_tensor_finished = dict()
+            self._target_tileable_chunk_ops = dict()
+            self._target_tileable_finished = dict()
 
         self._graph_analyze_pool = None
 
@@ -417,18 +418,18 @@ class GraphActor(SchedulerActor):
         Tile and compose tensor graph into chunk graph
         :param compose: if True, do compose after tiling
         """
-        tensor_graph = deserialize_graph(self._serialized_tensor_graph)
-        self._tensor_graph_cache = tensor_graph
+        tileable_graph = deserialize_graph(self._serialized_tileable_graph)
+        self._tileable_graph_cache = tileable_graph
 
         logger.debug('Begin preparing graph %s with %d tensors to chunk graph.',
-                     self._graph_key, len(tensor_graph))
+                     self._graph_key, len(tileable_graph))
 
         # mark target tensor steps
-        if not self._target_tensor_chunk_ops:
-            for tn in tensor_graph:
-                if not tensor_graph.count_successors(tn):
-                    self._target_tensor_chunk_ops[tn.key] = set()
-                    self._target_tensor_finished[tn.key] = set()
+        if not self._target_tileable_chunk_ops:
+            for tn in tileable_graph:
+                if not tileable_graph.count_successors(tn):
+                    self._target_tileable_chunk_ops[tn.key] = set()
+                    self._target_tileable_finished[tn.key] = set()
 
         if self._serialized_chunk_graph:
             serialized_chunk_graph = self._serialized_chunk_graph
@@ -438,39 +439,39 @@ class GraphActor(SchedulerActor):
 
         key_to_chunk = {c.key: c for c in chunk_graph}
 
-        tensor_key_opid_to_tiled = self._tensor_key_opid_to_tiled
+        tileable_key_opid_to_tiled = self._tileable_key_opid_to_tiled
 
-        for t in tensor_graph:
-            self._tensor_key_to_opid[t.key] = t.op.id
-            if (t.key, t.op.id) not in tensor_key_opid_to_tiled:
+        for t in tileable_graph:
+            self._tileable_key_to_opid[t.key] = t.op.id
+            if (t.key, t.op.id) not in tileable_key_opid_to_tiled:
                 continue
-            t._chunks = [key_to_chunk[k] for k in [tensor_key_opid_to_tiled[(t.key, t.op.id)][-1]]]
+            t._chunks = [key_to_chunk[k] for k in [tileable_key_opid_to_tiled[(t.key, t.op.id)][-1]]]
 
         tq = deque()
-        for t in tensor_graph:
-            if t.inputs and not all((ti.key, ti.op.id) in tensor_key_opid_to_tiled for ti in t.inputs):
+        for t in tileable_graph:
+            if t.inputs and not all((ti.key, ti.op.id) in tileable_key_opid_to_tiled for ti in t.inputs):
                 continue
             tq.append(t)
 
         while tq:
-            tensor = tq.popleft()
-            if not tensor.is_coarse() or (tensor.key, tensor.op.id) in tensor_key_opid_to_tiled:
+            tileable = tq.popleft()
+            if not tileable.is_coarse() or (tileable.key, tileable.op.id) in tileable_key_opid_to_tiled:
                 continue
-            inputs = [tensor_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tensor.inputs or ()]
+            inputs = [tileable_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tileable.inputs or ()]
 
-            op = tensor.op.copy()
+            op = tileable.op.copy()
             _ = op.new_tileables(inputs,  # noqa: F841
-                                 kws=[o.params for o in tensor.op.outputs],
-                                 output_limit=len(tensor.op.outputs),
-                                 **tensor.extra_params)
+                                 kws=[o.params for o in tileable.op.outputs],
+                                 output_limit=len(tileable.op.outputs),
+                                 **tileable.extra_params)
 
             total_tiled = []
-            for j, t, to_tile in zip(itertools.count(0), tensor.op.outputs, op.outputs):
+            for j, t, to_tile in zip(itertools.count(0), tileable.op.outputs, op.outputs):
                 # replace inputs with tiled ones
                 if not total_tiled:
                     try:
                         if isinstance(to_tile.op, Fetch):
-                            td = self.tile_fetch_tensor(tensor)
+                            td = self.tile_fetch_tileable(tileable)
                         else:
                             td = self._graph_analyze_pool.submit(handler.dispatch, to_tile).result()
                     except DataNotReady:
@@ -482,7 +483,7 @@ class GraphActor(SchedulerActor):
                         total_tiled.append(td)
 
                 tiled = total_tiled[j]
-                tensor_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
+                tileable_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
                 q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data for tiled_c in tiled.chunks])
@@ -500,18 +501,18 @@ class GraphActor(SchedulerActor):
                             q.append(ic)
                         chunk_graph.add_edge(ic, c)
 
-                for succ in tensor_graph.successors(t):
-                    if any((t.key, t.op.id) not in tensor_key_opid_to_tiled for t in succ.inputs):
+                for succ in tileable_graph.successors(t):
+                    if any((t.key, t.op.id) not in tileable_key_opid_to_tiled for t in succ.inputs):
                         continue
                     tq.append(succ)
 
         # record the chunk nodes in graph
         reserve_chunk = set()
         result_chunk_keys = list()
-        for tk, topid in tensor_key_opid_to_tiled:
-            if tk not in self._target_tensor_chunk_ops:
+        for tk, topid in tileable_key_opid_to_tiled:
+            if tk not in self._target_tileable_chunk_ops:
                 continue
-            for n in [c.data for t in tensor_key_opid_to_tiled[(tk, topid)] for c in t.chunks]:
+            for n in [c.data for t in tileable_key_opid_to_tiled[(tk, topid)] for c in t.chunks]:
                 result_chunk_keys.append(n.key)
                 dq_predecessors = deque([n])
                 while dq_predecessors:
@@ -530,12 +531,12 @@ class GraphActor(SchedulerActor):
         if compose:
             chunk_graph.compose(keys=result_chunk_keys)
 
-        for tk, topid in tensor_key_opid_to_tiled:
-            if tk not in self._target_tensor_chunk_ops:
+        for tk, topid in tileable_key_opid_to_tiled:
+            if tk not in self._target_tileable_chunk_ops:
                 continue
-            for n in tensor_key_opid_to_tiled[(tk, topid)][-1].chunks:
-                self._terminal_chunk_op_tensor[n.op.key].add(tk)
-                self._target_tensor_chunk_ops[tk].add(n.op.key)
+            for n in tileable_key_opid_to_tiled[(tk, topid)][-1].chunks:
+                self._terminal_chunk_op_tileable[n.op.key].add(tk)
+                self._target_tileable_chunk_ops[tk].add(n.op.key)
 
         # sync chunk graph to kv store
         if self._kv_store_ref is not None:
@@ -625,25 +626,13 @@ class GraphActor(SchedulerActor):
         :param input_chunk_keys: actual input chunks, None if use all chunks in input
         :param serialize: whether to return serialized dag
         """
-        from ..tensor.expressions.core import TensorShuffleProxy
-        from ..tensor.expressions.fetch import TensorFetch, TensorFetchShuffle
         graph = DAG()
 
         inputs_to_copied = dict()
         input_chunk_keys = set(input_chunk_keys) if input_chunk_keys is not None else None
         for c in self._op_key_to_chunk[op_key]:
             for inp in set(c.inputs or ()):
-                if isinstance(inp.op, TensorShuffleProxy):
-                    # for shuffle nodes, we build FetchShuffle chunks
-                    # to replace TensorShuffleProxy
-                    to_fetch_keys = [pinp.key for pinp in inp.inputs
-                                     if input_chunk_keys is None or pinp.key in input_chunk_keys]
-                    op = TensorFetchShuffle(dtype=inp.dtype, to_fetch_keys=to_fetch_keys)
-                else:
-                    # for shuffle nodes, we build Fetch chunks
-                    # to replace original chunk
-                    op = TensorFetch(dtype=inp.dtype, sparse=inp.op.sparse)
-                inp_chunk = op.new_chunk(None, shape=inp.shape, _key=inp.key).data
+                inp_chunk = build_fetch_chunk(inp, input_chunk_keys)
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
             inputs = [inputs_to_copied[inp] for inp in (c.inputs or ())]
@@ -651,7 +640,8 @@ class GraphActor(SchedulerActor):
             new_op = c.op.copy()
             kws = []
             for o in c.op.outputs:
-                kw = dict(_key=o.key, dtype=o.dtype, index=o.index)
+                kw = o.params.copy()
+                kw['_key'] = o.key
                 composed = []
                 # copy composed
                 for j, com in enumerate(o.composed or []):
@@ -755,7 +745,7 @@ class GraphActor(SchedulerActor):
             op_info['state'] = op_state['state'] = state
 
             position = None
-            if op_key in self._terminal_chunk_op_tensor:
+            if op_key in self._terminal_chunk_op_tileable:
                 position = OperandPosition.TERMINAL
             elif not io_meta['predecessors']:
                 position = OperandPosition.INITIAL
@@ -808,17 +798,17 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param final_state: state of the operand
         """
-        tensor_keys = self._terminal_chunk_op_tensor[op_key]
-        for tensor_key in tensor_keys:
-            self._target_tensor_finished[tensor_key].add(op_key)
+        tileable_keys = self._terminal_chunk_op_tileable[op_key]
+        for tileable_key in tileable_keys:
+            self._target_tileable_finished[tileable_key].add(op_key)
             if final_state == GraphState.FAILED:
                 if self.final_state != GraphState.CANCELLED:
                     self.final_state = GraphState.FAILED
             elif final_state == GraphState.CANCELLED:
                 self.final_state = final_state
-            if self._target_tensor_finished[tensor_key] == self._target_tensor_chunk_ops[tensor_key]:
-                self._terminated_tensors.add(tensor_key)
-                if len(self._terminated_tensors) == len(self._target_tensor_chunk_ops):
+            if self._target_tileable_finished[tileable_key] == self._target_tileable_chunk_ops[tileable_key]:
+                self._terminated_tileables.add(tileable_key)
+                if len(self._terminated_tileables) == len(self._target_tileable_chunk_ops):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                     self._graph_meta_ref.set_graph_end(_tell=True)
 
@@ -828,21 +818,21 @@ class GraphActor(SchedulerActor):
         Remove a terminal operand from finished set as the data is lost.
         :param op_key: operand key
         """
-        tensor_keys = self._terminal_chunk_op_tensor[op_key]
-        for tensor_key in tensor_keys:
-            self._target_tensor_finished[tensor_key].difference_update([op_key])
-            self._terminated_tensors.difference_update([tensor_key])
+        tileable_keys = self._terminal_chunk_op_tileable[op_key]
+        for tileable_key in tileable_keys:
+            self._target_tileable_finished[tileable_key].difference_update([op_key])
+            self._terminated_tileables.difference_update([tileable_key])
 
     def dump_unfinished_terminals(self):  # pragma: no cover
         """
         Dump unfinished terminal chunks into logger, only for debug purposes.
         """
         unfinished_dict = dict()
-        for tensor_key, chunk_ops in self._target_tensor_chunk_ops.items():
-            executed_ops = self._target_tensor_finished.get(tensor_key, ())
+        for tileable_key, chunk_ops in self._target_tileable_chunk_ops.items():
+            executed_ops = self._target_tileable_finished.get(tileable_key, ())
             unfinished = sorted(set(chunk_ops) - set(executed_ops))
             if unfinished:
-                unfinished_dict[tensor_key] = unfinished
+                unfinished_dict[tileable_key] = unfinished
         logger.debug('Unfinished terminal chunks: %r', unfinished_dict)
 
     def get_state(self):
@@ -884,93 +874,85 @@ class GraphActor(SchedulerActor):
         scheduler_addr = self.get_scheduler(op_uid)
         return self.ctx.actor_ref(op_uid, address=scheduler_addr)
 
-    def _get_tensor_by_key(self, key):
-        tid = self._tensor_key_to_opid[key]
-        return self._tensor_key_opid_to_tiled[(key, tid)][-1]
+    def _get_tileable_by_key(self, key):
+        tid = self._tileable_key_to_opid[key]
+        return self._tileable_key_opid_to_tiled[(key, tid)][-1]
 
     @log_unhandled
-    def free_tensor_data(self, tensor_key):
-        tiled_tensor = self._get_tensor_by_key(tensor_key)
-        for chunk in tiled_tensor.chunks:
+    def free_tileable_data(self, tileable_key):
+        tileable = self._get_tileable_by_key(tileable_key)
+        for chunk in tileable.chunks:
             self._get_operand_ref(chunk.op.key).free_data(_tell=True)
 
-    def get_tensor_chunk_indexes(self, tensor_key):
-        return OrderedDict((c.key, c.index) for c in self._get_tensor_by_key(tensor_key).chunks)
+    def get_tileable_chunk_indexes(self, tileable_key):
+        return OrderedDict((c.key, c.index) for c in self._get_tileable_by_key(tileable_key).chunks)
 
     @log_unhandled
-    def build_tensor_merge_graph(self, tensor_key):
-        from ..tensor.expressions.fetch import TensorFetch
-        from ..tensor.expressions.merge.concatenate import TensorConcatenate
-
-        tiled_tensor = self._get_tensor_by_key(tensor_key)
+    def build_tileable_merge_graph(self, tileable_key):
+        tileable = self._get_tileable_by_key(tileable_key)
         graph = DAG()
-        if len(tiled_tensor.chunks) == 1:
+        if len(tileable.chunks) == 1:
             # only one chunk, just trigger fetch
-            c = tiled_tensor.chunks[0]
-            op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-            fetch_chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key).data
+            c = tileable.chunks[0]
+            fetch_chunk = build_fetch_chunk(c, index=c.index)
             graph.add_node(fetch_chunk)
         else:
-            fetch_chunks = []
-            for c in tiled_tensor.chunks:
-                op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-                fetch_chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key).data
-                graph.add_node(fetch_chunk)
-                fetch_chunks.append(fetch_chunk)
-            chunk = TensorConcatenate(dtype=tiled_tensor.op.dtype).new_chunk(
-                fetch_chunks, shape=tiled_tensor.shape).data
+            fetch_tileable = build_fetch_tileable(tileable)
+            chunk = concat_tileable_chunks(fetch_tileable).chunks[0]
             graph.add_node(chunk)
-            [graph.add_edge(fetch_chunk, chunk) for fetch_chunk in fetch_chunks]
+            for fetch_chunk in fetch_tileable.chunks:
+                graph.add_node(fetch_chunk)
+                graph.add_edge(fetch_chunk, chunk)
 
         return serialize_graph(graph)
 
-    def build_fetch_graph(self, tensor_key):
+    def build_fetch_graph(self, tileable_key):
         """
         Convert single tensor to tiled fetch tensor and put into a graph which only contains one tensor
-        :param tensor_key: the key of tensor
+        :param tileable_key: the key of tensor
         """
-        from ..tensor.expressions.fetch import TensorFetch
-        tiled_tensor = self._get_tensor_by_key(tensor_key)
+        tileable = self._get_tileable_by_key(tileable_key)
         graph = DAG()
 
-        chunks = []
-        for c in tiled_tensor.chunks:
-            fetch_op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-            fetch_chunk = fetch_op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key)
-            chunks.append(fetch_chunk)
-
-        new_op = TensorFetch(dtype=tiled_tensor.dtype, sparse=tiled_tensor.op.sparse)
-        new_tensor = new_op.new_tensor(None, tiled_tensor.shape, chunks=chunks,
-                                       nsplits=tiled_tensor.nsplits, _key=tiled_tensor.key)
-        graph.add_node(new_tensor)
+        new_tileable = build_fetch_tileable(tileable)
+        graph.add_node(new_tileable)
         return serialize_graph(graph)
 
-    def tile_fetch_tensor(self, tensor):
+    def tile_fetch_tileable(self, tileable):
         """
         Find the owner of the input tensor and ask for tiling.
         """
-        tensor_key = tensor.key
-        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tensor_key(tensor_key))
-        fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tensor_key))
+        tileable_key = tileable.key
+        graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tleable_key(tileable_key))
+        fetch_graph = deserialize_graph(graph_ref.build_fetch_graph(tileable_key))
         return list(fetch_graph)[0]
 
     @log_unhandled
-    def fetch_tensor_result(self, tensor_key):
+    def fetch_tileable_result(self, tileable_key):
+        from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
         # TODO for test
-        tiled_tensor = self._get_tensor_by_key(tensor_key)
-        if tensor_key not in self._terminated_tensors:
+        tileable = self._get_tileable_by_key(tileable_key)
+        if tileable_key not in self._terminated_tileables:
             return None
 
         ctx = dict()
-        for chunk_key in [c.key for c in tiled_tensor.chunks]:
+        for chunk_key in [c.key for c in tileable.chunks]:
             if chunk_key in ctx:
                 continue
             endpoints = self._chunk_meta_ref.get_workers(self._session_id, chunk_key)
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
             ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
-        return dataserializer.dumps(merge_tensor_chunks(tiled_tensor, ctx))
+
+        if len(tileable.chunks) == 1:
+            return dataserializer.dumps(ctx[tileable.chunks[0].key])
+
+        tileable = build_fetch_tileable(tileable)
+
+        executor = Executor(storage=ctx)
+        concat_result = executor.execute_tileable(tileable, concat=True)[0]
+        return dataserializer.dumps(concat_result)
 
     @log_unhandled
     def check_operand_can_be_freed(self, succ_op_keys):

@@ -66,7 +66,7 @@ class MarsAPI(object):
     def submit_graph(self, session_id, serialized_graph, graph_key, target, compose=True):
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
-        session_ref.submit_tensor_graph(serialized_graph, graph_key, target, compose=compose, _tell=True)
+        session_ref.submit_tileable_graph(serialized_graph, graph_key, target, compose=compose, _tell=True)
 
     def delete_graph(self, session_id, graph_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
@@ -100,18 +100,18 @@ class MarsAPI(object):
         result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_name(), address=graph_address)
 
         compressions = set(compressions or []) | {dataserializer.COMPRESS_FLAG_NONE}
-        return result_ref.fetch_tensor(session_id, graph_key, tensor_key, compressions, _wait=wait)
+        return result_ref.fetch_tileable(session_id, graph_key, tensor_key, compressions, _wait=wait)
 
     def delete_data(self, session_id, graph_key, tensor_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        graph_ref.free_tensor_data(tensor_key, _tell=True)
+        graph_ref.free_tileable_data(tensor_key, _tell=True)
 
     def get_tensor_nsplits(self, session_id, graph_key, tensor_key):
         # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        chunk_indexes = graph_ref.get_tensor_chunk_indexes(tensor_key)
+        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tensor_key)
 
         chunk_meta_ref = self.get_actor_ref(ChunkMetaActor.default_name())
         chunk_shapes = chunk_meta_ref.batch_get_chunk_shape(session_id, list(chunk_indexes.keys()))

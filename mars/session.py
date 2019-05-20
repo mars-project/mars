@@ -16,6 +16,7 @@
 
 import numpy as np
 
+from .core import Entity
 try:
     from .resource import cpu_count
 except ImportError:  # pragma: no cover
@@ -109,7 +110,8 @@ class Session(object):
         elif len(tensors) > 1:
             ret_list = True
 
-        tensors = tuple(mt.tensor(t) for t in tensors)
+        tensors = tuple(mt.tensor(t) if not isinstance(t, Entity) else t
+                        for t in tensors)
         result = self._sess.run(*tensors, **kw)
 
         for t in tensors:
@@ -122,7 +124,7 @@ class Session(object):
         if fetch:
             ret = []
             for r, t in zip(result, tensors):
-                if t.isscalar() and hasattr(r, 'item'):
+                if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
                     ret.append(r.item())
                 else:
                     ret.append(r)
@@ -142,7 +144,7 @@ class Session(object):
 
         ret = []
         for r, t in zip(result, tensors):
-            if t.isscalar() and hasattr(r, 'item'):
+            if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
                 ret.append(r.item())
             else:
                 ret.append(r)
