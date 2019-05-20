@@ -466,6 +466,10 @@ cdef class OneOfField(Field):
             self._type = ValueType.oneof(*[f.type for f in self.fields])
         return self._type
 
+    @property
+    def attrs(self):
+        return [f.attr for f in self.fields]
+
 
 class SerializableMetaclass(type):
     def __new__(mcs, str name, tuple bases, dict kv):
@@ -536,7 +540,8 @@ class Serializable(six.with_metaclass(SerializableMetaclass)):
         if provider.type == ProviderType.json:
             return dict
 
-        raise TypeError('Unknown provider type: {0}'.format(provider.type.value))
+        raise TypeError('Unknown provider type `{0}` for class `{1}`'.format(
+            ProviderType(provider.type).name, cls.__name__))
 
     def serialize(self, Provider provider, obj=None):
         return provider.serialize_model(self, obj=obj)

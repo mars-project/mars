@@ -31,7 +31,8 @@ from mars.tests.core import TestBase
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
     def testChunkSerialize(self):
-        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)))
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
         df = from_pandas(data).tiles()
 
         # pb
@@ -49,6 +50,8 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
 
         # json
         chunk = df.chunks[0]
@@ -59,9 +62,12 @@ class Test(TestBase):
         self.assertEqual(chunk.index, chunk2.index)
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
 
     def testDataFrameGraphSerialize(self):
-        df = from_pandas(pd.DataFrame(np.random.rand(10, 10)))
+        df = from_pandas(pd.DataFrame(np.random.rand(10, 10),
+                                      columns=[np.random.bytes(10) for _ in range(10)]))
         graph = df.build_graph(tiled=False)
 
         pb = graph.to_pb()
@@ -73,6 +79,8 @@ class Test(TestBase):
         self.assertBaseEqual(t.op, t2.op)
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
+        pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
+        pd.testing.assert_index_equal(t2.columns.to_pandas(), t.columns.to_pandas())
 
         jsn = graph.to_json()
         graph2 = DAG.from_json(jsn)
@@ -83,6 +91,8 @@ class Test(TestBase):
         self.assertBaseEqual(t.op, t2.op)
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
+        pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
+        pd.testing.assert_index_equal(t2.columns.to_pandas(), t.columns.to_pandas())
 
         # test graph with tiled DataFrame
         t2 = from_pandas(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
@@ -97,6 +107,8 @@ class Test(TestBase):
         self.assertIsInstance(chunks[0], DataFrameChunk)
         self.assertEqual(chunks[0].index, t2.chunks[0].index)
         self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
+        pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
+        pd.testing.assert_index_equal(chunks[0].columns.to_pandas(), t2.chunks[0].columns.to_pandas())
 
         jsn = graph.to_json()
         graph2 = DAG.from_json(jsn)
@@ -106,6 +118,8 @@ class Test(TestBase):
         self.assertIsInstance(chunks[0], DataFrameChunk)
         self.assertEqual(chunks[0].index, t2.chunks[0].index)
         self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
+        pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
+        pd.testing.assert_index_equal(chunks[0].columns.to_pandas(), t2.chunks[0].columns.to_pandas())
 
     def testFromPandas(self):
         data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])

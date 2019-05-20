@@ -20,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..utils import on_serialize_shape, on_deserialize_shape
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type
 from ..core import ChunkData, Chunk, Entity, TileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
@@ -36,9 +36,9 @@ class IndexValue(Serializable):
         _is_monotonic_decreasing = BoolField('is_monotonic_decreasing')
         _is_unique = BoolField('is_unique')
         _should_be_monotonic = BoolField('should_be_monotonic')
-        _max_val = AnyField('max_val')
+        _max_val = AnyField('max_val', on_serialize=on_serialize_numpy_type)
         _max_val_close = BoolField('max_val_close')
-        _min_val = AnyField('min_val')
+        _min_val = AnyField('min_val', on_serialize=on_serialize_numpy_type)
         _min_val_close = BoolField('min_val_close')
 
         @property
@@ -188,7 +188,7 @@ class IndexValue(Serializable):
                               range_index=RangeIndex, categorical_index=CategoricalIndex,
                               interval_index=IntervalIndex, datetime_index=DatetimeIndex,
                               timedelta_index=TimedeltaIndex, period_index=PeriodIndex,
-                              int64_index=Int64Field, uint64_index=UInt64Index,
+                              int64_index=Int64Index, uint64_index=UInt64Index,
                               float64_index=Float64Index, multi_index=MultiIndex)
 
     def __mars_tokenize__(self):
@@ -339,6 +339,13 @@ class SeriesData(TileableData):
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
 
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesDef
+            return SeriesDef
+        return super(SeriesData, cls).cls(provider)
+
     @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
@@ -418,6 +425,13 @@ class DataFrameData(TileableData):
     _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameDef
+            return DataFrameDef
+        return super(DataFrameData, cls).cls(provider)
 
     @property
     def params(self):

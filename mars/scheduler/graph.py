@@ -632,7 +632,7 @@ class GraphActor(SchedulerActor):
         input_chunk_keys = set(input_chunk_keys) if input_chunk_keys is not None else None
         for c in self._op_key_to_chunk[op_key]:
             for inp in set(c.inputs or ()):
-                inp_chunk = build_fetch_chunk(inp, input_chunk_keys)
+                inp_chunk = build_fetch_chunk(inp, input_chunk_keys).data
                 inputs_to_copied[inp] = inp_chunk
                 graph.add_node(inp_chunk)
             inputs = [inputs_to_copied[inp] for inp in (c.inputs or ())]

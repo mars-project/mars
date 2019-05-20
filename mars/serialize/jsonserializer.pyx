@@ -430,6 +430,9 @@ cdef class JsonSerializeProvider(Provider):
                     new_obj = obj[tag] = dict()
                     value.serialize(self, new_obj)
                     return
+            if not has_val and value is not None:
+                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
+                    value, field.tag_name(self)))
         elif isinstance(field, ListField) and type(field.type.type) == Reference:
             tag = field.tag_name(self)
             value = self._on_serial(field, getattr(model_instance, field.attr, None))
@@ -517,7 +520,8 @@ cdef class JsonSerializeProvider(Provider):
                             'Only one of attributes({0}) can be specified'.format(field.attrs))
 
                     setattr(model_instance, f.attr,
-                            self._on_deserial(field, f.type.model.deserialize(self, obj[tag], callbacks, key_to_instance)))
+                            self._on_deserial(field, f.type.model.deserialize(self, obj[tag],
+                                                                              callbacks, key_to_instance)))
         elif isinstance(field, ListField) and type(field.type.type) == Reference:
             tag = field.tag_name(self)
             if tag not in obj:

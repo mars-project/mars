@@ -345,7 +345,7 @@ cdef class DirectedGraph:
                 if level is None:
                     level = SerializableGraph.Level.ENTITY
                 for c in (node.chunks or ()):
-                    add_obj(c)
+                    add_obj(c.data)
                 add_obj(node)
             else:
                 raise TypeError('Unknown node type to serialize: {0}'.format(type(node)))
