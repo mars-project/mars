@@ -110,6 +110,19 @@ class Entity(object):
         self._check_data(data)
         self._data = data
 
+    def __dir__(self):
+        from .lib.lib_utils import dir2
+        obj_dir = dir2(self)
+        if self._data is not None:
+            obj_dir = sorted(set(dir(self._data) + obj_dir))
+        return obj_dir
+
+    def __str__(self):
+        return self._data.__str__()
+
+    def __repr__(self):
+        return self._data.__repr__()
+
     def _check_data(self, data):
         if data is not None and not isinstance(data, self._allow_data_type_):
             raise TypeError('Expect {0}, got {1}'.format(self._allow_data_type_, type(data)))

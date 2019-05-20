@@ -193,6 +193,7 @@ class IndexValue(Serializable):
 
     def __mars_tokenize__(self):
         # return object for tokenize
+        # todo fix this when index support is fixed
         try:
             v = self._index_value
         except AttributeError:
