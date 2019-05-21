@@ -350,6 +350,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _need_align_map(cls, input_chunk, index_min_max, column_min_max):
+        assert not np.isnan(index_min_max[0]) and not np.isnan(index_min_max[2])
         if input_chunk.index_value is None or input_chunk.columns is None:
             return True
         if input_chunk.index_value.min_max != index_min_max:

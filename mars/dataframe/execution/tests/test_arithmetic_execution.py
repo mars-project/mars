@@ -207,3 +207,21 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
+
+    def testAddWithAdded(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10))
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10))
+        df2 = from_pandas(data2, chunk_size=6)
+
+        df3 = add(df1, df2)
+
+        data4 = pd.DataFrame(np.random.rand(10, 10))
+        df4 = from_pandas(data4, chunk_size=6)
+
+        df5 = add(df3, df4)
+
+        result = self.executor.execute_dataframe(df5, concat=True, compose=False)[0]
+        expected = data1 + data2 + data4
+
+        pd.testing.assert_frame_equal(expected, result)
