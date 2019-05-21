@@ -651,8 +651,8 @@ class GraphActor(SchedulerActor):
                     else:
                         # if more than 1 inputs, means they are exactly the same object
                         inps = [composed[j - 1]] * len(com.inputs)
-                    new_com = new_com_op.new_chunk(inps, shape=com.shape, index=com.index,
-                                                   dtype=com.dtype, _key=com.key)
+                    params = com.params.copy()
+                    new_com = new_com_op.new_chunk(inps, kws=[params], _key=com.key).data
                     composed.append(new_com)
                 kw['_composed'] = composed
                 kw['shape'] = o.shape

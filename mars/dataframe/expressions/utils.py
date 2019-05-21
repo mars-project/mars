@@ -348,3 +348,9 @@ def get_fetch_op_cls(op):
         return DataFrameFetchShuffle
     else:
         return DataFrameFetch
+
+
+def get_fuse_op_cls():
+    from .core import DataFrameFuse
+
+    return DataFrameFuse

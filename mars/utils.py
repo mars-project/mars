@@ -256,12 +256,23 @@ def calc_data_size(dt):
     except AttributeError:
         pass
 
+    if len(dt.shape) == 0:
+        return 0
     if hasattr(dt, 'memory_usage'):
         return sys.getsizeof(dt)
     if hasattr(dt, 'dtypes') and hasattr(dt, 'shape'):
         return dt.shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
 
     raise ValueError('Cannot support calculating size of %s', type(dt))
+
+
+def get_shuffle_reduce_inputs(chunk):
+    from .operands import ShuffleProxy
+
+    if isinstance(chunk.op, ShuffleProxy):
+        return [inp.key for inp in chunk.inputs]
+    else:
+        return chunk.op.to_fetch_keys
 
 
 def _get_mod_logger():
@@ -423,7 +434,6 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
 
     chunk_op = chunk.op
     params = chunk.params.copy()
-    params.pop('index', None)
 
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
@@ -463,3 +473,18 @@ def build_fetch(entity, coarse=False):
         return build_fetch_tileable(entity, coarse=coarse)
     else:
         raise TypeError('Type %s not supported' % type(entity).__name__)
+
+
+def get_fuse_op_cls(op):
+    return get_expr_module(op).get_fuse_op_cls()
+
+
+def build_fuse_chunk(fused_chunks, **kwargs):
+    head_chunk = fused_chunks[0]
+    tail_chunk = fused_chunks[-1]
+    chunk_op = tail_chunk.op
+    params = tail_chunk.params.copy()
+
+    fuse_op = get_fuse_op_cls(chunk_op)(sparse=tail_chunk.op.sparse, _key=tail_chunk.op.key)
+    return fuse_op.new_chunk(head_chunk.inputs, kws=[params], _key=tail_chunk.key,
+                             _composed=fused_chunks, **kwargs)

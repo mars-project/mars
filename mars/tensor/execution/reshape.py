@@ -109,16 +109,15 @@ def _reshape_map_estimate_size(ctx, chunk):
 
 
 def _reshape_reduce(ctx, chunk):
+    from ...utils import get_shuffle_reduce_inputs
+
     try:
         result_array = ctx[chunk.key]
     except KeyError:
         result_array = np.zeros(chunk.shape, dtype=chunk.dtype)
 
     in_chunk = chunk.inputs[0]
-    if isinstance(in_chunk.op, TensorShuffleProxy):
-        input_keys = [inp.key for inp in in_chunk.inputs]
-    else:
-        input_keys = in_chunk.op.to_fetch_keys
+    input_keys = get_shuffle_reduce_inputs(in_chunk)
 
     shuffle_key = chunk.op.shuffle_key
     for input_key in input_keys:

@@ -14,7 +14,7 @@
 
 from ...operands import ShuffleProxy
 from ...core import TileableOperandMixin
-from ...operands import Operand, ShuffleMap, ShuffleReduce
+from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
 from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
 
 
@@ -71,3 +71,8 @@ class DataFrameShuffleMap(ShuffleMap):
 
 class DataFrameShuffleReduce(ShuffleReduce):
     pass
+
+
+class DataFrameFuse(Fuse, DataFrameOperandMixin):
+    def __init__(self, sparse=False, **kwargs):
+        super(DataFrameFuse, self).__init__(_sparse=sparse, **kwargs)

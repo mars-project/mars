@@ -35,16 +35,13 @@ class Fusion(object):
         cdef:
             list composed_nodes = []
 
-        from .tensor.expressions.fuse.core import TensorFuseChunk
+        from .utils import build_fuse_chunk
         composed_nodes = []
 
         for c in composes:
             head_node = c[0]
             tail_node = c[-1]
-            fuse_op = TensorFuseChunk(dtype=tail_node.dtype, sparse=tail_node.op.sparse, _key=tail_node.op.key)
-            fuse_chunk = fuse_op.new_chunk(head_node.inputs, shape=tail_node.shape,
-                                           index=tail_node.index, _key=tail_node.key,
-                                           _composed=c)
+            fuse_chunk = build_fuse_chunk(c).data
             self._graph.add_node(fuse_chunk)
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
