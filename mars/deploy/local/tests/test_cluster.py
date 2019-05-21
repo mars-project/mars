@@ -21,6 +21,10 @@ import time
 import unittest
 
 import numpy as np
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 from mars import tensor as mt
 from mars.tensor.expressions.core import TensorOperand
@@ -355,8 +359,8 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4)
                 np.testing.assert_array_equal(r4, r1)
 
+    @unittest.skipIf(pd is None, 'pandas not installed')
     def testFetchDataFrame(self):
-        import pandas as pd
         from mars.dataframe.expressions.datasource.dataframe import from_pandas
         from mars.dataframe.expressions.arithmetic import add
 
@@ -375,14 +379,14 @@ class Test(unittest.TestCase):
             r2 = session.fetch(df3)
             pd.testing.assert_frame_equal(r1, r2)
 
-            # data4 = pd.DataFrame(np.random.rand(10, 10))
-            # df4 = from_pandas(data4, chunk_size=6)
-            #
-            # df5 = add(df3, df4)
-            #
-            # r1 = session.run(df5, compose=False)
-            # r2 = session.fetch(df5)
-            # pd.testing.assert_frame_equal(r1, r2)
+            data4 = pd.DataFrame(np.random.rand(10, 10))
+            df4 = from_pandas(data4, chunk_size=6)
+
+            df5 = add(df3, df4)
+
+            r1 = session.run(df5, compose=False)
+            r2 = session.fetch(df5)
+            pd.testing.assert_frame_equal(r1, r2)
 
     def testMultiSessionDecref(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,

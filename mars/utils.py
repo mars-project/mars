@@ -84,6 +84,15 @@ def on_serialize_numpy_type(value):
     return value.item() if isinstance(value, np.generic) else value
 
 
+def on_serialize_nsplits(value):
+    if value is None:
+        return None
+    new_nsplits = []
+    for dim_splits in value:
+        new_nsplits.append(tuple(None if np.isnan(v) else v for v in dim_splits))
+    return tuple(new_nsplits)
+
+
 _memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
 
 
@@ -423,7 +432,6 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
 
     chunk_op = chunk.op
     params = chunk.params.copy()
-    params.pop('index', None)
 
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
@@ -450,7 +458,7 @@ def build_fetch_tileable(tileable, coarse=False):
     tileable_op = tileable.op
     params = tileable.params.copy()
 
-    new_op = get_fetch_op_cls(tileable_op)(**params)
+    new_op = get_fetch_op_cls(tileable_op)()
     return new_op.new_tileables(None, chunks=chunks, nsplits=tileable.nsplits,
                                 _key=tileable.key, _id=tileable.id, **params)[0]
 

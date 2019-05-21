@@ -111,7 +111,7 @@ class Session(object):
             ret_list = True
 
         tileables = tuple(mt.tensor(t) if not isinstance(t, (Entity, Base)) else t
-                        for t in tileables)
+                          for t in tileables)
         result = self._sess.run(*tileables, **kw)
 
         for t in tileables:
