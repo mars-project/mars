@@ -81,7 +81,7 @@ class TensorTileDBDataStore(TensorDataStore):
             tiledb_config=op.tiledb_config, tiledb_uri=op.tiledb_uri,
             tiledb_key=op.tiledb_key, sparse=op.sparse, dtype=op.dtype
         )
-        return consolidate_op.new_chunks(out_chunks, out_chunks[0].shape,
+        return consolidate_op.new_chunks(out_chunks, shape=out_chunks[0].shape,
                                          index=(0,) * out_chunks[0].ndim)
 
     @classmethod
