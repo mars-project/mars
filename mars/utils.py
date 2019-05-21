@@ -432,7 +432,6 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
 
     chunk_op = chunk.op
     params = chunk.params.copy()
-    params.pop('index', None)
 
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
@@ -454,8 +453,6 @@ def build_fetch_tileable(tileable, coarse=False):
         chunks = []
         for c in tileable.chunks:
             fetch_chunk = build_fetch_chunk(c, index=c.index)
-            if hasattr(c, 'index'):
-                fetch_chunk._index = c.index
             chunks.append(fetch_chunk)
 
     tileable_op = tileable.op

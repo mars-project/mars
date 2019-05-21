@@ -21,8 +21,6 @@ import random
 import time
 from collections import deque, defaultdict
 
-import numpy as np
-
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
@@ -914,7 +912,6 @@ class GraphActor(SchedulerActor):
         :param tileable_key: the key of tileable node
         """
         tileable = self._get_tileable_by_key(tileable_key)
-
         graph = DAG()
 
         new_tileable = build_fetch_tileable(tileable)
