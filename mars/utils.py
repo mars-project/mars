@@ -84,6 +84,15 @@ def on_serialize_numpy_type(value):
     return value.item() if isinstance(value, np.generic) else value
 
 
+def on_serialize_nsplits(value):
+    if value is None:
+        return None
+    new_nsplits = []
+    for dim_splits in value:
+        new_nsplits.append(tuple(None if np.isnan(v) else v for v in dim_splits))
+    return tuple(new_nsplits)
+
+
 _memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
 
 

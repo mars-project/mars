@@ -915,12 +915,6 @@ class GraphActor(SchedulerActor):
         """
         tileable = self._get_tileable_by_key(tileable_key)
 
-        old_nsplits = tileable.nsplits
-        new_nsplits = []
-        for d in range(tileable.ndim):
-            new_nsplits.append(tuple(None if np.isnan(v) else v for v in old_nsplits[d]))
-        tileable.nsplits = tuple(new_nsplits)
-
         graph = DAG()
 
         new_tileable = build_fetch_tileable(tileable)

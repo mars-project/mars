@@ -23,7 +23,7 @@ import numpy as np
 
 from .compat import six, izip, builtins, reduce
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
-    on_deserialize_shape, is_eager_mode
+    on_deserialize_shape, on_serialize_nsplits, is_eager_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
@@ -291,7 +291,8 @@ class TileableData(SerializableWithKey, Tileable):
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
-    _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64))
+    _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64),
+                          on_serialize=on_serialize_nsplits)
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
