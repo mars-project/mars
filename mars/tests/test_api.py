@@ -96,8 +96,8 @@ class Test(unittest.TestCase):
         GraphActor.get_tileable_chunk_indexes.side_effect = mock_indexes
         ChunkMetaActor.batch_get_chunk_shape.side_effect = mock_shapes
 
-        nsplits = self.api.get_tensor_nsplits(session_id, graph_key, tensor_key)
+        nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)
         self.assertEqual(((3, 4, 5, 6),), nsplits)
 
-        nsplits = self.api.get_tensor_nsplits(session_id, graph_key, tensor_key)
+        nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)
         self.assertEqual(((3, 2), (4, 2)), nsplits)

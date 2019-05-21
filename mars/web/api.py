@@ -131,7 +131,7 @@ class GraphApiHandler(ApiRequestHandler):
 
 class GraphDataHandler(ApiRequestHandler):
     @gen.coroutine
-    def get(self, session_id, graph_key, tensor_key):
+    def get(self, session_id, graph_key, tileable_key):
         type_arg = self.request.arguments.get('type')
         try:
             compressions_arg = self.request.arguments.get('compressions')
@@ -142,7 +142,7 @@ class GraphDataHandler(ApiRequestHandler):
         if type_arg:
             data_type = to_str(type_arg[0])
             if data_type == 'nsplits':
-                nsplits = self.web_api.get_tensor_nsplits(session_id, graph_key, tensor_key)
+                nsplits = self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
                 self.write(json.dumps(nsplits))
             else:
                 raise web.HTTPError(403, 'Unknown data type requests')
@@ -151,13 +151,13 @@ class GraphDataHandler(ApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tensor_key, compressions_arg)
+                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)
 
-    def delete(self, session_id, graph_key, tensor_key):
-        self.web_api.delete_data(session_id, graph_key, tensor_key)
+    def delete(self, session_id, graph_key, tileable_key):
+        self.web_api.delete_data(session_id, graph_key, tileable_key)
 
 
 class WorkersApiHandler(ApiRequestHandler):
@@ -172,5 +172,5 @@ register_api_handler('/api/worker', WorkersApiHandler)
 register_api_handler('/api/session/(?P<session_id>[^/]+)', SessionApiHandler)
 register_api_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandler)
 register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
-register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tensor_key>[^/]+)',
+register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataHandler)

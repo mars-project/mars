@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from .core import Entity
+from .core import Entity, Base
 try:
     from .resource import cpu_count
 except ImportError:  # pragma: no cover
@@ -39,7 +39,7 @@ class LocalSession(object):
         return self._endpoint
 
     @property
-    def executed_tensors(self):
+    def executed_tileables(self):
         return self._executor.stored_tileables.keys()
 
     @endpoint.setter
@@ -48,28 +48,28 @@ class LocalSession(object):
             raise ValueError('Local session cannot set endpoint')
         self._endpoint = endpoint
 
-    def run(self, *tensors, **kw):
+    def run(self, *tileables, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
             kw['n_parallel'] = cpu_count()
-        res = self._executor.execute_tensors(tensors, **kw)
+        res = self._executor.execute_tileables(tileables, **kw)
         return res
 
-    def _update_tensor_shape(self, tensor):
-        new_nsplits = self._executor.get_tensor_nsplits(tensor)
-        tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
-        tensor.nsplits = new_nsplits
+    def _update_tileable_shape(self, tileable):
+        new_nsplits = self._executor.get_tileable_nsplits(tileable)
+        tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tileable.nsplits = new_nsplits
 
-    def fetch(self, *tensors, **kw):
-        for t in tensors:
-            if t.key not in self.executed_tensors:
-                raise ValueError('Cannot fetch the unexecuted tensor')
+    def fetch(self, *tileables, **kw):
+        for t in tileables:
+            if t.key not in self.executed_tileables:
+                raise ValueError('Cannot fetch the unexecuted tileable')
         if self._executor is None:
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
             kw['n_parallel'] = cpu_count()
-        return self._executor.fetch_tensors(tensors, **kw)
+        return self._executor.fetch_tileables(tileables, **kw)
 
     def decref(self, *keys):
         self._executor.decref(*keys)
@@ -99,31 +99,31 @@ class Session(object):
         else:
             self._sess = LocalSession(**kwargs)
 
-    def run(self, *tensors, **kw):
+    def run(self, *tileables, **kw):
         from . import tensor as mt
 
         fetch = kw.get('fetch', True)
         ret_list = False
-        if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
+        if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
             ret_list = True
-            tensors = tensors[0]
-        elif len(tensors) > 1:
+            tileables = tileables[0]
+        elif len(tileables) > 1:
             ret_list = True
 
-        tensors = tuple(mt.tensor(t) if not isinstance(t, Entity) else t
-                        for t in tensors)
-        result = self._sess.run(*tensors, **kw)
+        tileables = tuple(mt.tensor(t) if not isinstance(t, (Entity, Base)) else t
+                        for t in tileables)
+        result = self._sess.run(*tileables, **kw)
 
-        for t in tensors:
+        for t in tileables:
             t._execute_session = self
 
-        for t in tensors:
+        for t in tileables:
             if np.nan in t.shape:
-                self._sess._update_tensor_shape(t)
+                self._sess._update_tileable_shape(t)
 
         if fetch:
             ret = []
-            for r, t in zip(result, tensors):
+            for r, t in zip(result, tileables):
                 if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
                     ret.append(r.item())
                 else:
@@ -132,18 +132,18 @@ class Session(object):
                 return ret
             return ret[0]
 
-    def fetch(self, *tensors, **kw):
+    def fetch(self, *tileables, **kw):
         ret_list = False
-        if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
+        if len(tileables) == 1 and isinstance(tileables[0], (tuple, list)):
             ret_list = True
-            tensors = tensors[0]
-        elif len(tensors) > 1:
+            tileables = tileables[0]
+        elif len(tileables) > 1:
             ret_list = True
 
-        result = self._sess.fetch(*tensors, **kw)
+        result = self._sess.fetch(*tileables, **kw)
 
         ret = []
-        for r, t in zip(result, tensors):
+        for r, t in zip(result, tileables):
             if hasattr(t, 'isscalar') and t.isscalar() and hasattr(r, 'item'):
                 ret.append(r.item())
             else:

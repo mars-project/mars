@@ -17,8 +17,13 @@
 import unittest
 
 import numpy as np
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pd = None
 
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.session import new_session, Session
 
 
@@ -123,7 +128,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(results[0], data * 2)
         np.testing.assert_array_equal(results[1], data + 2)
 
-    def testExecuteNotFetch(self):
+    def testTensorExecuteNotFetch(self):
         data = np.random.random((5, 9))
         sess = Session.default_or_local()
 
@@ -142,6 +147,27 @@ class Test(unittest.TestCase):
         expected[:2, :2] = data[:2, :2] * 3
 
         np.testing.assert_array_equal(arr1.execute(), expected)
+
+    @unittest.skipIf(pd is None, 'pandas not installed')
+    def testDataFrameExecuteNotFetch(self):
+        data1 = pd.DataFrame(np.random.random((5, 4)), columns=list('abcd'))
+        sess = Session.default_or_local()
+
+        df1 = md.DataFrame(data1, chunk_size=2)
+
+        with self.assertRaises(ValueError):
+            sess.fetch(df1)
+
+        self.assertIsNone(df1.execute(fetch=False))
+
+        # modify result
+        executor = sess._sess._executor
+        executor.chunk_result[df1.chunks[0].key] = data1.iloc[:2, :2] * 3
+
+        expected = data1
+        expected.iloc[:2, :2] = data1.iloc[:2, :2] * 3
+
+        pd.testing.assert_frame_equal(df1.execute(), expected)
 
     def testClosedSession(self):
         session = new_session()

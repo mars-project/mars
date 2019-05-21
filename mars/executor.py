@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size , concat_tileable_chunks
+from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch
 
 logger = logging.getLogger(__name__)
 
@@ -539,77 +539,65 @@ class Executor(object):
     execute_dataframes = execute_tileables
 
     @kernel_mode
-    def fetch_tensors(self, tensors, **kw):
-        from .tensor.expressions.fetch import TensorFetch
-
+    def fetch_tileables(self, tileables, **kw):
         results = []
-        to_concat_tensors = OrderedDict()
+        to_concat_tileables = OrderedDict()
 
-        for i, tensor in enumerate(tensors):
-            if tensor.key not in self.stored_tileables:
-                # check if the tensor is executed before
+        for i, tileable in enumerate(tileables):
+            if tileable.key not in self.stored_tileables:
+                # check if the tileable is executed before
                 raise ValueError(
-                    'Tensor to fetch must be executed before, got {0}'.format(tensor))
+                    'Tileable object to fetch must be executed before, got {0}'.format(tileable))
 
-            if len(tensor.chunks) == 1:
-                result = self._chunk_result[tensor.chunks[0].key]
+            if len(tileable.chunks) == 1:
+                result = self._chunk_result[tileable.chunks[0].key]
                 results.append(result)
                 continue
 
-            # generate TensorFetch op for each chunk
-            chunks = []
-            for c in tensor.chunks:
-                op = TensorFetch(dtype=c.dtype, sparse=c.op.sparse)
-                chunk = op.new_chunk(None, shape=c.shape, index=c.index, _key=c.key)
-                chunks.append(chunk)
-
-            new_op = TensorFetch(dtype=tensor.dtype, sparse=tensor.op.sparse)
-            # copy key and id to ensure that fetch tensor won't add the count of executed tensor
-            tensor = new_op.new_tensor(None, tensor.shape, chunks=chunks,
-                                       nsplits=tensor.nsplits, _key=tensor.key, _id=tensor.id)
-
-            # add this concat tensor into the list which shall be executed later
-            to_concat_tensors[i] = tensor
+            # generate Fetch op for each chunk
+            tileable = build_fetch(tileable)
+            # add this concat tileable into the list which shall be executed later
+            to_concat_tileables[i] = tileable
             results.append(None)
 
-        # execute the concat tensors together
-        if to_concat_tensors:
-            concat_results = self.execute_tensors(list(to_concat_tensors.values()), **kw)
-            for j, concat_result in zip(to_concat_tensors, concat_results):
+        # execute the concat tileables together
+        if to_concat_tileables:
+            concat_results = self.execute_tileables(list(to_concat_tileables.values()), **kw)
+            for j, concat_result in zip(to_concat_tileables, concat_results):
                 results[j] = concat_result
 
         return results
 
-    def get_tensor_nsplits(self, tensor):
-        chunk_indexes = [c.index for c in tensor.chunks]
-        chunk_shapes = [r.shape for r in [self._chunk_result[c.key] for c in tensor.chunks]]
+    def get_tileable_nsplits(self, tileable):
+        chunk_indexes = [c.index for c in tileable.chunks]
+        chunk_shapes = [r.shape for r in [self._chunk_result[c.key] for c in tileable.chunks]]
 
         ndim = len(chunk_shapes[0])
-        tensor_nsplits = []
+        tileable_nsplits = []
         for i in range(ndim):
             splits = []
             for index, shape in zip(chunk_indexes, chunk_shapes):
                 if all(idx == 0 for j, idx in enumerate(index) if j != i):
                     splits.append(shape[i])
-            tensor_nsplits.append(tuple(splits))
+            tileable_nsplits.append(tuple(splits))
 
-        return tuple(tensor_nsplits)
+        return tuple(tileable_nsplits)
 
     def decref(self, *keys):
         for key in keys:
-            tensor_key, tensor_id = key
+            tileable_key, tileable_id = key
             if key[0] not in self.stored_tileables:
                 continue
             ids, chunk_keys = self.stored_tileables[key[0]]
-            if tensor_id in ids:
-                ids.remove(tensor_id)
-                # for those same key tensors, do decref only when all those tensors are garbage collected
+            if tileable_id in ids:
+                ids.remove(tileable_id)
+                # for those same key tileables, do decref only when all those tileables are garbage collected
                 if len(ids) != 0:
                     continue
                 for chunk_key in chunk_keys:
                     if chunk_key in self.chunk_result:
                         del self.chunk_result[chunk_key]
-                del self.stored_tileables[tensor_key]
+                del self.stored_tileables[tileable_key]
 
 
 def ignore(*_):
