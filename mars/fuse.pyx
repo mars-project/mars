@@ -41,7 +41,7 @@ class Fusion(object):
         for c in composes:
             head_node = c[0]
             tail_node = c[-1]
-            fuse_chunk = build_fuse_chunk(c).data
+            fuse_chunk = build_fuse_chunk(c)
             self._graph.add_node(fuse_chunk)
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)

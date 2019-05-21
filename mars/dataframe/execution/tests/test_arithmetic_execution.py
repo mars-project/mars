@@ -187,7 +187,7 @@ class Test(TestBase):
         df3 = add(df1, df2)
 
         expected = data1 + data2
-        result = self.executor.execute_dataframe(df3, concat=True, compose=False)[0]
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
 
         pd.testing.assert_frame_equal(expected, result)
 
@@ -221,7 +221,7 @@ class Test(TestBase):
 
         df5 = add(df3, df4)
 
-        result = self.executor.execute_dataframe(df5, concat=True, compose=False)[0]
+        result = self.executor.execute_dataframe(df5, concat=True)[0]
         expected = data1 + data2 + data4
 
         pd.testing.assert_frame_equal(expected, result)

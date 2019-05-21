@@ -17,9 +17,11 @@
 import unittest
 
 import numpy as np
+import pandas as pd
 
 import mars.tensor as mt
 from mars.config import option_context
+from mars.dataframe.expressions.datasource.dataframe import from_pandas
 
 
 class Test(unittest.TestCase):
@@ -192,3 +194,18 @@ class Test(unittest.TestCase):
         a = mt.zeros((10, 10))
         with self.assertRaises(ValueError):
             a.fetch()
+
+    def testDataFrame(self):
+        with option_context({'eager_mode': True}):
+            from mars.dataframe.expressions.arithmetic import add
+
+            data1 = pd.DataFrame(np.random.rand(10, 10))
+            df1 = from_pandas(data1, chunk_size=5)
+            pd.testing.assert_frame_equal(df1.fetch(), data1)
+
+            data2 = pd.DataFrame(np.random.rand(10, 10))
+            df2 = from_pandas(data2, chunk_size=6)
+            pd.testing.assert_frame_equal(df2.fetch(), data2)
+
+            df3 = add(df1, df2)
+            pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)

@@ -28,6 +28,7 @@ from .graph import ResultReceiverActor
 from .kvstore import KVStoreActor
 from .node_info import NodeInfoActor
 from .utils import SchedulerClusterInfoActor
+from .prochelper import ProcessHelperActor
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class SchedulerService(object):
         self._kv_store_ref = None
         self._node_info_ref = None
         self._result_receiver_ref = None
+        self._process_helper_actors = []
 
     def start(self, endpoint, schedulers, pool):
         """
@@ -92,6 +94,12 @@ class SchedulerService(object):
                        json.dumps(self._resource_ref.get_workers_meta()))
         # create ResultReceiverActor
         self._result_receiver_ref = pool.create_actor(ResultReceiverActor, uid=ResultReceiverActor.default_name())
+
+        # create ProcessHelperActor
+        for proc_id in range(pool.cluster_info.n_process):
+            uid = 's:%d:mars-process-helper' % proc_id
+            actor = pool.create_actor(ProcessHelperActor, uid=uid)
+            self._process_helper_actors.append(actor)
 
     def stop(self, pool):
         pool.destroy_actor(self._resource_ref)

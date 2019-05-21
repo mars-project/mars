@@ -17,7 +17,6 @@ import logging
 import numpy as np
 
 from .array import as_same_device, device
-from ..expressions.core import TensorShuffleProxy
 
 logger = logging.getLogger(__name__)
 

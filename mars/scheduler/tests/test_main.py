@@ -353,6 +353,28 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, df3.key)
         pd.testing.assert_frame_equal(expected, loads(result))
 
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
+                             columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        df2 = from_pandas(data2, chunk_size=6)
+
+        df3 = add(df1, df2)
+
+        graph = df3.build_graph()
+        targets = [df3.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        expected = data1 + data2
+        result = session_ref.fetch_result(graph_key, df3.key)
+        pd.testing.assert_frame_equal(expected, loads(result))
+
     def testWorkerFailOver(self):
         def kill_process_tree(proc):
             import psutil
