@@ -21,6 +21,8 @@ import random
 import time
 from collections import deque, defaultdict
 
+import numpy as np
+
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .chunkmeta import ChunkMetaActor
@@ -415,16 +417,15 @@ class GraphActor(SchedulerActor):
     @log_unhandled
     def prepare_graph(self, compose=True):
         """
-        Tile and compose tensor graph into chunk graph
+        Tile and compose tileable graph into chunk graph
         :param compose: if True, do compose after tiling
         """
         tileable_graph = deserialize_graph(self._serialized_tileable_graph)
         self._tileable_graph_cache = tileable_graph
 
-        logger.debug('Begin preparing graph %s with %d tensors to chunk graph.',
+        logger.debug('Begin preparing graph %s with %d tileables to chunk graph.',
                      self._graph_key, len(tileable_graph))
 
-        # mark target tensor steps
         if not self._target_tileable_chunk_ops:
             for tn in tileable_graph:
                 if not tileable_graph.count_successors(tn):
@@ -908,10 +909,18 @@ class GraphActor(SchedulerActor):
 
     def build_fetch_graph(self, tileable_key):
         """
-        Convert single tensor to tiled fetch tensor and put into a graph which only contains one tensor
-        :param tileable_key: the key of tensor
+        Convert single tileable node to tiled fetch tileable node and
+        put into a graph which only contains one tileable node
+        :param tileable_key: the key of tileable node
         """
         tileable = self._get_tileable_by_key(tileable_key)
+
+        old_nsplits = tileable.nsplits
+        new_nsplits = []
+        for d in range(tileable.ndim):
+            new_nsplits.append(tuple(None if np.isnan(v) else v for v in old_nsplits[d]))
+        tileable.nsplits = tuple(new_nsplits)
+
         graph = DAG()
 
         new_tileable = build_fetch_tileable(tileable)
@@ -920,7 +929,7 @@ class GraphActor(SchedulerActor):
 
     def tile_fetch_tileable(self, tileable):
         """
-        Find the owner of the input tensor and ask for tiling.
+        Find the owner of the input tileable node and ask for tiling
         """
         tileable_key = tileable.key
         graph_ref = self.ctx.actor_ref(self._session_ref.get_graph_ref_by_tleable_key(tileable_key))
