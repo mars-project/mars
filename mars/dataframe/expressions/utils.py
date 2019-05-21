@@ -26,6 +26,11 @@ from ...utils import tokenize
 from ..core import IndexValue
 
 
+def is_pd_range_empty(pd_range_index):
+    return (pd_range_index._start >= pd_range_index._stop and pd_range_index._step >= 0) or \
+           (pd_range_index._start <= pd_range_index._stop and pd_range_index._step < 0)
+
+
 def decide_chunk_sizes(shape, chunk_size, memory_usage):
     """
     Decide how a given DataFrame can be split into chunk.
@@ -115,7 +120,19 @@ def parse_index(index_value, store_data=False, key=None):
         return getattr(IndexValue, type(index).__name__)(_name=index.name, **properties)
 
     def _serialize_range_index(index):
-        properties = _extract_property(index, False)
+        if is_pd_range_empty(index):
+            properties = {
+                '_is_monotonic_increasing': True,
+                '_is_monotonic_decreasing': False,
+                '_is_unique': True,
+                '_min_val': index._start,
+                '_max_val': index._stop,
+                '_min_val_close': True,
+                '_max_val_close': False,
+                '_key': key or tokenize(index),
+            }
+        else:
+            properties = _extract_property(index, False)
         return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
                                      _name=index.name, **properties)
 
@@ -282,6 +299,9 @@ def build_empty_df(dtypes):
 
 
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
+    if is_pd_range_empty(pd_range_index):
+        return pd_range_index
+
     raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), pd_range_index._step
 
     # seek min range
