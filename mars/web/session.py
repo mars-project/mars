@@ -32,9 +32,9 @@ class Session(object):
     def __init__(self, endpoint, req_session=None, args=None):
         self._endpoint = endpoint
         self._args = args
-        # dict structure: {tensor_key -> graph_key, tensor_ids}
-        # dict value is a tuple object which records graph key and tensor id
-        self._executed_tensors = dict()
+        # dict structure: {ttileable_key -> graph_key, tileable_ids}
+        # dict value is a tuple object which records graph key and tileable id
+        self._executed_tileables = dict()
 
         if req_session:
             self._req_session = req_session
@@ -65,16 +65,16 @@ class Session(object):
         content = json.loads(resp.text)
         self._session_id = content['session_id']
 
-    def _get_tensor_graph_key(self, tensor_key):
-        return self._executed_tensors[tensor_key][0]
+    def _get_tileable_graph_key(self, tileable_key):
+        return self._executed_tileables[tileable_key][0]
 
-    def _set_tensor_graph_key(self, tensor, graph_key):
-        tensor_key = tensor.key
-        tensor_id = tensor.id
-        if tensor_key in self._executed_tensors:
-            self._executed_tensors[tensor_key][1].add(tensor_id)
+    def _set_tileable_graph_key(self, tileable, graph_key):
+        tileable_key = tileable.key
+        tileable_id = tileable.id
+        if tileable_key in self._executed_tileables:
+            self._executed_tileables[tileable_key][1].add(tileable_id)
         else:
-            self._executed_tensors[tensor_key] = graph_key, {tensor_id}
+            self._executed_tileables[tileable_key] = graph_key, {tileable_id}
 
     def _check_response_finished(self, graph_url):
         try:
@@ -116,18 +116,18 @@ class Session(object):
         raise ExecutionStateUnknown(
             'Unknown graph execution state %s' % resp_json['state'])
 
-    def run(self, *tensors, **kw):
+    def run(self, *tileables, **kw):
         timeout = kw.pop('timeout', -1)
         compose = kw.pop('compose', True)
         fetch = kw.pop('fetch', True)
         if kw:
             raise TypeError('run got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
-        # those executed tensors should fetch data directly, submit the others
-        run_tensors = [t for t in tensors if t.key not in self._executed_tensors]
+        # those executed tileables should fetch data directly, submit the others
+        run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
 
-        graph = build_graph(run_tensors, executed_keys=list(self._executed_tensors.keys()))
-        targets = [t.key for t in run_tensors]
+        graph = build_graph(run_tileables, executed_keys=list(self._executed_tileables.keys()))
+        targets = [t.key for t in run_tileables]
 
         targets_join = ','.join(targets)
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -137,8 +137,8 @@ class Session(object):
         graph_key = resp_json['graph_key']
         graph_url = session_url + '/graph/' + graph_key
 
-        for t in tensors:
-            self._set_tensor_graph_key(t, graph_key)
+        for t in tileables:
+            self._set_tileable_graph_key(t, graph_key)
 
         exec_start_time = time.time()
         while timeout <= 0 or time.time() - exec_start_time <= timeout:
@@ -158,24 +158,24 @@ class Session(object):
         if not fetch:
             return
         else:
-            return self.fetch(*tensors)
+            return self.fetch(*tileables)
 
-    def fetch(self, *tensors, **kw):
+    def fetch(self, *tileables, **kw):
         timeout = kw.pop('timeout', None)
         if kw:
             raise TypeError('fetch got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
         results = list()
-        for tensor in tensors:
-            key = tensor.key
+        for tileable in tileables:
+            key = tileable.key
 
-            if key not in self._executed_tensors:
-                raise ValueError('Cannot fetch the unexecuted tensor')
+            if key not in self._executed_tileables:
+                raise ValueError('Cannot fetch the unexecuted tileable')
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(str(v) for v in dataserializer.get_supported_compressions())
             data_url = session_url + '/graph/%s/data/%s?compressions=%s' \
-                % (self._get_tensor_graph_key(key), key, compression_str)
+                % (self._get_tileable_graph_key(key), key, compression_str)
             resp = self._req_session.get(data_url, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -183,30 +183,31 @@ class Session(object):
             results.append(dataserializer.loads(resp.content))
         return results
 
-    def _update_tensor_shape(self, tensor):
-        tensor_key = tensor.key
+    def _update_tileable_shape(self, tileable):
+        tileable_key = tileable.key
         session_url = self._endpoint + '/api/session/' + self._session_id
-        url = session_url + '/graph/%s/data/%s?type=nsplits' % (self._get_tensor_graph_key(tensor_key), tensor_key)
+        url = session_url + '/graph/%s/data/%s?type=nsplits' % (
+            self._get_tileable_graph_key(tileable_key), tileable_key)
         resp = self._req_session.get(url)
         new_nsplits = json.loads(resp.text)
-        tensor._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
-        tensor.nsplits = new_nsplits
+        tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
+        tileable.nsplits = new_nsplits
 
     def decref(self, *keys):
         session_url = self._endpoint + '/api/session/' + self._session_id
-        for tensor_key, tensor_id in keys:
-            if tensor_key not in self._executed_tensors:
+        for tileable_key, tileable_id in keys:
+            if tileable_key not in self._executed_tileables:
                 continue
-            graph_key, ids = self._executed_tensors[tensor_key]
+            graph_key, ids = self._executed_tileables[tileable_key]
 
-            if tensor_id in ids:
-                ids.remove(tensor_id)
-                # for those same key tensors, do decref only when all those tensors are garbage collected
+            if tileable_id in ids:
+                ids.remove(tileable_id)
+                # for those same key tileables, do decref only when all those tileables are garbage collected
                 if len(ids) != 0:
                     continue
-                data_url = session_url + '/graph/%s/data/%s' % (graph_key, tensor_key)
+                data_url = session_url + '/graph/%s/data/%s' % (graph_key, tileable_key)
                 self._req_session.delete(data_url)
-                del self._executed_tensors[tensor_key]
+                del self._executed_tileables[tileable_key]
 
     def stop(self, graph_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -242,7 +243,7 @@ class Session(object):
 
     def close(self):
         executed_keys = []
-        for key, value in self._executed_tensors.items():
+        for key, value in self._executed_tileables.items():
             for tid in value[1]:
                 executed_keys.append((key, tid))
         self.decref(*executed_keys)

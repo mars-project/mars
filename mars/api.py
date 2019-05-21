@@ -94,36 +94,36 @@ class MarsAPI(object):
         state = GraphState(state.lower())
         return state
 
-    def fetch_data(self, session_id, graph_key, tensor_key, compressions=None, wait=True):
+    def fetch_data(self, session_id, graph_key, tileable_key, compressions=None, wait=True):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_address = self.cluster_info.get_scheduler(graph_uid)
         result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_name(), address=graph_address)
 
         compressions = set(compressions or []) | {dataserializer.COMPRESS_FLAG_NONE}
-        return result_ref.fetch_tileable(session_id, graph_key, tensor_key, compressions, _wait=wait)
+        return result_ref.fetch_tileable(session_id, graph_key, tileable_key, compressions, _wait=wait)
 
-    def delete_data(self, session_id, graph_key, tensor_key):
+    def delete_data(self, session_id, graph_key, tileable_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        graph_ref.free_tileable_data(tensor_key, _tell=True)
+        graph_ref.free_tileable_data(tileable_key, _tell=True)
 
-    def get_tensor_nsplits(self, session_id, graph_key, tensor_key):
+    def get_tileable_nsplits(self, session_id, graph_key, tileable_key):
         # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tensor_key)
+        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
 
         chunk_meta_ref = self.get_actor_ref(ChunkMetaActor.default_name())
         chunk_shapes = chunk_meta_ref.batch_get_chunk_shape(session_id, list(chunk_indexes.keys()))
 
         # for each dimension, record chunk shape whose index is zero on other dimensions
         ndim = len(chunk_shapes[0])
-        tensor_nsplits = []
+        tileable_nsplits = []
         for i in range(ndim):
             splits = []
             for index, shape in zip(chunk_indexes.values(), chunk_shapes):
                 if all(idx == 0 for j, idx in enumerate(index) if j != i):
                     splits.append(shape[i])
-            tensor_nsplits.append(tuple(splits))
+            tileable_nsplits.append(tuple(splits))
 
-        return tuple(tensor_nsplits)
+        return tuple(tileable_nsplits)
