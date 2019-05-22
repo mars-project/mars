@@ -281,7 +281,6 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
-
 def _on_serialize_composed(composed):
     return [FuseChunkData.ChunkRef(c.data if isinstance(c, Entity) else c) for c in composed]
 
