@@ -63,6 +63,6 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # optional fields
     _dtypes = SeriesField('dtypes')
 
-    def __init__(self, dtypes=None, to_fetch_keys=None, **kw):
+    def __init__(self, dtypes=None, to_fetch_keys=None, to_fetch_idxes=None, **kw):
         super(DataFrameFetchShuffle, self).__init__(
-            _dtypes=dtypes, _to_fetch_keys=to_fetch_keys, **kw)
+            _dtypes=dtypes, _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes, **kw)

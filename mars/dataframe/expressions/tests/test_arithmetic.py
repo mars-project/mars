@@ -216,8 +216,6 @@ class Test(TestBase):
             idx = c.index
             # test the left side
             self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlignReduce)
-            self.assertEqual(c.inputs[0].op.row_source_size, 1)
-            self.assertEqual(c.inputs[0].op.col_source_size, len(c.inputs[0].inputs[0].inputs))
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
@@ -244,8 +242,6 @@ class Test(TestBase):
                 self.assertIs(ci.inputs[0], ic.data)
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
-            self.assertEqual(c.inputs[1].op.row_source_size, 1)
-            self.assertEqual(c.inputs[1].op.col_source_size, len(c.inputs[1].inputs[0].inputs))
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[1].inputs[0].inputs])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
@@ -312,8 +308,6 @@ class Test(TestBase):
             self.assertEqual(len(c.inputs), 2)
             # test left side
             self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlignReduce)
-            self.assertEqual(c.inputs[0].op.row_source_size, 2)
-            self.assertEqual(c.inputs[0].op.col_source_size, 2)
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
@@ -335,8 +329,6 @@ class Test(TestBase):
                 self.assertIs(ic.inputs[0], ci.data)
             # test right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
-            self.assertEqual(c.inputs[1].op.row_source_size, 2)
-            self.assertEqual(c.inputs[1].op.col_source_size, 2)
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[1].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)

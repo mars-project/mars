@@ -17,6 +17,7 @@ import logging
 import numpy as np
 
 from .array import as_same_device, device
+from ...utils import get_shuffle_input_keys_idxes
 
 logger = logging.getLogger(__name__)
 
@@ -108,15 +109,13 @@ def _reshape_map_estimate_size(ctx, chunk):
 
 
 def _reshape_reduce(ctx, chunk):
-    from ...utils import get_shuffle_reduce_inputs
-
     try:
         result_array = ctx[chunk.key]
     except KeyError:
         result_array = np.zeros(chunk.shape, dtype=chunk.dtype)
 
     in_chunk = chunk.inputs[0]
-    input_keys = get_shuffle_reduce_inputs(in_chunk)
+    input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
 
     shuffle_key = chunk.op.shuffle_key
     for input_key in input_keys:

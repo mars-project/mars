@@ -151,22 +151,9 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_REDUCE
 
     _input = KeyField('input')
-    _row_source_size = Int32Field('row_source_size')
-    _col_source_size = Int32Field('col_source_size')
 
-    def __init__(self, shuffle_key=None, sparse=None, row_source_size=None,
-                 col_source_size=None, **kw):
-        super(DataFrameIndexAlignReduce, self).__init__(
-            _shuffle_key=shuffle_key, _sparse=sparse, _row_source_size=row_source_size,
-            _col_source_size=col_source_size, **kw)
-
-    @property
-    def row_source_size(self):
-        return self._row_source_size
-
-    @property
-    def col_source_size(self):
-        return self._col_source_size
+    def __init__(self, shuffle_key=None, sparse=None, **kw):
+        super(DataFrameIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse, **kw)
 
     def _set_inputs(self, inputs):
         super(DataFrameIndexAlignReduce, self)._set_inputs(inputs)
@@ -436,9 +423,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 for j in range(shuffle_size):
                     reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                     reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
-                                                          shuffle_key=','.join(str(idx) for idx in reduce_idx),
-                                                          row_source_size=1 if align_axis == 0 else shuffle_size,
-                                                          col_source_size=1 if align_axis == 1 else shuffle_size)
+                                                          shuffle_key=','.join(str(idx) for idx in reduce_idx))
                     reduce_chunks[left_or_right].append(
                         reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx))
 
@@ -470,9 +455,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             for out_idx in itertools.product(*(range(s) for s in out_shape)):
                 reduce_op = DataFrameIndexAlignReduce(i=out_idx,
                                                       sparse=proxy_chunk.issparse(),
-                                                      shuffle_key=','.join(str(idx) for idx in out_idx),
-                                                      row_source_size=inp.chunk_shape[0],
-                                                      col_source_size=inp.chunk_shape[1])
+                                                      shuffle_key=','.join(str(idx) for idx in out_idx)
+                                                      )
                 reduce_chunks[i].append(
                     reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))
 

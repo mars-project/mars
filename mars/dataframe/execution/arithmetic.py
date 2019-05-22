@@ -20,7 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ...utils import get_shuffle_reduce_inputs
+from ...utils import get_shuffle_input_keys_idxes
 from ..utils import hash_index
 from ..expressions.arithmetic.core import DataFrameIndexAlignMap, DataFrameIndexAlignReduce
 from ..expressions.arithmetic import DataFrameAdd
@@ -83,15 +83,16 @@ def _index_align_map(ctx, chunk):
 
 
 def _index_align_reduce(ctx, chunk):
-    input_keys = get_shuffle_reduce_inputs(chunk.inputs[0])
-    idxes_gen = itertools.product(range(chunk.op.row_source_size), range(chunk.op.col_source_size))
+    input_keys, input_idxes = get_shuffle_input_keys_idxes(chunk.inputs[0])
     input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
-                       for inp_key, idx in zip(input_keys, idxes_gen)}
+                       for inp_key, idx in zip(input_keys, input_idxes)}
+    row_idxes = sorted({idx[0] for idx in input_idx_to_df})
+    col_idxes = sorted({idx[1] for idx in input_idx_to_df})
 
     res = None
-    for row_idx in range(chunk.op.row_source_size):
+    for row_idx in row_idxes:
         row_df = None
-        for col_idx in range(chunk.op.col_source_size):
+        for col_idx in col_idxes:
             df = input_idx_to_df[row_idx, col_idx]
             if row_df is None:
                 row_df = df

@@ -238,7 +238,12 @@ class FetchShuffle(Operand):
 
     _to_fetch_keys = ListField('to_fetch_keys', ValueType.string,
                                on_serialize=lambda v: [to_str(i) for i in v])
+    _to_fetch_idxes = ListField('to_fetch_idxes', ValueType.tuple(ValueType.uint64))
 
     @property
     def to_fetch_keys(self):
         return self._to_fetch_keys
+
+    @property
+    def to_fetch_idxes(self):
+        return self._to_fetch_idxes

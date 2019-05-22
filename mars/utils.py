@@ -275,13 +275,13 @@ def calc_data_size(dt):
     raise ValueError('Cannot support calculating size of %s', type(dt))
 
 
-def get_shuffle_reduce_inputs(chunk):
+def get_shuffle_input_keys_idxes(chunk):
     from .operands import ShuffleProxy
 
     if isinstance(chunk.op, ShuffleProxy):
-        return [inp.key for inp in chunk.inputs]
+        return [inp.key for inp in chunk.inputs], [inp.index for inp in chunk.inputs]
     else:
-        return chunk.op.to_fetch_keys
+        return chunk.op.to_fetch_keys, chunk.op.to_fetch_idxes
 
 
 def _get_mod_logger():
@@ -449,7 +449,8 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
         # to replace ShuffleProxy
         to_fetch_keys = [pinp.key for pinp in chunk.inputs
                          if input_chunk_keys is None or pinp.key in input_chunk_keys]
-        op = get_fetch_op_cls(chunk_op)(to_fetch_keys=to_fetch_keys)
+        to_fetch_idxes = [pinp.index for pinp in chunk.inputs]
+        op = get_fetch_op_cls(chunk_op)(to_fetch_keys=to_fetch_keys, to_fetch_idxes=to_fetch_idxes)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
