@@ -315,7 +315,7 @@ class FuseChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from .serialize.protos.fusechunk_pb2 import FuseChunkDef
             return FuseChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super(FuseChunkData, cls).cls(provider)
 
     @property
     def params(self):

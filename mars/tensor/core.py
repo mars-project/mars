@@ -40,7 +40,7 @@ class TensorChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.tensor_pb2 import TensorChunkDef
             return TensorChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super(TensorChunkData, cls).cls(provider)
 
     @property
     def params(self):

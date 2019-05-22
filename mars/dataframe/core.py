@@ -394,11 +394,11 @@ class DataFrameChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
             return DataFrameChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super(DataFrameChunkData, cls).cls(provider)
 
     @property
     def params(self):
-        # params return the properties which useful to rebuild a new tileable object
+        # params return the properties which useful to rebuild a new chunk
         return {
             'shape': self.shape,
             'dtypes': self.dtypes,
