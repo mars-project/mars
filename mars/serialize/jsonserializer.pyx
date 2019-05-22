@@ -31,7 +31,7 @@ from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField
-from .core import HasKey
+from .core import HasKey, Serializable
 from .dataserializer import dumps as datadumps, loads as dataloads
 
 
@@ -443,7 +443,10 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     val = val()
                 if val is not None:
-                    new_obj.append(val.serialize(self, dict()))
+                    if isinstance(val, Serializable):
+                        new_obj.append(val.serialize(self, dict()))
+                    else:
+                        raise TypeError('Unsupported type to serialize: {0}'.format(type(val)))
                 else:
                     new_obj.append(None)
         else:

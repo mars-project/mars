@@ -33,7 +33,7 @@ from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
     OneOfField, ReferenceField, IdentityField, \
     ListField, TupleField
-from .core import HasKey
+from .core import HasKey, Serializable
 from .protos.value_pb2 import Value
 from .dataserializer import dumps as datadumps, loads as dataloads
 
@@ -473,7 +473,10 @@ cdef class ProtobufSerializeProvider(Provider):
                         val = val()
                     it_obj = add()
                     if val is not None:
-                        val.serialize(self, obj=it_obj)
+                        if isinstance(val, Serializable):
+                            val.serialize(self, obj=it_obj)
+                        else:
+                            raise TypeError('Unsupported type to serialize: {0}'.format(type(val)))
                     elif isinstance(it_obj, Value):
                         it_obj.is_null = True
             else:
