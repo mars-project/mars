@@ -2,7 +2,18 @@ syntax = "proto3";
 
 import "mars/serialize/protos/value.proto";
 import "mars/serialize/protos/indexvalue.proto";
-import "mars/serialize/protos/chunk.proto";
+
+
+message IndexChunkDef {
+    string key = 1;
+    repeated uint32 index = 2 [packed = true];
+    repeated int64 shape = 3;
+    Value op = 4;  // just store key here
+    bool cached = 5;
+    Value dtype = 6;
+    Value extra_params = 8;
+    string id = 9;
+}
 
 
 message IndexDef {
@@ -11,10 +22,23 @@ message IndexDef {
     Value dtype = 3;
     Value op = 4; // store operand's key and id
     Value nsplits = 5;
-    repeated ChunkDef chunks = 6;
+    repeated IndexChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
+}
+
+
+message SeriesChunkDef {
+    string key = 1;
+    repeated uint32 index = 2 [packed = true];
+    repeated int64 shape = 3;
+    Value op = 4;  // just store key here
+    bool cached = 5;
+    Value dtype = 6;
+    IndexValue index_value = 11;
+    Value extra_params = 8;
+    string id = 9;
 }
 
 
@@ -24,11 +48,25 @@ message SeriesDef {
     Value dtype = 3;
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
-    repeated ChunkDef chunks = 6;
+    repeated IndexChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
     Value name = 9;
     IndexValue index_value = 10;
+}
+
+
+message DataFrameChunkDef {
+    string key = 1;
+    repeated uint32 index = 2 [packed = true];
+    repeated int64 shape = 3;
+    Value op = 4;  // just store key here
+    bool cached = 5;
+    Value dtypes = 10;
+    IndexValue index_value = 11;
+    IndexValue columns_value = 12;
+    Value extra_params = 8;
+    string id = 9;
 }
 
 
@@ -38,9 +76,10 @@ message DataFrameDef {
     Value dtypes = 3;
     Value op = 4;  // store operand's key and id
     Value nsplits = 5;
-    repeated ChunkDef chunks = 6;
+    repeated DataFrameChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
     IndexValue columns_value = 10;
 }
+

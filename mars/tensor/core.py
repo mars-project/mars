@@ -34,11 +34,17 @@ class TensorChunkData(ChunkData):
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtype = DataTypeField('dtype')
-    _composed = ListField('composed', ValueType.reference('self'))
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.tensor_pb2 import TensorChunkDef
+            return TensorChunkDef
+        return super(ChunkData, cls).cls(provider)
 
     @property
     def params(self):
-        # params return the properties which useful to rebuild a new tileable object
+        # params return the properties which useful to rebuild a new chunk
         return {
             'shape': self.shape,
             'dtype': self.dtype,

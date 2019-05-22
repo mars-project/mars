@@ -260,6 +260,13 @@ class IndexChunkData(ChunkData):
     _dtype = DataTypeField('dtype')
     _index_value = ReferenceField('index_value', IndexValue)
 
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import IndexChunkDef
+            return IndexChunkDef
+        return super(ChunkData, cls).cls(provider)
+
     @property
     def dtype(self):
         return self._dtype
@@ -313,6 +320,13 @@ class SeriesChunkData(ChunkData):
     # optional field
     _dtype = DataTypeField('dtype')
     _index_value = ReferenceField('index_value', IndexValue)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
+            return SeriesChunkDef
+        return super(ChunkData, cls).cls(provider)
 
     @property
     def dtype(self):
@@ -374,6 +388,13 @@ class DataFrameChunkData(ChunkData):
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
+            return DataFrameChunkDef
+        return super(ChunkData, cls).cls(provider)
 
     @property
     def params(self):

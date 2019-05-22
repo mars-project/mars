@@ -320,6 +320,7 @@ cdef class DirectedGraph:
 
         from .tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
         from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE, DataFrame
+        from .core import FUSE_CHUNK_TYPE
 
         level = None
 
@@ -334,7 +335,7 @@ cdef class DirectedGraph:
                 visited.add(c)
 
         for node in self.iter_nodes():
-            if isinstance(node, TENSOR_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE):
+            if isinstance(node, TENSOR_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE + FUSE_CHUNK_TYPE):
                 node = node.data if isinstance(node, Chunk) else node
                 add_obj(node)
                 if node.composed:
@@ -510,7 +511,12 @@ class SerializableGraphNode(Serializable):
                        tensor_chunk='mars.tensor.core.TensorChunkData',
                        tensor='mars.tensor.core.TensorData',
                        dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
-                       dataframe='mars.dataframe.core.DataFrameData')
+                       dataframe='mars.dataframe.core.DataFrameData',
+                       index_chunk='mars.dataframe.core.IndexChunkData',
+                       index='mars.dataframe.core.Index',
+                       series_chunk='mars.dataframe.core.SeriesChunkData',
+                       series='mars.dataframe.core.Series',
+                       fuse_chunk='mars.core.FuseChunkData')
 
     @classmethod
     def cls(cls, provider):

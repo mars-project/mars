@@ -25,7 +25,7 @@ from .compat import six, izip, builtins, reduce
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, is_eager_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
-    TupleField, DictField, KeyField, BoolField, StringField
+    TupleField, ListField, DictField, KeyField, BoolField, StringField, OneOfField
 from .tiles import Tileable, handler
 from .graph import DAG
 
@@ -279,6 +279,74 @@ class ChunkData(SerializableWithKey):
 class Chunk(Entity):
     __slots__ = ()
     _allow_data_type_ = (ChunkData,)
+
+
+
+def _on_serialize_composed(composed):
+    return [FuseChunkData.ChunkRef(c.data if isinstance(c, Entity) else c) for c in composed]
+
+
+def _on_deserialize_composed(refs):
+    return [r.chunk for r in refs]
+
+
+class FuseChunkData(ChunkData):
+
+    class ChunkRef(Serializable):
+        _chunk = OneOfField('chunk', tensor_chunk='mars.tensor.core.TensorChunkData',
+                            tensor='mars.tensor.core.TensorData',
+                            dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
+                            dataframe='mars.dataframe.core.DataFrameData',
+                            index_chunk='mars.dataframe.core.IndexChunkData',
+                            index='mars.dataframe.core.IndexData',
+                            series_chunk='mars.dataframe.core.SeriesChunkData',
+                            series='mars.dataframe.core.SeriesData')
+
+        @property
+        def chunk(self):
+            return self._chunk
+
+    _composed = ListField('composed', ValueType.reference(ChunkRef),
+                          on_serialize=_on_serialize_composed,
+                          on_deserialize=_on_deserialize_composed)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from .serialize.protos.fusechunk_pb2 import FuseChunkDef
+            return FuseChunkDef
+        return super(ChunkData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new chunk
+        p = {
+            'index': self.index,
+        }
+        if self.dtype:
+            p['dtype'] = self.dtype
+        return p
+
+    @property
+    def shape(self):
+        return self._extra_params.get('shape')
+
+    @property
+    def dtype(self):
+        # have dtype when the last compose is tensor
+        return self._extra_params.get('dtype') or self.op.dtype
+
+    @property
+    def nbytes(self):
+        return np.prod(self.shape) * self.dtype.itemsize
+
+
+class FuseChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (FuseChunkData,)
+
+
+FUSE_CHUNK_TYPE = (FuseChunkData, FuseChunk)
 
 
 class TileableData(SerializableWithKey, Tileable):
