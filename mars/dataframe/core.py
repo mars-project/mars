@@ -265,7 +265,7 @@ class IndexChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import IndexChunkDef
             return IndexChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super(IndexChunkData, cls).cls(provider)
 
     @property
     def dtype(self):
@@ -326,7 +326,7 @@ class SeriesChunkData(ChunkData):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
             return SeriesChunkDef
-        return super(ChunkData, cls).cls(provider)
+        return super(SeriesChunkData, cls).cls(provider)
 
     @property
     def dtype(self):
