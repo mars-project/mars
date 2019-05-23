@@ -388,7 +388,6 @@ class DataFrameChunkData(ChunkData):
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
-    _composed = ListField('composed', ValueType.reference('self'))
 
     @classmethod
     def cls(cls, provider):
