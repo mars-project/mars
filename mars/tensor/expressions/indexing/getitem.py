@@ -94,10 +94,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
                 non_empty_idx_splits = [(j, s) for j, s in enumerate(splits) if s.size > 0]
                 non_empty_splits, _ = tuple(zip(*non_empty_idx_splits))
-                try:
-                    indexes[i] = non_empty_idx_splits
-                except:
-                    raise
+                indexes[i] = non_empty_idx_splits
                 if not is_asc_sorted(index):
                     pos_index = np.searchsorted(np_index, index)
                     to_concat_axis_index.append((output_axis, pos_index))
