@@ -410,6 +410,9 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     field_val = field_val()
                 if field_val is not None:
+                    if not isinstance(field_val, field.type.model):
+                        raise TypeError('Does not match type for reference field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.model, type(field_val)))
                     value = self._on_serial(field, field_val)
                     value.serialize(self, new_obj)
         elif isinstance(field, OneOfField):
@@ -443,7 +446,11 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     val = val()
                 if val is not None:
-                    new_obj.append(val.serialize(self, dict()))
+                    if isinstance(val, field.type.type.model):
+                        new_obj.append(val.serialize(self, dict()))
+                    else:
+                        raise TypeError('Does not match type for reference in list field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
                 else:
                     new_obj.append(None)
         else:
