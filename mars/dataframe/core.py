@@ -24,7 +24,7 @@ from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy
 from ..core import ChunkData, Chunk, Entity, TileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
-    TupleField, OneOfField, ReferenceField
+    TupleField, OneOfField, ReferenceField, NDArrayField
 
 
 class IndexValue(Serializable):
@@ -91,7 +91,7 @@ class IndexValue(Serializable):
 
     class Index(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
 
     class RangeIndex(IndexBase):
@@ -108,18 +108,18 @@ class IndexValue(Serializable):
 
     class CategoricalIndex(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _categories = ListField('categories')
         _ordered = BoolField('ordered')
 
     class IntervalIndex(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _closed = BoolField('closed')
 
     class DatetimeIndex(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _freq = AnyField('freq')
         _start = AnyField('start')
         _periods = Int64Field('periods')
@@ -131,7 +131,7 @@ class IndexValue(Serializable):
 
     class TimedeltaIndex(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _unit = AnyField('unit')
         _freq = AnyField('freq')
         _start = AnyField('start')
@@ -141,7 +141,7 @@ class IndexValue(Serializable):
 
     class PeriodIndex(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _freq = AnyField('freq')
         _start = AnyField('start')
         _periods = Int64Field('periods')
@@ -158,22 +158,22 @@ class IndexValue(Serializable):
 
     class Int64Index(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
 
     class UInt64Index(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
 
     class Float64Index(IndexBase):
         _name = AnyField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _dtype = DataTypeField('dtype')
 
     class MultiIndex(IndexBase):
         _names = ListField('name')
-        _data = ListField('data')
+        _data = NDArrayField('data')
         _sortorder = Int32Field('sortorder')
 
         def to_pandas(self):
@@ -251,6 +251,13 @@ class IndexValue(Serializable):
 
     def to_pandas(self):
         return self._index_value.to_pandas()
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.indexvalue_pb2 import IndexValue as IndexValueDef
+            return IndexValueDef
+        return super(IndexValue, cls).cls(provider)
 
 
 class IndexChunkData(ChunkData):

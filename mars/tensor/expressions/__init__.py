@@ -17,4 +17,4 @@
 from . import rechunk
 from . import fuse
 from . import ufunc
-from .utils import concat_tileable_chunks, get_fetch_op_cls
+from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls

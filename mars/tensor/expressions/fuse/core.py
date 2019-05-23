@@ -23,10 +23,7 @@ class TensorFuseChunkMixin(TensorOperandMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
-        dt = self._get_dtype(kw, output_idx)
-        shape = kw.pop('shape', None)
-        data = FuseChunkData(_index=index, _op=self, shape=shape,
-                             dtype=dt, **kw)
+        data = FuseChunkData(_index=index, _op=self, **kw)
         return FuseChunk(data)
 
     @classmethod

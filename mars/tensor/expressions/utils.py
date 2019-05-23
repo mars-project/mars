@@ -478,3 +478,9 @@ def get_fetch_op_cls(op):
         return TensorFetchShuffle
     else:
         return TensorFetch
+
+
+def get_fuse_op_cls():
+    from .fuse import TensorFuseChunk
+
+    return TensorFuseChunk

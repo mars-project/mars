@@ -473,6 +473,26 @@ class Test(unittest.TestCase):
                 r = a.dot(a)
                 np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
+            with new_session('http://' + cluster._web_endpoint).as_default():
+                from mars.dataframe.expressions.datasource.dataframe import from_pandas
+                from mars.dataframe.expressions.arithmetic import add
+
+                self.assertIsInstance(Session.default_or_local()._sess, WebSession)
+
+                with option_context({'eager_mode': True}):
+                    data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+                                         columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+                    df1 = from_pandas(data1, chunk_size=5)
+                    pd.testing.assert_frame_equal(df1.fetch(), data1)
+
+                    data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
+                                         columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+                    df2 = from_pandas(data2, chunk_size=6)
+                    pd.testing.assert_frame_equal(df2.fetch(), data2)
+
+                    df3 = add(df1, df2)
+                    pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)
+
     def testSparse(self):
         import scipy.sparse as sps
 

@@ -17,7 +17,7 @@ import logging
 import numpy as np
 
 from .array import as_same_device, device
-from ..expressions.core import TensorShuffleProxy
+from ...utils import get_shuffle_input_keys_idxes
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +115,7 @@ def _reshape_reduce(ctx, chunk):
         result_array = np.zeros(chunk.shape, dtype=chunk.dtype)
 
     in_chunk = chunk.inputs[0]
-    if isinstance(in_chunk.op, TensorShuffleProxy):
-        input_keys = [inp.key for inp in in_chunk.inputs]
-    else:
-        input_keys = in_chunk.op.to_fetch_keys
+    input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
 
     shuffle_key = chunk.op.shuffle_key
     for input_key in input_keys:

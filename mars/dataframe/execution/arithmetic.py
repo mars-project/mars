@@ -20,6 +20,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
+from ...utils import get_shuffle_input_keys_idxes
 from ..utils import hash_index
 from ..expressions.arithmetic.core import DataFrameIndexAlignMap, DataFrameIndexAlignReduce
 from ..expressions.arithmetic import DataFrameAdd
@@ -82,8 +83,9 @@ def _index_align_map(ctx, chunk):
 
 
 def _index_align_reduce(ctx, chunk):
-    input_idx_to_df = {inp.index: ctx[inp.key, ','.join(str(idx) for idx in chunk.index)]
-                       for inp in chunk.inputs[0].inputs}
+    input_keys, input_idxes = get_shuffle_input_keys_idxes(chunk.inputs[0])
+    input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
+                       for inp_key, idx in zip(input_keys, input_idxes)}
     row_idxes = sorted({idx[0] for idx in input_idx_to_df})
     col_idxes = sorted({idx[1] for idx in input_idx_to_df})
 

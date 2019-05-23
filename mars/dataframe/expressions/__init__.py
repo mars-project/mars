@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import concat_tileable_chunks, get_fetch_op_cls
+from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls

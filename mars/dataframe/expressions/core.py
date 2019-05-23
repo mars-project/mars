@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ...operands import ShuffleProxy
-from ...core import TileableOperandMixin
-from ...operands import Operand, ShuffleMap, ShuffleReduce
+from ...core import TileableOperandMixin, FuseChunkData, FuseChunk
+from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
 from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
 
 
@@ -71,3 +71,17 @@ class DataFrameShuffleMap(ShuffleMap):
 
 class DataFrameShuffleReduce(ShuffleReduce):
     pass
+
+
+class DataFrameFuseMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    def _create_chunk(self, output_idx, index, **kw):
+        data = FuseChunkData(_index=index, _shape=kw.pop('shape', None), _op=self, **kw)
+
+        return FuseChunk(data)
+
+
+class DataFrameFuseChunk(Fuse, DataFrameFuseMixin):
+    def __init__(self, sparse=False, **kwargs):
+        super(DataFrameFuseChunk, self).__init__(_sparse=sparse, **kwargs)
