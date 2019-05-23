@@ -371,6 +371,6 @@ def get_fetch_op_cls(op):
 
 
 def get_fuse_op_cls():
-    from .core import DataFrameFuse
+    from .core import DataFrameFuseChunk
 
-    return DataFrameFuse
+    return DataFrameFuseChunk

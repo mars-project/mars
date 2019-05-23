@@ -322,7 +322,7 @@ class FuseChunkData(ChunkData):
         p = {
             'index': self.index,
         }
-        if self.dtype:
+        if getattr(self, 'dtype', None):
             p['dtype'] = self.dtype
         return p
 
