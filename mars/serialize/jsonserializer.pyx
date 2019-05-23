@@ -443,7 +443,7 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     val = val()
                 if val is not None:
-                    if isinstance(val, Serializable):
+                    if isinstance(val, field.type.type.model):
                         new_obj.append(val.serialize(self, dict()))
                     else:
                         raise TypeError('Unsupported type to serialize: {0}'.format(type(val)))

@@ -473,7 +473,7 @@ cdef class ProtobufSerializeProvider(Provider):
                         val = val()
                     it_obj = add()
                     if val is not None:
-                        if isinstance(val, Serializable):
+                        if isinstance(val, field.type.type.model):
                             val.serialize(self, obj=it_obj)
                         else:
                             raise TypeError('Unsupported type to serialize: {0}'.format(type(val)))
