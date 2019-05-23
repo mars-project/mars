@@ -502,36 +502,39 @@ cdef class OneOfField(Field):
         return [f.attr for f in self.fields]
 
 
-class SerializableMetaclass(type):
-    @staticmethod
-    def set_model(fields, cls):
-        for slot, field in fields.items():
-            if not isinstance(field, OneOfField):
-                try:
-                    field.model = cls
-                except SelfReferenceOverwritten:
-                    field = copy.copy(field)
-                    # reset old model after copy
-                    field.model = None
-                    field.model = cls
-                    cls._FIELDS[slot] = field
-            else:
-                one_field_fields = []
-                modified = False
-                for f in field.fields:
-                    try:
-                        f.model = cls
-                    except SelfReferenceOverwritten:
-                        f = copy.copy(f)
-                        # reset old model after copy
-                        f.model = None
-                        f.model = cls
-                        modified = True
-                    f.attr = field.attr
-                    one_field_fields.append(f)
-                if modified:
-                    field.fields = one_field_fields
+cdef inline set_model(dict fields, cls):
+    cdef str slot
+    cdef bint modified
 
+    for slot, field in fields.items():
+        if not isinstance(field, OneOfField):
+            try:
+                field.model = cls
+            except SelfReferenceOverwritten:
+                field = copy.copy(field)
+                # reset old model after copy
+                field.model = None
+                field.model = cls
+                cls._FIELDS[slot] = field
+        else:
+            one_field_fields = []
+            modified = False
+            for f in field.fields:
+                try:
+                    f.model = cls
+                except SelfReferenceOverwritten:
+                    f = copy.copy(f)
+                    # reset old model after copy
+                    f.model = None
+                    f.model = cls
+                    modified = True
+                f.attr = field.attr
+                one_field_fields.append(f)
+            if modified:
+                field.fields = one_field_fields
+
+
+class SerializableMetaclass(type):
     def __new__(mcs, str name, tuple bases, dict kv):
         cdef list slots
         cdef set sslots
@@ -575,7 +578,7 @@ class SerializableMetaclass(type):
         kv['__slots__'] = tuple(slots)
 
         cls = type.__new__(mcs, name, bases, kv)
-        SerializableMetaclass.set_model(fields, cls)
+        set_model(fields, cls)
         return cls
 
 
