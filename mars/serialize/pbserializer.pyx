@@ -523,11 +523,34 @@ cdef class ProtobufSerializeProvider(Provider):
                 value = getattr(model_instance, name, None)
                 if value is None:
                     continue
+                tag = field.tag_name(self)
 
                 k = d_obj.dict.keys.value.add()
                 self._set_value(field.tag_name(self), k, tp=ValueType.string)
                 v = d_obj.dict.values.value.add()
-                self._set_value(value, v, tp=field.type, weak_ref=field.weak_ref)
+                if isinstance(field, ReferenceField):
+                    if field.weak_ref:
+                        value = value()
+                    if isinstance(value, field.type.model):
+                        value.serialize(self, obj=v)
+                    else:
+                        raise TypeError('Does not match type for reference field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
+                elif isinstance(field, ListField) and type(field.type.type) == Reference:
+                    for val in value:
+                        if field.weak_ref:
+                            val = val()
+                        it_obj = v.list.value.add()
+                        if val is not None:
+                            if isinstance(val, field.type.type.model):
+                                val.serialize(self, obj=it_obj)
+                            else:
+                                raise TypeError('Does not match type for reference in list field {0}: '
+                                                'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
+                        elif isinstance(it_obj, Value):
+                            it_obj.is_null = True
+                else:
+                    self._set_value(value, v, tp=field.type, weak_ref=field.weak_ref)
         else:
             fields = model_instance._FIELDS
             for name, field in fields.items():
@@ -763,8 +786,19 @@ cdef class ProtobufSerializeProvider(Provider):
             for k, v in zip(d_obj.dict.keys.value, d_obj.dict.values.value):
                 tag = self._get_value(k, ValueType.string, callbacks, False)
                 it_field = tag_to_fields[tag]
-                setattr(model_instance, it_field.attr,
-                        self._get_value(v, it_field.type, callbacks, it_field.weak_ref))
+                if isinstance(it_field, ReferenceField):
+                    setattr(model_instance, it_field.attr,
+                        self._on_deserial(
+                            it_field, it_field.type.model.deserialize(self, v, callbacks, key_to_instance)))
+                elif isinstance(it_field, ListField) and type(it_field.type.type) == Reference:
+                    setattr(model_instance, it_field.attr,
+                            self._on_deserial(
+                                it_field,
+                                [it_field.type.type.model.deserialize(self, it_obj, callbacks, key_to_instance)
+                                 for it_obj in v.list.value]))
+                else:
+                    setattr(model_instance, it_field.attr,
+                            self._get_value(v, it_field.type, callbacks, it_field.weak_ref))
         else:
             for o_tag in d_obj:
                 it_field = tag_to_fields[o_tag]

@@ -115,6 +115,8 @@ class Node5(AttributeAsDict):
 class Node6(AttributeAsDict):
     nid = IdentityField('id', ValueType.int64)
     b = Int32Field('b')
+    r = ReferenceField('r', 'self')
+    rl = ListField('rl', ValueType.reference('self'))
 
     def __new__(cls, *args, **kwargs):
         if 'nid' in kwargs and kwargs['nid'] != 0:
@@ -320,6 +322,28 @@ class Test(unittest.TestCase):
             node42 = Node4(j=Node6())
             node42.serialize(pbs)
 
+        with self.assertRaises(TypeError):
+            node6 = Node6(nid=0)
+            node7 = Node7(nid=1, r=node6)
+            node7.serialize(pbs)
+
+        with self.assertRaises(TypeError):
+            node6 = Node6(nid=0)
+            node7 = Node7(nid=1, rl=[node6])
+            node7.serialize(pbs)
+
+        node61 = Node6(nid=0)
+        node62 = Node6(nid=0, r=node61)
+        serial = node62.serialize(pbs)
+        d_node62 = Node6.deserialize(pbs, serial)
+        self.assertIsInstance(d_node62.r, Node6)
+
+        node61 = Node6(nid=0)
+        node62 = Node6(nid=0, rl=[node61])
+        serial = node62.serialize(pbs)
+        d_node62 = Node6.deserialize(pbs, serial)
+        self.assertIsInstance(d_node62.rl[0], Node6)
+
         jss = JsonSerializeProvider()
 
         serial = node4.serialize(jss)
@@ -353,6 +377,28 @@ class Test(unittest.TestCase):
         with self.assertRaises(TypeError):
             node42 = Node4(j=Node6())
             node42.serialize(jss)
+
+        with self.assertRaises(TypeError):
+            node6 = Node6()
+            node7 = Node7(r=node6)
+            node7.serialize(jss)
+
+        with self.assertRaises(TypeError):
+            node6 = Node6(nid=0)
+            node7 = Node7(nid=1, rl=[node6])
+            node7.serialize(jss)
+
+        node61 = Node6()
+        node62 = Node6(r=node61)
+        serial = node62.serialize(jss)
+        d_node62 = Node6.deserialize(jss, serial)
+        self.assertIsInstance(d_node62.r, Node6)
+
+        node61 = Node6(nid=0)
+        node62 = Node6(nid=0, rl=[node61])
+        serial = node62.serialize(jss)
+        d_node62 = Node6.deserialize(jss, serial)
+        self.assertIsInstance(d_node62.rl[0], Node6)
 
     def testException(self):
         node1 = Node1(h=[object()])

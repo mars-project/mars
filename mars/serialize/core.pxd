@@ -212,7 +212,7 @@ cdef class DictField(Field):
 
 
 cdef class ReferenceField(Field):
-    cdef object _model
+    cdef public object _model
 
 
 cdef class OneOfField(Field):
