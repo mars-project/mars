@@ -77,9 +77,7 @@ class DataFrameFuseMixin(DataFrameOperandMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
-        data = FuseChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
-                             dtypes=kw.pop('dtypes', None), index_value=kw.pop('index_value', None),
-                             columns_value=kw.pop('columns_value', None), **kw)
+        data = FuseChunkData(_index=index, _shape=kw.pop('shape', None), _op=self, **kw)
 
         return FuseChunk(data)
 

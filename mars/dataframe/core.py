@@ -252,6 +252,13 @@ class IndexValue(Serializable):
     def to_pandas(self):
         return self._index_value.to_pandas()
 
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from ..serialize.protos.indexvalue_pb2 import IndexValue as IndexValueDef
+            return IndexValueDef
+        return super(IndexValue, cls).cls(provider)
+
 
 class IndexChunkData(ChunkData):
     __slots__ = ()

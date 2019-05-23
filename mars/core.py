@@ -290,6 +290,7 @@ def _on_deserialize_composed(refs):
 
 
 class FuseChunkData(ChunkData):
+    __slots__ = '_inited',
 
     class ChunkRef(Serializable):
         _chunk = OneOfField('chunk', tensor_chunk='mars.tensor.core.TensorChunkData',
@@ -309,6 +310,12 @@ class FuseChunkData(ChunkData):
                           on_serialize=_on_serialize_composed,
                           on_deserialize=_on_deserialize_composed)
 
+    def __init__(self, *args, **kwargs):
+        self._inited = False
+        super(FuseChunkData, self).__init__(*args, **kwargs)
+        self._extra_params = {}
+        self._inited = True
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -319,21 +326,14 @@ class FuseChunkData(ChunkData):
     @property
     def params(self):
         # params return the properties which useful to rebuild a new chunk
-        p = {
-            'index': self.index,
-        }
-        if getattr(self, 'dtype', None):
-            p['dtype'] = self.dtype
-        return p
+        return self.composed[-1].params
 
-    @property
-    def shape(self):
-        return self._extra_params.get('shape')
-
-    @property
-    def dtype(self):
-        # have dtype when the last compose is tensor
-        return self._extra_params.get('dtype') or self.op.dtype
+    def __getattr__(self, attr):
+        if not self._inited:
+            return object.__getattribute__(self, attr)
+        if attr in self._extra_params:
+            return self._extra_params[attr]
+        return getattr(self.composed[-1], attr)
 
     @property
     def nbytes(self):
