@@ -2,19 +2,24 @@ syntax = "proto3";
 
 
 import "mars/serialize/protos/operand.proto";
-import "mars/serialize/protos/chunk.proto";
 import "mars/serialize/protos/tensor.proto";
 import "mars/serialize/protos/dataframe.proto";
+import "mars/serialize/protos/fusechunk.proto";
 
 
 message GraphDef {
     message NodeDef {
         oneof node {
             OperandDef op = 1;
-            ChunkDef tensor_chunk = 2;
+            TensorChunkDef tensor_chunk = 2;
             TensorDef tensor = 3;
-            ChunkDef dataframe_chunk = 4;
+            DataFrameChunkDef dataframe_chunk = 4;
             DataFrameDef dataframe = 5;
+            IndexChunkDef index_chunk = 6;
+            IndexDef index = 7;
+            SeriesChunkDef series_chunk = 8;
+            SeriesDef series = 9;
+            FuseChunkDef fuse_chunk =10;
         }
     }
 

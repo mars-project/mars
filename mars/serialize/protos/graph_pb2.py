@@ -13,9 +13,9 @@ _sym_db = _symbol_database.Default()
 
 
 from mars.serialize.protos import operand_pb2 as mars_dot_serialize_dot_protos_dot_operand__pb2
-from mars.serialize.protos import chunk_pb2 as mars_dot_serialize_dot_protos_dot_chunk__pb2
 from mars.serialize.protos import tensor_pb2 as mars_dot_serialize_dot_protos_dot_tensor__pb2
 from mars.serialize.protos import dataframe_pb2 as mars_dot_serialize_dot_protos_dot_dataframe__pb2
+from mars.serialize.protos import fusechunk_pb2 as mars_dot_serialize_dot_protos_dot_fusechunk__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -23,9 +23,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n!mars/serialize/protos/graph.proto\x1a#mars/serialize/protos/operand.proto\x1a!mars/serialize/protos/chunk.proto\x1a\"mars/serialize/protos/tensor.proto\x1a%mars/serialize/protos/dataframe.proto\"\xa5\x02\n\x08GraphDef\x12\x1e\n\x05level\x18\x02 \x01(\x0e\x32\x0f.GraphDef.Level\x12\x1f\n\x04node\x18\x01 \x03(\x0b\x32\x11.GraphDef.NodeDef\x1a\xb7\x01\n\x07NodeDef\x12\x19\n\x02op\x18\x01 \x01(\x0b\x32\x0b.OperandDefH\x00\x12!\n\x0ctensor_chunk\x18\x02 \x01(\x0b\x32\t.ChunkDefH\x00\x12\x1c\n\x06tensor\x18\x03 \x01(\x0b\x32\n.TensorDefH\x00\x12$\n\x0f\x64\x61taframe_chunk\x18\x04 \x01(\x0b\x32\t.ChunkDefH\x00\x12\"\n\tdataframe\x18\x05 \x01(\x0b\x32\r.DataFrameDefH\x00\x42\x06\n\x04node\"\x1e\n\x05Level\x12\t\n\x05\x43HUNK\x10\x00\x12\n\n\x06\x45NTITY\x10\x01\x62\x06proto3')
+  serialized_pb=_b('\n!mars/serialize/protos/graph.proto\x1a#mars/serialize/protos/operand.proto\x1a\"mars/serialize/protos/tensor.proto\x1a%mars/serialize/protos/dataframe.proto\x1a%mars/serialize/protos/fusechunk.proto\"\xe3\x03\n\x08GraphDef\x12\x1e\n\x05level\x18\x02 \x01(\x0e\x32\x0f.GraphDef.Level\x12\x1f\n\x04node\x18\x01 \x03(\x0b\x32\x11.GraphDef.NodeDef\x1a\xf5\x02\n\x07NodeDef\x12\x19\n\x02op\x18\x01 \x01(\x0b\x32\x0b.OperandDefH\x00\x12\'\n\x0ctensor_chunk\x18\x02 \x01(\x0b\x32\x0f.TensorChunkDefH\x00\x12\x1c\n\x06tensor\x18\x03 \x01(\x0b\x32\n.TensorDefH\x00\x12-\n\x0f\x64\x61taframe_chunk\x18\x04 \x01(\x0b\x32\x12.DataFrameChunkDefH\x00\x12\"\n\tdataframe\x18\x05 \x01(\x0b\x32\r.DataFrameDefH\x00\x12%\n\x0bindex_chunk\x18\x06 \x01(\x0b\x32\x0e.IndexChunkDefH\x00\x12\x1a\n\x05index\x18\x07 \x01(\x0b\x32\t.IndexDefH\x00\x12\'\n\x0cseries_chunk\x18\x08 \x01(\x0b\x32\x0f.SeriesChunkDefH\x00\x12\x1c\n\x06series\x18\t \x01(\x0b\x32\n.SeriesDefH\x00\x12#\n\nfuse_chunk\x18\n \x01(\x0b\x32\r.FuseChunkDefH\x00\x42\x06\n\x04node\"\x1e\n\x05Level\x12\t\n\x05\x43HUNK\x10\x00\x12\n\n\x06\x45NTITY\x10\x01\x62\x06proto3')
   ,
-  dependencies=[mars_dot_serialize_dot_protos_dot_operand__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_chunk__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_tensor__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_dataframe__pb2.DESCRIPTOR,])
+  dependencies=[mars_dot_serialize_dot_protos_dot_operand__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_tensor__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_dataframe__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_fusechunk__pb2.DESCRIPTOR,])
 
 
 
@@ -46,8 +46,8 @@ _GRAPHDEF_LEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=448,
-  serialized_end=478,
+  serialized_start=642,
+  serialized_end=672,
 )
 _sym_db.RegisterEnumDescriptor(_GRAPHDEF_LEVEL)
 
@@ -94,6 +94,41 @@ _GRAPHDEF_NODEDEF = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index_chunk', full_name='GraphDef.NodeDef.index_chunk', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index', full_name='GraphDef.NodeDef.index', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='series_chunk', full_name='GraphDef.NodeDef.series_chunk', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='series', full_name='GraphDef.NodeDef.series', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='fuse_chunk', full_name='GraphDef.NodeDef.fuse_chunk', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -109,8 +144,8 @@ _GRAPHDEF_NODEDEF = _descriptor.Descriptor(
       name='node', full_name='GraphDef.NodeDef.node',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=263,
-  serialized_end=446,
+  serialized_start=267,
+  serialized_end=640,
 )
 
 _GRAPHDEF = _descriptor.Descriptor(
@@ -147,15 +182,20 @@ _GRAPHDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=185,
-  serialized_end=478,
+  serialized_start=189,
+  serialized_end=672,
 )
 
 _GRAPHDEF_NODEDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_operand__pb2._OPERANDDEF
-_GRAPHDEF_NODEDEF.fields_by_name['tensor_chunk'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
+_GRAPHDEF_NODEDEF.fields_by_name['tensor_chunk'].message_type = mars_dot_serialize_dot_protos_dot_tensor__pb2._TENSORCHUNKDEF
 _GRAPHDEF_NODEDEF.fields_by_name['tensor'].message_type = mars_dot_serialize_dot_protos_dot_tensor__pb2._TENSORDEF
-_GRAPHDEF_NODEDEF.fields_by_name['dataframe_chunk'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
+_GRAPHDEF_NODEDEF.fields_by_name['dataframe_chunk'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._DATAFRAMECHUNKDEF
 _GRAPHDEF_NODEDEF.fields_by_name['dataframe'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._DATAFRAMEDEF
+_GRAPHDEF_NODEDEF.fields_by_name['index_chunk'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._INDEXCHUNKDEF
+_GRAPHDEF_NODEDEF.fields_by_name['index'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._INDEXDEF
+_GRAPHDEF_NODEDEF.fields_by_name['series_chunk'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._SERIESCHUNKDEF
+_GRAPHDEF_NODEDEF.fields_by_name['series'].message_type = mars_dot_serialize_dot_protos_dot_dataframe__pb2._SERIESDEF
+_GRAPHDEF_NODEDEF.fields_by_name['fuse_chunk'].message_type = mars_dot_serialize_dot_protos_dot_fusechunk__pb2._FUSECHUNKDEF
 _GRAPHDEF_NODEDEF.containing_type = _GRAPHDEF
 _GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
   _GRAPHDEF_NODEDEF.fields_by_name['op'])
@@ -172,6 +212,21 @@ _GRAPHDEF_NODEDEF.fields_by_name['dataframe_chunk'].containing_oneof = _GRAPHDEF
 _GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
   _GRAPHDEF_NODEDEF.fields_by_name['dataframe'])
 _GRAPHDEF_NODEDEF.fields_by_name['dataframe'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
+_GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
+  _GRAPHDEF_NODEDEF.fields_by_name['index_chunk'])
+_GRAPHDEF_NODEDEF.fields_by_name['index_chunk'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
+_GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
+  _GRAPHDEF_NODEDEF.fields_by_name['index'])
+_GRAPHDEF_NODEDEF.fields_by_name['index'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
+_GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
+  _GRAPHDEF_NODEDEF.fields_by_name['series_chunk'])
+_GRAPHDEF_NODEDEF.fields_by_name['series_chunk'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
+_GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
+  _GRAPHDEF_NODEDEF.fields_by_name['series'])
+_GRAPHDEF_NODEDEF.fields_by_name['series'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
+_GRAPHDEF_NODEDEF.oneofs_by_name['node'].fields.append(
+  _GRAPHDEF_NODEDEF.fields_by_name['fuse_chunk'])
+_GRAPHDEF_NODEDEF.fields_by_name['fuse_chunk'].containing_oneof = _GRAPHDEF_NODEDEF.oneofs_by_name['node']
 _GRAPHDEF.fields_by_name['level'].enum_type = _GRAPHDEF_LEVEL
 _GRAPHDEF.fields_by_name['node'].message_type = _GRAPHDEF_NODEDEF
 _GRAPHDEF_LEVEL.containing_type = _GRAPHDEF

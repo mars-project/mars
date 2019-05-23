@@ -14,7 +14,6 @@ _sym_db = _symbol_database.Default()
 
 from mars.serialize.protos import value_pb2 as mars_dot_serialize_dot_protos_dot_value__pb2
 from mars.serialize.protos import indexvalue_pb2 as mars_dot_serialize_dot_protos_dot_indexvalue__pb2
-from mars.serialize.protos import chunk_pb2 as mars_dot_serialize_dot_protos_dot_chunk__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -22,11 +21,91 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\x1a!mars/serialize/protos/chunk.proto\"\xd1\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\"\xe8\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xfa\x01\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x19\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\t.ChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\n \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
+  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\"\xa3\x01\n\rIndexChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\xd6\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\"\xc6\x01\n\x0eSeriesChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\xed\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xee\x01\n\x11\x44\x61taFrameChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x16\n\x06\x64types\x18\n \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\x0c \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\x83\x02\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\"\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x12.DataFrameChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\n \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
   ,
-  dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_indexvalue__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_chunk__pb2.DESCRIPTOR,])
+  dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_indexvalue__pb2.DESCRIPTOR,])
 
 
+
+
+_INDEXCHUNKDEF = _descriptor.Descriptor(
+  name='IndexChunkDef',
+  full_name='IndexChunkDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='IndexChunkDef.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index', full_name='IndexChunkDef.index', index=1,
+      number=2, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=_b('\020\001'), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='shape', full_name='IndexChunkDef.shape', index=2,
+      number=3, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='op', full_name='IndexChunkDef.op', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='cached', full_name='IndexChunkDef.cached', index=4,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dtype', full_name='IndexChunkDef.dtype', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='extra_params', full_name='IndexChunkDef.extra_params', index=6,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='IndexChunkDef.id', index=7,
+      number=9, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=117,
+  serialized_end=280,
+)
 
 
 _INDEXDEF = _descriptor.Descriptor(
@@ -111,8 +190,95 @@ _INDEXDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=152,
-  serialized_end=361,
+  serialized_start=283,
+  serialized_end=497,
+)
+
+
+_SERIESCHUNKDEF = _descriptor.Descriptor(
+  name='SeriesChunkDef',
+  full_name='SeriesChunkDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='SeriesChunkDef.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index', full_name='SeriesChunkDef.index', index=1,
+      number=2, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=_b('\020\001'), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='shape', full_name='SeriesChunkDef.shape', index=2,
+      number=3, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='op', full_name='SeriesChunkDef.op', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='cached', full_name='SeriesChunkDef.cached', index=4,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dtype', full_name='SeriesChunkDef.dtype', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index_value', full_name='SeriesChunkDef.index_value', index=6,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='extra_params', full_name='SeriesChunkDef.extra_params', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='SeriesChunkDef.id', index=8,
+      number=9, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=500,
+  serialized_end=698,
 )
 
 
@@ -205,8 +371,102 @@ _SERIESDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=364,
-  serialized_end=596,
+  serialized_start=701,
+  serialized_end=938,
+)
+
+
+_DATAFRAMECHUNKDEF = _descriptor.Descriptor(
+  name='DataFrameChunkDef',
+  full_name='DataFrameChunkDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='DataFrameChunkDef.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index', full_name='DataFrameChunkDef.index', index=1,
+      number=2, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=_b('\020\001'), file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='shape', full_name='DataFrameChunkDef.shape', index=2,
+      number=3, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='op', full_name='DataFrameChunkDef.op', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='cached', full_name='DataFrameChunkDef.cached', index=4,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dtypes', full_name='DataFrameChunkDef.dtypes', index=5,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='index_value', full_name='DataFrameChunkDef.index_value', index=6,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='columns_value', full_name='DataFrameChunkDef.columns_value', index=7,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='extra_params', full_name='DataFrameChunkDef.extra_params', index=8,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='DataFrameChunkDef.id', index=9,
+      number=9, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=941,
+  serialized_end=1179,
 )
 
 
@@ -299,34 +559,56 @@ _DATAFRAMEDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=599,
-  serialized_end=849,
+  serialized_start=1182,
+  serialized_end=1441,
 )
 
+_INDEXCHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXCHUNKDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXCHUNKDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_INDEXDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
+_INDEXDEF.fields_by_name['chunks'].message_type = _INDEXCHUNKDEF
 _INDEXDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_SERIESCHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_SERIESCHUNKDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_SERIESCHUNKDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_SERIESCHUNKDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_SERIESDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
+_SERIESDEF.fields_by_name['chunks'].message_type = _INDEXCHUNKDEF
 _SERIESDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_DATAFRAMECHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_DATAFRAMECHUNKDEF.fields_by_name['dtypes'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_DATAFRAMECHUNKDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_DATAFRAMECHUNKDEF.fields_by_name['columns_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_DATAFRAMECHUNKDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['dtypes'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
-_DATAFRAMEDEF.fields_by_name['chunks'].message_type = mars_dot_serialize_dot_protos_dot_chunk__pb2._CHUNKDEF
+_DATAFRAMEDEF.fields_by_name['chunks'].message_type = _DATAFRAMECHUNKDEF
 _DATAFRAMEDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _DATAFRAMEDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
 _DATAFRAMEDEF.fields_by_name['columns_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+DESCRIPTOR.message_types_by_name['IndexChunkDef'] = _INDEXCHUNKDEF
 DESCRIPTOR.message_types_by_name['IndexDef'] = _INDEXDEF
+DESCRIPTOR.message_types_by_name['SeriesChunkDef'] = _SERIESCHUNKDEF
 DESCRIPTOR.message_types_by_name['SeriesDef'] = _SERIESDEF
+DESCRIPTOR.message_types_by_name['DataFrameChunkDef'] = _DATAFRAMECHUNKDEF
 DESCRIPTOR.message_types_by_name['DataFrameDef'] = _DATAFRAMEDEF
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+IndexChunkDef = _reflection.GeneratedProtocolMessageType('IndexChunkDef', (_message.Message,), dict(
+  DESCRIPTOR = _INDEXCHUNKDEF,
+  __module__ = 'mars.serialize.protos.dataframe_pb2'
+  # @@protoc_insertion_point(class_scope:IndexChunkDef)
+  ))
+_sym_db.RegisterMessage(IndexChunkDef)
 
 IndexDef = _reflection.GeneratedProtocolMessageType('IndexDef', (_message.Message,), dict(
   DESCRIPTOR = _INDEXDEF,
@@ -335,12 +617,26 @@ IndexDef = _reflection.GeneratedProtocolMessageType('IndexDef', (_message.Messag
   ))
 _sym_db.RegisterMessage(IndexDef)
 
+SeriesChunkDef = _reflection.GeneratedProtocolMessageType('SeriesChunkDef', (_message.Message,), dict(
+  DESCRIPTOR = _SERIESCHUNKDEF,
+  __module__ = 'mars.serialize.protos.dataframe_pb2'
+  # @@protoc_insertion_point(class_scope:SeriesChunkDef)
+  ))
+_sym_db.RegisterMessage(SeriesChunkDef)
+
 SeriesDef = _reflection.GeneratedProtocolMessageType('SeriesDef', (_message.Message,), dict(
   DESCRIPTOR = _SERIESDEF,
   __module__ = 'mars.serialize.protos.dataframe_pb2'
   # @@protoc_insertion_point(class_scope:SeriesDef)
   ))
 _sym_db.RegisterMessage(SeriesDef)
+
+DataFrameChunkDef = _reflection.GeneratedProtocolMessageType('DataFrameChunkDef', (_message.Message,), dict(
+  DESCRIPTOR = _DATAFRAMECHUNKDEF,
+  __module__ = 'mars.serialize.protos.dataframe_pb2'
+  # @@protoc_insertion_point(class_scope:DataFrameChunkDef)
+  ))
+_sym_db.RegisterMessage(DataFrameChunkDef)
 
 DataFrameDef = _reflection.GeneratedProtocolMessageType('DataFrameDef', (_message.Message,), dict(
   DESCRIPTOR = _DATAFRAMEDEF,
@@ -350,4 +646,7 @@ DataFrameDef = _reflection.GeneratedProtocolMessageType('DataFrameDef', (_messag
 _sym_db.RegisterMessage(DataFrameDef)
 
 
+_INDEXCHUNKDEF.fields_by_name['index']._options = None
+_SERIESCHUNKDEF.fields_by_name['index']._options = None
+_DATAFRAMECHUNKDEF.fields_by_name['index']._options = None
 # @@protoc_insertion_point(module_scope)
