@@ -16,6 +16,7 @@
 
 import importlib
 import inspect
+import copy
 from collections import Iterable
 
 from ..compat import six, OrderedDict
@@ -121,7 +122,7 @@ cdef class ValueType:
 
 cdef class Field:
     def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
-        self.model = None
+        self._model_cls = None
         self.attr = None
 
         self.tag = tag
@@ -132,6 +133,14 @@ cdef class Field:
         self.weak_ref = weak_ref
         self.on_serialize = on_serialize
         self.on_deserialize = on_deserialize
+
+    @property
+    def model(self):
+        return self._model_cls
+
+    @model.setter
+    def model(self, model_cls):
+        self._model_cls = model_cls
 
     cpdef str tag_name(self, Provider provider):
         if self._tag_name is None:
@@ -389,6 +398,18 @@ cdef class ListField(Field):
             self._type = ValueType.list(tp)
 
     @property
+    def model(self):
+        return self._model_cls
+
+    @model.setter
+    def model(self, new_model_cls):
+        if getattr(self, '_nest_ref', None) is not None and \
+                self._nest_ref.model == 'self' and self._model_cls is not None and \
+                new_model_cls is not None:
+            raise SelfReferenceOverwritten('self reference is overwritten')
+        self._model_cls = new_model_cls
+
+    @property
     def type(self):
         if self._type is None:
             self._type = ValueType.list(
@@ -432,6 +453,16 @@ cdef class ReferenceField(Field):
             self._model = model
 
     @property
+    def model(self):
+        return self._model_cls
+
+    @model.setter
+    def model(self, new_model_cls):
+        if getattr(self, '_model', None) == 'self' and self._model_cls is not None:
+            raise SelfReferenceOverwritten('self reference is overwritten')
+        self._model_cls = new_model_cls
+
+    @property
     def type(self):
         if not self._type:
             if self._model == 'self':
@@ -472,6 +503,35 @@ cdef class OneOfField(Field):
 
 
 class SerializableMetaclass(type):
+    @staticmethod
+    def set_model(fields, cls):
+        for slot, field in fields.items():
+            if not isinstance(field, OneOfField):
+                try:
+                    field.model = cls
+                except SelfReferenceOverwritten:
+                    field = copy.copy(field)
+                    # reset old model after copy
+                    field.model = None
+                    field.model = cls
+                    cls._FIELDS[slot] = field
+            else:
+                one_field_fields = []
+                modified = False
+                for f in field.fields:
+                    try:
+                        f.model = cls
+                    except SelfReferenceOverwritten:
+                        f = copy.copy(f)
+                        # reset old model after copy
+                        f.model = None
+                        f.model = cls
+                        modified = True
+                    f.attr = field.attr
+                    one_field_fields.append(f)
+                if modified:
+                    field.fields = one_field_fields
+
     def __new__(mcs, str name, tuple bases, dict kv):
         cdef list slots
         cdef set sslots
@@ -515,13 +575,7 @@ class SerializableMetaclass(type):
         kv['__slots__'] = tuple(slots)
 
         cls = type.__new__(mcs, name, bases, kv)
-        for field in fields.values():
-            if not isinstance(field, OneOfField):
-                field.model = cls
-            else:
-                for f in field.fields:
-                    f.model = cls
-                    f.attr = field.attr
+        SerializableMetaclass.set_model(fields, cls)
         return cls
 
 

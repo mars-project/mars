@@ -169,7 +169,7 @@ class Test(unittest.TestCase):
                       f=node2,
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      i=[Node1(b1=111), Node1(b1=222)])
+                      i=[Node8(b1=111), Node8(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -204,7 +204,7 @@ class Test(unittest.TestCase):
         self.assertIs(d_node3.value.h[1], d_node3.value.f)
         self.assertEqual(node3.value.h[2], True)
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
-        self.assertNotIsInstance(node3.value.i[0], Node8)
+        self.assertIsInstance(d_node3.value.i[0], Node8)
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])
@@ -221,7 +221,7 @@ class Test(unittest.TestCase):
                       f=node2,
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      i=[Node1(b1=111), Node1(b1=222)])
+                      i=[Node8(b1=111), Node8(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -257,7 +257,7 @@ class Test(unittest.TestCase):
         self.assertIs(d_node3.value.h[1], d_node3.value.f)
         self.assertEqual(node3.value.h[2], True)
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
-        self.assertNotIsInstance(node3.value.i[0], Node8)
+        self.assertIsInstance(d_node3.value.i[0], Node8)
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])

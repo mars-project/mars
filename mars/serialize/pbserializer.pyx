@@ -464,6 +464,9 @@ cdef class ProtobufSerializeProvider(Provider):
         if isinstance(field, ReferenceField):
             if field.weak_ref:
                 field_obj = field_obj()
+            if not isinstance(value, field.type.model):
+                raise TypeError('Does not match type for reference field {0}: '
+                                'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
             value.serialize(self, obj=field_obj)
         elif isinstance(field, ListField):
             if type(field.type.type) == Reference:
@@ -473,7 +476,11 @@ cdef class ProtobufSerializeProvider(Provider):
                         val = val()
                     it_obj = add()
                     if val is not None:
-                        val.serialize(self, obj=it_obj)
+                        if isinstance(val, field.type.type.model):
+                            val.serialize(self, obj=it_obj)
+                        else:
+                            raise TypeError('Does not match type for reference in list field {0}: '
+                                            'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
                     elif isinstance(it_obj, Value):
                         it_obj.is_null = True
             else:
