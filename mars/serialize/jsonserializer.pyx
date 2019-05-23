@@ -31,7 +31,7 @@ from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField
-from .core import HasKey, Serializable
+from .core import HasKey
 from .dataserializer import dumps as datadumps, loads as dataloads
 
 
@@ -410,6 +410,9 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     field_val = field_val()
                 if field_val is not None:
+                    if not isinstance(field_val, field.type.model):
+                        raise TypeError('Does not match type for reference field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.model, type(field_val)))
                     value = self._on_serial(field, field_val)
                     value.serialize(self, new_obj)
         elif isinstance(field, OneOfField):
@@ -446,7 +449,8 @@ cdef class JsonSerializeProvider(Provider):
                     if isinstance(val, field.type.type.model):
                         new_obj.append(val.serialize(self, dict()))
                     else:
-                        raise TypeError('Unsupported type to serialize: {0}'.format(type(val)))
+                        raise TypeError('Does not match type for reference in list field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
                 else:
                     new_obj.append(None)
         else:
