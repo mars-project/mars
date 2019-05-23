@@ -316,6 +316,10 @@ class Test(unittest.TestCase):
             pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
             pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
 
+        with self.assertRaises(TypeError):
+            node42 = Node4(j=Node6())
+            node42.serialize(pbs)
+
         jss = JsonSerializeProvider()
 
         serial = node4.serialize(jss)
@@ -345,6 +349,10 @@ class Test(unittest.TestCase):
             pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
             pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
             pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
+
+        with self.assertRaises(TypeError):
+            node42 = Node4(j=Node6())
+            node42.serialize(jss)
 
     def testException(self):
         node1 = Node1(h=[object()])

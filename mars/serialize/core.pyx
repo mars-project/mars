@@ -458,7 +458,8 @@ cdef class ReferenceField(Field):
 
     @model.setter
     def model(self, new_model_cls):
-        if getattr(self, '_model', None) == 'self' and self._model_cls is not None:
+        if getattr(self, '_model', None) == 'self' and \
+                self._model_cls is not None and new_model_cls is not None:
             raise SelfReferenceOverwritten('self reference is overwritten')
         self._model_cls = new_model_cls
 
