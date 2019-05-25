@@ -206,6 +206,11 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         return [tensor]
 
 
+def _fancy_index_distribute(fancy_index):
+    if isinstance(fancy_index, np.ndarray):
+        pass
+
+
 def _getitem(a, item):
     if isinstance(item, (list, tuple)) and \
             all(isinstance(it, slice) and it == slice(None) for it in item):

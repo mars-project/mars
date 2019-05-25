@@ -293,6 +293,15 @@ message OperandDef {
         REPEAT = 421;
         COPYTO = 422;
         ISIN = 423;
+        // fancy index, distributed phase is a shuffle operation that
+        // the fancy indexes will be distributed to the left chunks
+        // the concat phase will concat back the indexed left chunks and index
+        // according to the original fancy index order
+        FANCY_INDEX_DISTRIBUTE_MAP = 424;
+        FANCY_INDEX_DISTRIBUTE_REDUCE = 425;
+        FANCY_INDEX_CONCAT_MAP = 426;
+        FANCY_INDEX_CONCAT_REDUCE = 427;
+
 
         // linear algebra
         TENSORDOT = 501;
