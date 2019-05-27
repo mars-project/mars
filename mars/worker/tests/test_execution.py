@@ -29,7 +29,7 @@ from mars.compat import six
 from mars.config import options
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
-from mars.scheduler import ChunkMetaActor, ResourceActor
+from mars.scheduler import ChunkMetaActor, ChunkMetaClient, ResourceActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
@@ -380,7 +380,8 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
-            chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
             from mars.tensor.expressions.fetch import TensorFetch
@@ -393,8 +394,8 @@ class Test(WorkerCase):
             arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
@@ -429,7 +430,8 @@ class Test(WorkerCase):
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(SpillActor)
             pool.create_actor(CpuCalcActor)
-            chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
             pool.actor_ref(ChunkHolderActor.default_name())
 
             import mars.tensor as mt
@@ -457,7 +459,7 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
                                           shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
@@ -574,7 +576,8 @@ class Test(WorkerCase):
                                         with_resource=True)
             pool.create_actor(CpuCalcActor)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
-            chunk_meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
             from mars.tensor.expressions.fetch import TensorFetch
@@ -600,8 +603,8 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234',))
+            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                             shape=mock_data.shape, workers=('0.0.0.0:1234',))
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
@@ -614,8 +617,8 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_ref.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
+                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
                     data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)

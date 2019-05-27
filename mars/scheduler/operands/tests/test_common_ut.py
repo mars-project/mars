@@ -22,8 +22,8 @@ from mars import promise, tensor as mt
 from mars.actors import create_actor_pool
 from mars.compat import TimeoutError
 from mars.graph import DAG
-from mars.scheduler import OperandState, ResourceActor, ChunkMetaActor, AssignerActor, \
-    GraphActor, OperandActor
+from mars.scheduler import OperandState, ResourceActor, ChunkMetaActor,\
+    ChunkMetaClient, AssignerActor, GraphActor, OperandActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.utils import get_next_port, serialize_graph
@@ -142,7 +142,7 @@ class Test(unittest.TestCase):
 
         with self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
             input_op_keys, mid_op_key, output_op_keys = self._filter_graph_level_op_keys(graph_ref)
-            meta_ref = pool.actor_ref(ChunkMetaActor.default_name())
+            meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_name()))
             op_ref = pool.actor_ref(OperandActor.gen_uid(session_id, mid_op_key))
 
             input_refs = [pool.actor_ref(OperandActor.gen_uid(session_id, k)) for k in input_op_keys]
@@ -167,10 +167,10 @@ class Test(unittest.TestCase):
             # fill meta
             input_chunk_keys, _, _ = self._filter_graph_level_chunk_keys(graph_ref)
             for ck in input_chunk_keys:
-                meta_ref.set_chunk_meta(session_id, ck, workers=('localhost:12345',), size=800)
+                meta_client.set_chunk_meta(session_id, ck, workers=('localhost:12345',), size=800)
 
             # test entering state with failure in fetching sizes
-            with patch_method(ChunkMetaActor.batch_get_chunk_size, new=lambda *_: [None, None]):
+            with patch_method(ChunkMetaClient.batch_get_chunk_size, new=lambda *_: [None, None]):
                 test_entering_state(OperandState.UNSCHEDULED)
 
             # test successful entering state

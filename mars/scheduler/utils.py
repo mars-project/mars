@@ -44,21 +44,22 @@ class SchedulerClusterInfoActor(ClusterInfoActor):
 
 
 class SchedulerHasClusterInfoActor(HasClusterInfoActor):
-    pass
+    cluster_info_uid = SchedulerClusterInfoActor.default_name()
 
 
 class SchedulerActor(SchedulerHasClusterInfoActor, PromiseActor):
-    cluster_info_uid = SchedulerClusterInfoActor.default_name()
-
-    def __init__(self, **kwargs):
-        super(SchedulerActor, self).__init__()
-
-        if 'balancer' in kwargs:
-            self._balancer_ref = kwargs['balancer']
-
     @classmethod
     def default_name(cls):
         return 's:h1:{0}'.format(cls.__name__)
+
+    @property
+    def chunk_meta(self):
+        try:
+            return self._chunk_meta_client
+        except AttributeError:
+            from .chunkmeta import ChunkMetaClient
+            self._chunk_meta_client = ChunkMetaClient(self.ctx, self._cluster_info_ref)
+            return self._chunk_meta_client
 
 
 if six.PY3:

@@ -77,3 +77,5 @@ mars/lib/*.c*
 mars/actors/*.c*
 mars/actors/pool/*.c*
 mars/serialize/*.c*
+mars/scheduler/*.c*
+mars/worker/*.c*

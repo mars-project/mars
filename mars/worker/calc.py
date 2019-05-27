@@ -110,24 +110,16 @@ class InProcessCacheActor(WorkerActor):
 
         @log_unhandled
         def _finish_store(*_):
-            meta_targets = dict()
             data_sizes = dict()
-            addr_refs = dict()
-            for k in keys:
-                data_sizes[k] = meta_dict[k].chunk_size
+            meta_client = self.get_meta_client()
 
-                if isinstance(k, tuple):
-                    continue
-                ref = self.get_meta_ref(session_id, k)
-                addr_refs[ref.address] = ref
-                if ref.address not in meta_targets:
-                    meta_targets[ref.address] = ([], [])
-                meta_targets[ref.address][0].append(k)
-                meta_targets[ref.address][1].append(meta_dict[k])
+            keys, metas = [], []
+            for k, v in meta_dict.items():
+                keys.append(k)
+                metas.append(v)
+                data_sizes[k] = v.chunk_size
 
-            for addr, (chunk_keys, metas) in meta_targets.items():
-                addr_refs[addr].batch_set_chunk_meta(session_id, chunk_keys, metas)
-
+            meta_client.batch_set_chunk_meta(session_id, keys, metas)
             self.tell_promise(callback, data_sizes)
 
         promises = []

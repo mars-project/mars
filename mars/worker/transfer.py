@@ -543,7 +543,7 @@ class ReceiverActor(WorkerActor):
                     _tell=True, _wait=False)
 
             if not isinstance(chunk_key, tuple):
-                self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                self.get_meta_client().set_chunk_meta(
                     session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,))
 
             if data_meta.write_shared:

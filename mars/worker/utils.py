@@ -63,11 +63,9 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         self._chunk_store = PlasmaChunkStore(self._plasma_client, mapper_ref)
 
-    def get_meta_ref(self, session_id, chunk_key, local=True):
-        from ..scheduler.chunkmeta import ChunkMetaActor, LocalChunkMetaActor
-        addr = self.get_scheduler((session_id, chunk_key))
-        actor_cls = LocalChunkMetaActor if local else ChunkMetaActor
-        return self.ctx.actor_ref(actor_cls.default_name(), address=addr)
+    def get_meta_client(self):
+        from ..scheduler.chunkmeta import ChunkMetaClient
+        return ChunkMetaClient(self.ctx, self._cluster_info_ref)
 
     def handle_actors_down(self, halt_refs):
         """
