@@ -266,8 +266,7 @@ class ExecutionActor(WorkerActor):
             missing_keys = [c.key for c in succ_rec.graph if c.key not in succ_rec.data_sizes
                             and isinstance(c.op, Fetch)]
             if missing_keys:
-                sizes = self.get_meta_ref(session_id, graph_key, local=False) \
-                    .batch_get_chunk_size(session_id, missing_keys)
+                sizes = self.get_meta_client().batch_get_chunk_size(session_id, missing_keys)
                 succ_rec.data_sizes.update(zip(missing_keys, sizes))
             logger.debug('Worker graph %s(%s) targeting at %r from PRE_PUSHED into ALLOCATING.',
                          succ_key, succ_rec.op_string, succ_rec.chunk_targets)
@@ -656,8 +655,7 @@ class ExecutionActor(WorkerActor):
                 chunk_meta = input_metas[input_key]
                 chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
             except KeyError:
-                chunk_meta = self.get_meta_ref(session_id, input_key) \
-                    .get_chunk_meta(session_id, input_key)
+                chunk_meta = self.get_meta_client().get_chunk_meta(session_id, input_key)
 
             if chunk_meta is None or not chunk_meta.workers:
                 raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))

@@ -99,14 +99,14 @@ class SessionActor(SchedulerActor):
         """
         logger.debug('Worker change detected. adds: %r, removes: %r', adds, removes)
 
-        from .chunkmeta import LocalChunkMetaActor
+        from .chunkmeta import ChunkMetaActor
 
         # collect affected chunks
         futures = []
         if removes:
             lost_chunks = set()
             for scheduler in self.get_schedulers():
-                ref = self.ctx.actor_ref(LocalChunkMetaActor.default_name(), address=scheduler)
+                ref = self.ctx.actor_ref(ChunkMetaActor.default_name(), address=scheduler)
                 futures.append(ref.remove_workers_in_session(self._session_id, removes, _wait=False))
 
             for f in futures:

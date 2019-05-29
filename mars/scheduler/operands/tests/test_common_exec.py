@@ -18,12 +18,13 @@ import unittest
 import uuid
 from collections import defaultdict
 
-from mars import promise, tensor as mt
+from mars import tensor as mt
+from mars.actors import ActorAlreadyExist
 from mars.config import options
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \
     ChunkMetaActor, GraphMetaActor
-from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor
+from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor, SchedulerActor
 from mars.worker.execution import GraphExecutionRecord
 from mars.utils import serialize_graph, log_unhandled, build_exc_info
 from mars.actors import create_actor_pool
@@ -32,13 +33,12 @@ from mars.tests.core import patch_method
 logger = logging.getLogger(__name__)
 
 
-class FakeExecutionActor(promise.PromiseActor):
+class FakeExecutionActor(SchedulerActor):
     _retries = defaultdict(lambda: 0)
 
     def __init__(self, exec_delay=0.1, fail_count=0):
         super(FakeExecutionActor, self).__init__()
 
-        self._chunk_meta_ref = None
         self._fail_count = fail_count
         self._exec_delay = exec_delay
 
@@ -47,7 +47,12 @@ class FakeExecutionActor(promise.PromiseActor):
         self._graph_records = dict()  # type: dict[tuple, GraphExecutionRecord]
 
     def post_create(self):
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
+        super(FakeExecutionActor, self).post_create()
+        self.set_cluster_info_ref()
+
+    @classmethod
+    def gen_uid(cls, addr):
+        return 's:h1:%s$%s' % (cls.__name__, addr)
 
     @log_unhandled
     def actual_exec(self, session_id, graph_key):
@@ -78,11 +83,11 @@ class FakeExecutionActor(promise.PromiseActor):
         key_to_chunks = defaultdict(list)
         for n in chunk_graph:
             key_to_chunks[n.key].append(n)
-            self._chunk_meta_ref.set_chunk_size(session_id, n.key, 0)
+            self.chunk_meta.set_chunk_size(session_id, n.key, 0)
 
         for tk in rec.data_targets:
             for n in key_to_chunks[tk]:
-                self._chunk_meta_ref.add_worker(session_id, n.key, 'localhost:12345')
+                self.chunk_meta.add_worker(session_id, n.key, 'localhost:12345')
         self._results[graph_key] = ((dict(),), dict())
         for cb in rec.finish_callbacks:
             self.tell_promise(cb, {})
@@ -171,14 +176,12 @@ class Test(unittest.TestCase):
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                           uid=GraphActor.gen_uid(session_id, graph_key))
-            addr_dict = dict()
 
             def _build_mock_ref(uid=None, address=None):
-                if address in addr_dict:
-                    return addr_dict[address]
-                else:
-                    r = addr_dict[address] = execution_creator(pool)
-                    return r
+                try:
+                    return execution_creator(pool, FakeExecutionActor.gen_uid(address))
+                except ActorAlreadyExist:
+                    return pool.actor_ref(FakeExecutionActor.gen_uid(address))
 
             # handle mock objects
             OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref
@@ -219,7 +222,7 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
         self._run_operand_case(session_id, graph_key, arr2,
-                               lambda pool: pool.create_actor(FakeExecutionActor))
+                               lambda pool, uid: pool.create_actor(FakeExecutionActor, uid=uid))
 
     @patch_method(OperandActor._get_raw_execution_ref)
     @patch_method(OperandActor._free_data_in_worker)
@@ -230,7 +233,7 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
         self._run_operand_case(session_id, graph_key, arr2,
-                               lambda pool: pool.create_actor(FakeExecutionActor))
+                               lambda pool, uid: pool.create_actor(FakeExecutionActor, uid=uid))
 
     @patch_method(OperandActor._get_raw_execution_ref)
     @patch_method(OperandActor._free_data_in_worker)
@@ -244,7 +247,7 @@ class Test(unittest.TestCase):
         try:
             options.scheduler.retry_delay = 0
             self._run_operand_case(session_id, graph_key, arr2,
-                                   lambda pool: pool.create_actor(FakeExecutionActor, fail_count=2))
+                                   lambda pool, uid: pool.create_actor(FakeExecutionActor, fail_count=2, uid=uid))
         finally:
             options.scheduler.retry_delay = 60
 
@@ -260,7 +263,7 @@ class Test(unittest.TestCase):
         try:
             options.scheduler.retry_delay = 0
             self._run_operand_case(session_id, graph_key, arr2,
-                                   lambda pool: pool.create_actor(FakeExecutionActor, fail_count=5))
+                                   lambda pool, uid: pool.create_actor(FakeExecutionActor, fail_count=5, uid=uid))
         finally:
             options.scheduler.retry_delay = 60
 
@@ -287,15 +290,13 @@ class Test(unittest.TestCase):
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                           uid=GraphActor.gen_uid(session_id, graph_key))
-            addr_dict = dict()
 
             def _build_mock_ref(uid=None, address=None):
-                if address in addr_dict:
-                    return addr_dict[address]
-                else:
-                    r = addr_dict[address] = pool.create_actor(
-                        FakeExecutionActor, exec_delay=0.2)
-                    return r
+                try:
+                    return pool.create_actor(
+                        FakeExecutionActor, exec_delay=0.2, uid=FakeExecutionActor.gen_uid(address))
+                except ActorAlreadyExist:
+                    return pool.actor_ref(FakeExecutionActor.gen_uid(address))
 
             # handle mock objects
             OperandActor._get_raw_execution_ref.side_effect = _build_mock_ref

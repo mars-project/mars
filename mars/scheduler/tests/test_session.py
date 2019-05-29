@@ -18,8 +18,8 @@ import uuid
 
 from mars.actors import create_actor_pool, FunctionActor
 from mars.config import options
-from mars.scheduler import AssignerActor, ChunkMetaActor, GraphActor, \
-    ResourceActor, SessionManagerActor
+from mars.scheduler import AssignerActor, ChunkMetaActor, ChunkMetaClient, \
+    GraphActor, ResourceActor, SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import mock
 from mars.utils import get_next_port
@@ -58,18 +58,18 @@ class Test(unittest.TestCase):
         options.scheduler.worker_blacklist_time = 0.5
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
-            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                              uid=SchedulerClusterInfoActor.default_name())
+            cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                                                 uid=SchedulerClusterInfoActor.default_name())
             pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
             session_manager_ref = pool.create_actor(
                 SessionManagerActor, uid=SessionManagerActor.default_name())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            chunk_meta_ref = pool.create_actor(
-                ChunkMetaActor, uid=ChunkMetaActor.default_name())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
 
             session_ref = pool.actor_ref(session_manager_ref.create_session(mock_session_id))
-            chunk_meta_ref.set_chunk_meta(mock_session_id, mock_chunk_key,
-                                          size=80, shape=(10,), workers=(mock_worker_addr,))
+            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
+            chunk_meta_client.set_chunk_meta(mock_session_id, mock_chunk_key,
+                                             size=80, shape=(10,), workers=(mock_worker_addr,))
 
             with mock.patch(GraphActor.__module__ + '.' + GraphActor.__name__, new=MockGraphActor):
                 session_ref.submit_tileable_graph(None, mock_graph_key)

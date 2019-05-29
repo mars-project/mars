@@ -23,7 +23,6 @@ from collections import deque, defaultdict
 
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
-from .chunkmeta import ChunkMetaActor
 from .kvstore import KVStoreActor
 from .operands import get_operand_actor_class, OperandState, OperandPosition
 from .resource import ResourceActor
@@ -45,15 +44,9 @@ logger = logging.getLogger(__name__)
 
 
 class ResultReceiverActor(SchedulerActor):
-    def __init__(self):
-        super(ResultReceiverActor, self).__init__()
-        self._chunk_meta_ref = None
-
     def post_create(self):
         super(ResultReceiverActor, self).post_create()
-
         self.set_cluster_info_ref()
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
     def fetch_tileable(self, session_id, graph_key, tileable_key, compressions):
         from ..executor import Executor
@@ -64,7 +57,7 @@ class ResultReceiverActor(SchedulerActor):
 
         if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, Fetch):
             c = next(fetch_graph.iter_nodes())
-            worker_ip = self._chunk_meta_ref.get_workers(session_id, c.key)[-1]
+            worker_ip = self.chunk_meta.get_workers(session_id, c.key)[-1]
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
             future = sender_ref.fetch_data(session_id, c.key, _wait=False)
 
@@ -81,7 +74,7 @@ class ResultReceiverActor(SchedulerActor):
                 if isinstance(c.op, Fetch):
                     if c.key in ctx:
                         continue
-                    endpoints = self._chunk_meta_ref.get_workers(session_id, c.key)
+                    endpoints = self.chunk_meta.get_workers(session_id, c.key)
                     sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
                     future = sender_ref.fetch_data(session_id, c.key, _wait=False)
                     ctx[c.key] = future
@@ -220,7 +213,6 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = None
         self._resource_actor_ref = None
         self._kv_store_ref = None
-        self._chunk_meta_ref = None
         self._graph_meta_ref = None
         self._session_ref = None
 
@@ -252,7 +244,6 @@ class GraphActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_name())
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
         self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
@@ -554,7 +545,7 @@ class GraphActor(SchedulerActor):
     def _collect_external_input_metas(self, ext_chunks_to_inputs):
         ext_chunk_keys = reduce(operator.add, ext_chunks_to_inputs.values(), [])
         metas = dict(zip(ext_chunk_keys,
-                         self._chunk_meta_ref.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
+                         self.chunk_meta.batch_get_chunk_meta(self._session_id, ext_chunk_keys)))
         input_chunk_metas = defaultdict(dict)
         for chunk_key, input_chunk_keys in ext_chunks_to_inputs.items():
             chunk_metas = input_chunk_metas[chunk_key]
@@ -941,7 +932,7 @@ class GraphActor(SchedulerActor):
         for chunk_key in [c.key for c in tileable.chunks]:
             if chunk_key in ctx:
                 continue
-            endpoints = self._chunk_meta_ref.get_workers(self._session_id, chunk_key)
+            endpoints = self.chunk_meta.get_workers(self._session_id, chunk_key)
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
             ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
 

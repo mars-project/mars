@@ -69,18 +69,15 @@ class BaseOperandActor(SchedulerActor):
         self._assigner_ref = None
         self._resource_ref = None
         self._kv_store_ref = None
-        self._chunk_meta_ref = None
 
     def post_create(self):
         from ..graph import GraphActor
         from ..assigner import AssignerActor
-        from ..chunkmeta import ChunkMetaActor
         from ..kvstore import KVStoreActor
         from ..resource import ResourceActor
 
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_name())
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
@@ -166,7 +163,7 @@ class BaseOperandActor(SchedulerActor):
         from ...worker.chunkholder import ChunkHolderActor
 
         if not workers_list:
-            workers_list = self._chunk_meta_ref.batch_get_workers(self._session_id, data_keys)
+            workers_list = self.chunk_meta.batch_get_workers(self._session_id, data_keys)
         worker_data = defaultdict(list)
         for data_key, endpoints in zip(data_keys, workers_list):
             if endpoints is None:
@@ -174,7 +171,7 @@ class BaseOperandActor(SchedulerActor):
             for ep in endpoints:
                 worker_data[ep].append(data_key)
 
-        self._chunk_meta_ref.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
+        self.chunk_meta.batch_delete_meta(self._session_id, data_keys, _tell=True, _wait=False)
 
         worker_futures = []
         for ep, data_keys in worker_data.items():

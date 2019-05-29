@@ -16,6 +16,7 @@
 
 import functools
 import logging
+import os
 import sys
 import time
 import unittest
@@ -41,6 +42,7 @@ from mars.config import option_context
 from mars.web.session import Session as WebSession
 
 logger = logging.getLogger(__name__)
+_exec_timeout = 120 if 'CI' in os.environ else -1
 
 
 def _on_deserialize_fail(x):
@@ -73,7 +75,7 @@ class Test(unittest.TestCase):
                 api = session._api
 
                 t = mt.ones((3, 3), chunk_size=2)
-                result = session.run(t)
+                result = session.run(t, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
@@ -90,13 +92,13 @@ class Test(unittest.TestCase):
 
             with cluster.session as session:
                 t = mt.ones((3, 3), chunk_size=2)
-                result = session.run(t)
+                result = session.run(t, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
             with new_session('http://' + cluster._web_endpoint) as session:
                 t = mt.ones((3, 3), chunk_size=2)
-                result = session.run(t)
+                result = session.run(t, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(result, np.ones((3, 3)))
 
@@ -155,7 +157,7 @@ class Test(unittest.TestCase):
             t = mt.random.rand(20, 5, chunk_size=5)
             r = mt.linalg.svd(t)
 
-            res = session.run((t,) + r)
+            res = session.run((t,) + r, timeout=_exec_timeout)
 
             U, s, V = res[1:]
             np.testing.assert_allclose(res[0], U.dot(np.diag(s).dot(V)))
@@ -175,14 +177,14 @@ class Test(unittest.TestCase):
             U, s, V = mt.linalg.svd(t)
 
             with new_session(cluster.endpoint) as session2:
-                U_result, s_result = session2.run(U, s)
+                U_result, s_result = session2.run(U, s, timeout=_exec_timeout)
                 U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
 
                 np.testing.assert_allclose(U_result, U_expected)
                 np.testing.assert_allclose(s_result, s_expectd)
 
             with new_session(cluster.endpoint) as session2:
-                U_result, s_result = session2.run(U + 1, s + 1)
+                U_result, s_result = session2.run(U + 1, s + 1, timeout=_exec_timeout)
                 U_expected, s_expectd, _ = np.linalg.svd(raw, full_matrices=False)
 
                 np.testing.assert_allclose(U_result, U_expected + 1)
@@ -193,7 +195,7 @@ class Test(unittest.TestCase):
                 _, s, _ = mt.linalg.svd(t)
                 del _
 
-                s_result = session2.run(s)
+                s_result = session2.run(s, timeout=_exec_timeout)
                 s_expected = np.linalg.svd(raw, full_matrices=False)[1]
                 np.testing.assert_allclose(s_result, s_expected)
 
@@ -206,7 +208,7 @@ class Test(unittest.TestCase):
             idx = slice(0, 5), slice(0, 5)
             a[idx] = 2
             a_splits = mt.split(a, 2)
-            r1, r2 = session.run(a_splits[0], a[idx])
+            r1, r2 = session.run(a_splits[0], a[idx], timeout=_exec_timeout)
 
             np.testing.assert_array_equal(r1, r2)
             np.testing.assert_array_equal(r1, np.ones((5, 5)) * 2)
@@ -216,7 +218,7 @@ class Test(unittest.TestCase):
                 idx = slice(0, 5), slice(0, 5)
 
                 a[idx] = mt.ones((5, 5)) * 2
-                r = session2.run(a[idx])
+                r = session2.run(a[idx], timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(r, np.ones((5, 5)) * 2)
 
@@ -225,7 +227,7 @@ class Test(unittest.TestCase):
 
                 slice1 = a[:10]
                 slice2 = a[10:20]
-                r1, r2, expected = session3.run(slice1, slice2, a)
+                r1, r2, expected = session3.run(slice1, slice2, a, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(r1, expected[:10])
                 np.testing.assert_array_equal(r2, expected[10:20])
@@ -235,7 +237,7 @@ class Test(unittest.TestCase):
 
                 a[:10] = mt.ones((10, 5))
                 a[10:20] = 2
-                r = session4.run(a)
+                r = session4.run(a, timeout=_exec_timeout)
 
                 np.testing.assert_array_equal(r[:10], np.ones((10, 5)))
                 np.testing.assert_array_equal(r[10:20], np.ones((10, 5)) * 2)
@@ -248,7 +250,7 @@ class Test(unittest.TestCase):
             b = a[a > 1]
             self.assertEqual(b.shape, (np.nan,))
 
-            cluster.session.run(b, fetch=False)
+            cluster.session.run(b, fetch=False, timeout=_exec_timeout)
             self.assertEqual(b.shape, (16,))
 
             c = b.reshape((4, 4))
@@ -261,7 +263,7 @@ class Test(unittest.TestCase):
                 b = a[a > 1]
                 self.assertEqual(b.shape, (np.nan,))
 
-                session2.run(b, fetch=False)
+                session2.run(b, fetch=False, timeout=_exec_timeout)
                 self.assertEqual(b.shape, (16,))
 
                 c = b.reshape((4, 4))
@@ -273,7 +275,7 @@ class Test(unittest.TestCase):
                 a[2:5, 2:5] = mt.ones((3, 3)) * 2
                 b = (a[a > 1] - 1) * 2
 
-                r = session2.run(b)
+                r = session2.run(b, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r, np.ones((9,)) * 2)
 
     def testExecutableTuple(self):
@@ -290,16 +292,16 @@ class Test(unittest.TestCase):
             session = cluster.session
 
             a = mt.ones((10, 10)) + 1
-            result1 = session.run(a)
+            result1 = session.run(a, timeout=_exec_timeout)
             np.testing.assert_array_equal(result1, np.ones((10, 10)) + 1)
-            result2 = session.run(a)
+            result2 = session.run(a, timeout=_exec_timeout)
             np.testing.assert_array_equal(result1, result2)
 
             with new_session(cluster.endpoint) as session2:
                 a = mt.random.rand(10, 10)
-                a_result1 = session2.run(a)
+                a_result1 = session2.run(a, timeout=_exec_timeout)
                 b = mt.ones((10, 10))
-                a_result2, b_result = session2.run(a, b)
+                a_result2, b_result = session2.run(a, b, timeout=_exec_timeout)
                 np.testing.assert_array_equal(a_result1, a_result2)
                 np.testing.assert_array_equal(b_result, np.ones((10, 10)))
 
@@ -309,7 +311,7 @@ class Test(unittest.TestCase):
             session = cluster.session
 
             a = mt.ones((10, 20)) + 1
-            self.assertIsNone(session.run(a, fetch=False))
+            self.assertIsNone(session.run(a, fetch=False, timeout=_exec_timeout))
             np.testing.assert_array_equal(a.execute(session=session), np.ones((10, 20)) + 1)
 
     def testGraphFail(self):
@@ -319,7 +321,7 @@ class Test(unittest.TestCase):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             with self.assertRaises(ExecutionFailed):
-                cluster.session.run(tensor)
+                cluster.session.run(tensor, timeout=_exec_timeout)
 
     def testFetchTensor(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -327,36 +329,36 @@ class Test(unittest.TestCase):
             session = cluster.session
 
             a1 = mt.ones((10, 20), chunk_size=8) + 1
-            r1 = session.run(a1)
+            r1 = session.run(a1, timeout=_exec_timeout)
             r2 = session.fetch(a1)
             np.testing.assert_array_equal(r1, r2)
 
-            r3 = session.run(a1 * 2)
+            r3 = session.run(a1 * 2, timeout=_exec_timeout)
             np.testing.assert_array_equal(r3, r1 * 2)
 
             a2 = mt.ones((10, 20), chunk_size=8) + 1
-            r4 = session.run(a2)
+            r4 = session.run(a2, timeout=_exec_timeout)
             np.testing.assert_array_equal(r4, r1)
 
             del a1
-            r4 = session.run(a2)
+            r4 = session.run(a2, timeout=_exec_timeout)
             np.testing.assert_array_equal(r4, r1)
 
             with new_session('http://' + cluster._web_endpoint) as session:
                 a3 = mt.ones((5, 10), chunk_size=3) + 1
-                r1 = session.run(a3)
+                r1 = session.run(a3, timeout=_exec_timeout)
                 r2 = session.fetch(a3)
                 np.testing.assert_array_equal(r1, r2)
 
-                r3 = session.run(a3 * 2)
+                r3 = session.run(a3 * 2, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r3, r1 * 2)
 
                 a4 = mt.ones((5, 10), chunk_size=3) + 1
-                r4 = session.run(a4)
+                r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
                 del a3
-                r4 = session.run(a4)
+                r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
     @unittest.skipIf(pd is None, 'pandas not installed')
@@ -375,7 +377,7 @@ class Test(unittest.TestCase):
 
             df3 = add(df1, df2)
 
-            r1 = session.run(df3, compose=False)
+            r1 = session.run(df3, compose=False, timeout=_exec_timeout)
             r2 = session.fetch(df3)
             pd.testing.assert_frame_equal(r1, r2)
 
@@ -384,7 +386,7 @@ class Test(unittest.TestCase):
 
             df5 = add(df3, df4)
 
-            r1 = session.run(df5, compose=False)
+            r1 = session.run(df5, compose=False, timeout=_exec_timeout)
             r2 = session.fetch(df5)
             pd.testing.assert_frame_equal(r1, r2)
 
@@ -397,12 +399,12 @@ class Test(unittest.TestCase):
             b = mt.ones((10, 20), chunk_size=8)
             self.assertEqual(a.key, b.key)
 
-            r1 = session.run(a)
+            r1 = session.run(a, timeout=_exec_timeout)
             r1_fetch = session.fetch(a)
             np.testing.assert_array_equal(r1, r1_fetch)
 
             web_session = new_session('http://' + cluster._web_endpoint)
-            r2 = web_session.run(a)
+            r2 = web_session.run(a, timeout=_exec_timeout)
             r2_fetch = web_session.fetch(a)
             np.testing.assert_array_equal(r1, r2)
             np.testing.assert_array_equal(r2, r2_fetch)
@@ -505,7 +507,7 @@ class Test(unittest.TestCase):
             b = sps.csr_matrix((10000, 1))
             t1 = mt.tensor(a)
             t2 = mt.tensor(b)
-            session.run(t1 * t2)
+            session.run(t1 * t2, timeout=_exec_timeout)
 
     def testRunWithoutCompose(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -513,9 +515,9 @@ class Test(unittest.TestCase):
             session = cluster.session
 
             arr1 = (mt.ones((10, 10), chunk_size=3) + 1) * 2
-            r1 = session.run(arr1)
+            r1 = session.run(arr1, timeout=_exec_timeout)
             arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
-            r2 = session.run(arr2, compose=False)
+            r2 = session.run(arr2, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r1, r2)
 
     def testExistingOperand(self):
@@ -523,27 +525,27 @@ class Test(unittest.TestCase):
                          shared_memory='20M') as cluster:
             session = cluster.session
             a = mt.ones((3, 3), chunk_size=2)
-            r1 = session.run(a, compose=False)
+            r1 = session.run(a, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r1, np.ones((3, 3)))
 
             b = mt.ones((4, 4), chunk_size=2) + 1
-            r2 = session.run(b, compose=False)
+            r2 = session.run(b, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r2, np.ones((4, 4)) + 1)
 
             del a
             b = mt.ones((3, 3), chunk_size=2)
-            r2 = session.run(b, compose=False)
+            r2 = session.run(b, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r2, np.ones((3, 3)))
 
             del b
             c = mt.ones((4, 4), chunk_size=2) + 1
             c = c.dot(c)
-            r3 = session.run(c, compose=False)
+            r3 = session.run(c, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r3, np.ones((4, 4)) * 16)
 
             d = mt.ones((5, 5), chunk_size=2)
             d = d.dot(d)
-            r4 = session.run(d, compose=False)
+            r4 = session.run(d, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r4, np.ones((5, 5)) * 5)
 
     def testTiledTensor(self):
@@ -554,11 +556,11 @@ class Test(unittest.TestCase):
             b = a.dot(a)
             b.tiles()
 
-            r = session.run(b)
+            r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) * 10)
 
             a.tiles()
             b = a + 1
 
-            r = session.run(b)
+            r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)

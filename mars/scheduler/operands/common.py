@@ -445,7 +445,7 @@ class OperandActor(BaseOperandActor):
             broadcast_ep_groups.append(broadcast_eps)
         broadcast_chunk_keys = [k for k in chunk_keys if not isinstance(k, tuple)]
         if broadcast_chunk_keys:
-            self._chunk_meta_ref.batch_set_chunk_broadcasts(
+            self.chunk_meta.batch_set_chunk_broadcasts(
                 self._session_id, broadcast_chunk_keys, broadcast_ep_groups,
                 _tell=True, _wait=False)
 
@@ -487,7 +487,7 @@ class OperandActor(BaseOperandActor):
             data_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
         except KeyError:
             input_chunks = self._input_chunks
-            chunk_sizes = self._chunk_meta_ref.batch_get_chunk_size(self._session_id, input_chunks)
+            chunk_sizes = self.chunk_meta.batch_get_chunk_size(self._session_id, input_chunks)
             if any(v is None for v in chunk_sizes):
                 logger.warning('DependencyMissing met, operand %s will be back to UNSCHEDULED.',
                                self._op_key)
