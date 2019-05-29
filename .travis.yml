@@ -86,3 +86,7 @@ script:
 after_success:
   - coveralls
   - ./bin/travis-upload.sh
+
+after_failure:
+  # delay to make all data in stdout loaded by travis
+  - sleep 5

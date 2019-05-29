@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .chunkmeta import ChunkMetaActor
+from .chunkmeta import ChunkMetaActor, ChunkMetaClient
 from .graph import GraphActor, GraphMetaActor
 from .operand import OperandActor
 from .assigner import AssignerActor

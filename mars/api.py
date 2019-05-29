@@ -16,7 +16,7 @@ import logging
 
 from .actors import new_client
 from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, \
-    ChunkMetaActor, SessionManagerActor
+    SessionManagerActor, ChunkMetaClient
 from .scheduler.graph import ResultReceiverActor
 from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
@@ -108,8 +108,9 @@ class MarsAPI(object):
         graph_ref = self.get_actor_ref(graph_uid)
         chunk_indexes = graph_ref.get_tensor_chunk_indexes(tensor_key)
 
-        chunk_meta_ref = self.get_actor_ref(ChunkMetaActor.default_name())
-        chunk_shapes = chunk_meta_ref.batch_get_chunk_shape(session_id, list(chunk_indexes.keys()))
+        chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
+        chunk_shapes = chunk_meta_client.batch_get_chunk_shape(
+            session_id, list(chunk_indexes.keys()))
 
         # for each dimension, record chunk shape whose index is zero on other dimensions
         ndim = len(chunk_shapes[0])

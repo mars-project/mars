@@ -487,7 +487,7 @@ class ReceiverActor(WorkerActor):
                 dest_dir = build_spill_file_name(chunk_key, writing=False)
                 os.rename(src_dir, dest_dir)
 
-            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+            self.get_meta_client().set_chunk_meta(
                 session_id, chunk_key, size=data_meta['chunk_size'], workers=(self.address,))
 
             self._data_writers[session_chunk_key].close()

@@ -329,8 +329,7 @@ class ExecutionActor(WorkerActor):
 
                 # load data from another worker
                 chunk_key = to_str(chunk.key)
-                chunk_meta = self.get_meta_ref(session_id, chunk_key) \
-                    .get_chunk_meta(session_id, chunk_key)
+                chunk_meta = self.get_meta_client().get_chunk_meta(session_id, chunk_key)
                 if chunk_meta is None:
                     raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
 

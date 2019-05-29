@@ -20,7 +20,6 @@ import os
 from collections import deque, defaultdict
 
 from .assigner import AssignerActor
-from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor, remove_shuffle_chunks, GraphState, OperandState
@@ -36,13 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 class ResultReceiverActor(SchedulerActor):
-    def __init__(self):
-        super(ResultReceiverActor, self).__init__()
-        self._chunk_meta_ref = None
-
     def post_create(self):
+        super(ResultReceiverActor, self).post_create()
         self.set_cluster_info_ref()
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
     def fetch_tensor(self, session_id, graph_key, tensor_key, compressions):
         from ..tensor.expressions.datasource import TensorFetchChunk
@@ -54,7 +49,7 @@ class ResultReceiverActor(SchedulerActor):
 
         if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetchChunk):
             c = next(fetch_graph.iter_nodes())
-            worker_ip = self._chunk_meta_ref.get_workers(session_id, c.key)[-1]
+            worker_ip = self.chunk_meta.get_workers(session_id, c.key)[-1]
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
             future = sender_ref.fetch_data(session_id, c.key, _wait=False)
 
@@ -71,7 +66,7 @@ class ResultReceiverActor(SchedulerActor):
                 if isinstance(c.op, TensorFetchChunk):
                     if c.key in ctx:
                         continue
-                    endpoints = self._chunk_meta_ref.get_workers(session_id, c.key)
+                    endpoints = self.chunk_meta.get_workers(session_id, c.key)
                     sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
                     future = sender_ref.fetch_data(session_id, c.key, _wait=False)
                     ctx[c.key] = future
@@ -153,7 +148,6 @@ class GraphActor(SchedulerActor):
         self._assigner_actor_ref = None
         self._resource_actor_ref = None
         self._kv_store_ref = None
-        self._chunk_meta_ref = None
         self._graph_meta_ref = None
 
         self._tensor_graph_cache = None
@@ -181,7 +175,6 @@ class GraphActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
@@ -822,7 +815,7 @@ class GraphActor(SchedulerActor):
         for chunk_key in [c.key for c in tiled_tensor.chunks]:
             if chunk_key in ctx:
                 continue
-            endpoints = self._chunk_meta_ref.get_workers(self._session_id, chunk_key)
+            endpoints = self.chunk_meta.get_workers(self._session_id, chunk_key)
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
             ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dataserializer.dumps(merge_tensor_chunks(tiled_tensor, ctx))

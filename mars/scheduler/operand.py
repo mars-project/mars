@@ -18,7 +18,6 @@ import logging
 import time
 
 from .assigner import AssignerActor
-from .chunkmeta import ChunkMetaActor
 from .graph import GraphActor
 from .kvstore import KVStoreActor
 from .resource import ResourceActor
@@ -54,7 +53,6 @@ class OperandActor(SchedulerActor):
         self._assigner_ref = None
         self._resource_ref = None
         self._kv_store_ref = None
-        self._chunk_meta_ref = None
 
         self._op_name = op_info['op_name']
         self._state = op_info['state']
@@ -99,7 +97,6 @@ class OperandActor(SchedulerActor):
     def post_create(self):
         self.set_cluster_info_ref()
         self._assigner_ref = self.get_promise_ref(AssignerActor.gen_uid(self._session_id))
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
 
@@ -317,15 +314,15 @@ class OperandActor(SchedulerActor):
         """
         if self.state == OperandState.FREED:
             return
-        endpoint_lists = self._chunk_meta_ref.batch_get_workers(self._session_id, self._chunks)
+        endpoint_lists = self.chunk_meta.batch_get_workers(self._session_id, self._chunks)
         futures = []
         for chunk_key, endpoints in zip(self._chunks, endpoint_lists):
             if endpoints is None:
                 continue
             for ep in endpoints:
                 futures.append(self._free_worker_data(ep, chunk_key))
-        futures.append(self._chunk_meta_ref.batch_delete_meta(
-            self._session_id, self._chunks, _tell=True, _wait=False))
+        self.chunk_meta.batch_delete_meta(
+            self._session_id, self._chunks, _tell=True)
         [f.result() for f in futures]
         self.state = state
         self.start_operand()
@@ -402,7 +399,7 @@ class OperandActor(SchedulerActor):
 
             data_sizes = dict(zip(
                 self._input_chunks,
-                self._chunk_meta_ref.batch_get_chunk_size(self._session_id, self._input_chunks),
+                self.chunk_meta.batch_get_chunk_size(self._session_id, self._input_chunks),
             ))
 
             # submit job

@@ -20,22 +20,21 @@ from collections import defaultdict
 
 import gevent
 
-from mars import promise, tensor as mt
+from mars import tensor as mt
 from mars.config import options
 from mars.errors import ExecutionInterrupted
 from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActor, \
     ChunkMetaActor, GraphMetaActor
-from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor
+from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor, SchedulerActor
 from mars.utils import serialize_graph, deserialize_graph
 from mars.actors import create_actor_pool
 from mars.tests.core import mock
 
 
-class FakeExecutionActor(promise.PromiseActor):
+class FakeExecutionActor(SchedulerActor):
     def __init__(self, sleep=0, fail_count=0):
         super(FakeExecutionActor, self).__init__()
 
-        self._chunk_meta_ref = None
         self._fail_count = fail_count
         self._sleep = sleep
 
@@ -44,7 +43,8 @@ class FakeExecutionActor(promise.PromiseActor):
         self._retries = defaultdict(lambda: fail_count)
 
     def post_create(self):
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
+        super(FakeExecutionActor, self).post_create()
+        self.set_cluster_info_ref()
 
     def actual_exec(self, session_id, graph_key, graph_ser, targets):
         if graph_key not in self._retries:
@@ -72,11 +72,11 @@ class FakeExecutionActor(promise.PromiseActor):
         key_to_chunks = defaultdict(list)
         for n in chunk_graph:
             key_to_chunks[n.key].append(n)
-            self._chunk_meta_ref.set_chunk_size(session_id, n.key, 0)
+            self.chunk_meta.set_chunk_size(session_id, n.key, 0)
 
         for tk in targets:
             for n in key_to_chunks[tk]:
-                self._chunk_meta_ref.add_worker(session_id, n.key, 'localhost:12345')
+                self.chunk_meta.add_worker(session_id, n.key, 'localhost:12345')
         for cb in self._callbacks[graph_key]:
             self.tell_promise(cb, {})
         del self._callbacks[graph_key]
