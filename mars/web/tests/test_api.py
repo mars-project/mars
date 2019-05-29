@@ -54,6 +54,9 @@ class Test(unittest.TestCase):
             shutil.rmtree(options.worker.spill_directory)
 
     def wait_scheduler_worker_start(self):
+        old_not_errors = gevent.hub.Hub.NOT_ERROR
+        gevent.hub.Hub.NOT_ERROR = (Exception,)
+
         actor_client = new_client()
         time.sleep(1)
         check_time = time.time()
@@ -80,6 +83,8 @@ class Test(unittest.TestCase):
                 raise SystemError('Check meta_timestamp timeout')
 
             time.sleep(0.1)
+
+        gevent.hub.Hub.NOT_ERROR = old_not_errors
 
     def setUp(self):
         worker_port = self.worker_port = str(get_next_port())
@@ -149,16 +154,17 @@ class Test(unittest.TestCase):
 
     def testWebApi(self):
         service_ep = 'http://127.0.0.1:' + self.web_port
+        timeout = 120 if 'CI' in os.environ else -1
         with new_session(service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
             a = mt.ones((100, 100), chunk_size=30)
             b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
-            value = sess.run(c)
+            value = sess.run(c, timeout=timeout)
             assert_array_equal(value, np.ones((100, 100)) * 100)
 
             # check resubmission
-            value2 = sess.run(c)
+            value2 = sess.run(c, timeout=timeout)
             assert_array_equal(value, value2)
 
             # check when local compression libs are missing
@@ -167,7 +173,7 @@ class Test(unittest.TestCase):
                 a = mt.ones((10, 10), chunk_size=30)
                 b = mt.ones((10, 10), chunk_size=30)
                 c = a.dot(b)
-                value = sess.run(c)
+                value = sess.run(c, timeout=timeout)
                 assert_array_equal(value, np.ones((10, 10)) * 10)
 
                 dataserializer.decompressors[dataserializer.COMPRESS_FLAG_LZ4] = None
@@ -185,7 +191,7 @@ class Test(unittest.TestCase):
             a = mt.array(va, chunk_size=30)
             b = mt.array(vb, chunk_size=30)
             c = a.dot(b)
-            value = sess.run(c, timeout=120)
+            value = sess.run(c, timeout=timeout)
             assert_array_equal(value, va.dot(vb))
 
             graphs = sess.get_graph_states()
@@ -279,6 +285,7 @@ class TestWithMockServer(unittest.TestCase):
     @mock.patch('requests.Session.post', side_effect=MockedServer.mocked_requests_post)
     @mock.patch('requests.Session.delete', side_effect=MockedServer.mocked_requests_delete)
     def testApi(self, *_):
+        timeout = 120 if 'CI' in os.environ else -1
         with new_session(self._service_ep) as sess:
             self.assertEqual(sess.count_workers(), 1)
 
@@ -286,7 +293,7 @@ class TestWithMockServer(unittest.TestCase):
             b = mt.ones((100, 100), chunk_size=30)
             c = a.dot(b)
 
-            result = sess.run(c, timeout=120)
+            result = sess.run(c, timeout=timeout)
             assert_array_equal(result, np.ones((100, 100)) * 100)
 
             d = a * 100
