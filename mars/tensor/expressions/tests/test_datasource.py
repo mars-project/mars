@@ -22,20 +22,19 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
-import mars.tensor as mt
 from mars.tests.core import TestBase
-from mars.tensor.expressions.datasource import fromtiledb, TensorTileDBDataSource
+from mars.tensor.expressions.datasource import array, fromtiledb, TensorTileDBDataSource
 
 
 class Test(TestBase):
     def testFromArray(self):
-        x = mt.tensor([1, 2, 3])
+        x = array([1, 2, 3])
         self.assertEqual(x.shape, (3,))
 
-        y = mt.tensor([x, x]).execute()
+        y = array([x, x])
         self.assertEqual(y.shape, (2, 3))
 
-        z = mt.tensor((x, x, x)).execute()
+        z = array((x, x, x))
         self.assertEqual(z.shape, (3, 3))
 
     @unittest.skipIf(tiledb is None, 'TileDB not installed')
