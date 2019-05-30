@@ -15,8 +15,10 @@
 import logging
 
 from ..base_app import BaseApplication
-from ..errors import StartArgumentError
 from ..distributor import MarsDistributor
+from ..errors import StartArgumentError
+from ..config import options
+from ..serialize.dataserializer import CompressType
 from .service import WorkerService
 
 logger = logging.getLogger(__name__)
@@ -42,11 +44,29 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--min-mem', help='minimal free memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
 
+        compress_types = ', '.join(v.value for v in CompressType.__members__.values())
+        parser.add_argument('--disk-compression',
+                            default=options.worker.disk_compression,
+                            help='compression type used for disks, '
+                                 'can be selected from %s. %s by default'
+                                 % (compress_types, options.worker.disk_compression))
+        parser.add_argument('--transfer-compression',
+                            default=options.worker.transfer_compression,
+                            help='compression type used for network transfer, '
+                                 'can be selected from %s. %s by default'
+                                 % (compress_types, options.worker.transfer_compression))
+
     def validate_arguments(self):
         if not self.args.schedulers and not self.args.kv_store:
             raise StartArgumentError('either schedulers or url of kv store is required.')
         if not self.args.advertise:
             raise StartArgumentError('advertise address is required.')
+
+        compress_types = set(v.value for v in CompressType.__members__.values())
+        if self.args.disk_compression.lower() not in compress_types:
+            raise StartArgumentError('illegal disk compression config %s.' % self.args.disk_compression)
+        if self.args.transfer_compression.lower() not in compress_types:
+            raise StartArgumentError('illegal transfer compression config %s.' % self.args.transfer_compression)
 
     def create_pool(self, *args, **kwargs):
         # here we create necessary actors on worker
@@ -60,6 +80,8 @@ class WorkerApplication(BaseApplication):
             cache_mem_limit=self.args.cache_mem,
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,
+            disk_compression=self.args.disk_compression.lower(),
+            transfer_compression=self.args.transfer_compression.lower(),
         )
         # start plasma
         self._service.start_plasma()

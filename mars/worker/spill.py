@@ -99,8 +99,9 @@ def write_spill_file(data_key, data):
     if not src_file_name:
         raise SpillNotConfigured('Spill not configured')
     if not os.path.exists(dest_file_name):
+        compression_type = dataserializer.CompressType(options.worker.disk_compression)
         with open(src_file_name, 'wb') as file_obj:
-            dataserializer.dump(data, file_obj, dataserializer.COMPRESS_FLAG_LZ4)
+            dataserializer.dump(data, file_obj, compression_type)
         shutil.move(src_file_name, dest_file_name)
 
 

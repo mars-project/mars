@@ -292,7 +292,6 @@ def is_in(vals):
 default_options = Config()
 default_options.register_option('tcp_timeout', 30, validator=is_integer)
 default_options.register_option('verbose', False, validator=is_bool)
-default_options.register_option('persist_compression', 1, validator=(is_null, is_integer), serialize=True)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 
 # Tensor
@@ -321,10 +320,12 @@ default_options.register_option('scheduler.worker_blacklist_time', 3600, validat
 
 # Worker
 default_options.register_option('worker.spill_directory', None, validator=(is_null, is_string, is_list))
+default_options.register_option('worker.disk_compression', 'lz4', validator=is_string, serialize=True)
 default_options.register_option('worker.min_spill_size', '5%', validator=(is_string, is_integer))
 default_options.register_option('worker.max_spill_size', '95%', validator=(is_string, is_integer))
 default_options.register_option('worker.callback_preserve_time', 3600 * 24, validator=is_integer)
 default_options.register_option('worker.transfer_block_size', 4 * 1024 * 1024, validator=is_integer)
+default_options.register_option('worker.transfer_compression', 'lz4', validator=is_string, serialize=True)
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)
 default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
