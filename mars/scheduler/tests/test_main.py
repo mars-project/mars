@@ -222,6 +222,9 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, sumv.key)
         assert_array_equal(loads(result), expected)
 
+    @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+    @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
+                     'does not run without etcd')
     def testMainWithEtcd(self):
         self.start_processes(n_schedulers=2, etcd=True)
 

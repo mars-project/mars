@@ -75,6 +75,11 @@ class WorkerService(object):
         else:
             self._spill_dirs = options.worker.spill_directory = []
 
+        options.worker.disk_compression = kwargs.pop('disk_compression', None) or \
+            options.worker.disk_compression
+        options.worker.transfer_compression = kwargs.pop('transfer_compression', None) or \
+            options.worker.transfer_compression
+
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
         self._soft_mem_limit = kwargs.pop('soft_mem_limit', None) or '80%'

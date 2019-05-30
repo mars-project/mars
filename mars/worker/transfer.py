@@ -145,6 +145,7 @@ class SenderActor(WorkerActor):
             # start compress and send data into targets
             logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
             min_chunk_size = options.worker.transfer_block_size
+            transfer_compression = dataserializer.CompressType(options.worker.transfer_compression)
             reader = None
 
             # filter out endpoints we need to send to
@@ -161,7 +162,7 @@ class SenderActor(WorkerActor):
                     try:
                         buf = self._chunk_store.get_buffer(session_id, chunk_key)
                         # create a stream compressor from shared buffer
-                        reader = dataserializer.CompressBufferReader(buf, dataserializer.COMPRESS_FLAG_LZ4)
+                        reader = dataserializer.CompressBufferReader(buf, transfer_compression)
                     except KeyError:
                         pass
                     finally:
@@ -591,8 +592,9 @@ class ResultSenderActor(WorkerActor):
         try:
             if self._chunk_store.contains(session_id, chunk_key):
                 buf = self._chunk_store.get_buffer(session_id, chunk_key)
+                compression_type = dataserializer.CompressType(options.worker.transfer_compression)
                 compressed = self._serialize_pool.submit(
-                    dataserializer.dumps, buf, dataserializer.COMPRESS_FLAG_LZ4, raw=True).result()
+                    dataserializer.dumps, buf, compression_type, raw=True).result()
             else:
                 file_name = build_spill_file_name(chunk_key)
                 if not file_name:
