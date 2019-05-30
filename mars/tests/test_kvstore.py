@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -86,6 +87,8 @@ class Test(unittest.TestCase):
         self.assertEqual(repr(res), repr(expected))
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+    @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
+                     'does not run without etcd')
     def testEtcdPathStore(self):
         with EtcdProcessHelper(port_range_start=51342).run():
             kvstore = get(u'etcd://localhost:51342')
@@ -196,6 +199,8 @@ class Test(unittest.TestCase):
         kvstore.delete('/node', dir=True, recursive=True)
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+    @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
+                     'does not run without etcd')
     def testEtcdWatch(self):
         with EtcdProcessHelper(port_range_start=51342).run():
             kvstore = get('etcd://localhost:51342')

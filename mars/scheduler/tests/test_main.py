@@ -275,6 +275,8 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, b.key)
         assert_allclose(loads(result), np.ones((27, 31)))
 
+    @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
+                     'does not run without etcd')
     def testMainTensorWithEtcd(self):
         self.start_processes(etcd=True)
 
