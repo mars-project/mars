@@ -22,7 +22,6 @@ from collections import defaultdict
 
 from .. import promise
 from ..utils import log_unhandled
-from .chunkmeta import ChunkMetaActor
 from .resource import ResourceActor
 from .utils import SchedulerActor
 
@@ -213,7 +212,6 @@ class AssignEvaluationActor(SchedulerActor):
         self._cluster_info_ref = None
         self._assigner_ref = assigner_ref
         self._resource_actor_ref = None
-        self._chunk_meta_ref = None
 
         self._sufficient_operands = set()
         self._operand_sufficient_time = dict()
@@ -224,7 +222,6 @@ class AssignEvaluationActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(self._assigner_ref)
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
-        self._chunk_meta_ref = self.ctx.actor_ref(ChunkMetaActor.default_name())
 
         self.periodical_allocate()
 
@@ -319,7 +316,7 @@ class AssignEvaluationActor(SchedulerActor):
         return None, rejects
 
     def _get_chunks_meta(self, session_id, keys):
-        return dict(zip(keys, self._chunk_meta_ref.batch_get_chunk_meta(session_id, keys)))
+        return dict(zip(keys, self.chunk_meta.batch_get_chunk_meta(session_id, keys)))
 
     def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):
         locality_data = defaultdict(lambda: 0)

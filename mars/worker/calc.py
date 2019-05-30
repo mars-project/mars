@@ -75,7 +75,7 @@ class InProcessCacheActor(WorkerActor):
 
                     self._chunk_holder_ref.register_chunk(session_id, chunk_key)
                     data_size = self._chunk_store.get_actual_size(session_id, chunk_key)
-                    self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+                    self.get_meta_client().set_chunk_meta(
                         session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
                 finally:
                     del ref
@@ -96,7 +96,7 @@ class InProcessCacheActor(WorkerActor):
             del _calc_result_cache[chunk_key]
             self._mem_quota_ref.release_quota(chunk_key, _tell=True)
 
-            self.get_meta_ref(session_id, chunk_key).set_chunk_meta(
+            self.get_meta_client().set_chunk_meta(
                 session_id, chunk_key, size=data_size, shape=data_shape, workers=(self.address,))
 
         promises = []

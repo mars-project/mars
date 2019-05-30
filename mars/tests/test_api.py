@@ -20,7 +20,7 @@ from mars.compat import OrderedDict
 from mars.actors import create_actor_pool
 from mars.utils import get_next_port
 from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
-    GraphState, ChunkMetaActor
+    GraphState, ChunkMetaClient, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.api import MarsAPI
 from mars.tests.core import patch_method
@@ -71,7 +71,7 @@ class Test(unittest.TestCase):
         self.assertFalse(self.pool.has_actor(graph_ref))
 
     @patch_method(GraphActor.get_tensor_chunk_indexes)
-    @patch_method(ChunkMetaActor.batch_get_chunk_shape)
+    @patch_method(ChunkMetaClient.batch_get_chunk_shape)
     def testGetTensorNsplits(self, *_):
         session_id = 'mock_session_id'
         graph_key = 'mock_graph_key'
@@ -94,7 +94,7 @@ class Test(unittest.TestCase):
         ]
 
         GraphActor.get_tensor_chunk_indexes.side_effect = mock_indexes
-        ChunkMetaActor.batch_get_chunk_shape.side_effect = mock_shapes
+        ChunkMetaClient.batch_get_chunk_shape.side_effect = mock_shapes
 
         nsplits = self.api.get_tensor_nsplits(session_id, graph_key, tensor_key)
         self.assertEqual(((3, 4, 5, 6),), nsplits)
