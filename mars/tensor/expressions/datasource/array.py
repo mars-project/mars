@@ -129,7 +129,8 @@ def tensor(data, dtype=None, chunk_size=None, gpu=None, sparse=False):
         if dtype is not None and data.dtype != dtype:
             return data.astype(dtype)
         return data
-    elif isinstance(data, tuple) and all(isinstance(d, TENSOR_TYPE) for d in data):
+    elif (isinstance(data, tuple) or isinstance(data, list)) and \
+            all(isinstance(d, TENSOR_TYPE) for d in data):
         from ..merge import stack
 
         data = stack(data)
