@@ -99,7 +99,7 @@ class MarsAPI(object):
         graph_address = self.cluster_info.get_scheduler(graph_uid)
         result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_name(), address=graph_address)
 
-        compressions = set(compressions or []) | {dataserializer.COMPRESS_FLAG_NONE}
+        compressions = set(compressions or []) | {dataserializer.CompressType.NONE}
         return result_ref.fetch_tileable(session_id, graph_key, tileable_key, compressions, _wait=wait)
 
     def delete_data(self, session_id, graph_key, tileable_key):

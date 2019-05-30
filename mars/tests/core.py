@@ -174,6 +174,9 @@ class EtcdProcessHelper(object):
         if tls:
             self.schema = 'https://'
 
+    def is_installed(self):
+        return os.path.exists(os.path.join(self.base_directory, self.proc_name))
+
     def __enter__(self):
         return self
 

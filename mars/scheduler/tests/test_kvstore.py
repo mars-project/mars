@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -29,6 +30,8 @@ class Test(unittest.TestCase):
         options.kv_store = ':inproc:'
 
     @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+    @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
+                     'does not run without etcd')
     def testKVStoreActor(self):
         etcd_port = get_next_port()
         proc_helper = EtcdProcessHelper(port_range_start=etcd_port)

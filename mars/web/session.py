@@ -173,7 +173,7 @@ class Session(object):
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
             session_url = self._endpoint + '/api/session/' + self._session_id
-            compression_str = ','.join(str(v) for v in dataserializer.get_supported_compressions())
+            compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
             data_url = session_url + '/graph/%s/data/%s?compressions=%s' \
                 % (self._get_tileable_graph_key(key), key, compression_str)
             resp = self._req_session.get(data_url, timeout=timeout)

@@ -21,12 +21,12 @@ import logging
 
 from tornado import gen, concurrent, web, ioloop
 
-from .server import register_api_handler
+from ..actors import new_client
 from ..compat import six, futures
 from ..lib.tblib import pickling_support
-from ..actors import new_client
-from .server import MarsWebAPI
+from ..serialize.dataserializer import CompressType
 from ..utils import to_str
+from .server import MarsWebAPI, register_api_handler
 
 pickling_support.install()
 _actor_client = new_client()
@@ -136,7 +136,7 @@ class GraphDataHandler(ApiRequestHandler):
         try:
             compressions_arg = self.request.arguments.get('compressions')
             if compressions_arg:
-                compressions_arg = [int(s) for s in to_str(compressions_arg[0]).split(',') if s]
+                compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:
