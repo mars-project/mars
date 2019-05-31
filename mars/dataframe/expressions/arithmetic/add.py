@@ -18,7 +18,7 @@ from .... import opcodes as OperandDef
 from ....serialize import AnyField, Float64Field
 from ....utils import classproperty
 from ..core import DataFrameOperand
-from .core import DataFrameBinOpMixin
+from .core import DataFrameBinOpMixin, DataFrameConstantMixin
 
 
 class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
@@ -48,7 +48,41 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     def fill_value(self):
         return self._fill_value
 
+    @classmethod
+    def constant_cls(cls):
+        return DataFrameAddConstant
+
+class DataFrameAddConstant(DataFrameOperand, DataFrameConstantMixin):
+    _op_type_ = OperandDef.ADD_CONSTANT
+
+    _axis = AnyField('axis')
+    _level = AnyField('level')
+    _fill_value = Float64Field('fill_value')
+
+    def __init__(self, axis=None, level=None, fill_value=None, **kw):
+        super(DataFrameAddConstant, self).__init__(_axis=axis, _level=level,
+                                                   _fill_value=fill_value, **kw)
+
+    @classproperty
+    def _operator(self):
+        return operator.add
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def fill_value(self):
+        return self._fill_value
 
 def add(df, other, axis='columns', level=None, fill_value=None):
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value)
+    return op(df, other)
+
+def add_constant(df, other, axis='columns', level=None):
+    op = DataFrameAddConstant(axis=axis, level=level)
     return op(df, other)
