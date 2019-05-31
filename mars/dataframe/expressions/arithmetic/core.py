@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import itertools
 
 import numpy as np
@@ -22,7 +21,6 @@ except ImportError:  # pragma: no cover
     pass
 
 from .... import opcodes as OperandDef
-from ....core import Base
 from ....serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
 from ....utils import classproperty, tokenize
 from ...core import DATAFRAME_TYPE
@@ -553,15 +551,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
                 'columns_value': columns, 'index_value': index}
 
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
-
     def _new_chunks(self, inputs, kws=None, **kw):
         properties = self._calc_properties(*inputs)
         shapes = [properties.pop('shape')]
@@ -592,221 +581,44 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
     __slots__ = ()
 
     @classmethod
-    def _tile_dataframe(cls, op):
-        df = op.outputs[0]
-        operand = op.inputs[0]
-
-        out_shape = operand.chunk_shape
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
 
         out_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
-            # does not need shuffle
-            out_chunk = operand.cix[out_idx[0], out_idx[1]]
-            out_op = op.copy().reset_key()
-            out_chunks.append(
-                out_op.new_chunk([out_chunk], shape=(np.nan, np.nan),
-                                 index=out_idx))
-
-        # FIXME how `nsplits` works ?
-        nsplits = [[np.nan] * out_shape[0]] * out_shape[1]
+        for in_chunk in in_df.chunks:
+            out_op = out_df.op.copy().reset_key()
+            out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
+                                     index_value=in_chunk.index_value, columns_value=in_chunk.columns)
+            out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, df.shape, dtypes=df.dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns,
-                                     chunks=out_chunks, nsplits=nsplits)
-
-    @classmethod
-    def tile(cls, op):
-        if isinstance(op.inputs[0], DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
-        raise NotImplementedError
+        return new_op.new_dataframes(op.inputs, in_df.shape, dtypes=in_df.dtypes,
+                                     index_value=in_df.index_value,
+                                     columns_value=in_df.columns,
+                                     chunks=out_chunks, nsplits=in_df.nsplits)
 
     @classproperty
     def _operator(self):
         raise NotImplementedError
 
-    @classmethod
-    def _calc_properties(cls, x1):
-        dtypes = columns = index = None
-        index_shape = column_shape = np.nan
-        if x1.dtypes is not None:
-            dtypes = x1.dtypes
-            column_shape = len(dtypes)
-            columns = parse_index(dtypes.index, store_data=True)
-        if x1.index_value is not None:
-            index = x1.index_value
-            if not np.isnan(x1.shape[0]):
-                index_shape = x1.shape[0]
-
-        return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
-                'columns_value': columns, 'index_value': index}
-
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
-
     def _new_chunks(self, inputs, kws=None, **kw):
-        properties = self._calc_properties(*inputs)
-        shapes = [properties.pop('shape')]
+        in_df = inputs[0]
+        shapes = [in_df.shape]
         shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
         if 'shape' in kw:
             shapes.append(kw.pop('shape'))
         shape = self._merge_shape()
-
-        for prop, value in properties.items():
-            if kw.get(prop, None) is None:
-                kw[prop] = value
 
         return super(DataFrameUnaryOpMixin, self)._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
-    def _call(self, x1):
-        kw = self._calc_properties(x1)
-        shape = kw.pop('shape', None)
-        return self.new_dataframe([x1], shape, **kw)
+    def _call(self, df):
+        return self.new_dataframe([df], df.shape, dtypes=df.dtypes,
+                                  columns_value=df.columns, index_value=df.index_value)
 
-    def __call__(self, x1):
-        return self._call(x1)
+    def __call__(self, df):
+        return self._call(df)
 
-    def rcall(self, x1):
-        return self._call(x1)
-
-
-class DataFrameConstantMixin(DataFrameOperandMixin):
-
-    _lhs = AnyField('lhs')
-    _rhs = AnyField('rhs')
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
-
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = []
-
-        if getattr(self, '_lhs', None) is None:
-            # create a constant op from beginning
-            assert len(inputs) == 2
-            lhs_scalar = np.isscalar(inputs[0])
-            rhs_scalar = np.isscalar(inputs[1])
-            if not lhs_scalar:
-                inps.append(inputs[0])
-            else:
-                setattr(self, '_lhs', inputs[0])
-            if not rhs_scalar:
-                inps.append(inputs[1])
-            else:
-                setattr(self, '_rhs', inputs[1])
-            assert len(inps) <= 1  # all inputs are constant, or only 1 is constant
-        else:
-            # create from a exist constant op
-            lhs_scalar = np.isscalar(getattr(self, '_lhs'))
-            rhs_scalar = np.isscalar(getattr(self, '_rhs'))
-            inps.extend(inp for inp in inputs if not np.isscalar(inp))
-
-        yield inps
-
-        inputs_iter = iter(inputs)
-        if not lhs_scalar:
-            setattr(self, '_lhs', next(inputs_iter))
-        if not rhs_scalar:
-            setattr(self, '_rhs', next(inputs_iter))
-
-    @classmethod
-    def _tile_dataframe(cls, op):
-        df = op.outputs[0]
-        operand, constant = op.inputs[0], op.inputs[1]
-
-        out_shape = operand.chunk_shape
-
-        out_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
-            # does not need shuffle
-            out_chunk = operand.cix[out_idx[0], out_idx[1]]
-            out_op = op.copy().reset_key()
-            out_chunks.append(
-                out_op.new_chunk([out_chunk, constant], shape=(np.nan, np.nan),
-                                 index=out_idx))
-
-        # FIXME how `nsplits` works ?
-        nsplits = [[np.nan] * out_shape[0]] * out_shape[1]
-
-        new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, df.shape, dtypes=df.dtypes,
-                                     index_value=df.index_value,
-                                     columns_value=df.columns,
-                                     chunks=out_chunks, nsplits=nsplits)
-
-    @classmethod
-    def tile(cls, op):
-        if isinstance(op.inputs[0], DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
-        raise NotImplementedError
-
-    @classproperty
-    def _operator(self):
-        raise NotImplementedError
-
-    @classmethod
-    def _calc_properties(cls, x1):
-        dtypes = columns = index = None
-        index_shape = column_shape = np.nan
-        if x1.dtypes is not None:
-            dtypes = x1.dtypes
-            column_shape = len(dtypes)
-            columns = parse_index(dtypes.index, store_data=True)
-        if x1.index_value is not None:
-            index = x1.index_value
-            if not np.isnan(x1.shape[0]):
-                index_shape = x1.shape[0]
-
-        return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
-                'columns_value': columns, 'index_value': index}
-
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        properties = self._calc_properties(inputs[0])
-        shapes = [properties.pop('shape')]
-        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
-        if 'shape' in kw:
-            shapes.append(kw.pop('shape'))
-        shape = self._merge_shape()
-
-        for prop, value in properties.items():
-            if kw.get(prop, None) is None:
-                kw[prop] = value
-        with self._handle_params(inputs) as mix_inputs:
-            return super(DataFrameConstantMixin, self)._new_chunks(
-                mix_inputs, shape=shape, kws=kws, **kw)
-
-    def _call(self, x1, x2):
-        if np.isscalar(x1):
-            x1, x2 = x2, x1
-        kw = self._calc_properties(x1)
-        shape = kw.pop('shape', None)
-        return self.new_dataframe([x1, x2], shape, **kw)
-
-    def __call__(self, x1, x2):
-        return self._call(x1, x2)
-
-    def rcall(self, x1, x2):
-        return self._call(x1, x2)
+    def rcall(self, df):
+        return self._call(df)

@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .abs import abs, DataFrameAbs
-from .add import add, add_constant, DataFrameAdd, DataFrameAddConstant
+from .add import add, DataFrameAdd

@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
-from mars.dataframe.expressions.arithmetic import add
+from mars.dataframe.expressions.arithmetic import add, abs
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -224,4 +224,19 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df5, concat=True)[0]
         expected = data1 + data2 + data4
 
+        pd.testing.assert_frame_equal(expected, result)
+
+    def testAbs(self):
+        data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
+        df1 = from_pandas(data1, chunk_size=5)
+
+        result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
+        expected = data1.abs()
+        pd.testing.assert_frame_equal(expected, result)
+
+        data2 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
+        df2 = from_pandas(data2, chunk_size=100)
+
+        result = self.executor.execute_dataframe(abs(df2), concat=True)[0]
+        expected = data2.abs()
         pd.testing.assert_frame_equal(expected, result)

@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 from ...utils import get_shuffle_input_keys_idxes
 from ..utils import hash_index
 from ..expressions.arithmetic.core import DataFrameIndexAlignMap, DataFrameIndexAlignReduce
-from ..expressions.arithmetic import DataFrameAdd, DataFrameAddConstant, DataFrameAbs
+from ..expressions.arithmetic import DataFrameAdd, DataFrameAbs
 
 
 def _index_align_map(ctx, chunk):
@@ -108,8 +108,7 @@ def _index_align_reduce(ctx, chunk):
 
 
 def _add(ctx, chunk):
-    get = lambda x: ctx[x.key] if hasattr(x, 'key') else x
-    left, right = get(chunk.op.lhs), get(chunk.op.rhs)
+    left, right = ctx[chunk.inputs[0].key], ctx[chunk.inputs[1].key]
     ctx[chunk.key] = left.add(right, axis=chunk.op.axis,
                               level=chunk.op.level, fill_value=chunk.op.fill_value)
 
@@ -123,5 +122,4 @@ def register_arithmetic_handler():
     register(DataFrameIndexAlignMap, _index_align_map)
     register(DataFrameIndexAlignReduce, _index_align_reduce)
     register(DataFrameAdd, _add)
-    register(DataFrameAddConstant, _add)
     register(DataFrameAbs, _abs)

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from ...operands import ShuffleProxy
 from ...core import TileableOperandMixin, FuseChunkData, FuseChunk
 from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
@@ -51,6 +53,15 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
         return self.new_dataframes(inputs, shape=shape, dtypes=dtypes,
                                    index_value=index_value, columns_value=columns_value, **kw)[0]
+
+    @staticmethod
+    def _merge_shape(*shapes):
+        ret = [np.nan, np.nan]
+        for shape in shapes:
+            for i, s in enumerate(shape):
+                if np.isnan(ret[i]) and not np.isnan(s):
+                    ret[i] = s
+        return tuple(ret)
 
 
 class DataFrameOperand(Operand):
