@@ -19,11 +19,10 @@ import itertools
 import uuid
 import time
 import unittest
-import sys
 
 import gevent
 
-from mars.compat import six, BrokenPipeError
+from mars.compat import six, BrokenPipeError, ConnectionAbortedError
 from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActor, \
     ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client, \
     register_actor_implementation, unregister_actor_implementation
@@ -193,7 +192,6 @@ class AdminDistributor(Distributor):
         return mmh_hash(to_binary(uid)) % (self.n_process - 1) + 1
 
 
-@unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
     def setUp(self):
         self.exceptions = gevent.hub.Hub.NOT_ERROR
@@ -658,6 +656,8 @@ class Test(unittest.TestCase):
                     self.assertEqual(len(connections1.conn), 66)
 
                     del conns3
+                del connections2
+            del connections1
 
     def testRemotePostCreatePreDestroy(self):
         with create_actor_pool(address=True, n_process=1, backend='gevent') as pool:
@@ -1659,7 +1659,7 @@ class Test(unittest.TestCase):
             pool1.stop()
 
             # the connection is broken
-            with self.assertRaises(BrokenPipeError):
+            with self.assertRaises((BrokenPipeError, ConnectionAbortedError)):
                 client.create_actor(DummyActor, 10, address=addr)
 
             pool1 = create_actor_pool(address=addr, n_process=1, backend='gevent', auto_port=False)

@@ -105,8 +105,9 @@ if six.PY3:
         return memoryview(n)
 
     BrokenPipeError = BrokenPipeError
-    ConnectionResetError = ConnectionResetError
+    ConnectionAbortedError = ConnectionAbortedError
     ConnectionRefusedError = ConnectionRefusedError
+    ConnectionResetError = ConnectionResetError
     TimeoutError = TimeoutError
 
     from itertools import accumulate
@@ -179,6 +180,7 @@ else:
 
     TimeoutError = type('TimeoutError', (Exception, ), {})
     BrokenPipeError = type('BrokenPipeError', (socket.error, ), {})
+    ConnectionAbortedError = type('ConnectionAbortedError', (socket.error, ), {})
     ConnectionRefusedError = type('ConnectionRefusedError', (socket.error, ), {})
     ConnectionResetError = type('ConnectionResetError', (socket.error,), {})
 

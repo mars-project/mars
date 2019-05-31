@@ -18,7 +18,8 @@ from collections import deque, OrderedDict
 from .utils import WorkerActor
 from .. import promise
 from ..actors import ActorNotExist
-from ..compat import BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
+from ..compat import BrokenPipeError, ConnectionAbortedError, \
+    ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..utils import mod_hash, log_unhandled
 
 logger = logging.getLogger(__name__)
@@ -46,7 +47,7 @@ class DispatchActor(WorkerActor):
     def _safe_tell_promise_slot(self, callback, queue_name, slot):
         try:
             self.tell_promise(callback, slot)
-        except (ActorNotExist, BrokenPipeError, ConnectionRefusedError,
+        except (ActorNotExist, BrokenPipeError, ConnectionAbortedError, ConnectionRefusedError,
                 TimeoutError, promise.PromiseTimeout):
             logger.exception('Failed to tell slot %s of queue %s into promise %r',
                              slot, queue_name, callback)

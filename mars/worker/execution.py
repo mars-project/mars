@@ -20,7 +20,7 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import reduce, six, Enum, BrokenPipeError, \
+from ..compat import reduce, six, Enum, BrokenPipeError, ConnectionAbortedError, \
     ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import PinChunkFailed, WorkerProcessStopped, WorkerDead, \
@@ -422,7 +422,8 @@ class ExecutionActor(WorkerActor):
                     return
 
                 six.reraise(*exc)
-            except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
+            except (BrokenPipeError, ConnectionAbortedError, ConnectionRefusedError,
+                    TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
                 if self._resource_ref:
                     self._resource_ref.detach_dead_workers([remote_addr], _tell=True)

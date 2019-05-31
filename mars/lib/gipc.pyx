@@ -77,7 +77,7 @@ except ImportError:  # pragma: no cover
     cleanup_on_sigterm = lambda: None
 
 cdef:
-    bint WINDOWS, PY2
+    bint WINDOWS, PY2, WINAPI_HANDLE_TRANSFER_STEAL
 
 WINDOWS = sys.platform == "win32"
 PY2 = sys.version_info[0] == 2
@@ -609,6 +609,14 @@ cdef class _GIPCHandle:
     cdef public bint _closed
     cdef public object _fd
 
+    cdef public object _parent_winapihandle
+    cdef public object _inheritable_winapihandle
+    cdef public object _parent_pid
+
+    _keys = ['_id', '_legit_pid', '_lock', '_closed', '_fd',
+             '_parent_winapihandle', '_inheritable_winapihandle',
+             '_parent_pid']
+
     def __init__(self):
         global _all_handles
         # Generate label of text/unicode type from three random bytes.
@@ -674,143 +682,144 @@ cdef class _GIPCHandle:
                 "GIPCHandle %s not registered for current process %s." % (
                     self, os.getpid()))
 
-    def _winapi_childhandle_prepare_transfer(self):
-        """Prepare file descriptor for transfer to child process on Windows.
+    if WINDOWS:
+        def _winapi_childhandle_prepare_transfer(self):
+            """Prepare file descriptor for transfer to child process on Windows.
 
-        What follows now is an overview for the process of transferring a
-        Windows pipe handle to a child process, for different Python versions
-        (explanation / background can be found below):
+            What follows now is an overview for the process of transferring a
+            Windows pipe handle to a child process, for different Python versions
+            (explanation / background can be found below):
 
-        Python versions < 3.4:
-            1)   In the parent, get WinAPI handle from C file descriptor via
-                 msvcrt.get_osfhandle().
-            2)   WinAPI call DuplicateHandle(... ,bInheritHandle=True) in
-                 parent. Close old handle, let inheritable duplicate live on.
-            2.5) multiprocessing internals invoke WinAPI call CreateProcess(...,
-                 InheritHandles=True).
-            3)   Close the duplicate in the parent.
-            4)   Use msvcrt.open_osfhandle() in child for converting the Windows
-                 pipe handle to a C file descriptor, and for setting the
-                 (read/write)-only access flag. This file descriptor will be
-                 used by user code.
+            Python versions < 3.4:
+                1)   In the parent, get WinAPI handle from C file descriptor via
+                     msvcrt.get_osfhandle().
+                2)   WinAPI call DuplicateHandle(... ,bInheritHandle=True) in
+                     parent. Close old handle, let inheritable duplicate live on.
+                2.5) multiprocessing internals invoke WinAPI call CreateProcess(...,
+                     InheritHandles=True).
+                3)   Close the duplicate in the parent.
+                4)   Use msvcrt.open_osfhandle() in child for converting the Windows
+                     pipe handle to a C file descriptor, and for setting the
+                     (read/write)-only access flag. This file descriptor will be
+                     used by user code.
 
-        Python versions >= 3.4:
-            1)   Same as above.
-            2)   Store handle and process ID. Both are integers that will be
-                 pickled to and used by the child.
-            2.5) multiprocessing internals invoke WinAPI call
-                 CreateProcess(..., InheritHandles=False).
-            3)   Steal the Windows pipe handle from the parent process: in the
-                 child use the parent's process ID for getting a WinAPI handle
-                 to the parent process via WinAPI call OpenProcess(). Use option
-                 PROCESS_DUP_HANDLE as desired access right. Invoke
-                 DuplicateHandle() in the child and use the handle to the parent
-                 process as source process handle. Use the
-                 DUPLICATE_CLOSE_SOURCE and the DUPLICATE_SAME_ACCESS flags. The
-                 result is a Windows pipe handle, "stolen" from the parent.
-            4)   Same as above.
+            Python versions >= 3.4:
+                1)   Same as above.
+                2)   Store handle and process ID. Both are integers that will be
+                     pickled to and used by the child.
+                2.5) multiprocessing internals invoke WinAPI call
+                     CreateProcess(..., InheritHandles=False).
+                3)   Steal the Windows pipe handle from the parent process: in the
+                     child use the parent's process ID for getting a WinAPI handle
+                     to the parent process via WinAPI call OpenProcess(). Use option
+                     PROCESS_DUP_HANDLE as desired access right. Invoke
+                     DuplicateHandle() in the child and use the handle to the parent
+                     process as source process handle. Use the
+                     DUPLICATE_CLOSE_SOURCE and the DUPLICATE_SAME_ACCESS flags. The
+                     result is a Windows pipe handle, "stolen" from the parent.
+                4)   Same as above.
 
-        Background:
+            Background:
 
-        By default, file descriptors are not inherited by child processes on
-        Windows. However, they can be made inheritable via calling the system
-        function `DuplicateHandle` while setting `bInheritHandle` to True.
-        From MSDN:
-            bInheritHandle:
-                A variable that indicates whether the handle is inheritable.
-                If TRUE, the duplicate handle can be inherited by new processes
-                created by the target process. If FALSE, the new handle cannot
-                be inherited.
-        The internals of Python's `subprocess` and `multiprocessing` make use of
-        this. There is, however, no officially exposed Python API. Nevertheless,
-        the function `multiprocessing.forking.duplicate` (in Python versions
-        smaller than 3.4) and `multiprocessing.reduction.duplicate` (>= 3.4)
-        seems to be safely usable. In all versions, `duplicate` is part of
-        `multiprocessing.reduction`. As of 2015-07-20, the reduction module is
-        part of multiprocessing in all Python versions from 2.6 to 3.5.
+            By default, file descriptors are not inherited by child processes on
+            Windows. However, they can be made inheritable via calling the system
+            function `DuplicateHandle` while setting `bInheritHandle` to True.
+            From MSDN:
+                bInheritHandle:
+                    A variable that indicates whether the handle is inheritable.
+                    If TRUE, the duplicate handle can be inherited by new processes
+                    created by the target process. If FALSE, the new handle cannot
+                    be inherited.
+            The internals of Python's `subprocess` and `multiprocessing` make use of
+            this. There is, however, no officially exposed Python API. Nevertheless,
+            the function `multiprocessing.forking.duplicate` (in Python versions
+            smaller than 3.4) and `multiprocessing.reduction.duplicate` (>= 3.4)
+            seems to be safely usable. In all versions, `duplicate` is part of
+            `multiprocessing.reduction`. As of 2015-07-20, the reduction module is
+            part of multiprocessing in all Python versions from 2.6 to 3.5.
 
-        The just outlined approach (DuplicateHandle() in parent, automatically
-        inherit it in child) only works for Python versions smaller than 3.4:
-        from Python 3.4 on, the child process is created with CreateProcess()'s
-        `InheritHandles` attribute set to False (this was explicitly set to True
-        in older Python versions). A different method needs to be used, referred
-        to as "stealing" the handle: DuplicateHandle can be called in the child
-        for retrieving the handle from the parent while using the
-        _winapi.DUPLICATE_CLOSE_SOURCE flag, which automatically closes the
-        handle in the parent. This method is used by
-        `multiprocessing.popen_spawn_win32` and implemented in
-        `multiprocessing.reduction.steal_handle`.
+            The just outlined approach (DuplicateHandle() in parent, automatically
+            inherit it in child) only works for Python versions smaller than 3.4:
+            from Python 3.4 on, the child process is created with CreateProcess()'s
+            `InheritHandles` attribute set to False (this was explicitly set to True
+            in older Python versions). A different method needs to be used, referred
+            to as "stealing" the handle: DuplicateHandle can be called in the child
+            for retrieving the handle from the parent while using the
+            _winapi.DUPLICATE_CLOSE_SOURCE flag, which automatically closes the
+            handle in the parent. This method is used by
+            `multiprocessing.popen_spawn_win32` and implemented in
+            `multiprocessing.reduction.steal_handle`.
 
-        Refs:
-        https://msdn.microsoft.com/en-us/library/windows/desktop/ms684880.aspx
-        https://msdn.microsoft.com/en-us/library/windows/desktop/ms684320.aspx
-        https://msdn.microsoft.com/en-us/library/ks2530z6.aspx
-        https://msdn.microsoft.com/en-us/library/bdts1c9x.aspx
-        """
-        if WINAPI_HANDLE_TRANSFER_STEAL:
-            self._parent_winapihandle = msvcrt.get_osfhandle(self._fd)
-            self._parent_pid = os.getpid()
-            return
-        # Get Windows file handle from C file descriptor.
-        winapihandle = msvcrt.get_osfhandle(self._fd)
-        # Duplicate file handle, rendering the duplicate inheritable by
-        # processes created by the current process.
-        self._inheritable_winapihandle = multiprocessing.reduction.duplicate(
-            handle=winapihandle, inheritable=True)
-        # Close "old" (in-inheritable) file descriptor.
-        os.close(self._fd)
-        # Mark file descriptor as "already closed".
-        self._fd = None
-
-    def _winapi_childhandle_after_createprocess_parent(self):
-        """Called on Windows in the parent process after the CreateProcess()
-        system call. This method is intended to revert the actions performed
-        within `_winapi_childhandle_prepare_transfer()`. In particular, this
-        method is intended to prepare a subsequent call to the handle's
-        `close()` method.
-        """
-        if WINAPI_HANDLE_TRANSFER_STEAL:
-            del self._parent_winapihandle
-            del self._parent_pid
-            # Setting `_fd` to None prevents the subsequent `close()` method
-            # invocation (triggered in `start_process()` after child creation)
-            # from actually calling `os.close()` on the file descriptor. This
-            # must be prevented because at this point the handle either already
-            # is or will be "stolen" by the child via a direct WinAPI call using
-            # the DUPLICATE_CLOSE_SOURCE option (and therefore become
-            # auto-closed, here, in the parent). The relative timing is not
-            # predictable. If the child process steals first, os.close() here
-            # would result in `OSError: [Errno 9] Bad file descriptor`. If
-            # os.close() is called on the handle in the parent before the child
-            # can steal the handle, a `OSError: [WinError 6] The handle is
-            # invalid` will be thrown in the child upon the stealing attempt.
+            Refs:
+            https://msdn.microsoft.com/en-us/library/windows/desktop/ms684880.aspx
+            https://msdn.microsoft.com/en-us/library/windows/desktop/ms684320.aspx
+            https://msdn.microsoft.com/en-us/library/ks2530z6.aspx
+            https://msdn.microsoft.com/en-us/library/bdts1c9x.aspx
+            """
+            if WINAPI_HANDLE_TRANSFER_STEAL:
+                self._parent_winapihandle = msvcrt.get_osfhandle(self._fd)
+                self._parent_pid = os.getpid()
+                return
+            # Get Windows file handle from C file descriptor.
+            winapihandle = msvcrt.get_osfhandle(self._fd)
+            # Duplicate file handle, rendering the duplicate inheritable by
+            # processes created by the current process.
+            self._inheritable_winapihandle = multiprocessing.reduction.duplicate(
+                handle=winapihandle, inheritable=True)
+            # Close "old" (in-inheritable) file descriptor.
+            os.close(self._fd)
+            # Mark file descriptor as "already closed".
             self._fd = None
-            return
-        # Get C file descriptor from Windows file handle.
-        self._fd = msvcrt.open_osfhandle(
-            self._inheritable_winapihandle, self._fd_flag)
-        del self._inheritable_winapihandle
 
-    def _winapi_childhandle_after_createprocess_child(self):
-        """Called on Windows in the child process after the CreateProcess()
-        system call. This is required for making the handle usable in the child.
-        """
-        if WINAPI_HANDLE_TRANSFER_STEAL:
-            # In this case the handle has not been inherited by the child
-            # process during CreateProcess(). Steal it from the parent.
-            new_winapihandle = multiprocessing.reduction.steal_handle(
-                self._parent_pid, self._parent_winapihandle)
-            del self._parent_winapihandle
-            del self._parent_pid
-            # Restore C file descriptor with (read/write)only flag.
-            self._fd = msvcrt.open_osfhandle(new_winapihandle, self._fd_flag)
-            return
-        # In this case the handle has been inherited by the child process during
-        # the CreateProcess() system call. Get C file descriptor from Windows
-        # file handle.
-        self._fd = msvcrt.open_osfhandle(
-            self._inheritable_winapihandle, self._fd_flag)
-        del self._inheritable_winapihandle
+        def _winapi_childhandle_after_createprocess_parent(self):
+            """Called on Windows in the parent process after the CreateProcess()
+            system call. This method is intended to revert the actions performed
+            within `_winapi_childhandle_prepare_transfer()`. In particular, this
+            method is intended to prepare a subsequent call to the handle's
+            `close()` method.
+            """
+            if WINAPI_HANDLE_TRANSFER_STEAL:
+                del self._parent_winapihandle
+                del self._parent_pid
+                # Setting `_fd` to None prevents the subsequent `close()` method
+                # invocation (triggered in `start_process()` after child creation)
+                # from actually calling `os.close()` on the file descriptor. This
+                # must be prevented because at this point the handle either already
+                # is or will be "stolen" by the child via a direct WinAPI call using
+                # the DUPLICATE_CLOSE_SOURCE option (and therefore become
+                # auto-closed, here, in the parent). The relative timing is not
+                # predictable. If the child process steals first, os.close() here
+                # would result in `OSError: [Errno 9] Bad file descriptor`. If
+                # os.close() is called on the handle in the parent before the child
+                # can steal the handle, a `OSError: [WinError 6] The handle is
+                # invalid` will be thrown in the child upon the stealing attempt.
+                self._fd = None
+                return
+            # Get C file descriptor from Windows file handle.
+            self._fd = msvcrt.open_osfhandle(
+                self._inheritable_winapihandle, self._fd_flag)
+            del self._inheritable_winapihandle
+
+        def _winapi_childhandle_after_createprocess_child(self):
+            """Called on Windows in the child process after the CreateProcess()
+            system call. This is required for making the handle usable in the child.
+            """
+            if WINAPI_HANDLE_TRANSFER_STEAL:
+                # In this case the handle has not been inherited by the child
+                # process during CreateProcess(). Steal it from the parent.
+                new_winapihandle = multiprocessing.reduction.steal_handle(
+                    self._parent_pid, self._parent_winapihandle)
+                del self._parent_winapihandle
+                del self._parent_pid
+                # Restore C file descriptor with (read/write)only flag.
+                self._fd = msvcrt.open_osfhandle(new_winapihandle, self._fd_flag)
+                return
+            # In this case the handle has been inherited by the child process during
+            # the CreateProcess() system call. Get C file descriptor from Windows
+            # file handle.
+            self._fd = msvcrt.open_osfhandle(
+                self._inheritable_winapihandle, self._fd_flag)
+            del self._inheritable_winapihandle
 
     def __enter__(self):
         return self
@@ -830,6 +839,23 @@ cdef class _GIPCHandle:
     def __str__(self):
         return self.__repr__()
 
+    if WINDOWS:
+        def __getstate__(self):
+            cdef dict val_dict = dict()
+            for k in self._keys:
+                if k == '_lock':
+                    continue
+                try:
+                    val_dict[k] = getattr(self, k)
+                except AttributeError:
+                    pass
+            return val_dict
+
+        def __setstate__(self, d):
+            for k, v in d.items():
+                setattr(self, k, v)
+            self._lock = gevent.lock.Semaphore(value=1)
+
     def __repr__(self):
         fd = self._fd
         if hasattr(self, "_ihfd"):
@@ -843,8 +869,10 @@ cdef class _GIPCReader(_GIPCHandle):
     via :func:`pipe`.
     """
 
-    cdef int _fd_flag
-    cdef object _decoder
+    cdef public int _fd_flag
+    cdef public object _decoder
+
+    _keys = _GIPCHandle._keys + ['_fd_flag', '_decoder']
 
     def __init__(self, int pipe_read_fd, object decoder):
         self._fd = pipe_read_fd
@@ -945,8 +973,10 @@ cdef class _GIPCWriter(_GIPCHandle):
     A ``_GIPCWriter`` instance manages the write end of a pipe. It is created
     via :func:`pipe`.
     """
-    cdef int _fd_flag
-    cdef object _encoder
+    cdef public int _fd_flag
+    cdef public object _encoder
+
+    _keys = _GIPCHandle._keys + ['_fd_flag', '_encoder']
 
     def __init__(self, int pipe_write_fd, object encoder):
         self._fd = pipe_write_fd

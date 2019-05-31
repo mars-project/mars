@@ -15,7 +15,8 @@
 import contextlib
 
 from ...actors import ActorNotExist
-from ...compat import Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
+from ...compat import Enum, BrokenPipeError, ConnectionAbortedError, \
+    ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ...errors import WorkerDead
 from ...utils import classproperty
 
@@ -63,7 +64,8 @@ def rewrite_worker_errors(ignore_error=False):
     rewrite = False
     try:
         yield
-    except (BrokenPipeError, ConnectionRefusedError, ActorNotExist, TimeoutError):
+    except (BrokenPipeError, ConnectionAbortedError, ConnectionRefusedError,
+            ActorNotExist, TimeoutError):
         # we don't raise here, as we do not want
         # the actual stack be dumped
         rewrite = not ignore_error
