@@ -113,8 +113,8 @@ def _add(ctx, chunk):
                               level=chunk.op.level, fill_value=chunk.op.fill_value)
 
 def _abs(ctx, chunk):
-    operand = ctx[chunk.inputs[0].key]
-    ctx[chunk.key] = operand.abs()
+    df = ctx[chunk.inputs[0].key]
+    ctx[chunk.key] = df.abs()
 
 def register_arithmetic_handler():
     from ...executor import register
