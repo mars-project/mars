@@ -585,3 +585,92 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     def rcall(self, x1, x2):
         return self._call(x1, x2)
+
+class DataFrameUnaryOpMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    @classmethod
+    def _tile_dataframe(cls, op):
+        df = op.outputs[0]
+        operand = op.inputs[0]
+
+        out_shape = operand.chunk_shape
+
+        out_chunks = []
+        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+            # does not need shuffle
+            out_chunk = operand.cix[out_idx[0], out_idx[1]]
+            out_op = op.copy().reset_key()
+            out_chunks.append(
+                out_op.new_chunk([out_chunk], shape=(np.nan, np.nan),
+                                 index=out_idx))
+
+        # FIXME how `nsplits` works ?
+        nsplits = [[np.nan] * out_shape[0]] * out_shape[1]
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, df.shape, dtypes=df.dtypes,
+                                     index_value=df.index_value,
+                                     columns_value=df.columns,
+                                     chunks=out_chunks, nsplits=nsplits)
+
+    @classmethod
+    def tile(cls, op):
+        if isinstance(op.inputs[0], DATAFRAME_TYPE):
+            return cls._tile_dataframe(op)
+        raise NotImplementedError
+
+    @classproperty
+    def _operator(self):
+        raise NotImplementedError
+
+    @classmethod
+    def _calc_properties(cls, x1):
+        dtypes = columns = index = None
+        index_shape = column_shape = np.nan
+        if x1.dtypes is not None:
+            dtypes = x1.dtypes
+            column_shape = len(dtypes)
+            columns = parse_index(dtypes.index, store_data=True)
+        if x1.index_value is not None:
+            index = x1.index_value
+            if not np.isnan(x1.shape[0]):
+                index_shape = x1.shape[0]
+
+        return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+                'columns_value': columns, 'index_value': index}
+
+    @staticmethod
+    def _merge_shape(*shapes):
+        ret = [np.nan, np.nan]
+        for shape in shapes:
+            for i, s in enumerate(shape):
+                if np.isnan(ret[i]) and not np.isnan(s):
+                    ret[i] = s
+        return tuple(ret)
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        properties = self._calc_properties(*inputs)
+        shapes = [properties.pop('shape')]
+        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
+        if 'shape' in kw:
+            shapes.append(kw.pop('shape'))
+        shape = self._merge_shape()
+
+        for prop, value in properties.items():
+            if kw.get(prop, None) is None:
+                kw[prop] = value
+
+        return super(DataFrameUnaryOpMixin, self)._new_chunks(
+            inputs, shape=shape, kws=kws, **kw)
+
+    def _call(self, x1):
+        kw = self._calc_properties(x1)
+        shape = kw.pop('shape', None)
+        return self.new_dataframe([x1], shape, **kw)
+
+    def __call__(self, x1):
+        return self._call(x1)
+
+    def rcall(self, x1):
+        return self._call(x1)

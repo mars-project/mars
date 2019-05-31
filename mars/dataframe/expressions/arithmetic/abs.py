@@ -12,5 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .abs import abs, DataFrameAbs
-from .add import add, DataFrameAdd
+import operator
+
+from .... import opcodes as OperandDef
+from ....serialize import AnyField, Float64Field
+from ....utils import classproperty
+from ..core import DataFrameOperand
+from .core import DataFrameUnaryOpMixin
+
+class DataFrameAbs(DataFrameOperand, DataFrameUnaryOpMixin):
+    _op_type_ = OperandDef.ABS
+
+    def __init__(self, **kw):
+        super(DataFrameAbs, self).__init__(**kw)
+
+    @classproperty
+    def _operator(self):
+        return operator.abs
+
+def abs(df):
+    op = DataFrameAbs()
+    return op(df)
