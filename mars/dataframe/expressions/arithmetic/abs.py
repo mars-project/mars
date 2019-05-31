@@ -15,7 +15,6 @@
 import operator
 
 from .... import opcodes as OperandDef
-from ....serialize import AnyField, Float64Field
 from ....utils import classproperty
 from ..core import DataFrameOperand
 from .core import DataFrameUnaryOpMixin
