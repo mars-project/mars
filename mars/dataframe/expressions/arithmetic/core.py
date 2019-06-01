@@ -587,38 +587,21 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
 
         out_chunks = []
         for in_chunk in in_df.chunks:
-            out_op = out_df.op.copy().reset_key()
+            out_op = op.copy().reset_key()
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
                                      index_value=in_chunk.index_value, columns_value=in_chunk.columns)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, in_df.shape, dtypes=in_df.dtypes,
-                                     index_value=in_df.index_value,
-                                     columns_value=in_df.columns,
+        return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
+                                     index_value=out_df.index_value,
+                                     columns_value=out_df.columns,
                                      chunks=out_chunks, nsplits=in_df.nsplits)
 
     @classproperty
     def _operator(self):
         raise NotImplementedError
 
-    def _new_chunks(self, inputs, kws=None, **kw):
-        in_df = inputs[0]
-        shapes = [in_df.shape]
-        shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
-        if 'shape' in kw:
-            shapes.append(kw.pop('shape'))
-        shape = self._merge_shape()
-
-        return super(DataFrameUnaryOpMixin, self)._new_chunks(
-            inputs, shape=shape, kws=kws, **kw)
-
-    def _call(self, df):
+    def __call__(self, df):
         return self.new_dataframe([df], df.shape, dtypes=df.dtypes,
                                   columns_value=df.columns, index_value=df.index_value)
-
-    def __call__(self, df):
-        return self._call(df)
-
-    def rcall(self, df):
-        return self._call(df)

@@ -542,23 +542,17 @@ class Test(TestBase):
         df2 = abs(df1)
 
         # test df2's index and columns
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), data1.columns)
+        pd.testing.assert_index_equal(df2.columns.to_pandas(), df1.columns.to_pandas())
         self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
-        self.assertEqual(df2.shape[1], 10)
+        self.assertEqual(df2.shape, (10, 10))
 
         df2.tiles()
 
         self.assertEqual(df2.chunk_shape, (2, 1))
-        for c in df2.chunks:
-            self.assertIsInstance(c.op, DataFrameAbs)
-            self.assertEqual(len(c.inputs), 1)
-            # test input df
-            expect_dtypes = pd.concat([ic.op.data.dtypes for ic in c.inputs])
-            pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
-            self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
-            self.assertIsInstance(c.inputs[0].op, DataFrameDataSource)
-            for ic, ci in zip(c.inputs, df1.chunks):
-                self.assertIsInstance(ic.op, DataFrameDataSource)
-                self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
-                self.assertIsNotNone(ic.columns)
+        for c2, c1 in zip(df2.chunks, df1.chunks):
+            self.assertIsInstance(c2.op, DataFrameAbs)
+            self.assertEqual(len(c2.inputs), 1)
+            # compare with input chunks
+            self.assertEqual(c2.index, c1.index)
+            pd.testing.assert_index_equal(c2.columns.to_pandas(), c1.columns.to_pandas())
+            pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
