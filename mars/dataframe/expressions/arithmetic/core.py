@@ -551,15 +551,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
                 'columns_value': columns, 'index_value': index}
 
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
-
     def _new_chunks(self, inputs, kws=None, **kw):
         properties = self._calc_properties(*inputs)
         shapes = [properties.pop('shape')]
@@ -585,3 +576,32 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     def rcall(self, x1, x2):
         return self._call(x1, x2)
+
+class DataFrameUnaryOpMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    @classmethod
+    def tile(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+
+        out_chunks = []
+        for in_chunk in in_df.chunks:
+            out_op = op.copy().reset_key()
+            out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
+                                     index_value=in_chunk.index_value, columns_value=in_chunk.columns)
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
+                                     index_value=out_df.index_value,
+                                     columns_value=out_df.columns,
+                                     chunks=out_chunks, nsplits=in_df.nsplits)
+
+    @classproperty
+    def _operator(self):
+        raise NotImplementedError
+
+    def __call__(self, df):
+        return self.new_dataframe([df], df.shape, dtypes=df.dtypes,
+                                  columns_value=df.columns, index_value=df.index_value)

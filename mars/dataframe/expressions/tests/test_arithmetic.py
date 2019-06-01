@@ -26,7 +26,8 @@ from mars.dataframe.utils import hash_dtypes
 from mars.dataframe.expressions.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
-from mars.dataframe.expressions.arithmetic import add, DataFrameAdd
+from mars.dataframe.expressions.arithmetic import add, abs, \
+    DataFrameAdd, DataFrameAbs
 from mars.dataframe.expressions.arithmetic.core import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
 from mars.tests.core import TestBase
@@ -531,3 +532,26 @@ class Test(TestBase):
                 self.assertIs(ic.inputs[0], ci.data)
 
         self.assertEqual(len(proxy_keys), 2)
+
+    def testAbs(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=(5, 10))
+
+        df2 = abs(df1)
+
+        # test df2's index and columns
+        pd.testing.assert_index_equal(df2.columns.to_pandas(), df1.columns.to_pandas())
+        self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
+        self.assertEqual(df2.shape, (10, 10))
+
+        df2.tiles()
+
+        self.assertEqual(df2.chunk_shape, (2, 1))
+        for c2, c1 in zip(df2.chunks, df1.chunks):
+            self.assertIsInstance(c2.op, DataFrameAbs)
+            self.assertEqual(len(c2.inputs), 1)
+            # compare with input chunks
+            self.assertEqual(c2.index, c1.index)
+            pd.testing.assert_index_equal(c2.columns.to_pandas(), c1.columns.to_pandas())
+            pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
