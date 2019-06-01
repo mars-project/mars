@@ -202,7 +202,7 @@ class AssignEvaluationActor(SchedulerActor):
     """
     @classmethod
     def gen_uid(cls, session_id):
-        return 's:h1:%s$%s' % (cls.__name__, session_id)
+        return 's:0:%s$%s' % (cls.__name__, session_id)
 
     def __init__(self, assigner_ref):
         super(AssignEvaluationActor, self).__init__()
