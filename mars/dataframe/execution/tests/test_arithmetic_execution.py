@@ -233,10 +233,3 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
         expected = data1.abs()
         pd.testing.assert_frame_equal(expected, result)
-
-        data2 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
-        df2 = from_pandas(data2, chunk_size=100)
-
-        result = self.executor.execute_dataframe(abs(df2), concat=True)[0]
-        expected = data2.abs()
-        pd.testing.assert_frame_equal(expected, result)

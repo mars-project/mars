@@ -25,8 +25,7 @@ from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import hash_dtypes
 from mars.dataframe.expressions.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
-from mars.dataframe.expressions.datasource.dataframe import from_pandas, \
-    DataFrameDataSource
+from mars.dataframe.expressions.datasource.dataframe import from_pandas
 from mars.dataframe.expressions.arithmetic import add, abs, \
     DataFrameAdd, DataFrameAbs
 from mars.dataframe.expressions.arithmetic.core import DataFrameIndexAlignMap, \
