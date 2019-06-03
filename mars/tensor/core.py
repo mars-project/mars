@@ -60,6 +60,10 @@ class TensorChunkData(ChunkData):
         return len(self.shape)
 
     @property
+    def size(self):
+        return np.prod(self.shape).item()
+
+    @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
 

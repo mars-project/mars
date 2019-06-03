@@ -19,11 +19,12 @@ from math import ceil
 from numbers import Integral
 import operator
 import inspect
+import itertools
 from functools import wraps
 
 import numpy as np
 
-from ...compat import zip_longest, izip, six, reduce, lkeys
+from ...compat import zip_longest, izip, six, reduce, lkeys, OrderedDict
 
 
 def normalize_shape(shape):
@@ -288,6 +289,45 @@ def split_index_into_chunks(chunks, index):
 
     return [index[chunk_idx == i] - (cum_chunks[i-1] if i > 0 else 0)
             for i in range(len(chunks))]
+
+
+def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
+    indexes = np.asarray(indexes)
+    chunk_idxes = np.empty_like(indexes)
+    cum_nsplits = [np.cumsum(nsplit) for nsplit in nsplits]
+    for i, cum_nsplit, index in zip(itertools.count(0), cum_nsplits, indexes):
+        # handle negative value in index
+        index = np.add(index, cum_nsplit[-1], out=index, where=index < 0)
+        sorted_idx = np.argsort(index)
+
+        if np.any(index > cum_nsplit[-1]):
+            idx = index[index >= cum_nsplit[-1]][0]
+            err = IndexError('index {0} is out of bounds with size {1}'.format(
+                idx, cum_nsplit[-1]))
+            err.idx = idx
+            err.size = cum_nsplit[-1]
+            raise err
+
+        chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side='right')
+        chunk_idxes[i] = chunk_idx[sorted_idx]
+
+    chunk_idxes_asc = False
+    if ret_is_asc:
+        chunk_idxes_asc = is_asc_sorted(np.lexsort(chunk_idxes[::-1]))
+
+    chunk_index_to_indexes = OrderedDict()
+    chunk_index_to_poses = OrderedDict()
+    poses = np.arange(len(indexes[0]))
+    for idx in itertools.product(*(range(len(nsplit)) for nsplit in nsplits)):
+        cond = (chunk_idxes == np.array(idx).reshape((len(idx), 1))).all(axis=0)
+        filtered = indexes[:, cond]
+        for i in range(len(indexes)):
+            filtered[i] = filtered[i] - (cum_nsplits[i][idx[i]-1] if idx[i] > 0 else 0)
+        chunk_index_to_indexes[idx] = filtered
+        chunk_index_to_poses[idx] = poses[cond]
+    if ret_is_asc:
+        return chunk_index_to_indexes, chunk_index_to_poses, chunk_idxes_asc
+    return chunk_index_to_indexes, chunk_index_to_poses
 
 
 def decide_unify_split(*splits):
