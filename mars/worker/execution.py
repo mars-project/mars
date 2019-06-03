@@ -104,7 +104,14 @@ class ExecutionActor(WorkerActor):
         size_ctx = dict((k, (v, v)) for k, v in data_sizes.items())
         executor = Executor(storage=size_ctx)
         res = executor.execute_graph(graph, targets, mock=True)
-        return dict(zip(targets, res))
+        target_sizes = dict(zip(targets, res))
+
+        total_mem = sum(target_sizes[key][1] for key in targets)
+        if total_mem:
+            for key in targets:
+                r = target_sizes[key]
+                target_sizes[key] = (r[0], max(r[1], r[1] * executor.mock_max_memory // total_mem))
+        return target_sizes
 
     @staticmethod
     def _build_load_key(graph_key, chunk_key):
