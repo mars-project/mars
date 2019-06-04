@@ -115,14 +115,14 @@ class Session(object):
 
         graph = DirectedGraph()
         for t in tensors:
-            graph = t.build_graph(graph=graph, tiled=False, compose=compose)
+            graph = t.build_graph(graph=graph, tiled=False)
         targets = [t.key for t in tensors]
 
         targets_join = ','.join(targets)
         session_url = self._endpoint + '/api/session/' + self._session_id
         graph_json = graph.to_json()
 
-        resp_json = self._submit_graph(graph_json, targets_join)
+        resp_json = self._submit_graph(graph_json, targets_join, compose=compose)
         graph_key = resp_json['graph_key']
         graph_url = session_url + '/graph/' + graph_key
 
@@ -197,11 +197,12 @@ class Session(object):
             raise SystemError('Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                               (resp.status_code, resp.reason, resp.text))
 
-    def _submit_graph(self, graph_json, targets):
+    def _submit_graph(self, graph_json, targets, compose=True):
         session_url = self._endpoint + '/api/session/' + self._session_id
         resp = self._req_session.post(session_url + '/graph', dict(
             graph=json.dumps(graph_json),
             target=targets,
+            compose='1' if compose else '0'
         ))
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
