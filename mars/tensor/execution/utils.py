@@ -53,7 +53,7 @@ def estimate_fuse_size(ctx, chunk):
 
     executor = Executor(storage=size_ctx)
     output_keys = [o.key for o in chunk.op.outputs]
-    results = executor.execute_graph(dag, output_keys, mock=True, fetch_keys=set(size_ctx.keys()))
+    results = executor.execute_graph(dag, output_keys, mock=True, update_local=True)
     ctx.update(zip(output_keys, results))
 
     # update with the maximal memory cost during the whole execution
