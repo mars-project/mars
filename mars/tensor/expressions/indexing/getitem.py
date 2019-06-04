@@ -225,7 +225,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                     in_axis += 1
                     out_axis += 1
                 elif isinstance(index_obj, slice):
-                    idx, sliceobj = processed_index_obj
+                    idx, sliceobj = processed_index_obj[out_idx[out_axis]]
                     chunk_index_obj.append(sliceobj)
                     in_chunk_idx.append(idx)
                     chunk_shape.append(calc_sliced_size(in_tensor.nsplits[in_axis][idx], sliceobj))
@@ -236,30 +236,31 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                     idx, sliceobj = processed_index_obj
                     chunk_index_obj.append(sliceobj)
                     in_chunk_idx.append(idx)
-                    real_out_idx.append(out_idx[out_axis])
                     in_axis += 1
                 else:
-                    chunk_index_obj.append(processed_index_obj)
+                    chunk_index_obj.append(None)
                     chunk_shape.append(1)
                     real_out_idx.append(out_idx[out_axis])
                     out_axis += 1
 
             in_chunk = in_tensor.cix[tuple(in_chunk_idx)]
-            # calculate fancy index's chunk_index_obj and chunk_shape
-            fancy_index_in_idxes = [in_chunk_idx[axis] for axis in fancy_index_in_out_axes]
-            splits = in_axis_to_processed_index[fancy_index_start_axis][fancy_index_in_idxes]
-            for fancy_index_axis in fancy_index_in_out_axes:
-                chunk_index_obj.insert(fancy_index_axis, splits[fancy_index_axis])
-            size = len(splits[0])
-            if size == 0:
-                # this input chunk is not effected by fancy indexing, just skip
-                continue
-            chunk_shape.insert(fancy_index_start_axis, len(splits[0]))
+            if fancy_index_start_axis is not None:
+                # calculate fancy index's chunk_index_obj and chunk_shape
+                fancy_index_in_idxes = tuple(in_chunk_idx[axis] for axis in fancy_index_in_out_axes)
+                splits = in_axis_to_processed_index[fancy_index_start_axis][fancy_index_in_idxes]
+                if len(splits[0]) == 0:
+                    # this input chunk is not effected by fancy indexing, just skip
+                    continue
+                for j, fancy_index_axis in enumerate(fancy_index_in_out_axes):
+                    chunk_index_obj.insert(fancy_index_axis, splits[j])
+                chunk_shape.insert(fancy_index_start_axis, len(splits[0]))
+
+                idx_key = tuple(real_out_idx)
+                if idx_key not in idx_to_acc:
+                    idx_to_acc[idx_key] = itertools.count(0)
+                real_out_idx.insert(fancy_index_start_axis, next(idx_to_acc[idx_key]))
+
             chunk_op = op.copy().reset_key()
-            idx_key = tuple(real_out_idx)
-            if idx_key not in idx_to_acc:
-                idx_to_acc[idx_key] = itertools.count(0)
-            real_out_idx.insert(fancy_index_start_axis, next(idx_to_acc[idx_key]))
             out_chunk = chunk_op.new_chunk([in_chunk], shape=tuple(chunk_shape),
                                            indexes=chunk_index_obj, index=tuple(real_out_idx))
             out_chunks.append(out_chunk)
@@ -270,7 +271,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         chunk_shape = tuple(len(ns) for ns in nsplits)
         index_to_out_chunks = {c.index: c for c in out_chunks}
 
-        if fancy_index_start_axis:
+        if fancy_index_start_axis is not None:
             # handle fancy indexing again
             if isinstance(fancy_indexes[0], np.ndarray) and \
                     (not fancy_indexes_asc_sorted or fancy_indexes[0].ndim > 1):
@@ -278,22 +279,23 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 concat_axis = fancy_index_start_axis
                 old_chunk_shape = chunk_shape
                 chunk_shape = chunk_shape[:concat_axis] + (1,) + chunk_shape[concat_axis + 1:]
+                original_poses = np.concatenate(list(fancy_index_original_poses.values()))
                 out_chunks = []
                 for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
                     to_concat_chunks_idxes = [out_idx[:concat_axis] + (j,) + out_idx[concat_axis + 1:]
-                                                for j in range(old_chunk_shape[concat_axis])]
+                                              for j in range(old_chunk_shape[concat_axis])]
                     to_concat_chunks = [index_to_out_chunks[idx] for idx in to_concat_chunks_idxes]
                     concat_chunk_shape = list(to_concat_chunks[0].shape)
                     concat_chunk_shape[concat_axis] = sum(c.shape[concat_axis] for c in to_concat_chunks)
                     concat_op = TensorConcatenate(axis=concat_axis, dtype=to_concat_chunks[0].dtype,
                                                   sparse=to_concat_chunks[0].issparse())
-                    concat_chunk = concat_op.new_chunks(to_concat_chunks, shape=tuple(concat_chunk_shape),
-                                                        index=out_idx)
+                    concat_chunk = concat_op.new_chunk(to_concat_chunks, shape=tuple(concat_chunk_shape),
+                                                       index=out_idx)
                     out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.issparse())
-                    out_index_obj = [slice(None)] * concat_axis + [fancy_index_original_poses] + \
+                    out_index_obj = [slice(None)] * concat_axis + [original_poses] + \
                                     [slice(None)] * (len(nsplits) - concat_axis - 1)
                     out_chunk = out_chunk_op.new_chunk([concat_chunk], shape=concat_chunk.shape,
-                                                       indexes=out_index_obj)
+                                                       indexes=out_index_obj, index=out_idx)
                     out_chunks.append(out_chunk)
                 nsplits[concat_axis] = (sum(nsplits[concat_axis]),)
 

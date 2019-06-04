@@ -92,6 +92,16 @@ class Test(unittest.TestCase):
         self.assertEqual(t5.shape, (10, 10, 6))
         self.assertEqual(t5.chunk_shape, (1, 1, 5))
 
+        t6 = t[[20, 1, 33, 22, 11], :15, [255, 211, 2, 11, 121]].tiles()
+        self.assertEqual(t6.shape, (5, 15))
+        # need a concat, because the fancy indexes are not ascending according to chunk index
+        self.assertEqual(t6.chunk_shape, (1, 2))
+
+        t7 = t[[5, 6, 33, 66], :15, [0, 9, 2, 11]].tiles()
+        self.assertEqual(t7.shape, (4, 15))
+        # not need a concat
+        self.assertEqual(t7.chunk_shape, (3, 2))
+
     def testMixedIndexing(self):
         t = ones((100, 200, 300, 400))
 
