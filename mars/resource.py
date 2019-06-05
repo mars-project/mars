@@ -42,7 +42,7 @@ else:
 _virt_memory_stat = namedtuple('virtual_memory', 'total available percent used free')
 
 _shm_path = [pt.mountpoint for pt in psutil.disk_partitions(all=True)
-             if pt.mountpoint in ('/tmp', '/dev/shm') and pt.device == 'tmpfs']
+             if pt.mountpoint in ('/tmp', '/dev/shm') and pt.fstype == 'tmpfs']
 if not _shm_path:
     _shm_path = None
 else:
