@@ -23,7 +23,7 @@ from collections import deque, defaultdict
 
 import numpy as np
 
-from ...operands import Fetch
+from ...tensor.expressions.datasource import TensorFetchChunk
 from ...graph import DirectedGraph
 from ...compat import futures, OrderedDict
 from ..core import build_mode
@@ -50,6 +50,10 @@ class Executor(object):
     @property
     def chunk_result(self):
         return self._chunk_result
+
+    @property
+    def mock_max_memory(self):
+        return self._mock_max_memory
 
     def _preprocess(self, graph, keys):
         from .optimizes.core import Optimizer
@@ -78,13 +82,24 @@ class Executor(object):
             return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
 
     def execute_graph(self, graph, keys, n_parallel=None, n_thread=None, show_progress=False,
-                      mock=False):
+                      compose=True, mock=False, no_intermediate=False):
+        """
+        :param graph: graph to execute
+        :param keys: result keys
+        :param n_parallel: num of max parallelism
+        :param n_thread: num of threads to execute
+        :param show_progress:
+        :param compose: if True. fuse nodes when possible
+        :param mock: if True, only estimate data sizes without execution
+        :param no_intermediate: exclude intermediate data sizes when estimating memory size
+        :return: execution result
+        """
         with build_mode():
-            optimized_graph = self._preprocess(graph, keys)
+            optimized_graph = self._preprocess(graph, keys) if compose else graph
 
         res = execute_graph(optimized_graph, keys, self, n_parallel=n_parallel or n_thread,
-                            show_progress=show_progress, mock=mock, prefetch=self._prefetch,
-                            mock_max_memory=self._mock_max_memory, retval=True)
+                            show_progress=show_progress, prefetch=self._prefetch, retval=True,
+                            mock=mock, no_intermediate=no_intermediate)
         if mock:
             self._mock_max_memory = max(self._mock_max_memory, self._chunk_result.get('_mock_max_memory', 0))
             self._chunk_result.clear()
@@ -218,7 +233,8 @@ def execute_chunk(chunk, executor=None,
                   ref_counts=None, chunk_result=None,
                   finishes=None, visited=None, q=None,
                   lock=None, semaphore=None, has_error=None,
-                  preds=None, succs=None, mock=False):
+                  preds=None, succs=None, fetch_keys=None,
+                  mock=False, no_intermediate=False):
     try:
         with lock:
             if (chunk.key, chunk.id) in visited:
@@ -232,10 +248,17 @@ def execute_chunk(chunk, executor=None,
 
                 # update maximal memory usage during execution
                 if mock:
-                    chunk_result['_mock_max_memory'] = max(
-                        chunk_result.get('_mock_max_memory', 0),
-                        sum(chunk_result[op_output.key][1] for op_output in chunk.op.outputs
-                            if chunk_result.get(op_output.key) is not None))
+                    # we ignore sizes of Fetch inputs as they are not part of memory needed
+                    fetch_keys = fetch_keys or set()
+                    output_keys = set(o.key for o in chunk.op.outputs or ())
+
+                    cur_memory = sum(chunk_result[op_output.key][1] for op_output in chunk.op.outputs
+                                     if chunk_result.get(op_output.key) is not None)
+                    if not no_intermediate:
+                        cur_memory += sum(tp[0] for key, tp in chunk_result.items()
+                                          if key not in fetch_keys and key not in output_keys
+                                          and isinstance(tp, tuple))
+                    chunk_result['_mock_max_memory'] = max(cur_memory, chunk_result.get('_mock_max_memory', 0))
 
             with lock:
                 for output in chunk.op.outputs:
@@ -291,7 +314,7 @@ def _order_starts(graph):
 
 
 def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
-                  mock=False, prefetch=False, mock_max_memory=0, retval=True):
+                  mock=False, no_intermediate=False, prefetch=False, retval=True):
     pool_executor = futures.ThreadPoolExecutor(n_parallel or 1)
     prefetch_executor = futures.ThreadPoolExecutor(n_parallel or 1) if prefetch else None
     chunk_result = executor.chunk_result
@@ -308,6 +331,16 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
     succs.update(
         dict(((t.key, t.id), v) for t, v in graph.iter_successor_items())
     )
+
+    if not mock:
+        # fetch_keys only useful when calculating sizes
+        fetch_keys = set()
+    else:
+        fetch_keys = set(v.key for v in graph if isinstance(v.op, TensorFetchChunk))
+        for c in graph:
+            if graph.count_predecessors(c) != 0:
+                continue
+            fetch_keys.update(inp.key for inp in c.inputs or ())
 
     starts = list(_order_starts(graph)) if len(graph) > 0 else list()
     assert len(starts) == sum(1 for _ in graph.iter_indep())
@@ -340,7 +373,8 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
         if show_progress:
             c = next(count)
             if c % 30 == 0 or c >= len(graph):
-                print('[{0}] {1:.2f}% percent of graph has been submitted'.format(str(datetime.datetime.now()), float(c) * 100 / len(graph)))
+                print('[{0}] {1:.2f}% percent of graph has been submitted'.format(
+                    str(datetime.datetime.now()), float(c) * 100 / len(graph)))
 
         with lock:
             if len(q) == 0:
@@ -354,8 +388,8 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
                                       ref_counts=ref_counts, chunk_result=chunk_result,
                                       finishes=finishes, visited=visited, q=q,
                                       lock=lock, semaphore=semaphore, has_error=has_error,
-                                      preds=preds, succs=succs,
-                                      mock=mock)
+                                      preds=preds, succs=succs, fetch_keys=fetch_keys,
+                                      mock=mock, no_intermediate=no_intermediate)
         fs[chunk.key] = future
 
     while len(node_keys_set - set(finishes.keys())) > 0:
@@ -365,21 +399,19 @@ def execute_graph(graph, keys, executor, n_parallel=None, show_progress=False,
         submit_to_execute()
 
     [f.result() for f in fs.values()]
-
-    # update with the maximal memory cost during the whole execution
-    if mock:
-        mock_max_memory = max(mock_max_memory, chunk_result.get('_mock_max_memory', 0))
-        avg_max_mem = mock_max_memory // len(keys)
-        for key in keys:
-            r = chunk_result[key]
-            chunk_result[key] = (r[0], max(r[1], avg_max_mem))
-
     if retval:
         return [chunk_result[key] for key in keys]
 
 
 def default_size_estimator(ctx, chunk, multiplier=1):
     exec_size = 0
+    outputs = chunk.op.outputs
+
+    if all(not c.is_sparse() and not np.isnan(c.nbytes) for c in outputs):
+        for c in outputs:
+            ctx[c.key] = (c.nbytes, c.nbytes * multiplier)
+        return
+
     for inp in chunk.inputs or ():
         if chunk.is_sparse() or np.isnan(inp.nbytes):
             exec_size += ctx[inp.key][0]
@@ -389,7 +421,6 @@ def default_size_estimator(ctx, chunk, multiplier=1):
 
     total_out_size = 0
     chunk_sizes = dict()
-    outputs = chunk.op.outputs
     for out in outputs:
         try:
             chunk_size = out.nbytes if not out.is_sparse() else exec_size
@@ -426,7 +457,7 @@ def size_estimator_wrapper(ctx, chunk, original_estimator=None):
 
 def ignore(*_):
     pass
-Executor._op_runners[Fetch] = ignore
+Executor._op_runners[TensorFetchChunk] = ignore
 
 
 def register(op, handler, size_estimator=None, size_multiplier=1):
