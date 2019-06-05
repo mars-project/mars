@@ -283,7 +283,15 @@ class ExecutionActor(WorkerActor):
         size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
-        return dict(zip(graph_record.chunk_targets, res))
+        targets = graph_record.chunk_targets
+        target_sizes = dict(zip(targets, res))
+
+        total_mem = sum(target_sizes[key][1] for key in targets)
+        if total_mem:
+            for key in targets:
+                r = target_sizes[key]
+                target_sizes[key] = (r[0], max(r[1], r[1] * executor.mock_max_memory // total_mem))
+        return target_sizes
 
     @log_unhandled
     def prepare_quota_request(self, session_id, graph_key):
