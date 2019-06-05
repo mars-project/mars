@@ -34,9 +34,9 @@ def get_index_and_shape(tensor_shape, index):
     fancy_index = None
     fancy_index_shapes = []
     for ind in index:
-        if isinstance(ind, (TENSOR_TYPE + CHUNK_TYPE)) and ind.dtype == np.bool_:
+        if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE) and ind.dtype == np.bool_:
             # bool
-            shape.append(np.nan)
+            shape.append(np.nan if not isinstance(ind, np.ndarray) else ind.sum())
             for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[idx:ind.ndim + idx]):
                 if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
                     raise IndexError(
@@ -48,6 +48,10 @@ def get_index_and_shape(tensor_shape, index):
         elif isinstance(ind, np.ndarray):
             if fancy_index is None:
                 fancy_index = idx
+            if np.any(ind >= tensor_shape[idx]):
+                out_of_range_index = next(i for i in ind.flat if i >= tensor_shape[idx])
+                raise IndexError('IndexError: index {0} is out of bounds with size {1}'.format(
+                    out_of_range_index, tensor_shape[idx]))
             fancy_index_shapes.append(ind.shape)
             idx += 1
         elif isinstance(ind, slice):
@@ -82,24 +86,24 @@ def get_index_and_shape(tensor_shape, index):
 
 def preprocess_index(index):
     inds = []
+    has_bool_index = False
     fancy_indexes = []
     all_fancy_index_ndarray = True
     for j, ind in enumerate(index):
-        if isinstance(ind, (list, np.ndarray)):
-            ind = np.array(ind)
+        if isinstance(ind, (list, np.ndarray) + TENSOR_TYPE):
+            if not isinstance(ind, TENSOR_TYPE):
+                ind = np.array(ind)
             if ind.dtype.kind not in 'biu':
                 raise IndexError(_INDEX_ERROR_MSG)
             if ind.dtype.kind == 'b':
                 # bool indexing
                 ind = astensor(ind)
+                has_bool_index = True
             else:
                 # fancy indexing
                 fancy_indexes.append(j)
                 if not isinstance(ind, np.ndarray):
                     all_fancy_index_ndarray = False
-        elif isinstance(ind, TENSOR_TYPE):
-            if ind.dtype.kind not in 'biu':
-                raise IndexError(_INDEX_ERROR_MSG)
         elif not isinstance(ind, (slice, Integral)) and ind is not None \
                 and ind is not Ellipsis:
             raise IndexError(_INDEX_ERROR_MSG)
@@ -109,6 +113,9 @@ def preprocess_index(index):
         # if not all fancy indexes are ndarray, we will convert all of them to Tensor
         for fancy_index in fancy_indexes:
             inds[fancy_index] = astensor(inds[fancy_index])
+
+    if fancy_indexes and has_bool_index:
+        raise NotImplementedError('We do not support index that contains both bool and fancy index yet')
 
     return tuple(inds)
 

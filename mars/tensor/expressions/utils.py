@@ -300,7 +300,7 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
         index = np.add(index, cum_nsplit[-1], out=index, where=index < 0)
         sorted_idx = np.argsort(index)
 
-        if np.any(index > cum_nsplit[-1]):
+        if np.any(index >= cum_nsplit[-1]):
             idx = index[index >= cum_nsplit[-1]][0]
             err = IndexError('index {0} is out of bounds with size {1}'.format(
                 idx, cum_nsplit[-1]))
@@ -309,7 +309,7 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
             raise err
 
         chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side='right')
-        chunk_idxes[i] = chunk_idx[sorted_idx]
+        chunk_idxes[i, sorted_idx] = chunk_idx
 
     chunk_idxes_asc = False
     if ret_is_asc:
@@ -325,9 +325,14 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
             filtered[i] = filtered[i] - (cum_nsplits[i][idx[i]-1] if idx[i] > 0 else 0)
         chunk_index_to_indexes[idx] = filtered
         chunk_index_to_poses[idx] = poses[cond]
+
+    select_pos = np.empty(len(indexes[0]), dtype=int)
+    pos = np.concatenate(list(chunk_index_to_poses.values()))
+    select_pos[pos] = np.arange(select_pos.shape[0])
+
     if ret_is_asc:
-        return chunk_index_to_indexes, chunk_index_to_poses, chunk_idxes_asc
-    return chunk_index_to_indexes, chunk_index_to_poses
+        return chunk_index_to_indexes, select_pos, chunk_idxes_asc
+    return chunk_index_to_indexes, select_pos
 
 
 def decide_unify_split(*splits):

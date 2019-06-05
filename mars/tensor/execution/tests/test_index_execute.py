@@ -62,7 +62,7 @@ class Test(unittest.TestCase):
         arr2 = arr[index]
 
         res = self.executor.execute_tensor(arr2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw[index]))
+        np.testing.assert_array_equal(res[0], raw[index])
 
         index = np.random.permutation(8)
         arr3 = arr[:2, ..., index]
@@ -75,6 +75,22 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr4, concat=True)
         self.assertTrue(np.array_equal(res[0], raw[..., index, :5]))
+
+        index1 = [8, 10, 3, 1, 9, 10]
+        index2 = [1, 3, 9, 10, 2, 7]
+        arr5 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr5, concat=True)
+        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+
+        index1 = [1, 3, 5, 7, 9, 10]
+        index2 = [1, 9, 9, 10, 2, 7]
+        arr6 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr6, concat=True)
+        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+        # fancy index is ordered, no concat required
+        self.assertGreater(len(arr6.nsplits[0]), 1)
 
     def testSliceExecution(self):
         raw = np.random.random((11, 8, 12, 14))

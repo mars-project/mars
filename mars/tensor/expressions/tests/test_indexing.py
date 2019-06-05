@@ -83,6 +83,9 @@ class Test(unittest.TestCase):
         self.assertEqual(e, 'shape mismatch: indexing arrays could not be broadcast '
                             'together with shapes (2,) (3,)')
 
+        with self.assertRaises(IndexError):
+            t[[100,]]
+
         t = ones((100, 200, 300), chunk_size=10)
         t4 = t[:10, -10:, [13, 244, 151, 242, 34]].tiles()
         self.assertEqual(t4.shape, (10, 10, 5))

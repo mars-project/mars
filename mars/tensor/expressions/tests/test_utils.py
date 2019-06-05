@@ -211,31 +211,21 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(splits[5], np.array([0, 0])))
 
     def testSplitIndexesIntoChunks(self):
-        splits, poses, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],
-                                                       [[4, 1, 8, 13], [5, 31, 21, 18]])
+        splits, pos, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],
+                                                     [[4, 1, 8, 13], [5, 31, 21, 18]])
         splits = list(splits.values())
-        poses = list(poses.values())
         self.assertEqual(len(splits), 9)
-        self.assertEqual(len(poses), 9)
-        self.assertFalse(asc)
         np.testing.assert_array_equal(splits[0], np.array([[], []]))
-        np.testing.assert_array_equal(poses[0], np.array([]))
         np.testing.assert_array_equal(splits[1], np.array([[], []]))
-        np.testing.assert_array_equal(poses[1], np.array([]))
         np.testing.assert_array_equal(splits[2], np.array([[1], [1]]))  # (1, 31)
-        np.testing.assert_array_equal(poses[2], np.array([1]))
         np.testing.assert_array_equal(splits[3], np.array([[1], [5]]))  # (4, 5)
-        np.testing.assert_array_equal(poses[3], np.array([0]))
         np.testing.assert_array_equal(splits[4], np.array([[], []]))
-        np.testing.assert_array_equal(poses[4], np.array([]))
         np.testing.assert_array_equal(splits[5], np.array([[], []]))
-        np.testing.assert_array_equal(poses[5], np.array([]))
         np.testing.assert_array_equal(splits[6], np.array([[], []]))
-        np.testing.assert_array_equal(poses[6], np.array([]))
         np.testing.assert_array_equal(splits[7], np.array([[0, 5], [11, 8]]))  # (8, 21), (13, 18)
-        np.testing.assert_array_equal(poses[7], np.array([2, 3]))
         np.testing.assert_array_equal(splits[8], np.array([[], []]))
-        np.testing.assert_array_equal(poses[8], np.array([]))
+        self.assertFalse(asc)
+        np.testing.assert_array_equal(pos, np.array([1, 0, 2, 3]))
 
         with self.assertRaises(IndexError):
             split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]], [[5], [100]])
