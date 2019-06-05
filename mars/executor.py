@@ -175,7 +175,7 @@ class GraphExecution(object):
     """
     def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
                  n_parallel=None, prefetch=False, print_progress=False,
-                 mock=False, mock_max_memory=0, fetch_keys=None, update_local=False):
+                 mock=False, mock_max_memory=0, fetch_keys=None, no_intermediate=False):
         self._chunk_results = chunk_results
         self._graph = graph
         self._keys = keys
@@ -185,7 +185,7 @@ class GraphExecution(object):
         self._print_progress = print_progress
         self._mock = mock
         self._mock_max_memory = mock_max_memory
-        self._update_local = update_local
+        self._no_intermediate = no_intermediate
         self._fetch_keys = fetch_keys or set()
 
         # pool executor for the operand execution
@@ -269,7 +269,7 @@ class GraphExecution(object):
 
                 cur_memory = sum(results[op_output.key][1] for op_output in first_op.outputs
                                  if results.get(op_output.key) is not None)
-                if not self._update_local:
+                if not self._no_intermediate:
                     cur_memory += sum(tp[0] for key, tp in results.items()
                                       if key not in self._fetch_keys and key not in output_keys
                                       and isinstance(tp, tuple))
@@ -458,14 +458,29 @@ class Executor(object):
             return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False, update_local=False, compose=True, retval=True):
+                      mock=False, no_intermediate=False, compose=True, retval=True):
+        """
+        :param graph: graph to execute
+        :param keys: result keys
+        :param n_parallel: num of max parallelism
+        :param print_progress:
+        :param compose: if True. fuse nodes when possible
+        :param mock: if True, only estimate data sizes without execution
+        :param no_intermediate: exclude intermediate data sizes when estimating memory size
+        :param retval: if True, keys specified in argument keys is returned
+        :return: execution result
+        """
         optimized_graph = self._preprocess(graph, keys) if compose else graph
 
-        fetch_keys = set(v.key for v in graph if isinstance(v.op, Fetch))
-        for c in graph:
-            if graph.count_predecessors(c) != 0:
-                continue
-            fetch_keys.update(inp.key for inp in c.inputs or ())
+        if not mock:
+            # fetch_keys only useful when calculating sizes
+            fetch_keys = set()
+        else:
+            fetch_keys = set(v.key for v in graph if isinstance(v.op, Fetch))
+            for c in graph:
+                if graph.count_predecessors(c) != 0:
+                    continue
+                fetch_keys.update(inp.key for inp in c.inputs or ())
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
         graph_execution = GraphExecution(self._chunk_result, optimized_graph,
@@ -473,7 +488,7 @@ class Executor(object):
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
                                          mock_max_memory=self._mock_max_memory,
-                                         fetch_keys=fetch_keys, update_local=update_local)
+                                         fetch_keys=fetch_keys, no_intermediate=no_intermediate)
         res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
