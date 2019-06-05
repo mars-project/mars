@@ -24,12 +24,12 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....serialize import KeyField, ListField, Int32Field
 from ....core import Base, Entity
-from ....compat import reduce, irange, izip, OrderedDict
+from ....compat import irange, OrderedDict
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
-    broadcast_shape, recursive_tile, calc_sliced_size
+    broadcast_shape, calc_sliced_size
 from ..core import TensorHasInput, TensorOperandMixin, \
-    TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
+    TensorShuffleMap, TensorShuffleReduce
 from .core import process_index, get_index_and_shape
 
 
@@ -197,6 +197,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
             fancy_indexes = cls._process_all_fancy_indexes(list(fancy_index_in_axis_to_raw.values()))
             distributed_fancy_index, select_pos, fancy_indexes_asc_sorted = \
                 cls._fancy_index_distribute(in_tensor, fancy_indexes, list(fancy_index_in_axis_to_raw))
+            if select_pos.shape != fancy_indexes[0].shape:
+                select_pos = select_pos.reshape(fancy_indexes[0].shape)
             in_axis_to_processed_index[fancy_index_start_axis] = distributed_fancy_index
 
         out_chunks = []

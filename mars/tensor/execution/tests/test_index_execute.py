@@ -92,6 +92,20 @@ class Test(unittest.TestCase):
         # fancy index is ordered, no concat required
         self.assertGreater(len(arr6.nsplits[0]), 1)
 
+        index1 = [[8, 10, 3], [1, 9, 10]]
+        index2 = [[1, 3, 9], [10, 2, 7]]
+        arr7 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr7, concat=True)
+        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+
+        index1 = [[1, 3], [5, 7], [9, 10]]
+        index2 = [1, 9]
+        arr8 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr8, concat=True)
+        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+
     def testSliceExecution(self):
         raw = np.random.random((11, 8, 12, 14))
         arr = tensor(raw, chunk_size=3)
