@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ..utils import infer_dtype, broadcast_shape
+from ..utils import infer_dtype
 from ..core import TensorOperand
 from .core import TensorBinOp, TensorConstant, TensorElementWise
 from .utils import arithmetic_operand

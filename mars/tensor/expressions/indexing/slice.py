@@ -14,12 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from .... import opcodes as OperandDef
 from ....serialize import KeyField, ListField
 from ..core import TensorHasInput, TensorOperandMixin
-from ..utils import calc_sliced_size
 
 
 class TensorSlice(TensorHasInput, TensorOperandMixin):

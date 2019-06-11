@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import itertools
-import contextlib
 
 import numpy as np
 
@@ -61,17 +60,17 @@ class TensorElementWise(TensorOperandMixin):
 
 
 class TensorElementWiseWithInputs(TensorElementWise):
-    def _handle_params(self, inputs):
+    def _set_sparse(self, inputs):
         raise NotImplementedError
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        with self._handle_params(inputs) as inputs:
-            return super(TensorElementWiseWithInputs, self)._new_tileables(
+        self._set_sparse(inputs)
+        return super(TensorElementWiseWithInputs, self)._new_tileables(
                 inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        with self._handle_params(inputs) as inputs:
-            return super(TensorElementWiseWithInputs, self)._new_chunks(
+        self._set_sparse(inputs)
+        return super(TensorElementWiseWithInputs, self)._new_chunks(
                 inputs, kws=kws, **kw)
 
 
@@ -86,6 +85,9 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     @classmethod
     def _is_sparse(cls, x1, x2):
         return False
+
+    def _set_sparse(self, inputs):
+        setattr(self, '_sparse', self._is_sparse(inputs[0], inputs[1]))
 
     @staticmethod
     def _process_inputs(x1, x2, out, where):
@@ -109,49 +111,6 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
         constant_op = constant_op_cls(getattr(self, '_casting'), getattr(self, '_err'),
                                       getattr(self, '_dtype'), getattr(self, '_sparse'))
         return constant_op(x1, x2)
-
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = inputs[:2]  # lhs, rhs
-        inputs_iter = iter(inputs[2:])
-
-        setattr(self, '_sparse', self._is_sparse(inps[0], inps[1]))
-
-        if getattr(self, '_lhs', None) is None:
-            # create binop from beginning
-            has_out = False
-            out = next(inputs_iter)
-            if out is not None:
-                has_out = True
-                inps.append(out)
-
-            has_where = False
-            where = next(inputs_iter)
-            if where is not None:
-                has_where = True
-                inps.append(where)
-        else:
-            # create from exist binop
-            has_out = getattr(self, '_out', None) is not None
-            if has_out:
-                out = next(inputs_iter)
-                inps.append(out)
-
-            has_where = getattr(self, '_where', None) is not None
-            if has_where:
-                where = next(inputs_iter)
-                inps.append(where)
-
-        yield inps
-
-        inputs = getattr(self, '_inputs')
-        inputs_iter = iter(inputs)
-        setattr(self, '_lhs', next(inputs_iter))
-        setattr(self, '_rhs', next(inputs_iter))
-        if has_out:
-            setattr(self, '_out', next(inputs_iter))
-        if has_where:
-            setattr(self, '_where', next(inputs_iter))
 
     def _call(self, x1, x2, out=None, where=None):
         # if x1 or x2 is scalar, and out is none, to constant
@@ -217,6 +176,27 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     def err(self):
         return getattr(self, '_err', dict())
 
+    def _set_inputs(self, inputs):
+        super(TensorBinOp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        if getattr(self, '_lhs', None) is None:
+            # create binop from beginning
+            self._lhs = next(inputs_iter)
+            self._rhs = next(inputs_iter)
+            if inputs[2] is not None:
+                self._out = next(inputs_iter)
+            if inputs[3] is not None:
+                self._where = next(inputs_iter)
+        else:
+            # create from a exist op
+            self._lhs = next(inputs_iter)
+            self._rhs = next(inputs_iter)
+            if getattr(self, '_out', None) is not None:
+                self._out = next(inputs_iter)
+            if getattr(self, '_where', None) is not None:
+                self._where = next(inputs_iter)
+
 
 class TensorConstantMixin(TensorElementWiseWithInputs):
     __slots__ = ()
@@ -225,43 +205,14 @@ class TensorConstantMixin(TensorElementWiseWithInputs):
     def _is_sparse(cls, x1, x2):
         return False
 
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = []
-
-        if getattr(self, '_lhs', None) is None:
-            # create a constant op from beginning
-            assert len(inputs) == 2
-            lhs_scalar = np.isscalar(inputs[0])
-            rhs_scalar = np.isscalar(inputs[1])
-            if not lhs_scalar:
-                inps.append(inputs[0])
-            else:
-                setattr(self, '_lhs', inputs[0])
-            if not rhs_scalar:
-                inps.append(inputs[1])
-            else:
-                setattr(self, '_rhs', inputs[1])
-            assert len(inps) <= 1  # all inputs are constant, or only 1 is constant
-        else:
-            # create from a exist constant op
-            lhs_scalar = np.isscalar(getattr(self, '_lhs'))
-            rhs_scalar = np.isscalar(getattr(self, '_rhs'))
-            inps.extend(inp for inp in inputs if not np.isscalar(inp))
-
+    def _set_sparse(self, inputs):
         if len(inputs) == 2:
             setattr(self, '_sparse', self._is_sparse(*inputs))
-        else:
-            setattr(self, '_sparse', self._is_sparse(getattr(self, '_lhs'), getattr(self, '_rhs')))
-
-        yield inps
-
-        inputs = getattr(self, '_inputs')
-        inputs_iter = iter(inputs)
-        if not lhs_scalar:
-            setattr(self, '_lhs', next(inputs_iter))
-        if not rhs_scalar:
-            setattr(self, '_rhs', next(inputs_iter))
+        elif len(inputs) == 1:
+            if np.isscalar(getattr(self, '_lhs')):
+                setattr(self, '_sparse', self._is_sparse(getattr(self, '_lhs'), inputs[0]))
+            if np.isscalar(getattr(self, '_rhs')):
+                setattr(self, '_sparse', self._is_sparse(inputs[0], getattr(self, '_rhs')))
 
     def _call(self, x1, x2):
         x1_scalar = np.isscalar(x1)
@@ -318,6 +269,21 @@ class TensorConstant(TensorOperand, TensorConstantMixin):
     def err(self):
         return getattr(self, '_err', dict())
 
+    def _set_inputs(self, inputs):
+        super(TensorConstant, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        if getattr(self, '_lhs', None) is None:
+            # create a constant op from beginning
+            self._lhs = inputs[0] if np.isscalar(inputs[0]) else next(inputs_iter)
+            self._rhs = inputs[1] if np.isscalar(inputs[1]) else next(inputs_iter)
+        else:
+            # create from a exist constant op
+            if np.isscalar(self._lhs):
+                self._rhs = next(inputs_iter)
+            else:
+                self._lhs = next(inputs_iter)
+
 
 class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
@@ -339,47 +305,8 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     def _is_sparse(cls, x):
         return False
 
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = inputs[:1]
-        inputs_iter = iter(inputs[1:])
-
+    def _set_sparse(self, inputs):
         setattr(self, '_sparse', self._is_sparse(inputs[0]))
-
-        if getattr(self, '_input', None) is None:
-            # create unaryop from beginning
-            has_out = False
-            out = next(inputs_iter)
-            if out is not None:
-                has_out = True
-                inps.append(out)
-
-            has_where = False
-            where = next(inputs_iter)
-            if where is not None:
-                has_where = True
-                inps.append(where)
-        else:
-            # create from exist unaryop
-            has_out = getattr(self, '_out', None) is not None
-            if has_out:
-                out = next(inputs_iter)
-                inps.append(out)
-
-            has_where = getattr(self, '_where', None) is not None
-            if has_where:
-                where = next(inputs_iter)
-                inps.append(where)
-
-        yield inps
-
-        inputs = getattr(self, '_inputs')
-        inputs_iter = iter(inputs)
-        setattr(self, '_input', next(inputs_iter))
-        if has_out:
-            setattr(self, '_out', next(inputs_iter))
-        if has_where:
-            setattr(self, '_where', next(inputs_iter))
 
     def _call(self, x, out=None, where=None):
         x, out, where = self._process_inputs(x, out, where)
@@ -432,6 +359,23 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     def err(self):
         return getattr(self, '_err', dict())
 
+    def _set_inputs(self, inputs):
+        super(TensorUnaryOp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        if getattr(self, '_input', None) is None:
+            self._input = next(inputs_iter)
+            if inputs[1] is not None:
+                self._out = next(inputs_iter)
+            if inputs[2] is not None:
+                self._where = next(inputs_iter)
+        else:
+            self._input = next(inputs_iter)
+            if getattr(self, '_out', None) is not None:
+                self._out = next(inputs_iter)
+            if getattr(self, '_where', None) is not None:
+                self._where = next(inputs_iter)
+
 
 class TensorCompare(TensorBinOp):
     @classmethod
@@ -473,60 +417,8 @@ class TensorOutBinOpMixin(TensorElementWiseWithInputs):
     def _is_sparse(cls, x):
         return False
 
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = inputs[:1]
-        inputs_iter = iter(inputs[1:])
-
+    def _set_sparse(self, inputs):
         setattr(self, '_sparse', self._is_sparse(inputs[0]))
-
-        if getattr(self, '_input', None) is None:
-            # create op from biginning,
-            has_out1 = False
-            out1 = next(inputs_iter)
-            if out1 is not None:
-                has_out1 = True
-                inps.append(out1)
-
-            has_out2 = False
-            out2 = next(inputs_iter)
-            if out2 is not None:
-                has_out2 = True
-                inps.append(out2)
-
-            has_where = False
-            where = next(inputs_iter)
-            if where is not None:
-                has_where = True
-                inps.append(where)
-        else:
-            # create from exist op
-            has_out1 = getattr(self, '_out1', None) is not None
-            if has_out1:
-                out1 = next(inputs_iter)
-                inps.append(out1)
-
-            has_out2 = getattr(self, '_out2', None) is not None
-            if has_out2:
-                out2 = next(inputs_iter)
-                inps.append(out2)
-
-            has_where = getattr(self, '_where', None) is not None
-            if has_where:
-                where = next(inputs_iter)
-                inps.append(where)
-
-        yield inps
-
-        inputs = getattr(self, '_inputs')
-        inputs_iter = iter(inputs)
-        setattr(self, '_input', next(inputs_iter))
-        if has_out1:
-            setattr(self, '_out1', next(inputs_iter))
-        if has_out2:
-            setattr(self, '_out2', next(inputs_iter))
-        if has_where:
-            setattr(self, '_where', next(inputs_iter))
 
     @property
     def _fun(self):
@@ -573,3 +465,56 @@ class TensorOutBinOpMixin(TensorElementWiseWithInputs):
 
     def __call__(self, x, out1=None, out2=None, out=None, where=None):
         return self._call(x, out1=out1, out2=out2, out=out, where=where)
+
+
+class TensorOutBinOp(TensorOperand):
+    _input = KeyField('input')
+    _out1 = KeyField('out1')
+    _out2 = KeyField('out2')
+    _where = KeyField('where')
+    _casting = StringField('casting')
+
+    @property
+    def output_limit(self):
+        return 2
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def out1(self):
+        return getattr(self, '_out1', None)
+
+    @property
+    def out2(self):
+        return getattr(self, '_out2', None)
+
+    @property
+    def where(self):
+        return getattr(self, '_where', None)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
+
+    def _set_inputs(self, inputs):
+        super(TensorOutBinOp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        if getattr(self, '_input', None) is None:
+            self._input = next(inputs_iter)
+            if inputs[1] is not None:
+                self._out1 = next(inputs_iter)
+            if inputs[2] is not None:
+                self._out2 = next(inputs_iter)
+            if inputs[3] is not None:
+                self._where = next(inputs_iter)
+        else:
+            self._input = next(inputs_iter)
+            if getattr(self, '_out1', None) is not None:
+                self._out1 = next(inputs_iter)
+            if getattr(self, '_out2', None) is not None:
+                self._out2 = next(inputs_iter)
+            if getattr(self, '_where', None) is not None:
+                self._where = next(inputs_iter)

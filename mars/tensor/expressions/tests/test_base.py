@@ -210,8 +210,6 @@ class Test(unittest.TestCase):
 
         self.assertEqual(indices.nsplits[1], (1, 1))
 
-        chunk = indices.chunks[0]
-
     def testArraySplit(self):
         a = arange(8, chunk_size=2)
 

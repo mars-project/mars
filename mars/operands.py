@@ -18,7 +18,7 @@ import weakref
 from .compat import six
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
-from .core import Entity, AttributeAsDictKey
+from .core import Entity, Base, AttributeAsDictKey
 from .utils import AttributeDict, to_str
 from . import opcodes as OperandDef
 
@@ -151,7 +151,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
 
     @classmethod
     def _get_inputs_data(cls, inputs):
-        return [cls._get_entity_data(inp) for inp in inputs]
+        return [cls._get_entity_data(inp) for inp in inputs if isinstance(inp, (Base, Entity))]
 
     def _set_inputs(self, inputs):
         if inputs is not None:

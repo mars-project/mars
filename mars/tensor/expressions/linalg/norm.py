@@ -24,7 +24,6 @@ from ....serialize import ValueType, KeyField, AnyField, TupleField, BoolField
 from ..utils import recursive_tile
 from ..core import TensorHasInput, TensorOperandMixin
 from ..arithmetic import sqrt
-from ..datasource import empty
 from ..datasource import tensor as astensor
 from .svd import svd
 

@@ -109,7 +109,7 @@ class Test(unittest.TestCase):
         compose stopped at S, because numexpr don't support Slice op
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
-        chunk_slice = TensorSlice().new_chunk([None], None)
+        chunk_slice = TensorSlice().new_chunk([chunks[0]], None)
         graph = DirectedGraph()
         lmap(graph.add_node, chunks[:6])
         graph.add_node(chunk_slice)
