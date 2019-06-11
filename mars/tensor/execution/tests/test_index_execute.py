@@ -54,7 +54,8 @@ class Test(unittest.TestCase):
 
         self.assertEqual(sum(it.size for it in res), raw[raw[:, :, 0, 0] < .5].size)
 
-    def testFancyIndexingExecution(self):
+    def testFancyIndexingNumpyExecution(self):
+        # test fancy index of type numpy ndarray
         raw = np.random.random((11, 8, 12, 14))
         arr = tensor(raw, chunk_size=(2, 3, 2, 3))
 
@@ -105,6 +106,77 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr8, concat=True)
         np.testing.assert_array_equal(res[0], raw[0, index1, :, index2])
+
+    def testFancyIndexingTensorExecution(self):
+        # test fancy index of type tensor
+
+        raw = np.random.random((11, 8, 12, 14))
+        arr = tensor(raw, chunk_size=(2, 3, 2, 3))
+
+        raw_index = [8, 10, 3, 1, 9, 10]
+        index = tensor(raw_index, chunk_size=4)
+        arr2 = arr[index]
+
+        res = self.executor.execute_tensor(arr2, concat=True)
+        np.testing.assert_array_equal(res[0], raw[raw_index])
+
+        raw_index = np.random.permutation(8)
+        index = tensor(raw_index, chunk_size=3)
+        arr3 = arr[:2, ..., index]
+
+        res = self.executor.execute_tensor(arr3, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw[:2, ..., raw_index]))
+
+        raw_index = [1, 3, 9, 10]
+        index = tensor(raw_index)
+        arr4 = arr[..., index, :5]
+
+        res = self.executor.execute_tensor(arr4, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw[..., raw_index, :5]))
+
+        raw_index1 = [8, 10, 3, 1, 9, 10]
+        raw_index2 = [1, 3, 9, 10, 2, 7]
+        index1 = tensor(raw_index1, chunk_size=4)
+        index2 = tensor(raw_index2, chunk_size=3)
+        arr5 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr5, concat=True)
+        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+
+        raw_index1 = [1, 3, 5, 7, 9, 10]
+        raw_index2 = [1, 9, 9, 10, 2, 7]
+        index1 = tensor(raw_index1, chunk_size=3)
+        index2 = tensor(raw_index2, chunk_size=4)
+        arr6 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr6, concat=True)
+        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+
+        raw_index1 = [[8, 10, 3], [1, 9, 10]]
+        raw_index2 = [[1, 3, 9], [10, 2, 7]]
+        index1 = tensor(raw_index1)
+        index2 = tensor(raw_index2, chunk_size=2)
+        arr7 = arr[index1, :, index2]
+
+        res = self.executor.execute_tensor(arr7, concat=True)
+        np.testing.assert_array_equal(res[0], raw[raw_index1, :, raw_index2])
+
+        raw_index1 = [[1, 3], [3, 7], [7, 7]]
+        raw_index2 = [1, 9]
+        index1 = tensor(raw_index1, chunk_size=(2, 1))
+        index2 = tensor(raw_index2)
+        arr8 = arr[0, index1, :, index2]
+
+        res = self.executor.execute_tensor(arr8, concat=True)
+        np.testing.assert_array_equal(res[0], raw[0, raw_index1, :, raw_index2])
+
+        raw_a = np.random.rand(30, 30)
+        a = tensor(raw_a, chunk_size=(13, 17))
+        b = a.argmax(axis=0)
+        c = a[b, arange(30)]
+        res = self.executor.execute_tensor(c, concat=True)
+
+        self.assertTrue(np.array_equal(res[0], raw_a[raw_a.argmax(axis=0), np.arange(30)]))
 
     def testSliceExecution(self):
         raw = np.random.random((11, 8, 12, 14))

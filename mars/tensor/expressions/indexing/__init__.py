@@ -22,7 +22,8 @@ from .unravel_index import unravel_index, TensorUnravelIndex
 from .nonzero import nonzero, TensorNonzero
 from .flatnonzero import flatnonzero
 from .slice import TensorSlice
-from .getitem import TensorIndex
+from .getitem import TensorIndex, FancyIndexingDistributeMap, FancyIndexingDistributeReduce, \
+    FancyIndexingConcatMap, FancyIndexingConcatReduce
 from .setitem import TensorIndexSetValue
 
 

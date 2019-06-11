@@ -331,9 +331,10 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
     return chunk_index_to_indexes, chunk_index_to_poses
 
 
-def calc_pos(fancy_index_shape, chunk_index_to_poses):
+def calc_pos(fancy_index_shape, pos):
+    if isinstance(pos, dict):
+        pos = np.concatenate(list(pos.values()))
     select_pos = np.empty(fancy_index_shape, dtype=int)
-    pos = np.concatenate(list(chunk_index_to_poses.values()))
     select_pos.flat[pos] = np.arange(select_pos.size)
     return select_pos
 

@@ -16,7 +16,7 @@
 
 from collections import deque
 
-from .operands import Fuse
+from .operands import Fuse, VirtualOperand
 
 
 class InvalidComposedNodeError(Exception):
@@ -74,10 +74,14 @@ class Fusion(object):
                 continue
             if len(v.op.outputs) != 1:
                 continue
+            if isinstance(v.op, VirtualOperand):
+                # cannot fuse virtual operand
+                continue
             selected = [v]
             # add successors
             cur_node = self._graph.successors(v)[0]
-            while self._graph.count_predecessors(cur_node) == 1:
+            while self._graph.count_predecessors(cur_node) == 1 and \
+                    not isinstance(cur_node.op, VirtualOperand):
                 selected.append(cur_node)
                 if self._graph.count_successors(cur_node) != 1:
                     break

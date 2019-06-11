@@ -22,14 +22,13 @@ import contextlib
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, KeyField, ListField, TupleField
+from ....serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ....core import Base, Entity
 from ....compat import irange, OrderedDict
-from ....tiles import NotSupportTile
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile
-from ..core import TensorOperand, TensorHasInput, TensorOperandMixin, \
+from ..core import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
 from .core import process_index, get_index_and_shape
 
@@ -102,28 +101,38 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
         # stack fancy indexes into one
         concat_fancy_index = recursive_tile(stack(fancy_indexes))
+        concat_fancy_index = concat_fancy_index.rechunk({0: len(fancy_indexes)}).single_tiles()
 
         # generate shuffle map
         shuffle_map_chunks = []
         for chunk in concat_fancy_index.chunks:
             shuffle_map_op = FancyIndexingDistributeMap(
                 dest_nsplits=input_tensor.nsplits, axes=axes, dtype=chunk.dtype)
-            shuffle_map_chunk = shuffle_map_op.new_chunks([chunk], shape=(np.nan,), index=chunk.index)
+            shuffle_map_chunk = shuffle_map_op.new_chunk([chunk], shape=(np.nan,), index=chunk.index)
             shuffle_map_chunks.append(shuffle_map_chunk)
         # do shuffle here
         proxy_chunk = TensorShuffleProxy(dtype=fancy_indexes[0].dtype, tensor_keys=[fancy_indexes[0].key]) \
             .new_chunk(shuffle_map_chunks, shape=())
         idx_to_fancy_indexes_chunks = OrderedDict()
-        idx_to_poses_chunks = OrderedDict()
+        idx_to_pos_chunks = OrderedDict()
         for idxes in itertools.product(*(range(input_tensor.chunk_shape[axis]) for axis in axes)):
             shuffle_key = ','.join(str(idx) for idx in idxes)
             shuffle_reduce_op = FancyIndexingDistributeReduce(
                 axes=axes, dtype=proxy_chunk.dtype, _shuffle_key=shuffle_key)
-            shuffle_reduce_chunks = shuffle_reduce_op.new_chunks([proxy_chunk], shape=(np.nan,), index=idxes)
-            idx_to_fancy_indexes_chunks[idxes] = shuffle_reduce_chunks[::2]
-            idx_to_poses_chunks[idxes] = shuffle_reduce_chunks[1::2]
+            kws = []
+            for ax in axes:
+                kw = {
+                    'axis': ax,
+                    'shape': (np.nan,),
+                    'index': idxes
+                }
+                kws.append(kw)
+            kws.append({'pos': True, 'shape': (np.nan,), 'index': idxes})
+            shuffle_reduce_chunks = shuffle_reduce_op.new_chunks([proxy_chunk], kws=kws)
+            idx_to_fancy_indexes_chunks[idxes] = shuffle_reduce_chunks[:-1]
+            idx_to_pos_chunks[idxes] = shuffle_reduce_chunks[-1]
 
-        return idx_to_fancy_indexes_chunks, idx_to_poses_chunks, False
+        return idx_to_fancy_indexes_chunks, idx_to_pos_chunks, False
 
     @classmethod
     def _process_all_fancy_indexes(cls, fancy_indexes):
@@ -315,12 +324,12 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 for c in out_chunks:
                     pos_idx = np.unravel_index(c.index[concat_axis],
                                                tuple(in_tensor.chunk_shape[ax]
-                                                     for ax in fancy_index_out_in_axes))
-                    pos_chunks = poses[pos_idx]
-                    concat_map_op = FancyIndexingConcatMap(axes=tuple(fancy_index_out_in_axes),
+                                                     for ax in fancy_index_in_axis_to_raw))
+                    pos_chunk = poses[pos_idx]
+                    concat_map_op = FancyIndexingConcatMap(fancy_index_axis=fancy_index_start_out_axis,
                                                            sparse=c.issparse(), dtype=c.dtype)
                     concat_map_chunk_shape = c.shape[:concat_axis] + (np.nan,) + c.shape[concat_axis + 1:]
-                    concat_map_chunk = concat_map_op.new_chunk([c] + pos_chunks, shape=concat_map_chunk_shape,
+                    concat_map_chunk = concat_map_op.new_chunk([c, pos_chunk], shape=concat_map_chunk_shape,
                                                                index=c.index)
                     concat_idx_to_map_chunks[concat_map_chunk.index] = concat_map_chunk
                 out_chunks = []
@@ -333,27 +342,20 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                     proxy_op = TensorShuffleProxy(dtype=to_shuffle_chunks[0].dtype,
                                                   no_shuffle_idx=idx)
                     proxy_chunk = proxy_op.new_chunk(to_shuffle_chunks, shape=())
-                    concat_map_chunk = next(iter(concat_idx_to_map_chunks.values()))
-                    reduce_chunk_shape = tuple(s for i, s in enumerate(concat_map_chunk.shape)
-                                               if i not in fancy_index_in_axis_to_raw)
-                    reduce_chunk_idx = tuple(idx for i, idx in enumerate(concat_map_chunk.index)
-                                             if i not in fancy_index_in_axis_to_raw)
+                    acc = itertools.count(0)
                     for reduce_idx in itertools.product(*(range(s) for s in fancy_indexes[0].chunk_shape)):
-                        concat_reduce_op = FancyIndexingConcatReduce(axes=tuple(fancy_index_out_in_axes),
+                        fancy_index_chunk = fancy_indexes[0].cix[reduce_idx]
+                        concat_reduce_op = FancyIndexingConcatReduce(fancy_index_axis=fancy_index_start_out_axis,
+                                                                     fancy_index_shape=fancy_index_chunk.shape,
                                                                      dtype=proxy_chunk.dtype,
-                                                                     sparse=to_shuffle_chunks[0].issparse())
-                        reduce_chunk_shape = reduce_chunk_shape[:concat_axis] + \
-                            fancy_indexes[0].cix[reduce_idx].shape + reduce_chunk_shape[concat_axis:]
-                        reduce_chunk_idx = reduce_chunk_idx[:concat_axis] + \
-                            fancy_indexes[0].cix[reduce_idx].index + reduce_chunk_idx[concat_axis:]
+                                                                     sparse=to_shuffle_chunks[0].issparse(),
+                                                                     _shuffle_key=str(next(acc)))
+                        reduce_chunk_shape = no_shuffle_chunk_shape[:concat_axis] + \
+                            fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
+                        reduce_chunk_idx = idx[:concat_axis] + fancy_index_chunk.index + idx[concat_axis:]
                         concat_reduce_chunk = concat_reduce_op.new_chunk([proxy_chunk], shape=reduce_chunk_shape,
                                                                          index=reduce_chunk_idx)
-                        reorder_op = FancyIndexingConcatReorder(dtype=concat_reduce_chunk.dtype,
-                                                                sparse=concat_reduce_chunk.issparse())
-                        reorder_chunk = reorder_op.new_chunk([concat_reduce_chunk],
-                                                             shape=concat_reduce_chunk.shape,
-                                                             index=concat_reduce_chunk.index)
-                        out_chunks.append(reorder_chunk)
+                        out_chunks.append(concat_reduce_chunk)
                 nsplits = nsplits[:concat_axis] + list(fancy_indexes[0].nsplits) + nsplits[concat_axis + 1:]
 
         new_op = op.copy()
@@ -397,8 +399,8 @@ class FancyIndexingDistributeReduce(TensorShuffleReduce, TensorOperandMixin):
 
     @property
     def output_limit(self):
-        # for each axis, return the fancy indexes on the axis and the original positions
-        return 2 * len(self._axes)
+        # return fancy indexes on each axis as well as original position
+        return len(self._axes) + 1
 
     @property
     def axes(self):
@@ -412,46 +414,39 @@ class FancyIndexingDistributeReduce(TensorShuffleReduce, TensorOperandMixin):
 class FancyIndexingConcatMap(TensorShuffleMap, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_CONCAT_MAP
 
-    _axes = TupleField('axes', ValueType.int32)
+    _fancy_index_axis = Int32Field('fancy_index_axis')
 
-    def __init__(self, axes=None, dtype=None, sparse=None, **kw):
+    def __init__(self, fancy_index_axis=None, dtype=None, sparse=None, **kw):
         super(FancyIndexingConcatMap, self).__init__(
-            _axes=axes, _dtype=dtype, _sparse=sparse, **kw)
+            _fancy_index_axis=fancy_index_axis, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def input(self):
         return self._input
 
     @property
-    def axes(self):
-        return self._axes
+    def fancy_index_axis(self):
+        return self._fancy_index_axis
 
 
 class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_CONCAT_REDUCE
 
-    _axes = TupleField('axes', ValueType.int32)
+    _fancy_index_axis = Int32Field('fancy_index_axis')
+    _fancy_index_shape = TupleField('fancy_index_shape', ValueType.int64)
 
-    def __init__(self, axes=None, dtype=None, sparse=None, **kw):
+    def __init__(self, fancy_index_axis=None, fancy_index_shape=None, dtype=None, sparse=None, **kw):
         super(FancyIndexingConcatReduce, self).__init__(
-            _axes=axes, _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def axes(self):
-        return self._axes
-
-
-class FancyIndexingConcatReorder(TensorOperand, TensorOperandMixin):
-    _op_type_ = OperandDef.FANCY_INDEX_CONCAT_REORDER
-
-    def __init__(self, dtype=None, sparse=None, **kw):
-        super(FancyIndexingConcatReorder, self).__init__(
+            _fancy_index_axis=fancy_index_axis, _fancy_index_shape=fancy_index_shape,
             _dtype=dtype, _sparse=sparse, **kw)
 
-    @classmethod
-    def tile(cls, op):
-        raise NotSupportTile('FancyIndexingConcatReorder is a chunk operand '
-                             'which does not support tile')
+    @property
+    def fancy_index_axis(self):
+        return self._fancy_index_axis
+
+    @property
+    def fancy_index_shape(self):
+        return self._fancy_index_shape
 
 
 def _getitem(a, item):
