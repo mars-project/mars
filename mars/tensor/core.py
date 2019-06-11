@@ -19,7 +19,7 @@ from collections import Iterable
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TileableData, is_eager_mode
+from ..core import Entity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField
 from ..utils import on_serialize_shape, on_deserialize_shape
@@ -51,6 +51,14 @@ class TensorChunkData(ChunkData):
             'index': self.index,
         }
 
+    def __len__(self):
+        try:
+            return self.shape[0]
+        except IndexError:
+            if build_mode().is_build_mode:
+                return 0
+            raise TypeError('len() of unsized object')
+
     @property
     def shape(self):
         return getattr(self, '_shape', None)
@@ -75,6 +83,9 @@ class TensorChunkData(ChunkData):
 class TensorChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (TensorChunkData,)
+
+    def __len__(self):
+        return len(self._data)
 
 
 class TensorData(TileableData):

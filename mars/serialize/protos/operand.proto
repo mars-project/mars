@@ -301,7 +301,7 @@ message OperandDef {
         FANCY_INDEX_DISTRIBUTE_REDUCE = 425;
         FANCY_INDEX_CONCAT_MAP = 426;
         FANCY_INDEX_CONCAT_REDUCE = 427;
-
+        FANCY_INDEX_CONCAT_REORDER = 428;
 
         // linear algebra
         TENSORDOT = 501;

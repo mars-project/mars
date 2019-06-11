@@ -99,12 +99,12 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr7, concat=True)
         np.testing.assert_array_equal(res[0], raw[index1, :, index2])
 
-        index1 = [[1, 3], [5, 7], [9, 10]]
+        index1 = [[1, 3], [3, 7], [7, 7]]
         index2 = [1, 9]
-        arr8 = arr[index1, :, index2]
+        arr8 = arr[0, index1, :, index2]
 
         res = self.executor.execute_tensor(arr8, concat=True)
-        np.testing.assert_array_equal(res[0], raw[index1, :, index2])
+        np.testing.assert_array_equal(res[0], raw[0, index1, :, index2])
 
     def testSliceExecution(self):
         raw = np.random.random((11, 8, 12, 14))

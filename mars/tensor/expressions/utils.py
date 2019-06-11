@@ -326,13 +326,16 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
         chunk_index_to_indexes[idx] = filtered
         chunk_index_to_poses[idx] = poses[cond]
 
-    select_pos = np.empty(len(indexes[0]), dtype=int)
-    pos = np.concatenate(list(chunk_index_to_poses.values()))
-    select_pos[pos] = np.arange(select_pos.shape[0])
-
     if ret_is_asc:
-        return chunk_index_to_indexes, select_pos, chunk_idxes_asc
-    return chunk_index_to_indexes, select_pos
+        return chunk_index_to_indexes, chunk_index_to_poses, chunk_idxes_asc
+    return chunk_index_to_indexes, chunk_index_to_poses
+
+
+def calc_pos(fancy_index_shape, chunk_index_to_poses):
+    select_pos = np.empty(fancy_index_shape, dtype=int)
+    pos = np.concatenate(list(chunk_index_to_poses.values()))
+    select_pos.flat[pos] = np.arange(select_pos.size)
+    return select_pos
 
 
 def decide_unify_split(*splits):
@@ -396,7 +399,7 @@ def unify_chunks(*tensors):
                    for t in tensors]
 
     if len(tensor_axes) < 2:
-        return tuple(t[0] for t in tensors)
+        return tensors
 
     return unify_nsplits(*tensor_axes)
 

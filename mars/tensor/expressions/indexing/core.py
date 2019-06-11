@@ -34,7 +34,7 @@ def get_index_and_shape(tensor_shape, index):
     fancy_index = None
     fancy_index_shapes = []
     for ind in index:
-        if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE) and ind.dtype == np.bool_:
+        if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)) and ind.dtype == np.bool_:
             # bool
             shape.append(np.nan if not isinstance(ind, np.ndarray) else ind.sum())
             for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[idx:ind.ndim + idx]):
@@ -45,10 +45,10 @@ def get_index_and_shape(tensor_shape, index):
                             idx + i, size, t_size)
                     )
             idx += ind.ndim
-        elif isinstance(ind, np.ndarray):
+        elif isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)):
             if fancy_index is None:
                 fancy_index = idx
-            if np.any(ind >= tensor_shape[idx]):
+            if isinstance(ind, np.ndarray) and np.any(ind >= tensor_shape[idx]):
                 out_of_range_index = next(i for i in ind.flat if i >= tensor_shape[idx])
                 raise IndexError('IndexError: index {0} is out of bounds with size {1}'.format(
                     out_of_range_index, tensor_shape[idx]))

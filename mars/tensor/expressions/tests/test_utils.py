@@ -21,7 +21,7 @@ import numpy as np
 
 from mars.tensor.expressions.utils import normalize_chunk_sizes, broadcast_shape, \
     replace_ellipsis, calc_sliced_size, slice_split, decide_unify_split, unify_chunks, \
-    split_index_into_chunks, split_indexes_into_chunks, decide_chunk_sizes
+    split_index_into_chunks, split_indexes_into_chunks, decide_chunk_sizes, calc_pos
 from mars.tensor.expressions.datasource import ones
 from mars.config import option_context
 
@@ -211,9 +211,10 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(splits[5], np.array([0, 0])))
 
     def testSplitIndexesIntoChunks(self):
-        splits, pos, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],
-                                                     [[4, 1, 8, 13], [5, 31, 21, 18]])
+        splits, poses, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],
+                                                       [[4, 1, 8, 13], [5, 31, 21, 18]])
         splits = list(splits.values())
+        pos = calc_pos(4, poses)
         self.assertEqual(len(splits), 9)
         np.testing.assert_array_equal(splits[0], np.array([[], []]))
         np.testing.assert_array_equal(splits[1], np.array([[], []]))
