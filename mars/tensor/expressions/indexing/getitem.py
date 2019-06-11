@@ -45,9 +45,6 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     def indexes(self):
         return self._indexes
 
-    def calc_shape(self, *inputs_shape):
-        return tuple(get_index_and_shape(inputs_shape[0], self._indexes)[1])
-
     @contextlib.contextmanager
     def _handle_params(self, inputs, indexes):
         """

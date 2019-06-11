@@ -44,9 +44,6 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
         shape = (self.n,)
         return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
 
-    def calc_shape(self, *inputs_shape):
-        return self.n,
-
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
@@ -82,9 +79,6 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
     @property
     def d(self):
         return self._d
-
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
 
     def _set_inputs(self, inputs):
         super(TensorFFTFreqChunk, self)._set_inputs(inputs)

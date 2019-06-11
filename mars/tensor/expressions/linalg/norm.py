@@ -57,11 +57,6 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
         super(TensorNorm, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        r = empty(inputs_shape[0], dtype=self.dtype)
-        shape = self._norm(r, self._ord, self._axis, self._keepdims).shape
-        return shape
-
     def __call__(self, x):
         r = x.astype(self.dtype)
         shape = self._norm(r, self._ord, self._axis, self._keepdims).shape

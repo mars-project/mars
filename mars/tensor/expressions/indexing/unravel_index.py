@@ -46,9 +46,6 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
         super(TensorUnravelIndex, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, indices):
         kws = [{'pos': i} for i in range(len(self._dims))]
         return ExecutableTuple(self.new_tensors([indices], indices.shape, kws=kws, output_limit=len(kws)))

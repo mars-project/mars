@@ -60,9 +60,6 @@ class TensorOperandMixin(TileableOperandMixin):
 
         return self.new_tensors(inputs, shape=shape, dtype=dtype, **kw)[0]
 
-    def calc_shape(self, *inputs_shape):
-        raise NotImplementedError
-
 
 class TensorOperand(Operand):
     _dtype = DataTypeField('dtype')
@@ -90,9 +87,6 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     @property
     def dtype(self):
         return getattr(self, '_dtype', None)
-
-    def calc_shape(self, *inputs_shape):
-        return ()
 
 
 class TensorShuffleMap(ShuffleMap):

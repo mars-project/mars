@@ -54,9 +54,6 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
     def axis(self):
         return self._axis
 
-    def calc_shape(self, *inputs_shape):
-        return _get_squeeze_shape(inputs_shape[0], self.axis)[0]
-
     def __call__(self, a, shape):
         return self.new_tensor([a], shape)
 

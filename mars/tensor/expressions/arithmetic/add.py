@@ -96,6 +96,3 @@ class TensorTreeAdd(TensorOperand, TensorElementWise):
 
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorTreeAdd, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
-
-    def calc_shape(self, *inputs_shape):
-        return broadcast_shape(*inputs_shape)

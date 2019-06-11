@@ -26,7 +26,6 @@ from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frex
 from mars.tensor.expressions.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
 from mars.core import build_mode
-from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -39,20 +38,17 @@ class Test(unittest.TestCase):
         self.assertNotEqual(t3.key, k1)
         self.assertEqual(t3.shape, (3, 4))
         self.assertEqual(len(t3.chunks), 4)
-        self.assertEqual(calc_shape(t3), t3.shape)
         self.assertEqual(t3.chunks[0].inputs, [t1.chunks[0].data, t2.chunks[0].data])
         self.assertEqual(t3.chunks[1].inputs, [t1.chunks[1].data, t2.chunks[1].data])
         self.assertEqual(t3.chunks[2].inputs, [t1.chunks[2].data, t2.chunks[0].data])
         self.assertEqual(t3.chunks[3].inputs, [t1.chunks[3].data, t2.chunks[1].data])
         self.assertEqual(t3.op.dtype, np.dtype('f8'))
         self.assertEqual(t3.chunks[0].op.dtype, np.dtype('f8'))
-        self.assertEqual(calc_shape(t3.chunks[0]), t3.chunks[0].shape)
 
         t4 = t1 + 1
         t4.tiles()
         self.assertEqual(t4.shape, (3, 4))
         self.assertEqual(len(t3.chunks), 4)
-        self.assertEqual(calc_shape(t4), t4.shape)
         self.assertEqual(t4.chunks[0].inputs, [t1.chunks[0].data])
         self.assertEqual(t4.chunks[0].op.constant[0], 1)
         self.assertEqual(t4.chunks[1].inputs, [t1.chunks[1].data])
@@ -61,7 +57,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t4.chunks[2].op.constant[0], 1)
         self.assertEqual(t4.chunks[3].inputs, [t1.chunks[3].data])
         self.assertEqual(t4.chunks[3].op.constant[0], 1)
-        self.assertEqual(calc_shape(t4.chunks[0]), t4.chunks[0].shape)
 
         # sparse tests
         t5 = add([1, 2, 3, 4], 1)
@@ -191,13 +186,11 @@ class Test(unittest.TestCase):
         self.assertEqual(t3.op.lhs.extra_params.raw_chunk_size, 2)
         self.assertIs(t3.op.rhs, t2.data)
         self.assertNotEqual(t3.key, t3.op.lhs.key)
-        self.assertEqual(calc_shape(t3), t3.shape)
 
         t3.tiles()
 
         self.assertIsInstance(t1.chunks[0].op, TensorAdd)
         self.assertEqual(t1.chunks[0].op.out.key, t1.chunks[0].op.lhs.key)
-        self.assertEqual(calc_shape(t1.chunks[0]), t1.chunks[0].shape)
 
         with self.assertRaises(TypeError):
             add(t1, t2, out=1)
@@ -266,7 +259,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t3.chunks[0].inputs[1], t2.chunks[0].data)
         self.assertEqual(t3.chunks[1].inputs[0], t1.chunks[1].data)
         self.assertEqual(t3.chunks[1].inputs[1], t2.chunks[0].data)
-        self.assertEqual(calc_shape(t3), t3.shape)
 
     def testTensordot(self):
         from mars.tensor.expressions.linalg import tensordot, dot, inner
@@ -276,12 +268,10 @@ class Test(unittest.TestCase):
         t3 = tensordot(t1, t2, axes=((0, 1), (1, 0)))
 
         self.assertEqual(t3.shape, (6, 5))
-        self.assertEqual(calc_shape(t3), t3.shape)
 
         t3.tiles()
 
         self.assertEqual(t3.shape, (6, 5))
-        self.assertEqual(calc_shape(t3.chunks[0]), t3.chunks[0].shape)
         self.assertEqual(len(t3.chunks), 9)
 
         a = ones((10000, 20000), chunk_size=5000)
@@ -294,35 +284,27 @@ class Test(unittest.TestCase):
         b = ones((10, 20), chunk_size=2)
         c = dot(a, b)
         self.assertEqual(c.shape, (20,))
-        self.assertEqual(calc_shape(c), c.shape)
         c.tiles()
-        self.assertEqual(calc_shape(c.chunks[0]), c.chunks[0].shape)
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
         a = ones((10, 20), chunk_size=2)
         b = ones(20, chunk_size=2)
         c = dot(a, b)
         self.assertEqual(c.shape, (10,))
-        self.assertEqual(calc_shape(c), c.shape)
         c.tiles()
-        self.assertEqual(calc_shape(c.chunks[0]), c.chunks[0].shape)
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
         v = ones((100, 100), chunk_size=10)
         tv = v.dot(v)
         self.assertEqual(tv.shape, (100, 100))
-        self.assertEqual(calc_shape(tv), tv.shape)
         tv.tiles()
-        self.assertEqual(calc_shape(tv.chunks[0]), tv.chunks[0].shape)
         self.assertEqual(tv.shape, tuple(sum(s) for s in tv.nsplits))
 
         a = ones((10, 20), chunk_size=2)
         b = ones((30, 20), chunk_size=2)
         c = inner(a, b)
         self.assertEqual(c.shape, (10, 30))
-        self.assertEqual(calc_shape(c), c.shape)
         c.tiles()
-        self.assertEqual(calc_shape(c.chunks[0]), c.chunks[0].shape)
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
     def testDot(self):
@@ -333,7 +315,6 @@ class Test(unittest.TestCase):
         self.assertIs(type(t1.dot(t2)), SparseTensor)
         self.assertFalse(t1.dot(t2, sparse=False).issparse())
         self.assertIs(type(t1.dot(t2, sparse=False)), Tensor)
-        self.assertEqual(calc_shape(t1.dot(t2)), (t1.dot(t2)).shape)
 
     def testFrexp(self):
         t1 = ones((3, 4, 5), chunk_size=2)
@@ -343,8 +324,6 @@ class Test(unittest.TestCase):
 
         self.assertIs(o1.op, o2.op)
         self.assertNotEqual(o1.dtype, o2.dtype)
-        self.assertEqual(calc_shape(o1), (o1.shape, o2.shape))
-        self.assertEqual(calc_shape(o2), (o1.shape, o2.shape))
 
         o1, o2 = frexp(t1, t1)
 
@@ -352,8 +331,6 @@ class Test(unittest.TestCase):
         self.assertIsNot(o1.inputs[0], t1)
         self.assertIsInstance(o1.inputs[0].op, op_type)
         self.assertIsNot(o2.inputs[0], t1)
-        self.assertEqual(calc_shape(o1), (o1.shape, o2.shape))
-        self.assertEqual(calc_shape(o2), (o1.shape, o2.shape))
 
     def testDtype(self):
         t1 = ones((2, 3), dtype='f4', chunk_size=2)
@@ -371,11 +348,9 @@ class Test(unittest.TestCase):
         t = negative(t1)
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testCos(self):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
@@ -383,7 +358,6 @@ class Test(unittest.TestCase):
         t = cos(t1)
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
-        self.assertEqual(calc_shape(t), t.shape)
 
     def testAround(self):
         t1 = ones((2, 3), dtype='f4', chunk_size=2)
@@ -392,12 +366,10 @@ class Test(unittest.TestCase):
 
         self.assertFalse(t.issparse())
         self.assertEqual(t.op.decimals, 3)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
 
         self.assertEqual(t.chunks[0].op.decimals, 3)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testIsclose(self):
         t1 = ones((2, 3), dtype='f4', chunk_size=2)
@@ -412,7 +384,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t.op.atol, atol)
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
 
@@ -420,7 +391,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t.chunks[0].op.atol, atol)
         self.assertEqual(t.chunks[0].op.rtol, rtol)
         self.assertEqual(t.chunks[0].op.equal_nan, equal_nan)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t1 = ones((2, 3), dtype='f4', chunk_size=2)
         t2 = ones((2, 3), dtype='f4', chunk_size=2)
@@ -435,7 +405,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t.op.atol, atol)
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
 
@@ -443,7 +412,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t.chunks[0].op.atol, atol)
         self.assertEqual(t.chunks[0].op.rtol, rtol)
         self.assertEqual(t.chunks[0].op.equal_nan, equal_nan)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testMatmul(self):
         a_data = [[1, 0], [0, 1]]
@@ -455,10 +423,8 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2, 2))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         b_data = [1, 2]
         b = tensor(b_data, chunk_size=1)
@@ -466,18 +432,14 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2,))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = matmul(b, a)
 
         self.assertEqual(t.shape, (2,))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         a_data = np.arange(2 * 2 * 4).reshape((2, 2, 4))
         b_data = np.arange(2 * 2 * 4).reshape((2, 4, 2))
@@ -488,18 +450,14 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2, 2, 2))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = matmul(tensor([2j, 3j], chunk_size=1), tensor([2j, 3j], chunk_size=1))
 
         self.assertEqual(t.shape, ())
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         with self.assertRaises(ValueError):
             matmul([1, 2], 3)
@@ -514,10 +472,8 @@ class Test(unittest.TestCase):
         v = ones((100, 100), chunk_size=10)
         tv = matmul(v, v)
         self.assertEqual(tv.shape, (100, 100))
-        self.assertEqual(calc_shape(tv), tv.shape)
         tv.tiles()
         self.assertEqual(tv.shape, tuple(sum(s) for s in tv.nsplits))
-        self.assertEqual(calc_shape(tv.chunks[0]), tv.chunks[0].shape)
 
     def testGetSetReal(self):
         a_data = np.array([1+2j, 3+4j, 5+6j])

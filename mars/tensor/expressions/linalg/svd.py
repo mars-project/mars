@@ -50,18 +50,6 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
         super(TensorSVD, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        x, y = inputs_shape[0]
-        if x > y:
-            U_shape = (x, y)
-            s_shape = (y, )
-            V_shape = (y, y)
-        else:
-            U_shape = (x, x)
-            s_shape = (x, )
-            V_shape = (x, y)
-        return U_shape, s_shape, V_shape
-
     def __call__(self, a):
         a = astensor(a)
 

@@ -153,9 +153,6 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
         if has_where:
             setattr(self, '_where', next(inputs_iter))
 
-    def calc_shape(self, *inputs_shape):
-        return broadcast_shape(*inputs_shape)
-
     def _call(self, x1, x2, out=None, where=None):
         # if x1 or x2 is scalar, and out is none, to constant
         if (np.isscalar(x1) or np.isscalar(x2)) and not out and not where:
@@ -265,12 +262,6 @@ class TensorConstantMixin(TensorElementWiseWithInputs):
             setattr(self, '_lhs', next(inputs_iter))
         if not rhs_scalar:
             setattr(self, '_rhs', next(inputs_iter))
-
-    def calc_shape(self, *inputs_shape):
-        if not inputs_shape:
-            return ()
-        else:
-            return inputs_shape[0]
 
     def _call(self, x1, x2):
         x1_scalar = np.isscalar(x1)
@@ -389,9 +380,6 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
             setattr(self, '_out', next(inputs_iter))
         if has_where:
             setattr(self, '_where', next(inputs_iter))
-
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
 
     def _call(self, x, out=None, where=None):
         x, out, where = self._process_inputs(x, out, where)
@@ -543,21 +531,6 @@ class TensorOutBinOpMixin(TensorElementWiseWithInputs):
     @property
     def _fun(self):
         raise NotImplementedError
-
-    def calc_shape(self, *inputs_shape):
-        if len(inputs_shape) == 1:
-            return (inputs_shape[0],) * 2
-        shape_iter = iter(inputs_shape[1:])
-        shapes = []
-        if getattr(self, '_out1', None):
-            shapes.append(next(shape_iter))
-        else:
-            shapes.append(inputs_shape[0])
-        if getattr(self, '_out2', None):
-            shapes.append(next(shape_iter))
-        else:
-            shapes.append(inputs_shape[0])
-        return tuple(shapes)
 
     def _call(self, x, out1=None, out2=None, out=None, where=None):
         dtype = [r.dtype for r in self._fun(np.empty(1, dtype=x.dtype))]

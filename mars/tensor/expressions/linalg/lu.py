@@ -37,9 +37,6 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
     def output_limit(self):
         return 3
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, a):
         import scipy.linalg
 

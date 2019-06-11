@@ -53,9 +53,6 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         if len(self._inputs) > 1:
             self._indices_or_sections = self._inputs[1]
 
-    def calc_shape(self, *inputs_shape):
-        return tuple(out.shape for out in self.outputs)
-
     def __call__(self, a, indices_or_sections, is_split=False):
         axis = self._axis
         size = a.shape[axis]

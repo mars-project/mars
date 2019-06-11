@@ -32,7 +32,7 @@ from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.core import build_mode
 from mars.graph import DAG
 from mars.serialize.protos.operand_pb2 import OperandDef
-from mars.tests.core import TestBase, calc_shape
+from mars.tests.core import TestBase
 
 
 class Test(TestBase):
@@ -182,18 +182,14 @@ class Test(TestBase):
         tensor = ones((10, 10, 8), chunk_size=(3, 3, 5))
         tensor.tiles()
         self.assertEqual(tensor.shape, (10, 10, 8))
-        self.assertEqual(calc_shape(tensor), tensor.shape)
         self.assertEqual(len(tensor.chunks), 32)
-        self.assertEqual(calc_shape(tensor.chunks[0]), tensor.chunks[0].shape)
 
         tensor = ones((10, 3), chunk_size=(4, 2))
         tensor.tiles()
         self.assertEqual(tensor.shape, (10, 3))
-        self.assertEqual(calc_shape(tensor), tensor.shape)
 
         chunk = tensor.cix[1, 1]
         self.assertEqual(tensor.get_chunk_slices(chunk.index), (slice(4, 8), slice(2, 3)))
-        self.assertEqual(calc_shape(chunk), chunk.shape)
 
         tensor = ones((10, 5), chunk_size=(2, 3), gpu=True)
         tensor.tiles()
@@ -398,17 +394,14 @@ class Test(TestBase):
         t.tiles()
 
         self.assertEqual(t.shape, (10,))
-        self.assertEqual(calc_shape(t), t.shape)
         self.assertEqual(t.nsplits, ((3, 3, 3, 1),))
         self.assertEqual(t.chunks[1].op.start, 3)
         self.assertEqual(t.chunks[1].op.stop, 6)
-        self.assertEqual(calc_shape(t.chunks[1]), t.chunks[1].shape)
 
         t = arange(0, 10, 3, chunk_size=2)
         t.tiles()
 
         self.assertEqual(t.shape, (4,))
-        self.assertEqual(calc_shape(t), t.shape)
         self.assertEqual(t.nsplits, ((2, 2),))
         self.assertEqual(t.chunks[0].op.start, 0)
         self.assertEqual(t.chunks[0].op.stop, 6)
@@ -416,8 +409,6 @@ class Test(TestBase):
         self.assertEqual(t.chunks[1].op.start, 6)
         self.assertEqual(t.chunks[1].op.stop, 12)
         self.assertEqual(t.chunks[1].op.step, 3)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
-        self.assertEqual(calc_shape(t.chunks[1]), t.chunks[1].shape)
 
         self.assertRaises(TypeError, lambda: arange(10, start=0))
         self.assertRaises(TypeError, lambda: arange(0, 10, stop=0))
@@ -430,72 +421,56 @@ class Test(TestBase):
         t = diag(v)
 
         self.assertEqual(t.shape, (4,))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ((2, 2),))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         v = tensor(np.arange(16).reshape(4, 4), chunk_size=(2, 3))
         t = diag(v)
 
         self.assertEqual(t.shape, (4,))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ((2, 1, 1),))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         # test 1-d, k == 0
         v = tensor(np.arange(3), chunk_size=2)
         t = diag(v, sparse=True)
 
         self.assertEqual(t.shape, (3, 3))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ((2, 1), (2, 1)))
         self.assertEqual(len([c for c in t.chunks
                               if c.op.__class__.__name__ == 'TensorDiag']), 2)
         self.assertTrue(t.chunks[0].op.sparse)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         # test 2-d, shape[0] != shape[1]
         v = tensor(np.arange(24).reshape(4, 6), chunk_size=2)
         t = diag(v)
 
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6)).shape)
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         v = tensor(np.arange(24).reshape(4, 6), chunk_size=2)
 
         t = diag(v, k=1)
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6), k=1).shape)
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = diag(v, k=2)
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6), k=2).shape)
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = diag(v, k=-1)
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6), k=-1).shape)
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = diag(v, k=-2)
         self.assertEqual(t.shape, np.diag(np.arange(24).reshape(4, 6), k=-2).shape)
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(tuple(sum(s) for s in t.nsplits), t.shape)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         # test tiled zeros' keys
         a = arange(5, chunk_size=2)
@@ -508,7 +483,6 @@ class Test(TestBase):
         a = linspace(2.0, 3.0, num=5, chunk_size=2)
 
         self.assertEqual(a.shape, (5,))
-        self.assertEqual(calc_shape(a), a.shape)
 
         a.tiles()
         self.assertEqual(a.nsplits, ((2, 2, 1),))
@@ -518,12 +492,10 @@ class Test(TestBase):
         self.assertEqual(a.chunks[1].op.stop, 2.75)
         self.assertEqual(a.chunks[2].op.start, 3.)
         self.assertEqual(a.chunks[2].op.stop, 3.)
-        self.assertEqual(calc_shape(a.chunks[0]), a.chunks[0].shape)
 
         a = linspace(2.0, 3.0, num=5, endpoint=False, chunk_size=2)
 
         self.assertEqual(a.shape, (5,))
-        self.assertEqual(calc_shape(a), a.shape)
 
         a.tiles()
         self.assertEqual(a.nsplits, ((2, 2, 1),))
@@ -533,7 +505,6 @@ class Test(TestBase):
         self.assertEqual(a.chunks[1].op.stop, 2.6)
         self.assertEqual(a.chunks[2].op.start, 2.8)
         self.assertEqual(a.chunks[2].op.stop, 2.8)
-        self.assertEqual(calc_shape(a.chunks[0]), a.chunks[0].shape)
 
         _, step = linspace(2.0, 3.0, num=5, chunk_size=2, retstep=True)
         self.assertEqual(step, .25)
@@ -543,7 +514,6 @@ class Test(TestBase):
         a = tensor(a_data, chunk_size=2)
 
         t = triu(a)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -551,10 +521,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorTriu)
         self.assertIsInstance(t.chunks[2].op, TensorZeros)
         self.assertIsInstance(t.chunks[3].op, TensorTriu)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = triu(a, k=1)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -562,10 +530,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorTriu)
         self.assertIsInstance(t.chunks[2].op, TensorZeros)
         self.assertIsInstance(t.chunks[3].op, TensorZeros)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = triu(a, k=2)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -573,10 +539,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorTriu)
         self.assertIsInstance(t.chunks[2].op, TensorZeros)
         self.assertIsInstance(t.chunks[3].op, TensorZeros)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = triu(a, k=-1)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -584,10 +548,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorTriu)
         self.assertIsInstance(t.chunks[2].op, TensorTriu)
         self.assertIsInstance(t.chunks[3].op, TensorTriu)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = tril(a)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -595,10 +557,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorZeros)
         self.assertIsInstance(t.chunks[2].op, TensorTril)
         self.assertIsInstance(t.chunks[3].op, TensorTril)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = tril(a, k=1)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -606,10 +566,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorTril)
         self.assertIsInstance(t.chunks[2].op, TensorTril)
         self.assertIsInstance(t.chunks[3].op, TensorTril)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = tril(a, k=-1)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -617,10 +575,8 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorZeros)
         self.assertIsInstance(t.chunks[2].op, TensorTril)
         self.assertIsInstance(t.chunks[3].op, TensorTril)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = tril(a, k=-2)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(len(t.chunks), 4)
@@ -628,7 +584,6 @@ class Test(TestBase):
         self.assertIsInstance(t.chunks[1].op, TensorZeros)
         self.assertIsInstance(t.chunks[2].op, TensorTril)
         self.assertIsInstance(t.chunks[3].op, TensorZeros)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testSetTensorInputs(self):
         t1 = tensor([1, 2], chunk_size=2)
@@ -669,7 +624,6 @@ class Test(TestBase):
         self.assertIsInstance(t.op, CSRMatrixDataSource)
         self.assertTrue(t.issparse())
         self.assertFalse(t.op.gpu)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(t.chunks[0].index, (0, 0))
@@ -680,7 +634,6 @@ class Test(TestBase):
         self.assertTrue(np.array_equal(t.chunks[0].op.indptr, m.indptr))
         self.assertTrue(np.array_equal(t.chunks[0].op.data, m.data))
         self.assertTrue(np.array_equal(t.chunks[0].op.shape, m.shape))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testFromDense(self):
         t = fromdense(tensor([[0, 0, 1], [1, 0, 0]], chunk_size=2))
@@ -688,12 +641,10 @@ class Test(TestBase):
         self.assertIsInstance(t, SparseTensor)
         self.assertIsInstance(t.op, DenseToSparse)
         self.assertTrue(t.issparse())
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(t.chunks[0].index, (0, 0))
         self.assertIsInstance(t.op, DenseToSparse)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
     def testOnesLike(self):
         t1 = tensor([[0, 0, 1], [1, 0, 0]], chunk_size=2).tosparse()
@@ -702,10 +653,8 @@ class Test(TestBase):
         self.assertIsInstance(t, SparseTensor)
         self.assertIsInstance(t.op, TensorOnesLike)
         self.assertTrue(t.issparse())
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(t.chunks[0].index, (0, 0))
         self.assertIsInstance(t.op, TensorOnesLike)
         self.assertTrue(t.chunks[0].issparse())
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)

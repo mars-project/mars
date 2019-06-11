@@ -82,9 +82,6 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         with self._handle_params(inputs, indexes, value) as mix_inputs:
             return super(TensorIndexSetValue, self)._new_chunks(mix_inputs, kws=kws, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, a, index, value):
         return self.new_tensor([a], a.shape, indexes=index, value=value)
 

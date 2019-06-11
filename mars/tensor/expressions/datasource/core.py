@@ -67,9 +67,6 @@ class TensorNoInput(TensorDataSource):
         if inputs and len(inputs) > 0:
             raise ValueError("Tensor data source has no inputs")
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     def _new_chunks(self, inputs, kws=None, **kw):
         shape = kw.get('shape', None)
         self.extra_params['shape'] = shape  # set shape to make the operand key different
@@ -113,9 +110,6 @@ class TensorHasInput(TensorDataSource):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks,
                                   nsplits=op.input.nsplits)
-
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
 
     def __call__(self, a):
         return self.new_tensor([a], a.shape)

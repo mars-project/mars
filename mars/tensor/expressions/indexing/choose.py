@@ -56,9 +56,6 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         self._a = self._inputs[0]
         self._choices = self._inputs[1:]
 
-    def calc_shape(self, *inputs_shape):
-        return broadcast_shape(inputs_shape[0], *inputs_shape[1:])
-
     def __call__(self, a, choices):
         inputs = [a] + choices
         shape = broadcast_shape(a.shape, *[c.shape for c in choices])

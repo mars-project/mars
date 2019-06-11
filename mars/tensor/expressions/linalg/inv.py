@@ -35,9 +35,6 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         a = astensor(a)
         return self.new_tensor([a], a.shape)
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     @classmethod
     def tile(cls, op):
         """
