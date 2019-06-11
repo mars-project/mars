@@ -195,7 +195,6 @@ def arange(*args, **kwargs):
         step = dtype.type(step)
     size = max(int(np.ceil(np.true_divide(stop - start, step))), 0)
 
-    op = TensorArange(start.item(), stop.item(), step.item(),
-                      dtype=dtype, gpu=kwargs.get('gpu', False))
+    op = TensorArange(start, stop, step, dtype=dtype, gpu=kwargs.get('gpu', False))
     shape = (size,)
     return op(shape, chunk_size=kwargs.pop('chunk_size', None))
