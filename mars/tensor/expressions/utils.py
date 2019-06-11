@@ -399,7 +399,7 @@ def unify_chunks(*tensors):
                    for t in tensors]
 
     if len(tensor_axes) < 2:
-        return tensors
+        return tuple(t[0] if isinstance(t, tuple) else t for t in tensors)
 
     return unify_nsplits(*tensor_axes)
 
