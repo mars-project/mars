@@ -23,6 +23,7 @@ from ....serialize import KeyField, ListField, AnyField
 from ....core import Base, Entity
 from ...core import TENSOR_TYPE
 from ..core import TensorHasInput, TensorOperandMixin
+from ..utils import filter_inputs
 from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
 
@@ -48,25 +49,15 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorIndexSetValue, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        if getattr(self, '_indexes', None) is None:
-            # if create operand from beginning, inputs must have three parts: input, indexes, value.
-            # The first element in inputs is the input tensor, the last element is the value to be set,
-            # the rest are all indexes, they are tensors or numpy arrays.
-            indexes = inputs[1:-1]
-            value = inputs[-1]
-            self._indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
-                             for index in indexes]
-            self._value = next(inputs_iter) if isinstance(value, (Base, Entity)) else value
-        else:
-            # if created by existing operand, inputs are all mars tensors,
-            # we should check the self.indexes and replace tensor-liked indexes by new one in `inputs`.
-            new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
-                           for index in self._indexes]
-            self._indexes = new_indexes
-            self._value = next(inputs_iter) if isinstance(self._value, (Base, Entity)) else self._value
+        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
+                       for index in self._indexes]
+        self._indexes = new_indexes
+        self._value = next(inputs_iter) if isinstance(self._value, (Base, Entity)) else self._value
 
     def __call__(self, a, index, value):
-        inputs = [a] + list(index) + [value]
+        inputs = filter_inputs([a] + list(index) + [value])
+        self._indexes = index
+        self._value = value
         return self.new_tensor(inputs, a.shape)
 
     @classmethod
@@ -76,7 +67,9 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse)
-        index_tensor = index_tensor_op.new_tensor([op.input] + op.indexes, tensor.shape).single_tiles()
+        index_tensor_op._indexes = op.indexes
+        index_tensor_inputs = filter_inputs([op.input] + op.indexes)
+        index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape).single_tiles()
 
         nsplits = index_tensor.nsplits
         if any(any(np.isnan(ns) for ns in nsplit) for nsplit in nsplits):
@@ -95,8 +88,10 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
             value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
             chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse)
-            out_chunk = chunk_op.new_chunk([chunk] + index_chunk.op.indexes + [value_chunk],
-                                           shape=chunk.shape, index=chunk.index)
+            chunk_op._indexes = index_chunk.op.indexes
+            chunk_op._value = value_chunk
+            chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
+            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape, index=chunk.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

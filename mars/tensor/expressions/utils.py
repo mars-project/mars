@@ -484,3 +484,9 @@ def get_fuse_op_cls():
     from .fuse import TensorFuseChunk
 
     return TensorFuseChunk
+
+
+def filter_inputs(inputs):
+    from ...core import Base, Entity
+
+    return [inp for inp in inputs if isinstance(inp, (Base, Entity))]

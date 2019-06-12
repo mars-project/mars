@@ -24,7 +24,7 @@ from ....core import Base, Entity
 from ...core import Tensor
 from ..utils import broadcast_shape
 from ..datasource import tensor as astensor
-from .core import TensorOperand, TensorElementWise
+from .core import TensorOperand, TensorElementWise, filter_inputs
 
 
 class TensorClip(TensorOperand, TensorElementWise):
@@ -54,23 +54,13 @@ class TensorClip(TensorOperand, TensorElementWise):
     def _set_inputs(self, inputs):
         super(TensorClip, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-
-        if getattr(self, '_a', None) is None:
-            # create clip op from beginning
-            self._a = next(inputs_iter)
-            self._a_min = next(inputs_iter) if isinstance(inputs[1], (Base, Entity)) else inputs[1]
-            self._a_max = next(inputs_iter) if isinstance(inputs[2], (Base, Entity)) else inputs[2]
-            if inputs[3] is not None:
-                self._out = next(inputs_iter)
-        else:
-            # create clip op from existence
-            self._a = next(inputs_iter)
-            if isinstance(self._a_min, (Base, Entity)):
-                self._a_min = next(inputs_iter)
-            if isinstance(self._a_max, (Base, Entity)):
-                self._a_max = next(inputs_iter)
-            if getattr(self, '_out', None) is not None:
-                self._out = next(inputs_iter)
+        self._a = next(inputs_iter)
+        if isinstance(self._a_min, (Base, Entity)):
+            self._a_min = next(inputs_iter)
+        if isinstance(self._a_max, (Base, Entity)):
+            self._a_max = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
 
     def __call__(self, a, a_min, a_max, out=None):
         a = astensor(a)
@@ -87,6 +77,7 @@ class TensorClip(TensorOperand, TensorElementWise):
             if not a_min.issparse():
                 sparse = False
             a_min_dtype = a_min.dtype
+        self._a_min = a_min
 
         if isinstance(a_max, Number):
             if a_max < 0:
@@ -98,25 +89,31 @@ class TensorClip(TensorOperand, TensorElementWise):
             if not a_max.issparse():
                 sparse = False
             a_max_dtype = a_max.dtype
+        self._a_max = a_max
+
+        if out is not None:
+            if isinstance(out, Tensor):
+                self._out = out
+            else:
+                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
 
         dtype = np.result_type(a.dtype, a_min_dtype, a_max_dtype)
         # check broadcast
         shape = broadcast_shape(*[t.shape for t in tensors])
 
         setattr(self, '_sparse', sparse)
-        t = self.new_tensor([a, a_min, a_max, out], shape)
+        inputs = filter_inputs([a, a_min, a_max, out])
+        t = self.new_tensor(inputs, shape)
 
         if out is None:
             setattr(self, '_dtype', dtype)
             return t
 
-        if not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+        # if `out` is specified, use out's dtype and shape
         out_shape, out_dtype = out.shape, out.dtype
 
-        # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
-            t = self.new_tensor([a, a_min, a_max, out], out_shape)
+            t = self.new_tensor(inputs, out_shape)
         setattr(self, '_dtype', out_dtype)
 
         out.data = t.data

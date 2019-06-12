@@ -26,7 +26,7 @@ from ....core import Base, Entity
 from ....compat import reduce, irange, izip
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
-    slice_split, calc_sliced_size
+    slice_split, calc_sliced_size, filter_inputs
 from ..core import TensorHasInput, TensorOperandMixin
 from .core import process_index, get_index_and_shape
 
@@ -47,22 +47,13 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorIndex, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        if getattr(self, '_indexes', None) is None:
-            # if create operand from beginning, inputs must have two parts: input, indexes.
-            # The first element in inputs is the input tensor, the rest are all indexes,
-            # they are mars tensors or numpy arrays.
-            indexes = inputs[1:]
-            self._indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
-                             for index in indexes]
-        else:
-            # if created by existing operand, inputs are all mars tensors,
-            # we should check the self.indexes and replace tensor-liked indexes by new one in `inputs`.
-            new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
-                           for index in self._indexes]
-            self._indexes = new_indexes
+        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
+                       for index in self._indexes]
+        self._indexes = new_indexes
 
     def __call__(self, a, index, shape):
-        return self.new_tensor([a] + list(index), shape)
+        self._indexes = index
+        return self.new_tensor(filter_inputs([a] + list(index)), shape)
 
     @classmethod
     def tile(cls, op):
@@ -172,8 +163,10 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                     output_axis += 1
 
             chunk_input = in_tensor.cix[tuple(chunk_idx)]
-            chunk_op = TensorIndex(dtype=op.dtype, sparse=op.sparse)
-            chunk = chunk_op.new_chunk([chunk_input] + chunk_index, shape=tuple(chunk_shape), index=output_idx)
+            chunk_op = op.copy().reset_key()
+            chunk_op._indexes = chunk_index
+            chunk = chunk_op.new_chunk(filter_inputs([chunk_input] + chunk_index),
+                                       shape=tuple(chunk_shape), index=output_idx)
             out_chunks.append(chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
@@ -205,7 +198,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
                 concat_chunk = concat_chunk_op.new_chunk(chunks, shape=tuple(s), index=new_idx)
                 out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk = out_chunk_op.new_chunk([concat_chunk] + indexobj, shape=tuple(s), index=new_idx)
+                out_chunk_op._indexes = indexobj
+                out_chunk = out_chunk_op.new_chunk(filter_inputs([concat_chunk] + indexobj),
+                                                   shape=tuple(s), index=new_idx)
                 output_chunks.append(out_chunk)
 
             new_op = tensor.op.copy()

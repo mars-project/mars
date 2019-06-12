@@ -24,7 +24,7 @@ from ....serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ...core import Tensor
 from ..core import TensorOperandMixin, TensorOperand
 from ..datasource import tensor as astensor
-from ..utils import unify_chunks, broadcast_shape, check_out_param
+from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs
 
 
 class TensorElementWise(TensorOperandMixin):
@@ -89,16 +89,21 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     def _set_sparse(self, inputs):
         setattr(self, '_sparse', self._is_sparse(inputs[0], inputs[1]))
 
-    @staticmethod
-    def _process_inputs(x1, x2, out, where):
+    def _process_inputs(self, x1, x2, out, where):
         x1, x2 = astensor(x1), astensor(x2)
+        self._lhs = x1
+        self._rhs = x2
 
-        if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+        if out is not None:
+            if isinstance(out, Tensor):
+                self._out = out
+            else:
+                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
         if where is True:
             where = None
         if where is not None:
             where = astensor(where)
+            self._where = where
 
         return x1, x2, out, where
 
@@ -121,7 +126,8 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
         # check broadcast
         shape = broadcast_shape(x1.shape, x2.shape)
 
-        t = self.new_tensor([x1, x2, out, where], shape)
+        inputs = filter_inputs([x1, x2, out, where])
+        t = self.new_tensor(inputs, shape)
 
         if out is None:
             return t
@@ -131,7 +137,7 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
 
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
-            t = self.new_tensor([x1, x2, out, where], out_shape)
+            t = self.new_tensor(inputs, out_shape)
         setattr(self, '_dtype', out_dtype)
 
         out.data = t.data
@@ -180,22 +186,12 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         super(TensorBinOp, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
-        if getattr(self, '_lhs', None) is None:
-            # create binop from beginning
-            self._lhs = next(inputs_iter)
-            self._rhs = next(inputs_iter)
-            if inputs[2] is not None:
-                self._out = next(inputs_iter)
-            if inputs[3] is not None:
-                self._where = next(inputs_iter)
-        else:
-            # create from a exist op
-            self._lhs = next(inputs_iter)
-            self._rhs = next(inputs_iter)
-            if getattr(self, '_out', None) is not None:
-                self._out = next(inputs_iter)
-            if getattr(self, '_where', None) is not None:
-                self._where = next(inputs_iter)
+        self._lhs = next(inputs_iter)
+        self._rhs = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
 
 
 class TensorConstantMixin(TensorElementWiseWithInputs):
@@ -226,7 +222,9 @@ class TensorConstantMixin(TensorElementWiseWithInputs):
             x1 = astensor(x1)
             shape = x1.shape
 
-        return self.new_tensor([x1, x2], shape)
+        self._lhs = x1
+        self._rhs = x2
+        return self.new_tensor(filter_inputs([x1, x2]), shape)
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)
@@ -273,31 +271,28 @@ class TensorConstant(TensorOperand, TensorConstantMixin):
         super(TensorConstant, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
-        if getattr(self, '_lhs', None) is None:
-            # create a constant op from beginning
-            self._lhs = inputs[0] if np.isscalar(inputs[0]) else next(inputs_iter)
-            self._rhs = inputs[1] if np.isscalar(inputs[1]) else next(inputs_iter)
-        else:
-            # create from a exist constant op
-            if np.isscalar(self._lhs):
-                self._rhs = next(inputs_iter)
-            else:
-                self._lhs = next(inputs_iter)
+        if not np.isscalar(self._lhs):
+            self._lhs = next(inputs_iter)
+        if not np.isscalar(self._rhs):
+            self._rhs = next(inputs_iter)
 
 
 class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
-    @staticmethod
-    def _process_inputs(x, out, where):
+    def _process_inputs(self, x, out, where):
         x = astensor(x)
 
-        if out is not None and not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+        if out is not None:
+            if isinstance(out, Tensor):
+                self._out = out
+            else:
+                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
         if where is True:
             where = None
         if where is not None:
             where = astensor(where)
+            self._where = where
 
         return x, out, where
 
@@ -312,7 +307,8 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
         x, out, where = self._process_inputs(x, out, where)
         shape = x.shape
 
-        t = self.new_tensor([x, out, where], shape)
+        inputs = filter_inputs([x, out, where])
+        t = self.new_tensor(inputs, shape)
 
         if out is None:
             return t
@@ -322,7 +318,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
-            t = self.new_tensor([x, out, where], out_shape)
+            t = self.new_tensor(inputs, out_shape)
         setattr(self, '_dtype', out_dtype)
 
         out.data = t.data
@@ -363,18 +359,11 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         super(TensorUnaryOp, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
-        if getattr(self, '_input', None) is None:
-            self._input = next(inputs_iter)
-            if inputs[1] is not None:
-                self._out = next(inputs_iter)
-            if inputs[2] is not None:
-                self._where = next(inputs_iter)
-        else:
-            self._input = next(inputs_iter)
-            if getattr(self, '_out', None) is not None:
-                self._out = next(inputs_iter)
-            if getattr(self, '_where', None) is not None:
-                self._where = next(inputs_iter)
+        self._input = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
 
 
 class TensorCompare(TensorBinOp):
@@ -398,18 +387,24 @@ class TensorCompareConstant(TensorConstant):
 class TensorOutBinOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
-    @staticmethod
-    def _process_inputs(x, out1, out2, where):
+    def _process_inputs(self, x, out1, out2, where):
         x = astensor(x)
 
-        if out1 is not None and not isinstance(out1, Tensor):
-            raise TypeError('out1 should be Tensor object, got {0} instead'.format(type(out1)))
-        if out2 is not None and not isinstance(out2, Tensor):
-            raise TypeError('out2 should be Tensor object, got {0} instead'.format(type(out2)))
+        if out1 is not None:
+            if isinstance(out1, Tensor):
+                self._out1 = out1
+            else:
+                raise TypeError('out1 should be Tensor object, got {0} instead'.format(type(out1)))
+        if out2 is not None:
+            if isinstance(out2, Tensor):
+                self._out2 = out2
+            else:
+                raise TypeError('out2 should be Tensor object, got {0} instead'.format(type(out2)))
         if where is True:
             where = None
         if where is not None:
             where = astensor(where)
+            self._where = where
 
         return x, out1, out2, where
 
@@ -433,7 +428,8 @@ class TensorOutBinOpMixin(TensorElementWiseWithInputs):
         x, out1, out2, where = self._process_inputs(x, out1, out2, where)
         shape = x.shape
 
-        t1, t2 = self.new_tensors([x, out1, out2, where], shape, dtype=dtype)
+        inputs = filter_inputs([x, out1, out2, where])
+        t1, t2 = self.new_tensors(inputs, shape, dtype=dtype)
 
         if out1 is None and out2 is None:
             return ExecutableTuple([t1, t2])
@@ -450,7 +446,7 @@ class TensorOutBinOpMixin(TensorElementWiseWithInputs):
             out2_shape, out2_dtype = t2.shape, t2.dtype
         # if `out` is specified, use out's dtype and shape
         if t1.shape != out1_shape or t2.shape != out2_shape:
-            t1, t2 = self.new_tensor([x, out1, out2, where], [out1_shape, out2_shape],
+            t1, t2 = self.new_tensor(inputs, [out1_shape, out2_shape],
                                      dtype=[out1_dtype, out2_dtype])
 
         if out1 is not None:
@@ -502,19 +498,10 @@ class TensorOutBinOp(TensorOperand):
         super(TensorOutBinOp, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
-        if getattr(self, '_input', None) is None:
-            self._input = next(inputs_iter)
-            if inputs[1] is not None:
-                self._out1 = next(inputs_iter)
-            if inputs[2] is not None:
-                self._out2 = next(inputs_iter)
-            if inputs[3] is not None:
-                self._where = next(inputs_iter)
-        else:
-            self._input = next(inputs_iter)
-            if getattr(self, '_out1', None) is not None:
-                self._out1 = next(inputs_iter)
-            if getattr(self, '_out2', None) is not None:
-                self._out2 = next(inputs_iter)
-            if getattr(self, '_where', None) is not None:
-                self._where = next(inputs_iter)
+        self._input = next(inputs_iter)
+        if getattr(self, '_out1', None) is not None:
+            self._out1 = next(inputs_iter)
+        if getattr(self, '_out2', None) is not None:
+            self._out2 = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
