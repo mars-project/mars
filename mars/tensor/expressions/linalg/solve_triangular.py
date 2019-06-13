@@ -109,8 +109,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
                     else:
                         s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                      None, prev_chunks[0].shape, sparse=op.sparse)
-                    target_b = TensorSubtract(dtype=op.dtype).new_chunk(
-                        [target_b, s, None, None], shape=target_b.shape)
+                    target_b = TensorSubtract(dtype=op.dtype, lhs=target_b, rhs=s).new_chunk(
+                        [target_b, s], shape=target_b.shape)
                 out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
                     [target_a, target_b], shape=_x_shape(target_a.shape, target_b.shape), index=idx)
                 out_chunks[out_chunk.index] = out_chunk

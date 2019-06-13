@@ -30,7 +30,7 @@ def _H(chunk):
     trans_op = TensorTranspose(dtype=chunk.dtype)
     c = trans_op.new_chunk([chunk], shape=chunk.shape[::-1], index=chunk.index[::-1])
     conj_op = TensorConj(dtype=c.dtype)
-    return conj_op.new_chunk([c, None, None], shape=c.shape, index=c.index)
+    return conj_op.new_chunk([c], shape=c.shape, index=c.index)
 
 
 class TensorCholesky(TensorHasInput, TensorOperandMixin):
@@ -92,8 +92,8 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], shape=target.shape)
+                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
                         [target], shape=target.shape, index=(i, j))
                     upper_chunk = _H(lower_chunk)
@@ -113,8 +113,8 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], shape=target.shape)
+                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
                         [lower_chunks[j, j], target], shape=target.shape, index=(j, i))
                     lower_chunk = _H(upper_chunk)

@@ -158,6 +158,9 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     _casting = StringField('casting')
     _err = DictField('err', ValueType.string, ValueType.string)
 
+    def __init__(self, lhs=None, rhs=None, out=None, where=None, **kwargs):
+        super(TensorBinOp, self).__init__(_lhs=lhs, _rhs=rhs, _out=out, _where=where, **kwargs)
+
     @property
     def lhs(self):
         return self._lhs
@@ -335,6 +338,9 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     _casting = StringField('casting')
     _err = DictField('err', ValueType.string, ValueType.string)
 
+    def __init__(self, out=None, where=None, **kwargs):
+        super(TensorUnaryOp, self).__init__(_out=out, _where=where, **kwargs)
+
     @property
     def input(self):
         return self._input
@@ -469,6 +475,9 @@ class TensorOutBinOp(TensorOperand):
     _out2 = KeyField('out2')
     _where = KeyField('where')
     _casting = StringField('casting')
+
+    def __init__(self, out1=None, out2=None, where=None, **kwargs):
+        super(TensorOutBinOp, self).__init__(_out1=out1, _out2=out2, _where=where, **kwargs)
 
     @property
     def output_limit(self):
