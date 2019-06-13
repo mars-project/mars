@@ -37,8 +37,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, **kw):
+        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, **kw)
 
     @property
     def indexes(self):
@@ -197,8 +197,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 concat_chunk_op = TensorConcatenate(
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
                 concat_chunk = concat_chunk_op.new_chunk(chunks, shape=tuple(s), index=new_idx)
-                out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk_op._indexes = indexobj
+                out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse,
+                                           indexes=indexobj)
                 out_chunk = out_chunk_op.new_chunk(filter_inputs([concat_chunk] + indexobj),
                                                    shape=tuple(s), index=new_idx)
                 output_chunks.append(out_chunk)
@@ -219,5 +219,5 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     index, shape = get_index_and_shape(a.shape, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse())
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
     return op(a, index, tuple(shape))

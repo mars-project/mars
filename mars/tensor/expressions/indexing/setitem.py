@@ -35,8 +35,9 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _indexes = ListField('indexes')
     _value = AnyField('value')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, value=None, **kw):
+        super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse,
+                                                  _indexes=indexes, _value=value, **kw)
 
     @property
     def indexes(self):
@@ -66,8 +67,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         value = op.value
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
-        index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse)
-        index_tensor_op._indexes = op.indexes
+        index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse, indexes=op.indexes)
         index_tensor_inputs = filter_inputs([op.input] + op.indexes)
         index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape).single_tiles()
 
@@ -87,9 +87,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 continue
 
             value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
-            chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse)
-            chunk_op._indexes = index_chunk.op.indexes
-            chunk_op._value = value_chunk
+            chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
+                                           indexes=index_chunk.op.indexes, value=value_chunk)
             chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
             out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape, index=chunk.index)
             out_chunks.append(out_chunk)
@@ -113,6 +112,6 @@ def _setitem(a, item, value):
     else:
         value = broadcast_to(value, shape).astype(a.dtype)
 
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse())
+    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value)
     ret = op(a, index, value)
     a.data = ret.data
