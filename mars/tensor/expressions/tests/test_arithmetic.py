@@ -215,7 +215,7 @@ class Test(unittest.TestCase):
         t3 = isfinite(x, y)
         self.assertEqual(t3.dtype, y.dtype)
 
-    def testLogWithOut(self):
+    def testLogWithOutWhere(self):
         t1 = ones((3, 4), chunk_size=2)
 
         t2 = log(t1, out=t1)
@@ -223,6 +223,13 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t2.op, TensorLog)
         self.assertEqual(t1.op.out.key, t1.op.input.key)
         self.assertIs(t2, t1)
+        self.assertEqual(t2.op.input.extra_params.raw_chunk_size, 2)
+        self.assertNotEqual(t2.key, t2.op.input.key)
+
+        t3 = empty((3, 4), chunk_size=2)
+        t4 = log(t1, out=t3, where=t1 > 0)
+        self.assertIsInstance(t4.op, TensorLog)
+        self.assertIs(t4, t3)
         self.assertEqual(t2.op.input.extra_params.raw_chunk_size, 2)
         self.assertNotEqual(t2.key, t2.op.input.key)
 
@@ -318,6 +325,7 @@ class Test(unittest.TestCase):
 
     def testFrexp(self):
         t1 = ones((3, 4, 5), chunk_size=2)
+        t2 = empty((3, 4, 5), dtype=np.float_, chunk_size=2)
         op_type = type(t1.op)
 
         o1, o2 = frexp(t1)
@@ -328,6 +336,14 @@ class Test(unittest.TestCase):
         o1, o2 = frexp(t1, t1)
 
         self.assertIs(o1, t1)
+        self.assertIsNot(o1.inputs[0], t1)
+        self.assertIsInstance(o1.inputs[0].op, op_type)
+        self.assertIsNot(o2.inputs[0], t1)
+
+        o1, o2 = frexp(t1, t2, where=t1 > 0)
+
+        op_type = type(t2.op)
+        self.assertIs(o1, t2)
         self.assertIsNot(o1.inputs[0], t1)
         self.assertIsInstance(o1.inputs[0].op, op_type)
         self.assertIsNot(o2.inputs[0], t1)
