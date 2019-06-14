@@ -29,7 +29,7 @@ def _H(chunk):
     trans_op = TensorTranspose(dtype=chunk.dtype)
     c = trans_op.new_chunk([chunk], chunk.shape[::-1], index=chunk.index[::-1])
     conj_op = TensorConj(dtype=c.dtype)
-    return conj_op.new_chunk([c, None, None], c.shape, index=c.index)
+    return conj_op.new_chunk([c], c.shape, index=c.index)
 
 
 class TensorCholesky(operands.Cholesky, TensorOperandMixin):
@@ -39,9 +39,6 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorCholesky, self)._set_inputs(inputs)
         self._input = self._inputs[0]
-
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
 
     def __call__(self, a):
         return self.new_tensor([a], a.shape)
@@ -85,8 +82,8 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
                         [target], target.shape, index=(i, j))
                     upper_chunk = _H(lower_chunk)
@@ -106,8 +103,8 @@ class TensorCholesky(operands.Cholesky, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
                         [lower_chunks[j, j], target], target.shape, index=(j, i))
                     lower_chunk = _H(upper_chunk)

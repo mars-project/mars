@@ -14,93 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 from numbers import Number
 
 import numpy as np
 
 from .... import operands
-from ...core import TENSOR_TYPE, CHUNK_TYPE, Tensor
+from ....core import Base, Entity
+from ...core import Tensor
 from ..utils import broadcast_shape
 from ..datasource import tensor as astensor
-from .core import TensorElementWise
+from .core import TensorElementWise, filter_inputs
 
 
 class TensorClip(operands.Clip, TensorElementWise):
-    @contextlib.contextmanager
-    def _handle_params(self, inputs):
-        inps = inputs[:1]
-        inputs_iter = iter(inputs[1:])
-
-        if getattr(self, '_a', None) is None:
-            # create clip op from beginning
-
-            # a_min
-            has_a_min = False
-            a_min = next(inputs_iter)
-            if a_min is not None and isinstance(a_min, TENSOR_TYPE + CHUNK_TYPE):
-                has_a_min = True
-                inps.append(a_min)
-            else:
-                setattr(self, '_a_min', a_min)
-
-            # a_max
-            has_a_max = False
-            a_max = next(inputs_iter)
-            if a_max is not None and isinstance(a_max, TENSOR_TYPE + CHUNK_TYPE):
-                has_a_max = True
-                inps.append(a_max)
-            else:
-                setattr(self, '_a_max', a_max)
-
-            # out
-            has_out = False
-            out = next(inputs_iter)
-            if out is not None:
-                has_out = True
-                inps.append(out)
-        else:
-            # create clip op from existence
-
-            # a_min
-            raw_a_min = getattr(self, '_a_min', None)
-            has_a_min = raw_a_min is not None and isinstance(raw_a_min, TENSOR_TYPE + CHUNK_TYPE)
-            if has_a_min:
-                a_min = next(inputs_iter)
-                inps.append(a_min)
-
-            # a_max
-            raw_a_max = getattr(self, '_a_max', None)
-            has_a_max = raw_a_max is not None and isinstance(raw_a_max, TENSOR_TYPE + CHUNK_TYPE)
-            if has_a_max:
-                a_max = next(inputs_iter)
-                inps.append(a_max)
-
-            # out
-            has_out = getattr(self, '_out', None) is not None
-            if has_out:
-                out = next(inputs_iter)
-                inps.append(out)
-
-        yield inps
-
-        inputs = getattr(self, '_inputs')
-        inputs_iter = iter(inputs)
-        setattr(self, '_a', next(inputs_iter))
-        if has_a_min:
-            setattr(self, '_a_min', next(inputs_iter))
-        if has_a_max:
-            setattr(self, '_a_max', next(inputs_iter))
-        if has_out:
-            setattr(self, '_out', next(inputs_iter))
-
-    def new_tensors(self, inputs, shape,**kw):
-        with self._handle_params(inputs) as inputs:
-            return super(TensorClip, self).new_tensors(inputs, shape, **kw)
-
-    def new_chunks(self, inputs, shape, **kw):
-        with self._handle_params(inputs) as inputs:
-            return super(TensorClip, self).new_chunks(inputs, shape, **kw)
+    def _set_inputs(self, inputs):
+        super(TensorClip, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+        self._a = next(inputs_iter)
+        if isinstance(self._a_min, (Base, Entity)):
+            self._a_min = next(inputs_iter)
+        if isinstance(self._a_max, (Base, Entity)):
+            self._a_max = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
 
     def __call__(self, a, a_min, a_max, out=None):
         a = astensor(a)
@@ -117,6 +53,7 @@ class TensorClip(operands.Clip, TensorElementWise):
             if not a_min.issparse():
                 sparse = False
             a_min_dtype = a_min.dtype
+        self._a_min = a_min
 
         if isinstance(a_max, Number):
             if a_max < 0:
@@ -128,25 +65,31 @@ class TensorClip(operands.Clip, TensorElementWise):
             if not a_max.issparse():
                 sparse = False
             a_max_dtype = a_max.dtype
+        self._a_max = a_max
+
+        if out is not None:
+            if isinstance(out, Tensor):
+                self._out = out
+            else:
+                raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
 
         dtype = np.result_type(a.dtype, a_min_dtype, a_max_dtype)
         # check broadcast
         shape = broadcast_shape(*[t.shape for t in tensors])
 
         setattr(self, '_sparse', sparse)
-        t = self.new_tensor([a, a_min, a_max, out], shape)
+        inputs = filter_inputs([a, a_min, a_max, out])
+        t = self.new_tensor(inputs, shape)
 
         if out is None:
             setattr(self, '_dtype', dtype)
             return t
 
-        if not isinstance(out, Tensor):
-            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+        # if `out` is specified, use out's dtype and shape
         out_shape, out_dtype = out.shape, out.dtype
 
-        # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
-            t = self.new_tensor([a, a_min, a_max, out], out_shape)
+            t = self.new_tensor(inputs, out_shape)
         setattr(self, '_dtype', out_dtype)
 
         out.data = t.data

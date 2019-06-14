@@ -37,9 +37,6 @@ class TensorWhere(Where, TensorOperandMixin):
         self._x = self._inputs[1]
         self._y = self._inputs[2]
 
-    def calc_shape(self, *inputs_shape):
-        return broadcast_shape(inputs_shape[1], inputs_shape[2])
-
     def __call__(self, condition, x, y, shape=None):
         shape = shape or broadcast_shape(x.shape, y.shape)
         return self.new_tensor([condition, x, y], shape)

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 from .core import Operand
 from ..core import BaseWithKey
 from .. import opcodes as OperandDef
@@ -59,6 +61,15 @@ class Constant(ElementWise):
     def err(self):
         return getattr(self, '_err', dict())
 
+    def _set_inputs(self, inputs):
+        super(Constant, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        if not np.isscalar(self._lhs):
+            self._lhs = next(inputs_iter)
+        if not np.isscalar(self._rhs):
+            self._rhs = next(inputs_iter)
+
 
 class BinOp(ElementWise):
     _lhs = KeyField('lhs')
@@ -92,6 +103,17 @@ class BinOp(ElementWise):
     def err(self):
         return getattr(self, '_err', dict())
 
+    def _set_inputs(self, inputs):
+        super(BinOp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        self._lhs = next(inputs_iter)
+        self._rhs = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
+
 
 class UnaryOp(ElementWise):
     _input = KeyField('input')
@@ -119,6 +141,16 @@ class UnaryOp(ElementWise):
     @property
     def err(self):
         return getattr(self, '_err', dict())
+
+    def _set_inputs(self, inputs):
+        super(UnaryOp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        self._input = next(inputs_iter)
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
 
 
 class Add(BinOp):
@@ -656,6 +688,19 @@ class Modf(ElementWise):
     def casting(self):
         return getattr(self, '_casting', None)
 
+    def _set_inputs(self, inputs):
+        super(Modf, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        self._input = next(inputs_iter)
+        if getattr(self, '_out1', None) is not None:
+            self._out1 = next(inputs_iter)
+        if getattr(self, '_out2', None) is not None:
+            self._out2 = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
+
+
 
 class Ldexp(BinOp):
     _op_type_ = OperandDef.LDEXP
@@ -697,6 +742,18 @@ class Frexp(ElementWise):
     @property
     def casting(self):
         return getattr(self, '_casting', None)
+
+    def _set_inputs(self, inputs):
+        super(Frexp, self)._set_inputs(inputs)
+        inputs_iter = iter(self._inputs)
+
+        self._input = next(inputs_iter)
+        if getattr(self, '_out1', None) is not None:
+            self._out1 = next(inputs_iter)
+        if getattr(self, '_out2', None) is not None:
+            self._out2 = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
 
 
 class Clip(ElementWise):

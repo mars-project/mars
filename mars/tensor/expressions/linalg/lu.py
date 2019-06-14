@@ -32,9 +32,6 @@ class TensorLU(operands.LU, TensorOperandMixin):
         super(TensorLU, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, a):
         import scipy.linalg
 
@@ -124,8 +121,8 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks_u[0].dtype, prev_chunks_u,
                                          None, prev_chunks_u[0].shape, sparse=op.sparse)
-                        target = TensorSubtract(dtype=U.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                        target = TensorSubtract(dtype=U.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=U.dtype, strict=False,
                                                         sparse=lower_chunks[i, i].op.sparse).new_chunk(
                         [lower_chunks[i, i], target], target.shape, index=(i, j))
@@ -144,8 +141,8 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape, sparse=op.sparse)
-                        target = TensorSubtract(dtype=L.dtype).new_chunk(
-                            [target, s, None, None], target.shape)
+                        target = TensorSubtract(dtype=L.dtype, lhs=target, rhs=s).new_chunk(
+                            [target, s], shape=target.shape)
                     new_op = TensorLU(dtype=op.dtype, sparse=target.op.sparse)
                     lu_chunks = new_op.new_chunks([target], (target.shape, target.shape, target.shape),
                                                   index=(i, j),
@@ -191,8 +188,8 @@ class TensorLU(operands.LU, TensorOperandMixin):
                         else:
                             s = tree_add(prev_chunks_l[0].dtype, prev_chunks_l,
                                          None, prev_chunks_l[0].shape, sparse=op.sparse)
-                        target_l = TensorSubtract(dtype=L.dtype).new_chunk(
-                            [target_l, s, None, None], target_l.shape)
+                        target_l = TensorSubtract(dtype=L.dtype, lhs=target_l, rhs=s).new_chunk(
+                            [target_l, s], shape=target_l.shape)
                     u = upper_chunks[j, j]
                     a_transpose = TensorTranspose(dtype=u.dtype, sparse=op.sparse).new_chunk([u], u.shape)
                     target_transpose = TensorTranspose(dtype=target_l.dtype, sparse=op.sparse).new_chunk(

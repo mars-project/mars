@@ -346,6 +346,17 @@ class Test(unittest.TestCase):
         expected = np.clip(a_data, 3, 6)
         self.assertTrue(np.array_equal(res, expected))
 
+        a = tensor(a_data.copy(), chunk_size=3)
+        a_min_data = np.random.randint(1, 10, size=(10,))
+        a_max_data = np.random.randint(1, 10, size=(10,))
+        a_min = tensor(a_min_data)
+        a_max = tensor(a_max_data)
+        clip(a, a_min, a_max, out=a)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        expected = np.clip(a_data, a_min_data, a_max_data)
+        self.assertTrue(np.array_equal(res, expected))
+
         with option_context() as options:
             options.tensor.chunk_size = 3
 

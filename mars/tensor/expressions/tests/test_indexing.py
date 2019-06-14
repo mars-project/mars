@@ -24,7 +24,6 @@ from mars.tensor.expressions.indexing import choose, unravel_index, nonzero
 from mars.tensor.expressions.indexing.setitem import TensorIndexSetValue
 from mars.tensor.expressions.merge.concatenate import TensorConcatenate
 from mars.config import option_context
-from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -33,21 +32,18 @@ class Test(unittest.TestCase):
         indexed = t[t < 2]
         self.assertEqual(len(indexed.shape), 1)
         self.assertTrue(np.isnan(indexed.shape[0]))
-        self.assertTrue(np.isnan(calc_shape(indexed)[0]))
 
         t2 = ones((100, 200))
         indexed = t[t2 < 2]
         self.assertEqual(len(indexed.shape), 2)
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
-        self.assertTrue(np.isnan(calc_shape(indexed)[0]))
 
         t2 = ones((100, 200))
         indexed = t[t2 < 2] + 1
         self.assertEqual(len(indexed.shape), 2)
         self.assertTrue(np.isnan(indexed.shape[0]))
         self.assertEqual(indexed.shape[1], 300)
-        self.assertTrue(np.isnan(calc_shape(indexed)[0]))
 
         t3 = ones((101, 200))
         with self.assertRaises(IndexError) as cm:
@@ -67,23 +63,19 @@ class Test(unittest.TestCase):
         t = ones((100, 200, 300))
         t2 = t[10: 30, 199:, -30: 303]
         self.assertEqual(t2.shape, (20, 1, 30))
-        self.assertEqual(calc_shape(t2), t2.shape)
 
         t3 = t[10:90:4, 20:80:5]
         s1 = len(list(range(100))[10:90:4])
         s2 = len(list(range(200))[20:80:5])
         self.assertEqual(t3.shape, (s1, s2, 300))
-        self.assertEqual(calc_shape(t2), t2.shape)
 
     def testFancyIndexing(self):
         t = ones((100, 200, 300))
         t2 = t[[0, 1], [2, 3]]
         self.assertEqual(t2.shape, (2, 300))
-        self.assertEqual(calc_shape(t2), t2.shape)
 
         t3 = t[[[0, 1], [2, 3]], [4, 5]]
         self.assertEqual(t3.shape, (2, 2, 300))
-        self.assertEqual(calc_shape(t3), t3.shape)
 
         with self.assertRaises(IndexError) as cm:
             _ = t[[1, 2], [3, 4, 5]]  # noqa: F841
@@ -95,14 +87,10 @@ class Test(unittest.TestCase):
         t4 = t[:10, -10:, [13, 244, 151, 242, 34]].tiles()
         self.assertEqual(t4.shape, (10, 10, 5))
         self.assertEqual(t4.chunk_shape, (1, 1, 1))
-        self.assertEqual(calc_shape(t4), t4.shape)
-        self.assertEqual(calc_shape(t4.chunks[0]), t4.chunks[0].shape)
 
         t5 = t[:10, -10:, [1, 10, 20, 33, 34, 200]].tiles()
         self.assertEqual(t5.shape, (10, 10, 6))
         self.assertEqual(t5.chunk_shape, (1, 1, 5))
-        self.assertEqual(calc_shape(t5), t5.shape)
-        self.assertEqual(calc_shape(t5.chunks[0]), t5.chunks[0].shape)
 
     def testMixedIndexing(self):
         t = ones((100, 200, 300, 400))
@@ -113,7 +101,6 @@ class Test(unittest.TestCase):
         t2 = t[ones(100) < 2, ..., 20::101, 2]
         self.assertEqual(len(t2.shape), 3)
         self.assertTrue(np.isnan(t2.shape[0]))
-        self.assertEqual(calc_shape(t2), t2.shape)
 
     def testBoolIndexingTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -125,8 +112,6 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed.chunks[20].index, (20,))
         self.assertIs(indexed.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertIs(indexed.chunks[20].inputs[1], indexed.op.indexes[0].cix[0, 2, 0].data)
-        self.assertEqual(calc_shape(indexed.chunks[0]), indexed.chunks[0].shape)
-        self.assertEqual(calc_shape(indexed.chunks[20]), indexed.chunks[20].shape)
 
         t2 = ones((100, 200), chunk_size=30)
         indexed2 = t[t2 < 2]
@@ -138,8 +123,6 @@ class Test(unittest.TestCase):
         self.assertEqual(indexed2.chunks[0].shape[1], 30)
         self.assertEqual(indexed2.chunks[20].inputs[0], t.cix[(0, 2, 0)].data)
         self.assertEqual(indexed2.chunks[20].inputs[1], indexed2.op.indexes[0].cix[0, 2].data)
-        self.assertEqual(calc_shape(indexed2.chunks[0]), indexed2.chunks[0].shape)
-        self.assertEqual(calc_shape(indexed2.chunks[20]), indexed2.chunks[20].shape)
 
     def testSliceTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -153,8 +136,6 @@ class Test(unittest.TestCase):
         self.assertEqual(t2.chunks[1].inputs[0], t.cix[1, -1, -1].data)
         self.assertEqual(t2.chunks[1].op.indexes, [slice(0, 10, 1), slice(19, 20, 1), slice(None)])
         self.assertEqual(t2.chunks[1].index, (1, 0, 0))
-        self.assertEqual(calc_shape(t2.chunks[0]), t2.chunks[0].shape)
-        self.assertEqual(calc_shape(t2.chunks[1]), t2.chunks[1].shape)
 
     def testIndicesIndexingTiles(self):
         t = ones((10, 20, 30), chunk_size=(2, 20, 30))
@@ -164,7 +145,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t2.chunks), 1)
         self.assertIs(t2.chunks[0].inputs[0], t.cix[1, 0, 0].data)
         self.assertEqual(t2.chunks[0].op.indexes[0], 1)
-        self.assertEqual(calc_shape(t2.chunks[0]), t2.chunks[0].shape)
 
         t3 = t[4]
         t3.tiles()
@@ -172,7 +152,6 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t3.chunks), 1)
         self.assertIs(t3.chunks[0].inputs[0], t.cix[2, 0, 0].data)
         self.assertEqual(t3.chunks[0].op.indexes[0], 0)
-        self.assertEqual(calc_shape(t3.chunks[0]), t3.chunks[0].shape)
 
     def testMixedIndexingTiles(self):
         t = ones((100, 200, 300, 400), chunk_size=24)
@@ -185,7 +164,6 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(t2.shape[-1]))
         self.assertEqual(t2.chunk_shape, (4, 13, 1, 17))
         self.assertEqual(t2.chunks[0].op.indexes, [slice(10, 24, 3), 5, slice(None), None, cmp.cix[0, ].data])
-        self.assertEqual(calc_shape(t2.chunks[0]), t2.chunks[0].shape)
 
         # multiple tensor type as indexes
         t3 = ones((100, 200, 300, 400), chunk_size=24)
@@ -197,10 +175,8 @@ class Test(unittest.TestCase):
         self.assertEqual(t4.shape[1], 1)
         self.assertTrue(np.isnan(t4.shape[0]))
         self.assertTrue(np.isnan(t4.shape[-1]))
-        self.assertEqual(calc_shape(t4), t4.shape)
         self.assertEqual(t4.chunk_shape, (45, 1, 17))
         self.assertEqual(t4.chunks[0].op.indexes, [cmp2.cix[0, 0].data, 5, None, cmp3.cix[0, ].data])
-        self.assertEqual(calc_shape(t4.chunks[0]), t4.chunks[0].shape)
 
     def testSetItem(self):
         shape = (10, 20, 30, 40)
@@ -210,25 +186,20 @@ class Test(unittest.TestCase):
         self.assertIsInstance(t.op, TensorIndexSetValue)
         self.assertEqual(t.shape, shape)
         self.assertIsInstance(t.inputs[0].op.outputs[0].op, TensorOnes)
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertIsInstance(t.chunks[0].op, TensorOnes)
         self.assertIsInstance(t.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertEqual(t.cix[1, 1, 0, 0].op.value, 2)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
-        self.assertEqual(calc_shape(t.cix[1, 1, 0, 0]), t.cix[1, 1, 0, 0].shape)
 
         t2 = ones(shape, chunk_size=5, dtype='i4')
         shape = t2[5:20:3, 5, ..., :-5].shape
         t2[5:20:3, 5, ..., :-5] = ones(shape, chunk_size=4, dtype='i4') * 2
-        self.assertEqual(calc_shape(t2), t2.shape)
 
         t2.tiles()
         self.assertIsInstance(t2.chunks[0].op, TensorOnes)
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op.value.op, TensorConcatenate)
-        self.assertEqual(calc_shape(t2.chunks[0]), t2.chunks[0].shape)
 
         with self.assertRaises(ValueError):
             t[0, 0, 0, 0] = ones(2, chunk_size=10)
@@ -242,8 +213,6 @@ class Test(unittest.TestCase):
             a = choose([2, 3, 1, 0], choices)
 
             a.tiles()
-            self.assertEqual(calc_shape(a), a.shape)
-            self.assertEqual(calc_shape(a.chunks[0]), a.chunks[0].shape)
             self.assertEqual(len(a.chunks), 2)
             self.assertIsInstance(a.chunks[0].op, type(a.op))
             self.assertEqual(len(a.chunks[0].inputs), 5)
@@ -253,27 +222,19 @@ class Test(unittest.TestCase):
         t = unravel_index(indices, (7, 6))
 
         self.assertEqual(len(t), 2)
-        self.assertEqual(calc_shape(t[0]), t[0].shape)
-        self.assertEqual(calc_shape(t[1]), t[1].shape)
 
         [r.tiles() for r in t]
 
         self.assertEqual(len(t[0].chunks), 3)
         self.assertEqual(len(t[1].chunks), 3)
-        self.assertEqual(calc_shape(t[0].chunks[0]), t[0].chunks[0].shape)
-        self.assertEqual(calc_shape(t[1].chunks[0]), t[1].chunks[0].shape)
 
     def testNonzero(self):
         x = tensor([[1, 0, 0], [0, 2, 0], [1, 1, 0]], chunk_size=2)
         y = nonzero(x)
 
         self.assertEqual(len(y), 2)
-        self.assertEqual(calc_shape(y[0]), y[0].shape)
-        self.assertEqual(calc_shape(y[1]), y[1].shape)
 
         y[0].tiles()
-        self.assertEqual(calc_shape(y[0].chunks[0]), y[0].chunks[0].shape)
-        self.assertEqual(calc_shape(y[1].chunks[0]), y[1].chunks[0].shape)
 
     def testOperandKey(self):
         t = ones((10, 2), chunk_size=5)

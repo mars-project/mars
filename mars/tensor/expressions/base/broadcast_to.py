@@ -28,9 +28,6 @@ class TensorBroadcastTo(BroadcastTo, TensorOperandMixin):
         super(TensorBroadcastTo, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     def __call__(self, tensor, shape):
         return self.new_tensor([tensor], shape)
 

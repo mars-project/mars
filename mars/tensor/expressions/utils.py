@@ -435,3 +435,9 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
             break
 
     return tuple(dim_to_normalized[i] for i in range(len(dim_to_normalized)))
+
+
+def filter_inputs(inputs):
+    from ...core import Base, Entity
+
+    return [inp for inp in inputs if isinstance(inp, (Base, Entity))]

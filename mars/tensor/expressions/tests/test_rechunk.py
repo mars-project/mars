@@ -19,7 +19,6 @@ import unittest
 from mars.tensor.expressions.datasource import ones
 from mars.tensor.expressions.indexing.slice import TensorSlice
 from mars.tensor.expressions.rechunk.rechunk import compute_rechunk
-from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -49,8 +48,6 @@ class Test(unittest.TestCase):
         new_tensor = tensor.rechunk(3)
         new_tensor.tiles()
 
-        self.assertEqual(calc_shape(new_tensor), new_tensor.shape)
-        self.assertEqual(calc_shape(new_tensor.chunks[0]), new_tensor.chunks[0].shape)
         self.assertEqual(len(new_tensor.chunks), 12)
         self.assertEqual(new_tensor.chunks[0].inputs[0], tensor.chunks[0].data)
         self.assertEqual(len(new_tensor.chunks[1].inputs), 2)

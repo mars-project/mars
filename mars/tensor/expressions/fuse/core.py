@@ -23,16 +23,6 @@ class TensorFuseChunk(operands.Fuse, TensorOperandMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorFuseChunk, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        in_shapes = inputs_shape
-        out_shape = None
-
-        # TODO: the logic will be changed when fusion is not only straight line
-        for c in self.outputs[0].composed:
-            out_shape = c.op.calc_shape(*in_shapes)
-            in_shapes = [out_shape]
-        return out_shape
-
     @classmethod
     def tile(cls, op):
         raise NotSupportTile('TensorFuseChunk is a chunk operand which does not support tile')
