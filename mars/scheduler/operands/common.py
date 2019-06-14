@@ -112,10 +112,13 @@ class OperandActor(BaseOperandActor):
             try:
                 if worker in self._assigned_workers:
                     return
-                serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
+                if self._executable_dag is not None:
+                    exec_graph = self._executable_dag
+                else:
+                    exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
 
                 self._get_execution_ref(address=worker).enqueue_graph(
-                    self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                    self._session_id, self._op_key, exec_graph, self._io_meta,
                     dict(), self._info['optimize'], succ_keys=self._succ_keys,
                     pred_keys=self._pred_keys, _promise=True) \
                     .then(functools.partial(self._handle_worker_accept, worker))
@@ -502,12 +505,16 @@ class OperandActor(BaseOperandActor):
                      self._op_key, new_assignment, self._assigned_workers)
 
         dead_workers = set()
-        serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
+        if 'input_data_metas' not in self._io_meta and self._executable_dag is not None:
+            exec_graph = self._executable_dag
+        else:
+            exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
+
         for worker_ep in new_assignment:
             try:
                 with rewrite_worker_errors():
                     self._get_execution_ref(address=worker_ep).enqueue_graph(
-                        self._session_id, self._op_key, serialized_exec_graph, self._io_meta,
+                        self._session_id, self._op_key, exec_graph, self._io_meta,
                         data_sizes, self._info['optimize'], succ_keys=self._succ_keys,
                         _delay=delay, _promise=True) \
                         .then(functools.partial(self._handle_worker_accept, worker_ep))

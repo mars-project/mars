@@ -232,7 +232,7 @@ def _get_nvml_output(async_ctx=None):
             _last_nvml_output = ElementTree.fromstring(proc.stdout.read())
             _last_nvml_output_time = time.time()
             proc.stdout.close()
-        except (subprocess.CalledProcessError, OSError):
+        except (subprocess.CalledProcessError, OSError, TypeError):
             pass
     return _last_nvml_output
 

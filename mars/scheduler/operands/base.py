@@ -46,6 +46,8 @@ class BaseOperandActor(SchedulerActor):
         self._pred_keys = set(io_meta['predecessors'])
         self._succ_keys = set(io_meta['successors'])
 
+        self._executable_dag = op_info.pop('executable_dag', None)
+
         # set of finished predecessors, used to decide whether we should move the operand to ready
         self._finish_preds = set()
         # set of finished successors, used to detect whether we can do clean up
