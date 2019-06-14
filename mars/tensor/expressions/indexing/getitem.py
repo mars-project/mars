@@ -29,7 +29,7 @@ from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
 from ..core import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
-from .core import process_index, get_index_and_shape
+from .core import process_index, calc_shape
 
 
 FANCY_INDEX_TYPES = TENSOR_TYPE + (np.ndarray,)
@@ -435,6 +435,6 @@ def _getitem(a, item):
     # TODO(jisheng): field access, e.g. t['a'], t[['a', 'b']]
 
     index = process_index(a, item)
-    index, shape = get_index_and_shape(a.shape, index)
+    shape = calc_shape(a.shape, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
     return op(a, index, tuple(shape))

@@ -28,7 +28,7 @@ _INDEX_ERROR_MSG = 'only integers, slices (`:`), ellipsis (`...`), ' \
                    'numpy.newaxis (`None`) and integer or boolean arrays are valid indices'
 
 
-def get_index_and_shape(tensor_shape, index):
+def calc_shape(tensor_shape, index):
     shape = []
     idx = 0
     fancy_index = None
@@ -81,7 +81,7 @@ def get_index_and_shape(tensor_shape, index):
                 'shape mismatch: indexing arrays could not be broadcast together '
                 'with shapes {0}'.format(' '.join(str(s) for s in fancy_index_shapes)))
 
-    return index, shape
+    return shape
 
 
 def preprocess_index(index):
