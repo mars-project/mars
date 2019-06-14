@@ -12,7 +12,7 @@ matrix:
       language: generic
       services:
         - docker
-      env: PYTHON=2.7 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu
+      env: PYTHON=2.7 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp27-cp27mu:cp27-cp27m
     - os: osx
       language: generic
       env: PYTHON=2.7
