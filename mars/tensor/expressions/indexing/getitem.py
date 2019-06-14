@@ -17,7 +17,6 @@
 from numbers import Integral
 import operator
 import itertools
-import contextlib
 
 import numpy as np
 
@@ -27,7 +26,7 @@ from ....core import Base, Entity
 from ....compat import irange, OrderedDict
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
-    calc_pos, broadcast_shape, calc_sliced_size, recursive_tile
+    calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
 from ..core import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
 from .core import process_index, get_index_and_shape
@@ -42,47 +41,23 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, **kw):
+        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, **kw)
 
     @property
     def indexes(self):
         return self._indexes
 
-    def calc_shape(self, *inputs_shape):
-        return tuple(get_index_and_shape(inputs_shape[0], self._indexes)[1])
-
-    @contextlib.contextmanager
-    def _handle_params(self, inputs, indexes):
-        """
-        Index operator is special, it has additional parameter `indexes` which may also be tensor type,
-        normally, this indexes is provided when called by `tile` or `TensorIndex.__call__`, however, calls
-        in `GraphActor.get_executable_operand_dag` only provide inputs, in such situation, we need get `indexes`
-        from operand itself and replace tensor-liked indexes by new one in `inputs`.
-        """
-        if indexes is not None:
-            self._indexes = indexes
-            indexes_inputs = [ind for ind in indexes if isinstance(ind, (Base, Entity))]
-            inputs = inputs + indexes_inputs
-        yield inputs
-
+    def _set_inputs(self, inputs):
+        super(TensorIndex, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    def _new_tileables(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_tileables(mix_inputs, kws=kws, **kw)
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_chunks(mix_inputs, kws=kws, **kw)
-
     def __call__(self, a, index, shape):
-        return self.new_tensor([a], shape, indexes=index)
+        self._indexes = index
+        return self.new_tensor(filter_inputs([a] + list(index)), shape)
 
     @staticmethod
     def _fancy_index_distribute(input_tensor, fancy_indexes, axes):
@@ -277,8 +252,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 real_out_idx.insert(fancy_index_start_out_axis, next(idx_to_acc[idx_key]))
 
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([in_chunk], shape=tuple(chunk_shape),
-                                           indexes=chunk_index_obj, index=tuple(real_out_idx))
+            chunk_op._indexes = chunk_index_obj
+            out_chunk = chunk_op.new_chunk(filter_inputs([in_chunk] + chunk_index_obj),
+                                           shape=tuple(chunk_shape), index=tuple(real_out_idx))
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
@@ -306,16 +282,17 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                                                   sparse=to_concat_chunks[0].issparse())
                     concat_chunk = concat_op.new_chunk(to_concat_chunks, shape=tuple(concat_chunk_shape),
                                                        index=out_idx)
-                    out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.issparse())
                     select_pos = calc_pos(fancy_indexes[0].shape, poses)
                     out_index_obj = [slice(None)] * concat_axis + [select_pos] + \
                                     [slice(None)] * (len(nsplits) - concat_axis - 1)
+                    out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.issparse(),
+                                               indexes=out_index_obj)
                     pos_select_shape = concat_chunk.shape[:concat_axis] + fancy_indexes[0].shape + \
                         concat_chunk.shape[concat_axis + 1:]
                     pos_select_idx = out_idx[:concat_axis] + (0,) * fancy_indexes[0].ndim + \
                         out_idx[concat_axis + 1:]
                     pos_select_chunk = out_chunk_op.new_chunk([concat_chunk], shape=pos_select_shape,
-                                                              indexes=out_index_obj, index=pos_select_idx)
+                                                              index=pos_select_idx)
                     out_chunks.append(pos_select_chunk)
                 nsplits = nsplits[:concat_axis] + [(s,) for s in fancy_indexes[0].shape] + \
                     nsplits[concat_axis + 1:]
@@ -359,7 +336,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 nsplits = nsplits[:concat_axis] + list(fancy_indexes[0].nsplits) + nsplits[concat_axis + 1:]
 
         new_op = op.copy()
-        new_tensor = new_op.new_tensor(op.inputs, out_tensor.shape, indexes=op.indexes,
+        new_tensor = new_op.new_tensor(op.inputs, out_tensor.shape,
                                        chunks=out_chunks, nsplits=nsplits)
         return [new_tensor]
 
@@ -459,5 +436,5 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     index, shape = get_index_and_shape(a.shape, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse())
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
     return op(a, index, tuple(shape))
