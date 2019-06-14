@@ -559,46 +559,27 @@ class GraphActor(SchedulerActor):
         """
         from ..tensor.expressions.datasource import TensorFetchChunk
         graph = DAG()
+        input_mapping = dict()
+        output_keys = set()
 
-        inputs_to_copied = dict()
         for c in self._op_key_to_chunk[op_key]:
-            for inp in set(c.inputs or ()):
-                op = TensorFetchChunk(dtype=inp.dtype, to_fetch_key=inp.key, sparse=inp.op.sparse)
-                inp_chunk = op.new_chunk(None, inp.shape, _key=inp.key).data
-                inputs_to_copied[inp] = inp_chunk
-                graph.add_node(inp_chunk)
-            inputs = [inputs_to_copied[inp] for inp in (c.inputs or ())]
+            inputs = []
+            for inp in set(c.op.inputs or ()):
+                try:
+                    inp_chunk = input_mapping[(inp.key, inp.id)]
+                except KeyError:
+                    op = TensorFetchChunk(dtype=inp.dtype, to_fetch_key=inp.key, sparse=inp.op.sparse)
+                    inp_chunk = input_mapping[(inp.key, inp.id)] = \
+                        op.new_chunk(None, inp.shape, _key=inp.key, _id=inp.id).data
+                    graph.add_node(inp_chunk)
+                inputs.append(inp_chunk)
 
-            new_op = c.op.copy()
-            kws = []
-            for o in c.op.outputs:
-                kw = {
-                    '_key': o.key,
-                    'dtype': o.dtype,
-                    'index': o.index,
-                }
-                composed = []
-                # copy composed
-                for j, com in enumerate(o.composed or []):
-                    new_com_op = com.op.copy()
-                    if j == 0:
-                        inps = inputs
-                    else:
-                        # if more than 1 inputs, means they are exactly the same object
-                        inps = [composed[j - 1]] * len(com.inputs)
-                    new_com = new_com_op.new_chunk(inps, com.shape, index=com.index,
-                                                   dtype=com.dtype, _key=com.key)
-                    composed.append(new_com)
-                kw['_composed'] = composed
-                kws.append(kw)
-
-            new_outputs = new_op.new_chunks(inputs, [o.shape for o in c.op.outputs],
-                                            kws=kws)
-            for co in new_outputs:
-                exec_chunk = co.data
-                graph.add_node(exec_chunk)
-                for inp in inputs:
-                    graph.add_edge(inp, exec_chunk)
+            for out in set(c.op.outputs or ()):
+                if (out.key, out.id) not in output_keys:
+                    output_keys.add((out.key, out.id))
+                    graph.add_node(out)
+                    for inp in inputs:
+                        graph.add_edge(inp, out)
         if serialize:
             return serialize_graph(graph)
         else:
@@ -631,7 +612,7 @@ class GraphActor(SchedulerActor):
         )
         return io_meta
 
-    def create_operand_actors(self, _clean_io_meta=True):
+    def create_operand_actors(self, _clean_info=True):
         """
         Create operand actors for all operands
         """
@@ -651,6 +632,7 @@ class GraphActor(SchedulerActor):
             io_meta = self._collect_operand_io_meta(chunk_graph, self._op_key_to_chunk[op_key])
             op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
+            op_info['executable_dag'] = self.get_executable_operand_dag(op_key)
 
             if io_meta['predecessors']:
                 state = OperandState.UNSCHEDULED
@@ -663,12 +645,13 @@ class GraphActor(SchedulerActor):
             op_uid = OperandActor.gen_uid(self._session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
             op_refs[op_key] = self.ctx.create_actor(
-                OperandActor, self._session_id, self._graph_key, op_key, op_info,
+                OperandActor, self._session_id, self._graph_key, op_key, op_info.copy(),
                 is_terminal=op_key in self._terminal_chunk_op_tensor,
                 uid=op_uid, address=scheduler_addr,
                 wait=False
             )
-            if _clean_io_meta:
+            if _clean_info:
+                op_info.pop('executable_dag', None)
                 del op_info['io_meta']
 
         self.state = GraphState.RUNNING
@@ -688,8 +671,11 @@ class GraphActor(SchedulerActor):
             scheduler_addr = self.get_scheduler(op_uid)
             op_ref = op_refs[op_key] = self.ctx.actor_ref(op_uid, address=scheduler_addr)
             is_terminal = op_key in self._terminal_chunk_op_tensor
-            append_futures.append(op_ref.append_graph(self._graph_key, op_info,
+            append_futures.append(op_ref.append_graph(self._graph_key, op_info.copy(),
                                                       is_terminal=is_terminal, _wait=False))
+            if _clean_info:
+                op_info.pop('executable_dag', None)
+                del op_info['io_meta']
         [future.result() for future in append_futures]
 
         start_futures = [ref.start_operand(_tell=True, _wait=False) for ref in op_refs.values()]
