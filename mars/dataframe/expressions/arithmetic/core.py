@@ -309,11 +309,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return False
 
     @classmethod
-    def _get_chunk_index_min_max(cls, df, index_type, axis, ignore_check=False):
+    def _get_chunk_index_min_max(cls, df, index_type, axis):
         index = getattr(df, index_type)
-        if not ignore_check and not index.is_monotonic_increasing_or_decreasing and \
-                df.chunk_shape[axis] > 1:
-            return
 
         chunk_index_min_max = []
         for i in range(df.chunk_shape[axis]):
@@ -484,6 +481,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return True
 
     @classmethod
+    def _need_shuffle_on_axis(cls, left, right, index_type, axis):
+        if cls._is_index_identical(left, right, index_type, axis):
+            return False
+
+        for df in (left, right):
+            index = getattr(df, index_type)
+            if not index.is_monotonic_increasing_or_decreasing and \
+                    df.chunk_shape[axis] > 1:
+                return True
+
+        return False
+
+    @classmethod
     def _tile_both_dataframes(cls, op):
         # if both of the inputs are DataFrames, axis is just ignored
         left, right = op.inputs
@@ -494,14 +504,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         # first, we decide the chunk size on each axis
         # we perform the same logic for both index and columns
         for axis, index_type in enumerate(['index_value', 'columns']):
-            is_index_identical = cls._is_index_identical(left, right, index_type, axis)
-            ignore_check = is_index_identical  # if index identical, ignore monotonic check
-            # if both of the indexes are monotonic increasing or decreasing
-            left_chunk_index_min_max = cls._get_chunk_index_min_max(
-                left, index_type, axis, ignore_check=ignore_check)
-            right_chunk_index_min_max = cls._get_chunk_index_min_max(
-                right, index_type, axis, ignore_check=ignore_check)
-            if left_chunk_index_min_max is not None and right_chunk_index_min_max is not None:
+            if not cls._need_shuffle_on_axis(left, right, index_type, axis):
+                left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
+                right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
                 # no need to do shuffle on this axis
                 if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
                     # both left and right has only 1 chunk
