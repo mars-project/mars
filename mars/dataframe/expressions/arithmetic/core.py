@@ -159,9 +159,6 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
         super(DataFrameIndexAlignReduce, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     def _create_chunk(self, output_idx, index, **kw):
         inputs = self.inputs
         if kw.get('index_value', None) is None and inputs[0].inputs[0].index_value is not None:

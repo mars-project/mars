@@ -17,7 +17,6 @@
 from numbers import Integral
 import operator
 import itertools
-import contextlib
 
 import numpy as np
 
@@ -27,7 +26,7 @@ from ....core import Base, Entity
 from ....compat import reduce, irange, izip
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, split_index_into_chunks, is_asc_sorted, \
-    slice_split, calc_sliced_size
+    slice_split, calc_sliced_size, filter_inputs
 from ..core import TensorHasInput, TensorOperandMixin
 from .core import process_index, get_index_and_shape
 
@@ -38,47 +37,23 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, **kw):
+        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, **kw)
 
     @property
     def indexes(self):
         return self._indexes
 
-    def calc_shape(self, *inputs_shape):
-        return tuple(get_index_and_shape(inputs_shape[0], self._indexes)[1])
-
-    @contextlib.contextmanager
-    def _handle_params(self, inputs, indexes):
-        """
-        Index operator is special, it has additional parameter `indexes` which may also be tensor type,
-        normally, this indexes is provided when called by `tile` or `TensorIndex.__call__`, however, calls
-        in `GraphActor.get_executable_operand_dag` only provide inputs, in such situation, we need get `indexes`
-        from operand itself and replace tensor-liked indexes by new one in `inputs`.
-        """
-        if indexes is not None:
-            self._indexes = indexes
-            indexes_inputs = [ind for ind in indexes if isinstance(ind, (Base, Entity))]
-            inputs = inputs + indexes_inputs
-        yield inputs
-
+    def _set_inputs(self, inputs):
+        super(TensorIndex, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    def _new_tileables(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_tileables(mix_inputs, kws=kws, **kw)
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        with self._handle_params(inputs, indexes) as mix_inputs:
-            return super(TensorIndex, self)._new_chunks(mix_inputs, kws=kws, **kw)
-
     def __call__(self, a, index, shape):
-        return self.new_tensor([a], shape, indexes=index)
+        self._indexes = index
+        return self.new_tensor(filter_inputs([a] + list(index)), shape)
 
     @classmethod
     def tile(cls, op):
@@ -189,15 +164,16 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
             chunk_input = in_tensor.cix[tuple(chunk_idx)]
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([chunk_input], shape=tuple(chunk_shape),
-                                       indexes=chunk_index, index=output_idx)
+            chunk_op._indexes = chunk_index
+            chunk = chunk_op.new_chunk(filter_inputs([chunk_input] + chunk_index),
+                                       shape=tuple(chunk_shape), index=output_idx)
             out_chunks.append(chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
                          if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                    for i in range(len(out_chunks[0].shape))]
         new_op = op.copy().reset_key()
-        tensor = new_op.new_tensor([op.input], tensor.shape, indexes=op.indexes, chunks=out_chunks, nsplits=nsplits)
+        tensor = new_op.new_tensor(op.inputs, tensor.shape, chunks=out_chunks, nsplits=nsplits)
 
         if len(to_concat_axis_index) > 1:
             raise NotImplementedError
@@ -221,13 +197,14 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 concat_chunk_op = TensorConcatenate(
                     axis=axis, dtype=chunks[0].dtype, sparse=chunks[0].op.sparse)
                 concat_chunk = concat_chunk_op.new_chunk(chunks, shape=tuple(s), index=new_idx)
-                out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse)
-                out_chunk = out_chunk_op.new_chunk([concat_chunk], shape=tuple(s), indexes=indexobj, index=new_idx)
+                out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.op.sparse,
+                                           indexes=indexobj)
+                out_chunk = out_chunk_op.new_chunk(filter_inputs([concat_chunk] + indexobj),
+                                                   shape=tuple(s), index=new_idx)
                 output_chunks.append(out_chunk)
 
             new_op = tensor.op.copy()
-            tensor = new_op.new_tensor([op.input], tuple(output_shape), indexes=op.indexes,
-                                       chunks=output_chunks, nsplits=output_nsplits)
+            tensor = new_op.new_tensor(op.inputs, tuple(output_shape), chunks=output_chunks, nsplits=output_nsplits)
 
         return [tensor]
 
@@ -242,5 +219,5 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     index, shape = get_index_and_shape(a.shape, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse())
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
     return op(a, index, tuple(shape))

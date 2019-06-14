@@ -80,9 +80,6 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
 
         return src, dst, where
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[1]
-
     def __call__(self, *inputs):
         from ..core import Tensor
 

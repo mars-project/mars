@@ -53,9 +53,6 @@ class TensorChoice(TensorSimpleRandomData, TensorRandomOperandMixin):
     def p(self):
         return self._p
 
-    def calc_shape(self, *inputs_shape):
-        return self._size or ()
-
     def __call__(self, a, p, chunk_size=None):
         return self.new_tensor([a, p], None, raw_chunk_size=chunk_size)
 

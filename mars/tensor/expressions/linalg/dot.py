@@ -39,15 +39,6 @@ class TensorDot(TensorOperand, TensorOperandMixin):
     def b(self):
         return self._b
 
-    def calc_shape(self, *inputs_shape):
-        a_shape = inputs_shape[0]
-        b_shape = inputs_shape[1]
-        a_axes = len(a_shape) - 1
-        b_axes = len(b_shape) - 2
-        shape = tuple(s for i, s in enumerate(a_shape) if i != a_axes) + \
-            tuple(s for i, s in enumerate(b_shape) if i != b_axes)
-        return shape
-
     def _set_inputs(self, inputs):
         super(TensorDot, self)._set_inputs(inputs)
         self._a, self._b = self._inputs

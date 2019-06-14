@@ -14,12 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from .... import opcodes as OperandDef
 from ....serialize import KeyField, ListField
 from ..core import TensorHasInput, TensorOperandMixin
-from ..utils import calc_sliced_size
 
 
 class TensorSlice(TensorHasInput, TensorOperandMixin):
@@ -35,22 +32,6 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
     @property
     def slices(self):
         return self._slices
-
-    def calc_shape(self, *inputs_shape):
-        input_shape = inputs_shape[0]
-        shape = []
-        idx = 0
-        for s in self._slices:
-            if s is None:
-                shape.append(1)
-            elif isinstance(s, slice):
-                if np.isnan(input_shape[idx]):
-                    shape.append(np.nan)
-                else:
-                    shape.append(calc_sliced_size(input_shape[idx], s))
-                idx += 1
-        shape.extend(list(input_shape[idx:]))
-        return tuple(shape)
 
     def _set_inputs(self, inputs):
         super(TensorSlice, self)._set_inputs(inputs)

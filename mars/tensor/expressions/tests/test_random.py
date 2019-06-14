@@ -19,7 +19,6 @@ import numpy as np
 from mars.tensor.expressions.random import RandomState, beta, rand, choice, multivariate_normal, randint, randn
 from mars.tensor.expressions.datasource import tensor as from_ndarray
 from mars.tensor.expressions.tests.test_core import TestBase
-from mars.tests.core import calc_shape
 
 
 class Test(TestBase):
@@ -45,49 +44,38 @@ class Test(TestBase):
         arr = beta(1, 2, chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, ())
-        self.assertEqual(calc_shape(arr), arr.shape)
         self.assertEqual(len(arr.chunks), 1)
         self.assertEqual(arr.chunks[0].shape, ())
-        self.assertEqual(calc_shape(arr.chunks[0]), arr.chunks[0].shape)
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
 
         arr = beta([1, 2], [3, 4], chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, (2,))
-        self.assertEqual(calc_shape(arr), arr.shape)
         self.assertEqual(len(arr.chunks), 1)
         self.assertEqual(arr.chunks[0].shape, (2,))
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
-        self.assertEqual(calc_shape(arr.chunks[0]), arr.chunks[0].shape)
 
         arr = beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
                    chunk_size=1, size=(3, 2, 2)).tiles()
 
         self.assertEqual(arr.shape, (3, 2, 2))
-        self.assertEqual(calc_shape(arr), arr.shape)
         self.assertEqual(len(arr.chunks), 12)
         self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
-        self.assertEqual(calc_shape(arr.chunks[0]), arr.chunks[0].shape)
 
     def testChoice(self):
         t = choice(5, chunk_size=1)
         self.assertEqual(t.shape, ())
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ())
         self.assertEqual(len(t.chunks), 1)
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = choice(5, 3, chunk_size=1)
         self.assertEqual(t.shape, (3,))
-        self.assertEqual(calc_shape(t), t.shape)
         t.tiles()
         self.assertEqual(t.nsplits, ((1, 1, 1),))
-        self.assertEqual(calc_shape(t.chunks[0]), t.chunks[0].shape)
 
         t = choice(5, 3, replace=False)
         self.assertEqual(t.shape, (3,))
-        self.assertEqual(calc_shape(t), t.shape)
 
     def testMultivariateNormal(self):
         mean = [0, 0]
@@ -96,7 +84,6 @@ class Test(TestBase):
         t = multivariate_normal(mean, cov, 5000, chunk_size=500)
         self.assertEqual(t.shape, (5000, 2))
         self.assertEqual(t.op.size, (5000,))
-        self.assertEqual(calc_shape(t), t.shape)
 
         t.tiles()
         self.assertEqual(t.nsplits, ((500,) * 10, (2,)))
@@ -104,20 +91,17 @@ class Test(TestBase):
         c = t.chunks[0]
         self.assertEqual(c.shape, (500, 2))
         self.assertEqual(c.op.size, (500,))
-        self.assertEqual(calc_shape(c), c.shape)
 
     def testRandint(self):
         arr = randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunk_size=2).tiles()
 
         self.assertEqual(arr.shape, (10, 9))
-        self.assertEqual(calc_shape(arr), arr.shape)
         self.assertEqual(len(arr.chunks), 25)
         self.assertEqual(arr.chunks[0].shape, (2, 2))
         self.assertEqual(arr.chunks[0].op.dtype, np.float64)
         self.assertEqual(arr.chunks[0].op.low, 1)
         self.assertEqual(arr.chunks[0].op.high, 2)
         self.assertEqual(arr.chunks[0].op.density, .01)
-        self.assertEqual(calc_shape(arr.chunks[0]), arr.chunks[0].shape)
 
     def testUnexpectedKey(self):
         with self.assertRaises(ValueError):

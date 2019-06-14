@@ -130,14 +130,6 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 
-    def calc_shape(self, *inputs_shape):
-        input_shape = inputs_shape[0]
-        k = self._k
-        if len(input_shape) == 1:
-            return (input_shape[0] + abs(k),) * 2
-        else:
-            return _get_diag_shape(input_shape, k)
-
     def __call__(self, v, shape, chunk_size=None):
         return self.new_tensor([v], shape, raw_chunk_size=chunk_size)
 

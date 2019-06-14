@@ -23,9 +23,6 @@ class TensorFetchMixin(TensorOperandMixin):
         if inputs and len(inputs) > 0:
             raise ValueError("%s has no inputs" % type(self).__name__)
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     @classmethod
     def tile(cls, op):
         raise NotImplementedError('Fetch tile cannot be handled by operand itself')

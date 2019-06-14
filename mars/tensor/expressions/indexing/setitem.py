@@ -15,15 +15,15 @@
 # limitations under the License.
 
 from numbers import Integral
-import contextlib
 
 import numpy as np
 
 from .... import opcodes as OperandDef
 from ....serialize import KeyField, ListField, AnyField
 from ....core import Base, Entity
-from ...core import TENSOR_TYPE, CHUNK_TYPE
+from ...core import TENSOR_TYPE
 from ..core import TensorHasInput, TensorOperandMixin
+from ..utils import filter_inputs
 from .core import process_index, get_index_and_shape
 from .getitem import TensorIndex
 
@@ -35,8 +35,9 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _indexes = ListField('indexes')
     _value = AnyField('value')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, value=None, **kw):
+        super(TensorIndexSetValue, self).__init__(_dtype=dtype, _sparse=sparse,
+                                                  _indexes=indexes, _value=value, **kw)
 
     @property
     def indexes(self):
@@ -46,47 +47,19 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def value(self):
         return self._value
 
-    @contextlib.contextmanager
-    def _handle_params(self, inputs, indexes, value):
-        """
-        TensorIndexSetValue operator is like Index operand, it has additional parameter `indexes` and `value`, all of
-        them may be tensor type. As explained in TensorIndex, when indexes and value are not provided, we should get
-        from operand itself and replace tensor-liked objects by iterating over inputs.
-        """
-        if indexes is not None and value is not None:
-            self._indexes = indexes
-            self._value = value
-
-            indexes_inputs = [ind for ind in indexes if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE)]
-            inputs += indexes_inputs
-            if isinstance(value, TENSOR_TYPE + CHUNK_TYPE):
-                inputs += [value]
-        yield inputs
-
+    def _set_inputs(self, inputs):
+        super(TensorIndexSetValue, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        if isinstance(self._value, (Base, Entity)):
-            self._value = next(inputs_iter)
-
-    def _new_tileables(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        value = kw.pop('value', None)
-        with self._handle_params(inputs, indexes, value) as mix_inputs:
-            return super(TensorIndexSetValue, self)._new_tileables(mix_inputs, kws=kws, **kw)
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        indexes = kw.pop('indexes', None)
-        value = kw.pop('value', None)
-        with self._handle_params(inputs, indexes, value) as mix_inputs:
-            return super(TensorIndexSetValue, self)._new_chunks(mix_inputs, kws=kws, **kw)
-
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
+        self._value = next(inputs_iter) if isinstance(self._value, (Base, Entity)) else self._value
 
     def __call__(self, a, index, value):
-        return self.new_tensor([a], a.shape, indexes=index, value=value)
+        inputs = filter_inputs([a] + list(index) + [value])
+        self._indexes = index
+        self._value = value
+        return self.new_tensor(inputs, a.shape)
 
     @classmethod
     def tile(cls, op):
@@ -94,8 +67,9 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         value = op.value
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
-        index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse)
-        index_tensor = index_tensor_op.new_tensor([op.input], tensor.shape, indexes=op.indexes).single_tiles()
+        index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse, indexes=op.indexes)
+        index_tensor_inputs = filter_inputs([op.input] + op.indexes)
+        index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape).single_tiles()
 
         nsplits = index_tensor.nsplits
         if any(any(np.isnan(ns) for ns in nsplit) for nsplit in nsplits):
@@ -113,14 +87,14 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 continue
 
             value_chunk = value.cix[index_chunk.index] if is_value_tensor else value
-            chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, indexes=index_chunk.op.indexes,
-                                           value=value_chunk, index=chunk.index)
+            chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
+                                           indexes=index_chunk.op.indexes, value=value_chunk)
+            chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
+            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape, index=chunk.index)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors([op.input], tensor.shape, indexes=op.indexes, value=op.value,
-                                  chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=op.input.nsplits)
 
 
 def _setitem(a, item, value):
@@ -138,6 +112,6 @@ def _setitem(a, item, value):
     else:
         value = broadcast_to(value, shape).astype(a.dtype)
 
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse())
+    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value)
     ret = op(a, index, value)
     a.data = ret.data

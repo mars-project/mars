@@ -52,19 +52,6 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         if len(inputs) > 1:
             self._repeats = self._inputs[1]
 
-    def calc_shape(self, *inputs_shape):
-        ax = self._axis or 0
-        input_shape = (np.prod(inputs_shape[0]),) if self._axis is None else inputs_shape[0]
-        if len(inputs_shape) == 1:
-            repeats = self._repeats
-            if isinstance(repeats, np.ndarray):
-                size = repeats.sum()
-            else:
-                size = input_shape[ax] * repeats
-            return input_shape[:ax] + (size,) + input_shape[ax + 1:]
-        else:
-            return input_shape[:ax] + (np.nan,) + input_shape[ax + 1:]
-
     def __call__(self, a, repeats):
         axis = self._axis
         a = astensor(a)

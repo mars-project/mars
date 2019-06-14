@@ -46,9 +46,6 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
     def axis2(self):
         return self._axis2
 
-    def calc_shape(self, *inputs_shape):
-        return _swap(inputs_shape[0], self.axis1, self.axis2)
-
     def __call__(self, a):
         shape = _swap(a.shape, self.axis1, self.axis2)
         return self.new_tensor([a], shape)

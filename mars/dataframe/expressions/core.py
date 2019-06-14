@@ -72,9 +72,6 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     def __init__(self, **kwargs):
         super(DataFrameShuffleProxy, self).__init__(**kwargs)
 
-    def calc_shape(self, *inputs_shape):
-        return ()
-
 
 class DataFrameShuffleMap(ShuffleMap):
     pass

@@ -37,9 +37,6 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
     def output_limit(self):
         return float('inf')
 
-    def calc_shape(self, *inputs_shape):
-        return np.nan,
-
     def __call__(self, a):
         return ExecutableTuple(self.new_tensors([a], shape=(np.nan,), output_limit=a.ndim))
 

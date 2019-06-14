@@ -20,7 +20,6 @@ import numpy as np
 
 from mars.tensor.expressions.datasource import ones
 from mars.tensor.expressions.merge import concatenate, stack
-from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -30,14 +29,12 @@ class Test(unittest.TestCase):
 
         c = concatenate([a, b])
         self.assertEqual(c.shape, (30, 20, 30))
-        self.assertEqual(calc_shape(c), c.shape)
 
         a = ones((10, 20, 30), chunk_size=10)
         b = ones((10, 20, 40), chunk_size=20)
 
         c = concatenate([a, b], axis=-1)
         self.assertEqual(c.shape, (10, 20, 70))
-        self.assertEqual(calc_shape(c), c.shape)
 
         with self.assertRaises(ValueError):
             a = ones((10, 20, 30), chunk_size=10)
@@ -61,37 +58,29 @@ class Test(unittest.TestCase):
         self.assertEqual(c.nsplits, ((5, 5, 10, 10), (5,) * 4, (5,) * 6))
         self.assertEqual(c.cix[0, 0, 0].key, a.cix[0, 0, 0].key)
         self.assertEqual(c.cix[1, 0, 0].key, a.cix[1, 0, 0].key)
-        self.assertEqual(calc_shape(c.cix[0, 0, 0]), c.cix[0, 0, 0].shape)
-        self.assertEqual(calc_shape(c.cix[1, 0, 0]), c.cix[1, 0, 0].shape)
 
     def testStack(self):
         raw_arrs = [ones((3, 4), chunk_size=2) for _ in range(10)]
         arr2 = stack(raw_arrs, axis=0)
 
         self.assertEqual(arr2.shape, (10, 3, 4))
-        self.assertEqual(calc_shape(arr2), arr2.shape)
 
         arr2.tiles()
         self.assertEqual(arr2.nsplits, ((1,) * 10, (2, 1), (2, 2)))
-        self.assertEqual(calc_shape(arr2.chunks[0]), arr2.chunks[0].shape)
 
         arr3 = stack(raw_arrs, axis=1)
 
         self.assertEqual(arr3.shape, (3, 10, 4))
-        self.assertEqual(calc_shape(arr3), arr3.shape)
 
         arr3.tiles()
         self.assertEqual(arr3.nsplits, ((2, 1), (1,) * 10, (2, 2)))
-        self.assertEqual(calc_shape(arr3.chunks[0]), arr3.chunks[0].shape)
 
         arr4 = stack(raw_arrs, axis=2)
-        self.assertEqual(calc_shape(arr4), arr4.shape)
 
         self.assertEqual(arr4.shape, (3, 4, 10))
 
         arr4.tiles()
         self.assertEqual(arr4.nsplits, ((2, 1), (2, 2), (1,) * 10))
-        self.assertEqual(calc_shape(arr4.chunks[0]), arr4.chunks[0].shape)
 
         with self.assertRaises(ValueError):
             raw_arrs2 = [ones((3, 4), chunk_size=2), ones((4, 3), chunk_size=2)]
