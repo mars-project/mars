@@ -352,6 +352,78 @@ class Test(TestBase):
 
         self.assertEqual(len(proxy_keys), 2)
 
+        data4 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        df4 = from_pandas(data4, chunk_size=3)
+
+        data5 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                             columns=[np.random.bytes(10) for _ in range(10)])
+        df5 = from_pandas(data5, chunk_size=3)
+
+        df6 = add(df4, df5)
+
+        # test df6's index and columns
+        pd.testing.assert_index_equal(df6.columns.to_pandas(), (data4 + data5).columns)
+        self.assertTrue(df6.columns.should_be_monotonic)
+        self.assertIsInstance(df6.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df6.index_value.should_be_monotonic)
+        pd.testing.assert_index_equal(df6.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df6.index_value.key, df4.index_value.key)
+        self.assertNotEqual(df6.index_value.key, df5.index_value.key)
+        self.assertEqual(df6.shape[1], 20)  # columns is recorded, so we can get it
+
+        df6.tiles()
+
+        self.assertEqual(df6.chunk_shape, (4, 4))
+        proxy_keys = set()
+        for c in df6.chunks:
+            self.assertIsInstance(c.op, DataFrameAdd)
+            self.assertEqual(len(c.inputs), 2)
+            # test left side
+            self.assertIsInstance(c.inputs[0].op, DataFrameIndexAlignReduce)
+            expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 4)[c.index[1]]
+                                       for ic in c.inputs[0].inputs[0].inputs if ic.index[0] == 0])
+            pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
+            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
+            self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
+            proxy_keys.add(c.inputs[0].inputs[0].op.key)
+            for ic, ci in zip(c.inputs[0].inputs[0].inputs, df4.chunks):
+                self.assertIsInstance(ic.op, DataFrameIndexAlignMap)
+                self.assertEqual(ic.op.index_shuffle_size, 4)
+                self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
+                self.assertEqual(ic.op.column_shuffle_size, 4)
+                self.assertIsNotNone(ic.columns)
+                shuffle_segments = ic.op.column_shuffle_segments
+                expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_series_equal(ss, ess)
+                self.assertIs(ic.inputs[0], ci.data)
+            # test right side
+            self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
+            expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 4)[c.index[1]]
+                                       for ic in c.inputs[1].inputs[0].inputs if ic.index[0] == 0])
+            pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
+            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), c.inputs[1].dtypes.index)
+            self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
+            self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
+            proxy_keys.add(c.inputs[1].inputs[0].op.key)
+            for ic, ci in zip(c.inputs[1].inputs[0].inputs, df5.chunks):
+                self.assertIsInstance(ic.op, DataFrameIndexAlignMap)
+                self.assertEqual(ic.op.index_shuffle_size, 4)
+                self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
+                self.assertEqual(ic.op.column_shuffle_size, 4)
+                self.assertIsNotNone(ic.columns)
+                shuffle_segments = ic.op.column_shuffle_segments
+                expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
+                self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
+                for ss, ess in zip(shuffle_segments, expected_shuffle_segments):
+                    pd.testing.assert_series_equal(ss, ess)
+                self.assertIs(ic.inputs[0], ci.data)
+
+        self.assertEqual(len(proxy_keys), 2)
+
     def testWithoutShuffleAndWithOneChunk(self):
         # only 1 axis is monotonic
         # data1 with index split into [0...4], [5...9],
@@ -532,6 +604,33 @@ class Test(TestBase):
                 self.assertIs(ic.inputs[0], ci.data)
 
         self.assertEqual(len(proxy_keys), 2)
+
+    def testAddSelf(self):
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        df = from_pandas(data, chunk_size=3)
+        df2 = add(df, df)
+
+        # test df2's index and columns
+        pd.testing.assert_index_equal(df2.columns.to_pandas(), (data + data).columns)
+        self.assertTrue(df2.columns.should_be_monotonic)
+        self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
+        self.assertTrue(df2.index_value.should_be_monotonic)
+        pd.testing.assert_index_equal(df2.index_value.to_pandas(), pd.Int64Index([]))
+        self.assertEqual(df2.index_value.key, df.index_value.key)
+        self.assertEqual(df2.columns.key, df.columns.key)
+        self.assertEqual(df2.shape[1], 10)
+
+        df2.tiles()
+
+        self.assertEqual(df2.chunk_shape, df.chunk_shape)
+        for c in df2.chunks:
+            self.assertIsInstance(c.op, DataFrameAdd)
+            self.assertEqual(len(c.inputs), 2)
+            # test the left side
+            self.assertIs(c.inputs[0], df.cix[c.index].data)
+            # test the right side
+            self.assertIs(c.inputs[1], df.cix[c.index].data)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
