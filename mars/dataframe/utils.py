@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import functools
-import operator
 
 from mars.lib.mmh3 import hash as mmh_hash
 
@@ -23,9 +22,8 @@ def hash_index(index, size):
         return mmh_hash(bytes(x)) % size
 
     f = functools.partial(func, size=size)
-    grouped = sorted(index.groupby(index.map(f)).items(),
-                     key=operator.itemgetter(0))
-    return [g[1] for g in grouped]
+    idx_to_grouped = dict(index.groupby(index.map(f)).items())
+    return [idx_to_grouped.get(i, list()) for i in range(size)]
 
 
 def hash_dtypes(dtypes, size):

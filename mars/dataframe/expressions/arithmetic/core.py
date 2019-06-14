@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import copy
 
 import numpy as np
 try:
@@ -308,9 +309,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return False
 
     @classmethod
-    def _get_chunk_index_min_max(cls, df, index_type, axis):
+    def _get_chunk_index_min_max(cls, df, index_type, axis, ignore_check=False):
         index = getattr(df, index_type)
-        if not index.is_monotonic_increasing_or_decreasing and \
+        if not ignore_check and not index.is_monotonic_increasing_or_decreasing and \
                 df.chunk_shape[axis] > 1:
             return
 
@@ -469,6 +470,20 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return out_chunks
 
     @classmethod
+    def _is_index_identical(cls, left, right, index_type, axis):
+        if left.chunk_shape[axis] != right.chunk_shape[axis]:
+            return False
+
+        for i in range(left.chunk_shape[axis]):
+            idx = [0, 0]
+            idx[axis] = i
+            if getattr(left.cix[tuple(idx)], index_type).key != \
+                    getattr(right.cix[tuple(idx)], index_type).key:
+                return False
+
+        return True
+
+    @classmethod
     def _tile_both_dataframes(cls, op):
         # if both of the inputs are DataFrames, axis is just ignored
         left, right = op.inputs
@@ -479,9 +494,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         # first, we decide the chunk size on each axis
         # we perform the same logic for both index and columns
         for axis, index_type in enumerate(['index_value', 'columns']):
+            is_index_identical = cls._is_index_identical(left, right, index_type, axis)
+            ignore_check = is_index_identical  # if index identical, ignore monotonic check
             # if both of the indexes are monotonic increasing or decreasing
-            left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
-            right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
+            left_chunk_index_min_max = cls._get_chunk_index_min_max(
+                left, index_type, axis, ignore_check=ignore_check)
+            right_chunk_index_min_max = cls._get_chunk_index_min_max(
+                right, index_type, axis, ignore_check=ignore_check)
             if left_chunk_index_min_max is not None and right_chunk_index_min_max is not None:
                 # no need to do shuffle on this axis
                 if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
@@ -536,12 +555,23 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _calc_properties(cls, x1, x2):
         dtypes = columns = index = None
         index_shape = column_shape = np.nan
-        if x1.dtypes is not None and x2.dtypes is not None:
+
+        if x1.columns.key == x2.columns.key:
+            dtypes = x1.dtypes
+            column_shape = len(dtypes)
+            columns = copy.copy(x1.columns)
+            columns.value.should_be_monotonic = True
+        elif x1.dtypes is not None and x2.dtypes is not None:
             dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
             column_shape = len(dtypes)
             columns = parse_index(dtypes.index, store_data=True)
             columns.value.should_be_monotonic = True
-        if x1.index_value is not None and x2.index_value is not None:
+
+        if x1.index_value.key == x2.index_value.key:
+            index = copy.copy(x1.index_value)
+            index.value.should_be_monotonic = True
+            index_shape = x1.shape[0]
+        elif x1.index_value is not None and x2.index_value is not None:
             index = infer_index_value(x1.index_value, x2.index_value, cls._operator)
             index.value.should_be_monotonic = True
             if index.key == x1.index_value.key == x2.index_value.key and \
@@ -576,6 +606,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     def rcall(self, x1, x2):
         return self._call(x1, x2)
+
 
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):
     __slots__ = ()
