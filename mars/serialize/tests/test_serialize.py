@@ -557,7 +557,8 @@ class Test(unittest.TestCase):
             serialized = pyarrow.serialize(data).to_buffer()
 
             bio = BytesIO()
-            reader = dataserializer.CompressBufferReader(pyarrow.py_buffer(serialized), compress)
+            reader = dataserializer.ArrowBufferIO(
+                pyarrow.py_buffer(serialized), 'r', compress_out=compress)
             while True:
                 block = reader.read(128)
                 if not block:
@@ -569,7 +570,7 @@ class Test(unittest.TestCase):
 
             data_sink = bytearray(len(serialized))
             compressed_mv = memoryview(compressed)
-            writer = dataserializer.DecompressBufferWriter(pyarrow.py_buffer(data_sink))
+            writer = dataserializer.ArrowBufferIO(pyarrow.py_buffer(data_sink), 'w')
             pos = 0
             while pos < len(compressed):
                 endpos = min(pos + 128, len(compressed))
@@ -577,3 +578,43 @@ class Test(unittest.TestCase):
                 pos = endpos
 
             assert_array_equal(data, pyarrow.deserialize(data_sink))
+
+    def testTransCompressIO(self):
+        if not np:
+            return
+        from numpy.testing import assert_array_equal
+
+        compressions = [dataserializer.CompressType.NONE] + \
+            list(dataserializer.get_supported_compressions())
+
+        for c1 in compressions:
+            for c2 in compressions:
+                data = np.random.random((1000, 100))
+                compressed_read_file = BytesIO(dataserializer.dumps(data, compress=c1))
+
+                bio = BytesIO()
+                reader = dataserializer.TransCompressIO(compressed_read_file, 'r', compress_out=c2)
+                while True:
+                    block = reader.read(128)
+                    if not block:
+                        break
+                    bio.write(block)
+
+                compressed = bio.getvalue()
+                self.assertEqual(c2, dataserializer.read_file_header(compressed).compress)
+                assert_array_equal(data, dataserializer.loads(compressed))
+
+                compressed_read_file.seek(0)
+                compressed_write_file = BytesIO()
+                writer = dataserializer.TransCompressIO(compressed_write_file, 'w', compress_in=c2,
+                                                        managed=False)
+                while True:
+                    block = compressed_read_file.read(128)
+                    if not block:
+                        break
+                    writer.write(block)
+                writer.close()
+
+                compressed = compressed_write_file.getvalue()
+                self.assertEqual(c2, dataserializer.read_file_header(compressed).compress)
+                assert_array_equal(data, dataserializer.loads(compressed))

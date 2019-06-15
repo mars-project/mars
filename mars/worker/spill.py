@@ -232,14 +232,15 @@ class SpillActor(WorkerActor):
         def _try_put_chunk(spill_times=1):
             buf = None
             sealed = False
+            block_size = options.worker.transfer_block_size
             try:
                 start_time = time.time()
                 logger.debug('Creating data writer for chunk %s in plasma', chunk_key)
                 buf = self._chunk_store.create(session_id, chunk_key, data_size)
 
-                with open(file_name, 'rb') as inpf, dataserializer.DecompressBufferWriter(buf) as writer:
+                with open(file_name, 'rb') as inpf, \
+                        dataserializer.ArrowBufferIO(buf, 'w', block_size=block_size) as writer:
                     logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
-                    block_size = options.worker.transfer_block_size
                     compress_future = None
                     while True:
                         read_future = self._input_pool.submit(inpf.read, block_size)

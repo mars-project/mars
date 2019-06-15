@@ -118,18 +118,20 @@ class SenderActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def send_data(self, session_id, chunk_key, target_endpoints, ensure_cached=True,
-                  timeout=None, callback=None):
+                  compression=None, timeout=None, callback=None):
         """
         Send data to other workers
         :param session_id: session id
         :param chunk_key: chunk to be sent
         :param target_endpoints: endpoints to receive this chunk
         :param ensure_cached: if True, make sure the data is in the shared storage of the target worker
+        :param compression: compression type when transfer in network
         :param timeout: timeout of data sending
         :param callback: promise callback
         """
         already_started = set()
         data_size = self._read_data_size(session_id, chunk_key)
+        compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         try:
             filtered_refs, wait_refs = self._filter_targets(session_id, chunk_key, target_endpoints,
@@ -194,7 +196,7 @@ class SenderActor(WorkerActor):
                     .then(lambda *_: self._compress_and_send(
                         session_id, chunk_key,
                         [ref for ref in filtered_refs if ref.address not in already_started],
-                        timeout=timeout,
+                        compression=compression, timeout=timeout,
                     )) \
                     .catch(_handle_rejection)
             else:
@@ -208,17 +210,17 @@ class SenderActor(WorkerActor):
         promise.all_(finish_promises).then(_finalize).catch(_handle_rejection)
 
     @log_unhandled
-    def _compress_and_send(self, session_id, chunk_key, target_refs, timeout=None):
+    def _compress_and_send(self, session_id, chunk_key, target_refs, compression, timeout=None):
         """
         Compress and send data to receivers in chunked manner
         :param session_id: session id
         :param chunk_key: chunk key
         :param target_refs: refs to send data to
+        :param compression: compression type when transfer in network
         """
         # start compress and send data into targets
         logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
         min_chunk_size = options.worker.transfer_block_size
-        transfer_compression = dataserializer.CompressType(options.worker.transfer_compression)
         reader = None
 
         # filter out endpoints we need to send to
@@ -232,7 +234,8 @@ class SenderActor(WorkerActor):
             try:
                 buf = self._chunk_store.get_buffer(session_id, chunk_key)
                 # create a stream compressor from shared buffer
-                reader = dataserializer.CompressBufferReader(buf, transfer_compression)
+                reader = dataserializer.ArrowBufferIO(
+                    buf, 'r', compress_out=compression, block_size=min_chunk_size)
             except KeyError:
                 pass
             finally:
@@ -242,7 +245,8 @@ class SenderActor(WorkerActor):
                 file_name = build_spill_file_name(chunk_key)
                 if not file_name:
                     raise SpillNotConfigured('Spill not configured')
-                reader = open(file_name, 'rb')
+                reader = dataserializer.TransCompressIO(
+                    open(file_name, 'rb'), 'r', compress_out=compression, block_size=min_chunk_size)
 
             futures = []
             checksum = 0
@@ -372,7 +376,7 @@ class ReceiverActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def create_data_writer(self, session_id, chunk_key, data_size, sender_ref,
-                           ensure_cached=True, timeout=0, callback=None):
+                           ensure_cached=True, timeout=0, use_promise=True, callback=None):
         """
         Create a data writer for subsequent data transfer. The writer can either work on
         shared storage or spill.
@@ -382,6 +386,8 @@ class ReceiverActor(WorkerActor):
         :param sender_ref: ActorRef of SenderActor
         :param ensure_cached: if True, the data should be stored in shared memory, otherwise spill is acceptable
         :param timeout: timeout if the chunk receiver does not close
+        :param use_promise: if True, we use promise callback to notify accomplishment of writer creation,
+            otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
         :param callback: promise callback
         """
         logger.debug('Begin creating transmission data writer for chunk %s from %s',
@@ -395,7 +401,7 @@ class ReceiverActor(WorkerActor):
             logger.debug('Chunk %s already started transmission', chunk_key)
             if callback:
                 self.tell_promise(callback, self.address, ReceiveStatus.RECEIVING)
-            return
+            return self.address, ReceiveStatus.RECEIVING
 
         # build meta data for data transfer
         if session_chunk_key in self._data_meta_cache:
@@ -405,7 +411,7 @@ class ReceiverActor(WorkerActor):
                 if callback:
                     self.tell_promise(callback, self.address, ReceiveStatus.RECEIVED)
                 self._invoke_finish_callbacks(session_id, chunk_key)
-                return
+                return self.address, ReceiveStatus.RECEIVED
             else:
                 del self._data_meta_cache[session_chunk_key]
 
@@ -422,7 +428,8 @@ class ReceiverActor(WorkerActor):
             address, state = result
             if state == ReceiveStatus.RECEIVED:
                 self._invoke_finish_callbacks(session_id, chunk_key)
-            self.tell_promise(callback, address, state)
+            if callback is not None:
+                self.tell_promise(callback, address, state)
 
         @log_unhandled
         def _handle_reject(*exc):
@@ -431,24 +438,41 @@ class ReceiverActor(WorkerActor):
             if callback:
                 self.tell_promise(callback, *exc, **dict(_accept=False))
 
-        promise.finished() \
-            .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached)) \
-            .then(_handle_accept, _handle_reject)
+        if use_promise:
+            promise.finished() \
+                .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached)) \
+                .then(_handle_accept, _handle_reject)
+        else:
+            try:
+                result = self._create_writer(session_id, chunk_key, ensure_cached=ensure_cached,
+                                             use_promise=False)
+                _handle_accept(result)
+                return result
+            except:  # noqa: E722
+                _handle_reject(*sys.exc_info())
+                raise
 
     @log_unhandled
-    def _create_writer(self, session_id, chunk_key, ensure_cached=True, spill_times=1):
+    def _create_writer(self, session_id, chunk_key, ensure_cached=True, spill_times=1,
+                       use_promise=True):
         """
         Create data writer for chunk
         :param session_id: session id
         :param chunk_key: chunk key
         :param ensure_cached: True if we need to make sure that data are written into the shared cache
         :param spill_times: spill scale
+        :param use_promise: if True, we use promise callback to notify accomplishment of writer creation,
+            otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
         :return:
         """
+        block_size = options.worker.transfer_block_size
+        disk_compression = dataserializer.CompressType(options.worker.disk_compression)
+
         # actual create data writer
         session_chunk_key = (session_id, chunk_key)
         data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
         data_size = data_meta.chunk_size
+        min_chunk_size = options.worker.transfer_block_size
         buf = None
         try:
             # attempt to create data chunk on shared store
@@ -457,7 +481,8 @@ class ReceiverActor(WorkerActor):
             logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
                          data_size, chunk_key)
             # create a writer for the chunk
-            self._data_writers[session_chunk_key] = dataserializer.DecompressBufferWriter(buf)
+            self._data_writers[session_chunk_key] = dataserializer.ArrowBufferIO(
+                buf, 'w', block_size=min_chunk_size)
             return self.address, None
         except (KeyError, StoreKeyExists):
             if self.check_status(session_id, chunk_key) != ReceiveStatus.RECEIVED:
@@ -469,6 +494,9 @@ class ReceiverActor(WorkerActor):
         except StoreFull:
             # no space left in the shared store
             if ensure_cached:
+                # if promise is disabled, we have to raise an error
+                if not use_promise:
+                    raise
                 # spill and try again
                 return self._chunk_holder_ref.spill_size(data_size, spill_times, _promise=True) \
                     .then(lambda *_: self._create_writer(session_id, chunk_key, ensure_cached=True,
@@ -480,7 +508,9 @@ class ReceiverActor(WorkerActor):
                 self._chunk_holder_ref.spill_size(data_size, _tell=True)
                 spill_file_name = build_spill_file_name(chunk_key, writing=True)
                 try:
-                    spill_file = open(spill_file_name, 'wb')
+                    spill_file = dataserializer.TransCompressIO(
+                        open(spill_file_name, 'wb'), 'w', compress_in=disk_compression,
+                        block_size=block_size)
                     data_meta.start_time = time.time()
                     self._data_writers[session_chunk_key] = spill_file
                 except (KeyError, IOError):

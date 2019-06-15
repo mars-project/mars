@@ -53,6 +53,10 @@ class DummyCompress(object):
         pass
 
     @staticmethod
+    def compress(data):  # pragma: no cover
+        return data
+
+    @staticmethod
     def decompress(data):  # pragma: no cover
         return data
 
@@ -188,6 +192,14 @@ def write_file_header(file, header):
     file.write(struct.pack('<H', header.compress.tag))
 
 
+def peek_file_header(file):
+    pos = file.tell()
+    try:
+        return read_file_header(file)
+    finally:
+        file.seek(pos)
+
+
 def load(file, raw=False):
     header = read_file_header(file)
     file = open_decompression_file(file, header.compress)
@@ -204,13 +216,26 @@ def load(file, raw=False):
         return pyarrow.deserialize(memoryview(buf), mars_serialize_context())
 
 
-class CompressBufferReader(object):
-    def __init__(self, buf, compress):
-        self._total_bytes = len(buf)
-        self._compress_method = compress
-        self._compressor = compressobjs[compress]()
-        self._pos = 0
-        self._mv = memoryview(buf)
+class HeaderBufferIO(object):
+    """
+    File-like object handling data with file header
+    """
+    def __init__(self, mode='r', compress_out=None, block_size=8192):
+        """
+        :param mode: 'r' indicates read, or 'w' indicates write
+        :param compress_out: compression type for read()
+        :param block_size: size of data block when copying
+        """
+        self._mode = mode
+        self._block_size = block_size
+        self._compress_out = compress_out or CompressType.NONE
+
+        if 'w' in mode:
+            self._decompressor = None
+        else:
+            self._remain_buf = None
+            self._remain_offset = None
+            self._block_iterator = self._iter_next_block()
 
     def __enter__(self):
         return self
@@ -221,63 +246,235 @@ class CompressBufferReader(object):
     def __del__(self):
         self.close()
 
-    def read(self, byte_num):
-        if self._pos == self._total_bytes:
-            return b''
+    def _read_block(self, size):
+        """
+        Read a data block from data source with given size.
+        """
+        raise NotImplementedError
+
+    def _read_header(self):
+        """
+        Read the data header of data source.
+        """
+        raise NotImplementedError
+
+    def _iter_next_block(self):
+        """
+        Returns a generator providing data blocks. The sizes of data blocks can vary.
+        """
         bio = BytesIO()
-        if self._pos == 0:
-            header = file_header(SERIAL_VERSION, self._total_bytes, self._compress_method)
-            write_file_header(bio, header)
-            if hasattr(self._compressor, 'begin'):
-                bio.write(self._compressor.begin())
-        while self._pos < self._total_bytes and bio.tell() < byte_num:
-            end_pos = min(self._pos + byte_num, self._total_bytes)
-            bio.write(self._compressor.compress(self._mv[self._pos:end_pos]))
-            if end_pos == self._total_bytes:
-                bio.write(self._compressor.flush())
-            self._pos = end_pos
+        compressor = get_compressobj(self._compress_out)
+
+        write_file_header(bio, self._read_header())
+
+        if hasattr(compressor, 'begin'):
+            bio.write(compressor.begin())
+        # yield file header and compress header
+        yield bio.getvalue()
+
+        copy_size = self._block_size
+        while True:
+            block = self._read_block(copy_size)
+            if not block:
+                break
+            buf = compressor.compress(block)
+            if buf:
+                # only yield when some data are produced by the compressor
+                yield buf
+        if hasattr(compressor, 'flush'):
+            yield compressor.flush()
+
+    def read(self, size=-1):
+        bio = BytesIO()
+        if self._remain_buf is not None:
+            if len(self._remain_buf) <= self._remain_offset + size:
+                bio.write(self._remain_buf[self._remain_offset:])
+                self._remain_buf = None
+            else:
+                right = self._remain_offset + size
+                bio.write(self._remain_buf[self._remain_offset:right])
+                self._remain_offset = right
+            if bio.tell() == size:
+                return bio.getvalue()
+        while True:
+            try:
+                block = next(self._block_iterator)
+            except StopIteration:
+                break
+            if bio.tell() + len(block) <= size:
+                bio.write(block)
+                self._remain_buf = None
+            else:
+                offset = self._remain_offset = size - bio.tell()
+                self._remain_buf = block
+                bio.write(block[:offset])
+            if bio.tell() == size:
+                break
         return bio.getvalue()
 
-    def close(self):
-        self._mv = None
-        self._compressor = None
+    def _write_header(self, header):
+        """
+        Write a data header to the output file.
+        """
+        raise NotImplementedError
 
+    def _write_block(self, d):
+        """
+        Write a data block to the output file.
+        """
+        raise NotImplementedError
 
-class DecompressBufferWriter(object):
-    def __init__(self, buf):
-        import pyarrow
-        self._buf = buf
-        self._writer = pyarrow.FixedSizeBufferWriter(buf)
-        self._writer.set_memcopy_threads(6)
-        self._decompressor = None
+    def _write_with_decompression(self, mv):
+        data_len = len(mv)
+        copy_size = self._block_size
+        offset = 0
+        while offset < data_len:
+            right = min(data_len, offset + copy_size)
+            self._write_block(self._decompressor.decompress(mv[offset:right]))
+            offset = right
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-    def write(self, data):
-        mv = memoryview(data)
+    def write(self, d):
+        size = len(d)
+        mv = memoryview(d)
         if self._decompressor is not None:
-            self._writer.write(self._decompressor.decompress(mv))
+            # header already processed, we can continue
+            # with decompression
+            self._write_with_decompression(mv)
         else:
-            if len(data) < 12:
+            # header not processed, we need to read header
+            # to get compression method and build decompressor
+            if size < HEADER_LENGTH:
                 raise IOError('Block size too small')
             header = read_file_header(mv)
-            self._decompressor = decompressobjs[header.compress]()
-            if len(data) > 12:
-                self._writer.write(self._decompressor.decompress(mv[12:]))
+            self._write_header(header)
+            self._decompressor = get_decompressobj(header.compress)
+            if size > HEADER_LENGTH:
+                self._write_with_decompression(mv[HEADER_LENGTH:])
+
+    def close(self):
+        self._decompressor = self._remain_buf = self._block_iterator = None
+
+
+class ArrowBufferIO(HeaderBufferIO):
+    """
+    File-like object mocking object stored in shared memory as file with header
+    """
+    def __init__(self, buf, mode='r', compress_out=None, block_size=8192):
+        super(ArrowBufferIO, self).__init__(
+            mode=mode, compress_out=compress_out, block_size=block_size)
+
+        self._buf = buf
+        if 'r' in mode:
+            self._mv = memoryview(buf)
+            self._nbytes = len(buf)
+            self._buf_offset = 0
+            self._writer = None
+        else:
+            self._writer = pyarrow.FixedSizeBufferWriter(buf)
+            self._writer.set_memcopy_threads(6)
+
+    def _read_header(self):
+        return file_header(SERIAL_VERSION, self._nbytes, self._compress_out)
+
+    def _read_block(self, size):
+        right = min(self._nbytes, self._buf_offset + size)
+        ret = self._mv[self._buf_offset:right]
+        self._buf_offset = right
+        return ret
+
+    def _write_header(self, header):
+        pass
+
+    def _write_block(self, d):
+        self._writer.write(d)
 
     def close(self):
         if self._writer is not None:
             self._writer.close()
-        self._writer = None
-        self._buf = None
-        self._decompressor = None
+        self._writer = self._mv = self._buf = None
+
+        super(ArrowBufferIO, self).close()
+
+
+class _NoDecompressNeedError(Exception):
+    pass
+
+
+class TransCompressIO(HeaderBufferIO):
+    """
+    File-like object handling input of one compression type and outputs another
+    """
+    def __init__(self, file, mode='r', compress_in=None, compress_out=None,
+                 block_size=8192, managed=True):
+        super(TransCompressIO, self).__init__(
+            mode=mode, compress_out=compress_out, block_size=block_size)
+
+        self._exact_copy = False
+        self._managed = managed
+
+        self._file = file
+        self._file_header = None
+        self._file_decompressor = None
+
+        self._compress_in = compress_in or CompressType.NONE
+        self._file_compressor = None
+
+    def _read_header(self):
+        file_pos = self._file.tell()
+        header = self._file_header = read_file_header(self._file)
+        if header.compress == self._compress_out:
+            self._file.seek(file_pos)
+            # When compression types of input and output are the same,
+            # we do not need to compress. Thus an error is raised to
+            # let read() to redirect to the original file.
+            raise _NoDecompressNeedError
+        return file_header(header.version, header.nbytes, self._compress_out)
+
+    def _read_block(self, size):
+        if self._file_decompressor is None:
+            self._file_decompressor = get_decompressobj(self._file_header.compress)
+        block = self._file.read(size)
+        return self._file_decompressor.decompress(block)
+
+    def _write_header(self, header):
+        if header.compress == self._compress_in:
+            # When compression types of input and output are the same,
+            # we do not need to compress. Thus an error is raised to
+            # let write() to redirect to the original file.
+            raise _NoDecompressNeedError
+        new_header = file_header(header.version, header.nbytes, self._compress_in)
+        write_file_header(self._file, new_header)
+
+    def _write_block(self, d):
+        if self._file_compressor is None:
+            compressor = self._file_compressor = get_compressobj(self._compress_in)
+            if hasattr(compressor, 'begin'):
+                self._file.write(compressor.begin())
+        self._file.write(self._file_compressor.compress(d))
+
+    def read(self, size=-1):
+        if not self._exact_copy:
+            try:
+                return super(TransCompressIO, self).read(size)
+            except _NoDecompressNeedError:
+                self._exact_copy = True
+        return self._file.read(size)
+
+    def write(self, d):
+        if not self._exact_copy:
+            try:
+                return super(TransCompressIO, self).write(d)
+            except _NoDecompressNeedError:
+                self._exact_copy = True
+        return self._file.write(d)
+
+    def close(self):
+        if hasattr(self._file_compressor, 'flush'):
+            self._file.write(self._file_compressor.flush())
+        if self._file and self._managed:
+            self._file.close()
+        self._file = self._file_decompressor = self._file_compressor = None
+        super(TransCompressIO, self).close()
 
 
 def loads(buf, raw=False):
@@ -323,10 +520,7 @@ def dumps(obj, compress=CompressType.NONE, raw=False):
 
 
 def peek_serialized_size(file):
-    try:
-        return read_file_header(file).nbytes
-    finally:
-        file.seek(0)
+    return peek_file_header(file).nbytes
 
 
 def _serialize_numpy_array_list(obj):
