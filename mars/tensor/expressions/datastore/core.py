@@ -25,9 +25,6 @@ class TensorDataStore(DataStore, TensorOperandMixin):
         shape = (0,) * a.ndim
         return self.new_tensor([a], shape)
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
         chunk_op = op.copy().reset_key()

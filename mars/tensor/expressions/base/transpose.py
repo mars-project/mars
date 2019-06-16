@@ -32,9 +32,6 @@ class TensorTranspose(Transpose, TensorOperandMixin):
         super(TensorTranspose, self).__init__(_axes=axes, _dtype=dtype,
                                               _sparse=sparse, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        return _reorder(inputs_shape[0], self._axes)
-
     def __call__(self, a):
         shape = _reorder(a.shape, self._axes)
         return self.new_tensor([a], shape)

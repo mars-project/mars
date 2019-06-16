@@ -260,9 +260,3 @@ def patch_method(method, *args, **kwargs):
     else:
         return mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
                           *args, **kwargs)
-
-
-def calc_shape(tensor):
-    inputs = tensor.inputs or []
-    inputs_shape = tuple(t.shape for t in inputs)
-    return tensor.op.calc_shape(*inputs_shape)

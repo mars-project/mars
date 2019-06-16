@@ -32,11 +32,6 @@ class TensorQR(operands.QR, TensorOperandMixin):
         super(TensorQR, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def calc_shape(self, *inputs_shape):
-        input_shape = inputs_shape[0]
-        x, y = input_shape
-        return (input_shape, (y, y)) if x > y else ((x, x), input_shape)
-
     def __call__(self, a):
         a = astensor(a)
 

@@ -36,9 +36,6 @@ class TensorChoice(operands.Choice, TensorRandomOperandMixin):
         super(TensorChoice, self).__init__(_state=state, _size=size,
                                            _replace=replace, _dtype=dtype, _gpu=gpu, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        return self._size or ()
-
     def __call__(self, a, p, chunk_size=None):
         return self.new_tensor([a, p], None, raw_chunk_size=chunk_size)
 

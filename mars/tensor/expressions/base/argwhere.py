@@ -29,10 +29,6 @@ class TensorArgwhere(Argwhere, TensorOperandMixin):
     def __init__(self, dtype=None, **kw):
         super(TensorArgwhere, self).__init__(_dtype=dtype, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        shape = (np.nan, len(inputs_shape[0]))
-        return shape
-
     def _set_inputs(self, inputs):
         super(TensorArgwhere, self)._set_inputs(inputs)
         self._input = self._inputs[0]

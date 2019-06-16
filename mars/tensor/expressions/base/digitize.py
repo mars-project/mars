@@ -32,10 +32,6 @@ class TensorDigitize(Digitize, TensorOperandMixin):
         if len(inputs) > 1:
             self._bins = self._inputs[1]
 
-    @classmethod
-    def calc_shape(cls, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, x, bins):
         x = astensor(x)
         inputs = [x]

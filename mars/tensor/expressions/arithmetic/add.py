@@ -17,7 +17,7 @@
 import numpy as np
 
 from .... import operands
-from ..utils import infer_dtype, broadcast_shape
+from ..utils import infer_dtype
 from .core import TensorBinOp, TensorConstant, TensorElementWise
 from .utils import arithmetic_operand
 
@@ -91,6 +91,3 @@ def radd(x1, x2, **kwargs):
 class TensorTreeAdd(operands.TreeAdd, TensorElementWise):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorTreeAdd, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
-
-    def calc_shape(self, *inputs_shape):
-        return broadcast_shape(*inputs_shape)

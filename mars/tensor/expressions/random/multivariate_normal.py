@@ -36,9 +36,6 @@ class TensorMultivariateNormal(operands.MultivariateNormal, TensorRandomOperandM
                                                        _check_valid=check_valid, _tol=tol,
                                                        _state=state, _dtype=dtype, _gpu=gpu, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        return self.outputs[0].shape
-
     def __call__(self, chunk_size=None):
         N = self._mean.size
         if self._size is None:

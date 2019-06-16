@@ -22,7 +22,6 @@ from mars.tensor.expressions.datasource import ones, tensor
 from mars.operands import MeanCombine, MeanChunk, Mean, Concatenate, Argmax, Argmin,\
     ArgmaxChunk, ArgmaxCombine, ArgminChunk, ArgminCombine
 from mars.tensor.expressions.reduction import all
-from mars.tests.core import calc_shape
 
 
 class Test(unittest.TestCase):
@@ -37,58 +36,46 @@ class Test(unittest.TestCase):
         for f in [sum, prod, max, min, all, any]:
             res = f(ones((8, 8), chunk_size=8))
             self.assertEqual(res.shape, ())
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8), chunk_size=3))
             self.assertIsNotNone(res.dtype)
             self.assertEqual(res.shape, ())
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8), chunk_size=3), axis=0)
             self.assertEqual(res.shape, (8,))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8), chunk_size=3), axis=1)
             self.assertEqual(res.shape, (10,))
-            self.assertEqual(calc_shape(res), res.shape)
 
             with self.assertRaises(np.AxisError):
                 f(ones((10, 8), chunk_size=3), axis=2)
 
             res = f(ones((10, 8), chunk_size=3), axis=-1)
             self.assertEqual(res.shape, (10,))
-            self.assertEqual(calc_shape(res), res.shape)
 
             with self.assertRaises(np.AxisError):
                 f(ones((10, 8), chunk_size=3), axis=-3)
 
             res = f(ones((10, 8), chunk_size=3), keepdims=True)
             self.assertEqual(res.shape, (1, 1))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
             self.assertEqual(res.shape, (1, 8))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
             self.assertEqual(res.shape, (10, 1))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8, 10), chunk_size=3), axis=1)
             self.assertEqual(res.shape, (10, 10))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8, 10), chunk_size=3), axis=1, keepdims=True)
             self.assertEqual(res.shape, (10, 1, 10))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2))
             self.assertEqual(res.shape, (8,))
-            self.assertEqual(calc_shape(res), res.shape)
 
             res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2), keepdims=True)
             self.assertEqual(res.shape, (1, 8, 1))
-            self.assertEqual(calc_shape(res), res.shape)
 
     def testMeanReduction(self):
         mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs).tiles()
@@ -102,41 +89,33 @@ class Test(unittest.TestCase):
 
         res = mean(ones((8, 8), chunk_size=8))
         self.assertEqual(res.shape, ())
-        self.assertEqual(calc_shape(res), res.shape)
 
         res = mean(ones((10, 8), chunk_size=3), axis=0)
         self.assertEqual(res.shape, (8,))
-        self.assertEqual(calc_shape(res), res.shape)
 
         res = mean(ones((10, 8), chunk_size=3), axis=1)
         self.assertEqual(res.shape, (10,))
-        self.assertEqual(calc_shape(res), res.shape)
 
         with self.assertRaises(np.AxisError):
             mean(ones((10, 8), chunk_size=3), axis=2)
 
         res = mean(ones((10, 8), chunk_size=3), axis=-1)
         self.assertEqual(res.shape, (10,))
-        self.assertEqual(calc_shape(res), res.shape)
 
         with self.assertRaises(np.AxisError):
             mean(ones((10, 8), chunk_size=3), axis=-3)
 
         res = mean(ones((10, 8), chunk_size=3), keepdims=True)
         self.assertEqual(res.shape, (1, 1))
-        self.assertEqual(calc_shape(res), res.shape)
 
         res = mean(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
         self.assertEqual(res.shape, (1, 8))
-        self.assertEqual(calc_shape(res), res.shape)
 
         res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res.shape, (10, 1))
-        self.assertEqual(calc_shape(res), res.shape)
         self.assertIsInstance(res.chunks[0].op, Mean)
         self.assertIsInstance(res.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, MeanChunk)
-        self.assertEqual(calc_shape(res.chunks[0]), res.chunks[0].shape)
 
     def testArgReduction(self):
         argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs).tiles()
@@ -145,33 +124,25 @@ class Test(unittest.TestCase):
         res1 = argmax(ones((10, 8, 10), chunk_size=3))
         res2 = argmin(ones((10, 8, 10), chunk_size=3))
         self.assertEqual(res1.shape, ())
-        self.assertEqual(calc_shape(res1), res1.shape)
         self.assertIsNotNone(res1.dtype)
         self.assertEqual(res2.shape, ())
-        self.assertEqual(calc_shape(res2), res2.shape)
         self.assertIsInstance(res1.chunks[0].op, Argmax)
         self.assertIsInstance(res2.chunks[0].op, Argmin)
         self.assertIsInstance(res1.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res2.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxCombine)
         self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminCombine)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
-        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
         res1 = argmax(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         res2 = argmin(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
         self.assertEqual(res1.shape, (10, 1))
-        self.assertEqual(calc_shape(res1), res1.shape)
         self.assertEqual(res2.shape, (10, 1))
-        self.assertEqual(calc_shape(res2), res2.shape)
         self.assertIsInstance(res1.chunks[0].op, Argmax)
         self.assertIsInstance(res2.chunks[0].op, Argmin)
         self.assertIsInstance(res1.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res2.chunks[0].inputs[0].op, Concatenate)
         self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, ArgmaxChunk)
         self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, ArgminChunk)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
-        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
         self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
         self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
@@ -186,30 +157,18 @@ class Test(unittest.TestCase):
         res2 = cumprod(ones((10, 8), chunk_size=3), axis=0)
         self.assertEqual(res1.shape, (10, 8))
         self.assertIsNotNone(res1.dtype)
-        self.assertEqual(calc_shape(res1), res1.shape)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
         self.assertEqual(res2.shape, (10, 8))
         self.assertIsNotNone(res2.dtype)
-        self.assertEqual(calc_shape(res2), res2.shape)
-        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
         res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=1)
         res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=1)
         self.assertEqual(res1.shape, (10, 8, 8))
-        self.assertEqual(calc_shape(res1), res1.shape)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
         self.assertEqual(res2.shape, (10, 8, 8))
-        self.assertEqual(calc_shape(res2), res2.shape)
-        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
         res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=-2)
         res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=-2)
         self.assertEqual(res1.shape, (10, 8, 8))
-        self.assertEqual(calc_shape(res1), res1.shape)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
         self.assertEqual(res2.shape, (10, 8, 8))
-        self.assertEqual(calc_shape(res2), res2.shape)
-        self.assertEqual(calc_shape(res2.chunks[0]), res2.chunks[0].shape)
 
         with self.assertRaises(np.AxisError):
             cumsum(ones((10, 8), chunk_size=3), axis=2)
@@ -228,10 +187,6 @@ class Test(unittest.TestCase):
         res1 = var(ones((10, 8), chunk_size=3), ddof=2)
         self.assertEqual(res1.shape, ())
         self.assertEqual(res1.op.ddof, 2)
-        self.assertEqual(calc_shape(res1), res1.shape)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)
 
         res1 = var(ones((10, 8, 8), chunk_size=3), axis=1)
         self.assertEqual(res1.shape, (10, 8))
-        self.assertEqual(calc_shape(res1), res1.shape)
-        self.assertEqual(calc_shape(res1.chunks[0]), res1.chunks[0].shape)

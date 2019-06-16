@@ -34,11 +34,6 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
         super(TensorSolveTriangular, self)._set_inputs(inputs)
         self._a, self._b = self._inputs
 
-    def calc_shape(self, *inputs_shape):
-        a_shape = inputs_shape[0]
-        b_shape = inputs_shape[1]
-        return (a_shape[1],) if len(b_shape) == 1 else (a_shape[1], b_shape[1])
-
     def __call__(self, a, b):
         shape = (a.shape[1],) if len(b.shape) == 1 else (a.shape[1], b.shape[1])
         return self.new_tensor([a, b], shape)
@@ -97,8 +92,8 @@ class TensorSolveTriangular(operands.SolveTriangular, TensorOperandMixin):
                     else:
                         s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                      None, prev_chunks[0].shape, sparse=op.sparse)
-                    target_b = TensorSubtract(dtype=op.dtype).new_chunk(
-                        [target_b, s, None, None], target_b.shape)
+                    target_b = TensorSubtract(dtype=op.dtype, lhs=target_b, rhs=s).new_chunk(
+                        [target_b, s], shape=target_b.shape)
                 out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
                     [target_a, target_b], _x_shape(target_a.shape, target_b.shape), index=idx)
                 out_chunks[out_chunk.index] = out_chunk

@@ -29,10 +29,9 @@ class TensorStack(Stack, TensorOperandMixin):
         super(TensorStack, self).__init__(_axis=axis, _dtype=dtype,
                                           _sparse=sparse, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        fisrt_shape = inputs_shape[0]
-        axis = self._axis
-        return fisrt_shape[:axis] + (len(inputs_shape),) + fisrt_shape[axis:]
+    @property
+    def axis(self):
+        return self._axis
 
     def __call__(self, tensors):
         shape = tensors[0].shape[:self._axis] + (len(tensors),) + tensors[0].shape[self._axis:]

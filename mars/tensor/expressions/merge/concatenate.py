@@ -29,14 +29,6 @@ class TensorConcatenate(Concatenate, TensorOperandMixin):
         super(TensorConcatenate, self).__init__(_axis=axis, _dtype=dtype,
                                                 _sparse=sparse, **kw)
 
-    def calc_shape(self, *inputs_shape):
-        inputs_shape = [s for s in inputs_shape if 0 not in s]
-        first_shape = inputs_shape[0]
-        axis = self._axis or 0
-        shape = [0 if i == axis else first_shape[i] for i in range(len(first_shape))]
-        shape[axis] = sum(s[axis] for s in inputs_shape)
-        return tuple(shape)
-
     def __call__(self, tensors):
         if len(set(t.ndim for t in tensors)) != 1:
             raise ValueError('all the input tensors must have same number of dimensions')

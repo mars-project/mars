@@ -33,9 +33,6 @@ class TensorIsIn(IsIn, TensorOperandMixin):
         self._element = self._inputs[0]
         self._test_elements = self._inputs[1]
 
-    def calc_shape(self, *inputs_shape):
-        return inputs_shape[0]
-
     def __call__(self, element, test_elements):
         element, test_elements = astensor(element), ravel(astensor(test_elements))
 
