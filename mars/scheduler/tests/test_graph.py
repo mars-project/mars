@@ -74,7 +74,7 @@ class Test(unittest.TestCase):
                 target_worker = op_infos[n.op.key]['target_worker']
                 self.assertIsNotNone(target_worker)
 
-            graph_ref.create_operand_actors(_clean_io_meta=False)
+            graph_ref.create_operand_actors(_clean_info=False)
             op_infos = graph_ref.get_operand_info()
 
             orig_metas = dict()

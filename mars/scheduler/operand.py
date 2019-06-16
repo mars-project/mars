@@ -66,6 +66,8 @@ class OperandActor(SchedulerActor):
         self._chunks = self._io_meta['chunks']
         self._info = op_info
 
+        self._executable_dag = op_info.pop('executable_dag', None)
+
         # worker the operand expected to be executed on
         self._expect_worker = op_info.get('target_worker')
         # worker actually assigned
@@ -404,10 +406,13 @@ class OperandActor(SchedulerActor):
 
             # submit job
             self._execution_ref = self._get_execution_ref()
-            serialized_exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
-            self._execution_ref.execute_graph(self._session_id, self._op_key, serialized_exec_graph,
-                                              self._io_meta, data_sizes, send_targets=target_predicts,
-                                              _promise=True)
+            if self._executable_dag is not None:
+                exec_graph = self._executable_dag
+            else:
+                exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key)
+
+            self._execution_ref.execute_graph(self._session_id, self._op_key, exec_graph, self._io_meta,
+                                              data_sizes, send_targets=target_predicts, _promise=True)
             self.state = OperandState.RUNNING
             self.start_operand()
 
