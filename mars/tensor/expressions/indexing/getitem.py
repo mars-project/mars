@@ -305,6 +305,10 @@ class TensorIndexTilesHandler(object):
                         ignore = True
                         break
                     chunk_index_objs.append(chunk_index_obj)
+                else:
+                    chunk_index_objs.append(None)
+                    chunk_index.append(0)
+                    chunk_shape.append(1)
             if ignore:
                 continue
             chunk_op = self._op.copy().reset_key()
