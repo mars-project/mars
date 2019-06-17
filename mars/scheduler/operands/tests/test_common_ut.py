@@ -13,14 +13,12 @@
 # limitations under the License.
 
 import contextlib
-import time
 import unittest
 import uuid
 from collections import defaultdict
 
 from mars import promise, tensor as mt
 from mars.actors import create_actor_pool
-from mars.compat import TimeoutError
 from mars.graph import DAG
 from mars.scheduler import OperandState, ResourceActor, ChunkMetaActor,\
     ChunkMetaClient, AssignerActor, GraphActor, OperandActor
@@ -52,17 +50,8 @@ class FakeExecutionActor(promise.PromiseActor):
         except KeyError:
             pass
 
-    def enqueue_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
-                      priority_data=None, send_addresses=None, succ_keys=None,
-                      pred_keys=None, callback=None):
-        if not pred_keys:
-            self.tell_promise(callback)
-            self._succs[graph_key] = succ_keys
-        else:
-            self._enqueue_callbacks[graph_key] = callback
-            self._undone_preds[graph_key] = set(pred_keys) - self._finished_keys
-
-    def start_execution(self, session_id, graph_key, send_addresses=None, callback=None):
+    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
+                      send_addresses=None, callback=None):
         if callback:
             self._finish_callbacks[graph_key].append(callback)
         self.ref().mock_send_all_callbacks(graph_key, _tell=True, _delay=self._exec_delay)
@@ -94,12 +83,12 @@ class Test(unittest.TestCase):
                               uid=SchedulerClusterInfoActor.default_uid())
             resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
-            pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
+            pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                           uid=GraphActor.gen_uid(session_id, graph_key))
 
             for w in mock_workers:
-                resource_ref.set_worker_meta(w, dict(hardware=dict(cpu_total=4)))
+                resource_ref.set_worker_meta(w, dict(hardware=dict(cpu=4, cpu_total=4, memory=1600)))
 
             graph_ref.prepare_graph()
             graph_ref.analyze_graph()
@@ -144,6 +133,7 @@ class Test(unittest.TestCase):
             input_op_keys, mid_op_key, output_op_keys = self._filter_graph_level_op_keys(graph_ref)
             meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_uid()))
             op_ref = pool.actor_ref(OperandActor.gen_uid(session_id, mid_op_key))
+            resource_ref = pool.actor_ref(ResourceActor.default_uid())
 
             input_refs = [pool.actor_ref(OperandActor.gen_uid(session_id, k)) for k in input_op_keys]
 
@@ -158,8 +148,10 @@ class Test(unittest.TestCase):
                 for ref in input_refs:
                     self.assertEqual(op_ref.get_state(), OperandState.UNSCHEDULED)
                     ref.start_operand(OperandState.FINISHED)
-                pool.sleep(0.5)
+                pool.sleep(1)
                 self.assertEqual(target, op_ref.get_state())
+                for w in mock_workers:
+                    resource_ref.deallocate_resource(session_id, mid_op_key, w)
 
             # test entering state with no input meta
             test_entering_state(OperandState.UNSCHEDULED)
@@ -169,36 +161,5 @@ class Test(unittest.TestCase):
             for ck in input_chunk_keys:
                 meta_client.set_chunk_meta(session_id, ck, workers=('localhost:12345',), size=800)
 
-            # test entering state with failure in fetching sizes
-            with patch_method(ChunkMetaClient.batch_get_chunk_size, new=lambda *_: [None, None]):
-                test_entering_state(OperandState.UNSCHEDULED)
-
             # test successful entering state
             test_entering_state(OperandState.READY)
-
-    def testOperandPrepush(self, *_):
-        session_id = str(uuid.uuid4())
-        graph_key = str(uuid.uuid4())
-        mock_workers = ['localhost:12345']
-
-        with self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
-            input_op_keys, mid_op_key, output_op_keys = self._filter_graph_level_op_keys(graph_ref)
-            fake_exec_ref = pool.create_actor(FakeExecutionActor, 0.5)
-
-            input_refs = [pool.actor_ref(OperandActor.gen_uid(session_id, k)) for k in input_op_keys]
-            mid_ref = pool.actor_ref(OperandActor.gen_uid(session_id, mid_op_key))
-
-            def _fake_raw_execution_ref(*_, **__):
-                return fake_exec_ref
-
-            with patch_method(OperandActor._get_raw_execution_ref, new=_fake_raw_execution_ref),\
-                    patch_method(AssignerActor.get_worker_assignments, new=lambda *_: mock_workers):
-                input_refs[0].start_operand(OperandState.READY)
-                input_refs[1].start_operand(OperandState.READY)
-
-                start_time = time.time()
-                # submission without pre-push will fail
-                while mid_ref.get_state() != OperandState.FINISHED:
-                    pool.sleep(0.1)
-                    if time.time() - start_time > 30:
-                        raise TimeoutError('Check middle chunk state timed out.')

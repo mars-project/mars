@@ -66,15 +66,6 @@
             </thead>
             <tbody>
             <tr>
-                {% if progresses['PRE_PUSHED'] is defined %}
-                    <td>Pre-pushed ({{ progresses['PRE_PUSHED']['total'] }})</td>
-                    <td>{{ progresses['PRE_PUSHED']['operands'] }}</td>
-                {% else %}
-                    <td>Pre-pushed</td>
-                    <td>Not available</td>
-                {% endif %}
-            </tr>
-            <tr>
                 {% if progresses['ALLOCATING'] is defined %}
                     <td>Allocating ({{ progresses['ALLOCATING']['total'] }})</td>
                     <td>{{ progresses['ALLOCATING']['operands'] }}</td>

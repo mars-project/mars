@@ -28,6 +28,7 @@ class SessionActor(SchedulerActor):
         self._args = kwargs
 
         self._cluster_info_ref = None
+        self._assigner_ref = None
         self._manager_ref = None
         self._graph_refs = dict()
         self._graph_meta_refs = dict()
@@ -55,9 +56,15 @@ class SessionActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_uid())
 
+        from .assigner import AssignerActor
+        assigner_uid = AssignerActor.gen_uid(self._session_id)
+        address = self.get_scheduler(assigner_uid)
+        self._assigner_ref = self.ctx.create_actor(AssignerActor, uid=assigner_uid, address=address)
+
     def pre_destroy(self):
         super(SessionActor, self).pre_destroy()
         self._manager_ref.delete_session(self._session_id, _tell=True)
+        self.ctx.destroy_actor(self._assigner_ref)
         for graph_ref in self._graph_refs.values():
             self.ctx.destroy_actor(graph_ref)
 
@@ -102,9 +109,9 @@ class SessionActor(SchedulerActor):
         from .chunkmeta import ChunkMetaActor
 
         # collect affected chunks
-        futures = []
         if removes:
             lost_chunks = set()
+            futures = []
             for scheduler in self.get_schedulers():
                 ref = self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=scheduler)
                 futures.append(ref.remove_workers_in_session(self._session_id, removes, _wait=False))
@@ -154,6 +161,15 @@ class SessionManagerActor(SchedulerActor):
 
     @log_unhandled
     def broadcast_sessions(self, handler, *args, **kwargs):
+        from .assigner import AssignerActor
+        futures = []
+        for key in self._session_refs.keys():
+            ref = self.get_actor_ref(AssignerActor.gen_uid(key))
+            futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
+        [f.result() for f in futures]
+        for f in futures:
+            f.result()
+
         futures = []
         for ref in self._session_refs.values():
             kwargs.update(dict(_wait=False, _tell=True))

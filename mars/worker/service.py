@@ -26,7 +26,6 @@ from .. import resource
 from ..utils import parse_readable_size, readable_size
 from ..compat import six
 from .status import StatusActor
-from .taskqueue import TaskQueueActor
 from .quota import QuotaActor, MemQuotaActor
 from .chunkholder import ChunkHolderActor
 from .dispatcher import DispatchActor
@@ -190,8 +189,6 @@ class WorkerService(object):
         # create ChunkHolderActor
         self._chunk_holder_ref = pool.create_actor(
             ChunkHolderActor, self._cache_mem_limit, uid=ChunkHolderActor.default_uid())
-        # create TaskQueueActor
-        self._task_queue_ref = pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_uid())
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create ExecutionActor
