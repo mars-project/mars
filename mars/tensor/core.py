@@ -15,16 +15,19 @@
 # limitations under the License.
 
 
-from collections import Iterable
+from collections import Iterable, defaultdict
+from datetime import datetime
 
 import numpy as np
 
 from ..core import Entity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField
-from ..utils import on_serialize_shape, on_deserialize_shape
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
+from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
+import logging
+logger = logging.getLogger(__name__)
 
 class TensorChunkData(ChunkData):
     __slots__ = ()
@@ -391,6 +394,140 @@ class Tensor(Entity):
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
 
+class MutableTensorData(TensorData):
+    __slots__ = ()
+
+    # required fields
+    _name = StringField('name')
+    _compression = BoolField("compression")
+
+    @classmethod
+    def cls(cls, provider):
+        return super(MutableTensorData, cls).cls(provider)
+
+    def __str__(self):
+        return 'MutableTensorData(op={0}, name={1}, shape={2})'.format(self.op.__class__.__name__,
+                                                                   self.name,
+                                                                   self.shape)
+
+    def __repr__(self):
+        return 'MutableTensorData <op={0}, name={1}, shape={2}, key={3}>'.format(self.op.__class__.__name__,
+                                                                             self.name,
+                                                                             self.shape,
+                                                                             self.key)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'name': self.name,
+            'compression': self.compression,
+        }
+
+    @property
+    def name(self):
+        return getattr(self, '_name', None)
+
+    @property
+    def compression(self):
+        return getattr(self, '_compression', None)
+
+class MutableTensor(Entity):
+    __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
+    _allow_data_type_ = (MutableTensorData,)
+
+    def __init__(self, buffer_size=128, *args, **kwargs):
+        super(MutableTensor, self).__init__(*args, **kwargs)
+        self._chunk_buffers = defaultdict(lambda: [])
+        self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
+        self._buffer_size = buffer_size
+
+    def __len__(self):
+        return len(self._data)
+
+    @property
+    def name(self):
+        return self._data.name
+
+    def copy(self):
+        return MutableTensor(self._data)
+
+    def __setitem__(self, index, value):
+        from ..session import Session
+        session = Session.default_or_local()
+        return session.write_mutable_tensor(self, index, value)
+
+    def seal(self):
+        from ..session import Session
+        session = Session.default_or_local()
+        return session.seal(self)
+
+    @log_unhandled
+    def _do_write(self, tensor_index, value):
+        ''' Notes [buffer management of mutable tensor]:
+        Write operations on a mutable tensor are buffered at client. Every chunk has a
+        corresponding buffer in the form of
+
+            {chunk_key: [(index, ts, value)]}
+
+        Every time we write to a chunk, we will append the new operation records to
+        the list
+
+        At the end of write, if the buffer size exceeds `buffer_size`, the buffer will be send
+        to the corresponding worker.
+
+        The insights for above design are:
+
+        1. `append` on (small) list is fast
+        2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
+           size is guaranteed to less than 2 * chunk_size.
+        '''
+        from .expressions.indexing.core import process_index, calc_shape
+        from .expressions.indexing.setitem import TensorIndex
+        from .expressions.utils import setitem_as_records
+
+        tensor_index = process_index(self, tensor_index)
+        output_shape = calc_shape(self.shape, tensor_index)
+
+        index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=tensor_index)
+        index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape)).single_tiles()
+        output_chunks = index_tensor.chunks
+
+        if np.isscalar(value):
+            value = self.dtype.type(value)
+        else:
+            value = np.broadcast_to(value, output_shape).astype(self.dtype)
+
+        nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
+                                              if all(idx == 0 for j, idx in enumerate(c.index) if j != i)))
+                       for i in range(len(output_chunks[0].shape))]
+
+        now = np.datetime64(datetime.now())
+        affected_chunk_keys = []
+
+        for output_chunk in output_chunks:
+            logger.debug("write: chunk idx = {}, output chunk idx = {}, chunk_shape = {}, chunk_index = {}".format(
+                output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
+
+            records = self._chunk_buffers[output_chunk.op.input.key]
+            records += setitem_as_records(nsplits_acc, output_chunk, value, now)
+            affected_chunk_keys.append(output_chunk.op.input.key)
+
+        # Try to flush affected chunks
+        return self._do_flush(self._buffer_size, affected_chunk_keys)
+
+    @log_unhandled
+    def _do_flush(self, buffer_size_limit=1, affected_chunk_keys=None):
+        chunk_records_to_send = []
+        affected_chunk_keys = affected_chunk_keys or self._chunk_buffers.keys()
+        for chunk_key in affected_chunk_keys:
+            records = self._chunk_buffers[chunk_key]
+            if len(records) >= buffer_size_limit:
+                chunk_records_to_send.append((chunk_key, np.array(records, dtype=self._record_type)))
+                self._chunk_buffers[chunk_key] = []
+        return chunk_records_to_send
 
 class SparseTensor(Tensor):
     __slots__ = ()

@@ -20,6 +20,9 @@ import time
 import zlib
 from collections import defaultdict
 
+import numpy as np
+import pyarrow
+
 from .. import promise
 from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
 from ..config import options
@@ -391,8 +394,10 @@ class ReceiverActor(WorkerActor):
             otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
         :param callback: promise callback
         """
+        sender_address = None if sender_ref is None else sender_ref.address
+
         logger.debug('Begin creating transmission data writer for chunk %s from %s',
-                     chunk_key, sender_ref.address)
+                     chunk_key, sender_address)
         session_chunk_key = (session_id, chunk_key)
 
         data_status = self.check_status(session_id, chunk_key)
@@ -417,7 +422,7 @@ class ReceiverActor(WorkerActor):
                 del self._data_meta_cache[session_chunk_key]
 
         self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
-            chunk_size=data_size, source_address=sender_ref.address,
+            chunk_size=data_size, source_address=sender_address,
             write_shared=True, status=ReceiveStatus.RECEIVING)
 
         # configure timeout callback
@@ -695,10 +700,16 @@ class ResultSenderActor(WorkerActor):
     def __init__(self):
         super(ResultSenderActor, self).__init__()
         self._serialize_pool = None
+        self._chunk_holder_ref = None
+        self._mem_quota_ref = None
 
     def post_create(self):
+        from .chunkholder import ChunkHolderActor
+        from .quota import MemQuotaActor
         super(ResultSenderActor, self).post_create()
         self._serialize_pool = self.ctx.threadpool(1)
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
     def fetch_data(self, session_id, chunk_key):
         buf = None
@@ -717,3 +728,44 @@ class ResultSenderActor(WorkerActor):
         finally:
             del buf
         return compressed
+
+    @log_unhandled
+    def finalize_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype):
+        from ..serialize.dataserializer import decompressors, mars_serialize_context
+        chunk_bytes_size = np.prod(shape) * dtype.itemsize
+        self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
+        ndarr = np.zeros(shape, dtype=dtype)
+        ndarr_ts = np.zeros(shape, dtype=np.dtype('datetime64[ns]'))
+
+        # consolidate
+        for key in keys:
+            try:
+                if self._chunk_store.contains(session_id, key):
+                    buf = self._chunk_store.get_buffer(session_id, key)
+                else:
+                    file_name = build_spill_file_name(key)
+                    # The `disk_compression` is used in `_create_writer`
+                    disk_compression = dataserializer.CompressType(options.worker.disk_compression)
+                    if not file_name:
+                        raise SpillNotConfigured('Spill not configured')
+                    with open(file_name, 'rb') as inf:
+                        buf = decompressors[disk_compression](inf.read())
+                buffer = pyarrow.deserialize(memoryview(buf), mars_serialize_context())
+                record_view = np.asarray(memoryview(buffer)).view(dtype=record_type, type=np.recarray)
+
+                for record in record_view:
+                    idx = np.unravel_index(record.index, shape)
+                    if record.ts > ndarr_ts[idx]:
+                        ndarr[idx] = record.value
+            finally:
+                del buf
+
+            # clean up
+            self._chunk_holder_ref.unregister_chunk(session_id, key)
+            self.get_meta_client().delete_meta(session_id, key, False)
+            self._mem_quota_ref.release_quota(key)
+
+        self._chunk_store.put(session_id, chunk_key, ndarr)
+        self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
+                                              shape=shape, workers=(self.address,))
+        self._chunk_holder_ref.register_chunk(session_id, chunk_key)

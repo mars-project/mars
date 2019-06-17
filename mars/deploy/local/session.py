@@ -68,6 +68,22 @@ class LocalClusterSession(object):
         tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tileable.nsplits = new_nsplits
 
+    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+        tensor_key = uuid.uuid4()
+        return self._api.create_mutable_tensor(self._session_id, name, tensor_key, shape,
+                                               dtype, *args, **kwargs)
+
+    def get_mutable_tensor(self, name):
+        return self._api.get_mutable_tensor(self._session_id, name)
+
+    def send_chunk_records(self, name, chunk_records_to_send):
+        return self._api.send_chunk_records(self._session_id, name, chunk_records_to_send)
+
+    def seal(self, name):
+        graph_key, tensor_key, tensor_id, tensor_meta = self._api.seal(self._session_id, name)
+        self._executed_tileables[tensor_key] = graph_key, {tensor_id}
+        return tensor_meta
+
     def run(self, *tileables, **kw):
         timeout = kw.pop('timeout', -1)
         fetch = kw.pop('fetch', True)

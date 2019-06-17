@@ -203,17 +203,20 @@ class WorkerService(object):
             actor = actor_holder.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
+        start_pid = 1 + process_start_index + self._n_cpu_process
+
         if distributed:
             # create SenderActor and ReceiverActor
-            start_pid = 1 + process_start_index + self._n_cpu_process
             for sender_id in range(self._n_io_process):
                 uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
-            for receiver_id in range(2 * self._n_io_process):
-                uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
-                actor = actor_holder.create_actor(ReceiverActor, uid=uid)
-                self._receiver_actors.append(actor)
+
+        # Mutable requires ReceiverActor (with LocalClusterSession)
+        for receiver_id in range(2 * self._n_io_process):
+            uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
+            actor = actor_holder.create_actor(ReceiverActor, uid=uid)
+            self._receiver_actors.append(actor)
 
         # create ProcessHelperActor
         for proc_id in range(pool.cluster_info.n_process - process_start_index):

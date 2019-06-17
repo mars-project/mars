@@ -190,6 +190,44 @@ class Session(object):
         cls._default_session = Session()
         return cls._default_session
 
+    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+        from .tensor.core import MutableTensor, MutableTensorData
+        from .tensor.expressions.utils import create_fetch_tensor
+        self._ensure_local_cluster()
+        shape, dtype, chunk_size, chunk_keys = \
+                self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
+        # Construct MutableTensor on the fly.
+        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
+                                                    _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+
+    def get_mutable_tensor(self, name):
+        from .tensor.core import MutableTensor, MutableTensorData
+        from .tensor.expressions.utils import create_fetch_tensor
+        self._ensure_local_cluster()
+        shape, dtype, chunk_size, chunk_keys = self._sess.get_mutable_tensor(name)
+        # Construct MutableTensor on the fly.
+        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
+                                                    _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+    def write_mutable_tensor(self, tensor, index, value):
+        self._ensure_local_cluster()
+        chunk_records_to_send = tensor._do_write(index, value)
+        return self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
+
+    def seal(self, tensor):
+        from .tensor.expressions.utils import create_fetch_tensor
+        self._ensure_local_cluster()
+        chunk_records_to_send = tensor._do_flush()
+        self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
+        shape, dtype, chunk_size, chunk_keys = self._sess.seal(tensor.name)
+        # Construct Tensor on the fly.
+        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+
+    def _ensure_local_cluster(self):
+        from .deploy.local.session import LocalClusterSession
+        if not isinstance(self._sess, LocalClusterSession):
+            raise RuntimeError("Only local cluster session can manipulate mutable tensors")
 
 def new_session(scheduler=None, **kwargs):
     return Session(scheduler, **kwargs)

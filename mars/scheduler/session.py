@@ -33,6 +33,7 @@ class SessionActor(SchedulerActor):
         self._graph_refs = dict()
         self._graph_meta_refs = dict()
         self._tileable_to_graph = dict()
+        self._mut_tensor_refs = dict()
 
     @staticmethod
     def gen_uid(session_id):
@@ -49,6 +50,9 @@ class SessionActor(SchedulerActor):
 
     def get_graph_ref_by_tleable_key(self, tileable_key):
         return self._tileable_to_graph[tileable_key]
+
+    def get_mut_tensor_refs(self):
+        return self._mut_tensor_refs
 
     def post_create(self):
         super(SessionActor, self).post_create()
@@ -86,6 +90,57 @@ class SessionActor(SchedulerActor):
             if tileable_key not in self._tileable_to_graph:
                 self._tileable_to_graph[tileable_key] = graph_ref
         return graph_ref
+
+    @log_unhandled
+    def create_mutable_tensor(self, name, tensor_key, shape, dtype, *args, **kwargs):
+        from .mutable import MutableTensorActor
+        mut_tensor_uid = MutableTensorActor.gen_uid(self._session_id, tensor_key)
+        mut_tensor_addr = self.get_scheduler(mut_tensor_uid)
+        mut_tensor_ref = self.ctx.create_actor(MutableTensorActor, self._session_id, name,
+                                               shape, dtype, graph_key=tensor_key, uid=mut_tensor_uid,
+                                               address=mut_tensor_addr, *args, **kwargs)
+        self._mut_tensor_refs[name] = mut_tensor_ref
+        return mut_tensor_ref.tensor_meta()
+
+    @log_unhandled
+    def get_mutable_tensor(self, name):
+        tensor_ref = self._mut_tensor_refs.get(name)
+        if tensor_ref is None or tensor_ref.sealed():
+            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+        return tensor_ref.tensor_meta()
+
+    @log_unhandled
+    def read_mutable_tensor(self, name, index):
+        tensor_ref = self._mut_tensor_refs.get(name)
+        if tensor_ref is None or tensor_ref.sealed():
+            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+        return tensor_ref.read(index)
+
+    @log_unhandled
+    def append_chunk_records(self, name, chunk_records):
+        tensor_ref = self._mut_tensor_refs.get(name)
+        if tensor_ref is None or tensor_ref.sealed():
+            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+        return tensor_ref.append_chunk_records(chunk_records)
+
+    @log_unhandled
+    def seal(self, name):
+        from .graph import GraphMetaActor
+
+        tensor_ref = self._mut_tensor_refs.get(name)
+        if tensor_ref is None or tensor_ref.sealed():
+            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+
+        graph_key, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
+
+        self._mut_tensor_refs.pop(name)
+
+        self._graph_refs[graph_key] = tensor_ref
+        self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
+            GraphMetaActor.gen_uid(self._session_id, graph_key), address=tensor_ref.__getstate__()[0])
+        self._tileable_to_graph[tensor_ref.tensor_key()] = tensor_ref
+
+        return graph_key, tensor_key, tensor_id, tensor_meta
 
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()
