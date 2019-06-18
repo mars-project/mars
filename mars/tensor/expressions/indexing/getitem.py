@@ -317,6 +317,7 @@ class TensorIndexTilesHandler(object):
                                            shape=tuple(chunk_shape), index=tuple(chunk_index))
             self._out_chunks.append(out_chunk)
 
+        self._out_chunks = sorted(self._out_chunks, key=operator.attrgetter('index'))
         self._nsplits = [tuple(c.shape[i] for c in self._out_chunks
                                if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                          for i in range(len(self._out_chunks[0].shape))]
