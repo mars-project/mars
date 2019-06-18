@@ -26,6 +26,7 @@ from ..config import options
 from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled, build_exc_info
+from .dataio import FileBufferIO, ArrowBufferIO
 from .spill import build_spill_file_name, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache
 
@@ -234,7 +235,7 @@ class SenderActor(WorkerActor):
             try:
                 buf = self._chunk_store.get_buffer(session_id, chunk_key)
                 # create a stream compressor from shared buffer
-                reader = dataserializer.ArrowBufferIO(
+                reader = ArrowBufferIO(
                     buf, 'r', compress_out=compression, block_size=min_chunk_size)
             except KeyError:
                 pass
@@ -245,7 +246,7 @@ class SenderActor(WorkerActor):
                 file_name = build_spill_file_name(chunk_key)
                 if not file_name:
                     raise SpillNotConfigured('Spill not configured')
-                reader = dataserializer.TransCompressIO(
+                reader = FileBufferIO(
                     open(file_name, 'rb'), 'r', compress_out=compression, block_size=min_chunk_size)
 
             futures = []
@@ -481,7 +482,7 @@ class ReceiverActor(WorkerActor):
             logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
                          data_size, chunk_key)
             # create a writer for the chunk
-            self._data_writers[session_chunk_key] = dataserializer.ArrowBufferIO(
+            self._data_writers[session_chunk_key] = ArrowBufferIO(
                 buf, 'w', block_size=min_chunk_size)
             return self.address, None
         except (KeyError, StoreKeyExists):
@@ -508,7 +509,7 @@ class ReceiverActor(WorkerActor):
                 self._chunk_holder_ref.spill_size(data_size, _tell=True)
                 spill_file_name = build_spill_file_name(chunk_key, writing=True)
                 try:
-                    spill_file = dataserializer.TransCompressIO(
+                    spill_file = FileBufferIO(
                         open(spill_file_name, 'wb'), 'w', compress_in=disk_compression,
                         block_size=block_size)
                     data_meta.start_time = time.time()

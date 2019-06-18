@@ -23,6 +23,7 @@ from ..config import options
 from ..serialize import dataserializer
 from ..utils import mod_hash, log_unhandled, calc_data_size
 from ..errors import StoreFull, StoreKeyExists, SpillNotConfigured
+from .dataio import ArrowBufferIO
 from .utils import WorkerActor
 
 logger = logging.getLogger(__name__)
@@ -239,7 +240,7 @@ class SpillActor(WorkerActor):
                 buf = self._chunk_store.create(session_id, chunk_key, data_size)
 
                 with open(file_name, 'rb') as inpf, \
-                        dataserializer.ArrowBufferIO(buf, 'w', block_size=block_size) as writer:
+                        ArrowBufferIO(buf, 'w', block_size=block_size) as writer:
                     logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
                     compress_future = None
                     while True:
