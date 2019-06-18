@@ -86,6 +86,8 @@ class FancyIndexInfo(object):
     def __bool__(self):
         return self.chunk_index_to_pos is not None
 
+    __nonzero__ = __bool__
+
 
 class IndexType(Enum):
     bool_index = 0
