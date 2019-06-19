@@ -154,27 +154,27 @@ class WorkerService(object):
 
         # create plasma key mapper
         from .chunkstore import PlasmaKeyMapActor
-        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
 
         # create WorkerClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
             WorkerClusterInfoActor, schedulers=schedulers, service_discover_addr=service_discover_addr,
-            uid=WorkerClusterInfoActor.default_name())
+            uid=WorkerClusterInfoActor.default_uid())
 
         if distributed:
             # create process daemon
             from .daemon import WorkerDaemonActor
             actor_holder = self._daemon_ref = pool.create_actor(
-                WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
+                WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
 
             # create StatusActor
             port_str = endpoint.rsplit(':', 1)[-1]
             self._status_ref = pool.create_actor(
-                StatusActor, self._advertise_addr + ':' + port_str, uid=StatusActor.default_name())
+                StatusActor, self._advertise_addr + ':' + port_str, uid=StatusActor.default_uid())
         else:
             # create StatusActor
             self._status_ref = pool.create_actor(
-                StatusActor, endpoint, uid=StatusActor.default_name())
+                StatusActor, endpoint, uid=StatusActor.default_uid())
 
             actor_holder = pool
 
@@ -182,20 +182,20 @@ class WorkerService(object):
             # start a QuotaActor instead of MemQuotaActor to avoid memory size detection
             # for debug purpose only, DON'T USE IN PRODUCTION
             self._mem_quota_ref = pool.create_actor(
-                QuotaActor, self._soft_mem_limit, uid=MemQuotaActor.default_name())
+                QuotaActor, self._soft_mem_limit, uid=MemQuotaActor.default_uid())
         else:
             self._mem_quota_ref = pool.create_actor(
-                MemQuotaActor, self._soft_quota_limit, self._hard_mem_limit, uid=MemQuotaActor.default_name())
+                MemQuotaActor, self._soft_quota_limit, self._hard_mem_limit, uid=MemQuotaActor.default_uid())
 
         # create ChunkHolderActor
         self._chunk_holder_ref = pool.create_actor(
-            ChunkHolderActor, self._cache_mem_limit, uid=ChunkHolderActor.default_name())
+            ChunkHolderActor, self._cache_mem_limit, uid=ChunkHolderActor.default_uid())
         # create TaskQueueActor
-        self._task_queue_ref = pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_name())
+        self._task_queue_ref = pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_uid())
         # create DispatchActor
-        self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+        self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create ExecutionActor
-        self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
+        self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
         # create CpuCalcActor
         if not distributed:
@@ -225,7 +225,7 @@ class WorkerService(object):
             self._process_helper_actors.append(actor)
 
         # create ResultSenderActor
-        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid=ResultSenderActor.default_name())
+        self._result_sender_ref = pool.create_actor(ResultSenderActor, uid=ResultSenderActor.default_uid())
 
         # create SpillActor
         start_pid = pool.cluster_info.n_process - 1

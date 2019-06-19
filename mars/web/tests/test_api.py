@@ -63,7 +63,7 @@ class Test(unittest.TestCase):
         while True:
             try:
                 resource_ref = actor_client.actor_ref(
-                    ResourceActor.default_name(), address='127.0.0.1:' + self.scheduler_port)
+                    ResourceActor.default_uid(), address='127.0.0.1:' + self.scheduler_port)
                 if actor_client.has_actor(resource_ref):
                     break
                 else:

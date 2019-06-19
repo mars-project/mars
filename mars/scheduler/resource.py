@@ -43,7 +43,7 @@ class ResourceActor(SchedulerActor):
         super(ResourceActor, self).post_create()
         self.set_cluster_info_ref()
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -121,14 +121,14 @@ class ResourceActor(SchedulerActor):
 
         futures = []
         for ep in self.get_schedulers():
-            ref = self.ctx.actor_ref(AssignerActor.default_name(), address=ep)
+            ref = self.ctx.actor_ref(AssignerActor.default_uid(), address=ep)
             futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
         [f.result() for f in futures]
 
         futures = []
         kwargs.update(dict(_tell=True, _wait=False))
         for ep in self.get_schedulers():
-            ref = self.ctx.actor_ref(SessionManagerActor.default_name(), address=ep)
+            ref = self.ctx.actor_ref(SessionManagerActor.default_uid(), address=ep)
             futures.append(ref.broadcast_sessions(handler, *args, **kwargs))
         [f.result() for f in futures]
 
@@ -143,5 +143,5 @@ class ResourceActor(SchedulerActor):
 
         kwargs.update(dict(_tell=True, _wait=False))
         for w in self._meta_cache.keys():
-            ref = self.ctx.actor_ref(ExecutionActor.default_name(), address=w)
+            ref = self.ctx.actor_ref(ExecutionActor.default_uid(), address=w)
             getattr(ref, handler)(*args, **kwargs)

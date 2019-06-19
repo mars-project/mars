@@ -49,7 +49,7 @@ class MockInProcessCacheActor(WorkerActor):
 
     def post_create(self):
         super(MockInProcessCacheActor, self).post_create()
-        self._chunk_holder_ref = self.ctx.actor_ref(ChunkHolderActor.default_name())
+        self._chunk_holder_ref = self.ctx.actor_ref(ChunkHolderActor.default_uid())
 
     def dump_cache(self, session_id, keys, callback):
         for k in keys:
@@ -73,11 +73,11 @@ class MockCpuCalcActor(WorkerActor):
         inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + str(uuid.uuid4())
         self._inproc_ref = self.ctx.create_actor(
             MockInProcessCacheActor, self._session_id, self._mock_data, uid=inproc_uid)
-        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(daemon_ref):
             daemon_ref.register_child_actor(self._inproc_ref, _tell=True)
 
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
     @promise.reject_on_exception
@@ -96,7 +96,7 @@ class MockSenderActor(WorkerActor):
 
     def post_create(self):
         super(MockSenderActor, self).post_create()
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
     @promise.reject_on_exception
@@ -129,7 +129,7 @@ class ExecutionTestActor(WorkerActor):
         self._array_key = arr.chunks[0].key
 
         graph_key = self._graph_key = str(uuid.uuid4())
-        execution_ref = self.promise_ref(ExecutionActor.default_name())
+        execution_ref = self.promise_ref(ExecutionActor.default_uid())
         execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                     dict(chunks=[arr.chunks[0].key]), None, _promise=True) \
             .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -161,25 +161,25 @@ class Test(WorkerCase):
         quota_size = quota_size or (1024 * 1024)
 
         pool.create_actor(SchedulerClusterInfoActor, schedulers=[address],
-                          uid=SchedulerClusterInfoActor.default_name())
+                          uid=SchedulerClusterInfoActor.default_uid())
         pool.create_actor(WorkerClusterInfoActor, schedulers=[address],
-                          uid=WorkerClusterInfoActor.default_name())
+                          uid=WorkerClusterInfoActor.default_uid())
 
-        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+        pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
         if with_resource:
-            pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+            pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
         if with_daemon:
-            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
+            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
         if with_status:
-            pool.create_actor(StatusActor, address, uid=StatusActor.default_name())
+            pool.create_actor(StatusActor, address, uid=StatusActor.default_uid())
 
         pool.create_actor(
-            ChunkHolderActor, cls.plasma_storage_size, uid=ChunkHolderActor.default_name())
-        pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-        pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_name())
-        pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-        pool.create_actor(QuotaActor, quota_size, uid=MemQuotaActor.default_name())
-        pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
+            ChunkHolderActor, cls.plasma_storage_size, uid=ChunkHolderActor.default_uid())
+        pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+        pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_uid())
+        pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+        pool.create_actor(QuotaActor, quota_size, uid=MemQuotaActor.default_uid())
+        pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
     @staticmethod
     def wait_for_result(pool, test_actor):
@@ -212,7 +212,7 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
 
                 session_id = str(uuid.uuid4())
-                chunk_holder_ref = test_actor.promise_ref(ChunkHolderActor.default_name())
+                chunk_holder_ref = test_actor.promise_ref(ChunkHolderActor.default_uid())
 
                 refs = test_actor._chunk_store.put(session_id, arr.chunks[0].key,
                                                    np.ones((10, 8), dtype=np.int16))
@@ -224,7 +224,7 @@ class Test(WorkerCase):
                 chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
                 del refs
 
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 def _validate(_):
                     data = test_actor._chunk_store.get(session_id, arr2.chunks[0].key)
@@ -243,7 +243,7 @@ class Test(WorkerCase):
             self.get_result()
 
             with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 def _validate(_):
                     data = test_actor._chunk_store.get(session_id, arr2.chunks[0].key)
@@ -302,7 +302,7 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor)
 
             with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(
                     session_id, graph_add_key, serialize_graph(graph_add),
                     dict(chunks=[new_add_chunk.key]), None,
@@ -334,7 +334,7 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor)
 
             with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 execution_ref.enqueue_graph(
                     session_id, graph_input_op_keys[0], serialize_graph(graph_inputs[0]),
@@ -380,7 +380,7 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
@@ -398,7 +398,7 @@ class Test(WorkerCase):
                                              shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
 
                 start_time = time.time()
 
@@ -430,9 +430,9 @@ class Test(WorkerCase):
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(SpillActor)
             pool.create_actor(CpuCalcActor)
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
-            pool.actor_ref(ChunkHolderActor.default_name())
+            pool.actor_ref(ChunkHolderActor.default_uid())
 
             import mars.tensor as mt
             from mars.tensor.expressions.fetch import TensorFetch
@@ -449,7 +449,7 @@ class Test(WorkerCase):
             # test meta missing
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -470,7 +470,7 @@ class Test(WorkerCase):
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -486,8 +486,8 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False)
 
-            status_ref = pool.actor_ref(StatusActor.default_name())
-            execution_ref = pool.actor_ref(ExecutionActor.default_name())
+            status_ref = pool.actor_ref(StatusActor.default_uid())
+            execution_ref = pool.actor_ref(ExecutionActor.default_uid())
 
             import mars.tensor as mt
             arr = mt.ones((10, 8), chunk_size=10)
@@ -517,8 +517,8 @@ class Test(WorkerCase):
                                address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_status=False)
 
-            daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name())
-            dispatch_ref = pool.actor_ref(DispatchActor.default_name())
+            daemon_ref = pool.actor_ref(WorkerDaemonActor.default_uid())
+            dispatch_ref = pool.actor_ref(DispatchActor.default_uid())
             calc_ref = daemon_ref.create_actor(
                 MockCpuCalcActor, session_id, mock_data, 10, uid='w:1:cpu-calc-a')
             daemon_ref.create_actor(ProcessHelperActor, uid='w:1:proc-helper-a')
@@ -545,8 +545,8 @@ class Test(WorkerCase):
                                address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_status=False)
 
-            daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name())
-            execution_ref = pool.actor_ref(ExecutionActor.default_name())
+            daemon_ref = pool.actor_ref(WorkerDaemonActor.default_uid())
+            execution_ref = pool.actor_ref(ExecutionActor.default_uid())
 
             calc_ref = daemon_ref.create_actor(
                 MockCpuCalcActor, session_id, mock_data, 10, uid='w:1:cpu-calc-a')
@@ -576,7 +576,7 @@ class Test(WorkerCase):
                                         with_resource=True)
             pool.create_actor(CpuCalcActor)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_name())
+            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
@@ -593,7 +593,7 @@ class Test(WorkerCase):
 
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -607,7 +607,7 @@ class Test(WorkerCase):
                                              shape=mock_data.shape, workers=('0.0.0.0:1234',))
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -625,7 +625,7 @@ class Test(WorkerCase):
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -658,7 +658,7 @@ class Test(WorkerCase):
                     assert_array_equal(data, mock_data + np.ones((4,)))
 
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None,
                                             send_addresses={result_key: (pool_address,)}, _promise=True) \
@@ -692,7 +692,7 @@ class Test(WorkerCase):
 
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
@@ -703,7 +703,7 @@ class Test(WorkerCase):
             self.get_result()
 
             with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_name())
+                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
                     .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \

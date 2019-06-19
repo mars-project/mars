@@ -27,7 +27,7 @@ class NodeInfoActor(FunctionActor):
         self._node_info = None
 
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 's:h1:' + cls.__name__
 
     def post_create(self):

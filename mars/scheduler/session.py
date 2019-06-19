@@ -53,7 +53,7 @@ class SessionActor(SchedulerActor):
         super(SessionActor, self).post_create()
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
         self.set_cluster_info_ref()
-        self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_name())
+        self._manager_ref = self.ctx.actor_ref(SessionManagerActor.default_uid())
 
     def pre_destroy(self):
         super(SessionActor, self).pre_destroy()
@@ -106,7 +106,7 @@ class SessionActor(SchedulerActor):
         if removes:
             lost_chunks = set()
             for scheduler in self.get_schedulers():
-                ref = self.ctx.actor_ref(ChunkMetaActor.default_name(), address=scheduler)
+                ref = self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=scheduler)
                 futures.append(ref.remove_workers_in_session(self._session_id, removes, _wait=False))
 
             for f in futures:

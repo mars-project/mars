@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
 
         actor_client = new_client()
         self.cluster_info = actor_client.actor_ref(
-            SchedulerClusterInfoActor.default_name(), address=self.scheduler_endpoints[0])
+            SchedulerClusterInfoActor.default_uid(), address=self.scheduler_endpoints[0])
 
         check_time = time.time()
         while True:
@@ -159,12 +159,12 @@ class Test(unittest.TestCase):
                     raise RuntimeError('Schedulers does not met requirement: %d < %d.' % (
                         len(started_schedulers), n_schedulers
                     ))
-                actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_name())
+                actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
                 self.session_manager_ref = actor_client.actor_ref(
-                    SessionManagerActor.default_name(), address=actor_address)
+                    SessionManagerActor.default_uid(), address=actor_address)
 
-                actor_address = self.cluster_info.get_scheduler(ResourceActor.default_name())
-                resource_ref = actor_client.actor_ref(ResourceActor.default_name(), address=actor_address)
+                actor_address = self.cluster_info.get_scheduler(ResourceActor.default_uid())
+                resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
 
                 if resource_ref.get_worker_count() < n_workers:
                     raise RuntimeError('Workers does not met requirement: %d < %d.' % (

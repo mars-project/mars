@@ -34,15 +34,15 @@ class MockExecutionActor(FunctionActor):
 class Test(WorkerCase):
     def testTaskQueueActor(self):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
-            pool.create_actor(MockExecutionActor, 10, uid=ExecutionActor.default_name())
-            quota_ref = pool.create_actor(QuotaActor, 30, uid=MemQuotaActor.default_name())
-            pool.create_actor(TaskQueueActor, 4, uid=TaskQueueActor.default_name())
+            pool.create_actor(MockExecutionActor, 10, uid=ExecutionActor.default_uid())
+            quota_ref = pool.create_actor(QuotaActor, 30, uid=MemQuotaActor.default_uid())
+            pool.create_actor(TaskQueueActor, 4, uid=TaskQueueActor.default_uid())
 
             session_id = str(uuid.uuid4())
             chunk_keys = [str(uuid.uuid4()).replace('-', '') for _ in range(6)]
 
             with self.run_actor_test(pool) as test_actor:
-                queue_ref = test_actor.promise_ref(TaskQueueActor.default_name())
+                queue_ref = test_actor.promise_ref(TaskQueueActor.default_uid())
                 res_times = dict()
 
                 def callback_fun(key):

@@ -26,11 +26,20 @@ def gen_distributor(scheduler_n_process, worker_n_process):
             self._scheduler_distributor = MarsDistributor(scheduler_n_process, 's:h1:')
             self._worker_distributor = MarsDistributor(worker_n_process, 'w:0:')
 
+        @staticmethod
+        def _is_worker_uid(uid):
+            return isinstance(uid, six.string_types) and uid.startswith('w:')
+
         @functools32.lru_cache(100)
         def distribute(self, uid):
-            if isinstance(uid, six.string_types) and uid.startswith('w:'):
+            if self._is_worker_uid(uid):
                 return self._worker_distributor.distribute(uid) + scheduler_n_process
 
             return self._scheduler_distributor.distribute(uid)
+
+        def make_same_process(self, uid, uid_rel, delta=0):
+            if self._is_worker_uid(uid_rel):
+                return self._worker_distributor.make_same_process(uid, uid_rel, delta=delta)
+            return self._scheduler_distributor.make_same_process(uid, uid_rel, delta=delta)
 
     return LocalClusterDistributor(scheduler_n_process + worker_n_process)

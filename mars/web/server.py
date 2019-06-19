@@ -111,7 +111,7 @@ class MarsWebAPI(MarsAPI):
         return graph_meta_ref.calc_stats()
 
     def get_workers_meta(self):
-        resource_uid = ResourceActor.default_name()
+        resource_uid = ResourceActor.default_uid()
         resource_ref = self.get_actor_ref(resource_uid)
         return resource_ref.get_workers_meta()
 

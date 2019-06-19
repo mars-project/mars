@@ -59,12 +59,12 @@ class Test(unittest.TestCase):
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                                                 uid=SchedulerClusterInfoActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
+                                                 uid=SchedulerClusterInfoActor.default_uid())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
             session_manager_ref = pool.create_actor(
-                SessionManagerActor, uid=SessionManagerActor.default_name())
-            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                SessionManagerActor, uid=SessionManagerActor.default_uid())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
             session_ref = pool.actor_ref(session_manager_ref.create_session(mock_session_id))
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)

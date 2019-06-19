@@ -150,23 +150,23 @@ class ExecutionActor(WorkerActor):
         super(ExecutionActor, self).post_create()
         self.set_cluster_info_ref()
 
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
-        self._task_queue_ref = self.promise_ref(TaskQueueActor.default_name())
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
+        self._task_queue_ref = self.promise_ref(TaskQueueActor.default_uid())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
-        self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if not self.ctx.has_actor(self._daemon_ref):
             self._daemon_ref = None
         else:
             self.register_actors_down_handler()
 
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
         from ..scheduler import ResourceActor
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
         if not self.ctx.has_actor(self._resource_ref):
             self._resource_ref = None
 
@@ -403,7 +403,7 @@ class ExecutionActor(WorkerActor):
         if remote_addr in self._peer_blacklist:
             raise DependencyMissing
 
-        remote_disp_ref = self.promise_ref(uid=DispatchActor.default_name(),
+        remote_disp_ref = self.promise_ref(uid=DispatchActor.default_uid(),
                                            address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
         timeout = options.worker.prepare_data_timeout

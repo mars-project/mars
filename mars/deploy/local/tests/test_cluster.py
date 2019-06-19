@@ -67,9 +67,9 @@ class Test(unittest.TestCase):
             pool = cluster.pool
 
             self.assertTrue(pool.has_actor(pool.actor_ref(
-                SchedulerClusterInfoActor.default_name())))
-            self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_name())))
-            self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_name())))
+                SchedulerClusterInfoActor.default_uid())))
+            self.assertTrue(pool.has_actor(pool.actor_ref(SessionManagerActor.default_uid())))
+            self.assertTrue(pool.has_actor(pool.actor_ref(DispatchActor.default_uid())))
 
             with new_session(endpoint) as session:
                 api = session._api

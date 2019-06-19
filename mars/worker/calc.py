@@ -48,8 +48,8 @@ class InProcessCacheActor(WorkerActor):
         from .quota import MemQuotaActor
 
         super(InProcessCacheActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         if options.worker.spill_directory:
             self._spill_dump_pool = self.ctx.threadpool(len(options.worker.spill_directory))
 
@@ -172,15 +172,15 @@ class CpuCalcActor(WorkerActor):
 
         raw_ref = self.ctx.create_actor(InProcessCacheActor, uid=inproc_uid)
         self._inproc_cache_ref = self.promise_ref(raw_ref)
-        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(daemon_ref):
             daemon_ref.register_child_actor(raw_ref, _tell=True)
 
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
