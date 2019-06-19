@@ -308,6 +308,8 @@ def reject_on_exception(func):
             logger.exception('Unhandled exception in promise call')
             if callback:
                 actor.tell_promise(callback, *sys.exc_info(), **dict(_accept=False))
+            else:
+                raise
     return _wrapped
 
 

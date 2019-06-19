@@ -304,6 +304,7 @@ class Test(WorkerCase):
         chunk_key5 = str(uuid.uuid4())
         chunk_key6 = str(uuid.uuid4())
         chunk_key7 = str(uuid.uuid4())
+        chunk_key8 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_uid())
@@ -339,9 +340,17 @@ class Test(WorkerCase):
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
 
+                result = receiver_ref_p.create_data_writer(session_id, chunk_key1, data_size, test_actor,
+                                                           use_promise=False)
+                self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVED))
+
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+
+                result = receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor,
+                                                           use_promise=False)
+                self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVING))
 
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
@@ -423,6 +432,10 @@ class Test(WorkerCase):
                     raise StoreFull
 
                 with patch_method(PlasmaChunkStore.create, new=mocked_store_create):
+                    with self.assertRaises(StoreFull):
+                        receiver_ref_p.create_data_writer(session_id, chunk_key4, data_size, test_actor,
+                                                          ensure_cached=True, use_promise=False)
+
                     # test receive aborted
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
@@ -498,6 +511,14 @@ class Test(WorkerCase):
 
                 with self.assertRaises(WorkerDead):
                     self.get_result(5)
+
+                # test checksum error on finish_receive
+                result = receiver_ref_p.create_data_writer(session_id, chunk_key8, data_size, test_actor,
+                                                           use_promise=False)
+                self.assertTupleEqual(result, (receiver_ref.address, None))
+
+                receiver_ref_p.receive_data_part(session_id, chunk_key8, serialized_mock_data, serialized_crc32)
+                receiver_ref_p.finish_receive(session_id, chunk_key8, 0)
 
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())
