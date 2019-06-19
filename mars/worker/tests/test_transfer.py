@@ -58,7 +58,7 @@ class WorkerRegistrationTestActor(WorkerActor):
     def register(self, session_id, chunk_keys):
         import numpy as np
 
-        cache_ref = self.promise_ref(ChunkHolderActor.default_name())
+        cache_ref = self.promise_ref(ChunkHolderActor.default_uid())
 
         left_keys = set(chunk_keys)
 
@@ -94,17 +94,17 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
                                address=pool_address) as pool:
             try:
                 pool.create_actor(SchedulerClusterInfoActor, schedulers=[pool_address],
-                                  uid=SchedulerClusterInfoActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
                 pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
-                                  uid=WorkerClusterInfoActor.default_name())
+                                  uid=WorkerClusterInfoActor.default_uid())
 
-                pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-                pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
+                pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+                pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_uid())
                 holder_ref = pool.create_actor(HolderActor, uid='HolderActor')
                 chunk_holder_ref = pool.create_actor(ChunkHolderActor, plasma_size,
-                                                     uid=ChunkHolderActor.default_name())
+                                                     uid=ChunkHolderActor.default_uid())
                 pool.create_actor(SpillActor)
 
                 pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
@@ -169,16 +169,16 @@ class Test(WorkerCase):
 
         with create_actor_pool(n_process=1, distributor=MarsDistributor(1, 'w:0:'),
                                backend='gevent', address=local_pool_addr) as pool:
-            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             pool.create_actor(SchedulerClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=SchedulerClusterInfoActor.default_name())
+                              uid=SchedulerClusterInfoActor.default_uid())
             pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=WorkerClusterInfoActor.default_name())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-            pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_uid())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                          uid=ChunkHolderActor.default_name())
+                                          uid=ChunkHolderActor.default_uid())
             pool.create_actor(SpillActor)
 
             sender_refs = [
@@ -203,10 +203,10 @@ class Test(WorkerCase):
                         from numpy.testing import assert_array_equal
 
                         remote_dispatch_ref = test_actor.promise_ref(
-                            DispatchActor.default_name(), address=remote_pool_addr)
+                            DispatchActor.default_uid(), address=remote_pool_addr)
                         remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
                         remote_mapper_ref = pool.actor_ref(
-                            PlasmaKeyMapActor.default_name(), address=remote_pool_addr)
+                            PlasmaKeyMapActor.default_uid(), address=remote_pool_addr)
                         remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):

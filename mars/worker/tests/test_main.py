@@ -66,10 +66,10 @@ class Test(unittest.TestCase):
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
-                                  uid=SchedulerClusterInfoActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
 
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
 
                 proc = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                          '-a', '127.0.0.1',
@@ -106,7 +106,7 @@ class Test(unittest.TestCase):
                 reply_ref = pool.create_actor(PromiseReplyTestActor)
                 reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
 
-                executor_ref = pool.actor_ref(ExecutionActor.default_name(), address=worker_ips[0])
+                executor_ref = pool.actor_ref(ExecutionActor.default_uid(), address=worker_ips[0])
                 io_meta = dict(chunks=[c.key for c in result.chunks])
                 executor_ref.execute_graph(session_id, str(id(graph)), serialize_graph(graph),
                                            io_meta, None, callback=reply_callback)

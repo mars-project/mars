@@ -34,10 +34,10 @@ class ProcessHelperActor(WorkerActor):
         from .daemon import WorkerDaemonActor
 
         super(ProcessHelperActor, self).post_create()
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'process_helper')
 
-        self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        self._daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(self._daemon_ref):
             self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
         else:

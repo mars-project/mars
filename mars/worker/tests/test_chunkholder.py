@@ -39,7 +39,7 @@ class CacheTestActor(WorkerActor):
     def run_test_cache(self):
         session_id = str(uuid.uuid4())
 
-        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
         chunk_store = self._chunk_store
 
         data_list = []
@@ -117,14 +117,14 @@ class Test(WorkerCase):
     def testHolder(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
-            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
-                              uid=WorkerClusterInfoActor.default_name())
-            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
+            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_uid())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                          uid=ChunkHolderActor.default_name())
+                                          uid=ChunkHolderActor.default_uid())
             pool.create_actor(SpillActor)
 
             try:
@@ -144,15 +144,15 @@ class Test(WorkerCase):
 
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
-            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
-                              uid=WorkerClusterInfoActor.default_name())
-            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_name())
-            pool.create_actor(SpillActor, uid=SpillActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
+            pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(QuotaActor, 1024 * 1024 * 10, uid=MemQuotaActor.default_uid())
+            pool.create_actor(SpillActor, uid=SpillActor.default_uid())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                          uid=ChunkHolderActor.default_name())
+                                          uid=ChunkHolderActor.default_uid())
 
             try:
                 options.worker.prepare_data_timeout = 2

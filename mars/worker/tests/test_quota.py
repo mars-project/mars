@@ -25,13 +25,13 @@ class Test(WorkerCase):
     def testQuota(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             end_time = []
             for idx in range(4):
                 x = str(idx)
                 with self.run_actor_test(pool) as test_actor:
-                    ref = test_actor.promise_ref(QuotaActor.default_name())
+                    ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                     def actual_exec(x):
                         test_actor.ctx.sleep(1)
@@ -51,13 +51,13 @@ class Test(WorkerCase):
     def testBatchQuota(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             end_time = []
             for idx in range(2):
                 x = str(idx)
                 with self.run_actor_test(pool) as test_actor:
-                    ref = test_actor.promise_ref(QuotaActor.default_name())
+                    ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                     def actual_exec(keys):
                         test_actor.ctx.sleep(1)

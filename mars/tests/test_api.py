@@ -32,9 +32,9 @@ class Test(unittest.TestCase):
         self.endpoint = endpoint
         self.pool = create_actor_pool(n_process=1, backend='gevent', address=endpoint)
         self.pool.create_actor(SchedulerClusterInfoActor, [endpoint],
-                               uid=SchedulerClusterInfoActor.default_name())
-        self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_name())
-        self.pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                               uid=SchedulerClusterInfoActor.default_uid())
+        self.pool.create_actor(SessionManagerActor, uid=SessionManagerActor.default_uid())
+        self.pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
 
         self.api = MarsAPI(endpoint)
 
@@ -80,7 +80,7 @@ class Test(unittest.TestCase):
 
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         self.pool.create_actor(GraphActor, session_id, serialized_graph, graph_key, uid=graph_uid)
-        self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+        self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
         mock_indexes = [
             OrderedDict(zip(['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'],

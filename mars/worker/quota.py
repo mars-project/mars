@@ -48,7 +48,7 @@ class QuotaActor(WorkerActor):
 
         super(QuotaActor, self).post_create()
 
-        status_ref = self.ctx.actor_ref(StatusActor.default_name())
+        status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if self.ctx.has_actor(status_ref):
             self._status_ref = status_ref
 
@@ -327,7 +327,7 @@ class MemQuotaActor(QuotaActor):
 
         super(MemQuotaActor, self).post_create()
         self.update_mem_stats()
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
 
         if self._status_ref:
             self._status_ref.set_mem_quota_allocations(

@@ -33,7 +33,7 @@ class TaskActor(PromiseActor):
         self._dispatch_ref = None
 
     def post_create(self):
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, self._queue_name)
 
     def queued_call(self, key, delay):
@@ -53,7 +53,7 @@ class Test(WorkerCase):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent',
                                address=mock_scheduler_addr) as pool:
-            dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
             # actors of g1
             [pool.create_actor(TaskActor, 'g1', call_records) for _ in range(group_size)]
             [pool.create_actor(TaskActor, 'g2', call_records) for _ in range(group_size)]
@@ -71,7 +71,7 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 from mars.promise import Promise
                 p = Promise(done=True)
-                _dispatch_ref = test_actor.promise_ref(DispatchActor.default_name())
+                _dispatch_ref = test_actor.promise_ref(DispatchActor.default_uid())
 
                 def _call_on_dispatched(uid, key=None):
                     if uid is None:

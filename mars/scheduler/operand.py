@@ -100,9 +100,9 @@ class OperandActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._assigner_ref = self.get_promise_ref(AssignerActor.gen_uid(self._session_id))
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -305,7 +305,7 @@ class OperandActor(SchedulerActor):
         """
         from ..worker.chunkholder import ChunkHolderActor
 
-        worker_cache_ref = self.ctx.actor_ref(ep, ChunkHolderActor.default_name())
+        worker_cache_ref = self.ctx.actor_ref(ep, ChunkHolderActor.default_uid())
         return worker_cache_ref.unregister_chunk(self._session_id, chunk_key,
                                                  _tell=True, _wait=False)
 
@@ -346,7 +346,7 @@ class OperandActor(SchedulerActor):
         """
         from ..worker.dispatcher import DispatchActor
 
-        dispatch_ref = self.promise_ref(DispatchActor.default_name(), address=self._worker_endpoint)
+        dispatch_ref = self.promise_ref(DispatchActor.default_uid(), address=self._worker_endpoint)
         exec_uid = dispatch_ref.get_hash_slot('execution', self._op_key)
         return self.ctx.actor_ref(exec_uid, address=self._worker_endpoint)
 

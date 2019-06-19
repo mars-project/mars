@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class PlasmaKeyMapActor(FunctionActor):
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 'w:0:' + cls.__name__
 
     def __init__(self):

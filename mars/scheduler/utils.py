@@ -73,17 +73,17 @@ class GraphState(compat.Enum):
 
 class SchedulerClusterInfoActor(ClusterInfoActor):
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 's:h1:%s' % cls.__name__
 
 
 class SchedulerHasClusterInfoActor(HasClusterInfoActor):
-    cluster_info_uid = SchedulerClusterInfoActor.default_name()
+    cluster_info_uid = SchedulerClusterInfoActor.default_uid()
 
 
 class SchedulerActor(SchedulerHasClusterInfoActor, PromiseActor):
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 's:h1:{0}'.format(cls.__name__)
 
     @property
