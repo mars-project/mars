@@ -43,7 +43,7 @@ class ResourceActor(SchedulerActor):
         super(ResourceActor, self).post_create()
         self.ref().clean_worker()
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 

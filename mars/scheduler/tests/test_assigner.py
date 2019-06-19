@@ -45,9 +45,9 @@ class Test(unittest.TestCase):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=mock_scheduler_addr) as pool:
             cluster_info_ref = pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                                                 uid=SchedulerClusterInfoActor.default_name())
-            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                                 uid=SchedulerClusterInfoActor.default_uid())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
             endpoint1 = 'localhost:12345'
             endpoint2 = 'localhost:23456'

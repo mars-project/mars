@@ -27,14 +27,20 @@ class Test(unittest.TestCase):
     def testDistribute(self):
         distributor = gen_distributor(2, 4)
 
-        idx = distributor.distribute(SessionActor.default_name())
+        idx = distributor.distribute(SessionActor.default_uid())
         self.assertEqual(idx, 1)
 
         idx = distributor.distribute(GraphActor.gen_uid('fake_session_id', 'fake_graph_key'))
         self.assertEqual(idx, 0)
 
-        idx = distributor.distribute(DispatchActor.default_name())
+        idx = distributor.distribute(DispatchActor.default_uid())
         self.assertEqual(idx, 2)
 
         idx = distributor.distribute('w:1:mars-sender')
         self.assertEqual(idx, 3)
+
+        uid = distributor.make_same_process('s:0:test_uid', 's:1:SessionActor')
+        self.assertEqual(uid, 's:1:test_uid')
+
+        uid = distributor.make_same_process('w:0:test_uid', 'w:1:mars-sender')
+        self.assertEqual(uid, 'w:1:test_uid')

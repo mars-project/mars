@@ -50,7 +50,7 @@ class ResultReceiverActor(SchedulerActor):
         if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, TensorFetchChunk):
             c = next(fetch_graph.iter_nodes())
             worker_ip = self.chunk_meta.get_workers(session_id, c.key)[-1]
-            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=worker_ip)
+            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=worker_ip)
             future = sender_ref.fetch_data(session_id, c.key, _wait=False)
 
             data = future.result()
@@ -67,7 +67,7 @@ class ResultReceiverActor(SchedulerActor):
                     if c.key in ctx:
                         continue
                     endpoints = self.chunk_meta.get_workers(session_id, c.key)
-                    sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
+                    sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
                     future = sender_ref.fetch_data(session_id, c.key, _wait=False)
                     ctx[c.key] = future
                 else:
@@ -98,7 +98,7 @@ class GraphMetaActor(SchedulerActor):
 
     def post_create(self):
         super(GraphMetaActor, self).post_create()
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -174,14 +174,14 @@ class GraphActor(SchedulerActor):
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
         self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
-        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         uid = GraphMetaActor.gen_uid(self._session_id, self._graph_key)
         self._graph_meta_ref = self.ctx.create_actor(
             GraphMetaActor, self._session_id, self._graph_key,
             uid=uid, address=self.get_scheduler(uid))
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -802,6 +802,6 @@ class GraphActor(SchedulerActor):
             if chunk_key in ctx:
                 continue
             endpoints = self.chunk_meta.get_workers(self._session_id, chunk_key)
-            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_name(), address=endpoints[-1])
+            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
             ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
         return dataserializer.dumps(merge_tensor_chunks(tiled_tensor, ctx))

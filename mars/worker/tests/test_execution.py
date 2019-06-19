@@ -52,7 +52,7 @@ class ExecuteTestActor(WorkerActor):
 
         session_id = str(uuid.uuid4())
 
-        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
 
         refs = self._chunk_store.put(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16))
         chunk_holder_ref.register_chunk(session_id, arr.chunks[0].key)
@@ -62,7 +62,7 @@ class ExecuteTestActor(WorkerActor):
         chunk_holder_ref.register_chunk(session_id, arr_add.chunks[0].key)
         del refs
 
-        executor_ref = self.promise_ref(ExecutionActor.default_name())
+        executor_ref = self.promise_ref(ExecutionActor.default_uid())
 
         def _validate(_):
             data = self._chunk_store.get(session_id, arr2.chunks[0].key)
@@ -82,18 +82,18 @@ class Test(WorkerCase):
     def testExecute(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
-            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_name())
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             pool.create_actor(SchedulerClusterInfoActor, schedulers=[pool_address],
-                              uid=SchedulerClusterInfoActor.default_name())
+                              uid=SchedulerClusterInfoActor.default_uid())
             pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
-                              uid=WorkerClusterInfoActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
             cache_ref = pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                          uid=ChunkHolderActor.default_name())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-            pool.create_actor(QuotaActor, 1024 * 1024, uid=MemQuotaActor.default_name())
+                                          uid=ChunkHolderActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(QuotaActor, 1024 * 1024, uid=MemQuotaActor.default_uid())
             pool.create_actor(CpuCalcActor)
-            pool.create_actor(ExecutionActor, uid=ExecutionActor.default_name())
+            pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
             try:
                 test_ref = pool.create_actor(ExecuteTestActor)

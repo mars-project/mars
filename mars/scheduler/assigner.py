@@ -120,7 +120,7 @@ class AssignerActor(SchedulerActor):
         session_id = self.uid.rsplit('$', 1)[-1]
         self._actual_ref = self.ctx.create_actor(AssignEvaluationActor, self.ref(),
                                                  uid=AssignEvaluationActor.gen_uid(session_id))
-        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
 
     def pre_destroy(self):
         self._actual_ref.destroy()
@@ -221,7 +221,7 @@ class AssignEvaluationActor(SchedulerActor):
 
         self.set_cluster_info_ref()
         self._assigner_ref = self.ctx.actor_ref(self._assigner_ref)
-        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         self.periodical_allocate()
 

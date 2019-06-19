@@ -66,20 +66,20 @@ class ExecutionActor(WorkerActor):
         from .status import StatusActor
 
         super(ExecutionActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
 
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'execution')
 
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
         scheduler_addr = self.get_scheduler(self.uid)
-        self._scheduler_resource_ref = self.ctx.actor_ref(ResourceActor.default_name(),
+        self._scheduler_resource_ref = self.ctx.actor_ref(ResourceActor.default_uid(),
                                                           address=scheduler_addr)
 
         self.register_process_down_handler()
 
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
@@ -130,7 +130,7 @@ class ExecutionActor(WorkerActor):
         """
         from .dispatcher import DispatchActor
 
-        remote_disp_ref = self.promise_ref(uid=DispatchActor.default_name(),
+        remote_disp_ref = self.promise_ref(uid=DispatchActor.default_uid(),
                                            address=remote_addr)
         ensure_cached = kwargs.pop('ensure_cached', True)
 

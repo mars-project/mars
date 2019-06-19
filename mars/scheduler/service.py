@@ -56,7 +56,7 @@ class SchedulerService(object):
             service_discover_addr = options.kv_store
             all_schedulers = None
             # create KVStoreActor when there is a distributed KV store
-            self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_name())
+            self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
         else:
             # single scheduler
             logger.info('Mars Scheduler started in standalone mode.')
@@ -71,16 +71,16 @@ class SchedulerService(object):
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
             SchedulerClusterInfoActor, all_schedulers, service_discover_addr,
-            uid=SchedulerClusterInfoActor.default_name())
+            uid=SchedulerClusterInfoActor.default_uid())
         # create ChunkMetaActor
-        self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+        self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         # create SessionManagerActor
         self._session_manager_ref = pool.create_actor(
-            SessionManagerActor, uid=SessionManagerActor.default_name())
+            SessionManagerActor, uid=SessionManagerActor.default_uid())
         # create ResourceActor
-        self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+        self._resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
         # create NodeInfoActor
-        self._node_info_ref = pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_name())
+        self._node_info_ref = pool.create_actor(NodeInfoActor, uid=NodeInfoActor.default_uid())
         kv_store.write('/schedulers/%s/meta' % endpoint,
                        json.dumps(self._resource_ref.get_workers_meta()))
 

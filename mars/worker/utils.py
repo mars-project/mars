@@ -31,12 +31,12 @@ logger = logging.getLogger(__name__)
 
 class WorkerClusterInfoActor(ClusterInfoActor):
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 'w:0:%s' % cls.__name__
 
 
 class WorkerHasClusterInfoActor(HasClusterInfoActor):
-    cluster_info_uid = WorkerClusterInfoActor.default_name()
+    cluster_info_uid = WorkerClusterInfoActor.default_uid()
 
 
 class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
@@ -44,7 +44,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     Base class of all worker actors, providing necessary utils
     """
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         return 'w:0:{0}'.format(cls.__name__)
 
     def post_create(self):
@@ -59,7 +59,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         import pyarrow.plasma as plasma
         from .chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 
-        mapper_ref = self.ctx.actor_ref(uid=PlasmaKeyMapActor.default_name())
+        mapper_ref = self.ctx.actor_ref(uid=PlasmaKeyMapActor.default_uid())
         self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         self._chunk_store = PlasmaChunkStore(self._plasma_client, mapper_ref)
 
@@ -84,7 +84,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     def register_process_down_handler(self):
         from .daemon import WorkerDaemonActor
 
-        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_name())
+        daemon_ref = self.ctx.actor_ref(WorkerDaemonActor.default_uid())
         if self.ctx.has_actor(daemon_ref):
             daemon_ref.register_callback(self.ref(), self.handle_process_down.__name__, _tell=True)
 

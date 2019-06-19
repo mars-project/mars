@@ -102,9 +102,9 @@ class Test(unittest.TestCase):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             def execute_case():
                 pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                                  uid=SchedulerClusterInfoActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
                 pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
                 graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                               uid=GraphActor.gen_uid(session_id, graph_key))
@@ -220,9 +220,9 @@ class Test(unittest.TestCase):
         with create_actor_pool(n_process=1, backend='gevent') as pool:
             def execute_case():
                 pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                                  uid=SchedulerClusterInfoActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
                 pool.create_actor(AssignerActor, uid=AssignerActor.gen_uid(session_id))
                 graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                               uid=GraphActor.gen_uid(session_id, graph_key))

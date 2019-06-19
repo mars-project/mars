@@ -77,7 +77,7 @@ class ClusterInfoActor(FunctionActor):
         self._observer_refs = []
 
     @classmethod
-    def default_name(cls):
+    def default_uid(cls):
         raise NotImplementedError
 
     def post_create(self):
