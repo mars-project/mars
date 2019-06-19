@@ -383,35 +383,3 @@ class Test(unittest.TestCase):
             assert_array_equal(tp[0], des_tp[0])
             self.assertTrue((tp[1].spmatrix != des_tp[1].spmatrix).nnz == 0)
 
-    @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
-    def testCompressIO(self):
-        if not np:
-            return
-        import pyarrow
-        from numpy.testing import assert_array_equal
-
-        for compress in dataserializer.get_supported_compressions():
-            data = np.random.random((1000, 100))
-            serialized = pyarrow.serialize(data).to_buffer()
-
-            bio = BytesIO()
-            reader = dataserializer.CompressBufferReader(pyarrow.py_buffer(serialized), compress)
-            while True:
-                block = reader.read(128)
-                if not block:
-                    break
-                bio.write(block)
-
-            compressed = bio.getvalue()
-            assert_array_equal(data, dataserializer.loads(compressed))
-
-            data_sink = bytearray(len(serialized))
-            compressed_mv = memoryview(compressed)
-            writer = dataserializer.DecompressBufferWriter(pyarrow.py_buffer(data_sink))
-            pos = 0
-            while pos < len(compressed):
-                endpos = min(pos + 128, len(compressed))
-                writer.write(compressed_mv[pos:endpos])
-                pos = endpos
-
-            assert_array_equal(data, pyarrow.deserialize(data_sink))

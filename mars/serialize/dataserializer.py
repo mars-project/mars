@@ -53,6 +53,10 @@ class DummyCompress(object):
         pass
 
     @staticmethod
+    def compress(data):  # pragma: no cover
+        return data
+
+    @staticmethod
     def decompress(data):  # pragma: no cover
         return data
 
@@ -188,6 +192,14 @@ def write_file_header(file, header):
     file.write(struct.pack('<H', header.compress.tag))
 
 
+def peek_file_header(file):
+    pos = file.tell()
+    try:
+        return read_file_header(file)
+    finally:
+        file.seek(pos)
+
+
 def load(file, raw=False):
     header = read_file_header(file)
     file = open_decompression_file(file, header.compress)
@@ -202,82 +214,6 @@ def load(file, raw=False):
         return buf
     else:
         return pyarrow.deserialize(memoryview(buf), mars_serialize_context())
-
-
-class CompressBufferReader(object):
-    def __init__(self, buf, compress):
-        self._total_bytes = len(buf)
-        self._compress_method = compress
-        self._compressor = compressobjs[compress]()
-        self._pos = 0
-        self._mv = memoryview(buf)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-    def read(self, byte_num):
-        if self._pos == self._total_bytes:
-            return b''
-        bio = BytesIO()
-        if self._pos == 0:
-            header = file_header(SERIAL_VERSION, self._total_bytes, self._compress_method)
-            write_file_header(bio, header)
-            if hasattr(self._compressor, 'begin'):
-                bio.write(self._compressor.begin())
-        while self._pos < self._total_bytes and bio.tell() < byte_num:
-            end_pos = min(self._pos + byte_num, self._total_bytes)
-            bio.write(self._compressor.compress(self._mv[self._pos:end_pos]))
-            if end_pos == self._total_bytes:
-                bio.write(self._compressor.flush())
-            self._pos = end_pos
-        return bio.getvalue()
-
-    def close(self):
-        self._mv = None
-        self._compressor = None
-
-
-class DecompressBufferWriter(object):
-    def __init__(self, buf):
-        import pyarrow
-        self._buf = buf
-        self._writer = pyarrow.FixedSizeBufferWriter(buf)
-        self._writer.set_memcopy_threads(6)
-        self._decompressor = None
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-    def write(self, data):
-        mv = memoryview(data)
-        if self._decompressor is not None:
-            self._writer.write(self._decompressor.decompress(mv))
-        else:
-            if len(data) < 12:
-                raise IOError('Block size too small')
-            header = read_file_header(mv)
-            self._decompressor = decompressobjs[header.compress]()
-            if len(data) > 12:
-                self._writer.write(self._decompressor.decompress(mv[12:]))
-
-    def close(self):
-        if self._writer is not None:
-            self._writer.close()
-        self._writer = None
-        self._buf = None
-        self._decompressor = None
 
 
 def loads(buf, raw=False):
@@ -323,10 +259,7 @@ def dumps(obj, compress=CompressType.NONE, raw=False):
 
 
 def peek_serialized_size(file):
-    try:
-        return read_file_header(file).nbytes
-    finally:
-        file.seek(0)
+    return peek_file_header(file).nbytes
 
 
 def _serialize_numpy_array_list(obj):

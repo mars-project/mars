@@ -25,6 +25,7 @@ from ..config import options
 from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled
+from .dataio import FileBufferIO, ArrowBufferIO
 from .spill import build_spill_file_name
 from .utils import WorkerActor
 
@@ -86,17 +87,19 @@ class SenderActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def send_data(self, session_id, chunk_key, target_endpoints, ensure_cached=True,
-                  timeout=0, callback=None):
+                  compression=None, timeout=0, callback=None):
         """
         Send data to other workers
         :param session_id: session id
         :param chunk_key: chunk to be sent
         :param target_endpoints: endpoints to receive this chunk
         :param ensure_cached: if True, make sure the data is in the shared storage of the target worker
+        :param compression: compression type when transfer in network
         :param timeout: timeout of data sending
         :param callback: promise callback
         """
         from .dispatcher import DispatchActor
+        compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         remote_receiver_refs = []
         already_started = set()
@@ -144,8 +147,7 @@ class SenderActor(WorkerActor):
         def _compress_and_send():
             # start compress and send data into targets
             logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
-            min_chunk_size = options.worker.transfer_block_size
-            transfer_compression = dataserializer.CompressType(options.worker.transfer_compression)
+            block_size = options.worker.transfer_block_size
             reader = None
 
             # filter out endpoints we need to send to
@@ -162,7 +164,8 @@ class SenderActor(WorkerActor):
                     try:
                         buf = self._chunk_store.get_buffer(session_id, chunk_key)
                         # create a stream compressor from shared buffer
-                        reader = dataserializer.CompressBufferReader(buf, transfer_compression)
+                        reader = ArrowBufferIO(
+                            buf, 'r', compress_out=compression, block_size=block_size)
                     except KeyError:
                         pass
                     finally:
@@ -172,13 +175,14 @@ class SenderActor(WorkerActor):
                     file_name = build_spill_file_name(chunk_key)
                     if not file_name:
                         raise SpillNotConfigured('Spill not configured')
-                    reader = open(file_name, 'rb')
+                    reader = FileBufferIO(
+                        open(file_name, 'rb'), 'r', compress_out=compression, block_size=block_size)
 
                 futures = []
                 checksum = 0
                 while True:
                     # read a data part from reader we defined above
-                    next_chunk = self._serialize_pool.submit(reader.read, min_chunk_size).result()
+                    next_chunk = self._serialize_pool.submit(reader.read, block_size).result()
                     # make sure all previous transfers finished
                     [f.result() for f in futures]
                     if not next_chunk:
@@ -340,7 +344,7 @@ class ReceiverActor(WorkerActor):
             logger.debug('Chunk %s already started transmission', chunk_key)
             if callback:
                 self.tell_promise(callback, self.address, ReceiveStatus.RECEIVING)
-            return
+            return self.address, ReceiveStatus.RECEIVING
 
         # build meta data for data transfer
         if session_chunk_key in self._data_meta_cache:
@@ -350,7 +354,7 @@ class ReceiverActor(WorkerActor):
                 if callback:
                     self.tell_promise(callback, self.address, ReceiveStatus.RECEIVED)
                 self._invoke_finish_callbacks(session_id, chunk_key)
-                return
+                return self.address, ReceiveStatus.RECEIVED
             else:
                 del self._data_meta_cache[session_chunk_key]
 
@@ -374,6 +378,8 @@ class ReceiverActor(WorkerActor):
         @log_unhandled
         def _create_writer(spill_times=1):
             # actual create data writer
+            block_size = options.worker.transfer_block_size
+            disk_compression = dataserializer.CompressType(options.worker.disk_compression)
             buf = None
             try:
                 # attempt to create data chunk on shared store
@@ -382,7 +388,8 @@ class ReceiverActor(WorkerActor):
                 logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
                              data_size, chunk_key)
                 # create a writer for the chunk
-                self._data_writers[session_chunk_key] = dataserializer.DecompressBufferWriter(buf)
+                self._data_writers[session_chunk_key] = ArrowBufferIO(
+                    buf, 'w', block_size=block_size)
                 if callback:
                     self.tell_promise(callback, self.address, None)
             except (KeyError, StoreKeyExists):
@@ -407,7 +414,9 @@ class ReceiverActor(WorkerActor):
                     self._chunk_holder_ref.spill_size(data_size, _tell=True)
                     spill_file_name = build_spill_file_name(chunk_key, writing=True)
                     try:
-                        spill_file = open(spill_file_name, 'wb')
+                        spill_file = FileBufferIO(
+                            open(spill_file_name, 'wb'), 'w', compress_in=disk_compression,
+                            block_size=block_size)
                         self._data_meta_cache[session_chunk_key]['transfer_start_time'] = time.time()
                         self._data_writers[session_chunk_key] = spill_file
                     except (KeyError, IOError):
