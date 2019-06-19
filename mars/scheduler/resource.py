@@ -27,6 +27,21 @@ from ..utils import BlacklistSet
 logger = logging.getLogger(__name__)
 
 
+class ResourceHeartbeatActor(SchedulerActor):
+    def __init__(self, resource_ref):
+        super(ResourceHeartbeatActor, self).__init__()
+        self._resource_ref = resource_ref
+
+    def post_create(self):
+        super(ResourceHeartbeatActor, self).post_create()
+        self._resource_ref = self.ctx.actor_ref(self._resource_ref)
+        self.ref().do_heartbeat(_tell=True)
+
+    def do_heartbeat(self):
+        self._resource_ref.heartbeat(_tell=True)
+        self.ref().do_heartbeat(_tell=True, _delay=1)
+
+
 class ResourceActor(SchedulerActor):
     """
     Actor managing free resources on workers
@@ -35,7 +50,12 @@ class ResourceActor(SchedulerActor):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
         self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
+
+        self._last_heartbeat_time = time.time()
+        self._last_heartbeat_interval = 0
+
         self._kv_store_ref = None
+        self._heartbeat_ref = None
 
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
@@ -47,16 +67,37 @@ class ResourceActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+        try:
+            # we assign the heartbeat actor into another process
+            # so it can sense whether the process is busy
+            heartbeat_uid = self.ctx.distributor.make_same_process(
+                ResourceHeartbeatActor.default_uid(), self.uid, delta=1)
+        except AttributeError:
+            heartbeat_uid = ResourceHeartbeatActor.default_uid()
+        self._heartbeat_ref = self.ctx.create_actor(
+            ResourceHeartbeatActor, self.ref(), uid=heartbeat_uid)
+
         self.ref().detect_dead_workers(_tell=True)
+
+    def pre_destroy(self):
+        self._heartbeat_ref.destroy()
+        super(ResourceActor, self).pre_destroy()
+
+    def heartbeat(self):
+        t = time.time()
+        self._last_heartbeat_interval = t - self._last_heartbeat_time
+        self._last_heartbeat_time = t
 
     def detect_dead_workers(self):
         """
         Remove worker when it does not update its status for a long time
         """
-        timeout = options.scheduler.status_timeout
+        # take latency of scheduler into consideration by
+        # include interval of last heartbeat
+        timeout = options.scheduler.status_timeout + self._last_heartbeat_interval
         dead_workers = []
 
-        check_time = time.time()
+        check_time = self._last_heartbeat_time
         for worker in list(self._meta_cache.keys()):
             worker_meta = self._meta_cache[worker]
             try:

@@ -221,7 +221,7 @@ class SenderActor(WorkerActor):
         """
         # start compress and send data into targets
         logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
-        min_chunk_size = options.worker.transfer_block_size
+        block_size = options.worker.transfer_block_size
         reader = None
 
         # filter out endpoints we need to send to
@@ -236,7 +236,7 @@ class SenderActor(WorkerActor):
                 buf = self._chunk_store.get_buffer(session_id, chunk_key)
                 # create a stream compressor from shared buffer
                 reader = ArrowBufferIO(
-                    buf, 'r', compress_out=compression, block_size=min_chunk_size)
+                    buf, 'r', compress_out=compression, block_size=block_size)
             except KeyError:
                 pass
             finally:
@@ -247,13 +247,13 @@ class SenderActor(WorkerActor):
                 if not file_name:
                     raise SpillNotConfigured('Spill not configured')
                 reader = FileBufferIO(
-                    open(file_name, 'rb'), 'r', compress_out=compression, block_size=min_chunk_size)
+                    open(file_name, 'rb'), 'r', compress_out=compression, block_size=block_size)
 
             futures = []
             checksum = 0
             while True:
                 # read a data part from reader we defined above
-                next_chunk = self._serialize_pool.submit(reader.read, min_chunk_size).result()
+                next_chunk = self._serialize_pool.submit(reader.read, block_size).result()
                 # make sure all previous transfers finished
                 [f.result(timeout=timeout) for f in futures]
                 if not next_chunk:
@@ -473,7 +473,6 @@ class ReceiverActor(WorkerActor):
         session_chunk_key = (session_id, chunk_key)
         data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
         data_size = data_meta.chunk_size
-        min_chunk_size = options.worker.transfer_block_size
         buf = None
         try:
             # attempt to create data chunk on shared store
@@ -482,8 +481,7 @@ class ReceiverActor(WorkerActor):
             logger.debug('Successfully created data writer with %s bytes in plasma for chunk %s',
                          data_size, chunk_key)
             # create a writer for the chunk
-            self._data_writers[session_chunk_key] = ArrowBufferIO(
-                buf, 'w', block_size=min_chunk_size)
+            self._data_writers[session_chunk_key] = ArrowBufferIO(buf, 'w', block_size=block_size)
             return self.address, None
         except (KeyError, StoreKeyExists):
             if self.check_status(session_id, chunk_key) != ReceiveStatus.RECEIVED:
