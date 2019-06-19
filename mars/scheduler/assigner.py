@@ -51,7 +51,7 @@ class AssignerActor(SchedulerActor):
 
         self.set_cluster_info_ref()
         # the ref of the actor actually handling assignment work
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
     def _refresh_worker_metrics(self):
         t = time.time()

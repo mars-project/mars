@@ -183,7 +183,7 @@ class ChunkMetaActor(SchedulerActor):
         logger.debug('Actor %s running in process %d at %s', self.uid, os.getpid(), self.address)
         super(ChunkMetaActor, self).post_create()
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -260,7 +260,7 @@ class ChunkMetaActor(SchedulerActor):
         if broadcast and query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
                 futures.append(
-                    self.ctx.actor_ref(self.default_name(), address=dest)
+                    self.ctx.actor_ref(self.default_uid(), address=dest)
                         .batch_cache_chunk_meta(session_id, [chunk_key], [meta], _wait=False, _tell=True)
                 )
             [f.result() for f in futures]
@@ -289,7 +289,7 @@ class ChunkMetaActor(SchedulerActor):
         futures = []
         for dest, (chunk_keys, metas) in query_dict.items():
             futures.append(
-                self.ctx.actor_ref(self.default_name(), address=dest)
+                self.ctx.actor_ref(self.default_uid(), address=dest)
                     .batch_cache_chunk_meta(session_id, chunk_keys, metas, _wait=False, _tell=True)
             )
         [f.result() for f in futures]
@@ -343,7 +343,7 @@ class ChunkMetaActor(SchedulerActor):
         # broadcast deletion into pre-determined destinations
         if broadcast and query_key in self._meta_broadcasts:
             for dest in self._meta_broadcasts[query_key]:
-                self.ctx.actor_ref(self.default_name(), address=dest) \
+                self.ctx.actor_ref(self.default_uid(), address=dest) \
                     .delete_meta(session_id, chunk_key, _wait=False, _tell=True)
             del self._meta_broadcasts[query_key]
 
@@ -362,7 +362,7 @@ class ChunkMetaActor(SchedulerActor):
             except KeyError:
                 pass
         for dest, keys in dest_to_keys.items():
-            self.ctx.actor_ref(self.default_name(), address=dest) \
+            self.ctx.actor_ref(self.default_uid(), address=dest) \
                 .batch_delete_meta(session_id, keys, _wait=False, _tell=True)
 
     def remove_workers_in_session(self, session_id, workers):
@@ -394,7 +394,7 @@ class ChunkMetaClient(object):
         self._cluster_info = cluster_info_ref
         self.ctx = ctx
         self._local_meta_store_ref = ctx.actor_ref(
-            ChunkMetaActor.default_name(), address=cluster_info_ref.address)
+            ChunkMetaActor.default_uid(), address=cluster_info_ref.address)
         if not ctx.has_actor(self._local_meta_store_ref):
             self._local_meta_store_ref = None
 
@@ -411,7 +411,7 @@ class ChunkMetaClient(object):
         :param broadcast_dests: destination addresses for broadcast
         """
         addr = self.get_scheduler((session_id, chunk_key))
-        self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr) \
+        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .set_chunk_broadcasts(session_id, chunk_key, broadcast_dests, _tell=True, _wait=False)
 
     def batch_set_chunk_broadcasts(self, session_id, chunk_keys, broadcast_dests,
@@ -423,7 +423,7 @@ class ChunkMetaClient(object):
             query_chunk[addr][1].append(dests)
 
         for addr, (chunk_keys, dest_groups) in query_chunk.items():
-            self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr) \
+            self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
                 .batch_set_chunk_broadcasts(session_id, chunk_keys, dest_groups,
                                             _tell=_tell, _wait=_wait)
 
@@ -438,7 +438,7 @@ class ChunkMetaClient(object):
         :param workers: workers holding the chunk
         """
         addr = self.get_scheduler((session_id, chunk_key))
-        self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr) \
+        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .set_chunk_meta(session_id, chunk_key, size=size, shape=shape, workers=workers,
                             _tell=_tell, _wait=_wait)
 
@@ -489,7 +489,7 @@ class ChunkMetaClient(object):
             return local_result
 
         addr = self.get_scheduler((session_id, chunk_key))
-        meta = self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr) \
+        meta = self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .get_chunk_meta(session_id, chunk_key)
         return meta
 
@@ -523,7 +523,7 @@ class ChunkMetaClient(object):
         futures = []
         for addr, keys in query_dict.items():
             futures.append(
-                self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr)
+                self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
                     .batch_get_chunk_meta(session_id, keys, _wait=False)
             )
         # accept results and merge
@@ -553,7 +553,7 @@ class ChunkMetaClient(object):
         futures = []
         for addr, (k, m) in update_dict.items():
             futures.append(
-                self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr)
+                self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
                     .batch_set_chunk_meta(session_id, k, m, _tell=_tell, _wait=False)
             )
         if _wait:
@@ -562,7 +562,7 @@ class ChunkMetaClient(object):
     def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
         query_key = (session_id, chunk_key)
         addr = self.get_scheduler(query_key)
-        self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr) \
+        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .delete_meta(session_id, chunk_key, _tell=_tell, _wait=_wait)
 
     def batch_delete_meta(self, session_id, chunk_keys, _tell=False, _wait=True):
@@ -581,7 +581,7 @@ class ChunkMetaClient(object):
         futures = []
         for addr, keys in query_dict.items():
             futures.append(
-                self.ctx.actor_ref(ChunkMetaActor.default_name(), address=addr)
+                self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr)
                     .batch_delete_meta(session_id, list(keys), _wait=False, _tell=_tell)
             )
         if _wait:

@@ -35,15 +35,15 @@ class Test(WorkerCase):
         try:
             with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
                 pool.create_actor(SchedulerClusterInfoActor, schedulers=[pool_address],
-                                  uid=SchedulerClusterInfoActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
                 pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
-                                  uid=WorkerClusterInfoActor.default_name())
+                                  uid=WorkerClusterInfoActor.default_uid())
 
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
                 pool.create_actor(ChunkHolderActor, self.plasma_storage_size,
-                                  uid=ChunkHolderActor.default_name())
+                                  uid=ChunkHolderActor.default_uid())
                 status_ref = pool.create_actor(StatusActor, pool_address,
-                                               uid=StatusActor.default_name())
+                                               uid=StatusActor.default_uid())
                 status_ref.enable_status_upload()
 
                 status_ref.update_slots(dict(cpu=4))

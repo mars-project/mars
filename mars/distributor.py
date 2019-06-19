@@ -65,13 +65,14 @@ class MarsDistributor(Distributor):
         else:
             raise ValueError('Malformed actor uid: %s' % uid)
 
-    def make_same_process(self, uid, uid_rel):
+    def make_same_process(self, uid, uid_rel, delta=0):
         rel_proc_id = self.distribute(uid_rel)
         id_parts = uid.split(':')
         if len(id_parts) == 3:
-            id_parts[1] = str(rel_proc_id)
+            id_parts[1] = str((rel_proc_id + delta + self.n_process) % self.n_process)
             return ':'.join(id_parts)
         elif self._default_prefix is not None:
-            return self.make_same_process(self._default_prefix + repr(uid).replace(':', '__'), uid_rel)
+            return self.make_same_process(self._default_prefix + repr(uid).replace(':', '__'),
+                                          uid_rel, delta)
         else:
             raise ValueError('Malformed actor uid: %s' % uid)

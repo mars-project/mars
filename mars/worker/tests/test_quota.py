@@ -29,10 +29,10 @@ class Test(WorkerCase):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=WorkerClusterInfoActor.default_name())
-            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_uid())
 
-            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             quota_ref.process_quota('non_exist')
             quota_ref.hold_quota('non_exist')
@@ -56,7 +56,7 @@ class Test(WorkerCase):
             self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 190)
 
             with self.run_actor_test(pool) as test_actor:
-                ref = test_actor.promise_ref(QuotaActor.default_name())
+                ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                 ref.request_quota('1', 150, _promise=True) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
@@ -86,12 +86,12 @@ class Test(WorkerCase):
     def testQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             end_time = []
             finished = set()
             with self.run_actor_test(pool) as test_actor:
-                ref = test_actor.promise_ref(QuotaActor.default_name())
+                ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                 def actual_exec(x):
                     ref.release_quota(x)
@@ -116,13 +116,13 @@ class Test(WorkerCase):
     def testBatchQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_name())
+            quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             end_time = []
             for idx in range(2):
                 x = str(idx)
                 with self.run_actor_test(pool) as test_actor:
-                    ref = test_actor.promise_ref(QuotaActor.default_name())
+                    ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                     def actual_exec(keys):
                         for k in keys:
@@ -148,13 +148,13 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
                 patch_method(resource.virtual_memory, new=lambda: mock_mem_stat):
             pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
-                              uid=WorkerClusterInfoActor.default_name())
-            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_name())
+                              uid=WorkerClusterInfoActor.default_uid())
+            pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_uid())
 
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
-            pool.create_actor(ProcessHelperActor, uid=ProcessHelperActor.default_name())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(ProcessHelperActor, uid=ProcessHelperActor.default_uid())
             quota_ref = pool.create_actor(MemQuotaActor, 300, refresh_time=0.1,
-                                          uid=MemQuotaActor.default_name())
+                                          uid=MemQuotaActor.default_uid())
 
             time_recs = []
             with self.run_actor_test(pool) as test_actor:

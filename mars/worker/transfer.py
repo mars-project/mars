@@ -55,9 +55,9 @@ class SenderActor(WorkerActor):
         from .quota import MemQuotaActor
 
         super(SenderActor, self).post_create()
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
         self._serialize_pool = self.ctx.threadpool(1)
 
@@ -99,7 +99,7 @@ class SenderActor(WorkerActor):
         logger.debug('Begin sending data %s into endpoints %s', chunk_key, target_endpoints)
         # collect receiver actors and quota actors in remote workers
         for ep in target_endpoints:
-            dispatch_ref = self.promise_ref(DispatchActor.default_name(), address=ep)
+            dispatch_ref = self.promise_ref(DispatchActor.default_uid(), address=ep)
             uid = dispatch_ref.get_hash_slot('receiver', chunk_key, _wait=False).result(timeout)
 
             receiver_ref = self.promise_ref(uid, address=ep)
@@ -313,14 +313,14 @@ class ReceiverActor(WorkerActor):
         from .dispatcher import DispatchActor
 
         super(ReceiverActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_name())
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
+        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-        self._dispatch_ref = self.promise_ref(DispatchActor.default_name())
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
 
         self._serialize_pool = self.ctx.threadpool(1)

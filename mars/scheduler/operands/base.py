@@ -79,11 +79,11 @@ class BaseOperandActor(SchedulerActor):
         from ..resource import ResourceActor
 
         self.set_cluster_info_ref()
-        self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_name())
+        self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_uid())
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_name())
+        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
@@ -134,7 +134,7 @@ class BaseOperandActor(SchedulerActor):
         Get raw ref of ExecutionActor on assigned worker. This method can be patched on debug
         """
         from ...worker import ExecutionActor
-        uid = uid or ExecutionActor.default_name()
+        uid = uid or ExecutionActor.default_uid()
 
         return self.ctx.actor_ref(uid, address=address)
 
@@ -177,7 +177,7 @@ class BaseOperandActor(SchedulerActor):
 
         worker_futures = []
         for ep, data_keys in worker_data.items():
-            worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_name(), address=ep)
+            worker_cache_ref = self.ctx.actor_ref(ChunkHolderActor.default_uid(), address=ep)
             worker_futures.append((ep, worker_cache_ref.unregister_chunks(
                 self._session_id, data_keys, _tell=True, _wait=False)))
 

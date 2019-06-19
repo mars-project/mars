@@ -29,8 +29,8 @@ class MarsAPI(object):
     def __init__(self, scheduler_ip):
         self.actor_client = new_client()
         self.cluster_info = self.actor_client.actor_ref(
-            SchedulerClusterInfoActor.default_name(), address=scheduler_ip)
-        self.session_manager = self.get_actor_ref(SessionManagerActor.default_name())
+            SchedulerClusterInfoActor.default_uid(), address=scheduler_ip)
+        self.session_manager = self.get_actor_ref(SessionManagerActor.default_uid())
 
     def get_actor_ref(self, uid):
         actor_address = self.cluster_info.get_scheduler(uid)
@@ -46,13 +46,13 @@ class MarsAPI(object):
         schedulers = self.cluster_info.get_schedulers()
         infos = dict()
         for scheduler in schedulers:
-            info_ref = self.actor_client.actor_ref(NodeInfoActor.default_name(), address=scheduler)
+            info_ref = self.actor_client.actor_ref(NodeInfoActor.default_uid(), address=scheduler)
             infos[scheduler] = info_ref.get_info()
         return infos
 
     def count_workers(self):
         try:
-            uid = ResourceActor.default_name()
+            uid = ResourceActor.default_uid()
             return self.get_actor_ref(uid).get_worker_count()
         except KeyError:
             return 0
@@ -97,7 +97,7 @@ class MarsAPI(object):
     def fetch_data(self, session_id, graph_key, tileable_key, compressions=None, wait=True):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_address = self.cluster_info.get_scheduler(graph_uid)
-        result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_name(), address=graph_address)
+        result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_uid(), address=graph_address)
 
         compressions = set(compressions or []) | {dataserializer.CompressType.NONE}
         return result_ref.fetch_tileable(session_id, graph_key, tileable_key, compressions, _wait=wait)

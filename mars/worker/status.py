@@ -41,8 +41,8 @@ class StatusReporterActor(WorkerActor):
         from ..scheduler import ResourceActor
 
         super(StatusReporterActor, self).post_create()
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_name())
-        self._resource_ref = self.get_actor_ref(ResourceActor.default_name())
+        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
         self.ref().collect_status(_tell=True)
 
     def enable_status_upload(self):
@@ -170,7 +170,7 @@ class StatusActor(WorkerActor):
     def post_create(self):
         super(StatusActor, self).post_create()
         self._reporter_ref = self.ctx.create_actor(
-            StatusReporterActor, self._endpoint, uid=StatusReporterActor.default_name())
+            StatusReporterActor, self._endpoint, uid=StatusReporterActor.default_uid())
 
     def pre_destroy(self):
         self.ctx.destroy_actor(self._reporter_ref)

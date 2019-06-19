@@ -110,20 +110,20 @@ class Test(unittest.TestCase):
         session2 = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
             cluster_info1 = pool1.create_actor(SchedulerClusterInfoActor, endpoints,
-                                               uid=SchedulerClusterInfoActor.default_name())
-            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                               uid=SchedulerClusterInfoActor.default_uid())
+            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
             with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
                 cluster_info2 = pool2.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                   uid=SchedulerClusterInfoActor.default_name())
-                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                                   uid=SchedulerClusterInfoActor.default_uid())
+                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
                 actor_client = new_client()
                 client1 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info1))
                 client2 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info2))
 
-                loc_ref1 = actor_client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[0])
-                loc_ref2 = actor_client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[1])
+                loc_ref1 = actor_client.actor_ref(ChunkMetaActor.default_uid(), address=endpoints[0])
+                loc_ref2 = actor_client.actor_ref(ChunkMetaActor.default_uid(), address=endpoints[1])
 
                 key1 = (str(uuid.uuid4()), str(uuid.uuid4()))
                 key2 = str(uuid.uuid4())
@@ -159,7 +159,7 @@ class Test(unittest.TestCase):
                 mock_endpoint = '127.0.0.1:%d' % get_next_port()
                 with create_actor_pool(n_process=1, backend='gevent', address=mock_endpoint) as pool3:
                     cluster_info3 = pool3.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                       uid=SchedulerClusterInfoActor.default_name())
+                                                       uid=SchedulerClusterInfoActor.default_uid())
                     client3 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info3))
                     self.assertListEqual(client3.batch_get_chunk_shape(session1, [key1, key2]), [(10,), (10,) * 2])
 
@@ -219,19 +219,19 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         with create_actor_pool(n_process=1, backend='gevent', address=endpoints[0]) as pool1:
             cluster_info1 = pool1.create_actor(SchedulerClusterInfoActor, endpoints,
-                                               uid=SchedulerClusterInfoActor.default_name())
-            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                               uid=SchedulerClusterInfoActor.default_uid())
+            pool1.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
             with create_actor_pool(n_process=1, backend='gevent', address=endpoints[1]) as pool2:
                 cluster_info2 = pool2.create_actor(SchedulerClusterInfoActor, endpoints,
-                                                   uid=SchedulerClusterInfoActor.default_name())
-                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
+                                                   uid=SchedulerClusterInfoActor.default_uid())
+                pool2.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
                 actor_client = new_client()
                 client1 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info1))
                 client2 = ChunkMetaClient(actor_client, actor_client.actor_ref(cluster_info2))
-                local_ref1 = actor_client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[0])
-                local_ref2 = actor_client.actor_ref(ChunkMetaActor.default_name(), address=endpoints[1])
+                local_ref1 = actor_client.actor_ref(ChunkMetaActor.default_uid(), address=endpoints[0])
+                local_ref2 = actor_client.actor_ref(ChunkMetaActor.default_uid(), address=endpoints[1])
 
                 key1 = str(uuid.uuid4())
                 key2 = str(uuid.uuid4())

@@ -91,10 +91,10 @@ class Test(unittest.TestCase):
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
-                              uid=SchedulerClusterInfoActor.default_name())
-            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
-            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-            pool.create_actor(AssignerActor, uid=AssignerActor.default_name())
+                              uid=SchedulerClusterInfoActor.default_uid())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialize_graph(graph),
                                           uid=GraphActor.gen_uid(session_id, graph_key))
 
@@ -142,7 +142,7 @@ class Test(unittest.TestCase):
 
         with self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
             input_op_keys, mid_op_key, output_op_keys = self._filter_graph_level_op_keys(graph_ref)
-            meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_name()))
+            meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_uid()))
             op_ref = pool.actor_ref(OperandActor.gen_uid(session_id, mid_op_key))
 
             input_refs = [pool.actor_ref(OperandActor.gen_uid(session_id, k)) for k in input_op_keys]

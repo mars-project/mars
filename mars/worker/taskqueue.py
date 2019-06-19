@@ -95,7 +95,7 @@ class TaskQueueActor(WorkerActor):
 
         self._allocator_ref = self.ctx.create_actor(
             TaskQueueAllocatorActor, self.ref(), self._parallel_num,
-            uid=TaskQueueAllocatorActor.default_name())
+            uid=TaskQueueAllocatorActor.default_uid())
 
     def enqueue_task(self, session_id, op_key, priority_data, callback):
         """
@@ -222,8 +222,8 @@ class TaskQueueAllocatorActor(WorkerActor):
         from .execution import ExecutionActor
 
         self._queue_ref = self.ctx.actor_ref(self._queue_ref)
-        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_name())
-        self._execution_ref = self.ctx.actor_ref(ExecutionActor.default_name())
+        self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
+        self._execution_ref = self.ctx.actor_ref(ExecutionActor.default_uid())
 
         self.ref().allocate_tasks(periodical=True, _delay=_ALLOCATE_PERIOD, _tell=True)
 

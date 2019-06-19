@@ -27,7 +27,7 @@ from mars.worker.tests.base import WorkerCase
 class DaemonSleeperActor(WorkerActor):
     def post_create(self):
         super(DaemonSleeperActor, self).__init__()
-        self._daemon_ref = self.promise_ref(WorkerDaemonActor.default_name())
+        self._daemon_ref = self.promise_ref(WorkerDaemonActor.default_uid())
         self._daemon_ref.register_process(self.ref(), os.getpid(), _tell=True)
 
     def test_sleep(self, t, callback):
@@ -67,8 +67,8 @@ class Test(WorkerCase):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=2, backend='gevent', distributor=MarsDistributor(2, 'w:0:'),
                                address=mock_scheduler_addr) as pool:
-            daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_name())
-            pool.create_actor(DispatchActor, uid=DispatchActor.default_name())
+            daemon_ref = pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
             sleeper_ref = daemon_ref.create_actor(DaemonSleeperActor,
                                                   uid='w:1:DaemonSleeperActor')
             daemon_ref.create_actor(ProcessHelperActor, uid='w:1:ProcHelper')

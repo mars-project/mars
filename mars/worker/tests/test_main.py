@@ -49,7 +49,7 @@ class WorkerProcessTestActor(PromiseActor):
 
         graph = result.build_graph(tiled=True)
 
-        executor_ref = self.promise_ref(ExecutionActor.default_name(), address=worker)
+        executor_ref = self.promise_ref(ExecutionActor.default_uid(), address=worker)
         io_meta = dict(chunks=[c.key for c in result.chunks])
 
         graph_key = str(id(graph))
@@ -105,10 +105,10 @@ class Test(unittest.TestCase):
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
-                                  uid=SchedulerClusterInfoActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
 
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
 
                 proc = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                          '-a', '127.0.0.1',
@@ -146,10 +146,10 @@ class Test(unittest.TestCase):
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
                 pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
-                                  uid=SchedulerClusterInfoActor.default_name())
+                                  uid=SchedulerClusterInfoActor.default_uid())
 
-                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_name())
-                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_name())
+                pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+                resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
 
                 proc = subprocess.Popen([sys.executable, '-m', 'mars.worker',
                                          '-a', '127.0.0.1',
@@ -160,8 +160,8 @@ class Test(unittest.TestCase):
                                          '--ignore-avail-mem'])
                 worker_endpoint = self._wait_worker_ready(proc, resource_ref)
 
-                daemon_ref = pool.actor_ref(WorkerDaemonActor.default_name(), address=worker_endpoint)
-                dispatch_ref = pool.actor_ref(DispatchActor.default_name(), address=worker_endpoint)
+                daemon_ref = pool.actor_ref(WorkerDaemonActor.default_uid(), address=worker_endpoint)
+                dispatch_ref = pool.actor_ref(DispatchActor.default_uid(), address=worker_endpoint)
                 cpu_slots = dispatch_ref.get_slots('cpu')
                 calc_ref = pool.actor_ref(cpu_slots[0], address=worker_endpoint)
                 daemon_ref.kill_actor_process(calc_ref)
