@@ -40,10 +40,19 @@ class Test(unittest.TestCase):
             data = np.random.random((1000, 100))
             serialized = pyarrow.serialize(data).to_buffer()
 
+            # test complete read
             reader = ArrowBufferIO(
                 pyarrow.py_buffer(serialized), 'r', compress_out=compress)
             assert_array_equal(data, dataserializer.loads(reader.read()))
 
+            # test partial read
+            reader = ArrowBufferIO(
+                pyarrow.py_buffer(serialized), 'r', compress_out=compress)
+            block = reader.read(128)
+            data_left = reader.read()
+            assert_array_equal(data, dataserializer.loads(block + data_left))
+
+            # test read by chunks
             bio = BytesIO()
             reader = ArrowBufferIO(
                 pyarrow.py_buffer(serialized), 'r', compress_out=compress)
@@ -56,6 +65,7 @@ class Test(unittest.TestCase):
             compressed = bio.getvalue()
             assert_array_equal(data, dataserializer.loads(compressed))
 
+            # test write by chunks
             data_sink = bytearray(len(serialized))
             compressed_mv = memoryview(compressed)
             writer = ArrowBufferIO(pyarrow.py_buffer(data_sink), 'w')
@@ -79,12 +89,21 @@ class Test(unittest.TestCase):
             for c2 in compressions:
                 data = np.random.random((1000, 100))
 
+                # test complete read
                 compressed_read_file = BytesIO(dataserializer.dumps(data, compress=c1))
                 reader = FileBufferIO(compressed_read_file, 'r', compress_out=c2)
                 compressed = reader.read()
                 self.assertEqual(c2, dataserializer.read_file_header(compressed).compress)
                 assert_array_equal(data, dataserializer.loads(compressed))
 
+                # test partial read
+                compressed_read_file = BytesIO(dataserializer.dumps(data, compress=c1))
+                reader = FileBufferIO(compressed_read_file, 'r', compress_out=c2)
+                block = reader.read(128)
+                data_left = reader.read()
+                assert_array_equal(data, dataserializer.loads(block + data_left))
+
+                # test read by chunks
                 bio = BytesIO()
                 compressed_read_file = BytesIO(dataserializer.dumps(data, compress=c1))
                 reader = FileBufferIO(compressed_read_file, 'r', compress_out=c2)
@@ -98,6 +117,7 @@ class Test(unittest.TestCase):
                 self.assertEqual(c2, dataserializer.read_file_header(compressed).compress)
                 assert_array_equal(data, dataserializer.loads(compressed))
 
+                # test write by chunks
                 compressed_read_file.seek(0)
                 compressed_write_file = BytesIO()
                 writer = FileBufferIO(compressed_write_file, 'w', compress_in=c2,

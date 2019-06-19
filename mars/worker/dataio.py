@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pyarrow
+
 from ..compat import BytesIO
 from ..serialize.dataserializer import CompressType, get_compressobj, get_decompressobj, \
     HEADER_LENGTH, file_header, read_file_header, write_file_header, SERIAL_VERSION
@@ -39,7 +41,7 @@ class WorkerBufferIO(object):
         else:
             self._remain_buf = None
             self._remain_offset = None
-            self._block_iterator = self._iter_next_block()
+            self._block_iterator = self._iter_blocks()
 
     def __enter__(self):
         return self
@@ -62,7 +64,7 @@ class WorkerBufferIO(object):
         """
         raise NotImplementedError
 
-    def _iter_next_block(self):
+    def _iter_blocks(self):
         """
         Returns a generator providing data blocks. The sizes of data blocks can vary.
         """
@@ -105,7 +107,7 @@ class WorkerBufferIO(object):
     def read(self, size=-1):
         bio = BytesIO()
         if self._remain_buf is not None:
-            if len(self._remain_buf) <= self._remain_offset + size:
+            if size < 0 or len(self._remain_buf) <= self._remain_offset + size:
                 bio.write(self._remain_buf[self._remain_offset:])
                 self._remain_buf = None
             else:
@@ -119,7 +121,7 @@ class WorkerBufferIO(object):
                 block = next(self._block_iterator)
             except StopIteration:
                 break
-            if bio.tell() + len(block) <= size or size < 0:
+            if size < 0 or bio.tell() + len(block) <= size:
                 bio.write(block)
                 self._remain_buf = None
             else:
@@ -208,8 +210,6 @@ class ArrowBufferIO(WorkerBufferIO):
     def __init__(self, buf, mode='r', compress_in=None, compress_out=None, block_size=8192):
         super(ArrowBufferIO, self).__init__(
             mode=mode, compress_in=compress_in, compress_out=compress_out, block_size=block_size)
-
-        import pyarrow
 
         self._buf = buf
         if 'r' in mode:
