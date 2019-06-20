@@ -38,8 +38,6 @@ class Promise(object):
                  args=None, kwargs=None):
         # use random promise id
         self._id = struct.pack('<Q', id(self)) + np.random.bytes(32)
-        # register in global pool to reject gc collection
-        _promise_pool[self._id] = self
 
         self._accept_handler = self._wrap_handler(resolve)
         self._reject_handler = self._wrap_handler(reject)
@@ -62,6 +60,9 @@ class Promise(object):
             self._accepted = False
         else:
             self._accepted = None
+            # register in global pool to reject gc collection when calls not finished
+            _promise_pool[self._id] = self
+
         self._args = args or ()
         self._kwargs = kwargs or {}
 
@@ -69,6 +70,7 @@ class Promise(object):
 
     def __del__(self):
         self.pre_destroy()
+        self._clear_result_cache()
 
     @property
     def id(self):
@@ -89,26 +91,35 @@ class Promise(object):
 
         @wraps(func)
         def _wrapped(*args, **kwargs):
+            _promise_pool.pop(self.id, None)
+
+            result = None
             try:
                 result = func(*args, **kwargs)
                 if isinstance(result, Promise):
                     # the function itself returns a promise object
                     # bind returned promise object to current promise
+                    assert result._next_item is None
                     result._bind_item = self
                     if result._accepted is not None:
                         # promise already done, we move next
                         args = result._args or ()
                         kwargs = result._kwargs or {}
+                        result._clear_result_cache()
+
                         kwargs['_accept'] = result._accepted
-                        result.step_next(*args, **kwargs)
+                        return result._internal_step_next, args, kwargs
                 else:
                     # return non-promise result, we just step next
-                    self.step_next(result)
-            except:
+                    return self._internal_step_next, (result,), {}
+            except:  # noqa: E722
                 # error occurred when executing func, we reject with exc_info
                 logger.exception('Exception met in executing promise.')
                 exc = sys.exc_info()
-                self.step_next(*exc, _accept=False)
+                self._clear_result_cache()
+                return self._internal_step_next, exc, dict(_accept=False)
+            finally:
+                del result
         return _wrapped
 
     def _get_bind_root(self):
@@ -119,9 +130,10 @@ class Promise(object):
         """
         target = self
         while target._bind_item is not None:
-            if target and target.id in _promise_pool:
+            if target.id in _promise_pool:
                 # remove binder that will not be used later
-                del _promise_pool[target.id]
+                _promise_pool.pop(target.id, None)
+            target._clear_result_cache()
             target = target._bind_item
         return target
 
@@ -134,11 +146,12 @@ class Promise(object):
         :rtype: Promise
         """
         while getattr(p, handler_attr) is None:
+            p._accept_handler = p._reject_handler = None
+
             p = p._get_bind_root()  # type: Promise
             if p and p._next_item is not None:
-                if p.id in _promise_pool:
-                    # remove predecessor that will not be used later
-                    del _promise_pool[p.id]
+                _promise_pool.pop(p.id, None)
+                p._clear_result_cache()
                 p = p._next_item
             else:
                 break
@@ -149,11 +162,16 @@ class Promise(object):
         if args and len(args) == 3 and issubclass(args[0], Exception):
             logger.exception('Unhandled exception in promise', exc_info=args)
 
-    def step_next(self, *args, **kwargs):
-        """
-        Step into next promise with given args and kwargs
-        """
+    def _clear_result_cache(self):
+        self._args = ()
+        self._kwargs = {}
 
+    def _internal_step_next(self, *args, **kwargs):
+        """
+        Actual call to step promise call into the next step.
+        If there are further steps, the function will return it
+        as a (func, args, kwargs) tuple to reduce memory footprint.
+        """
         accept = kwargs.pop('_accept', True)
         target_promise = self
 
@@ -162,45 +180,74 @@ class Promise(object):
         try:
             root_promise = self._get_bind_root()
 
-            if root_promise and root_promise.id in _promise_pool:
-                del _promise_pool[root_promise.id]
+            if root_promise:
+                _promise_pool.pop(root_promise.id, None)
 
             target_promise = root_promise._next_item
-            root_promise._accepted = self._accepted
-            root_promise._args = args
-            root_promise._kwargs = kwargs
+            root_promise._accepted = accept
             if not target_promise:
+                root_promise._args = args
+                root_promise._kwargs = kwargs
                 if not accept:
                     self._log_unexpected_error(args)
                 return
+            else:
+                root_promise._clear_result_cache()
 
+            next_call = None
             if accept:
                 acceptor = self._get_handling_promise(target_promise, '_accept_handler')
                 if acceptor and acceptor._accept_handler:
-                    acceptor._accept_handler(*args, **kwargs)
+                    # remove the handler in promise in case that
+                    # function closure is not freed
+                    handler, acceptor._accept_handler = acceptor._accept_handler, None
+                    next_call = handler(*args, **kwargs)
                 else:
                     acceptor._accepted = accept
                     acceptor._args = args
                     acceptor._kwargs = kwargs
+                    _promise_pool.pop(acceptor.id, None)
             else:
                 rejecter = self._get_handling_promise(target_promise, '_reject_handler')
                 if rejecter and rejecter._reject_handler:
-                    rejecter._reject_handler(*args, **kwargs)
+                    # remove the handler in promise in case that
+                    # function closure is not freed
+                    handler, rejecter._reject_handler = rejecter._reject_handler, None
+                    next_call = handler(*args, **kwargs)
                 else:
                     rejecter._accepted = accept
                     rejecter._args = args
                     rejecter._kwargs = kwargs
+                    _promise_pool.pop(rejecter.id, None)
                     self._log_unexpected_error(args)
+            return next_call
         finally:
-            if target_promise and target_promise.id in _promise_pool:
-                del _promise_pool[target_promise.id]
+            del args, kwargs
+            if target_promise:
+                _promise_pool.pop(target_promise.id, None)
+
+    def step_next(self, args_and_kwargs=None):
+        """
+        Step into next promise with given args and kwargs
+        """
+        if args_and_kwargs is None:
+            args_and_kwargs = [(), {}]
+        step_call = (self._internal_step_next,) + tuple(args_and_kwargs)
+        del args_and_kwargs[:]
+
+        while step_call is not None:
+            func, args, kwargs = step_call
+            step_call = func(*args, **kwargs)
 
     def then(self, on_fulfilled, on_rejected=None):
         promise = Promise(on_fulfilled, on_rejected)
+        assert self._bind_item is None
         self._next_item = promise
         if self._accepted is not None:
-            self._kwargs['_accept'] = self._accepted
-            self.step_next(*self._args, **self._kwargs)
+            args_and_kwargs = [self._args, self._kwargs]
+            args_and_kwargs[1]['_accept'] = self._accepted
+            self._clear_result_cache()
+            self.step_next(args_and_kwargs)
         return promise
 
     def catch(self, on_rejected):
@@ -303,7 +350,7 @@ def reject_on_exception(func):
 
         try:
             return func(*args, **kwargs)
-        except:
+        except:  # noqa: E722
             actor = args[0]
             logger.exception('Unhandled exception in promise call')
             if callback:
@@ -317,14 +364,17 @@ class PromiseActor(FunctionActor):
     """
     Actor class providing promise functionality
     """
-    def promise_ref(self, *args, **kwargs):
-        """
-        Wraps an existing ActorRef into a promise ref
-        """
+    def _prepare_promise_registration(self):
         if not hasattr(self, '_promises'):
             self._promises = dict()
             self._promise_ref_keys = dict()
             self._ref_key_promises = dict()
+
+    def promise_ref(self, *args, **kwargs):
+        """
+        Wraps an existing ActorRef into a promise ref
+        """
+        self._prepare_promise_registration()
 
         if not args and not kwargs:
             ref = self.ref()
@@ -333,6 +383,39 @@ class PromiseActor(FunctionActor):
         else:
             ref = self.ctx.actor_ref(*args, **kwargs)
         return PromiseRefWrapper(ref, self)
+
+    def spawn_promised(self, func, *args, **kwargs):
+        """
+        Run func asynchronously in a pool and returns a promise.
+        The running of the function does not block current actor.
+
+        :param func: function to run
+        :return: promise
+        """
+        self._prepare_promise_registration()
+
+        if not hasattr(self, '_async_group'):
+            self._async_group = self.ctx.asyncpool()
+
+        p = Promise()
+        ref = self.ref()
+        self.register_promise(p, ref)
+
+        def _wrapped(*a, **kw):
+            try:
+                result = func(*a, **kw)
+            except:  # noqa: E722
+                ref.handle_promise(p.id, *sys.exc_info(), **dict(_accept=False, _tell=True))
+            else:
+                ref.handle_promise(p.id, result, _tell=True)
+            finally:
+                del a, kw
+
+        try:
+            self._async_group.spawn(_wrapped, *args, **kwargs)
+        finally:
+            del args, kwargs
+        return p
 
     def register_promise(self, promise, ref):
         """
@@ -399,7 +482,7 @@ class PromiseActor(FunctionActor):
                 p = self.get_promise(promise_id)
                 if p is None:
                     continue
-                p.step_next(*args, **kwargs)
+                p.step_next([args, kwargs])
         return handled_refs
 
     def tell_promise(self, callback, *args, **kwargs):
@@ -418,9 +501,9 @@ class PromiseActor(FunctionActor):
         """
         p = self.get_promise(promise_id)
         if p is None:
-            logger.warning('Promise %r reentered in %s', promise_id, self.uid)
+            logger.warning('Promise %r reentered or not registered in %s', promise_id, self.uid)
             return
-        self.get_promise(promise_id).step_next(*args, **kwargs)
+        self.get_promise(promise_id).step_next([args, kwargs])
         self.delete_promise(promise_id)
 
     def handle_promise_timeout(self, promise_id):
@@ -429,12 +512,12 @@ class PromiseActor(FunctionActor):
         :param promise_id: promise key
         """
         p = self.get_promise(promise_id)
-        if not p or p._accepted is not None:
+        if p is None or p._accepted is not None:
             # skip promises that are already finished
             return
 
         self.delete_promise(promise_id)
-        p.step_next(*build_exc_info(PromiseTimeout), **dict(_accept=False))
+        p.step_next([build_exc_info(PromiseTimeout), dict(_accept=False)])
 
 
 def all_(promises):
@@ -444,7 +527,7 @@ def all_(promises):
     :param promises: collection of promises
     :return: the new promise
     """
-    promises = list(promises)
+    promises = [p for p in promises if isinstance(p, Promise)]
     new_promise = Promise()
     finish_set = set()
 
@@ -459,22 +542,22 @@ def all_(promises):
         if new_promise._accepted is not None:
             return
         for p in promises:
-            try:
-                del _promise_pool[p.id]
-            except KeyError:
-                pass
+            _promise_pool.pop(p.id, None)
         kw['_accept'] = False
-        new_promise.step_next(*args, **kw)
+        new_promise.step_next([args, kw])
 
     for p in promises:
-        if isinstance(p, Promise):
-            p.then(_build_then(p), _handle_reject)
+        p.then(_build_then(p), _handle_reject)
 
     if promises:
         return new_promise
     else:
         new_promise.step_next()
         return new_promise
+
+
+def get_active_promise_count():
+    return len(_promise_pool)
 
 
 def finished(*args, **kwargs):
