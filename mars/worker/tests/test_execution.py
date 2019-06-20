@@ -352,7 +352,7 @@ class Test(WorkerCase):
                 self.get_result()
 
             chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
             # test read from spilled file
@@ -397,9 +397,9 @@ class Test(WorkerCase):
                 status_ref.update_mean_stats('net_transfer_speed', 10)
 
             execution_ref.estimate_graph_finish_time(session_id, graph_key)
-            min_time, max_time = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])
-            self.assertIsNotNone(min_time)
-            self.assertIsNotNone(max_time)
+            stats_dict = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])
+            self.assertIsNotNone(stats_dict.get('min_est_finish_time'))
+            self.assertIsNotNone(stats_dict.get('max_est_finish_time'))
 
     def testCalcProcessFailure(self):
         pool_address = '127.0.0.1:%d' % get_next_port()

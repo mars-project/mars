@@ -346,7 +346,7 @@ class OperandActor(BaseOperandActor):
         self._execution_ref = None
 
         @log_unhandled
-        def _submit_job(worker):
+        def _submit_job(worker, data_sizes):
             # worker assigned, submit job
             if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
                 self.start_operand()
@@ -358,13 +358,8 @@ class OperandActor(BaseOperandActor):
             try:
                 input_metas = self._io_meta['input_data_metas']
                 input_chunks = [k[0] if isinstance(k, tuple) else k for k in input_metas]
-                data_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
             except KeyError:
                 input_chunks = self._input_chunks
-                data_sizes = dict(zip(
-                    self._input_chunks,
-                    self.chunk_meta.batch_get_chunk_size(self._session_id, self._input_chunks),
-                ))
 
             # submit job
             if 'input_data_metas' not in self._io_meta and self._executable_dag is not None:

@@ -29,7 +29,7 @@ class PromiseReplyTestActor(FunctionActor):
         self._replied = False
         self._value = None
 
-    def reply(self, value):
+    def reply(self, *value):
         self._replied = True
         self._value = value
 
@@ -92,4 +92,4 @@ class Test(unittest.TestCase):
             while not reply_ref.get_reply():
                 gevent.sleep(0.1)
             _, ret_value = reply_ref.get_reply()
-            self.assertEqual(ret_value, endpoint1)
+            self.assertEqual(ret_value[0], endpoint1)
