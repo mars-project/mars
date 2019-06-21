@@ -385,16 +385,16 @@ class Test(WorkerCase):
             arr = mt.ones((10, 8), chunk_size=10)
             graph = arr.build_graph(compose=False, tiled=True)
 
-            graph_key = str(uuid.uuid4())
-            execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                        dict(chunks=[arr.chunks[0].key]), None)
-
             for _ in range(options.optimize.min_stats_count + 1):
                 status_ref.update_mean_stats(
                     'calc_speed.' + type(arr.chunks[0].op).__name__, 10)
                 status_ref.update_mean_stats('disk_read_speed', 10)
                 status_ref.update_mean_stats('disk_write_speed', 10)
                 status_ref.update_mean_stats('net_transfer_speed', 10)
+
+            graph_key = str(uuid.uuid4())
+            execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                        dict(chunks=[arr.chunks[0].key]), None)
 
             execution_ref.estimate_graph_finish_time(session_id, graph_key)
             stats_dict = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])

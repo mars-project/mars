@@ -147,9 +147,16 @@ class Test(unittest.TestCase):
 
                 for ref in input_refs:
                     self.assertEqual(op_ref.get_state(), OperandState.UNSCHEDULED)
-                    ref.start_operand(OperandState.FINISHED)
-                pool.sleep(1)
+                    ref.start_operand(OperandState.FINISHED, _tell=True)
+
+                state = None
+                repeat = 0
+                while repeat < 50 and state != target:
+                    pool.sleep(0.1)
+                    repeat += 1
+                    state = op_ref.get_state()
                 self.assertEqual(target, op_ref.get_state())
+
                 for w in mock_workers:
                     resource_ref.deallocate_resource(session_id, mid_op_key, w)
 

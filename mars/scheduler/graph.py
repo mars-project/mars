@@ -210,7 +210,7 @@ class GraphActor(SchedulerActor):
         self._operand_free_paused = False
 
         self._cluster_info_ref = None
-        self._assigner_actor_ref = None
+        self._assigner_ref = None
         self._resource_actor_ref = None
         self._kv_store_ref = None
         self._graph_meta_ref = None
@@ -246,7 +246,7 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_uid())
+        self._assigner_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
         self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
@@ -1054,6 +1054,8 @@ class GraphActor(SchedulerActor):
                 continue
             if state in (OperandState.READY, OperandState.RUNNING):
                 new_states[key] = state
+
+        self._assigner_ref.update_target_workers(self._session_id, new_targets, _tell=True)
 
         for key, state in new_states.items():
             new_target = new_targets.get(key)

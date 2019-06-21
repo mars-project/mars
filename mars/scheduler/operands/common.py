@@ -42,15 +42,9 @@ class OperandActor(BaseOperandActor):
         # worker the operand expected to be executed on
         self._target_worker = op_info.get('target_worker')
         self._retries = op_info['retries']
-        self._assigned_workers = set()
 
         # ref of ExecutionActor on worker
         self._execution_ref = None
-
-        # set of running predecessors and workers of predecessors,
-        # used to decide whether to pre-push to a worker
-        self._running_preds = set()
-        self._pred_workers = set()
 
         self._data_sizes = None
 
@@ -151,7 +145,8 @@ class OperandActor(BaseOperandActor):
 
         if self.state == OperandState.READY:
             # if the operand is already submitted to AssignerActor, we need to update the priority
-            self._assigner_ref.update_priority(self._op_key, optimize_data, _tell=True, _wait=False)
+            self._assigner_ref.update_priority(self._session_id, self._op_key, optimize_data,
+                                               _tell=True, _wait=False)
         else:
             # send update command to predecessors
             for in_key in self._pred_keys:
@@ -244,12 +239,7 @@ class OperandActor(BaseOperandActor):
             target_updated = False
 
         if self.state == state == OperandState.READY:
-            if not self._target_worker:
-                if self._assigned_workers - dead_workers:
-                    logger.debug('Operand %s still have alive workers assigned %r, skip failover step',
-                                 self._op_key, list(self._assigned_workers - dead_workers))
-                    return
-            else:
+            if self._target_worker:
                 if not target_updated and self._target_worker not in dead_workers:
                     logger.debug('Target of operand %s (%s) not dead, skip failover step',
                                  self._op_key, self._target_worker)
@@ -505,7 +495,6 @@ class OperandActor(BaseOperandActor):
             # delete data on cancelled
             self.ref().free_data(state=OperandState.CANCELLED, _tell=True)
         elif self._last_state == OperandState.READY:
-            self._assigned_workers = set()
             self.state = OperandState.CANCELLED
             self.ref().start_operand(OperandState.CANCELLED, _tell=True)
         else:
