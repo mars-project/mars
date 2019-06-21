@@ -19,7 +19,7 @@ import time
 
 from ...config import options
 from ...serialize import dataserializer
-from ...errors import SpillNotConfigured
+from ...errors import SpillNotConfigured, StorageDataExists
 from ...utils import mod_hash
 from ..dataio import FileBufferIO
 from ..status import StatusActor
@@ -28,19 +28,20 @@ from .core import StorageHandler, BytesStorageMixin, BytesStorageIO, \
     DataStorageDevice, wrap_promised, register_storage_handler_cls
 
 
-def _build_file_name(session_id, data_key, dirs=None, writing=False):
+def _get_file_dir_id(session_id, data_key):
+    dirs = options.worker.spill_directory
+    return mod_hash((session_id, data_key), len(dirs))
+
+
+def _build_file_name(session_id, data_key, writing=False):
     """
     Build spill file name from chunk key. Path is selected given hash of the chunk key
     :param data_key: chunk key
     """
     if isinstance(data_key, tuple):
         data_key = '@'.join(data_key)
-    dirs = dirs or options.worker.spill_directory
-    if not dirs:  # pragma: no cover
-        raise SpillNotConfigured('Spill not configured')
-    if not isinstance(dirs, list):
-        dirs = parse_spill_dirs(dirs)
-    spill_dir = os.path.join(dirs[mod_hash((session_id, data_key), len(dirs))], str(session_id))
+    dirs = options.worker.spill_directory
+    spill_dir = os.path.join(dirs[_get_file_dir_id(session_id, data_key)], str(session_id))
     if writing:
         spill_dir = os.path.join(spill_dir, 'writing')
     if not os.path.exists(spill_dir):
@@ -56,10 +57,13 @@ class DiskIO(BytesStorageIO):
     storage_type = DataStorageDevice.DISK
 
     def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
-                 packed=False, storage_ctx=None, status_ref=None):
+                 packed=False, handler=None, status_ref=None):
         super(DiskIO, self).__init__(session_id, data_key, mode=mode,
-                                     storage_ctx=storage_ctx)
+                                     handler=handler)
         block_size = options.worker.copy_block_size
+        dirs = options.worker.spill_directory = parse_spill_dirs(options.worker.spill_directory)
+        if not dirs:  # pragma: no cover
+            raise SpillNotConfigured
 
         self._raw_buf = self._buf = None
         self._nbytes = nbytes
@@ -72,7 +76,10 @@ class DiskIO(BytesStorageIO):
             if os.path.exists(self._dest_filename):
                 exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, data_key) or ()
                 if (0, DataStorageDevice.DISK) in exist_devs:
-                    raise IOError('File for data (%s, %s) already exists.' % (session_id, data_key))
+                    self._closed = True
+                    raise StorageDataExists('File for data (%s, %s) already exists.' % (session_id, data_key))
+                else:
+                    os.unlink(self._dest_filename)
 
             filename = self._filename = _build_file_name(session_id, data_key, writing=True)
             buf = self._raw_buf = open(filename, 'wb')
@@ -112,6 +119,10 @@ class DiskIO(BytesStorageIO):
     def filename(self):
         return self._dest_filename
 
+    def get_io_pool(self, pool_name):
+        return super(DiskIO, self).get_io_pool(
+            '%s__%d' % (pool_name, _get_file_dir_id(self._session_id, self._data_key)))
+
     def read(self, size=-1):
         start = time.time()
         buf = self._buf.read(size)
@@ -130,7 +141,10 @@ class DiskIO(BytesStorageIO):
         try:
             d.write_to(self._buf)
         except AttributeError:
-            self._buf.write(d)
+            try:
+                self._buf.write(d)
+            except AttributeError:
+                raise
         self._total_time += time.time() - start
 
     def close(self, finished=True):
@@ -142,10 +156,9 @@ class DiskIO(BytesStorageIO):
             self._raw_buf.close()
         self._raw_buf = self._buf = None
 
-        try:
+        transfer_speed = None
+        if finished and abs(self._total_time) > 1e-6:
             transfer_speed = self._nbytes * 1.0 / self._total_time
-        except ZeroDivisionError:
-            transfer_speed = None
 
         if self.is_writable:
             status_key = 'disk_write_speed'
@@ -177,13 +190,13 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
                             _promise=False):
         return DiskIO(session_id, data_key, 'r', packed=packed, compress=packed_compression,
-                      storage_ctx=self._storage_ctx, status_ref=self._status_ref)
+                      handler=self, status_ref=self._status_ref)
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
                             packed_compression=None, _promise=False):
         return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
-                      packed=packed, storage_ctx=self._storage_ctx, status_ref=self._status_ref)
+                      packed=packed, handler=self, status_ref=self._status_ref)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)

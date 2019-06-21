@@ -23,17 +23,18 @@ from .core import StorageHandler, BytesStorageMixin, ObjectStorageMixin, \
 
 class SharedStorageIO(BytesStorageIO):
     storage_type = DataStorageDevice.SHARED_MEMORY
+    filename = None
 
     def __init__(self, session_id, data_key, mode='w', shared_store=None,
-                 nbytes=None, packed=False, compress=None, storage_ctx=None):
+                 nbytes=None, packed=False, compress=None, handler=None):
         from .objectholder import SharedHolderActor
 
         super(SharedStorageIO, self).__init__(session_id, data_key, mode=mode,
-                                              storage_ctx=storage_ctx)
+                                              handler=handler)
         self._shared_store = shared_store
         self._offset = 0
         self._nbytes = nbytes
-        self._holder_ref = storage_ctx.actor_ctx.actor_ref(SharedHolderActor.default_uid())
+        self._holder_ref = self._storage_ctx.actor_ctx.actor_ref(SharedHolderActor.default_uid())
         self._compress = compress or dataserializer.CompressType.NONE
         self._packed = packed
 
@@ -82,9 +83,9 @@ class SharedStorageIO(BytesStorageIO):
             if finished:
                 # make sure data is not spilled before registration
                 pin_token = self._holder_ref.put_object_by_key(
-                    self._session_id, self._data_key, pinned=True)
+                    self._session_id, self._data_key, pin=True)
                 self.register(self._nbytes)
-                self._holder_ref.unpin_data_keys(self._session_id, [self._data_key], pin_token)
+                self._holder_ref.unpin_data_keys(self._session_id, [self._data_key], pin_token, _tell=True)
             else:
                 self._shared_store.delete(self._session_id, self._data_key)
 
@@ -108,13 +109,13 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
                             _promise=False):
         return SharedStorageIO(session_id, data_key, 'r', self._shared_store, packed=packed,
-                               compress=packed_compression, storage_ctx=self._storage_ctx)
+                               compress=packed_compression, handler=self)
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
                             packed_compression=None, _promise=False):
         return SharedStorageIO(session_id, data_key, 'w', self._shared_store,
-                               nbytes=total_bytes, packed=packed, storage_ctx=self._storage_ctx)
+                               nbytes=total_bytes, packed=packed, handler=self)
 
     @wrap_promised
     def get_object(self, session_id, data_key, serialized=False, _promise=False):
@@ -130,12 +131,12 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         try:
             buf = self._shared_store.put(session_id, data_key, o)
             # make sure data is not spilled before registration
-            pin_token = self._holder_ref.put_object_by_key(session_id, data_key, pinned=True)
+            pin_token = self._holder_ref.put_object_by_key(session_id, data_key, pin=True)
         finally:
             del buf
         data_size = self._shared_store.get_actual_size(session_id, data_key)
         self.register_data(session_id, data_key, data_size, shape=getattr(o, 'shape', None))
-        self._holder_ref.unpin_data_keys(session_id, [data_key], pin_token)
+        self._holder_ref.unpin_data_keys(session_id, [data_key], pin_token, _tell=True)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
@@ -167,8 +168,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
     def pin_data_keys(self, session_id, data_keys, token):
         return self._holder_ref.pin_data_keys(session_id, data_keys, token)
 
-    def unpin_data_keys(self, session_id, data_keys, token):
-        self._holder_ref.unpin_data_keys(session_id, data_keys, token, _tell=True)
+    def unpin_data_keys(self, session_id, data_keys, token, _tell=False):
+        return self._holder_ref.unpin_data_keys(session_id, data_keys, token, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.SHARED_MEMORY, SharedStorageHandler)

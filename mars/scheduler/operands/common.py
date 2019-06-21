@@ -351,7 +351,10 @@ class OperandActor(BaseOperandActor):
             except WorkerDead:
                 logger.debug('Worker %s dead when submitting operand %s into queue',
                              worker, self._op_key)
-                self._resource_ref.detach_dead_workers([worker], _tell=True)
+            self._resource_ref.detach_dead_workers(
+                [worker],
+                reporter='%s@%s:_on_ready()' % (self.uid, self.address),
+                _tell=True)
             else:
                 self.start_operand(OperandState.RUNNING)
 
@@ -424,7 +427,10 @@ class OperandActor(BaseOperandActor):
         except WorkerDead:
             logger.debug('Worker %s dead when adding callback for operand %s',
                          self.worker, self._op_key)
-            self._resource_ref.detach_dead_workers([self.worker], _tell=True)
+            self._resource_ref.detach_dead_workers(
+                [self.worker],
+                reporter='%s@%s:_on_running()' % (self.uid, self.address),
+                _tell=True)
             self.start_operand(OperandState.READY)
 
     @log_unhandled

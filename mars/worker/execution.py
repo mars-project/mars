@@ -23,7 +23,7 @@ from .. import promise
 from ..compat import reduce, six, Enum, BrokenPipeError, \
     ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..errors import PinChunkFailed, WorkerProcessStopped, WorkerDead, \
+from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
@@ -305,7 +305,10 @@ class ExecutionActor(WorkerActor):
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
                 if self._resource_ref:
-                    self._resource_ref.detach_dead_workers([remote_addr], _tell=True)
+                    self._resource_ref.detach_dead_workers(
+                        [remote_addr],
+                        reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
+                        _tell=True)
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled

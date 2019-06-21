@@ -279,11 +279,12 @@ else:
 
 
 def calc_data_size(dt):
+    data_size = sys.getsizeof(dt)
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)
 
     try:
-        return dt.nbytes
+        return max(data_size, dt.nbytes)
     except AttributeError:
         pass
 

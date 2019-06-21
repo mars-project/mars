@@ -28,6 +28,8 @@ class IORunnerActor(WorkerActor):
     """
     Actor handling spill read and write in single disk partition
     """
+    _io_runner = True
+
     def __init__(self):
         super(IORunnerActor, self).__init__()
         self._work_items = deque()
@@ -54,7 +56,7 @@ class IORunnerActor(WorkerActor):
 
     def daemon_io_process(self):
         if self._exec_start_time is not None and time.time() > self._exec_start_time + 60:
-            logger.warning('Work item %r in %s timed out: %s seconds passed',
+            logger.warning('Work item %r in %s is taking a long time: %s seconds passed',
                            self._cur_work_item, self.uid, int(time.time() - self._exec_start_time))
         self.ref().daemon_io_process(_delay=10, _tell=True)
 

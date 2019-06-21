@@ -51,8 +51,6 @@ class SenderActor(WorkerActor):
         self._dispatch_ref = None
         self._events_ref = None
 
-        self._serialize_pool = None
-
     def post_create(self):
         from .dispatcher import DispatchActor
         from .events import EventsActor
@@ -65,8 +63,6 @@ class SenderActor(WorkerActor):
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
-
-        self._serialize_pool = self.ctx.threadpool(1)
 
     def _read_data_size(self, session_id, chunk_key):
         """
@@ -238,7 +234,8 @@ class SenderActor(WorkerActor):
                               ProcedureEventType.NETWORK, self.uid):
                 while True:
                     # read a data part from reader we defined above
-                    next_chunk = self._serialize_pool.submit(reader.read, block_size).result()
+                    pool = reader.get_io_pool('async_read')
+                    next_chunk = pool.submit(reader.read, block_size).result()
                     # make sure all previous transfers finished
                     [f.result(timeout=timeout) for f in futures]
                     if not next_chunk:
@@ -293,9 +290,8 @@ class ReceiverActor(WorkerActor):
 
         self._finish_callbacks = defaultdict(list)
         self._data_writers = dict()
+        self._writing_futures = dict()
         self._data_meta_cache = ExpiringCache()
-
-        self._serialize_pool = None
 
     def post_create(self):
         from .events import EventsActor
@@ -314,8 +310,6 @@ class ReceiverActor(WorkerActor):
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
-
-        self._serialize_pool = self.ctx.threadpool(1)
 
     @log_unhandled
     def check_status(self, session_id, chunk_key):
@@ -443,6 +437,13 @@ class ReceiverActor(WorkerActor):
                 _handle_reject(*sys.exc_info())
                 raise
 
+    def _wait_unfinished_writing(self, session_id, data_key):
+        try:
+            self._writing_futures[(session_id, data_key)].result()
+            del self._writing_futures[(session_id, data_key)]
+        except KeyError:
+            pass
+
     @log_unhandled
     def receive_data_part(self, session_id, chunk_key, data_part, checksum):
         """
@@ -452,6 +453,8 @@ class ReceiverActor(WorkerActor):
         :param data_part: data to be written
         :param checksum: checksum up to now
         """
+        self._wait_unfinished_writing(session_id, chunk_key)
+
         session_chunk_key = (session_id, chunk_key)
         try:
             data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
@@ -466,7 +469,9 @@ class ReceiverActor(WorkerActor):
             if data_meta.status == ReceiveStatus.ERROR:
                 six.reraise(*data_meta.callback_args)
                 return  # pragma: no cover
-            self._serialize_pool.submit(self._data_writers[session_chunk_key].write, data_part).result()
+            writer = self._data_writers[session_chunk_key]
+            pool = writer.get_io_pool('async_write')
+            self._writing_futures[session_chunk_key] = pool.submit(writer.write, data_part)
         except:  # noqa: E722
             self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
 
@@ -478,6 +483,8 @@ class ReceiverActor(WorkerActor):
         :param chunk_key: chunk key
         :param checksum: checksum of compressed data
         """
+        self._wait_unfinished_writing(session_id, chunk_key)
+
         try:
             logger.debug('Finishing transfer for data %s.', chunk_key)
             session_chunk_key = (session_id, chunk_key)
@@ -524,6 +531,8 @@ class ReceiverActor(WorkerActor):
         :param chunk_key: chunk key
         :param exc_info: exception to raise
         """
+        self._wait_unfinished_writing(session_id, chunk_key)
+
         logger.debug('Transfer for %s cancelled.', chunk_key)
         if not self._is_receive_running(session_id, chunk_key):
             return
@@ -554,6 +563,8 @@ class ReceiverActor(WorkerActor):
         self._stop_transfer_with_exc(session_id, chunk_key, build_exc_info(TimeoutError))
 
     def _stop_transfer_with_exc(self, session_id, chunk_key, exc):
+        self._wait_unfinished_writing(session_id, chunk_key)
+
         if not isinstance(exc[1], ExecutionInterrupted):
             logger.exception('Error occurred in receiving %s. Cancelling transfer.',
                              chunk_key, exc_info=exc)

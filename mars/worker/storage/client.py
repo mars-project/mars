@@ -17,7 +17,7 @@ import logging
 from ... import promise
 from ...compat import six
 from ...errors import StorageFull
-from ...utils import calc_data_size
+from ...utils import calc_data_size, build_exc_info
 from .core import DataStorageDevice, get_storage_handler_cls
 from .manager import StorageManagerActor
 
@@ -83,15 +83,16 @@ class StorageClient(object):
                        device_pos=0, spill_multiplier=1, ensure=True):
         def _handle_err(*exc_info):
             if issubclass(exc_info[0], StorageFull):
+                req_bytes = max(total_bytes, exc_info[1].request_size)
                 if device_pos < len(device_order) - 1:
                     return self._do_with_spill(
-                        action, total_bytes, device_order,
+                        action, req_bytes, device_order,
                         device_pos=device_pos + 1, spill_multiplier=1, ensure=ensure,
                     )
                 elif ensure:
-                    return handler.spill_size(total_bytes, spill_multiplier) \
+                    return handler.spill_size(req_bytes, spill_multiplier) \
                         .then(lambda *_: self._do_with_spill(
-                            action, total_bytes, device_order,
+                            action, req_bytes, device_order,
                             device_pos=device_pos, spill_multiplier=min(spill_multiplier + 1, 1024),
                             ensure=ensure,
                         ))
@@ -127,13 +128,13 @@ class StorageClient(object):
                     session_id, data_key, packed=packed, packed_compression=packed_compression,
                     _promise=_promise)
             except AttributeError:  # pragma: no cover
-                raise ValueError('Device %r does not support direct reading.' % src_dev)
+                raise IOError('Device %r does not support direct reading.' % src_dev)
 
         if _promise:
             return self.copy_to(session_id, data_key, source_devices) \
                 .then(lambda *_: self.create_reader(session_id, data_key, source_devices))
         else:
-            raise ValueError('Cannot return a non-promise result')
+            raise IOError('Cannot return a non-promise result')
 
     def create_writer(self, session_id, data_key, total_bytes, device_order, packed=False,
                       packed_compression=None, _promise=True):
@@ -164,7 +165,7 @@ class StorageClient(object):
             try:
                 return handler.get_object(session_id, data_key, serialized=serialized, _promise=True)
             except AttributeError:  # pragma: no cover
-                raise ValueError('Device %r does not support direct reading.' % src_dev)
+                raise IOError('Device %r does not support direct reading.' % src_dev)
 
         if _promise:
             return self.copy_to(session_id, data_key, source_devices) \
@@ -186,7 +187,10 @@ class StorageClient(object):
         data_size = self._manager_ref.get_data_size(session_id, data_key)
 
         if not existing_devs or not data_size:
-            raise KeyError('Data key (%s, %s) invalid.' % (session_id, data_key))
+            return promise.finished(
+                *build_exc_info(KeyError, 'Data key (%s, %s) does not exist.' % (session_id, data_key)),
+                **dict(_accept=False)
+            )
 
         target = next((d for d in device_order if d in existing_devs), None)
         if target is not None:
@@ -202,7 +206,7 @@ class StorageClient(object):
 
         def _handle_exc(*exc):
             existing = set(self._get_stored_devices(session_id, data_key))
-            if not any(d for d in device_order if d in existing) is None:
+            if not any(d for d in device_order if d in existing):
                 six.reraise(*exc)
 
         return self._do_with_spill(_action, data_size, device_order, ensure=ensure) \

@@ -51,9 +51,8 @@ class CpuCalcActor(WorkerActor):
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
-        self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
-        if not self.ctx.has_actor(self._status_ref):
-            self._status_ref = None
+        status_ref = self.ctx.actor_ref(StatusActor.default_uid())
+        self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -91,10 +90,16 @@ class CpuCalcActor(WorkerActor):
                 self._mem_quota_ref.release_quota(quota_key, _tell=True)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
+                storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
             if not failed[0]:
                 context_dict[k] = obj
 
-        def _handle_single_load_fail(*exc):
+        def _handle_single_load_fail(*exc, **kwargs):
+            k = kwargs.pop('key')
+            quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+            storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+            self._mem_quota_ref.release_quota(quota_key, _tell=True)
+
             failed[0] = True
             context_dict.clear()
             six.reraise(*exc)
@@ -102,7 +107,7 @@ class CpuCalcActor(WorkerActor):
         for key in keys_to_fetch:
             promises.append(storage_client.get_object(session_id, key, device_order)
                             .then(functools.partial(_handle_single_loaded, key),
-                                  _handle_single_load_fail))
+                                  functools.partial(_handle_single_load_fail, key=key)))
 
         return promise.all_(promises).then(lambda *_: context_dict)
 
@@ -196,7 +201,10 @@ class CpuCalcActor(WorkerActor):
         for k in chunk_targets:
             old_quota_key = build_quota_key(session_id, k, owner=graph_key)
             new_quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-            calc_quotas[new_quota_key] = mem_requests[old_quota_key]
+            try:
+                calc_quotas[new_quota_key] = mem_requests[old_quota_key]
+            except KeyError:  # pragma: no cover
+                pass
             self._mem_quota_ref.alter_allocation(old_quota_key, new_key=new_quota_key)
 
         def _start_calc(context_dict):

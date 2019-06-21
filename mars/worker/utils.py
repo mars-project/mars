@@ -82,7 +82,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
     @property
     def storage_client(self):
         if not getattr(self, '_storage_client', None):
-            from .storage.client import StorageClient
+            from .storage import StorageClient
             self._storage_client = StorageClient(self)
         return self._storage_client
 
@@ -197,7 +197,7 @@ def change_quota_key_owner(quota_key, owner):
     return quota_key[:-1] + (owner,)
 
 
-def parse_spill_dirs(dir_str):
+def parse_spill_dirs(dir_repr):
     """
     Parse paths from a:b to list while resolving asterisks in path
     """
@@ -215,8 +215,13 @@ def parse_spill_dirs(dir_str):
             logger.exception('Fail to access directory %s', path)
             return False
 
+    if dir_repr is None:
+        return []
+    elif isinstance(dir_repr, list):
+        return dir_repr
+
     final_dirs = []
-    for pattern in dir_str.split(os.path.pathsep):
+    for pattern in dir_repr.split(os.path.pathsep):
         pattern = pattern.strip()
         if not pattern:
             continue

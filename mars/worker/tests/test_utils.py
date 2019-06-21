@@ -64,6 +64,9 @@ class Test(unittest.TestCase):
         self.assertIn('v3', cache)
 
     def testParseSpillDirs(self):
+        self.assertEqual([], parse_spill_dirs(None))
+        self.assertEqual(['/tmp/a', '/tmp/b'], parse_spill_dirs(['/tmp/a', '/tmp/b']))
+
         self.assertEqual([], parse_spill_dirs(os.path.pathsep))
         temp_dir = tempfile.mkdtemp(prefix='test_mars_spill_')
         try:

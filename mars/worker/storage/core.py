@@ -47,12 +47,13 @@ class DataStorageDevice(Enum):
 class BytesStorageIO(object):
     storage_type = None
 
-    def __init__(self, session_id, data_key, mode='w', storage_ctx=None, **kwargs):
+    def __init__(self, session_id, data_key, mode='w', handler=None, **kwargs):
         self._session_id = session_id
         self._data_key = data_key
         self._mode = mode
         self._buf = None
-        self._storage_ctx = storage_ctx
+        self._handler = handler
+        self._storage_ctx = handler.storage_ctx
 
         self._is_readable = 'r' in mode
         self._is_writable = 'w' in mode
@@ -74,10 +75,13 @@ class BytesStorageIO(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        self.close(finished=exc_val is None)
 
     def __del__(self):
         self.close()
+
+    def get_io_pool(self, pool_name):
+        return self._handler.get_io_pool(pool_name)
 
     def register(self, size, shape=None):
         location = self.storage_type.build_location(self._storage_ctx.proc_id)
@@ -108,16 +112,12 @@ class StorageHandler(object):
         from ..dispatcher import DispatchActor
         self._dispatch_ref = self.actor_ref(DispatchActor.default_uid())
 
-    def _get_pool_on_actor(self, pool_name):
+    def get_io_pool(self, pool_name):
         actor_obj = self.host_actor
         pool_var = '_pool_%s_attr_%s' % (pool_name, self.storage_type.value)
         if getattr(actor_obj, pool_var, None) is None:
             setattr(actor_obj, pool_var, self._actor_ctx.threadpool(1))
         return getattr(actor_obj, pool_var)
-
-    @property
-    def _io_pool(self):
-        return self._get_pool_on_actor('io')
 
     @classmethod
     def is_device_global(cls):
@@ -129,12 +129,19 @@ class StorageHandler(object):
         six.reraise(*exc)
 
     @property
+    def storage_ctx(self):
+        return self._storage_ctx
+
+    @property
     def host_actor(self):
         return self._storage_ctx.host_actor
 
     @property
     def location(self):
         return self.storage_type.build_location(self._storage_ctx.proc_id)
+
+    def is_io_runner(self):
+        return getattr(self.host_actor, '_io_runner', False)
 
     def actor_ref(self, *args, **kwargs):
         return self._actor_ctx.actor_ref(*args, **kwargs)
@@ -176,8 +183,7 @@ class StorageHandler(object):
             .register_data(session_id, data_key, self.location, size, shape=shape)
 
     def transfer_in_global_runner(self, session_id, data_key, src_handler):
-        from .iorunner import IORunnerActor
-        if src_handler.is_device_global() and not isinstance(self.host_actor, IORunnerActor):
+        if src_handler.is_device_global() and not self.is_io_runner():
             runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
                 'iorunner', (session_id, data_key)))
             return runner_ref.load_from(
@@ -202,32 +208,37 @@ class BytesStorageMixin(object):
 
     def _copy_bytes_data(self, reader, writer):
         copy_block_size = options.worker.copy_block_size
-        io_pool = getattr(self, '_io_pool')
-        async_read_pool = self._get_pool_on_actor('async_read')
-        with reader:
-            with_exc = False
-            try:
-                write_future = None
-                while True:
-                    block = async_read_pool.submit(reader.read, copy_block_size).result()
-                    if write_future:
-                        write_future.result()
-                    if not block:
-                        break
-                    write_future = io_pool.submit(writer.write, block)
-            except:  # noqa: E722
-                with_exc = True
-                raise
-            finally:
-                writer.close(finished=not with_exc)
+        async_read_pool = reader.get_io_pool('async_read')
+        async_write_pool = writer.get_io_pool('async_write')
+
+        def _copy():
+            with reader:
+                with_exc = False
+                try:
+                    write_future = None
+                    while True:
+                        block = async_read_pool.submit(reader.read, copy_block_size).result()
+                        if write_future:
+                            write_future.result()
+                        if not block:
+                            break
+                        write_future = async_write_pool.submit(writer.write, block)
+                except:  # noqa: E722
+                    with_exc = True
+                    raise
+                finally:
+                    writer.close(finished=not with_exc)
+        return self.host_actor.spawn_promised(_copy)
 
     def _copy_object_data(self, serialized_obj, writer):
-        with writer:
-            io_pool = getattr(self, '_io_pool')
-            if hasattr(serialized_obj, 'write_to'):
-                io_pool.submit(serialized_obj.write_to, writer).result()
-            else:
-                io_pool.submit(writer.write, serialized_obj).result()
+        def _copy():
+            with writer:
+                async_write_pool = writer.get_io_pool('async_write')
+                if hasattr(serialized_obj, 'write_to'):
+                    async_write_pool.submit(serialized_obj.write_to, writer).result()
+                else:
+                    async_write_pool.submit(writer.write, serialized_obj).result()
+        return self.host_actor.spawn_promised(_copy)
 
 
 class ObjectStorageMixin(object):
@@ -259,7 +270,7 @@ class SpillableStorageMixin(object):
     def pin_data_keys(self, session_id, data_keys, token):
         raise NotImplementedError
 
-    def unpin_data_keys(self, session_id, data_keys, token):
+    def unpin_data_keys(self, session_id, data_keys, token, _tell=False):
         raise NotImplementedError
 
 

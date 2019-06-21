@@ -154,7 +154,9 @@ class BaseOperandActor(SchedulerActor):
             except WorkerDead:
                 dead_workers.append(ep)
         if dead_workers:
-            self._resource_ref.detach_dead_workers(dead_workers, _tell=True)
+            self._resource_ref.detach_dead_workers(
+                dead_workers, reporter='%s@%s:_wait_worker_futures()' % (self.uid, self.address),
+                _tell=True)
         return dead_workers
 
     def _free_data_in_worker(self, data_keys, workers_list=None):

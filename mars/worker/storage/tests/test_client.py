@@ -19,10 +19,12 @@ import uuid
 import numpy as np
 from numpy.testing import assert_allclose
 
+from mars import promise
 from mars.actors import create_actor_pool
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
-from mars.utils import get_next_port
+from mars.tests.core import patch_method
+from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker.storage import *
@@ -54,7 +56,7 @@ class Test(WorkerCase):
             data_key1 = str(uuid.uuid4())
 
             with self.run_actor_test(pool) as test_actor:
-                client = test_actor.storage_client
+                storage_client = test_actor.storage_client
 
                 file_names = []
 
@@ -64,7 +66,9 @@ class Test(WorkerCase):
                     with writer:
                         ser.write_to(writer)
 
-                client.create_writer(session_id, data_key1, ser_data1.total_bytes, (DataStorageDevice.DISK,)) \
+                # test creating writer and write
+                storage_client.create_writer(
+                        session_id, data_key1, ser_data1.total_bytes, (DataStorageDevice.DISK,)) \
                     .then(functools.partial(_write_data, ser_data1)) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
@@ -77,13 +81,20 @@ class Test(WorkerCase):
                     with reader:
                         return dataserializer.deserialize(reader.read())
 
-                client.create_reader(session_id, data_key1, (DataStorageDevice.DISK,)) \
+                # test creating reader when data exist in location
+                storage_client.create_reader(session_id, data_key1, (DataStorageDevice.DISK,)) \
                     .then(_read_data) \
                     .then(functools.partial(test_actor.set_result),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 assert_allclose(self.get_result(5), data1)
 
-                client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,)) \
+                # test creating reader when no data in location (should raise)
+                with self.assertRaises(IOError):
+                    storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,),
+                                         _promise=False)
+
+                # test creating reader when copy needed
+                storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,)) \
                     .then(_read_data) \
                     .then(functools.partial(test_actor.set_result),
                           lambda *exc: test_actor.set_result(exc, accept=False))
@@ -91,7 +102,7 @@ class Test(WorkerCase):
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
                                  [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
-                client.delete(session_id, data_key1)
+                storage_client.delete(session_id, data_key1)
                 while os.path.exists(file_names[0]):
                     test_actor.ctx.sleep(0.05)
                 self.assertFalse(os.path.exists(file_names[0]))
@@ -119,11 +130,11 @@ class Test(WorkerCase):
             data_keys = [str(uuid.uuid4()) for _ in range(20)]
 
             with self.run_actor_test(pool) as test_actor:
-                client = test_actor.storage_client
+                storage_client = test_actor.storage_client
                 idx = 0
 
-                shared_handler = client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
-                proc_handler = client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
+                shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+                proc_handler = storage_client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
 
                 def _fill_data():
                     i = 0
@@ -136,8 +147,15 @@ class Test(WorkerCase):
 
                 idx = _fill_data()
 
-                # test copying from original
-                client.copy_to(session_id, data_keys[0], [DataStorageDevice.SHARED_MEMORY]) \
+                # test copying non-existing keys
+                storage_client.copy_to(session_id, 'non-exist-key', [DataStorageDevice.SHARED_MEMORY]) \
+                    .then(lambda *_: test_actor.set_result(None),
+                          lambda *exc: test_actor.set_result(exc, accept=False))
+                with self.assertRaises(KeyError):
+                    self.get_result(5)
+
+                # test copying into containing locations
+                storage_client.copy_to(session_id, data_keys[0], [DataStorageDevice.SHARED_MEMORY]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
@@ -145,10 +163,21 @@ class Test(WorkerCase):
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[0])),
                                  [(0, DataStorageDevice.SHARED_MEMORY)])
 
-                # test cascading copy
+                # test unsuccessful copy when no data at target
+                def _mock_load_from(*_, **__):
+                    return promise.finished(*build_exc_info(SystemError), **dict(_accept=False))
+
+                with patch_method(StorageHandler.load_from, _mock_load_from), \
+                        self.assertRaises(SystemError):
+                    storage_client.copy_to(session_id, data_keys[0], [DataStorageDevice.DISK]) \
+                        .then(lambda *_: test_actor.set_result(None),
+                              lambda *exc: test_actor.set_result(exc, accept=False))
+                    self.get_result(5)
+
+                # test successful copy
                 proc_handler.put_object(session_id, data_keys[idx], data_list[idx])
 
-                client.copy_to(session_id, data_keys[idx],
+                storage_client.copy_to(session_id, data_keys[idx],
                                [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
@@ -157,11 +186,11 @@ class Test(WorkerCase):
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
                                  [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 
-                # test spill
+                # test copy with spill
                 idx += 1
                 proc_handler.put_object(session_id, data_keys[idx], data_list[idx])
 
-                client.copy_to(session_id, data_keys[idx], [DataStorageDevice.SHARED_MEMORY]) \
+                storage_client.copy_to(session_id, data_keys[idx], [DataStorageDevice.SHARED_MEMORY]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)

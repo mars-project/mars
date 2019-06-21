@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .core import DataStorageDevice, StorageHandler
+from .client import StorageClient
 
 from .diskhandler import DiskHandler
 from .procmemhandler import ProcMemHandler

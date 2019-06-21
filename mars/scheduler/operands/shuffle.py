@@ -73,7 +73,10 @@ class ShuffleProxyActor(BaseOperandActor):
                     self._get_raw_execution_ref(address=worker) \
                         .send_data_to_workers(self._session_id, data_to_addresses, _tell=True)
             except WorkerDead:
-                self._resource_ref.detach_dead_workers([worker], _tell=True)
+                self._resource_ref.detach_dead_workers(
+                    [worker],
+                    reporter='%s@%s:add_finished_predecessor()' % (self.uid, self.address),
+                    _tell=True)
 
         if all(k in self._finish_preds for k in self._pred_keys):
             self._start_successors()

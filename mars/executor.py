@@ -443,18 +443,20 @@ class Executor(object):
     def handle(cls, op, results, mock=False):
         method_name, mapper = ('execute', cls._op_runners) if not mock else \
             ('estimate_size', cls._op_size_estimators)
+        op_cls = type(op)
         try:
-            runner = mapper[type(op)]
+            runner = mapper[op_cls]
         except KeyError:
             runner = getattr(op, method_name)
         try:
             return runner(results, op)
         except NotImplementedError:
-            for op_cls in mapper.keys():
-                if isinstance(op, op_cls):
-                    mapper[type(op)] = mapper[op_cls]
-                    runner = mapper[op_cls]
-                    return runner(results, op)
+            for super_cls in op_cls.__mro__:
+                try:
+                    runner = mapper[op_cls] = mapper[super_cls]
+                    return runner
+                except KeyError:
+                    continue
             raise KeyError('No handler found for op: %s' % op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,

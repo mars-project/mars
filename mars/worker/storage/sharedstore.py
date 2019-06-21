@@ -121,22 +121,23 @@ class PlasmaSharedStore(object):
         except PlasmaStoreFull:
             exc_type = PlasmaStoreFull
             self._mapper_ref.delete(session_id, data_key)
-            logger.warning('Chunk %s(%d) failed to store to plasma due to StorageFull',
+            logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
                            data_key, size)
-        except:  # noqa: E722  # pragma: no cover
+        except:  # noqa: E722
             self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc_type is PlasmaStoreFull:
-            raise StorageFull
+            raise StorageFull(request_size=size, total_size=self._actual_size)
 
-    def seal(self, session_id, chunk_key):
+    def seal(self, session_id, data_key):
         from pyarrow.lib import PlasmaObjectNonexistent
-        obj_id = self._get_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, data_key)
         try:
             self._plasma_client.seal(obj_id)
         except PlasmaObjectNonexistent:
-            raise KeyError((session_id, chunk_key))
+            self._mapper_ref.delete(session_id, data_key)
+            raise KeyError((session_id, data_key))
 
     def get(self, session_id, data_key):
         """
@@ -147,6 +148,7 @@ class PlasmaSharedStore(object):
         obj_id = self._get_object_id(session_id, data_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
         if obj is ObjectNotAvailable:
+            self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
         return obj
 
@@ -157,6 +159,7 @@ class PlasmaSharedStore(object):
         obj_id = self._get_object_id(session_id, data_key)
         [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
         if buf is None:
+            self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
         return buf
 
@@ -169,11 +172,11 @@ class PlasmaSharedStore(object):
             obj_id = self._get_object_id(session_id, data_key)
             [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
             if buf is None:
+                self._mapper_ref.delete(session_id, data_key)
                 raise KeyError((session_id, data_key))
-            size = buf.size
+            return buf.size
         finally:
             del buf
-        return size
 
     def put(self, session_id, data_key, value):
         """
@@ -192,16 +195,17 @@ class PlasmaSharedStore(object):
         except StorageDataExists:
             obj_id = self._get_object_id(session_id, data_key)
             if self._plasma_client.contains(obj_id):
-                logger.debug('Chunk %s already exists, returning existing', data_key)
+                logger.debug('Data %s already exists, returning existing', data_key)
                 [buffer] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
                 return buffer
             else:
-                logger.warning('Chunk %s registered but no data found, reconstructed', data_key)
-                self.delete(session_id, data_key)
+                logger.warning('Data %s registered but no data found, reconstructed', data_key)
+                self._mapper_ref.delete(session_id, data_key)
                 obj_id = self._new_object_id(session_id, data_key)
 
         try:
             serialized = pyarrow.serialize(value, self._serialize_context)
+            data_size = serialized.total_bytes
             try:
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)
                 stream = pyarrow.FixedSizeBufferWriter(buffer)
@@ -213,15 +217,15 @@ class PlasmaSharedStore(object):
             return buffer
         except PlasmaStoreFull:
             self._mapper_ref.delete(session_id, data_key)
-            logger.warning('Chunk %s(%d) failed to store to plasma due to StorageFull',
+            logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
                            data_key, data_size)
             exc = PlasmaStoreFull
-        except:  # noqa: E722  # pragma: no cover
+        except:  # noqa: E722
             self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc is PlasmaStoreFull:
-            raise StorageFull
+            raise StorageFull(request_size=data_size, total_size=self._actual_size)
 
     def contains(self, session_id, data_key):
         """
@@ -229,7 +233,11 @@ class PlasmaSharedStore(object):
         """
         try:
             obj_id = self._get_object_id(session_id, data_key)
-            return self._plasma_client.contains(obj_id)
+            if self._plasma_client.contains(obj_id):
+                return True
+            else:
+                self._mapper_ref.delete(session_id, data_key)
+                return False
         except KeyError:
             return False
 

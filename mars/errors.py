@@ -44,7 +44,22 @@ class DependencyMissing(MarsError):
 
 
 class StorageFull(MarsError):
-    pass
+    def __init__(self, msg=None, **kwargs):
+        self._request_size = kwargs.pop('request_size', 0)
+        self._total_size = kwargs.pop('total_size', 0)
+        if self._request_size and self._total_size:
+            msg = (msg or '') + ' request_size=%s, total_size=%s' \
+                  % (self._request_size, self._total_size)
+            msg = msg.strip()
+        super(MarsError, self).__init__(msg)
+
+    @property
+    def request_size(self):
+        return self._request_size
+
+    @property
+    def total_size(self):
+        return self._total_size
 
 
 class StorageDataExists(MarsError):
@@ -87,11 +102,15 @@ class PromiseTimeout(MarsError):
     pass
 
 
+class SpillSizeExceeded(MarsError):
+    pass
+
+
 class NoDataToSpill(MarsError):
     pass
 
 
-class PinChunkFailed(MarsError):
+class PinDataKeyFailed(MarsError):
     pass
 
 

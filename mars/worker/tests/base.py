@@ -22,7 +22,7 @@ import gevent.event
 from mars import promise
 from mars.actors import create_actor_pool
 from mars.config import options
-from mars.compat import six
+from mars.compat import six, TimeoutError  # pylint: disable=W0622
 from mars.utils import classproperty
 from mars.worker.utils import WorkerActor, parse_spill_dirs
 
@@ -107,6 +107,7 @@ class WorkerCase(unittest.TestCase):
     def setUp(self):
         super(WorkerCase, self).setUp()
         self._test_pool = None
+        self._test_actor = None
         self._test_actor_ref = None
         self._result_store = None
         self._result_event = gevent.event.Event()
@@ -118,7 +119,8 @@ class WorkerCase(unittest.TestCase):
         self._test_actor_ref.set_test_object(self)
         gen = self._test_actor_ref.run_test()
         try:
-            yield next(gen)
+            self._test_actor = next(gen)
+            yield self._test_actor
         except:
             self._result_store = (sys.exc_info(), False)
             self._result_event.set()
@@ -137,7 +139,8 @@ class WorkerCase(unittest.TestCase):
         self.get_result(timeout)
 
     def get_result(self, timeout=None):
-        self._result_event.wait(timeout)
+        if not self._result_event.wait(timeout):
+            raise TimeoutError
         self._result_event.clear()
         r, accept = self._result_store
         if accept:

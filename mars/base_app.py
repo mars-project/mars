@@ -30,7 +30,7 @@ try:
     from pytest_cov.embed import cleanup_on_sigterm
     cleanup_on_sigterm()
 except ImportError:  # pragma: no cover
-    pass
+    cleanup_on_sigterm = None
 
 
 def arg_deprecated_action(new_arg):  # pragma: no cover
@@ -43,9 +43,6 @@ def arg_deprecated_action(new_arg):  # pragma: no cover
 
 
 class BaseApplication(object):
-    """
-    :type pool mars.actors.pool.gevent_pool.ActorContext
-    """
     service_description = ''
     service_logger = logger
 

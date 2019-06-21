@@ -25,15 +25,15 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         StorageHandler.__init__(self, storage_ctx)
 
         self._proc_id = storage_ctx.proc_id
-        self.__inproc_store_ref = None
+        self._inproc_store_ref_attr = None
 
     @property
     def _inproc_store_ref(self):
-        if self.__inproc_store_ref is None:
-            self.__inproc_store_ref = self._storage_ctx.actor_ctx.actor_ref(
+        if self._inproc_store_ref_attr is None:
+            self._inproc_store_ref_attr = self._storage_ctx.actor_ctx.actor_ref(
                 self._storage_ctx.manager_ref.get_process_holder(
                     self._proc_id, DataStorageDevice.PROC_MEMORY))
-        return self.__inproc_store_ref
+        return self._inproc_store_ref_attr
 
     @wrap_promised
     def get_object(self, session_id, data_key, serialized=False, _promise=False):
@@ -51,7 +51,8 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         def _read_and_put(reader):
             with reader:
-                result = self._io_pool.submit(reader.read).result()
+                result = reader.get_io_pool('async_read') \
+                    .submit(reader.read).result()
             self.put_object(session_id, data_key, result, serialized=True)
 
         return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \

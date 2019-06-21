@@ -77,13 +77,16 @@ _op_cls_to_actor = dict()
 
 
 def get_operand_actor_class(op_cls):
-    if op_cls in _op_cls_to_actor:
+    try:
         return _op_cls_to_actor[op_cls]
-    for cls in op_cls.__mro__:
-        if cls in _op_cls_to_actor:
-            actor_cls = _op_cls_to_actor[op_cls] = _op_cls_to_actor[cls]
-            return actor_cls
-    raise ValueError('Operand type %s not supported.' % op_cls.__name__)  # pragma: no cover
+    except KeyError:
+        for super_cls in op_cls.__mro__:
+            try:
+                actor_cls = _op_cls_to_actor[op_cls] = _op_cls_to_actor[super_cls]
+                return actor_cls
+            except KeyError:
+                continue
+        raise KeyError('Operand type %s not supported.' % op_cls.__name__)  # pragma: no cover
 
 
 def register_operand_class(op_cls, actor_cls):

@@ -227,9 +227,9 @@ class Test(WorkerCase):
         pinned = [True]
 
         def _mock_pin(_session_id, chunk_keys, _token):
-            from mars.errors import PinChunkFailed
+            from mars.errors import PinDataKeyFailed
             if pinned[0]:
-                raise PinChunkFailed
+                raise PinDataKeyFailed
             return chunk_keys
 
         SharedHolderActor.pin_data_keys.side_effect = _mock_pin
@@ -556,7 +556,7 @@ class Test(WorkerCase):
                                address=pool_address, distributor=MarsDistributor(2, 'w:0:')) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(CpuCalcActor, uid='w:1:cpu-calc')
-            pool.create_actor(InProcHolderActor, uid=InProcHolderActor.gen_uid(1))
+            pool.create_actor(InProcHolderActor, uid='w:1:inproc-holder')
 
             import mars.tensor as mt
             arr = mt.ones((4,), chunk_size=4)
