@@ -196,8 +196,12 @@ cdef class ActorContext:
         return gevent.subprocess.Popen(*args, **kwargs)
 
     @staticmethod
-    def threadpool(num_threads):
-        return ThreadPool(num_threads)
+    def threadpool(size):
+        return ThreadPool(size)
+
+    @staticmethod
+    def asyncpool(size=None):
+        return gevent.pool.Pool(size)
 
 
 cdef class LocalActorPool:
@@ -1641,5 +1645,9 @@ cdef class ActorClient:
         gevent.sleep(seconds)
 
     @staticmethod
-    def threadpool(num_threads):
-        return ThreadPool(num_threads)
+    def threadpool(size):
+        return ThreadPool(size)
+
+    @staticmethod
+    def asyncpool(size=None):
+        return gevent.pool.Pool(size)
