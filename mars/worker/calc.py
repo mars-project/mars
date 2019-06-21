@@ -86,7 +86,7 @@ class CpuCalcActor(WorkerActor):
         def _handle_single_loaded(k, obj):
             locations = storage_client.get_data_locations(session_id, k)
             quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-            if (0, DataStorageDevice.PROC_MEMORY) not in locations:
+            if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
                 self._mem_quota_ref.release_quota(quota_key, _tell=True)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
@@ -95,9 +95,9 @@ class CpuCalcActor(WorkerActor):
                 context_dict[k] = obj
 
         def _handle_single_load_fail(*exc, **kwargs):
-            k = kwargs.pop('key')
-            quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-            storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+            data_key = kwargs.pop('key')
+            quota_key = build_quota_key(session_id, data_key, owner=self.proc_id)
+            storage_client.delete(session_id, data_key, [DataStorageDevice.PROC_MEMORY])
             self._mem_quota_ref.release_quota(quota_key, _tell=True)
 
             failed[0] = True
@@ -166,10 +166,12 @@ class CpuCalcActor(WorkerActor):
 
         logger.debug('Finish calculating operand %s.', graph_key)
 
+        result_keys = [p[0] for p in result_pairs]
+
         return promise.all_([
             self.storage_client.put_object(session_id, k, v, [DataStorageDevice.PROC_MEMORY])
             for k, v in result_pairs
-        ]).then(lambda *_: [p[0] for p in result_pairs])
+        ]).then(lambda *_: result_keys)
 
     @promise.reject_on_exception
     @log_unhandled

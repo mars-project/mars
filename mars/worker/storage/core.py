@@ -231,14 +231,21 @@ class BytesStorageMixin(object):
         return self.host_actor.spawn_promised(_copy)
 
     def _copy_object_data(self, serialized_obj, writer):
-        def _copy():
-            with writer:
-                async_write_pool = writer.get_io_pool('async_write')
-                if hasattr(serialized_obj, 'write_to'):
-                    async_write_pool.submit(serialized_obj.write_to, writer).result()
-                else:
-                    async_write_pool.submit(writer.write, serialized_obj).result()
-        return self.host_actor.spawn_promised(_copy)
+        def _copy(ser):
+            try:
+                with writer:
+                    async_write_pool = writer.get_io_pool('async_write')
+                    if hasattr(ser, 'write_to'):
+                        async_write_pool.submit(ser.write_to, writer).result()
+                    else:
+                        async_write_pool.submit(writer.write, ser).result()
+            finally:
+                del ser
+
+        try:
+            return self.host_actor.spawn_promised(_copy, serialized_obj)
+        finally:
+            del serialized_obj
 
 
 class ObjectStorageMixin(object):
@@ -277,18 +284,21 @@ class SpillableStorageMixin(object):
 def wrap_promised(func):
     @functools.wraps(func)
     def _wrapped(*args, **kwargs):
-        promised = kwargs.get('_promise')
-        if not promised:
-            return func(*args, **kwargs)
-        else:
-            try:
-                val = func(*args, **kwargs)
-                if isinstance(val, promise.Promise):
-                    return val
-                else:
-                    return promise.finished(val)
-            except:  # noqa: E722
-                return promise.finished(*sys.exc_info(), **dict(_accept=False))
+        try:
+            promised = kwargs.get('_promise')
+            if not promised:
+                return func(*args, **kwargs)
+            else:
+                try:
+                    val = func(*args, **kwargs)
+                    if isinstance(val, promise.Promise):
+                        return val
+                    else:
+                        return promise.finished(val)
+                except:  # noqa: E722
+                    return promise.finished(*sys.exc_info(), **dict(_accept=False))
+        finally:
+            del args, kwargs
 
     return _wrapped
 

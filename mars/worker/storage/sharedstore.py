@@ -197,6 +197,7 @@ class PlasmaSharedStore(object):
             if self._plasma_client.contains(obj_id):
                 logger.debug('Data %s already exists, returning existing', data_key)
                 [buffer] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
+                del value
                 return buffer
             else:
                 logger.warning('Data %s registered but no data found, reconstructed', data_key)
@@ -205,6 +206,7 @@ class PlasmaSharedStore(object):
 
         try:
             serialized = pyarrow.serialize(value, self._serialize_context)
+            del value
             data_size = serialized.total_bytes
             try:
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)

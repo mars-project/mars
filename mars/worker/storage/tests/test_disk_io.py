@@ -15,6 +15,7 @@
 import functools
 import os
 import uuid
+import weakref
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -223,8 +224,10 @@ class Test(WorkerCase):
             handler.delete(session_id, data_key1)
 
             # load from object io
+            ref_data2 = weakref.ref(data2)
             proc_handler = storage_client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
             proc_handler.put_object(session_id, data_key2, data2)
+            del data2
 
             handler.load_from_object_io(session_id, data_key2, proc_handler) \
                 .then(lambda *_: test_actor.set_result(None),
@@ -234,4 +237,5 @@ class Test(WorkerCase):
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 
             proc_handler.delete(session_id, data_key2)
+            self.assertIsNone(ref_data2())
             handler.delete(session_id, data_key2)

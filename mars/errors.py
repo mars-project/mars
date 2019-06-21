@@ -51,7 +51,7 @@ class StorageFull(MarsError):
             msg = (msg or '') + ' request_size=%s, total_size=%s' \
                   % (self._request_size, self._total_size)
             msg = msg.strip()
-        super(MarsError, self).__init__(msg)
+        super(StorageFull, self).__init__(msg)
 
     @property
     def request_size(self):

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import functools
+import os
 import uuid
+import weakref
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -175,7 +176,9 @@ class Test(WorkerCase):
                     self.get_result(5)
 
                 # test successful copy
+                ref_data = weakref.ref(data_list[idx])
                 proc_handler.put_object(session_id, data_keys[idx], data_list[idx])
+                data_list[idx] = None
 
                 storage_client.copy_to(session_id, data_keys[idx],
                                [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]) \
@@ -183,8 +186,11 @@ class Test(WorkerCase):
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
 
+                proc_handler.delete(session_id, data_keys[idx])
+
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
-                                 [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
+                                 [(0, DataStorageDevice.DISK)])
+                self.assertIsNone(ref_data())
 
                 # test copy with spill
                 idx += 1

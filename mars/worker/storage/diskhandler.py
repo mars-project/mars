@@ -129,13 +129,6 @@ class DiskIO(BytesStorageIO):
         self._total_time += time.time() - start
         return buf
 
-    if sys.version_info[0] < 3:  # pragma: no cover
-        _read = read
-
-        def read(self, size=-1):  # pylint: disable=E0102
-            buf = self._read(size)
-            return bytes(buf)
-
     def write(self, d):
         start = time.time()
         try:
@@ -219,10 +212,17 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
         if runner_promise:
             return runner_promise
+
+        def _load_data(obj_data):
+            try:
+                data_size = self._get_serialized_data_size(obj_data)
+                writer = self.create_bytes_writer(session_id, data_key, data_size, _promise=False)
+                return self._copy_object_data(obj_data, writer)
+            finally:
+                del obj_data
+
         return src_handler.get_object(session_id, data_key, serialized=True, _promise=True) \
-            .then(lambda obj_data: self.create_bytes_writer(
-                    session_id, data_key, self._get_serialized_data_size(obj_data), _promise=True)
-                  .then(lambda writer: self._copy_object_data(obj_data, writer)))
+            .then(_load_data)
 
     def delete(self, session_id, data_key, _tell=False):
         file_name = _build_file_name(session_id, data_key)

@@ -126,16 +126,19 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
 
     @wrap_promised
     def put_object(self, session_id, data_key, obj, serialized=False, _promise=False):
-        o = self._deserial(obj) if serialized else obj
+        obj = self._deserial(obj) if serialized else obj
+        shape = getattr(obj, 'shape', None)
+
         buf = None
         try:
-            buf = self._shared_store.put(session_id, data_key, o)
+            buf = self._shared_store.put(session_id, data_key, obj)
             # make sure data is not spilled before registration
             pin_token = self._holder_ref.put_object_by_key(session_id, data_key, pin=True)
         finally:
-            del buf
+            del obj, buf
+
         data_size = self._shared_store.get_actual_size(session_id, data_key)
-        self.register_data(session_id, data_key, data_size, shape=getattr(o, 'shape', None))
+        self.register_data(session_id, data_key, data_size, shape=shape)
         self._holder_ref.unpin_data_keys(session_id, [data_key], pin_token, _tell=True)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
@@ -152,8 +155,15 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
         if runner_promise:
             return runner_promise
+
+        def _load(obj):
+            try:
+                return self.put_object(session_id, data_key, obj, _promise=True)
+            finally:
+                del obj
+
         return src_handler.get_object(session_id, data_key, _promise=True) \
-            .then(lambda obj: self.put_object(session_id, data_key, obj, _promise=True))
+            .then(_load)
 
     def delete(self, session_id, data_key, _tell=False):
         self._holder_ref.delete_object(session_id, data_key, _tell=_tell)

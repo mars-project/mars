@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import uuid
+import weakref
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -104,7 +105,12 @@ class Test(WorkerCase):
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 
             disk_handler.delete(session_id, data_key1)
+
+            data_load = handler.get_object(session_id, data_key1)
+            ref_data = weakref.ref(data_load)
+            del data_load
             handler.delete(session_id, data_key1)
+            self.assertIsNone(ref_data())
 
             # load from object io
             shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
@@ -118,4 +124,10 @@ class Test(WorkerCase):
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
 
             shared_handler.delete(session_id, data_key2)
+
+            data_load = handler.get_object(session_id, data_key2)
+            ref_data = weakref.ref(data_load)
+            del data_load
             handler.delete(session_id, data_key2)
+            self.assertIsNone(ref_data())
+
