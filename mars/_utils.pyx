@@ -42,7 +42,7 @@ cpdef str to_str(s, encoding='utf-8'):
     elif s is None:
         return s
     else:
-        raise TypeError("Could not convert from unicode.")
+        raise TypeError("Could not convert from %r to str." % (s,))
 
 
 cpdef bytes to_binary(s, encoding='utf-8'):
@@ -55,7 +55,7 @@ cpdef bytes to_binary(s, encoding='utf-8'):
     elif s is None:
         return None
     else:
-        raise TypeError("Could not convert to bytes.")
+        raise TypeError("Could not convert from %r to bytes." % (s,))
 
 
 cpdef unicode to_text(s, encoding='utf-8'):
@@ -68,7 +68,7 @@ cpdef unicode to_text(s, encoding='utf-8'):
     elif s is None:
         return None
     else:
-        raise TypeError("Could not convert to unicode.")
+        raise TypeError("Could not convert from %r to unicode." % (s,))
 
 
 cdef inline build_canonical_bytes(tuple args, kwargs):
