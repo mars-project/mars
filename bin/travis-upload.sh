@@ -9,7 +9,13 @@ else
   if [ "$TRAVIS_OS_NAME" = "linux" ]; then
     sudo chmod 777 bin/*
     docker pull $DOCKER_IMAGE
-    docker run --rm -e "PYVER=$PYVER" -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/bin/travis-build-wheels.sh
+
+    pyvers=$(echo $PYVER | tr ":" "\n")
+    for pyver in $pyvers
+    do
+      docker run --rm -e "PYVER=$pyver" -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/bin/travis-build-wheels.sh
+    done
+
   else
     virtualenv wheelenv
     source wheelenv/bin/activate
