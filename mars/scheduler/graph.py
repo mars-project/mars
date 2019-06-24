@@ -234,6 +234,10 @@ class GraphActor(SchedulerActor):
             self._target_tileable_chunk_ops = dict()
             self._target_tileable_finished = dict()
 
+        self._assigned_workers = set()
+        self._worker_adds = set()
+        self._worker_removes = set()
+
         self._graph_analyze_pool = None
 
     def post_create(self):
@@ -596,7 +600,9 @@ class GraphActor(SchedulerActor):
             else:
                 operand_infos[k]['optimize']['successor_size'] = succ_size
 
-        analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
+        worker_slots = self._get_worker_slots()
+        self._assigned_workers = set(worker_slots)
+        analyzer = GraphAnalyzer(chunk_graph, worker_slots)
 
         for k, v in analyzer.calc_depths().items():
             operand_infos[k]['optimize']['depth'] = v
@@ -980,13 +986,27 @@ class GraphActor(SchedulerActor):
             # all crucial state changes are received by GraphActor.
             # During the delay, no operands are allowed to be freed.
             self._operand_free_paused = True
+            self._worker_adds.update(adds)
+            self._worker_removes.update(removes)
             self.ref().handle_worker_change(adds, removes, lost_chunks,
                                             handle_later=False, _delay=0.5, _tell=True)
             return
         else:
             self._operand_free_paused = False
 
+        adds = self._worker_adds
+        self._worker_adds = set()
+        removes = self._worker_removes
+        self._worker_removes = set()
+        if not adds and not removes:
+            return
+
+        if all(ep in self._assigned_workers for ep in adds) \
+                and not any(ep in self._assigned_workers for ep in removes):
+            return
+
         worker_slots = self._get_worker_slots()
+        self._assigned_workers = set(worker_slots)
         removes_set = set(removes)
 
         # collect operand states

@@ -132,7 +132,8 @@ class Test(unittest.TestCase):
                               '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
                               '--format', '%(asctime)-15s %(message)s',
-                              '-Dscheduler.retry_delay=5']
+                              '-Dscheduler.retry_delay=5',
+                              '-Dscheduler.status_timeout=30']
                              + append_args)
             for p in scheduler_ports]
         self.proc_workers = [
