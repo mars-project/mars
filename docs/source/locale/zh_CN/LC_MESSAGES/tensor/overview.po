@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-05-07 17:46+0800\n"
+"POT-Creation-Date: 2019-06-25 17:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -70,21 +70,27 @@ msgstr ""
 "concatenate`` 等）"
 
 #: ../../source/tensor/overview.rst:18
+#, fuzzy
 msgid ""
 "`Basic indexing "
 "<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
-"(indexing by ints, slices, newaxes, and Ellipsis)"
+"(indexing by ints, slices, newaxes, and Ellipsis)."
 msgstr ""
 "`基本索引 <https://docs.scipy.org/doc/numpy/reference/arrays.indexing."
 "html>`_ （通过整数、切片、添加新维度和省略号进行索引）"
 
 #: ../../source/tensor/overview.rst:20
+#, fuzzy
 msgid ""
-"Fancy indexing along single axis with lists or numpy arrays, e.g. x[[1, "
-"4, 8], :5]"
-msgstr "使用列表或 Numpy 数组沿单个坐标的花式索引，例如 x[[1,4,8], :5]"
+"`Advanced indexing "
+"<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html"
+"#advanced-indexing>`_ (except combing boolean array indexing and integer "
+"array indexing)."
+msgstr ""
+"`高级索引 <https://docs.scipy.org/doc/numpy/reference/arrays.indexing."
+"html#advanced-indexing>`_ （不支持同时使用布尔数组索引和整型数组索引）"
 
-#: ../../source/tensor/overview.rst:21
+#: ../../source/tensor/overview.rst:22
 msgid ""
 "`universal functions "
 "<https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_ for "
@@ -93,7 +99,7 @@ msgstr ""
 "元素运算的 `通用函数 <https://docs.scipy.org/doc/numpy/reference/ufuncs."
 "html>`_"
 
-#: ../../source/tensor/overview.rst:23
+#: ../../source/tensor/overview.rst:24
 msgid ""
 "`Linear algebra functions "
 "<https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_, "
@@ -104,7 +110,7 @@ msgstr ""
 ".html>`_，包括乘积（``dot``、``matmul`` 等）和分解（``cholesky``、``svd``"
 " 等）"
 
-#: ../../source/tensor/overview.rst:26
+#: ../../source/tensor/overview.rst:27
 msgid ""
 "However, Mars has not implemented entire Numpy interface, either the time"
 " limitation or difficulty is the main handicap. Any contribution from "
@@ -114,21 +120,21 @@ msgstr ""
 "然而，Mars 尚未实现 Numpy 的所有接口，时间限制和难度是主要原因。我们"
 "真诚地欢迎社区的任何贡献。未实现的主要功能如下："
 
-#: ../../source/tensor/overview.rst:29
+#: ../../source/tensor/overview.rst:30
 msgid "Tensor with unknown shape does not support all operations."
 msgstr "形状未知的张量不支持所有操作"
 
-#: ../../source/tensor/overview.rst:30
+#: ../../source/tensor/overview.rst:31
 msgid "Only small subset of ``np.linalg`` are implemented."
 msgstr "``np.linalg`` 只实现了一小部分"
 
-#: ../../source/tensor/overview.rst:31
+#: ../../source/tensor/overview.rst:32
 msgid ""
 "Operations like ``sort`` which is hard to execute in parallel are not "
 "implemented."
 msgstr "像 ``sort`` 这样不易实现高效并行的操作尚未实现"
 
-#: ../../source/tensor/overview.rst:32
+#: ../../source/tensor/overview.rst:33
 msgid ""
 "Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` "
 "etc, because the iteration or loops over a large tensor is very "

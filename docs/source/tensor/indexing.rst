@@ -15,7 +15,7 @@ Generating index arrays
    mars.tensor.unravel_index
 
 
-Indexing-like opeartions
+Indexing-like operations
 ------------------------
 
 .. autosummary::

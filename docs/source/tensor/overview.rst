@@ -16,8 +16,9 @@ The following is a brief overview of supported subset of Numpy interface.
 - Most of the `array manipulation routines <https://docs.scipy.org/doc/numpy/reference/routines.array-manipulation.html>`_
   (``reshape``, ``rollaxis``, ``concatenate``, etc.)
 - `Basic indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_
-  (indexing by ints, slices, newaxes, and Ellipsis)
-- Fancy indexing along single axis with lists or numpy arrays, e.g. x[[1, 4, 8], :5]
+  (indexing by ints, slices, newaxes, and Ellipsis).
+- `Advanced indexing <https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing>`_
+  (except combing boolean array indexing and integer array indexing).
 - `universal functions <https://docs.scipy.org/doc/numpy/reference/ufuncs.html>`_
   for elementwise operations.
 - `Linear algebra functions <https://docs.scipy.org/doc/numpy/reference/routines.linalg.html>`_,
