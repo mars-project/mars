@@ -28,9 +28,13 @@ except ImportError:
 
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
-from mars.serialize.core import Serializable, IdentityField, StringField, Int32Field, BytesField, \
-    KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, \
-    ValueType, serializes, deserializes, ProviderType, AttributeAsDict
+from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
+    BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
+    UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
+    Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
+    ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
+    IndexField, SeriesField, DataFrameField, SliceField, Complex64Field, Complex128Field, \
+    AnyField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
@@ -40,11 +44,24 @@ from mars.utils import to_binary, to_text
 
 class Node1(Serializable):
     a = IdentityField('a', ValueType.string)
-    b = Int32Field('b')
-    c = KeyField('c')
-    d = ReferenceField('d', 'Node2')
-    e = ListField('e')
-    f = ListField('f', ValueType.reference('self'))
+    b1 = Int8Field('b1')
+    b2 = Int16Field('b2')
+    b3 = Int32Field('b3')
+    b4 = Int64Field('b4')
+    c1 = UInt8Field('c1')
+    c2 = UInt16Field('c2')
+    c3 = UInt32Field('c3')
+    c4 = UInt64Field('c4')
+    d1 = Float16Field('d1')
+    d2 = Float32Field('d2')
+    d3 = Float64Field('d3')
+    cl1 = Complex64Field('cl1')
+    cl2 = Complex128Field('cl2')
+    e = BoolField('e')
+    f = KeyField('f')
+    g = ReferenceField('g', 'Node2')
+    h = ListField('h')
+    i = ListField('i', ValueType.reference('self'))
 
     def __new__(cls, *args, **kwargs):
         if 'a' in kwargs and kwargs['a'] == 'test1':
@@ -61,6 +78,10 @@ class Node1(Serializable):
 
 class Node8(Node1):
     pass
+
+
+class Node9(Node1):
+    f = AnyField('f')
 
 
 class Node2(Serializable, BaseWithKey):
@@ -133,10 +154,17 @@ class Test(unittest.TestCase):
         provider = ProtobufSerializeProvider()
 
         node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1', b=2, d=Node2(a=[['1', '2'], ['3', '4']]),
-                      c=node2,
-                      e=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      f=[Node1(b=111), Node1(b=222)])
+        node1 = Node1(a='test1',
+                      b1=-2, b2=2000, b3=-5000, b4=500000,
+                      c1=2, c2=2000, c3=5000, c4=500000,
+                      d1=2.5, d2=7.37, d3=5.976321,
+                      cl1=1+2j, cl2=2.5+3.1j,
+                      e=False,
+                      f=node2,
+                      g=Node2(a=[['1', '2'], ['3', '4']]),
+                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
+                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
+                      i=[Node8(b1=111), Node8(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -150,26 +178,51 @@ class Test(unittest.TestCase):
         self.assertIsInstance(d_node3.value, Node8)
         self.assertIsNot(node3.value, d_node3.value)
         self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b, d_node3.value.b)
-        self.assertIsNot(node3.value.c, d_node3.value.c)
-        self.assertEqual(node3.value.c.a, d_node3.value.c.a)
-        self.assertIsNot(node3.value.d, d_node3.value.d)
-        self.assertEqual(node3.value.d.a, d_node3.value.d.a)
-        self.assertEqual(node3.value.e[0], d_node3.value.e[0])
-        self.assertNotIsInstance(d_node3.value.e[1], six.string_types)
-        self.assertIs(d_node3.value.e[1], d_node3.value.c)
-        self.assertEqual(node3.value.e[2], True)
-        self.assertEqual([n.b for n in node3.value.f], [n.b for n in d_node3.value.f])
-        self.assertNotIsInstance(node3.value.f[0], Node8)
+        self.assertEqual(node3.value.b1, d_node3.value.b1)
+        self.assertEqual(node3.value.b2, d_node3.value.b2)
+        self.assertEqual(node3.value.b3, d_node3.value.b3)
+        self.assertEqual(node3.value.b4, d_node3.value.b4)
+        self.assertEqual(node3.value.c1, d_node3.value.c1)
+        self.assertEqual(node3.value.c2, d_node3.value.c2)
+        self.assertEqual(node3.value.c3, d_node3.value.c3)
+        self.assertEqual(node3.value.c4, d_node3.value.c4)
+        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+        self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
+        self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
+        self.assertEqual(node3.value.e, d_node3.value.e)
+        self.assertIsNot(node3.value.f, d_node3.value.f)
+        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.g, d_node3.value.g)
+        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertEqual(node3.value.h[2], True)
+        self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
+        self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+        self.assertIsInstance(d_node3.value.i[0], Node8)
+
+        with self.assertRaises(ValueError):
+            serializes(provider, [Node3(value='sth else')])
 
     def testJSONSerialize(self):
         provider = JsonSerializeProvider()
 
         node2 = Node2(a=[['ss'], ['dd']], data=[3, 7, 212])
-        node1 = Node1(a='test1', b=2, d=Node2(a=[['1', '2'], ['3', '4']]),
-                      c=node2,
-                      e=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'), np.timedelta64(1, 'D')],
-                      f=[Node1(b=111), Node1(b=222)])
+        node1 = Node1(a='test1',
+                      b1=2, b2=2000, b3=5000, b4=500000,
+                      c1=2, c2=2000, c3=5000, c4=500000,
+                      d1=2.5, d2=7.37, d3=5.976321,
+                      cl1=1+2j, cl2=2.5+3.1j,
+                      e=False,
+                      f=node2,
+                      g=Node2(a=[['1', '2'], ['3', '4']]),
+                      h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
+                         np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
+                      i=[Node8(b1=111), Node8(b1=222)])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -184,17 +237,85 @@ class Test(unittest.TestCase):
         self.assertIsInstance(d_node3.value, Node8)
         self.assertIsNot(node3.value, d_node3.value)
         self.assertEqual(node3.value.a, d_node3.value.a)
-        self.assertEqual(node3.value.b, d_node3.value.b)
-        self.assertIsNot(node3.value.c, d_node3.value.c)
-        self.assertEqual(node3.value.c.a, d_node3.value.c.a)
-        self.assertIsNot(node3.value.d, d_node3.value.d)
-        self.assertEqual(node3.value.d.a, d_node3.value.d.a)
-        self.assertEqual(node3.value.e[0], d_node3.value.e[0])
-        self.assertNotIsInstance(d_node3.value.e[1], six.string_types)
-        self.assertIs(d_node3.value.e[1], d_node3.value.c)
-        self.assertEqual(node3.value.e[2], True)
-        self.assertEqual([n.b for n in node3.value.f], [n.b for n in d_node3.value.f])
-        self.assertNotIsInstance(node3.value.f[0], Node8)
+        self.assertEqual(node3.value.b1, d_node3.value.b1)
+        self.assertEqual(node3.value.b2, d_node3.value.b2)
+        self.assertEqual(node3.value.b3, d_node3.value.b3)
+        self.assertEqual(node3.value.b4, d_node3.value.b4)
+        self.assertEqual(node3.value.c1, d_node3.value.c1)
+        self.assertEqual(node3.value.c2, d_node3.value.c2)
+        self.assertEqual(node3.value.c3, d_node3.value.c3)
+        self.assertEqual(node3.value.c4, d_node3.value.c4)
+        self.assertAlmostEqual(node3.value.d1, d_node3.value.d1, places=2)
+        self.assertAlmostEqual(node3.value.d2, d_node3.value.d2, places=4)
+        self.assertAlmostEqual(node3.value.d3, d_node3.value.d3)
+        self.assertAlmostEqual(node3.value.cl1, d_node3.value.cl1)
+        self.assertAlmostEqual(node3.value.cl2, d_node3.value.cl2)
+        self.assertEqual(node3.value.e, d_node3.value.e)
+        self.assertIsNot(node3.value.f, d_node3.value.f)
+        self.assertEqual(node3.value.f.a, d_node3.value.f.a)
+        self.assertIsNot(node3.value.g, d_node3.value.g)
+        self.assertEqual(node3.value.g.a, d_node3.value.g.a)
+        self.assertEqual(node3.value.h[0], d_node3.value.h[0])
+        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertIs(d_node3.value.h[1], d_node3.value.f)
+        self.assertEqual(node3.value.h[2], True)
+        self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
+        self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
+        self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
+        self.assertIsInstance(d_node3.value.i[0], Node8)
+
+        with self.assertRaises(ValueError):
+            serializes(provider, [Node3(value='sth else')])
+
+    def testNumpyDtypePBSerialize(self):
+        provider = ProtobufSerializeProvider()
+
+        node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
+                      c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
+                      d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
+                      f=np.int8(3))
+
+        serials = serializes(provider, [node9])
+        d_node9, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node9, d_node9)
+        self.assertEqual(node9.b1, d_node9.b1)
+        self.assertEqual(node9.b2, d_node9.b2)
+        self.assertEqual(node9.b3, d_node9.b3)
+        self.assertEqual(node9.b4, d_node9.b4)
+        self.assertEqual(node9.c1, d_node9.c1)
+        self.assertEqual(node9.c2, d_node9.c2)
+        self.assertEqual(node9.c3, d_node9.c3)
+        self.assertEqual(node9.c4, d_node9.c4)
+        self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
+        self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
+        self.assertAlmostEqual(node9.d3, d_node9.d3)
+        self.assertEqual(node9.f, d_node9.f)
+
+    def testNumpyDtypeJSONSerialize(self):
+        provider = JsonSerializeProvider()
+
+        node9 = Node9(b1=np.int8(-2), b2=np.int16(2000), b3=np.int32(-5000), b4=np.int64(500000),
+                      c1=np.uint8(2), c2=np.uint16(2000), c3=np.uint32(5000), c4=np.uint64(500000),
+                      d1=np.float16(2.5), d2=np.float32(7.37), d3=np.float64(5.976321),
+                      f=np.int8(3))
+
+        serials = serializes(provider, [node9])
+        d_node9, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node9, d_node9)
+        self.assertEqual(node9.b1, d_node9.b1)
+        self.assertEqual(node9.b2, d_node9.b2)
+        self.assertEqual(node9.b3, d_node9.b3)
+        self.assertEqual(node9.b4, d_node9.b4)
+        self.assertEqual(node9.c1, d_node9.c1)
+        self.assertEqual(node9.c2, d_node9.c2)
+        self.assertEqual(node9.c3, d_node9.c3)
+        self.assertEqual(node9.c4, d_node9.c4)
+        self.assertAlmostEqual(node9.d1, d_node9.d1, places=2)
+        self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
+        self.assertAlmostEqual(node9.d3, d_node9.d3)
+        self.assertEqual(node9.f, d_node9.f)
 
     def testAttributeAsDict(self):
         node4 = Node4(a=to_binary('中文'), b=np.random.randint(4, size=(3, 4)),
