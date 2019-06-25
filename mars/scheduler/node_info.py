@@ -36,7 +36,7 @@ class NodeInfoActor(FunctionActor):
         self.ref().gather_info()
 
     def gather_info(self):
-        self._node_info = gather_node_info(self.ctx)
+        self._node_info = gather_node_info()
         self.ref().gather_info(_tell=True, _delay=1)
 
     def get_info(self):

@@ -19,7 +19,7 @@ import sys
 import time
 
 from . import resource
-from .utils import git_info
+from .utils import git_info, lazy_import
 
 try:
     import numpy as np
@@ -33,19 +33,14 @@ try:
     import pandas
 except ImportError:  # pragma: no cover
     pandas = None
-try:
-    import cupy as cp
-except ImportError:  # pragma: no cover
-    cp = None
-try:
-    import cudf
-except ImportError:  # pragma: no cover
-    cudf = None
+
+cp = lazy_import('cupy', globals=globals(), rename='cp')
+cudf = lazy_import('cudf', globals=globals())
 
 logger = logging.getLogger(__name__)
 
 
-def gather_node_info(async_ctx=None):
+def gather_node_info():
     from .lib.mkl_interface import mkl_get_version
     mem_stats = resource.virtual_memory()
 
@@ -61,7 +56,7 @@ def gather_node_info(async_ctx=None):
         'update_time': time.time(),
     }
 
-    cuda_info = resource.cuda_info(async_ctx=async_ctx)
+    cuda_info = resource.cuda_info()
     if cuda_info:
         node_info['cuda_info'] = 'Driver: %s\nCUDA: %s\nProducts: %s\n' % \
                                  (cuda_info.driver_version, cuda_info.cuda_version,

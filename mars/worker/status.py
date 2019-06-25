@@ -120,7 +120,7 @@ class StatusReporterActor(WorkerActor):
                 hw_metrics['disk_used'] = agg_disk_used
                 hw_metrics['disk_total'] = agg_disk_total
 
-            cuda_card_stats = resource.cuda_card_stats(async_ctx=self.ctx)
+            cuda_card_stats = resource.cuda_card_stats()
             if cuda_card_stats:
                 hw_metrics['cuda_stats'] = [dict(
                     product_name=stat.product_name,
@@ -145,7 +145,7 @@ class StatusReporterActor(WorkerActor):
                 meta_dict['slots'][k] = v
 
             meta_dict['progress'] = self._status_ref.get_progress()
-            meta_dict['details'] = gather_node_info(self.ctx)
+            meta_dict['details'] = gather_node_info()
 
             self._resource_ref.set_worker_meta(self._endpoint, meta_dict)
         except Exception as ex:

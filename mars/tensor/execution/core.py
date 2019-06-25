@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...utils import lazy_import
 from .datasource import register_data_source_handler
 from .datastore import register_data_store_handler
 from .random import register_random_handler
@@ -28,19 +29,11 @@ from .linalg import register_linalg_handler
 from .reshape import register_reshape_handler
 
 
-NUMEXPR_INSTALLED = False
-try:
-    import numexpr  # noqa: F401
-    NUMEXPR_INSTALLED = True
-except ImportError:  # pragma: no cover
-    pass
+ne = lazy_import('numexpr', globals=globals(), rename='ne')
+cp = lazy_import('cupy', globals=globals(), rename='cp')
 
-CP_INSTALLED = False
-try:
-    import cupy  # noqa: F401
-    CP_INSTALLED = True
-except ImportError:  # pragma: no cover
-    pass
+NUMEXPR_INSTALLED = ne is not None
+CP_INSTALLED = cp is not None
 
 
 def register_tensor_execution_handler():
