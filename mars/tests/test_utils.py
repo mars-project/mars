@@ -15,6 +15,10 @@
 
 import copy
 import os
+import shutil
+import sys
+import tempfile
+import textwrap
 import time
 import unittest
 
@@ -223,3 +227,34 @@ class Test(unittest.TestCase):
         blset.add(6)
 
         self.assertSetEqual({5, 6}, set(blset))
+
+    def testLazyImport(self):
+        old_sys_path = sys.path
+        mock_mod = textwrap.dedent("""
+        __version__ = '0.1.0b1'
+        """.strip())
+
+        temp_dir = tempfile.mkdtemp(prefix='mars-utils-test-')
+        sys.path += [temp_dir]
+        try:
+            with open(os.path.join(temp_dir, 'test_mod.py'), 'w') as outf:
+                outf.write(mock_mod)
+
+            non_exist_mod = utils.lazy_import('non_exist_mod', locals=locals())
+            self.assertIsNone(non_exist_mod)
+
+            mod = utils.lazy_import(
+                'test_mod', globals=globals(), locals=locals(), rename='mod')
+            self.assertIsNotNone(mod)
+            self.assertEqual(mod.__version__, '0.1.0b1')
+
+            glob = globals().copy()
+            mod = utils.lazy_import(
+                'test_mod', globals=glob, locals=locals(), rename='mod')
+            glob['mod'] = mod
+            self.assertIsNotNone(mod)
+            self.assertEqual(mod.__version__, '0.1.0b1')
+            self.assertEqual(type(glob['mod']).__name__, 'module')
+        finally:
+            shutil.rmtree(temp_dir)
+            sys.path = old_sys_path
