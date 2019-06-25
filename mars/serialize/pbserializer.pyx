@@ -165,8 +165,6 @@ cdef class ProtobufSerializeProvider(Provider):
         obj.c.imag = value.imag
 
     cdef inline object _get_complex(self, obj):
-        cdef complex x
-
         return complex(obj.c.real, obj.c.imag)
 
     @cython.boundscheck(False)
