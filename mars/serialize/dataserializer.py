@@ -29,10 +29,6 @@ try:
     import scipy.sparse as sps
 except ImportError:  # pragma: no cover
     sps = None
-try:
-    import cupy as cp
-except ImportError:  # pragma: no cover
-    cp = None
 
 from ..lib.sparse import SparseNDArray
 

@@ -18,13 +18,12 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 import numpy as np
-try:
-    import cupy as cp
-except ImportError:  # pragma: no cover
-    cp = None
 
 from ...lib import sparse
 from ...lib.sparse.core import issparse, get_dense_module
+from ...utils import lazy_import
+
+cp = lazy_import('cupy', globals=globals(), rename='cp')
 
 
 def get_array_module(x, nosparse=False):

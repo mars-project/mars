@@ -21,6 +21,8 @@ from collections import namedtuple
 
 import psutil
 
+from .lib import nvutils
+
 _proc = psutil.Process()
 _timer = getattr(time, 'monotonic', time.time)
 
@@ -215,63 +217,40 @@ def net_io_usage():
     return recv_speed, send_speed
 
 
-_last_nvml_output = None
-_last_nvml_output_time = None
-
-
-def _get_nvml_output(async_ctx=None):
-    from xml.etree import ElementTree
-    global _last_nvml_output, _last_nvml_output_time
-
-    popen = getattr(async_ctx, 'popen', subprocess.Popen)
-    if _last_nvml_output_time is None or _last_nvml_output_time < time.time() - 1:
-        try:
-            proc = popen(['nvidia-smi', '-q', '-x'], shell=False, stdout=subprocess.PIPE)
-            proc.wait()
-
-            _last_nvml_output = ElementTree.fromstring(proc.stdout.read())
-            _last_nvml_output_time = time.time()
-            proc.stdout.close()
-        except (subprocess.CalledProcessError, OSError, TypeError):
-            pass
-    return _last_nvml_output
-
-
 _cuda_info = namedtuple('cuda_info', 'driver_version cuda_version products gpu_count')
 _cuda_card_stat = namedtuple('cuda_card_stat', 'product_name gpu_usage temperature fb_mem_info')
 
 
-def cuda_info(async_ctx=None):
-    nvml_output = _get_nvml_output(async_ctx)
-    if nvml_output is None:
-        return None
+def cuda_info():  # pragma: no cover
+    driver_info = nvutils.get_driver_info()
+    if not driver_info:
+        return
+    gpu_count = nvutils.get_device_count()
     return _cuda_info(
-        driver_version=nvml_output.find('driver_version').text,
-        cuda_version=nvml_output.find('cuda_version').text,
-        products=[e.find('product_name').text for e in nvml_output.findall('gpu')],
-        gpu_count=int(nvml_output.find('attached_gpus').text),
+        driver_version=driver_info.driver_version,
+        cuda_version=driver_info.cuda_version,
+        products=[nvutils.get_device_info(idx).name for idx in range(gpu_count)],
+        gpu_count=gpu_count,
     )
 
 
-def cuda_card_stats(async_ctx=None):
-    from .utils import parse_readable_size
-
-    nvml_output = _get_nvml_output(async_ctx)
-    if nvml_output is None:
-        return None
+def cuda_card_stats():  # pragma: no cover
     infos = []
-    for gpu_element in nvml_output.findall('gpu'):
-        fb_total_mem = parse_readable_size(gpu_element.find('fb_memory_usage/total').text)[0]
-        fb_used_mem = parse_readable_size(gpu_element.find('fb_memory_usage/used').text)[0]
-        fb_free_mem = parse_readable_size(gpu_element.find('fb_memory_usage/free').text)[0]
+    device_count = nvutils.get_device_count()
+    if not device_count:
+        return
+    for device_idx in range(device_count):
+        device_info = nvutils.get_device_info(device_idx)
+        device_status = nvutils.get_device_status(device_idx)
 
         infos.append(_cuda_card_stat(
-            product_name=gpu_element.find('product_name').text,
-            gpu_usage=parse_readable_size(gpu_element.find('utilization/gpu_util').text)[0],
-            temperature=float(gpu_element.find('temperature/gpu_temp').text.split()[0]),
+            product_name=device_info.name,
+            gpu_usage=device_status.gpu_util,
+            temperature=device_status.temperature,
             fb_mem_info=_virt_memory_stat(
-                total=fb_total_mem, used=fb_used_mem, free=fb_free_mem, available=fb_free_mem,
-                percent=fb_used_mem / fb_total_mem,
+                total=device_status.fb_total_mem, used=device_status.fb_used_mem,
+                free=device_status.fb_free_mem, available=device_status.fb_free_mem,
+                percent=device_status.mem_util,
             )
         ))
     return infos

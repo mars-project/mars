@@ -16,6 +16,7 @@ omit =
     mars/lib/enum.py
     mars/lib/six.py
     mars/lib/gipc.pyx
+    mars/lib/nvutils.py
     mars/lib/tblib/*
     mars/lib/uhashring/*
     mars/serialize/protos/*

@@ -16,21 +16,17 @@
 
 import numpy as np
 try:
-    import cupy.sparse as cps
-except ImportError:  # pragma: no cover
-    cps = None
-try:
     import scipy.sparse as sps
     import scipy.sparse.linalg as splinalg
 except ImportError:  # pragma: no cover
     sps = None
     splinalg = None
-try:
-    import cupy as cp
-except ImportError:  # pragma: no cover
-    cp = None
+
+from ...utils import lazy_import
 
 splinalg = splinalg
+cp = lazy_import('cupy', globals=globals(), rename='cp')
+cps = lazy_import('cupy.sparse', globals=globals(), rename='cps')
 
 
 def issparse(x):
