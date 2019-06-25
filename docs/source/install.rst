@@ -89,7 +89,7 @@ Web service can be started with the following command:
 
 .. code-block:: bash
 
-    mars-web -a <web_ip> -s <scheduler_endpoint> -p <communicator_port> --ui-port <ui_port_exposed_to_user>
+    mars-web -a <web_ip> -s <scheduler_endpoint> -p <web_port>
 
 Workers can be started with the following command:
 

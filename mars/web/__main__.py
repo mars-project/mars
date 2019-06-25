@@ -17,9 +17,10 @@
 import gevent.monkey
 gevent.monkey.patch_all(thread=False)
 
-import logging  # noqa: E402
-import random   # noqa: E402
-import time     # noqa: E402
+import argparse  # noqa: E402
+import logging   # noqa: E402
+import random    # noqa: E402
+import time      # noqa: E402
 
 from ..base_app import BaseApplication   # noqa: E402
 from ..compat import six                 # noqa: E402
@@ -35,7 +36,7 @@ class WebApplication(BaseApplication):
         self.require_pool = False
 
     def config_args(self, parser):
-        parser.add_argument('--ui-port', help='port of Mars UI')
+        parser.add_argument('--ui-port', help=argparse.SUPPRESS)
 
     def validate_arguments(self):
         if not self.args.schedulers and not self.args.kv_store:
@@ -55,7 +56,8 @@ class WebApplication(BaseApplication):
             self.mars_web = None
             logger.warning('Mars UI cannot be loaded. Please check if necessary components are installed.')
         else:
-            ui_port = int(self.args.ui_port) if self.args.ui_port else None
+            port_arg = self.args.ui_port or self.args.port
+            ui_port = int(port_arg) if port_arg else None
             scheduler_ip = self.args.schedulers or None
             if isinstance(scheduler_ip, six.string_types):
                 schedulers = scheduler_ip.split(',')
