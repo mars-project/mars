@@ -75,11 +75,11 @@ class BaseApplication(object):
         parser.add_argument('-a', '--advertise', help='advertise ip')
         parser.add_argument('-k', '--kv-store', help='address of kv store service, for instance, etcd')
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
-        parser.add_argument('-s', '--schedulers', help='endpoint of scheduler, when single scheduler '
+        parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, when single scheduler '
                                                        'and etcd is not available')
-        parser.add_argument('-H', '--host', help='host of the scheduler service, only available '
+        parser.add_argument('-H', '--host', help='host of the service, only available '
                                                  'when `endpoint` is absent')
-        parser.add_argument('-p', '--port', help='port of the scheduler service, only available '
+        parser.add_argument('-p', '--port', help='port of the service, only available '
                                                  'when `endpoint` is absent')
         parser.add_argument('--level', help='log level')
         parser.add_argument('--format', help='log format')
@@ -124,7 +124,7 @@ class BaseApplication(object):
 
         if getattr(self, 'require_pool', True):
             self.endpoint, self.pool = self._try_create_pool(endpoint=endpoint, host=host, port=port)
-        self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
+            self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
         self.main_loop()
 
     def config_logging(self):

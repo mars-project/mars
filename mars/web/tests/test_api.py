@@ -113,7 +113,7 @@ class Test(unittest.TestCase):
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
                                      '--level', 'debug',
-                                     '--ui-port', web_port,
+                                     '-p', web_port,
                                      '-s', '127.0.0.1:' + self.scheduler_port])
         self.proc_web = proc_web
 
