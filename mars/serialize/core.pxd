@@ -30,6 +30,8 @@ cpdef enum PrimitiveType:
     float64 = 12
     bytes = 13
     unicode = 14
+    complex64 = 24
+    complex128 = 25
 
 
 cpdef enum ExtendType:
@@ -152,6 +154,14 @@ cdef class Float32Field(Field):
 
 
 cdef class Float64Field(Field):
+    pass
+
+
+cdef class Complex64Field(Field):
+    pass
+
+
+cdef class Complex128Field(Field):
     pass
 
 

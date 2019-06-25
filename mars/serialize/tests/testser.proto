@@ -16,6 +16,8 @@ message Node1Def {
     float d1 = 10;
     float d2 = 11;
     double d3 = 12;
+    Value cl1 = 18;
+    Value cl2 = 19;
     bool e = 13;
     Value f = 14;
     Node2Def g = 15;

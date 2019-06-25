@@ -160,6 +160,15 @@ cdef class ProtobufSerializeProvider(Provider):
         x = obj.timedelta64
         return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
 
+    cdef inline void _set_complex(self, value, obj, tp=None):
+        obj.c.real = value.real
+        obj.c.imag = value.imag
+
+    cdef inline object _get_complex(self, obj):
+        cdef complex x
+
+        return complex(obj.c.real, obj.c.imag)
+
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
@@ -354,6 +363,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_datetime64(value, obj, tp)
         elif tp is ValueType.timedelta64:
             self._set_timedelta64(value, obj, tp)
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             setattr(obj, value_field, value)
@@ -390,6 +401,8 @@ cdef class ProtobufSerializeProvider(Provider):
             obj.i = value
         elif isinstance(value, float):
             obj.f = value
+        elif isinstance(value, complex):
+            self._set_complex(value, obj)
         elif isinstance(value, slice):
             self._set_slice(value, obj)
         elif isinstance(value, np.ndarray):
@@ -574,6 +587,8 @@ cdef class ProtobufSerializeProvider(Provider):
         if tp in PRIMITIVE_TYPE_TO_VALUE_FIELD:
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp]
             return ref(getattr(obj, value_field))
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            return ref(self._get_complex(obj))
         elif tp is ValueType.slice:
             return ref(self._get_slice(obj))
         elif tp is ValueType.arr:
@@ -623,6 +638,8 @@ cdef class ProtobufSerializeProvider(Provider):
         elif field in 'bif':
             # primitive type
             return ref(getattr(obj, field))
+        elif field == 'c':
+            return ref(self._get_complex(obj))
         elif field == 's':
             # bytes
             b = obj.s
