@@ -297,6 +297,8 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
     cum_nsplits = [np.cumsum(nsplit) for nsplit in nsplits]
     for i, cum_nsplit, index in zip(itertools.count(0), cum_nsplits, indexes):
         # handle negative value in index
+        if hasattr(index, 'flags') and not index.flags.writeable:
+            index = index.copy()
         index = np.add(index, cum_nsplit[-1], out=index, where=index < 0)
         sorted_idx = np.argsort(index)
 

@@ -203,7 +203,7 @@ class TensorIndexTilesHandler(object):
     def _extract_tensor_fancy_index_info(self, fancy_indexes, index_infos):
         from ..merge import stack
 
-        axes = [info.in_axis for info in index_infos]
+        axes = tuple(info.in_axis for info in index_infos)
 
         # stack fancy indexes into one
         concat_fancy_index = recursive_tile(stack(fancy_indexes))

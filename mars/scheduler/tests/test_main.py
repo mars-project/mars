@@ -276,6 +276,22 @@ class Test(unittest.TestCase):
         result = session_ref.fetch_result(graph_key, b.key)
         assert_allclose(loads(result), np.ones((27, 31)))
 
+        raw = np.random.RandomState(0).rand(10, 10)
+        a = mt.tensor(raw, chunk_size=(5, 4))
+        b = a[a.argmin(axis=1), mt.tensor(np.arange(10))]
+        graph = b.build_graph()
+        targets = [b.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, b.key)
+
+        np.testing.assert_array_equal(loads(result), raw[raw.argmin(axis=1), np.arange(10)])
+
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
     def testMainTensorWithEtcd(self):

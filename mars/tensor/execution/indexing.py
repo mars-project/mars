@@ -41,8 +41,14 @@ def _index_estimate_size(ctx, chunk):
     new_indexes = [index for index in op._indexes if index is not None]
 
     new_shape = []
+    first_fancy_index = False
     for index in new_indexes:
-        if isinstance(index, (Base, Entity)) and index.dtype == np.bool_:
+        if isinstance(index, (Base, Entity)):
+            if index.dtype != np.bool_:
+                if not first_fancy_index:
+                    first_fancy_index = True
+                else:
+                    continue
             new_shape.append(ctx[index.key][0] // index.dtype.itemsize)
 
     rough_shape = []
@@ -68,6 +74,13 @@ def _fancy_index_distribute_map(ctx, chunk):
     for idx in idx_to_fancy_indexes:
         group_key = ','.join(str(i) for i in idx)
         ctx[(chunk.key, group_key)] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
+
+
+def _fancy_index_distribute_map_estimate_size(ctx, chunk):
+    fancy_index_size = len(chunk.op.axes)
+    inp_size = ctx[chunk.inputs[0].key][0]
+    factor = 1 / float(fancy_index_size) + fancy_index_size  # 1/#fancy_index is the poses
+    ctx[chunk.key] = (inp_size * factor,) * 2
 
 
 def _fancy_index_distribute_reduce(ctx, chunk):
@@ -97,6 +110,14 @@ def _fancy_index_distribute_reduce(ctx, chunk):
     ctx[chunk.op.outputs[-1].key] = np.asarray([len(p) for p in poses]), pos
 
 
+def _fancy_index_distribute_reduce_estimate_size(ctx, chunk):
+    sum_size = 0
+    for shuffle_input in chunk.inputs[0].inputs or ():
+        sum_size += ctx[shuffle_input.key]
+    for out_chunk in chunk.op.outputs:
+        ctx[out_chunk.key] = sum_size, sum_size
+
+
 def _fancy_index_concat_map(ctx, chunk):
     indexed_array = ctx[chunk.inputs[0].key]
     sizes, pos = ctx[chunk.inputs[1].key]
@@ -108,6 +129,12 @@ def _fancy_index_concat_map(ctx, chunk):
         end = acc_sizes[i]
         select = (slice(None),) * fancy_index_axis + (slice(start, end),)
         ctx[(chunk.key, str(i))] = (indexed_array[select], pos[start: end])
+
+
+def _fancy_index_concat_map_estimate_size(ctx, chunk):
+    input_size = ctx[chunk.inputs[0].key][0]
+    pos_size = ctx[chunk.inputs[0].key][0]
+    ctx[chunk.key] = input_size + pos_size, input_size + pos_size * 2
 
 
 def _fancy_index_concat_reduce(ctx, chunk):
@@ -128,7 +155,12 @@ def _fancy_index_concat_reduce(ctx, chunk):
     concat_pos = np.hstack(poses)
     select_pos = calc_pos(fancy_index_shape, concat_pos)
     select = (slice(None),) * fancy_index_axis + (select_pos,)
-    ctx[chunk.op.outputs[0].key] = concat_array[select]
+    ctx[chunk.key] = concat_array[select]
+
+
+def _fancy_index_concat_reduce_estimate_size(ctx, chunk):
+    input_sizes = [ctx[c.key][0] for c in chunk.inputs[0].inputs or ()]
+    ctx[chunk.key] = chunk.nbytes, chunk.nbytes + sum(input_sizes)
 
 
 def _index_set_value(ctx, chunk):
@@ -168,10 +200,14 @@ def register_indexing_handler():
 
     register(indexing.TensorSlice, _slice)
     register(indexing.TensorIndex, _index, _index_estimate_size)
-    register(indexing.FancyIndexingDistributeMap, _fancy_index_distribute_map)
-    register(indexing.FancyIndexingDistributeReduce, _fancy_index_distribute_reduce)
-    register(indexing.FancyIndexingConcatMap, _fancy_index_concat_map)
-    register(indexing.FancyIndexingConcatReduce, _fancy_index_concat_reduce)
+    register(indexing.FancyIndexingDistributeMap, _fancy_index_distribute_map,
+             _fancy_index_distribute_map_estimate_size)
+    register(indexing.FancyIndexingDistributeReduce, _fancy_index_distribute_reduce,
+             _fancy_index_distribute_reduce_estimate_size)
+    register(indexing.FancyIndexingConcatMap, _fancy_index_concat_map,
+             _fancy_index_concat_map_estimate_size)
+    register(indexing.FancyIndexingConcatReduce, _fancy_index_concat_reduce,
+             _fancy_index_concat_reduce_estimate_size)
     register(indexing.TensorIndexSetValue, _index_set_value)
     register(indexing.TensorChoose, _choose)
     register(indexing.TensorUnravelIndex, _unravel_index)
