@@ -100,6 +100,8 @@ cdef class ValueType:
     bytes = PrimitiveType.bytes
     unicode = PrimitiveType.unicode
     string = PrimitiveType.unicode if PY3 else PrimitiveType.bytes
+    complex64 = PrimitiveType.complex64
+    complex128 = PrimitiveType.complex128
     slice = ExtendType.slice
     arr = ExtendType.arr
     dtype = ExtendType.dtype
@@ -276,6 +278,22 @@ cdef class Float64Field(Field):
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._type = ValueType.float64
+
+
+cdef class Complex64Field(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(Complex64Field, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.complex64
+
+
+cdef class Complex128Field(Field):
+    def __init__(self, tag, default=None, bint weak_ref=False, on_serialize=None, on_deserialize=None):
+        super(Complex128Field, self).__init__(
+            tag, default=default, weak_ref=weak_ref,
+            on_serialize=on_serialize, on_deserialize=on_deserialize)
+        self._type = ValueType.complex128
 
 
 cdef class StringField(Field):
