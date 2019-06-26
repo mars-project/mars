@@ -102,6 +102,7 @@ class TensorIndexTilesHandler(object):
         self._op = op
         self._in_tensor = self._op.input
         self._index_infos = []
+        self._fancy_index_infos = []
         self._fancy_index_info = FancyIndexInfo()
         self._out_chunks = []
         self._nsplits = None
@@ -116,7 +117,6 @@ class TensorIndexTilesHandler(object):
         return isinstance(index_obj, FANCY_INDEX_TYPES) and index_obj.dtype != np.bool_
 
     def _extract_indexes_info(self):
-        index_infos = self._index_infos
         in_axis = out_axis = 0
         fancy_index_out_axis = None
         for raw_index_obj in self._op.indexes:
@@ -127,8 +127,8 @@ class TensorIndexTilesHandler(object):
                                   tuple(in_axis + i_dim for i_dim in range(raw_index_obj.ndim)))
                 in_tensor, index_obj = unify_chunks(self._in_tensor, index_obj_axes)
                 self._in_tensor = in_tensor
-                index_infos.append(IndexInfo(raw_index_obj, index_obj,
-                                             IndexType.bool_index, in_axis, out_axis))
+                self._index_infos.append(IndexInfo(raw_index_obj, index_obj,
+                                                   IndexType.bool_index, in_axis, out_axis))
                 in_axis += index_obj.ndim
                 out_axis += 1
             elif self._is_fancy_index(raw_index_obj):
@@ -141,7 +141,8 @@ class TensorIndexTilesHandler(object):
                     fancy_index_out_axis = out_axis
                 index_info = IndexInfo(raw_index_obj, None, IndexType.fancy_index,
                                        in_axis, fancy_index_out_axis)
-                index_infos.append(index_info)
+                self._index_infos.append(index_info)
+                self._fancy_index_infos.append(index_info)
                 in_axis += 1
                 if first_fancy_index:
                     out_axis += 1
@@ -153,26 +154,29 @@ class TensorIndexTilesHandler(object):
                 for j, idx_to_slice in enumerate(idx_to_slices):
                     idx, s = idx_to_slice
                     index_obj[idx] = (j, s)
-                index_infos.append(IndexInfo(raw_index_obj, index_obj, IndexType.slice,
-                                             in_axis, out_axis))
+                self._index_infos.append(IndexInfo(raw_index_obj, index_obj, IndexType.slice,
+                                                   in_axis, out_axis))
                 in_axis += 1
                 out_axis += 1
             elif isinstance(raw_index_obj, Integral):
                 index_obj = slice_split(raw_index_obj, self._in_tensor.nsplits[in_axis])
-                index_infos.append(IndexInfo(raw_index_obj, index_obj, IndexType.integral,
-                                             in_axis, out_axis))
+                self._index_infos.append(IndexInfo(raw_index_obj, index_obj, IndexType.integral,
+                                                   in_axis, out_axis))
                 in_axis += 1
             else:
                 # new axis
                 assert raw_index_obj is None
-                index_infos.append(IndexInfo(raw_index_obj, raw_index_obj, IndexType.new_axis,
-                                             in_axis, out_axis))
+                self._index_infos.append(IndexInfo(raw_index_obj, raw_index_obj, IndexType.new_axis,
+                                                   in_axis, out_axis))
                 out_axis += 1
 
-    def _preprocess_fancy_indexes(self, fancy_index_infos):
+    def _preprocess_fancy_indexes(self):
         from ..base import broadcast_to
 
-        fancy_indexes = [info.raw_index_obj for info in fancy_index_infos]
+        if len(self._fancy_index_infos) == 0:
+            return
+
+        fancy_indexes = [info.raw_index_obj for info in self._fancy_index_infos]
 
         shape = broadcast_shape(*[fancy_index.shape for fancy_index in fancy_indexes])
         # fancy indexes should be all tensors or ndarrays
@@ -185,23 +189,23 @@ class TensorIndexTilesHandler(object):
             broadcast_fancy_indexes = unify_chunks(*broadcast_fancy_indexes)
             self._fancy_index_info.chunk_unified_fancy_indexes = broadcast_fancy_indexes
 
-    def _extract_ndarray_fancy_index_info(self, fancy_indexes, index_infos):
+    def _extract_ndarray_fancy_index_info(self, fancy_indexes):
         # concat fancy indexes together
         concat_fancy_index = np.asarray([fi.flatten() for fi in fancy_indexes])
         # first split the fancy indexes into lists which size is identical to
         # chunk size of input_tensor on the specified axes
-        nsplits = [self._in_tensor.nsplits[info.in_axis] for info in index_infos]
+        nsplits = [self._in_tensor.nsplits[info.in_axis] for info in self._fancy_index_infos]
         chunk_index_to_fancy_indexes_chunks, chunk_index_to_pos, fancy_index_asc_sorted = \
             split_indexes_into_chunks(nsplits, concat_fancy_index)
-        for index_info in index_infos:
+        for index_info in self._fancy_index_infos:
             index_info.index_obj = chunk_index_to_fancy_indexes_chunks
         self._fancy_index_info.chunk_index_to_pos = chunk_index_to_pos
         self._fancy_index_info.fancy_index_asc_sorted = fancy_index_asc_sorted
 
-    def _extract_tensor_fancy_index_info(self, fancy_indexes, index_infos):
+    def _extract_tensor_fancy_index_info(self, fancy_indexes):
         from ..merge import stack
 
-        axes = tuple(info.in_axis for info in index_infos)
+        axes = tuple(info.in_axis for info in self._fancy_index_infos)
 
         # stack fancy indexes into one
         concat_fancy_index = recursive_tile(stack(fancy_indexes))
@@ -231,25 +235,23 @@ class TensorIndexTilesHandler(object):
             chunk_index_to_fancy_indexes_chunks[idx] = shuffle_reduce_chunks[:-1]
             chunk_index_to_pos[idx] = shuffle_reduce_chunks[-1]
 
-        for index_info in index_infos:
+        for index_info in self._fancy_index_infos:
             index_info.index_obj = chunk_index_to_fancy_indexes_chunks
         self._fancy_index_info.chunk_index_to_pos = chunk_index_to_pos
         self._fancy_index_info.fancy_index_asc_sorted = False
 
     def _process_fancy_indexes(self):
-        fancy_index_infos = [info for info in self._index_infos
-                             if info.index_type == IndexType.fancy_index]
-        if len(fancy_index_infos) == 0:
+        if len(self._fancy_index_infos) == 0:
             return
 
-        self._preprocess_fancy_indexes(fancy_index_infos)
+        fancy_index_infos = self._fancy_index_infos
         fancy_indexes = self._fancy_index_info.chunk_unified_fancy_indexes
         if isinstance(fancy_indexes[0], np.ndarray):
             self._extract_ndarray_fancy_index_info(
-                fancy_indexes, fancy_index_infos)
+                fancy_indexes)
             self._fancy_index_info.fancy_index_all_ndarray = True
         else:
-            self._extract_tensor_fancy_index_info(fancy_indexes, fancy_index_infos)
+            self._extract_tensor_fancy_index_info(fancy_indexes)
         self._fancy_index_info.fancy_index_in_axes = \
             OrderedDict([(info.in_axis, i) for i, info in enumerate(fancy_index_infos)])
         out_idx = itertools.count(0)
@@ -422,6 +424,7 @@ class TensorIndexTilesHandler(object):
 
     def __call__(self):
         self._extract_indexes_info()
+        self._preprocess_fancy_indexes()
         self._process_fancy_indexes()
         self._process_in_tensor()
         self._postprocess_fancy_index()
