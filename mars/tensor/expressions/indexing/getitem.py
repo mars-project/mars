@@ -169,8 +169,6 @@ class TensorIndexTilesHandler(object):
                                              in_axis, out_axis))
                 out_axis += 1
 
-        self._process_fancy_indexes()
-
     def _preprocess_fancy_indexes(self, fancy_index_infos):
         from ..base import broadcast_to
 
