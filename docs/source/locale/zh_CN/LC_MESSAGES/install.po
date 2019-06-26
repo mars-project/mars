@@ -62,7 +62,7 @@ msgid "Basic Steps"
 msgstr "基本步骤"
 
 #: ../../source/install.rst:73
-msgid "Mars can be deployed on a cluster. First, yu need to run"
+msgid "Mars can be deployed on a cluster. First, you need to run"
 msgstr "Mars 可在集群中部署。首先，你需要在集群中的每个节点运行"
 
 #: ../../source/install.rst:79

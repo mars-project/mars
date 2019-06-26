@@ -70,7 +70,7 @@ Run on Clusters
 Basic Steps
 -----------
 
-Mars can be deployed on a cluster. First, yu need to run
+Mars can be deployed on a cluster. First, you need to run
 
 .. code-block:: bash
 

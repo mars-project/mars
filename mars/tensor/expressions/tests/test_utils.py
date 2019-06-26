@@ -21,7 +21,7 @@ import numpy as np
 
 from mars.tensor.expressions.utils import normalize_chunk_sizes, broadcast_shape, \
     replace_ellipsis, calc_sliced_size, slice_split, decide_unify_split, unify_chunks, \
-    split_index_into_chunks, split_indexes_into_chunks, decide_chunk_sizes, calc_pos
+    split_indexes_into_chunks, decide_chunk_sizes, calc_pos
 from mars.tensor.expressions.datasource import ones
 from mars.config import option_context
 
@@ -188,27 +188,6 @@ class Test(unittest.TestCase):
         new_t1, new_t2 = unify_chunks((t1, (1, 0)), t2)
         self.assertEqual(new_t1.nsplits, ((2, 2, 2, 2, 2), (2, 1, 1, 2, 2)))
         self.assertEqual(new_t2.nsplits, ((2, 1, 1, 2, 2),))
-
-    def testSplitIndexIntoChunks(self):
-        splits = split_index_into_chunks([10, 20, 30], [5, 31, 21, 18])
-
-        self.assertEqual(len(splits), 3)
-        self.assertTrue(np.array_equal(splits[0], np.array([5])))
-        self.assertTrue(np.array_equal(splits[1], np.array([11, 8])))
-        self.assertTrue(np.array_equal(splits[2], np.array([1])))
-
-        with self.assertRaises(IndexError):
-            split_index_into_chunks([10, 20, 30], [100])
-
-        splits = split_index_into_chunks([2, 2, 2, 2, 2, 1], [8, 10, 3, 1, 9, 10])
-
-        self.assertEqual(len(splits), 6)
-        self.assertTrue(np.array_equal(splits[0], np.array([1])))
-        self.assertTrue(np.array_equal(splits[1], np.array([1])))
-        self.assertTrue(np.array_equal(splits[2], np.array([])))
-        self.assertTrue(np.array_equal(splits[3], np.array([])))
-        self.assertTrue(np.array_equal(splits[4], np.array([0, 1])))
-        self.assertTrue(np.array_equal(splits[5], np.array([0, 0])))
 
     def testSplitIndexesIntoChunks(self):
         splits, poses, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],

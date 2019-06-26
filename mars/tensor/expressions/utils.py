@@ -273,24 +273,6 @@ def is_asc_sorted(arr):
     return np.all(arr[:-1] <= arr[1:])
 
 
-def split_index_into_chunks(chunks, index):
-    index = np.asarray(index)
-    cum_chunks = np.cumsum(chunks)
-
-    if np.any(index >= cum_chunks[-1]):
-        idx = index[index >= cum_chunks[-1]][0]
-        err = IndexError('index {0} is out of bounds with size {1}'.format(
-            idx, cum_chunks[-1]))
-        err.idx = idx
-        err.size = cum_chunks[-1]
-        raise err
-
-    chunk_idx = np.searchsorted(cum_chunks, index, side='right')
-
-    return [index[chunk_idx == i] - (cum_chunks[i-1] if i > 0 else 0)
-            for i in range(len(chunks))]
-
-
 def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
     indexes = np.asarray(indexes)
     chunk_idxes = np.empty_like(indexes)
@@ -304,11 +286,8 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
 
         if np.any(index >= cum_nsplit[-1]):
             idx = index[index >= cum_nsplit[-1]][0]
-            err = IndexError('index {0} is out of bounds with size {1}'.format(
+            raise IndexError('index {0} is out of bounds with size {1}'.format(
                 idx, cum_nsplit[-1]))
-            err.idx = idx
-            err.size = cum_nsplit[-1]
-            raise err
 
         chunk_idx = np.searchsorted(cum_nsplit, index[sorted_idx], side='right')
         chunk_idxes[i, sorted_idx] = chunk_idx
