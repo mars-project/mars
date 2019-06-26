@@ -126,8 +126,8 @@ class WorkerBufferIO(object):
                 self._remain_buf = None
             else:
                 offset = self._remain_offset = size - bio.tell()
-                self._remain_buf = block
-                bio.write(block[:offset])
+                self._remain_buf = buf = memoryview(block)
+                bio.write(buf[:offset])
             if bio.tell() == size:
                 break
         return bio.getvalue()

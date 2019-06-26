@@ -29,7 +29,12 @@ from mars.worker.tests.base import WorkerCase
 from mars.worker.storage import *
 
 
-@patch_method(StorageHandler.transfer_in_global_runner, new=lambda *_, **__: None)
+def mock_transfer_in_global_runner(self, session_id, data_key, src_handler, fallback=None):
+    if fallback:
+        return fallback()
+
+
+@patch_method(StorageHandler.transfer_in_global_runner, new=mock_transfer_in_global_runner)
 class Test(WorkerCase):
     plasma_storage_size = 1024 * 1024 * 10
 

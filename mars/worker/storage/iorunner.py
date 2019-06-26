@@ -50,9 +50,20 @@ class IORunnerActor(WorkerActor):
     def load_from(self, dest_device, session_id, data_key, src_device, callback):
         logger.debug('Copying (%s, %s) from %s into %s submitted in %s',
                      session_id, data_key, src_device, dest_device, self.uid)
-        self._work_items.append((dest_device, session_id, data_key, src_device, callback))
+        self._work_items.append((dest_device, session_id, data_key, src_device, False, callback))
         if self._cur_work_item is None:
             self._submit_next()
+
+    def lock(self, session_id, data_key, callback):
+        logger.debug('Requesting lock for (%s, %s) on %s', session_id, data_key, self.uid)
+        self._work_items.append((None, session_id, data_key, None, True, callback))
+        if self._cur_work_item is None:
+            self._submit_next()
+
+    def unlock(self, session_id, data_key):
+        logger.debug('%s unlocked for (%s, %s)', self.uid, session_id, data_key)
+        self._cur_work_item = None
+        self._submit_next()
 
     def daemon_io_process(self):
         if self._exec_start_time is not None and time.time() > self._exec_start_time + 60:
@@ -64,8 +75,13 @@ class IORunnerActor(WorkerActor):
     def _submit_next(self):
         if not self._work_items:
             return
-        dest_device, session_id, data_key, src_device, cb = \
+        dest_device, session_id, data_key, src_device, is_lock, cb = \
             self._cur_work_item = self._work_items.popleft()
+
+        if is_lock:
+            self.tell_promise(cb)
+            logger.debug('%s locked for (%s, %s)', self.uid, session_id, data_key)
+            return
 
         @log_unhandled
         def _finalize(exc, *_):

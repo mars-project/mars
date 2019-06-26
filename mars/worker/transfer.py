@@ -234,7 +234,7 @@ class SenderActor(WorkerActor):
                               ProcedureEventType.NETWORK, self.uid):
                 while True:
                     # read a data part from reader we defined above
-                    pool = reader.get_io_pool('async_read')
+                    pool = reader.get_io_pool()
                     next_chunk = pool.submit(reader.read, block_size).result()
                     # make sure all previous transfers finished
                     [f.result(timeout=timeout) for f in futures]
@@ -473,7 +473,7 @@ class ReceiverActor(WorkerActor):
                 six.reraise(*data_meta.callback_args)
                 return  # pragma: no cover
             writer = self._data_writers[session_chunk_key]
-            pool = writer.get_io_pool('async_write')
+            pool = writer.get_io_pool()
             self._writing_futures[session_chunk_key] = pool.submit(writer.write, data_part)
         except:  # noqa: E722
             self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())

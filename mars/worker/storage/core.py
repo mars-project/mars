@@ -80,7 +80,7 @@ class BytesStorageIO(object):
     def __del__(self):
         self.close()
 
-    def get_io_pool(self, pool_name):
+    def get_io_pool(self, pool_name=None):
         return self._handler.get_io_pool(pool_name)
 
     def register(self, size, shape=None):
@@ -112,9 +112,9 @@ class StorageHandler(object):
         from ..dispatcher import DispatchActor
         self._dispatch_ref = self.actor_ref(DispatchActor.default_uid())
 
-    def get_io_pool(self, pool_name):
+    def get_io_pool(self, pool_name=None):
         actor_obj = self.host_actor
-        pool_var = '_pool_%s_attr_%s' % (pool_name, self.storage_type.value)
+        pool_var = '_pool_%s_attr_%s' % (pool_name or '', self.storage_type.value)
         if getattr(actor_obj, pool_var, None) is None:
             setattr(actor_obj, pool_var, self._actor_ctx.threadpool(1))
         return getattr(actor_obj, pool_var)
@@ -182,13 +182,30 @@ class StorageHandler(object):
         self._storage_ctx.manager_ref \
             .register_data(session_id, data_key, self.location, size, shape=shape)
 
-    def transfer_in_global_runner(self, session_id, data_key, src_handler):
-        if src_handler.is_device_global() and not self.is_io_runner():
-            runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
-                'iorunner', (session_id, data_key)))
+    def transfer_in_global_runner(self, session_id, data_key, src_handler, fallback=None):
+        if fallback:
+            if self.is_io_runner():
+                return fallback()
+            elif src_handler.storage_type != DataStorageDevice.DISK and \
+                    self.storage_type != DataStorageDevice.DISK:
+                return fallback()
+
+        runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
+            'iorunner', (session_id, data_key)))
+
+        if src_handler.is_device_global():
             return runner_ref.load_from(
                 self.storage_type, session_id, data_key, src_handler.storage_type, _promise=True)
-        return None
+        elif fallback is not None:
+            def _unlocker(*exc):
+                runner_ref.unlock(session_id, data_key)
+                if exc:
+                    six.reraise(*exc)
+
+            return runner_ref.lock(session_id, data_key, _promise=True) \
+                .then(fallback) \
+                .then(lambda *_: _unlocker(), _unlocker)
+        return promise.finished()
 
     def unregister_data(self, session_id, data_key, _tell=False):
         self._storage_ctx.manager_ref \
@@ -208,8 +225,8 @@ class BytesStorageMixin(object):
 
     def _copy_bytes_data(self, reader, writer):
         copy_block_size = options.worker.copy_block_size
-        async_read_pool = reader.get_io_pool('async_read')
-        async_write_pool = writer.get_io_pool('async_write')
+        async_read_pool = reader.get_io_pool()
+        async_write_pool = writer.get_io_pool()
 
         def _copy():
             with reader:
@@ -234,7 +251,7 @@ class BytesStorageMixin(object):
         def _copy(ser):
             try:
                 with writer:
-                    async_write_pool = writer.get_io_pool('async_write')
+                    async_write_pool = writer.get_io_pool()
                     if hasattr(ser, 'write_to'):
                         async_write_pool.submit(ser.write_to, writer).result()
                     else:

@@ -146,28 +146,27 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         self._holder_ref.unpin_data_keys(session_id, [data_key], pin_token, _tell=True)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
-        runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
-        if runner_promise:
-            return runner_promise
-        return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
-            .then(lambda reader: self.create_bytes_writer(
+        def _fallback(*_):
+            return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
+                .then(lambda reader: self.create_bytes_writer(
                     session_id, data_key, reader.nbytes, _promise=True)
-                  .then(lambda writer: self._copy_bytes_data(reader, writer),
-                        lambda *exc: self.pass_on_exc(reader.close, exc)))
+                      .then(lambda writer: self._copy_bytes_data(reader, writer),
+                            lambda *exc: self.pass_on_exc(reader.close, exc)))
+
+        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
-        runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
-        if runner_promise:
-            return runner_promise
-
         def _load(obj):
             try:
                 return self.put_object(session_id, data_key, obj, _promise=True)
             finally:
                 del obj
 
-        return src_handler.get_object(session_id, data_key, _promise=True) \
-            .then(_load)
+        def _fallback(*_):
+            return src_handler.get_object(session_id, data_key, _promise=True) \
+                .then(_load)
+
+        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
         self._holder_ref.delete_object(session_id, data_key, _tell=_tell)

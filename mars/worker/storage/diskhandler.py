@@ -119,9 +119,9 @@ class DiskIO(BytesStorageIO):
     def filename(self):
         return self._dest_filename
 
-    def get_io_pool(self, pool_name):
+    def get_io_pool(self, pool_name=None):
         return super(DiskIO, self).get_io_pool(
-            '%s__%d' % (pool_name, _get_file_dir_id(self._session_id, self._data_key)))
+            '%s__%d' % (pool_name or '', _get_file_dir_id(self._session_id, self._data_key)))
 
     def read(self, size=-1):
         start = time.time()
@@ -189,14 +189,14 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
                       packed=packed, handler=self, status_ref=self._status_ref)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
-        runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
-        if runner_promise:
-            return runner_promise
-        return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
-            .then(lambda reader: self.create_bytes_writer(
+        def _fallback(*_):
+            return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
+                .then(lambda reader: self.create_bytes_writer(
                     session_id, data_key, reader.nbytes, _promise=True)
-                  .then(lambda writer: self._copy_bytes_data(reader, writer),
-                        lambda *exc: self.pass_on_exc(reader.close, exc)))
+                      .then(lambda writer: self._copy_bytes_data(reader, writer),
+                            lambda *exc: self.pass_on_exc(reader.close, exc)))
+
+        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
 
     @staticmethod
     def _get_serialized_data_size(serialized_obj):
@@ -206,10 +206,6 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
             return len(serialized_obj)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
-        runner_promise = self.transfer_in_global_runner(session_id, data_key, src_handler)
-        if runner_promise:
-            return runner_promise
-
         def _load_data(obj_data):
             try:
                 data_size = self._get_serialized_data_size(obj_data)
@@ -218,8 +214,11 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
             finally:
                 del obj_data
 
-        return src_handler.get_object(session_id, data_key, serialized=True, _promise=True) \
-            .then(_load_data)
+        def _fallback(*_):
+            return src_handler.get_object(session_id, data_key, serialized=True, _promise=True) \
+                .then(_load_data)
+
+        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
         file_name = _build_file_name(session_id, data_key)
