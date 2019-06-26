@@ -2,8 +2,6 @@
 # Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2018.
-#
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
@@ -70,7 +68,6 @@ msgstr ""
 "concatenate`` 等）"
 
 #: ../../source/tensor/overview.rst:18
-#, fuzzy
 msgid ""
 "`Basic indexing "
 "<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_ "
@@ -80,7 +77,6 @@ msgstr ""
 "html>`_ （通过整数、切片、添加新维度和省略号进行索引）"
 
 #: ../../source/tensor/overview.rst:20
-#, fuzzy
 msgid ""
 "`Advanced indexing "
 "<https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html"
