@@ -80,21 +80,21 @@ class StorageClient(object):
                 if loc[0] == self._proc_id or loc[1] in DataStorageDevice.GLOBAL_DEVICES]
 
     def _do_with_spill(self, action, total_bytes, device_order,
-                       device_pos=0, spill_multiplier=1, ensure=True):
+                       device_pos=0, spill_multiplier=1.0, ensure=True):
         def _handle_err(*exc_info):
             if issubclass(exc_info[0], StorageFull):
                 req_bytes = max(total_bytes, exc_info[1].request_size)
                 if device_pos < len(device_order) - 1:
                     return self._do_with_spill(
                         action, req_bytes, device_order,
-                        device_pos=device_pos + 1, spill_multiplier=1, ensure=ensure,
+                        device_pos=device_pos + 1, spill_multiplier=1.0, ensure=ensure,
                     )
                 elif ensure:
+                    new_multiplier = min(spill_multiplier + 0.1, 10)
                     return handler.spill_size(req_bytes, spill_multiplier) \
                         .then(lambda *_: self._do_with_spill(
-                            action, req_bytes, device_order,
-                            device_pos=device_pos, spill_multiplier=min(spill_multiplier + 1, 1024),
-                            ensure=ensure,
+                            action, req_bytes, device_order, device_pos=device_pos,
+                            spill_multiplier=new_multiplier, ensure=ensure,
                         ))
             six.reraise(*exc_info)
 

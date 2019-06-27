@@ -85,7 +85,7 @@ class ObjectHolderActor(WorkerActor):
         if not self._spill_devices:  # pragma: no cover
             raise SpillNotConfigured
 
-        request_size = size * multiplier
+        request_size = int(size * multiplier)
         request_size = max(request_size, self._min_spill_size)
         if request_size > self._size_limit:
             raise SpillSizeExceeded
