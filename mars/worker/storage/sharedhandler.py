@@ -14,6 +14,7 @@
 
 import pyarrow
 
+from ...config import options
 from ...serialize import dataserializer
 from ..dataio import ArrowBufferIO
 from .core import StorageHandler, BytesStorageMixin, ObjectStorageMixin, \
@@ -31,6 +32,7 @@ class SharedStorageIO(BytesStorageIO):
 
         super(SharedStorageIO, self).__init__(session_id, data_key, mode=mode,
                                               handler=handler)
+        self._shared_buf = None
         self._shared_store = shared_store
         self._offset = 0
         self._nbytes = nbytes
@@ -38,10 +40,12 @@ class SharedStorageIO(BytesStorageIO):
         self._compress = compress or dataserializer.CompressType.NONE
         self._packed = packed
 
+        block_size = options.worker.copy_block_size
+
         if self.is_writable:
             self._shared_buf = shared_store.create(session_id, data_key, nbytes)
             if packed:
-                self._buf = ArrowBufferIO(self._shared_buf, 'w')
+                self._buf = ArrowBufferIO(self._shared_buf, 'w', block_size=block_size)
             else:
                 self._buf = pyarrow.FixedSizeBufferWriter(self._shared_buf)
                 self._buf.set_memcopy_threads(6)
@@ -49,7 +53,7 @@ class SharedStorageIO(BytesStorageIO):
             self._shared_buf = shared_store.get_buffer(session_id, data_key)
             if packed:
                 self._buf = ArrowBufferIO(
-                    self._shared_buf, 'r', compress_out=compress)
+                    self._shared_buf, 'r', compress_out=compress, block_size=block_size)
             else:
                 self._mv = memoryview(self._shared_buf)
                 self._nbytes = len(self._shared_buf)

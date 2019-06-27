@@ -241,8 +241,11 @@ class SenderActor(WorkerActor):
                     if not next_chunk:
                         # no further data to read, we close and finish the transfer
                         reader.close()
+                        futures = []
                         for ref in target_refs:
-                            ref.finish_receive(session_id, chunk_key, checksum, _tell=True)
+                            futures.append(ref.finish_receive(
+                                session_id, chunk_key, checksum, _tell=True, _wait=False))
+                        [f.result(timeout=timeout) for f in futures]
                         break
                     checksum = zlib.crc32(next_chunk, checksum)
                     futures = []

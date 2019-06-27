@@ -110,11 +110,10 @@ class ResourceActor(SchedulerActor):
             except (KeyError, TypeError, ValueError):
                 pass
 
-        self.detach_dead_workers(
-            dead_workers, reporter='%s@%s:detect_dead_workers()' % (self.uid, self.address))
+        self.detach_dead_workers(dead_workers)
         self.ref().detect_dead_workers(_tell=True, _delay=1)
 
-    def detach_dead_workers(self, workers, reporter=None):
+    def detach_dead_workers(self, workers):
         from ..worker.execution import ExecutionActor
 
         workers = [w for w in workers if w in self._meta_cache and
@@ -123,8 +122,7 @@ class ResourceActor(SchedulerActor):
         if not workers:
             return
 
-        logger.error('Workers %r dead, detaching from ResourceActor. '
-                     'This is reported by %s', workers, reporter)
+        logger.warning('Workers %r dead, detaching from ResourceActor.', workers)
         for w in workers:
             del self._meta_cache[w]
             self._worker_blacklist.add(w)

@@ -134,10 +134,7 @@ class DiskIO(BytesStorageIO):
         try:
             d.write_to(self._buf)
         except AttributeError:
-            try:
-                self._buf.write(d)
-            except AttributeError:
-                raise
+            self._buf.write(d)
         self._total_time += time.time() - start
 
     def close(self, finished=True):
