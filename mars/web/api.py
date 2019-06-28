@@ -23,6 +23,7 @@ from tornado import gen, concurrent, web, ioloop
 
 from ..actors import new_client
 from ..compat import six, futures
+from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
 from ..utils import to_str
@@ -111,7 +112,11 @@ class GraphApiHandler(ApiRequestHandler):
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
 
-        state = self.web_api.get_graph_state(session_id, graph_key)
+        try:
+            state = self.web_api.get_graph_state(session_id, graph_key)
+        except GraphNotExists:
+            raise web.HTTPError(404, 'Graph not exists')
+
         if state == GraphState.RUNNING:
             self.write(json.dumps(dict(state='running')))
         elif state == GraphState.SUCCEEDED:

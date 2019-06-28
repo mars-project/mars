@@ -278,7 +278,7 @@ class GraphAnalyzer(object):
         """
         graph = self._graph
         op_states = self._op_states
-        cur_assigns = self._fixed_assigns.copy()
+        cur_assigns = OrderedDict(self._fixed_assigns)
 
         key_to_chunks = defaultdict(list)
         for n in graph:
@@ -359,7 +359,8 @@ class GraphAnalyzer(object):
             self._assign_by_bfs(cur, worker, worker_quotas, spread_ranges, op_keys,
                                 cur_assigns, graph=graph)
 
-        return dict((n.op.key, cur_assigns[n.op.key]) for n in chunks_to_assign)
+        keys_to_assign = set(n.op.key for n in chunks_to_assign)
+        return OrderedDict((k, v) for k, v in cur_assigns.items() if k in keys_to_assign)
 
     def analyze_state_changes(self):
         """
