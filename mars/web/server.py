@@ -19,6 +19,7 @@ import threading
 import os
 from collections import defaultdict
 
+import numpy as np
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from bokeh.server.server import Server
@@ -44,7 +45,7 @@ def get_jinja_env():
     )
 
     def format_ts(value):
-        if value is None:
+        if value is None or np.isnan(value):
             return None
         return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S')
 
