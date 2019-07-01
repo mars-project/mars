@@ -15,6 +15,7 @@
 import logging
 
 from .actors import new_client
+from .errors import GraphNotExists
 from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, \
     SessionManagerActor, ChunkMetaClient
 from .scheduler.graph import ResultReceiverActor
@@ -57,10 +58,12 @@ class MarsAPI(object):
     def delete_session(self, session_id):
         self.session_manager.delete_session(session_id)
 
-    def submit_graph(self, session_id, serialized_graph, graph_key, target, compose=True):
+    def submit_graph(self, session_id, serialized_graph, graph_key, target,
+                     compose=True, wait=True):
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
-        session_ref.submit_tensor_graph(serialized_graph, graph_key, target, compose=compose, _tell=True)
+        session_ref.submit_tensor_graph(
+            serialized_graph, graph_key, target, compose=compose, _tell=not wait)
 
     def delete_graph(self, session_id, graph_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
@@ -85,7 +88,7 @@ class MarsAPI(object):
             state_obj = graph_meta_ref.get_state()
             state = state_obj.value if state_obj else 'preparing'
         else:
-            state = 'preparing'
+            raise GraphNotExists
         state = GraphState(state.lower())
         return state
 
