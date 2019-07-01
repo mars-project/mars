@@ -120,7 +120,10 @@ class AssignerActor(SchedulerActor):
         :param op_key: operand key
         :param priority_data: new priority data
         """
-        self._req_heap.update_priority((session_id, op_key), self._extract_op_priority(priority_data))
+        try:
+            self._req_heap.update_priority((session_id, op_key), self._extract_op_priority(priority_data))
+        except KeyError:
+            pass
 
     def update_target_workers(self, session_id, keys_to_workers):
         for op_key, target_worker in keys_to_workers.items():

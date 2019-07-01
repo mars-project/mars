@@ -714,8 +714,7 @@ class ExecutionActor(WorkerActor):
             logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma...',
                          graph_key, graph_record.op_string)
             return inproc_ref.dump_cache(session_id, calc_keys, _promise=True) \
-                .then(_cache_result) \
-                .then(lambda *_: self._notify_successors(session_id, graph_key))
+                .then(_cache_result)
         else:
             # dump keys into shared memory and send
             all_addresses = [{v} if isinstance(v, six.string_types) else set(v)
@@ -730,7 +729,6 @@ class ExecutionActor(WorkerActor):
 
             return inproc_ref.dump_cache(session_id, calc_keys, _promise=True) \
                 .then(_cache_result) \
-                .then(lambda *_: self._notify_successors(session_id, graph_key)) \
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses))
 
