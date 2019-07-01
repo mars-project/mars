@@ -564,7 +564,8 @@ class GraphActor(SchedulerActor):
         if analyzer is None:
             analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
         assignments = analyzer.calc_operand_assignments(op_keys, input_chunk_metas=input_chunk_metas)
-        for k, v in assignments.items():
+        for idx, (k, v) in enumerate(assignments.items()):
+            operand_infos[k]['optimize']['placement_order'] = idx
             operand_infos[k]['target_worker'] = v
         return assignments
 
@@ -1029,7 +1030,11 @@ class GraphActor(SchedulerActor):
 
         graph = self.get_chunk_graph()
         new_states = dict()
-        analyzer = GraphAnalyzer(graph, worker_slots, fixed_assigns, graph_states, lost_chunks)
+        ordered_states = OrderedDict(
+            sorted(((k, v) for k, v in graph_states.items()),
+                   key=lambda d: operand_infos[d[0]]['optimize'].get('placement_order', 0))
+        )
+        analyzer = GraphAnalyzer(graph, worker_slots, fixed_assigns, ordered_states, lost_chunks)
         if removes or lost_chunks:
             new_states = analyzer.analyze_state_changes()
             logger.debug('%d chunks lost. %d operands changed state.', len(lost_chunks),
