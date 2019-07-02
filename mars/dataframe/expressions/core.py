@@ -17,7 +17,8 @@ import numpy as np
 from ...operands import ShuffleProxy
 from ...core import TileableOperandMixin, FuseChunkData, FuseChunk
 from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
-from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame
+from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame, \
+    SeriesChunkData, SeriesChunk, SeriesData, Series
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -65,6 +66,43 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
 
 class DataFrameOperand(Operand):
+    pass
+
+
+class SeriesOperandMixin(TileableOperandMixin):
+    __slots__ = ()
+    _op_module_ = 'dataframe'
+
+    def _create_chunk(self, output_idx, index, **kw):
+        data = SeriesChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
+                               _dtype=kw.pop('dtype', None), _index_value=kw.pop('index_value', None),
+                               _name=kw.pop('name', None), **kw)
+        return SeriesChunk(data)
+
+    def _create_tileable(self, output_idx, **kw):
+        if kw.get('nsplits', None) is not None:
+            kw['_nsplits'] = kw['nsplits']
+        data = SeriesData(_shape=kw.pop('shape', None), _op=self,
+                          _chunks=kw.pop('chunks', None), _dtype=kw.pop('dtype', None),
+                          _index_value=kw.pop('index_value', None),
+                          _name=kw.pop('name', None), **kw)
+        return Series(data)
+
+    def new_seriess(self, inputs, shape=None, dtype=None, index_value=None, name=None,
+                    chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
+        return self.new_tileables(inputs, shape=shape, dtype=dtype, index_value=index_value,
+                                  name=name, chunks=chunks, nsplits=nsplits,
+                                  output_limit=output_limit, kws=kws, **kw)
+
+    def new_series(self, inputs, shape=None, dtype=None, index_value=None, name=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new tensor with more than 1 outputs')
+
+        return self.new_seriess(inputs, shape=shape, dtype=dtype,
+                                index_value=index_value, name=name, **kw)[0]
+
+
+class SeriesOperand(Operand):
     pass
 
 

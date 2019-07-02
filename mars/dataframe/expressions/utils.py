@@ -31,7 +31,7 @@ def is_pd_range_empty(pd_range_index):
            (pd_range_index._start <= pd_range_index._stop and pd_range_index._step < 0)
 
 
-def decide_chunk_sizes(shape, chunk_size, memory_usage):
+def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     """
     Decide how a given DataFrame can be split into chunk.
 
@@ -95,6 +95,20 @@ def decide_chunk_sizes(shape, chunk_size, memory_usage):
             break
 
     return tuple(row_chunk_size), tuple(col_chunk_size)
+
+
+def decide_series_chunk_size(shape, chunk_size, memory_usage):
+    from ...config import options
+
+    chunk_size = dictify_chunk_size(shape, chunk_size)
+    average_memory_usage = memory_usage / shape[0]
+
+    if len(chunk_size) == len(shape):
+        return normalize_chunk_sizes(shape, chunk_size[0])
+
+    max_chunk_size = options.tensor.chunk_store_limit
+    series_chunk_size = max_chunk_size / average_memory_usage
+    return normalize_chunk_sizes(shape, int(series_chunk_size))
 
 
 def parse_index(index_value, store_data=False, key=None):
@@ -349,16 +363,18 @@ def filter_index_value(index_value, min_max, store_data=False):
 
 def concat_tileable_chunks(df):
     from .merge.concat import DataFrameConcat
+    from ..core import DATAFRAME_TYPE
 
     assert not df.is_coarse()
 
     op = DataFrameConcat()
-    chunk = DataFrameConcat().new_chunk(df.chunks, shape=df.shape, dtypes=df.dtypes,
-                                        index_value=df.index_value,
-                                        columns_value=df.columns)
-    return op.new_dataframe([df], shape=df.shape, chunks=[chunk],
-                            nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
-                            index_value=df.index_value, columns_value=df.columns)
+    if isinstance(df, DATAFRAME_TYPE):
+        chunk = DataFrameConcat().new_chunk(df.chunks, shape=df.shape, dtypes=df.dtypes,
+                                            index_value=df.index_value,
+                                            columns_value=df.columns)
+        return op.new_dataframe([df], shape=df.shape, chunks=[chunk],
+                                nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
+                                index_value=df.index_value, columns_value=df.columns)
 
 
 def get_fetch_op_cls(op):

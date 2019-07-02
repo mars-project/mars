@@ -39,6 +39,7 @@ message SeriesChunkDef {
     IndexValue index_value = 11;
     Value extra_params = 8;
     string id = 9;
+    Value name = 10;
 }
 
 

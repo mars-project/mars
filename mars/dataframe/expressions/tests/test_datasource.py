@@ -24,7 +24,8 @@ except ImportError:  # pragma: no cover
 from mars import opcodes as OperandDef
 from mars.graph import DAG
 from mars.dataframe.core import IndexValue, DataFrameChunk
-from mars.dataframe.expressions.datasource.dataframe import from_pandas
+from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
+from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
 from mars.tests.core import TestBase
 
 
@@ -33,7 +34,7 @@ class Test(TestBase):
     def testChunkSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                             columns=[np.random.bytes(10) for _ in range(10)])
-        df = from_pandas(data).tiles()
+        df = from_pandas_df(data).tiles()
 
         # pb
         chunk = df.chunks[0]
@@ -66,7 +67,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
 
     def testDataFrameGraphSerialize(self):
-        df = from_pandas(pd.DataFrame(np.random.rand(10, 10),
+        df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
                                       columns=[np.random.bytes(10) for _ in range(10)]))
         graph = df.build_graph(tiled=False)
 
@@ -95,7 +96,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(t2.columns.to_pandas(), t.columns.to_pandas())
 
         # test graph with tiled DataFrame
-        t2 = from_pandas(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
+        t2 = from_pandas_df(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
         graph = DAG()
         graph.add_node(t2)
 
@@ -121,9 +122,9 @@ class Test(TestBase):
         pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
         pd.testing.assert_index_equal(chunks[0].columns.to_pandas(), t2.chunks[0].columns.to_pandas())
 
-    def testFromPandas(self):
+    def testFromPandasDataFrame(self):
         data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
-        df = from_pandas(data, chunk_size=4)
+        df = from_pandas_df(data, chunk_size=4)
 
         pd.testing.assert_series_equal(df.op.dtypes, data.dtypes)
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
@@ -185,7 +186,7 @@ class Test(TestBase):
         self.assertTrue(df.chunks[8].index_value._index_value._is_unique)
 
         data2 = data[::2]
-        df2 = from_pandas(data2, chunk_size=4)
+        df2 = from_pandas_df(data2, chunk_size=4)
 
         pd.testing.assert_series_equal(df.op.dtypes, data2.dtypes)
         self.assertIsInstance(df2.index_value._index_value, IndexValue.RangeIndex)
@@ -206,3 +207,35 @@ class Test(TestBase):
         self.assertEqual(df2.chunks[3].index_value._index_value._slice, slice(8, 10, 2))
         pd.testing.assert_frame_equal(df2.chunks[5].op.data, df2.op.data.iloc[4:, 8:])
         self.assertEqual(df2.chunks[3].index_value._index_value._slice, slice(8, 10, 2))
+
+    def testFromPandasSeries(self):
+        data = pd.Series(np.random.rand(10), name='a')
+        series = from_pandas_series(data, chunk_size=4)
+
+        self.assertEqual(series.name, data.name)
+        self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(series.index_value._index_value._slice, slice(0, 10, 1))
+        self.assertTrue(series.index_value.is_monotonic_increasing)
+        self.assertFalse(series.index_value.is_monotonic_decreasing)
+        self.assertTrue(series.index_value.is_unique)
+        self.assertEqual(series.index_value.min_val, 0)
+        self.assertEqual(series.index_value.max_val, 9)
+
+        series.tiles()
+
+        self.assertEqual(len(series.chunks), 3)
+        pd.testing.assert_series_equal(series.chunks[0].op.data, series.op.data.iloc[:4])
+        self.assertEqual(series.chunks[0].index_value._index_value._slice, slice(0, 4, 1))
+        self.assertTrue(series.chunks[0].index_value._index_value._is_monotonic_increasing)
+        self.assertFalse(series.chunks[0].index_value._index_value._is_monotonic_decreasing)
+        self.assertTrue(series.chunks[0].index_value._index_value._is_unique)
+        pd.testing.assert_series_equal(series.chunks[1].op.data, series.op.data.iloc[4:8])
+        self.assertEqual(series.chunks[1].index_value._index_value._slice, slice(4, 8, 1))
+        self.assertTrue(series.chunks[1].index_value._index_value._is_monotonic_increasing)
+        self.assertFalse(series.chunks[1].index_value._index_value._is_monotonic_decreasing)
+        self.assertTrue(series.chunks[1].index_value._index_value._is_unique)
+        pd.testing.assert_series_equal(series.chunks[2].op.data, series.op.data.iloc[8:])
+        self.assertEqual(series.chunks[2].index_value._index_value._slice, slice(8, 10, 1))
+        self.assertTrue(series.chunks[2].index_value._index_value._is_monotonic_increasing)
+        self.assertFalse(series.chunks[2].index_value._index_value._is_monotonic_decreasing)
+        self.assertTrue(series.chunks[2].index_value._index_value._is_unique)

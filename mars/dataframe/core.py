@@ -340,6 +340,7 @@ class SeriesChunkData(ChunkData):
 
     # optional field
     _dtype = DataTypeField('dtype')
+    _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue)
 
     @classmethod
@@ -352,6 +353,10 @@ class SeriesChunkData(ChunkData):
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def index_value(self):
