@@ -93,7 +93,7 @@ def randomized_range_finder(A, size, n_iter,
 
     # Perform power iterations with Q to further 'imprint' the top
     # singular vectors of A in Q
-    for i in range(n_iter):
+    for _ in range(n_iter):
         if power_iteration_normalizer == 'none':
             Q = A.dot(Q)
             Q = A.T.dot(Q)

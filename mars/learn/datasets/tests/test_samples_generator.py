@@ -25,5 +25,5 @@ class Test(unittest.TestCase):
 
         self.assertEquals(X.shape, (50, 25), "X shape mismatch")
 
-        u, s, v = svd(X)
+        _, s, _ = svd(X)
         self.assertLess((s.sum() - 5).execute(n_parallel=1), 0.1, "X rank is not approximately 5")
