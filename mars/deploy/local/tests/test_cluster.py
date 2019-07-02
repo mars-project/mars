@@ -242,6 +242,14 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r[:10], np.ones((10, 5)))
                 np.testing.assert_array_equal(r[10:20], np.ones((10, 5)) * 2)
 
+            with new_session(cluster.endpoint) as session5:
+                raw = np.random.rand(10, 10)
+                a = mt.tensor(raw, chunk_size=(5, 4))
+                b = a[a.argmin(axis=1), mt.tensor(np.arange(10))]
+                r = session5.run(b, timeout=_exec_timeout, compose=False)
+
+                np.testing.assert_array_equal(r, raw[raw.argmin(axis=1), np.arange(10)])
+
     def testBoolIndexingExecute(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:

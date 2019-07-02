@@ -251,7 +251,7 @@ cdef class DirectedGraph:
         else:
             pred_fun, succ_fun = self.predecessors, self.successors
 
-        if start:
+        if start is not None:
             if not isinstance(start, (list, tuple)):
                 start = [start]
             queue = deque(start)

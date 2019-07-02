@@ -68,7 +68,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/tensor/indexing.rst:19
-msgid "Indexing-like opeartions"
+msgid "Indexing-like operations"
 msgstr "类似索引的操作"
 
 #: ../../<autosummary>:1

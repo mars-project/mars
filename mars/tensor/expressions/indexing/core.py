@@ -28,26 +28,30 @@ _INDEX_ERROR_MSG = 'only integers, slices (`:`), ellipsis (`...`), ' \
                    'numpy.newaxis (`None`) and integer or boolean arrays are valid indices'
 
 
-def get_index_and_shape(tensor_shape, index):
+def calc_shape(tensor_shape, index):
     shape = []
     idx = 0
     fancy_index = None
     fancy_index_shapes = []
     for ind in index:
-        if isinstance(ind, (TENSOR_TYPE + CHUNK_TYPE)):
-            if ind.dtype == np.bool_:
-                shape.append(np.nan)
-                for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[idx:ind.ndim + idx]):
-                    if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
-                        raise IndexError(
-                            'boolean index did not match indexed array along dimension {0}; '
-                            'dimension is {1} but corresponding boolean dimension is {2}'.format(
-                                idx + i, size, t_size)
-                        )
-                idx += ind.ndim
-        elif isinstance(ind, np.ndarray):
+        if isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)) and ind.dtype == np.bool_:
+            # bool
+            shape.append(np.nan if not isinstance(ind, np.ndarray) else ind.sum())
+            for i, t_size, size in zip(itertools.count(0), ind.shape, tensor_shape[idx:ind.ndim + idx]):
+                if not np.isnan(t_size) and not np.isnan(size) and t_size != size:
+                    raise IndexError(
+                        'boolean index did not match indexed array along dimension {0}; '
+                        'dimension is {1} but corresponding boolean dimension is {2}'.format(
+                            idx + i, size, t_size)
+                    )
+            idx += ind.ndim
+        elif isinstance(ind, TENSOR_TYPE + CHUNK_TYPE + (np.ndarray,)):
             if fancy_index is None:
                 fancy_index = idx
+            if isinstance(ind, np.ndarray) and np.any(ind >= tensor_shape[idx]):
+                out_of_range_index = next(i for i in ind.flat if i >= tensor_shape[idx])
+                raise IndexError('IndexError: index {0} is out of bounds with size {1}'.format(
+                    out_of_range_index, tensor_shape[idx]))
             fancy_index_shapes.append(ind.shape)
             idx += 1
         elif isinstance(ind, slice):
@@ -77,25 +81,41 @@ def get_index_and_shape(tensor_shape, index):
                 'shape mismatch: indexing arrays could not be broadcast together '
                 'with shapes {0}'.format(' '.join(str(s) for s in fancy_index_shapes)))
 
-    return index, shape
+    return shape
 
 
 def preprocess_index(index):
     inds = []
-    for ind in index:
-        if isinstance(ind, (list, np.ndarray)):
-            ind = np.array(ind)
+    has_bool_index = False
+    fancy_indexes = []
+    all_fancy_index_ndarray = True
+    for j, ind in enumerate(index):
+        if isinstance(ind, (list, np.ndarray) + TENSOR_TYPE):
+            if not isinstance(ind, TENSOR_TYPE):
+                ind = np.array(ind)
             if ind.dtype.kind not in 'biu':
                 raise IndexError(_INDEX_ERROR_MSG)
             if ind.dtype.kind == 'b':
+                # bool indexing
                 ind = astensor(ind)
-        elif isinstance(ind, TENSOR_TYPE):
-            if ind.dtype.kind not in 'biu':
-                raise IndexError(_INDEX_ERROR_MSG)
+                has_bool_index = True
+            else:
+                # fancy indexing
+                fancy_indexes.append(j)
+                if not isinstance(ind, np.ndarray):
+                    all_fancy_index_ndarray = False
         elif not isinstance(ind, (slice, Integral)) and ind is not None \
                 and ind is not Ellipsis:
             raise IndexError(_INDEX_ERROR_MSG)
         inds.append(ind)
+
+    if not all_fancy_index_ndarray:
+        # if not all fancy indexes are ndarray, we will convert all of them to Tensor
+        for fancy_index in fancy_indexes:
+            inds[fancy_index] = astensor(inds[fancy_index])
+
+    if fancy_indexes and has_bool_index:
+        raise NotImplementedError('We do not support index that contains both bool and fancy index yet')
 
     return tuple(inds)
 

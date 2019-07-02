@@ -21,7 +21,7 @@ import numpy as np
 
 from mars.tensor.expressions.utils import normalize_chunk_sizes, broadcast_shape, \
     replace_ellipsis, calc_sliced_size, slice_split, decide_unify_split, unify_chunks, \
-    split_index_into_chunks, decide_chunk_sizes
+    split_indexes_into_chunks, decide_chunk_sizes, calc_pos
 from mars.tensor.expressions.datasource import ones
 from mars.config import option_context
 
@@ -189,26 +189,26 @@ class Test(unittest.TestCase):
         self.assertEqual(new_t1.nsplits, ((2, 2, 2, 2, 2), (2, 1, 1, 2, 2)))
         self.assertEqual(new_t2.nsplits, ((2, 1, 1, 2, 2),))
 
-    def testSplitIndexIntoChunks(self):
-        splits = split_index_into_chunks([10, 20, 30], [5, 31, 21, 18])
-
-        self.assertEqual(len(splits), 3)
-        self.assertTrue(np.array_equal(splits[0], np.array([5])))
-        self.assertTrue(np.array_equal(splits[1], np.array([11, 8])))
-        self.assertTrue(np.array_equal(splits[2], np.array([1])))
+    def testSplitIndexesIntoChunks(self):
+        splits, poses, asc = split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]],
+                                                       [[4, 1, 8, 13], [5, 31, 21, 18]])
+        splits = list(splits.values())
+        pos = calc_pos(4, poses)
+        self.assertEqual(len(splits), 9)
+        np.testing.assert_array_equal(splits[0], np.array([[], []]))
+        np.testing.assert_array_equal(splits[1], np.array([[], []]))
+        np.testing.assert_array_equal(splits[2], np.array([[1], [1]]))  # (1, 31)
+        np.testing.assert_array_equal(splits[3], np.array([[1], [5]]))  # (4, 5)
+        np.testing.assert_array_equal(splits[4], np.array([[], []]))
+        np.testing.assert_array_equal(splits[5], np.array([[], []]))
+        np.testing.assert_array_equal(splits[6], np.array([[], []]))
+        np.testing.assert_array_equal(splits[7], np.array([[0, 5], [11, 8]]))  # (8, 21), (13, 18)
+        np.testing.assert_array_equal(splits[8], np.array([[], []]))
+        self.assertFalse(asc)
+        np.testing.assert_array_equal(pos, np.array([1, 0, 2, 3]))
 
         with self.assertRaises(IndexError):
-            split_index_into_chunks([10, 20, 30], [100])
-
-        splits = split_index_into_chunks([2, 2, 2, 2, 2, 1], [8, 10, 3, 1, 9, 10])
-
-        self.assertEqual(len(splits), 6)
-        self.assertTrue(np.array_equal(splits[0], np.array([1])))
-        self.assertTrue(np.array_equal(splits[1], np.array([1])))
-        self.assertTrue(np.array_equal(splits[2], np.array([])))
-        self.assertTrue(np.array_equal(splits[3], np.array([])))
-        self.assertTrue(np.array_equal(splits[4], np.array([0, 1])))
-        self.assertTrue(np.array_equal(splits[5], np.array([0, 0])))
+            split_indexes_into_chunks([[3, 5, 9], [10, 20, 30]], [[5], [100]])
 
     def testDecideChunks(self):
         with option_context() as options:

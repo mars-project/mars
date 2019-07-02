@@ -24,7 +24,7 @@ from ....core import Base, Entity
 from ...core import TENSOR_TYPE
 from ..core import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
-from .core import process_index, get_index_and_shape
+from .core import process_index, calc_shape
 from .getitem import TensorIndex
 
 
@@ -101,7 +101,7 @@ def _setitem(a, item, value):
     from ..base import broadcast_to
 
     index = process_index(a, item)
-    index, shape = get_index_and_shape(a.shape, index)
+    shape = calc_shape(a.shape, index)
 
     for ix in index:
         if not isinstance(ix, (slice, Integral)):

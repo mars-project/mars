@@ -83,7 +83,13 @@ class Test(unittest.TestCase):
         self.assertEqual(e, 'shape mismatch: indexing arrays could not be broadcast '
                             'together with shapes (2,) (3,)')
 
+        with self.assertRaises(IndexError):
+            t[[100,]]
+
         t = ones((100, 200, 300), chunk_size=10)
+
+        # fancy index on numpy ndarrays
+
         t4 = t[:10, -10:, [13, 244, 151, 242, 34]].tiles()
         self.assertEqual(t4.shape, (10, 10, 5))
         self.assertEqual(t4.chunk_shape, (1, 1, 1))
@@ -91,6 +97,56 @@ class Test(unittest.TestCase):
         t5 = t[:10, -10:, [1, 10, 20, 33, 34, 200]].tiles()
         self.assertEqual(t5.shape, (10, 10, 6))
         self.assertEqual(t5.chunk_shape, (1, 1, 5))
+
+        t6 = t[[20, 1, 33, 22, 11], :15, [255, 211, 2, 11, 121]].tiles()
+        self.assertEqual(t6.shape, (5, 15))
+        # need a concat, because the fancy indexes are not ascending according to chunk index
+        self.assertEqual(t6.chunk_shape, (1, 2))
+        self.assertEqual(t6.chunks[0].ndim, 2)
+        self.assertEqual(t6.nsplits, ((5,), (10, 5)))
+
+        t7 = t[[5, 6, 33, 66], :15, [0, 9, 2, 11]].tiles()
+        self.assertEqual(t7.shape, (4, 15))
+        # not need a concat
+        self.assertEqual(t7.chunk_shape, (3, 2))
+        self.assertEqual(t7.chunks[0].ndim, 2)
+        self.assertEqual(t7.nsplits, ((2, 1, 1), (10, 5)))
+
+        t8 = t[[[5, 33], [66, 6]], :15, [255, 11]].tiles()
+        self.assertEqual(t8.shape, (2, 2, 15))
+        self.assertEqual(t8.chunk_shape, (1, 1, 2))
+        self.assertEqual(t8.chunks[0].ndim, 3)
+        self.assertEqual(t8.nsplits, ((2,), (2,), (10, 5)))
+
+        # fancy index on tensors
+
+        t9 = t[:10, -10:, tensor([13, 244, 151, 242, 34], chunk_size=2)].tiles()
+        self.assertEqual(t9.shape, (10, 10, 5))
+        self.assertEqual(t9.chunk_shape, (1, 1, 3))
+
+        t10 = t[:10, -10:, tensor([1, 10, 20, 33, 34, 200], chunk_size=4)].tiles()
+        self.assertEqual(t10.shape, (10, 10, 6))
+        self.assertEqual(t10.chunk_shape, (1, 1, 2))
+
+        t11 = t[tensor([20, 1, 33, 22, 11], chunk_size=2), :15, tensor([255, 211, 2, 11, 121], chunk_size=3)].tiles()
+        self.assertEqual(t11.shape, (5, 15))
+        # need a concat, because the fancy indexes are not ascending according to chunk index
+        self.assertEqual(t11.chunk_shape, (4, 2))
+        self.assertEqual(t11.chunks[0].ndim, 2)
+        self.assertEqual(t11.nsplits, ((2, 1, 1, 1), (10, 5)))
+
+        t12 = t[tensor([5, 6, 33, 66], chunk_size=2), :15, [0, 9, 2, 11]].tiles()
+        self.assertEqual(t12.shape, (4, 15))
+        # not need a concat
+        self.assertEqual(t12.chunk_shape, (2, 2))
+        self.assertEqual(t12.chunks[0].ndim, 2)
+        self.assertEqual(t12.nsplits, ((2, 2), (10, 5)))
+
+        t13 = t[tensor([[5, 33], [66, 6]]), :15, tensor([255, 11])].tiles()
+        self.assertEqual(t13.shape, (2, 2, 15))
+        self.assertEqual(t13.chunk_shape, (1, 1, 2))
+        self.assertEqual(t13.chunks[0].ndim, 3)
+        self.assertEqual(t13.nsplits, ((2,), (2,), (10, 5)))
 
     def testMixedIndexing(self):
         t = ones((100, 200, 300, 400))
