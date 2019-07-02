@@ -100,7 +100,6 @@ cy_extensions = [
     Extension('mars.actors.pool.messages', ['mars/actors/pool/messages.pyx'], **cy_extension_kw),
     Extension('mars.actors.pool.utils', ['mars/actors/pool/utils.pyx'], **cy_extension_kw),
     Extension('mars.actors.pool.gevent_pool', ['mars/actors/pool/gevent_pool.pyx'], **cy_extension_kw),
-    Extension('mars.scheduler.taskheap', ['mars/scheduler/taskheap.pyx'], language='c++', **cy_extension_kw),
     Extension('mars.serialize.core', ['mars/serialize/core.pyx'], **cy_extension_kw),
     Extension('mars.serialize.pbserializer', ['mars/serialize/pbserializer.pyx'], **cy_extension_kw),
     Extension('mars.serialize.jsonserializer', ['mars/serialize/jsonserializer.pyx'], **cy_extension_kw),

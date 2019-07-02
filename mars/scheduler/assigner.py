@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import heapq
 import logging
 import os
 import random
@@ -23,10 +25,70 @@ from .. import promise
 from ..errors import DependencyMissing
 from ..utils import log_unhandled
 from .resource import ResourceActor
-from .taskheap import TaskHeap, Empty
 from .utils import SchedulerActor
 
 logger = logging.getLogger(__name__)
+
+
+class ChunkPriorityItem(object):
+    """
+    Class providing an order for operands for assignment
+    """
+    def __init__(self, session_id, op_key, op_info, callback):
+        self._op_key = op_key
+        self._session_id = session_id
+        self._op_info = op_info
+        self._target_worker = op_info.get('target_worker')
+        self._callback = callback
+
+        self._priority = ()
+        self.update_priority(op_info['optimize'])
+
+    def update_priority(self, priority_data, copyobj=False):
+        obj = self
+        if copyobj:
+            obj = copy.deepcopy(obj)
+
+        priorities = []
+        priorities.extend([
+            priority_data.get('depth', 0),
+            priority_data.get('demand_depths', ()),
+            -priority_data.get('successor_size', 0),
+            -priority_data.get('placement_order', 0),
+            priority_data.get('descendant_size'),
+        ])
+        obj._priority = tuple(priorities)
+        return obj
+
+    @property
+    def session_id(self):
+        return self._session_id
+
+    @property
+    def op_key(self):
+        return self._op_key
+
+    @property
+    def target_worker(self):
+        return self._target_worker
+
+    @target_worker.setter
+    def target_worker(self, value):
+        self._target_worker = value
+
+    @property
+    def callback(self):
+        return self._callback
+
+    @property
+    def op_info(self):
+        return self._op_info
+
+    def __repr__(self):
+        return '<ChunkPriorityItem(%s(%s))>' % (self.op_key, self.op_info['op_name'])
+
+    def __lt__(self, other):
+        return self._priority > other._priority
 
 
 class AssignerActor(SchedulerActor):
@@ -40,8 +102,8 @@ class AssignerActor(SchedulerActor):
 
     def __init__(self):
         super(AssignerActor, self).__init__()
-        self._req_heap = TaskHeap()
-        self._req_heap.add_group(0)
+        self._requests = dict()
+        self._req_heap = []
 
         self._cluster_info_ref = None
         self._actual_ref = None
@@ -85,16 +147,6 @@ class AssignerActor(SchedulerActor):
             self._refresh_worker_metrics()
         return [w for w in workers if w in self._worker_metrics] if self._worker_metrics else []
 
-    @staticmethod
-    def _extract_op_priority(priority_data):
-        return (
-            priority_data.get('depth', 0),
-            priority_data.get('demand_depths', ()),
-            -priority_data.get('successor_size', 0),
-            -priority_data.get('placement_order', 0),
-            priority_data.get('descendant_size'),
-        )
-
     @promise.reject_on_exception
     @log_unhandled
     def apply_for_resource(self, session_id, op_key, op_info, callback=None):
@@ -107,49 +159,56 @@ class AssignerActor(SchedulerActor):
         """
         self._refresh_worker_metrics()
 
-        self._req_heap.add_task((session_id, op_key), self._extract_op_priority(op_info['optimize']),
-                                [0], op_info, callback)
+        priority_item = ChunkPriorityItem(session_id, op_key, op_info, callback)
+        if priority_item.target_worker not in self._worker_metrics:
+            priority_item.target_worker = None
+        self._requests[op_key] = priority_item
+        heapq.heappush(self._req_heap, priority_item)
         self._actual_ref.allocate_top_resources(_tell=True)
 
     @log_unhandled
-    def update_priority(self, session_id, op_key, priority_data):
+    def update_priority(self, op_key, priority_data):
         """
         Update priority data for an operand. The priority item will be
         pushed into priority queue again.
-        :param session_id: session id
         :param op_key: operand key
         :param priority_data: new priority data
         """
-        try:
-            self._req_heap.update_priority((session_id, op_key), self._extract_op_priority(priority_data))
-        except KeyError:
-            pass
+        if op_key not in self._requests:
+            return
+        obj = self._requests[op_key].update_priority(priority_data, copyobj=True)
+        heapq.heappush(self._req_heap, obj)
 
-    def update_target_workers(self, session_id, keys_to_workers):
-        for op_key, target_worker in keys_to_workers.items():
-            try:
-                op_info = self._req_heap[(session_id, op_key)].args[0]
-                op_info['target_worker'] = target_worker
-            except KeyError:
-                pass
+    @log_unhandled
+    def remove_apply(self, op_key):
+        """
+        Cancel request for an operand
+        :param op_key: operand key
+        """
+        if op_key in self._requests:
+            del self._requests[op_key]
 
     def pop_head(self):
         """
         Pop and obtain top-priority request from queue
         :return: top item
         """
-        try:
-            return self._req_heap.pop_group_task(0)
-        except Empty:
-            return None
+        item = None
+        while self._req_heap:
+            item = heapq.heappop(self._req_heap)
+            if item.op_key in self._requests:
+                break
+            else:
+                item = None
+        return item
 
     def extend(self, items):
         """
-        Extend heap by an iterable object.
+        Extend heap by an iterable object. The heap will be reheapified.
         :param items: priority items
         """
-        for item in items:
-            self._req_heap.add_task(item.key, item.priority, [0], *item.args, **item.kwargs)
+        self._req_heap.extend(items)
+        heapq.heapify(self._req_heap)
 
 
 class AssignEvaluationActor(SchedulerActor):
@@ -209,38 +268,40 @@ class AssignEvaluationActor(SchedulerActor):
             if not item:
                 break
 
-            session_id, op_key = item.key
-            op_info, callback = item.args[:2]
             try:
                 alloc_ep, rejects = self._allocate_resource(
-                    session_id, op_key, op_info, reject_workers=reject_workers,
-                    callback=callback)
+                    item.session_id, item.op_key, item.op_info, item.target_worker,
+                    reject_workers=reject_workers, callback=item.callback)
             except:  # noqa: E722
-                logger.exception('Unexpected error occurred in %s when allocating workers', self.uid)
-                self.tell_promise(callback, *sys.exc_info(), **dict(_accept=False))
+                logger.exception('Unexpected error occurred in %s', self.uid)
+                self.tell_promise(item.callback, *sys.exc_info(), **dict(_accept=False))
                 continue
 
             # collect workers failed to assign operand to
             reject_workers.update(rejects)
-            if not alloc_ep:
+            if alloc_ep:
+                # assign successfully, we remove the application
+                self._assigner_ref.remove_apply(item.op_key)
+            else:
                 # put the unassigned item into unassigned list to add back to the queue later
                 unassigned.append(item)
         if unassigned:
             # put unassigned back to the queue, if any
             self._assigner_ref.extend(unassigned)
 
+    @promise.reject_on_exception
     @log_unhandled
-    def _allocate_resource(self, session_id, op_key, op_info, reject_workers=None, callback=None):
+    def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None, callback=None):
         """
         Allocate resource for single operand
         :param session_id: session id
         :param op_key: operand key
         :param op_info: operand info dict
+        :param target_worker: worker to allocate, can be None
         :param reject_workers: workers denied to assign to
         :param callback: promise callback from operands
         """
-        target_worker = op_info.get('target_worker')
-        if target_worker is not None and target_worker not in self._worker_metrics:
+        if target_worker not in self._worker_metrics:
             target_worker = None
 
         reject_workers = reject_workers or set()
