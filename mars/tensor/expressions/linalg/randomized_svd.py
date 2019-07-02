@@ -119,7 +119,7 @@ def randomized_svd(M, n_components, n_oversamples=10, n_iter='auto',
     r"""
     Computes a truncated randomized SVD
 
-    .. versionadded:: 0.1.3
+    .. versionadded:: 0.1.4
 
     Parameters
     ----------

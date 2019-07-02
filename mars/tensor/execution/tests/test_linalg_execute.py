@@ -24,6 +24,7 @@ from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.expressions.random import uniform
+from mars.learn.datasets.samples_generator import make_low_rank_matrix
 from mars.lib.sparse import issparse, SparseNDArray
 
 
@@ -124,9 +125,15 @@ class Test(unittest.TestCase):
     def testRandomizedSVDExecution(self):
         n_samples = 100
         n_features = 500
+        rank = 5
         k = 10
         for dtype in (np.int32, np.int64, np.float32, np.float64):
-            X = np.random.rand(n_samples, n_features).astype(dtype, copy=False)
+            # generate a matrix X of approximate effective rank `rank` and no noise
+            # component (very structured signal):
+            X = make_low_rank_matrix(n_samples=n_samples, n_features=n_features,
+                                     effective_rank=rank, tail_strength=0.0,
+                                     random_state=0).astype(dtype, copy=False)
+            self.assertEquals(X.shape, (n_samples, n_features))
             dtype = np.dtype(dtype)
             decimal = 5 if dtype == np.float32 else 7
 
@@ -138,8 +145,7 @@ class Test(unittest.TestCase):
             s = s.astype(dtype, copy=False)
             V = V.astype(dtype, copy=False)
 
-            # TODO: test "auto" and "LU" when lu decomposition supports non-square matrix
-            for normalizer in ['auto', 'LU', 'QR']:
+            for normalizer in ['auto', 'LU', 'QR']: # 'none' would not be stable
                 # compute the singular values of X using the fast approximate method
                 Ua, sa, Va = randomized_svd(
                     X, k, power_iteration_normalizer=normalizer, random_state=0)
@@ -162,10 +168,12 @@ class Test(unittest.TestCase):
 
                 # ensure that the singular values of both methods are equal up to the
                 # real rank of the matrix
-                np.testing.assert_almost_equal(s[:k], sa.execute(), decimal=decimal)
+                sa_res = self.executor.execute_tensor(sa, concat=True)[0]
+                np.testing.assert_almost_equal(s[:k], sa_res, decimal=decimal)
 
                 # check the singular vectors too (while not checking the sign)
-                np.testing.assert_almost_equal(np.dot(U[:, :k], V[:k, :]), dot(Ua, Va).execute(),
+                dot_res = self.executor.execute_tensor(dot(Ua, Va), concat=True)[0]
+                np.testing.assert_almost_equal(np.dot(U[:, :k], V[:k, :]), dot_res,
                                                decimal=decimal)
 
     def testCholeskyExecution(self):
