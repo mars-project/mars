@@ -14,8 +14,6 @@
 
 import numpy as np
 
-from .... import tensor as mt
-
 
 def svd_flip(u, v, u_based_decision=True):
     """
@@ -47,6 +45,8 @@ def svd_flip(u, v, u_based_decision=True):
     u_adjusted, v_adjusted : arrays with the same dimensions as the input.
 
     """
+    from .... import tensor as mt
+
     if u_based_decision:
         # columns of u, rows of v
         max_abs_cols = mt.argmax(mt.abs(u), axis=0)

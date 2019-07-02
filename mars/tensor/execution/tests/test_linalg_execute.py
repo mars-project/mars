@@ -138,7 +138,8 @@ class Test(unittest.TestCase):
             decimal = 5 if dtype == np.float32 else 7
 
             # compute the singular values of X using the slow exact method
-            U, s, V = np.linalg.svd(X, full_matrices=False)
+            X_res = self.executor.execute_tensor(X, concat=True)[0]
+            U, s, V = np.linalg.svd(X_res, full_matrices=False)
 
             # Convert the singular values to the specific dtype
             U = U.astype(dtype, copy=False)
