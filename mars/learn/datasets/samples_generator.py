@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from ... import tensor as mt
-from ...tensor.expressions import linalg
 from ...tensor.expressions.utils import check_random_state
 
 
@@ -75,6 +74,8 @@ def make_low_rank_matrix(n_samples=100, n_features=100, effective_rank=10,
     X : array of shape [n_samples, n_features]
         The matrix.
     """
+    from ...tensor.expressions import linalg
+
     generator = check_random_state(random_state)
     n = min(n_samples, n_features)
 
@@ -83,7 +84,7 @@ def make_low_rank_matrix(n_samples=100, n_features=100, effective_rank=10,
     v, _ = linalg.qr(generator.randn(n_features, n, chunk_size=chunk_size))
 
     # Index of the singular values
-    singular_ind = mt.arange(n, dtype=mt.float64)
+    singular_ind = mt.arange(n, dtype=mt.float64, chunk_size=chunk_size)
 
     # Build the singular profile by assembling signal and noise components
     low_rank = ((1 - tail_strength) *
