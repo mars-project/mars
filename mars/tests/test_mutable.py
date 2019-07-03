@@ -46,7 +46,6 @@ class Test(unittest.TestCase):
                     self.assertEqual(chunk1.dtype, chunk2.dtype)
 
     def testMutableTensorWrite(self):
-        self.maxDiff = None
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             with new_session(cluster.endpoint) as session:
