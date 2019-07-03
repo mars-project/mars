@@ -22,8 +22,9 @@ import scipy.sparse as sps
 from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, diag, ones, arange
 from mars.tensor.expressions.linalg import qr, svd, cholesky, norm, lu, \
-    solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul
+    solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.expressions.random import uniform
+from mars.learn.datasets.samples_generator import make_low_rank_matrix
 from mars.lib.sparse import issparse, SparseNDArray
 
 
@@ -120,6 +121,61 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(s, concat=True)[0]
         expected = np.linalg.svd(a)[1]
         np.testing.assert_array_almost_equal(res, expected)
+
+    def testRandomizedSVDExecution(self):
+        n_samples = 100
+        n_features = 500
+        rank = 5
+        k = 10
+        for dtype in (np.int32, np.int64, np.float32, np.float64):
+            # generate a matrix X of approximate effective rank `rank` and no noise
+            # component (very structured signal):
+            X = make_low_rank_matrix(n_samples=n_samples, n_features=n_features,
+                                     effective_rank=rank, tail_strength=0.0,
+                                     random_state=0).astype(dtype, copy=False)
+            self.assertEquals(X.shape, (n_samples, n_features))
+            dtype = np.dtype(dtype)
+            decimal = 5 if dtype == np.float32 else 7
+
+            # compute the singular values of X using the slow exact method
+            X_res = self.executor.execute_tensor(X, concat=True)[0]
+            U, s, V = np.linalg.svd(X_res, full_matrices=False)
+
+            # Convert the singular values to the specific dtype
+            U = U.astype(dtype, copy=False)
+            s = s.astype(dtype, copy=False)
+            V = V.astype(dtype, copy=False)
+
+            for normalizer in ['auto', 'LU', 'QR']: # 'none' would not be stable
+                # compute the singular values of X using the fast approximate method
+                Ua, sa, Va = randomized_svd(
+                    X, k, power_iteration_normalizer=normalizer, random_state=0)
+
+                # If the input dtype is float, then the output dtype is float of the
+                # same bit size (f32 is not upcast to f64)
+                # But if the input dtype is int, the output dtype is float64
+                if dtype.kind == 'f':
+                    self.assertEqual(Ua.dtype, dtype)
+                    self.assertEqual(sa.dtype, dtype)
+                    self.assertEqual(Va.dtype, dtype)
+                else:
+                    self.assertEqual(Ua.dtype, np.float64)
+                    self.assertEqual(sa.dtype, np.float64)
+                    self.assertEqual(Va.dtype, np.float64)
+
+                self.assertEqual(Ua.shape, (n_samples, k))
+                self.assertEqual(sa.shape, (k,))
+                self.assertEqual(Va.shape, (k, n_features))
+
+                # ensure that the singular values of both methods are equal up to the
+                # real rank of the matrix
+                sa_res = self.executor.execute_tensor(sa, concat=True)[0]
+                np.testing.assert_almost_equal(s[:k], sa_res, decimal=decimal)
+
+                # check the singular vectors too (while not checking the sign)
+                dot_res = self.executor.execute_tensor(dot(Ua, Va), concat=True)[0]
+                np.testing.assert_almost_equal(np.dot(U[:, :k], V[:k, :]), dot_res,
+                                               decimal=decimal)
 
     def testCholeskyExecution(self):
         data = np.random.randint(1, 10, (10, 10))
