@@ -85,7 +85,7 @@ class Test(unittest.TestCase):
                 expected = np.array([[0, 8.], [1, 9.]])
                 self.assertRecordsEqual(result, expected)
 
-                # mtensor[1], and buffer is not full.
+                # write [1], and buffer is not full.
                 chunk_records = mut._do_write(1, np.arange(5))
                 self.assertEqual(chunk_records, dict())
                 chunk_records = mut._do_flush()
@@ -96,6 +96,19 @@ class Test(unittest.TestCase):
 
                 result = chunk_records[mut.cix[(0, 1)].key]
                 expected = np.array([[2, 3.], [3, 4.]])
+                self.assertRecordsEqual(result, expected)
+
+                # write [2, [0, 2, 4]] (fancy index), and buffer is not full.
+                chunk_records = mut._do_write((2, [0, 2, 4]), np.array([11, 22, 33]))
+                self.assertEqual(chunk_records, dict())
+                chunk_records = mut._do_flush()
+
+                result = chunk_records[mut.cix[(0, 0)].key]
+                expected = np.array([[6, 11.], [8, 22.]])
+                self.assertRecordsEqual(result, expected)
+
+                result = chunk_records[mut.cix[(0, 1)].key]
+                expected = np.array([[5, 33.]])
                 self.assertRecordsEqual(result, expected)
 
                 # write [:], and the first buffer is full.

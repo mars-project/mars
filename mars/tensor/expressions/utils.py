@@ -592,7 +592,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
         # expand the index (slice)
         idx = np.r_[slice(*d.indices(s)) if isinstance(d, slice) else d]
         input_indices.append(idx)
-        if isinstance(d, slice):
+        if not isinstance(d, Integral):
             value_indices.append(np.arange(len(idx)))
 
     records = []
