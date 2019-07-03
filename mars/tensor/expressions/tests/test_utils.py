@@ -19,9 +19,10 @@ from numbers import Integral
 
 import numpy as np
 
+import mars.tensor as mt
 from mars.tensor.expressions.utils import normalize_chunk_sizes, broadcast_shape, \
     replace_ellipsis, calc_sliced_size, slice_split, decide_unify_split, unify_chunks, \
-    split_indexes_into_chunks, decide_chunk_sizes, calc_pos
+    split_indexes_into_chunks, decide_chunk_sizes, calc_pos, check_random_state
 from mars.tensor.expressions.datasource import ones
 from mars.config import option_context
 
@@ -242,3 +243,18 @@ class Test(unittest.TestCase):
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
             self.assertEqual(120, itemsize * np.prod([np.max(a) for a in nsplit]))  # 20 * 3 * 1 * 2 exceeds limitation
 
+    def testCheckRandomState(self):
+        # Check the check_random_state utility function behavior
+        self.assertIs(check_random_state(None), mt.random._random_state)
+        self.assertIs(check_random_state(np.random), mt.random._random_state)
+
+        rng_42 = np.random.RandomState(42)
+        self.assertEquals(check_random_state(42)._random_state.randint(100), rng_42.randint(100))
+
+        rng_42 = mt.random.RandomState(42)
+        self.assertIs(check_random_state(rng_42), rng_42)
+
+        rng_42 = np.random.RandomState(42)
+        self.assertIs(check_random_state(rng_42)._random_state, rng_42)
+
+        self.assertRaises(ValueError, check_random_state, "some invalid seed")

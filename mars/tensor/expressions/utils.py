@@ -501,8 +501,9 @@ def check_random_state(seed):
     :return:
     """
     from . import random as mtrand
+    from numpy import random as np_mtrand
 
-    if seed is None or seed is mtrand:
+    if seed is None or seed is mtrand or seed is np_mtrand:
         return mtrand._random_state
     if isinstance(seed, (Integral, np.integer)):
         return mtrand.RandomState(seed)
