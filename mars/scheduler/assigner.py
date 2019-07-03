@@ -289,7 +289,6 @@ class AssignEvaluationActor(SchedulerActor):
             # put unassigned back to the queue, if any
             self._assigner_ref.extend(unassigned)
 
-    @promise.reject_on_exception
     @log_unhandled
     def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None, callback=None):
         """

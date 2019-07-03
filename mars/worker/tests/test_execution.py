@@ -371,6 +371,7 @@ class Test(WorkerCase):
 
             self.get_result()
 
+    @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
     def testEstimateGraphFinishTime(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
@@ -386,8 +387,6 @@ class Test(WorkerCase):
             graph = arr.build_graph(compose=False, tiled=True)
 
             graph_key = str(uuid.uuid4())
-            execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                        dict(chunks=[arr.chunks[0].key]), None)
 
             for _ in range(options.optimize.min_stats_count + 1):
                 status_ref.update_mean_stats(
@@ -396,7 +395,10 @@ class Test(WorkerCase):
                 status_ref.update_mean_stats('disk_write_speed', 10)
                 status_ref.update_mean_stats('net_transfer_speed', 10)
 
+            execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                        dict(chunks=[arr.chunks[0].key]), None)
             execution_ref.estimate_graph_finish_time(session_id, graph_key)
+
             stats_dict = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])
             self.assertIsNotNone(stats_dict.get('min_est_finish_time'))
             self.assertIsNotNone(stats_dict.get('max_est_finish_time'))

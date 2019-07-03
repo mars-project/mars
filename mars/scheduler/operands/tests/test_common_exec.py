@@ -233,9 +233,6 @@ class Test(unittest.TestCase):
     @patch_method(OperandActor._get_raw_execution_ref)
     @patch_method(OperandActor._free_data_in_worker)
     def testOperandActorWithCancel(self, *_):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
-
         arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
         arr2 = arr + arr_add

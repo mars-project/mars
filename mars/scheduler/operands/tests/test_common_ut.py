@@ -124,12 +124,19 @@ class Test(unittest.TestCase):
             [c.key for c in graph if isinstance(c.op, TensorIndex)],
         )
 
+    @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
+    @patch_method(ResourceActor.detach_dead_workers)
+    @patch_method(ResourceActor.detect_dead_workers)
     def testReadyState(self, *_):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
         mock_workers = ['localhost:12345', 'localhost:23456']
 
-        with self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
+        def _mock_get_workers_meta(*_, **__):
+            return dict((w, dict(hardware=dict(cpu_total=1, memory=1024 ** 3))) for w in mock_workers)
+
+        with patch_method(ResourceActor.get_workers_meta, new=_mock_get_workers_meta) as _, \
+                self._prepare_test_graph(session_id, graph_key, mock_workers) as (pool, graph_ref):
             input_op_keys, mid_op_key, output_op_keys = self._filter_graph_level_op_keys(graph_ref)
             meta_client = ChunkMetaClient(pool, pool.actor_ref(SchedulerClusterInfoActor.default_uid()))
             op_ref = pool.actor_ref(OperandActor.gen_uid(session_id, mid_op_key))

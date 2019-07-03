@@ -17,7 +17,7 @@ fi
 
 curl -s -o miniconda.sh https://repo.continuum.io/miniconda/$CONDA_FILE
 bash miniconda.sh -b -p $HOME/miniconda && rm miniconda.sh
-$HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil pyyaml nomkl
+$HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil pyyaml nomkl libopenblas
 export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"
 
 #check python version
