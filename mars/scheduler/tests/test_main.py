@@ -437,7 +437,7 @@ class Test(unittest.TestCase):
             json.dumps(graph.to_json()), graph_key, target_tileables=targets)
 
         while not os.path.exists(terminate_file):
-            actor_client.sleep(0.05)
+            actor_client.sleep(0.01)
 
         kill_process_tree(self.proc_workers[0])
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)

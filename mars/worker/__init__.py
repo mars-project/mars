@@ -21,5 +21,4 @@ from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
 from .spill import SpillActor
 from .status import StatusActor
-from .taskqueue import TaskQueueActor
 from .transfer import SenderActor, ReceiverActor

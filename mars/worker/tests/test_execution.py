@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import functools
 import tempfile
 import threading
 import time
@@ -130,9 +129,10 @@ class ExecutionTestActor(WorkerActor):
 
         graph_key = self._graph_key = str(uuid.uuid4())
         execution_ref = self.promise_ref(ExecutionActor.default_uid())
-        execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                    dict(chunks=[arr.chunks[0].key]), None, _promise=True) \
-            .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+        execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                    dict(chunks=[arr.chunks[0].key]), None, _tell=True)
+
+        execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
             .then(lambda *_: self._results.append((True,))) \
             .catch(lambda *exc: self._results.append((False, exc)))
 
@@ -176,7 +176,6 @@ class Test(WorkerCase):
         pool.create_actor(
             ChunkHolderActor, cls.plasma_storage_size, uid=ChunkHolderActor.default_uid())
         pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
-        pool.create_actor(TaskQueueActor, uid=TaskQueueActor.default_uid())
         pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         pool.create_actor(QuotaActor, quota_size, uid=MemQuotaActor.default_uid())
         pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
@@ -231,11 +230,8 @@ class Test(WorkerCase):
                     assert_array_equal(data, 2 * np.ones((10, 8)))
 
                 graph_key = str(uuid.uuid4())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[arr2.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _tell=True))
-
-                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -256,117 +252,11 @@ class Test(WorkerCase):
 
             self.get_result()
 
-    def testPrepushGraph(self):
-        import mars.tensor as mt
-        from mars.graph import DAG
-        from mars.tensor.expressions.fetch import TensorFetch
-
-        data_inputs = [np.random.random((4,)) for _ in range(2)]
-
-        arr_inputs = [mt.tensor(di, chunk_size=4) for di in data_inputs]
-        arr_add = arr_inputs[0] + arr_inputs[1]
-
-        graph_inputs = [a.build_graph(tiled=True) for a in arr_inputs]
-        graph_input_op_keys = [a.chunks[0].op.key for a in arr_inputs]
-        arr_add.build_graph(tiled=True)
-
-        graph_add = DAG()
-        input_chunks = []
-        for a in arr_inputs:
-            fetch_op = TensorFetch(dtype=a.dtype)
-            inp_chunk = fetch_op.new_chunk(None, shape=a.shape, _key=a.chunks[0].key).data
-            input_chunks.append(inp_chunk)
-
-        new_op = arr_add.chunks[0].op.copy()
-        new_add_chunk = new_op.new_chunk(input_chunks, shape=arr_add.shape, index=arr_add.chunks[0].index,
-                                         dtype=arr_add.dtype, _key=arr_add.chunks[0].key)
-        graph_add.add_node(new_add_chunk)
-        for inp_chunk in input_chunks:
-            graph_add.add_node(inp_chunk)
-            graph_add.add_edge(inp_chunk, new_add_chunk)
-        graph_add_key = arr_add.chunks[0].op.key
-
-        pool_address = '127.0.0.1:%d' % get_next_port()
-        session_id = str(uuid.uuid4())
-
-        def _validate(_):
-            data = test_actor._chunk_store.get(session_id, arr_add.chunks[0].key)
-            assert_array_equal(data, data_inputs[0] + data_inputs[1])
-
-        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_worker_prep_spilled-')
-
-        # register when all predecessors unfinished
-        with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
-            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
-            pool.create_actor(SpillActor)
-            pool.create_actor(CpuCalcActor)
-
-            with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(
-                    session_id, graph_add_key, serialize_graph(graph_add),
-                    dict(chunks=[new_add_chunk.key]), None,
-                    pred_keys=graph_input_op_keys, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_add_key, _promise=True)) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-                for ginput, op_key, gtensor in zip(graph_inputs, graph_input_op_keys, arr_inputs):
-                    def _start_exec_promise(session_id, op_key, *_):
-                        return execution_ref.start_execution(session_id, op_key, _promise=True)
-
-                    execution_ref.enqueue_graph(
-                        session_id, op_key, serialize_graph(ginput),
-                        dict(chunks=[gtensor.chunks[0].key]), None,
-                        succ_keys=[new_add_chunk.op.key], _promise=True) \
-                        .then(functools.partial(_start_exec_promise, session_id, op_key))
-
-                self.get_result()
-
-        pool_address = '127.0.0.1:%d' % get_next_port()
-        session_id = str(uuid.uuid4())
-
-        # register when part of predecessors unfinished
-        with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
-            self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
-            pool.create_actor(SpillActor)
-            pool.create_actor(CpuCalcActor)
-
-            with self.run_actor_test(pool) as test_actor:
-                execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-
-                execution_ref.enqueue_graph(
-                    session_id, graph_input_op_keys[0], serialize_graph(graph_inputs[0]),
-                    dict(chunks=[input_chunks[0].key]), None,
-                    succ_keys=[new_add_chunk.op.key], _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_input_op_keys[0], _promise=True)) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-                self.get_result()
-
-                execution_ref.enqueue_graph(
-                    session_id, graph_add_key, serialize_graph(graph_add),
-                    dict(chunks=[new_add_chunk.key]), None,
-                    pred_keys=graph_input_op_keys, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_add_key, _promise=True)) \
-                    .then(_validate) \
-                    .then(lambda *_: test_actor.set_result(None)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, False))
-
-                execution_ref.enqueue_graph(
-                    session_id, graph_input_op_keys[1], serialize_graph(graph_inputs[1]),
-                    dict(chunks=[input_chunks[1].key]), None,
-                    succ_keys=[new_add_chunk.op.key], _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_input_op_keys[1], _promise=True))
-
-                self.get_result()
-
     @patch_method(ChunkHolderActor.pin_chunks)
     def testPrepareQuota(self, *_):
         pinned = [True]
 
-        def _mock_pin(graph_key, chunk_keys):
+        def _mock_pin(_graph_key, chunk_keys):
             from mars.errors import PinChunkFailed
             if pinned[0]:
                 raise PinChunkFailed
@@ -380,6 +270,7 @@ class Test(WorkerCase):
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
+            pool.create_actor(CpuCalcActor)
             cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
@@ -402,9 +293,11 @@ class Test(WorkerCase):
 
                 start_time = time.time()
 
-                execution_ref.enqueue_graph(
+                execution_ref.execute_graph(
                     session_id, graph_key, serialize_graph(graph),
-                    dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                    dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+
+                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(lambda *_: test_actor.set_result(time.time())) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
@@ -450,9 +343,8 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
@@ -460,7 +352,7 @@ class Test(WorkerCase):
                 self.get_result()
 
             chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                          shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
             write_spill_file(modified_chunk.key, mock_data)
 
             # test read from spilled file
@@ -471,15 +363,15 @@ class Test(WorkerCase):
 
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
             self.get_result()
 
+    @patch_method(ResourceActor.allocate_resource, new=lambda *_, **__: True)
     def testEstimateGraphFinishTime(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
@@ -488,14 +380,13 @@ class Test(WorkerCase):
 
             status_ref = pool.actor_ref(StatusActor.default_uid())
             execution_ref = pool.actor_ref(ExecutionActor.default_uid())
+            pool.create_actor(CpuCalcActor)
 
             import mars.tensor as mt
             arr = mt.ones((10, 8), chunk_size=10)
             graph = arr.build_graph(compose=False, tiled=True)
 
             graph_key = str(uuid.uuid4())
-            execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                        dict(chunks=[arr.chunks[0].key]), None)
 
             for _ in range(options.optimize.min_stats_count + 1):
                 status_ref.update_mean_stats(
@@ -504,10 +395,13 @@ class Test(WorkerCase):
                 status_ref.update_mean_stats('disk_write_speed', 10)
                 status_ref.update_mean_stats('net_transfer_speed', 10)
 
+            execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                        dict(chunks=[arr.chunks[0].key]), None)
             execution_ref.estimate_graph_finish_time(session_id, graph_key)
-            min_time, max_time = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])
-            self.assertIsNotNone(min_time)
-            self.assertIsNotNone(max_time)
+
+            stats_dict = status_ref.get_stats(['min_est_finish_time', 'max_est_finish_time'])
+            self.assertIsNotNone(stats_dict.get('min_est_finish_time'))
+            self.assertIsNotNone(stats_dict.get('max_est_finish_time'))
 
     def testCalcProcessFailure(self):
         pool_address = '127.0.0.1:%d' % get_next_port()
@@ -594,9 +488,10 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+
+                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
@@ -608,9 +503,10 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+
+                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
@@ -626,9 +522,10 @@ class Test(WorkerCase):
 
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+
+                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -659,10 +556,13 @@ class Test(WorkerCase):
 
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None,
-                                            send_addresses={result_key: (pool_address,)}, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
+
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
+                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+                execution_ref.send_data_to_workers(
+                    session_id, graph_key, {result_key: (pool_address,)}, _tell=True)
+
+                execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -693,9 +593,8 @@ class Test(WorkerCase):
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -704,9 +603,8 @@ class Test(WorkerCase):
 
             with self.run_actor_test(pool) as test_actor:
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
-                execution_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+                execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                             dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
-                    .then(lambda *_: execution_ref.start_execution(session_id, graph_key, _promise=True)) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))

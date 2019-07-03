@@ -32,7 +32,7 @@ class BaseOperandActor(SchedulerActor):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
-        self._info = copy.deepcopy(op_info)
+        op_info = self._info = copy.deepcopy(op_info)
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
@@ -79,7 +79,7 @@ class BaseOperandActor(SchedulerActor):
         from ..resource import ResourceActor
 
         self.set_cluster_info_ref()
-        self._assigner_ref = self.ctx.actor_ref(AssignerActor.default_uid())
+        self._assigner_ref = self.get_promise_ref(AssignerActor.gen_uid(self._session_id))
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
@@ -207,9 +207,6 @@ class BaseOperandActor(SchedulerActor):
             return
         if self.state != state:
             self.start_operand(state)
-
-    def add_running_predecessor(self, op_key, worker):
-        pass
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)

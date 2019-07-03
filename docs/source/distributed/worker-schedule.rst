@@ -5,12 +5,11 @@ notorious global interpreter lock (GIL) in Python. Executions run in separate
 processes. To reduce unnecessary memory copy and inter-process communication,
 shared memory is used to store computation results.
 
-When an operand is submitted into a worker, it will first be queued and wait
-for memory allocation.  When the memory is allocated, dependencies' data from
-other workers or from files already spilled to disk are loaded.  Once all data
-required are in memory, calculation can start. When calculation is done, the
-worker then put the result into shared memory cache. These four states can be
-seen in the graph below.
+When an operand is being executed in a worker, it will first allocate memory.
+Then data from other workers or from files already spilled to disk are loaded.
+After that all data required are in memory and calculation can start. When
+calculation is done, the worker then put the result into shared memory cache.
+These four states can be seen in the graph below.
 
 .. figure:: ../images/worker-states.svg
 
@@ -21,12 +20,9 @@ on the worker. It does not actually do calculation or data transfer itself, but
 submit these actions to other actors.
 
 OperandActors in schedulers submit an operand into workers through
-``enqueue_graph`` calls. The worker accepts and queues the operand. If the
-operand is ready for execution, ExecutionActor will notify the scheduler to
-determine whether to execute this operand. The scheduler will call
-``start_execution`` if it is determined to execute on the worker. Then a
-callback is registered via ``add_finish_callback``. This design allows finish
-message be sent to different places, which is necessary for failover.
+``execute_graph`` calls. Then a callback is registered via
+``add_finish_callback``. This design allows finish message be sent to different
+places, which is necessary for failover.
 
 ExecutionActor uses ``mars.promise`` module to handle multiple operands
 simultaneously. Execution steps are chained via ``then`` method of the

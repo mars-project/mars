@@ -53,9 +53,8 @@ class WorkerProcessTestActor(PromiseActor):
         io_meta = dict(chunks=[c.key for c in result.chunks])
 
         graph_key = str(id(graph))
-        executor_ref.enqueue_graph(session_id, graph_key, serialize_graph(graph),
+        executor_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
                                    io_meta, None, _promise=True) \
-            .then(lambda *_: executor_ref.start_execution(session_id, graph_key, _promise=True)) \
             .then(lambda *_: setattr(self, '_replied', True))
 
     def get_reply(self):

@@ -47,9 +47,6 @@ class ShuffleProxyActor(BaseOperandActor):
             target_worker=self._reducer_workers.get(reducer_op_key),
             _tell=True, _wait=wait)
 
-    def add_running_predecessor(self, op_key, worker):
-        pass
-
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         super(ShuffleProxyActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 

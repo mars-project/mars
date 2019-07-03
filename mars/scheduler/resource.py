@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import time
+from collections import defaultdict
 
 from .kvstore import KVStoreActor
 from .session import SessionManagerActor, SessionActor
@@ -50,6 +51,7 @@ class ResourceActor(SchedulerActor):
         super(ResourceActor, self).__init__()
         self._meta_cache = dict()
         self._worker_blacklist = BlacklistSet(options.scheduler.worker_blacklist_time)
+        self._worker_allocations = dict()
 
         self._last_heartbeat_time = time.time()
         self._last_heartbeat_interval = 0
@@ -152,19 +154,11 @@ class ResourceActor(SchedulerActor):
             self._broadcast_workers(ExecutionActor.handle_worker_change, [worker], [])
 
     def _broadcast_sessions(self, handler, *args, **kwargs):
-        from .assigner import AssignerActor
-
         if not options.scheduler.enable_failover:  # pragma: no cover
             return
 
         if hasattr(handler, '__name__'):
             handler = handler.__name__
-
-        futures = []
-        for ep in self.get_schedulers():
-            ref = self.ctx.actor_ref(AssignerActor.default_uid(), address=ep)
-            futures.append(ref.mark_metrics_expired(_tell=True, _wait=False))
-        [f.result() for f in futures]
 
         futures = []
         kwargs.update(dict(_tell=True, _wait=False))
@@ -186,3 +180,54 @@ class ResourceActor(SchedulerActor):
         for w in self._meta_cache.keys():
             ref = self.ctx.actor_ref(ExecutionActor.default_uid(), address=w)
             getattr(ref, handler)(*args, **kwargs)
+
+    def allocate_resource(self, session_id, op_key, endpoint, alloc_dict):
+        """
+        Try allocate resource for operands
+        :param session_id: session id
+        :param op_key: operand key
+        :param endpoint: worker endpoint
+        :param alloc_dict: allocation dict, listing resources needed by the operand
+        :return: True if allocated successfully
+        """
+        worker_stats = self._meta_cache[endpoint]['hardware']
+        if endpoint not in self._worker_allocations:
+            self._worker_allocations[endpoint] = dict()
+        if session_id not in self._worker_allocations[endpoint]:
+            self._worker_allocations[endpoint][session_id] = dict()
+        worker_allocs = self._worker_allocations[endpoint][session_id]
+
+        res_used = defaultdict(lambda: 0)
+        free_alloc_keys = []
+        for alloc in worker_allocs.values():
+            for k, v in alloc[0].items():
+                res_used[k] += v
+        for k in free_alloc_keys:
+            self.deallocate_resource(session_id, k, endpoint)
+
+        for k, v in alloc_dict.items():
+            res_used[k] += v
+
+        sufficient = True
+        for k, v in res_used.items():
+            if res_used[k] > worker_stats.get(k, 0):
+                sufficient = False
+                break
+
+        if sufficient:
+            self._worker_allocations[endpoint][session_id][op_key] = (alloc_dict, time.time())
+            return True
+        else:
+            return False
+
+    def deallocate_resource(self, session_id, op_key, endpoint):
+        """
+        Deallocate resource
+        :param session_id: session id
+        :param op_key: operand key
+        :param endpoint: worker endpoint
+        """
+        try:
+            del self._worker_allocations[endpoint][session_id][op_key]
+        except KeyError:
+            pass
