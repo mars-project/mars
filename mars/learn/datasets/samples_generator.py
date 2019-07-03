@@ -14,6 +14,7 @@
 
 from ... import tensor as mt
 from ...tensor.expressions.utils import check_random_state
+from ...tensor.expressions import linalg
 
 
 # -------------------------------------------------------------------
@@ -74,8 +75,6 @@ def make_low_rank_matrix(n_samples=100, n_features=100, effective_rank=10,
     X : array of shape [n_samples, n_features]
         The matrix.
     """
-    from ...tensor.expressions import linalg
-
     generator = check_random_state(random_state)
     n = min(n_samples, n_features)
 
