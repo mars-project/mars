@@ -14,3 +14,15 @@
 
 from .abs import abs, DataFrameAbs
 from .add import add, DataFrameAdd
+
+
+def _install():
+    from ...core import DATAFRAME_TYPE
+    from .add import add, radd
+    for cls in DATAFRAME_TYPE:
+        setattr(cls, '__add__', add)
+        setattr(cls, '__radd__', radd)
+
+
+_install()
+del _install
