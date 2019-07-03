@@ -15,7 +15,6 @@
 # limitations under the License.
 
 from collections import Iterable
-import itertools
 from math import ceil
 from numbers import Integral
 import operator
