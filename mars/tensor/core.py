@@ -438,11 +438,11 @@ class MutableTensor(Entity):
     __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
-    def __init__(self, buffer_size=128, *args, **kwargs):
+    def __init__(self, chunk_size, *args, **kwargs):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        self._buffer_size = buffer_size
+        self._buffer_size = chunk_size * chunk_size
 
     def __len__(self):
         return len(self._data)
@@ -450,9 +450,6 @@ class MutableTensor(Entity):
     @property
     def name(self):
         return self._data.name
-
-    def copy(self):
-        return MutableTensor(self._data)
 
     def __setitem__(self, index, value):
         from ..session import Session
@@ -520,12 +517,12 @@ class MutableTensor(Entity):
 
     @log_unhandled
     def _do_flush(self, buffer_size_limit=1, affected_chunk_keys=None):
-        chunk_records_to_send = []
+        chunk_records_to_send = dict()
         affected_chunk_keys = affected_chunk_keys or self._chunk_buffers.keys()
         for chunk_key in affected_chunk_keys:
             records = self._chunk_buffers[chunk_key]
             if len(records) >= buffer_size_limit:
-                chunk_records_to_send.append((chunk_key, np.array(records, dtype=self._record_type)))
+                chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
 

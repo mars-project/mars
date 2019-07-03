@@ -554,6 +554,7 @@ def create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=None):
     return fetch_op.copy().new_tensor(None, shape=shape, dtype=dtype,
                                       nsplits=chunk_size, chunks=chunks)
 
+
 def setitem_as_records(nsplits_acc, output_chunk, value, ts):
     '''
     Turns a `__setitem__`  to a list of index-value records.
@@ -603,6 +604,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
             new_value = chunk_value[value_idx]
         records.append((np.ravel_multi_index(chunk_idx, input_chunk.shape), ts, new_value))
     return records
+
 
 def get_fetch_op_cls(op):
     from ...operands import ShuffleProxy

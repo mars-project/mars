@@ -100,7 +100,7 @@ class MarsAPI(object):
         session_ref = self.get_actor_ref(session_uid)
 
         chunk_records = []
-        for chunk_key, records in chunk_records_to_send:
+        for chunk_key, records in chunk_records_to_send.items():
             record_chunk_key = tokenize(chunk_key, uuid.uuid4().hex)
             ep = self.cluster_info.get_scheduler(chunk_key)
             # register quota

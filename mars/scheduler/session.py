@@ -106,21 +106,21 @@ class SessionActor(SchedulerActor):
     def get_mutable_tensor(self, name):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+            raise RuntimeError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return tensor_ref.tensor_meta()
 
     @log_unhandled
     def read_mutable_tensor(self, name, index):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+            raise RuntimeError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return tensor_ref.read(index)
 
     @log_unhandled
     def append_chunk_records(self, name, chunk_records):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+            raise RuntimeError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
         return tensor_ref.append_chunk_records(chunk_records)
 
     @log_unhandled
@@ -129,7 +129,7 @@ class SessionActor(SchedulerActor):
 
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
-            raise RuntimeError("The mutable tensor with name %s doesn't exist, or has already been sealed.", name)
+            raise RuntimeError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
 
         graph_key, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
 
