@@ -408,12 +408,12 @@ class MutableTensorData(TensorData):
         return super(MutableTensorData, cls).cls(provider)
 
     def __str__(self):
-        return 'MutableTensorData(op={0}, name={1}, shape={2})'.format(self.op.__class__.__name__,
+        return 'MutableTensor(op={0}, name={1}, shape={2})'.format(self.op.__class__.__name__,
                                                                    self.name,
                                                                    self.shape)
 
     def __repr__(self):
-        return 'MutableTensorData <op={0}, name={1}, shape={2}, key={3}>'.format(self.op.__class__.__name__,
+        return 'MutableTensor <op={0}, name={1}, shape={2}, key={3}>'.format(self.op.__class__.__name__,
                                                                              self.name,
                                                                              self.shape,
                                                                              self.key)
