@@ -486,10 +486,24 @@ class DataFrameData(TileableData):
     def columns(self):
         return self._columns_value
 
+    def add(self, other, axis='columns', level=None, fill_value=None):
+        from .expressions.arithmetic.add import add
+        return add(self, other, axis, level, fill_value)
+
+    def radd(self, other, axis='columns', level=None, fill_value=None):
+        from .expressions.arithmetic.add import radd
+        return radd(self, other, axis, level, fill_value)
+
 
 class DataFrame(Entity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
+
+    def add(self, other, axis='columns', level=None, fill_value=None):
+        return self._data.add(other, axis, level, fill_value)
+
+    def radd(self, other, axis='columns', level=None, fill_value=None):
+        return self._data.radd(other, axis, level, fill_value)
 
 
 INDEX_TYPE = (Index, IndexData)
