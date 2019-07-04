@@ -4,8 +4,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
     <title>Mars UI</title>
-    {{ bokeh_css }}
-    {{ bokeh_js }}
     <script type="text/javascript" src="/static/js/jquery-3.2.1.min.js"></script>
     <script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="/static/js/moment.min.js"></script>
@@ -47,7 +45,7 @@
                         {% endblock %}
                     </li>
                     <li>
-                        <a href="/task" {% if active_page == 'task_list' %}class="active"{% endif %}><i class="fa fa-tasks fa-fw"></i> Tasks</a>
+                        <a href="/session" {% if active_page == 'task_list' %}class="active"{% endif %}><i class="fa fa-tasks fa-fw"></i> Tasks</a>
                         {% block task_submenu %}
                         {% endblock %}
                     </li>

@@ -12,37 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .server import register_ui_handler, get_jinja_env
-from ..utils import to_str
-from .server import MarsWebAPI
+from .server import MarsRequestHandler, register_web_handler, get_jinja_env
 
 _jinja_env = get_jinja_env()
 
 
-def scheduler_list(doc, schedulers_info):
-    doc.title = 'Mars UI'
+class SchedulerListHandler(MarsRequestHandler):
+    def get(self):
+        schedulers_info = self.web_api.get_schedulers_info()
 
-    doc.template_variables['scheduler_metrics'] = schedulers_info
-    doc.template = _jinja_env.get_template('scheduler_list.html')
-
-
-def scheduler_detail(doc, schedulers_info, endpoint):
-    doc.title = 'Mars UI'
-
-    doc.template_variables['endpoint'] = endpoint
-    doc.template_variables['scheduler_metrics'] = schedulers_info[endpoint]
-    doc.template = _jinja_env.get_template('scheduler_detail.html')
+        template = _jinja_env.get_template('scheduler_list.html')
+        self.write(template.render(scheduler_metrics=schedulers_info))
 
 
-def _route(scheduler_ip, doc):
-    web_api = MarsWebAPI(scheduler_ip)
-    schedulers_info = web_api.get_schedulers_info()
+class SchedulerHandler(MarsRequestHandler):
+    def get(self, endpoint):
+        schedulers_info = self.web_api.get_schedulers_info()
 
-    endpoint = doc.session_context.request.arguments.get('endpoint')
-    if not endpoint:
-        return scheduler_list(doc, schedulers_info)
-    else:
-        return scheduler_detail(doc, schedulers_info, to_str(endpoint[0]))
+        template = _jinja_env.get_template('scheduler_detail.html')
+        self.write(template.render(
+            endpoint=endpoint,
+            scheduler_metrics=schedulers_info[endpoint],
+        ))
 
 
-register_ui_handler('/scheduler', _route)
+register_web_handler('/scheduler', SchedulerListHandler)
+register_web_handler('/scheduler/(?P<endpoint>[^/]+)', SchedulerHandler)

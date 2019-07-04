@@ -23,7 +23,7 @@
                         {% if task_desc['state'] == 'preparing'%}
                             <td>{{ task_id }}</td>
                         {% else %}
-                            <td><a href="/task?session_id={{ session_id }}&task_id={{ task_id }}">{{ task_id }}</a></td>
+                            <td><a href="/session/{{ session_id }}/graph/{{ task_id }}">{{ task_id }}</a></td>
                         {% endif %}
                         {% if task_desc['start_time'] is defined %}
                             <td>{{ task_desc['start_time'] | format_ts }}</td>

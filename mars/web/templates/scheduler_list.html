@@ -30,7 +30,7 @@
                 {%- for endpoint in scheduler_metrics %}
                     {% set metrics = scheduler_metrics[endpoint] %}
                     <tr>
-                        <td><a href="/scheduler?endpoint={{ endpoint }}">{{ endpoint }}</a></td>
+                        <td><a href="/scheduler/{{ endpoint }}">{{ endpoint }}</a></td>
                         <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
                         <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
                         <td>{{ scheduler_metrics[endpoint]['update_time'] | format_ts }}</td>

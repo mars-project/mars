@@ -27,7 +27,7 @@ from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
 from ..utils import to_str
-from .server import MarsWebAPI, register_api_handler
+from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
 _actor_client = new_client()
@@ -49,11 +49,10 @@ if six.PY2:  # pragma: no cover
     _patch_futures()
 
 
-class ApiRequestHandler(web.RequestHandler):
-    def initialize(self, scheduler_ip):
-        self.set_header("Content-Type", "text/plain")
-        self._scheduler = scheduler_ip
-        self.web_api = MarsWebAPI(scheduler_ip)
+class MarsApiRequestHandler(MarsRequestHandler):
+    def set_default_headers(self):
+        super(MarsApiRequestHandler, self).set_default_headers()
+        self.set_header('Content-Type', 'application/json')
 
     def _dump_exception(self, exc_info):
         pickled_exc = pickle.dumps(exc_info)
@@ -63,12 +62,12 @@ class ApiRequestHandler(web.RequestHandler):
         raise web.HTTPError(500, 'Internal server error')
 
 
-class ApiEntryHandler(ApiRequestHandler):
+class ApiEntryHandler(MarsApiRequestHandler):
     def get(self):
         self.write(dict(msg='Mars API Entry'))
 
 
-class SessionsApiHandler(ApiRequestHandler):
+class SessionsApiHandler(MarsApiRequestHandler):
     def post(self):
         args = {k: self.get_argument(k) for k in self.request.arguments}
         session_id = str(uuid.uuid1())
@@ -76,12 +75,12 @@ class SessionsApiHandler(ApiRequestHandler):
         self.write(json.dumps(dict(session_id=session_id)))
 
 
-class SessionApiHandler(ApiRequestHandler):
+class SessionApiHandler(MarsApiRequestHandler):
     def delete(self, session_id):
         self.web_api.delete_session(session_id)
 
 
-class GraphsApiHandler(ApiRequestHandler):
+class GraphsApiHandler(MarsApiRequestHandler):
     def get(self, session_id):
         try:
             graph_states = self.web_api.get_tasks_info(session_id)
@@ -107,7 +106,7 @@ class GraphsApiHandler(ApiRequestHandler):
             self._dump_exception(sys.exc_info())
 
 
-class GraphApiHandler(ApiRequestHandler):
+class GraphApiHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
@@ -134,7 +133,7 @@ class GraphApiHandler(ApiRequestHandler):
         self.web_api.stop_graph(session_id, graph_key)
 
 
-class GraphDataHandler(ApiRequestHandler):
+class GraphDataHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tileable_key):
         type_arg = self.request.arguments.get('type')
@@ -165,17 +164,17 @@ class GraphDataHandler(ApiRequestHandler):
         self.web_api.delete_data(session_id, graph_key, tileable_key)
 
 
-class WorkersApiHandler(ApiRequestHandler):
+class WorkersApiHandler(MarsApiRequestHandler):
     def get(self):
         workers_num = self.web_api.count_workers()
         self.write(json.dumps(workers_num))
 
 
-register_api_handler('/api', ApiEntryHandler)
-register_api_handler('/api/session', SessionsApiHandler)
-register_api_handler('/api/worker', WorkersApiHandler)
-register_api_handler('/api/session/(?P<session_id>[^/]+)', SessionApiHandler)
-register_api_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandler)
-register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
-register_api_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
+register_web_handler('/api', ApiEntryHandler)
+register_web_handler('/api/session', SessionsApiHandler)
+register_web_handler('/api/worker', WorkersApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)', SessionApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataHandler)

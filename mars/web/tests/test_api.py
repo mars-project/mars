@@ -200,23 +200,20 @@ class Test(unittest.TestCase):
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get('%s/task' % (service_ep,))
-            self.assertEqual(res.status_code, 200)
-
             res = requests.get('%s/scheduler' % (service_ep,))
             self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/scheduler?endpoint=127.0.0.1:%s' % (service_ep, self.scheduler_port))
+            res = requests.get('%s/scheduler/127.0.0.1:%s' % (service_ep, self.scheduler_port))
             self.assertEqual(res.status_code, 200)
 
             res = requests.get('%s/worker' % (service_ep,))
             self.assertEqual(res.status_code, 200)
-            res = requests.get('%s/worker?endpoint=127.0.0.1:%s' % (service_ep, self.worker_port))
+            res = requests.get('%s/worker/127.0.0.1:%s' % (service_ep, self.worker_port))
             self.assertEqual(res.status_code, 200)
 
-            res = requests.get('%s/task' % (service_ep,))
+            res = requests.get('%s/session' % (service_ep,))
             self.assertEqual(res.status_code, 200)
             task_id = next(iter(graphs.keys()))
-            res = requests.get('%s/task?session_id=%s&task_id=%s' % (service_ep, sess._session_id, task_id))
+            res = requests.get('%s/session/%s/graph/%s' % (service_ep, sess._session_id, task_id))
             self.assertEqual(res.status_code, 200)
 
 
