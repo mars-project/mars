@@ -18,13 +18,12 @@ import numpy as np
 
 from ..config import options
 from ..utils import log_unhandled
-from ..worker.transfer import ResultSenderActor
 from .utils import SchedulerActor
 
 
 class MutableTensorActor(SchedulerActor):
     """
-    Actor handling execution and status of a Mars graph
+    Actor handling processing of a Mars mutable tensor.
     """
     @staticmethod
     def gen_uid(session_id, name):
@@ -74,11 +73,14 @@ class MutableTensorActor(SchedulerActor):
 
     @log_unhandled
     def seal(self):
+        from ..worker.seal import SealActor
         self._sealed = True
         for chunk in self._tensor.chunks:
             ep = self.get_scheduler(chunk.key)
-            chunk_sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=ep)
-            chunk_sender_ref.finalize_chunk(self._session_id, self._graph_key,
-                                            chunk.key, self._chunk_map[chunk.key],
-                                            chunk.shape, self._record_type, self._dtype)
+            sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
+            sealer_ref = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
+
+            sealer_ref.seal_chunk(self._session_id, self._graph_key,
+                                  chunk.key, self._chunk_map[chunk.key],
+                                  chunk.shape, self._record_type, self._dtype)
         return self._graph_key, self._tensor.key, self._tensor.id, self.tensor_meta()
