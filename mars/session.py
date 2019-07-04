@@ -210,6 +210,7 @@ class Session(object):
         tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
         return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
                                                     _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+
     def write_mutable_tensor(self, tensor, index, value):
         self._ensure_local_cluster()
         chunk_records_to_send = tensor._do_write(index, value)
