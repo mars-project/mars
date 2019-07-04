@@ -79,7 +79,9 @@ class SealActor(WorkerActor):
             self.get_meta_client().delete_meta(session_id, key, False)
             self._mem_quota_ref.release_quota(key)
 
-        self._chunk_store.put(session_id, chunk_key, ndarr)
+        # Hold the reference of the chunk before register_chunk
+        chunk_ref = self._chunk_store.put(session_id, chunk_key, ndarr)
         self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
                                               shape=shape, workers=(self.address,))
         self._chunk_holder_ref.register_chunk(session_id, chunk_key)
+        del chunk_ref
