@@ -198,8 +198,7 @@ class Session(object):
                 self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
         # Construct MutableTensor on the fly.
         tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-        return MutableTensor(chunk_size=chunk_size,
-                             data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
+        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
                                                     _nsplits=tensor.nsplits, _chunks=tensor.chunks))
 
     def get_mutable_tensor(self, name):
@@ -209,8 +208,7 @@ class Session(object):
         shape, dtype, chunk_size, chunk_keys = self._sess.get_mutable_tensor(name)
         # Construct MutableTensor on the fly.
         tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-        return MutableTensor(chunk_size=chunk_size,
-                             data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
+        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
                                                     _nsplits=tensor.nsplits, _chunks=tensor.chunks))
     def write_mutable_tensor(self, tensor, index, value):
         self._ensure_local_cluster()
@@ -229,7 +227,7 @@ class Session(object):
     def _ensure_local_cluster(self):
         from .deploy.local.session import LocalClusterSession
         if not isinstance(self._sess, LocalClusterSession):
-            raise RuntimeError("Only local cluster session can manipulate mutable tensors")
+            raise RuntimeError("Only local cluster session can be used to manipulate mutable tensors.")
 
 def new_session(scheduler=None, **kwargs):
     return Session(scheduler, **kwargs)

@@ -56,7 +56,7 @@ class MarsAPI(object):
             infos[scheduler] = info_ref.get_info()
         return infos
 
-    def get_receiver_ref(self, chunk_key):
+    def _get_receiver_ref(self, chunk_key):
         from .worker.dispatcher import DispatchActor
         ep = self.cluster_info.get_scheduler(chunk_key)
         dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
@@ -108,7 +108,7 @@ class MarsAPI(object):
             quota_ref.request_batch_quota({record_chunk_key: records.nbytes})
             # send record chunk
             buf = pyarrow.serialize(records).to_buffer()
-            receiver_ref = self.get_receiver_ref(chunk_key)
+            receiver_ref = self._get_receiver_ref(chunk_key)
             receiver_ref.create_data_writer(session_id, record_chunk_key, buf.size, None,
                                             ensure_cached=False, use_promise=False)
 

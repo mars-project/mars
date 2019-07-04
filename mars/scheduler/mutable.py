@@ -39,7 +39,7 @@ class MutableTensorActor(SchedulerActor):
         else:
             self._dtype = np.dtype(dtype)
         self._graph_key = graph_key
-        self._chunk_size = chunk_size or options.tensor.chunk_size
+        self._chunk_size = chunk_size
         self._tensor = None
         self._sealed = False
         self._chunk_map = defaultdict(lambda: [])

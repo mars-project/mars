@@ -16,7 +16,6 @@ import numpy as np
 import pyarrow
 
 from ..serialize import dataserializer
-from ..errors import *
 from ..utils import log_unhandled
 from .spill import build_spill_file_name
 from .utils import WorkerActor

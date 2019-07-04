@@ -441,11 +441,11 @@ class MutableTensor(Entity):
     __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
-    def __init__(self, chunk_size, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        self._buffer_size = chunk_size * chunk_size
+        self._buffer_size = np.prod(self.chunks[0].shape)
 
     def __len__(self):
         return len(self._data)
