@@ -15,6 +15,8 @@
 import numpy as np
 import pyarrow
 
+from ..config import options
+from ..errors import SpillNotConfigured
 from ..serialize import dataserializer
 from ..utils import log_unhandled
 from .spill import build_spill_file_name

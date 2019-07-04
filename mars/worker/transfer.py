@@ -699,8 +699,6 @@ class ResultSenderActor(WorkerActor):
         self._serialize_pool = None
 
     def post_create(self):
-        from .chunkholder import ChunkHolderActor
-        from .quota import MemQuotaActor
         super(ResultSenderActor, self).post_create()
         self._serialize_pool = self.ctx.threadpool(1)
 
