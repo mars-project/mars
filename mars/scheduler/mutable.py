@@ -13,22 +13,25 @@
 # limitations under the License.
 
 from collections import defaultdict
-import logging
 
 import numpy as np
 
 from ..config import options
-from .graph import GraphActor, GraphState
 from ..utils import log_unhandled
 from ..worker.transfer import ResultSenderActor
+from .utils import SchedulerActor
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
-class MutableTensorActor(GraphActor):
-    def __init__(self, session_id, name, shape, dtype, graph_key, chunk_size=None, *arg, **kwargs):
-        super(MutableTensorActor, self).__init__(session_id, graph_key, None,
-                                                 state=GraphState.SUCCEEDED, final_state=GraphState.SUCCEEDED)
+class MutableTensorActor(SchedulerActor):
+    """
+    Actor handling execution and status of a Mars graph
+    """
+    @staticmethod
+    def gen_uid(session_id, name):
+        return 's:0:mutable-tensor$%s$%s' % (session_id, name)
+
+    def __init__(self, session_id, name, shape, dtype, graph_key, chunk_size=None, *args, **kwargs):
+        super(MutableTensorActor, self).__init__(*args, **kwargs)
         self._session_id = session_id
         self._name = name
         self._shape = shape
@@ -48,15 +51,8 @@ class MutableTensorActor(GraphActor):
         from ..tensor.expressions.utils import create_fetch_tensor
 
         super(MutableTensorActor, self).post_create()
+        self.set_cluster_info_ref()
         self._tensor = create_fetch_tensor(self._chunk_size, self._shape, self._dtype)
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def tensor(self):
-        return self._tensor
 
     def tensor_meta(self):
         return self._shape, self._dtype, self._chunk_size, [c.key for c in self._tensor.chunks]
@@ -64,19 +60,8 @@ class MutableTensorActor(GraphActor):
     def tensor_key(self):
         return self._tensor.key
 
-    def graph_key(self):
-        return self._graph_key
-
     def sealed(self):
         return self._sealed
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def dtype(self):
-        return self._dtype
 
     @log_unhandled
     def read(self, tensor_index):
@@ -92,13 +77,8 @@ class MutableTensorActor(GraphActor):
         self._sealed = True
         for chunk in self._tensor.chunks:
             ep = self.get_scheduler(chunk.key)
-            chunk_sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(),
-                                                  address=ep)
+            chunk_sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=ep)
             chunk_sender_ref.finalize_chunk(self._session_id, self._graph_key,
                                             chunk.key, self._chunk_map[chunk.key],
                                             chunk.shape, self._record_type, self._dtype)
-
-        # Put chunks to records of GraphActor
-        self._tileable_key_to_opid[self._tensor.key] = self._tensor.op.id
-        self._tileable_key_opid_to_tiled[(self._tensor.key, self._tensor.op.id)].append(self._tensor)
         return self._graph_key, self._tensor.key, self._tensor.id, self.tensor_meta()

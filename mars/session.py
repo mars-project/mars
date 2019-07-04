@@ -197,7 +197,7 @@ class Session(object):
         shape, dtype, chunk_size, chunk_keys = \
                 self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
         # Construct MutableTensor on the fly.
-        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
         return MutableTensor(chunk_size=chunk_size,
                              data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
                                                     _nsplits=tensor.nsplits, _chunks=tensor.chunks))
@@ -208,7 +208,7 @@ class Session(object):
         self._ensure_local_cluster()
         shape, dtype, chunk_size, chunk_keys = self._sess.get_mutable_tensor(name)
         # Construct MutableTensor on the fly.
-        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
         return MutableTensor(chunk_size=chunk_size,
                              data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
                                                     _nsplits=tensor.nsplits, _chunks=tensor.chunks))
@@ -224,7 +224,7 @@ class Session(object):
         self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
         shape, dtype, chunk_size, chunk_keys = self._sess.seal(tensor.name)
         # Construct Tensor on the fly.
-        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys)
+        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
 
     def _ensure_local_cluster(self):
         from .deploy.local.session import LocalClusterSession

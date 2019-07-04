@@ -29,6 +29,7 @@ from .expressions.utils import get_chunk_slices
 import logging
 logger = logging.getLogger(__name__)
 
+
 class TensorChunkData(ChunkData):
     __slots__ = ()
 
@@ -394,6 +395,7 @@ class Tensor(Entity):
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
 
+
 class MutableTensorData(TensorData):
     __slots__ = ()
 
@@ -433,6 +435,7 @@ class MutableTensorData(TensorData):
     @property
     def compression(self):
         return getattr(self, '_compression', None)
+
 
 class MutableTensor(Entity):
     __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
@@ -525,6 +528,7 @@ class MutableTensor(Entity):
                 chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
+
 
 class SparseTensor(Tensor):
     __slots__ = ()

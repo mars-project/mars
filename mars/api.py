@@ -83,10 +83,10 @@ class MarsAPI(object):
         session_ref.submit_tileable_graph(
             serialized_graph, graph_key, target, compose=compose, _tell=not wait)
 
-    def create_mutable_tensor(self, session_id, name, tensor_key, shape, dtype, *args, **kwargs):
+    def create_mutable_tensor(self, session_id, name, shape, dtype, *args, **kwargs):
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
-        return session_ref.create_mutable_tensor(name, tensor_key, shape, dtype, *args, **kwargs)
+        return session_ref.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
 
     def get_mutable_tensor(self, session_id, name):
         session_uid = SessionActor.gen_uid(session_id)

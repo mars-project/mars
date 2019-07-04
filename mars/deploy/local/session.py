@@ -69,8 +69,7 @@ class LocalClusterSession(object):
         tileable.nsplits = new_nsplits
 
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
-        tensor_key = uuid.uuid4()
-        return self._api.create_mutable_tensor(self._session_id, name, tensor_key, shape,
+        return self._api.create_mutable_tensor(self._session_id, name, shape,
                                                dtype, *args, **kwargs)
 
     def get_mutable_tensor(self, name):
