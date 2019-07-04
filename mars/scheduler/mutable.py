@@ -16,7 +16,6 @@ from collections import defaultdict
 
 import numpy as np
 
-from ..config import options
 from ..utils import log_unhandled
 from .utils import SchedulerActor
 
