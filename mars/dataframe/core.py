@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     pass
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type
-from ..core import ChunkData, Chunk, Entity, TileableData
+from ..core import ChunkData, Chunk, Entity, TileableData, is_eager_mode
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
@@ -305,8 +305,21 @@ class IndexData(TileableData):
             return IndexDef
         return super(IndexData, cls).cls(provider)
 
+    def __str__(self):
+        if is_eager_mode():
+            return 'Index(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
+                                                      str(self.fetch()))
+        else:
+            return 'Index(op={0})'.format(self.op.__class__.__name__)
+
     def __repr__(self):
-        return 'Index <op={0}, key={1}>'.format(self.op.__class__.__name__, self.key)
+        if is_eager_mode():
+            return 'Index <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
+                                                                self.key,
+                                                                repr(self.fetch()))
+        else:
+            return 'Index <op={0}, key={1}>'.format(self.op.__class__.__name__,
+                                                    self.key)
 
     @property
     def dtype(self):
@@ -366,6 +379,22 @@ class SeriesData(TileableData):
             from ..serialize.protos.dataframe_pb2 import SeriesDef
             return SeriesDef
         return super(SeriesData, cls).cls(provider)
+
+    def __str__(self):
+        if is_eager_mode():
+            return 'Series(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
+                                                       str(self.fetch()))
+        else:
+            return 'Series(op={0})'.format(self.op.__class__.__name__)
+
+    def __repr__(self):
+        if is_eager_mode():
+            return 'Series <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
+                                                                 self.key,
+                                                                 repr(self.fetch()))
+        else:
+            return 'Series <op={0}, key={1}>'.format(self.op.__class__.__name__,
+                                                     self.key)
 
     @property
     def dtype(self):
@@ -460,6 +489,22 @@ class DataFrameData(TileableData):
             from ..serialize.protos.dataframe_pb2 import DataFrameDef
             return DataFrameDef
         return super(DataFrameData, cls).cls(provider)
+
+    def __str__(self):
+        if is_eager_mode():
+            return 'DataFrame(op={0}, data=\n{1})'.format(self.op.__class__.__name__,
+                                                          str(self.fetch()))
+        else:
+            return 'DataFrame(op={0})'.format(self.op.__class__.__name__)
+
+    def __repr__(self):
+        if is_eager_mode():
+            return 'DataFrame <op={0}, key={1}, data=\n{2}>'.format(self.op.__class__.__name__,
+                                                                    self.key,
+                                                                    repr(self.fetch()))
+        else:
+            return 'DataFrame <op={0}, key={1}>'.format(self.op.__class__.__name__,
+                                                        self.key)
 
     @property
     def params(self):
