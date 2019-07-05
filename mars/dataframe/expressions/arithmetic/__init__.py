@@ -22,6 +22,8 @@ def _install():
     for cls in DATAFRAME_TYPE:
         setattr(cls, '__add__', add)
         setattr(cls, '__radd__', radd)
+        setattr(cls, 'add', add)
+        setattr(cls, 'radd', radd)
 
 
 _install()

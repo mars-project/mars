@@ -238,7 +238,7 @@ class Test(TestBase):
         expected = data1 + data2
         pd.testing.assert_frame_equal(expected, result)
 
-    def testMultiAdd(self):
+    def testAddWithMultiForms(self):
         # test multiple forms of add
         # such as self+other, self.add(other), add(self,other)
         data1 = pd.DataFrame(np.random.rand(10, 10))
