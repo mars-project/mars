@@ -26,6 +26,9 @@ from mars.worker.tests.base import WorkerCase
 
 class Test(WorkerCase):
     def testQuota(self):
+        def _raiser(*_, **__):
+            raise ValueError
+
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
             pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
@@ -68,9 +71,22 @@ class Test(WorkerCase):
 
                 self.assertNotIn('2', quota_ref.dump_data().allocations)
 
-                ref.cancel_requests(('1',), reject_exc=build_exc_info(ValueError))
-                with self.assertRaises(ValueError):
+                ref.cancel_requests(('1',), reject_exc=build_exc_info(OSError))
+                with self.assertRaises(OSError):
                     self.get_result(5)
+
+                with patch_method(QuotaActor._request_quota, new=_raiser):
+                    ref.request_quota('err_raise', 1, _promise=True) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+
+                    with self.assertRaises(ValueError):
+                        self.get_result(5)
+
+                    ref.request_batch_quota({'err_raise': 1}, _promise=True) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+
+                    with self.assertRaises(ValueError):
+                        self.get_result(5)
 
             self.assertNotIn('1', quota_ref.dump_data().requests)
             self.assertIn('2', quota_ref.dump_data().allocations)
@@ -82,6 +98,17 @@ class Test(WorkerCase):
             self.assertFalse(quota_ref.request_quota('4', 180))
             quota_ref.alter_allocations(['3'], [50])
             self.assertIn('4', quota_ref.dump_data().allocations)
+
+            with self.run_actor_test(pool) as test_actor:
+                ref = test_actor.promise_ref(QuotaActor.default_uid())
+                ref.request_quota('5', 50, _promise=True) \
+                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+
+                with patch_method(QuotaActor.alter_allocation, new=_raiser):
+                    quota_ref.release_quota('2')
+
+                    with self.assertRaises(ValueError):
+                        self.get_result(5)
 
     def testQuotaAllocation(self):
         local_pool_addr = 'localhost:%d' % get_next_port()
