@@ -40,6 +40,7 @@ from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
 from mars.config import option_context
 from mars.web.session import Session as WebSession
+from mars.tests.core import mock
 
 logger = logging.getLogger(__name__)
 _exec_timeout = 120 if 'CI' in os.environ else -1
@@ -59,8 +60,9 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
+@mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class Test(unittest.TestCase):
-    def testLocalCluster(self):
+    def testLocalCluster(self, *_):
         endpoint = gen_endpoint('0.0.0.0')
         with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
                                      shared_memory='20M') as cluster:
@@ -81,7 +83,7 @@ class Test(unittest.TestCase):
 
             self.assertNotIn(session._session_id, api.session_manager.get_sessions())
 
-    def testLocalClusterWithWeb(self):
+    def testLocalClusterWithWeb(self, *_):
         import psutil
         with new_cluster(scheduler_n_process=2, worker_n_process=3,
                          shared_memory='20M', web=True) as cluster:
@@ -110,7 +112,7 @@ class Test(unittest.TestCase):
                              [' '.join(p.cmdline()) for p in processes if p.is_running()])
                 self.assertFalse(any(p.is_running() for p in processes))
 
-    def testNSchedulersNWorkers(self):
+    def testNSchedulersNWorkers(self, *_):
         calc_cpu_cnt = functools.partial(lambda: 4)
 
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
@@ -131,7 +133,7 @@ class Test(unittest.TestCase):
         self.assertEqual(LocalDistributedCluster._calc_scheduler_worker_n_process(
             5, 3, 2, calc_cpu_count=calc_cpu_cnt), (3, 2))
 
-    def testSingleOutputTensorExecute(self):
+    def testSingleOutputTensorExecute(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             self.assertIs(cluster.session, Session.default_or_local())
@@ -149,7 +151,7 @@ class Test(unittest.TestCase):
             res = r.execute()
             self.assertLess(res, 39)
 
-    def testMultipleOutputTensorExecute(self):
+    def testMultipleOutputTensorExecute(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
@@ -199,7 +201,7 @@ class Test(unittest.TestCase):
                 s_expected = np.linalg.svd(raw, full_matrices=False)[1]
                 np.testing.assert_allclose(s_result, s_expected)
 
-    def testIndexTensorExecute(self):
+    def testIndexTensorExecute(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
@@ -286,7 +288,7 @@ class Test(unittest.TestCase):
                 r = session2.run(b, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r, np.ones((9,)) * 2)
 
-    def testExecutableTuple(self):
+    def testExecutableTuple(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
             with new_session('http://' + cluster._web_endpoint).as_default():
@@ -294,7 +296,7 @@ class Test(unittest.TestCase):
                 u, s, v = (mt.linalg.svd(a)).execute()
                 np.testing.assert_allclose(u.dot(np.diag(s).dot(v)), np.ones((20, 10)))
 
-    def testRerunTensor(self):
+    def testRerunTensor(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
@@ -313,7 +315,7 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(a_result1, a_result2)
                 np.testing.assert_array_equal(b_result, np.ones((10, 10)))
 
-    def testRunWithoutFetch(self):
+    def testRunWithoutFetch(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
@@ -322,7 +324,7 @@ class Test(unittest.TestCase):
             self.assertIsNone(session.run(a, fetch=False, timeout=_exec_timeout))
             np.testing.assert_array_equal(a.execute(session=session), np.ones((10, 20)) + 1)
 
-    def testGraphFail(self):
+    def testGraphFail(self, *_):
         op = SerializeMustFailOperand(f=3)
         tensor = op.new_tensor(None, (3, 3))
 
@@ -331,7 +333,7 @@ class Test(unittest.TestCase):
             with self.assertRaises(ExecutionFailed):
                 cluster.session.run(tensor, timeout=_exec_timeout)
 
-    def testFetchTensor(self):
+    def testFetchTensor(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
             session = cluster.session
@@ -370,7 +372,7 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r4, r1)
 
     @unittest.skipIf(pd is None, 'pandas not installed')
-    def testFetchDataFrame(self):
+    def testFetchDataFrame(self, *_):
         from mars.dataframe.expressions.datasource.dataframe import from_pandas
         from mars.dataframe.expressions.arithmetic import add
 
@@ -398,7 +400,7 @@ class Test(unittest.TestCase):
             r2 = session.fetch(df5)
             pd.testing.assert_frame_equal(r1, r2)
 
-    def testMultiSessionDecref(self):
+    def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
             session = cluster.session
@@ -432,7 +434,7 @@ class Test(unittest.TestCase):
             with self.assertRaises(ValueError):
                 web_session.fetch(b)
 
-    def testEagerMode(self):
+    def testEagerMode(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
 
@@ -503,7 +505,7 @@ class Test(unittest.TestCase):
                     df3 = add(df1, df2)
                     pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)
 
-    def testSparse(self):
+    def testSparse(self, *_):
         import scipy.sparse as sps
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -517,7 +519,7 @@ class Test(unittest.TestCase):
             t2 = mt.tensor(b)
             session.run(t1 * t2, timeout=_exec_timeout)
 
-    def testRunWithoutCompose(self):
+    def testRunWithoutCompose(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=False) as cluster:
             session = cluster.session
@@ -528,7 +530,7 @@ class Test(unittest.TestCase):
             r2 = session.run(arr2, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r1, r2)
 
-    def testExistingOperand(self):
+    def testExistingOperand(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
@@ -556,7 +558,7 @@ class Test(unittest.TestCase):
             r4 = session.run(d, compose=False, timeout=_exec_timeout)
             np.testing.assert_array_equal(r4, np.ones((5, 5)) * 5)
 
-    def testTiledTensor(self):
+    def testTiledTensor(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session

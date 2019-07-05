@@ -294,6 +294,9 @@ default_options.register_option('tcp_timeout', 30, validator=is_integer)
 default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 
+# deploy
+default_options.register_option('deploy.open_browser', True, validator=is_bool)
+
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
 default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)

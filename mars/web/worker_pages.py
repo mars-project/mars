@@ -14,50 +14,42 @@
 
 from collections import defaultdict
 
-from .server import register_ui_handler, get_jinja_env
-from ..utils import to_str
-from .server import MarsWebAPI
+from .server import MarsRequestHandler, get_jinja_env, register_web_handler
 
 _jinja_env = get_jinja_env()
 
 
-def worker_list(doc, workers_meta):
-    doc.title = 'Mars UI'
+class WorkerListHandler(MarsRequestHandler):
+    def get(self):
+        workers_meta = self.web_api.get_workers_meta()
 
-    doc.template_variables['worker_metrics'] = workers_meta
-    doc.template = _jinja_env.get_template('worker_list.html')
-
-
-def worker_detail(doc, workers_meta, endpoint):
-    doc.title = 'Mars UI'
-
-    progress_data = workers_meta[endpoint]['progress']
-    progresses = dict()
-    for session_data in progress_data.values():
-        for g in session_data.values():
-            if g['stage'] not in progresses:
-                progresses[g['stage']] = dict(operands=defaultdict(lambda: 0), total=0)
-            progresses[g['stage']]['operands'][g['operands']] += 1
-            progresses[g['stage']]['total'] += 1
-    for k in progresses:
-        operands = sorted(progresses[k]['operands'].items(), key=lambda p: p[0])
-        progresses[k]['operands'] = ', '.join('%s (%d)' % (k, v) for k, v in operands)
-
-    doc.template_variables['endpoint'] = endpoint
-    doc.template_variables['worker_metrics'] = workers_meta[endpoint]
-    doc.template_variables['progresses'] = progresses
-    doc.template = _jinja_env.get_template('worker_detail.html')
+        template = _jinja_env.get_template('worker_list.html')
+        self.write(template.render(worker_metrics=workers_meta))
 
 
-def _route(scheduler_ip, doc):
-    web_api = MarsWebAPI(scheduler_ip)
-    workers_meta = web_api.get_workers_meta()
+class WorkerHandler(MarsRequestHandler):
+    def get(self, endpoint):
+        workers_meta = self.web_api.get_workers_meta()
 
-    endpoint = doc.session_context.request.arguments.get('endpoint')
-    if not endpoint:
-        return worker_list(doc, workers_meta)
-    else:
-        return worker_detail(doc, workers_meta, to_str(endpoint[0]))
+        progress_data = workers_meta[endpoint]['progress']
+        progresses = dict()
+        for session_data in progress_data.values():
+            for g in session_data.values():
+                if g['stage'] not in progresses:
+                    progresses[g['stage']] = dict(operands=defaultdict(lambda: 0), total=0)
+                progresses[g['stage']]['operands'][g['operands']] += 1
+                progresses[g['stage']]['total'] += 1
+        for k in progresses:
+            operands = sorted(progresses[k]['operands'].items(), key=lambda p: p[0])
+            progresses[k]['operands'] = ', '.join('%s (%d)' % (k, v) for k, v in operands)
+
+        template = _jinja_env.get_template('worker_detail.html')
+        self.write(template.render(
+            endpoint=endpoint,
+            worker_metrics=workers_meta[endpoint],
+            progresses=progresses,
+        ))
 
 
-register_ui_handler('/worker', _route)
+register_web_handler('/worker', WorkerListHandler)
+register_web_handler('/worker/(?P<endpoint>[^/]+)', WorkerHandler)

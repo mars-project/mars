@@ -71,6 +71,12 @@ class BokehStaticFileHandler(web.StaticFileHandler):
         return super(BokehStaticFileHandler, self).validate_absolute_path(root, absolute_path)
 
 
+class MarsRequestHandler(web.RequestHandler):
+    def initialize(self, scheduler_ip):
+        self._scheduler = scheduler_ip
+        self.web_api = MarsWebAPI(scheduler_ip)
+
+
 class MarsWebAPI(MarsAPI):
     def __init__(self, scheduler_ip):
         super(MarsWebAPI, self).__init__(scheduler_ip)
@@ -150,13 +156,15 @@ class MarsWeb(object):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
 
         handlers = dict()
-        for p, h in _ui_handlers.items():
+        for p, h in _bokeh_apps.items():
             handlers[p] = Application(FunctionHandler(functools.partial(h, self._scheduler_ip)))
+
+        handler_kwargs = {'scheduler_ip': self._scheduler_ip}
         extra_patterns = [
             ('/static/(.*)', BokehStaticFileHandler, {'path': static_path})
         ]
-        for p, h in _api_handlers.items():
-            extra_patterns.append((p, h, {'scheduler_ip': self._scheduler_ip}))
+        for p, h in _web_handlers.items():
+            extra_patterns.append((p, h, handler_kwargs))
 
         retrial = 5
         while retrial:
@@ -165,6 +173,7 @@ class MarsWeb(object):
                     use_port = get_next_port()
                 else:
                     use_port = self._port
+
                 self._server = Server(
                     handlers, allow_websocket_origin=['*'],
                     address='0.0.0.0', port=use_port,
@@ -213,13 +222,13 @@ class MarsWeb(object):
             self._server.stop()
 
 
-_ui_handlers = dict()
-_api_handlers = dict()
+_bokeh_apps = dict()
+_web_handlers = dict()
 
 
-def register_ui_handler(pattern, handler):
-    _ui_handlers[pattern] = handler
+def register_bokeh_app(pattern, handler):
+    _bokeh_apps[pattern] = handler
 
 
-def register_api_handler(pattern, handler):
-    _api_handlers[pattern] = handler
+def register_web_handler(pattern, handler):
+    _web_handlers[pattern] = handler

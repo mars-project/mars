@@ -31,7 +31,7 @@
                 {%- for endpoint in worker_metrics %}
                     {% set metrics = worker_metrics[endpoint]['hardware'] %}
                     <tr>
-                        <td><a href="/worker?endpoint={{ endpoint }}">{{ endpoint }}</a></td>
+                        <td><a href="/worker/{{ endpoint }}">{{ endpoint }}</a></td>
                         <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
                         <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
                         <td>{{ metrics['cached_hold'] | readable_size }} / {{ metrics['cached_total'] | readable_size }}</td>

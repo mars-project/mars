@@ -14,14 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import atexit
 import multiprocessing
 import os
 import signal
+import sys
 import time
 
 from ...actors import create_actor_pool
 from ...compat import six, TimeoutError  # pylint: disable=W0622
+from ...config import options
 from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
@@ -284,7 +288,9 @@ class LocalDistributedClusterClient(object):
         self._ensure_process_finish(self._web_process)
 
 
-def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None, **kw):
+def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None,
+                open_browser=None, **kw):
+    open_browser = open_browser or options.deploy.open_browser
     endpoint = gen_endpoint(address)
     web_endpoint = None
     if web is True:
@@ -300,6 +306,10 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
     web_process = None
     if web_endpoint:
         web_process = _start_web_process(endpoint, web_endpoint)
+        print('Web endpoint started at http://%s' % web_endpoint, file=sys.stderr)
+        if open_browser:
+            import webbrowser
+            webbrowser.open_new_tab('http://%s' % web_endpoint)
 
     client = LocalDistributedClusterClient(endpoint, web_endpoint, process, web_process)
     _local_cluster_clients[id(client)] = client
