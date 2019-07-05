@@ -232,6 +232,9 @@ class ChunkHolderActor(WorkerActor):
             del self._chunk_holder[chunk_key]
             self._chunk_store.delete(session_id, chunk_key)
 
+        if chunk_key in self._pinned_counter:
+            del self._pinned_counter[chunk_key]
+
         logger.debug('Chunk %s unregistered in %s. total_hold=%d', chunk_key, self.uid, self._total_hold)
 
         if self._status_ref:

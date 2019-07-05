@@ -391,8 +391,10 @@ class ReceiverActor(WorkerActor):
             otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
         :param callback: promise callback
         """
+        sender_address = None if sender_ref is None else sender_ref.address
+
         logger.debug('Begin creating transmission data writer for chunk %s from %s',
-                     chunk_key, sender_ref.address)
+                     chunk_key, sender_address)
         session_chunk_key = (session_id, chunk_key)
 
         data_status = self.check_status(session_id, chunk_key)
@@ -417,7 +419,7 @@ class ReceiverActor(WorkerActor):
                 del self._data_meta_cache[session_chunk_key]
 
         self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
-            chunk_size=data_size, source_address=sender_ref.address,
+            chunk_size=data_size, source_address=sender_address,
             write_shared=True, status=ReceiveStatus.RECEIVING)
 
         # configure timeout callback

@@ -942,6 +942,14 @@ class GraphActor(SchedulerActor):
         return dataserializer.dumps(concat_result)
 
     @log_unhandled
+    def add_fetch_tileable(self, tileable_key, tileable_id, shape, dtype, chunk_size, chunk_keys):
+        from ..tensor.expressions.utils import create_fetch_tensor
+        tensor = create_fetch_tensor(chunk_size, shape, dtype,
+                                     tileable_key, tileable_id, chunk_keys)
+        self._tileable_key_to_opid[tileable_key] = tensor.op.id
+        self._tileable_key_opid_to_tiled[(tileable_key, tensor.op.id)].append(tensor)
+
+    @log_unhandled
     def check_operand_can_be_freed(self, succ_op_keys):
         """
         Check if the data of an operand can be freed.

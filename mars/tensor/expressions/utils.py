@@ -527,6 +527,84 @@ def concat_tileable_chunks(tensor):
                          nsplits=tuple((s,) for s in tensor.shape))
 
 
+def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
+    from ...config import options
+    from .fetch import TensorFetch
+
+    # compute chunks
+    chunk_size = chunk_size or options.tensor.chunk_size
+    chunk_size = decide_chunk_sizes(shape, chunk_size, dtype.itemsize)
+    chunk_size_idxes = (range(len(size)) for size in chunk_size)
+
+    fetch_op = TensorFetch(dtype=dtype).reset_key()
+
+    if not isinstance(dtype, np.dtype):
+        dtype = np.dtype(dtype)
+    if chunk_keys is None:
+        chunk_keys = itertools.repeat(None)
+
+    chunks = []
+    for chunk_shape, chunk_idx, chunk_key in izip(itertools.product(*chunk_size),
+                                                  itertools.product(*chunk_size_idxes),
+                                                  chunk_keys):
+        chunk = fetch_op.copy().reset_key().new_chunk(None, shape=chunk_shape, index=chunk_idx,
+                                                      _key=chunk_key)
+        chunks.append(chunk)
+    return fetch_op.copy().new_tensor(None, shape=shape, dtype=dtype, nsplits=chunk_size,
+                                      chunks=chunks, _key=tensor_key, _id=tensor_id)
+
+
+def setitem_as_records(nsplits_acc, output_chunk, value, ts):
+    '''
+    Turns a `__setitem__`  to a list of index-value records.
+
+    Parameters:
+    :arg nsplits_acc:
+        Accumulate nsplits arrays of the output tensor chunks.
+
+    :arg output_chunk:
+        A chunk in the output of the `__setitem__` op.
+
+    :arg value:
+        The scalar or ndarray value that are set to the tensor.
+
+    :arg ts:
+        The timestamp value will be contained in the records.
+
+    :returns:
+        A list of `[index, value, timestamp]`.
+    '''
+    # prepare chunk value
+    if np.isscalar(value):
+        chunk_value = value
+    else:
+        chunk_value_slice = tuple(slice(nsplits_acc[i][output_chunk.index[i]],
+                                        nsplits_acc[i][output_chunk.index[i] + 1])
+                                    for i in range(len(output_chunk.index)))
+        chunk_value = value[chunk_value_slice]
+
+    input_chunk = output_chunk.op.input
+
+    input_indices = []  # index in the chunk of the mutable tensor
+    value_indices = []  # index in the chunk of the assigned value
+    for d, s in zip(output_chunk.op.indexes, input_chunk.shape):
+        # expand the index (slice)
+        idx = np.r_[slice(*d.indices(s)) if isinstance(d, slice) else d]
+        input_indices.append(idx)
+        if not isinstance(d, Integral):
+            value_indices.append(np.arange(len(idx)))
+
+    records = []
+    for chunk_idx, value_idx in zip(itertools.product(*input_indices),
+                                    itertools.product(*value_indices)):
+        if np.isscalar(chunk_value):
+            new_value = chunk_value
+        else:
+            new_value = chunk_value[value_idx]
+        records.append((np.ravel_multi_index(chunk_idx, input_chunk.shape), ts, new_value))
+    return records
+
+
 def get_fetch_op_cls(op):
     from ...operands import ShuffleProxy
     from .fetch import TensorFetchShuffle, TensorFetch
