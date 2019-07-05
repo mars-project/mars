@@ -28,13 +28,11 @@ except ImportError:
 
 from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
-from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
+from mars.serialize.core import Serializable, IdentityField, StringField, \
     BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
     UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, BoolField, \
-    Datetime64Field, Timedelta64Field, DataTypeField, KeyField, ReferenceField, OneOfField, \
-    ListField, NDArrayField, DictField, TupleField, ValueType, serializes, deserializes, \
-    IndexField, SeriesField, DataFrameField, SliceField, Complex64Field, Complex128Field, \
-    AnyField, ProviderType, AttributeAsDict
+    KeyField, ReferenceField, OneOfField, ListField, NDArrayField, DictField, TupleField, ValueType, \
+    serializes, deserializes, Complex64Field, Complex128Field, AnyField, ProviderType, AttributeAsDict
 from mars.serialize import dataserializer
 from mars.serialize.pbserializer import ProtobufSerializeProvider
 from mars.serialize.jsonserializer import JsonSerializeProvider
