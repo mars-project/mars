@@ -25,6 +25,15 @@ class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'dataframe'
 
+    @property
+    def _chunk_type(self):
+        raise NotImplementedError
+
+    def _create_chunk(self, output_idx, index, **kw):
+        chunk_type = self._chunk_type
+        if chunk_type is DataFrameChunkData:
+            pass
+
     def _create_chunk(self, output_idx, index, **kw):
         data = DataFrameChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
                                   _dtypes=kw.pop('dtypes', None),
@@ -100,10 +109,6 @@ class SeriesOperandMixin(TileableOperandMixin):
 
         return self.new_seriess(inputs, shape=shape, dtype=dtype,
                                 index_value=index_value, name=name, **kw)[0]
-
-
-class SeriesOperand(Operand):
-    pass
 
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
