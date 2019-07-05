@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe.expressions.datasource.dataframe import from_pandas
 
@@ -163,7 +164,7 @@ class Test(unittest.TestCase):
             self.assertEqual(4, len(executor.chunk_result))
             np.testing.assert_array_equal(result, np.ones((8, 8)))
 
-    def testRepr(self):
+    def testReprTensor(self):
         a = mt.ones((10, 10), chunk_size=3)
         self.assertIn(a.key, repr(a))
 
@@ -174,6 +175,18 @@ class Test(unittest.TestCase):
 
         self.assertNotIn(repr(np.ones((10, 10))), repr(a))
         self.assertNotIn(str(np.ones((10, 10))), str(a))
+
+    def testReprDataFrame(self):
+        a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
+        x = pd.DataFrame(np.ones((10, 10)))
+
+        with option_context({'eager_mode': True}):
+            a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
+            self.assertIn(repr(x), repr(a))
+            self.assertIn(str(x), str(a))
+
+        self.assertNotIn(repr(x), repr(a))
+        self.assertNotIn(str(x), str(a))
 
     def testRuntimeError(self):
         from mars.utils import kernel_mode
