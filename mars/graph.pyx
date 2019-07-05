@@ -461,7 +461,7 @@ cdef class DAG(DirectedGraph):
         succ_checker = succ_checker or _default_succ_checker
 
         stack = list((p for p, l in preds.items() if len(l) == 0))
-        if not stack:
+        if self._nodes and not stack:
             raise GraphContainsCycleError
         while stack:
             node = stack.pop()

@@ -252,6 +252,9 @@ class GraphActor(SchedulerActor):
             self.state = GraphState.FAILED
             raise
 
+        if len(self._chunk_graph_cache) == 0:
+            self.state = GraphState.SUCCEEDED
+
     def stop_graph(self):
         """
         Stop graph execution
