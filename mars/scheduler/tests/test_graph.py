@@ -23,6 +23,7 @@ from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaA
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
+from mars.graph import DAG
 from mars.tests.core import patch_method
 
 
@@ -175,6 +176,28 @@ class Test(unittest.TestCase):
                 graph_ref.add_finished_terminal(c.op.key, GraphState.FAILED)
 
             self.assertEqual(graph_ref.get_state(), GraphState.FAILED)
+
+    def testEmptyGraph(self, *_):
+        session_id = str(uuid.uuid4())
+
+        addr = '127.0.0.1:%d' % get_next_port()
+        with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
+            pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],
+                              uid=SchedulerClusterInfoActor.default_uid())
+            resource_ref = pool.create_actor(ResourceActor, uid=ResourceActor.default_uid())
+            pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
+            pool.create_actor(AssignerActor, uid=AssignerActor.default_uid())
+
+            resource_ref.set_worker_meta('localhost:12345', dict(hardware=dict(cpu_total=4)))
+            resource_ref.set_worker_meta('localhost:23456', dict(hardware=dict(cpu_total=4)))
+
+            graph_key = str(uuid.uuid4())
+            serialized_graph = serialize_graph(DAG())
+
+            graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
+                                          uid=GraphActor.gen_uid(session_id, graph_key))
+            graph_ref.execute_graph()
+            self.assertEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
 
     def testErrorOnPrepare(self, *_):
         session_id = str(uuid.uuid4())
