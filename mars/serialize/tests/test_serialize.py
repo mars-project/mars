@@ -361,7 +361,7 @@ class Test(unittest.TestCase):
         self.assertEqual(d_node4.i.b, 3)
 
     def testException(self):
-        node1 = Node1(e=[object()])
+        node1 = Node1(h=[object()])
 
         pbs = ProtobufSerializeProvider()
 
