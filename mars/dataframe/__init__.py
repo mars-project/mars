@@ -17,5 +17,6 @@
 from .initializer import DataFrame
 # do imports to register operands
 from . import expressions
+from .expressions.arithmetic import add
 del expressions
 

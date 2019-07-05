@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -224,6 +225,35 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df5, concat=True)[0]
         expected = data1 + data2 + data4
 
+        pd.testing.assert_frame_equal(expected, result)
+
+    def testRadd(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10))
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10))
+        df2 = from_pandas(data2, chunk_size=6)
+        radd = getattr(df2, '__radd__')
+        df3 = radd(df1, df2)
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
+        expected = data1 + data2
+        pd.testing.assert_frame_equal(expected, result)
+
+    def testAddWithMultiForms(self):
+        # test multiple forms of add
+        # such as self+other, self.add(other), add(self,other)
+        data1 = pd.DataFrame(np.random.rand(10, 10))
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10))
+        df2 = from_pandas(data2, chunk_size=6)
+
+        expected = data1 + data2
+        result = self.executor.execute_dataframe(df1 + df2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+        result = self.executor.execute_dataframe(add(df1, df2), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+        result = self.executor.execute_dataframe(df1.add(df2), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+        result = self.executor.execute_dataframe(df1.radd(df2), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
 
     def testAbs(self):

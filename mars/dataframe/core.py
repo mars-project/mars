@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
