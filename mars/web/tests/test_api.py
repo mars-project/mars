@@ -21,6 +21,7 @@ import os
 import sys
 import signal
 import subprocess
+import time
 import uuid
 
 import gevent
@@ -196,6 +197,9 @@ class Test(unittest.TestCase):
 
             graphs = sess.get_graph_states()
 
+            # make sure status got uploaded
+            time.sleep(1.5)
+
             # check web UI requests
             res = requests.get(service_ep)
             self.assertEqual(res.status_code, 200)
@@ -214,6 +218,11 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
             task_id = next(iter(graphs.keys()))
             res = requests.get('%s/session/%s/graph/%s' % (service_ep, sess._session_id, task_id))
+            self.assertEqual(res.status_code, 200)
+
+            from mars.web.task_pages import PROGRESS_APP_NAME
+            res = requests.get('%s/%s?session_id=%s&task_id=%s'
+                               % (service_ep, PROGRESS_APP_NAME, sess._session_id, task_id))
             self.assertEqual(res.status_code, 200)
 
 

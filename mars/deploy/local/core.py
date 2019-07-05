@@ -25,6 +25,7 @@ import time
 
 from ...actors import create_actor_pool
 from ...compat import six, TimeoutError  # pylint: disable=W0622
+from ...config import options
 from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
@@ -288,7 +289,8 @@ class LocalDistributedClusterClient(object):
 
 
 def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None,
-                open_browser=True, **kw):
+                open_browser=None, **kw):
+    open_browser = open_browser or options.deploy.open_browser
     endpoint = gen_endpoint(address)
     web_endpoint = None
     if web is True:
