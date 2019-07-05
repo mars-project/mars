@@ -42,6 +42,9 @@ matrix:
       language: generic
       env: PYTHON=3.7
 
+addons:
+  apt:
+    update: true
 before_install:
   - source ./bin/travis-install-conda.sh
   - if [[ "$PYTHON" =~ "2" ]]; then

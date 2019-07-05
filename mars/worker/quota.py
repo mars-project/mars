@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import logging
+import sys
 import time
 
-from .. import resource
+from .. import resource, promise
 from ..compat import six, OrderedDict3
 from ..utils import log_unhandled
 from .utils import WorkerActor
@@ -59,6 +60,7 @@ class QuotaActor(WorkerActor):
         args += (self._allocated_size, self._total_size)
         logger.debug(msg + ' Allocated: %s, Total size: %s', *args, **kwargs)
 
+    @promise.reject_on_exception
     @log_unhandled
     def request_batch_quota(self, batch, callback):
         """
@@ -88,6 +90,7 @@ class QuotaActor(WorkerActor):
         # make allocated requests the highest priority to be allocated
         return self._request_quota(keys, values, delta, callback, make_first=all_allocated)
 
+    @promise.reject_on_exception
     @log_unhandled
     def request_quota(self, key, quota_size, callback):
         """
@@ -295,20 +298,27 @@ class QuotaActor(WorkerActor):
         removed = []
         for k, req in six.iteritems(self._requests):
             req_size, delta, req_time, callbacks = req
-            if self._has_space(delta):
-                self.apply_allocation(k, req_size, handle_shrink=False)
-                for cb in callbacks:
-                    self.tell_promise(cb)
-                if self._status_ref:
-                    self._status_ref.update_mean_stats(
-                        'wait_time.' + self.uid.replace('Actor', ''), time.time() - req_time,
-                        _tell=True, _wait=False)
+            try:
+                if self._has_space(delta):
+                    self.apply_allocation(k, req_size, handle_shrink=False)
+                    for cb in callbacks:
+                        self.tell_promise(cb)
+                    if self._status_ref:
+                        self._status_ref.update_mean_stats(
+                            'wait_time.' + self.uid.replace('Actor', ''), time.time() - req_time,
+                            _tell=True, _wait=False)
+                    removed.append(k)
+                else:
+                    # Quota left cannot satisfy the next request, we quit
+                    break
+            except:  # noqa: E722
                 removed.append(k)
-            else:
-                # Quota left cannot satisfy the next request, we quit
-                break
+                # just in case the quota is allocated
+                self.release_quota(k)
+                for cb in callbacks:
+                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False))
         for k in removed:
-            del self._requests[k]
+            self._requests.pop(k, None)
 
 
 class MemQuotaActor(QuotaActor):
