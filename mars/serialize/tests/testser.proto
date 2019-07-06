@@ -5,11 +5,24 @@ import "mars/serialize/protos/value.proto";
 
 message Node1Def {
     string a = 1;
-    int32 b = 2;
-    Value c = 3;
-    Node2Def d = 4;
-    repeated Value e = 5;
-    repeated Node1Def f = 6;
+    int32 b1 = 2;
+    int32 b2 = 3;
+    int32 b3 = 4;
+    int64 b4 = 5;
+    uint32 c1 = 6;
+    uint32 c2 = 7;
+    uint32 c3 = 8;
+    uint64 c4 = 9;
+    float d1 = 10;
+    float d2 = 11;
+    double d3 = 12;
+    Value cl1 = 18;
+    Value cl2 = 19;
+    bool e = 13;
+    Value f = 14;
+    Node2Def g = 15;
+    repeated Value h = 16;
+    repeated Node1Def i = 17;
 }
 
 
@@ -18,6 +31,7 @@ message Node2Def {
     string key = 2;
     repeated int32 data = 3;
     string id = 4;
+    string name = 5;
 }
 
 

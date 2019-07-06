@@ -138,6 +138,13 @@ cdef class ProtobufSerializeProvider(Provider):
         x = obj.timedelta64
         return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
 
+    cdef inline void _set_complex(self, value, obj, tp=None):
+        obj.c.real = value.real
+        obj.c.imag = value.imag
+
+    cdef inline object _get_complex(self, obj):
+        return complex(obj.c.real, obj.c.imag)
+
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.nonecheck(False)
@@ -326,6 +333,8 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_datetime64(value, obj, tp)
         elif tp is ValueType.timedelta64:
             self._set_timedelta64(value, obj, tp)
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            self._set_complex(value, obj, tp)
         elif isinstance(tp, Identity):
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp.type]
             setattr(obj, value_field, value)
@@ -362,6 +371,8 @@ cdef class ProtobufSerializeProvider(Provider):
             obj.i = value
         elif isinstance(value, float):
             obj.f = value
+        elif isinstance(value, complex):
+            self._set_complex(value, obj)
         elif isinstance(value, slice):
             self._set_slice(value, obj)
         elif isinstance(value, np.ndarray):
@@ -401,15 +412,21 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object field_obj
         cdef object add
         cdef object it_obj
+        cdef bint matched
         cdef OneOfField oneoffield
 
         if isinstance(field, OneOfField):
             oneoffield = <OneOfField> field
             value = getattr(model_instance, oneoffield.attr, None)
+            matched = False
             for f in oneoffield.fields:
                 if isinstance(value, f.type.model):
                     f.serialize(self, model_instance, obj)
+                    matched = True
                     return
+            if not matched and value is not None:
+                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
+                    value, field.tag_name(self)))
             return
 
         value = getattr(model_instance, field.attr, field.default)
@@ -424,6 +441,9 @@ cdef class ProtobufSerializeProvider(Provider):
         if isinstance(field, ReferenceField):
             if field.weak_ref:
                 field_obj = field_obj()
+            if not isinstance(value, field.type.model):
+                raise TypeError('Does not match type for reference field {0}: '
+                                'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
             value.serialize(self, obj=field_obj)
         elif isinstance(field, ListField):
             if type(field.type.type) == Reference:
@@ -433,7 +453,11 @@ cdef class ProtobufSerializeProvider(Provider):
                         val = val()
                     it_obj = add()
                     if val is not None:
-                        val.serialize(self, obj=it_obj)
+                        if isinstance(val, field.type.type.model):
+                            val.serialize(self, obj=it_obj)
+                        else:
+                            raise TypeError('Does not match type for reference in list field {0}: '
+                                            'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
                     elif isinstance(it_obj, Value):
                         it_obj.is_null = True
             else:
@@ -476,11 +500,34 @@ cdef class ProtobufSerializeProvider(Provider):
                 value = getattr(model_instance, name, None)
                 if value is None:
                     continue
+                tag = field.tag_name(self)
 
                 k = d_obj.dict.keys.value.add()
                 self._set_value(field.tag_name(self), k, tp=ValueType.string)
                 v = d_obj.dict.values.value.add()
-                self._set_value(value, v, tp=field.type, weak_ref=field.weak_ref)
+                if isinstance(field, ReferenceField):
+                    if field.weak_ref:
+                        value = value()
+                    if isinstance(value, field.type.model):
+                        value.serialize(self, obj=v)
+                    else:
+                        raise TypeError('Does not match type for reference field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
+                elif isinstance(field, ListField) and type(field.type.type) == Reference:
+                    for val in value:
+                        if field.weak_ref:
+                            val = val()
+                        it_obj = v.list.value.add()
+                        if val is not None:
+                            if isinstance(val, field.type.type.model):
+                                val.serialize(self, obj=it_obj)
+                            else:
+                                raise TypeError('Does not match type for reference in list field {0}: '
+                                                'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
+                        elif isinstance(it_obj, Value):
+                            it_obj.is_null = True
+                else:
+                    self._set_value(value, v, tp=field.type, weak_ref=field.weak_ref)
         else:
             fields = model_instance._FIELDS
             for name, field in fields.items():
@@ -504,6 +551,8 @@ cdef class ProtobufSerializeProvider(Provider):
         if tp in PRIMITIVE_TYPE_TO_VALUE_FIELD:
             value_field = PRIMITIVE_TYPE_TO_VALUE_FIELD[tp]
             return ref(getattr(obj, value_field))
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            return ref(self._get_complex(obj))
         elif tp is ValueType.slice:
             return ref(self._get_slice(obj))
         elif tp is ValueType.arr:
@@ -547,6 +596,8 @@ cdef class ProtobufSerializeProvider(Provider):
         elif field in 'bif':
             # primitive type
             return ref(getattr(obj, field))
+        elif field == 'c':
+            return ref(self._get_complex(obj))
         elif field == 's':
             # bytes
             b = obj.s
@@ -702,8 +753,19 @@ cdef class ProtobufSerializeProvider(Provider):
             for k, v in zip(d_obj.dict.keys.value, d_obj.dict.values.value):
                 tag = self._get_value(k, ValueType.string, callbacks, False)
                 it_field = tag_to_fields[tag]
-                setattr(model_instance, it_field.attr,
-                        self._get_value(v, it_field.type, callbacks, it_field.weak_ref))
+                if isinstance(it_field, ReferenceField):
+                    setattr(model_instance, it_field.attr,
+                        self._on_deserial(
+                            it_field, it_field.type.model.deserialize(self, v, callbacks, key_to_instance)))
+                elif isinstance(it_field, ListField) and type(it_field.type.type) == Reference:
+                    setattr(model_instance, it_field.attr,
+                            self._on_deserial(
+                                it_field,
+                                [it_field.type.type.model.deserialize(self, it_obj, callbacks, key_to_instance)
+                                 for it_obj in v.list.value]))
+                else:
+                    setattr(model_instance, it_field.attr,
+                            self._get_value(v, it_field.type, callbacks, it_field.weak_ref))
         else:
             for o_tag in d_obj:
                 it_field = tag_to_fields[o_tag]

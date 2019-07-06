@@ -54,6 +54,8 @@ cdef dict EXTEND_TYPE_TO_NAME = {
     ValueType.key: 'key',
     ValueType.datetime64: 'datetime64',
     ValueType.timedelta64: 'timedelta64',
+    ValueType.complex64: 'complex64',
+    ValueType.complex128: 'complex128',
 }
 
 
@@ -260,6 +262,18 @@ cdef class JsonSerializeProvider(Provider):
     cdef inline _deserialize_timedelta64(self, obj, list callbacks):
         return self._deserialize_datetime64_timedelta64(obj, callbacks)
 
+    cdef inline dict _serialize_complex(self, value, tp):
+        return {
+            'type': _get_name(tp),
+            'value': (value.real, value.imag)
+        }
+
+    cdef inline _deserialize_complex(self, obj, list callbacks):
+        cdef list v
+
+        v = obj['value']
+        return complex(*v)
+
     cdef inline object _serialize_typed_value(self, value, tp, bint weak_ref=False):
         if type(tp) not in (List, Tuple, Dict) and weak_ref:
             # not iterable, and is weak ref
@@ -276,6 +290,8 @@ cdef class JsonSerializeProvider(Provider):
             return value
         elif type(tp) is Identity:
             return self._serialize_typed_value(value, tp.type, weak_ref=weak_ref)
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            return self._serialize_complex(value, tp)
         elif tp is ValueType.slice:
             return self._serialize_slice(value)
         elif tp is ValueType.arr:
@@ -319,6 +335,8 @@ cdef class JsonSerializeProvider(Provider):
             return value
         elif isinstance(value, float):
             return value
+        elif isinstance(value, complex):
+            return self._serialize_complex(value, ValueType.complex128)
         elif isinstance(value, slice):
             return self._serialize_slice(value)
         elif isinstance(value, np.ndarray):
@@ -337,6 +355,8 @@ cdef class JsonSerializeProvider(Provider):
             return self._serialize_datetime64(value)
         elif isinstance(value, np.timedelta64):
             return self._serialize_timedelta64(value)
+        elif isinstance(value, np.number):
+            return self._serialize_untyped_value(value.item())
         else:
             raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
 
@@ -364,8 +384,12 @@ cdef class JsonSerializeProvider(Provider):
                 field_val = getattr(model_instance, field.attr)
                 if field.weak_ref:
                     field_val = field_val()
-                value = self._on_serial(field, field_val)
-                value.serialize(self, new_obj)
+                if field_val is not None:
+                    if not isinstance(field_val, field.type.model):
+                        raise TypeError('Does not match type for reference field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.model, type(field_val)))
+                    value = self._on_serial(field, field_val)
+                    value.serialize(self, new_obj)
         elif isinstance(field, OneOfField):
             has_val = False
             field_val = getattr(model_instance, field.attr, None)
@@ -384,6 +408,9 @@ cdef class JsonSerializeProvider(Provider):
                     new_obj = obj[tag] = dict()
                     value.serialize(self, new_obj)
                     return
+            if not has_val and value is not None:
+                raise ValueError('Value {0} cannot match any type for OneOfField `{1}`'.format(
+                    value, field.tag_name(self)))
         elif isinstance(field, ListField) and type(field.type.type) == Reference:
             tag = field.tag_name(self)
             value = self._on_serial(field, getattr(model_instance, field.attr, None))
@@ -394,7 +421,11 @@ cdef class JsonSerializeProvider(Provider):
                 if field.weak_ref:
                     val = val()
                 if val is not None:
-                    new_obj.append(val.serialize(self, dict()))
+                    if isinstance(val, field.type.type.model):
+                        new_obj.append(val.serialize(self, dict()))
+                    else:
+                        raise TypeError('Does not match type for reference in list field {0}: '
+                                        'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
                 else:
                     new_obj.append(None)
         else:
@@ -417,6 +448,8 @@ cdef class JsonSerializeProvider(Provider):
 
         if tp is ValueType.bytes:
             return ref(base64.b64decode(obj['value']))
+        elif tp in {ValueType.complex64, ValueType.complex128}:
+            return ref(self._deserialize_complex(obj, callbacks))
         elif tp is ValueType.slice:
             return ref(self._deserialize_slice(obj, callbacks))
         elif tp is ValueType.arr:

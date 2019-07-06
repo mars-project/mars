@@ -19,6 +19,11 @@ message Value {
         List values = 2;
     }
 
+    message Complex {
+        double real = 1;
+        double imag = 2;
+    }
+
     message Key {
         string key = 1;
         string id = 2;  // since different object may have the same key, we need an identity
@@ -28,7 +33,8 @@ message Value {
         bool is_null = 1; // NULL
         bool b = 2;  // bool
         int64 i = 3;  // int
-        float f = 4;  // float
+        double f = 4;  // double
+        Complex c = 19;  // complex
         bytes s = 5;  // bytes
         string u = 6;  // unicode
         List list = 7;

@@ -30,6 +30,8 @@ cpdef enum PrimitiveType:
     float64 = 12
     bytes = 13
     unicode = 14
+    complex64 = 24
+    complex128 = 25
 
 
 cpdef enum ExtendType:
@@ -75,14 +77,18 @@ cdef class ValueType:
     pass
 
 
+cdef class SelfReferenceOverwritten(Exception):
+    pass
+
+
 cdef class Field:
     cdef object tag
     cdef object default_val
     cdef str _tag_name
     cdef object _type
+    cdef object _model_cls
 
     cdef public bint weak_ref
-    cdef public object model
     cdef public str attr
     cdef public object on_serialize
     cdef public object on_deserialize
@@ -148,6 +154,14 @@ cdef class Float64Field(Field):
     pass
 
 
+cdef class Complex64Field(Field):
+    pass
+
+
+cdef class Complex128Field(Field):
+    pass
+
+
 cdef class StringField(Field):
     pass
 
@@ -181,7 +195,7 @@ cdef class DataTypeField(Field):
 
 
 cdef class ListField(Field):
-    cdef object _nest_ref
+    cdef public object _nest_ref
 
 
 cdef class TupleField(Field):
@@ -193,7 +207,7 @@ cdef class DictField(Field):
 
 
 cdef class ReferenceField(Field):
-    cdef object _model
+    cdef public object _model
 
 
 cdef class OneOfField(Field):
