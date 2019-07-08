@@ -14,7 +14,7 @@
 
 import operator
 
-from ....serialize.core import TupleField, SeriesField, DataTypeField, ValueType, Int8Field
+from ....serialize.core import TupleField, ValueType, Int8Field
 from ....operands import Fetch, FetchShuffle
 from ....utils import on_serialize_shape, on_deserialize_shape
 from ..core import DataFrameOperandMixin, ObjectType
