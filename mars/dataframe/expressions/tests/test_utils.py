@@ -76,7 +76,7 @@ class Test(unittest.TestCase):
         with option_context() as options:
             options.tensor.chunk_store_limit = 64
 
-            s = pd.Series(np.empty(50, dtype=int))
+            s = pd.Series(np.empty(50, dtype=np.int64))
             nsplit = decide_series_chunk_size(s.shape, None, s.memory_usage(index=False, deep=True))
             self.assertEqual(len(nsplit), 1)
             self.assertEqual(sum(nsplit[0]), 50)
