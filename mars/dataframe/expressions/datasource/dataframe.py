@@ -22,6 +22,11 @@ from ....tensor.expressions.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
+
 
 class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     """
@@ -48,17 +53,20 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     def dtypes(self):
         return self._dtypes
 
-    def __call__(self, shape, chunk_size=None):
+    def __call__(self, shape, index_value=None, columns_value=None, chunk_size=None):
+        if index_value is None and columns_value is None:
+            index_value = parse_index(self._data.index)
+            columns_value = parse_index(self._data.columns, store_data=True)
+
         return self.new_dataframe(None, shape, dtypes=self.dtypes,
-                                  index_value=parse_index(self._data.index),
-                                  columns_value=parse_index(self._data.columns,
-                                                            store_data=True),
+                                  index_value=index_value,
+                                  columns_value=columns_value,
                                   raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
-        raw_df = op.data
+        raw_df = pd.DataFrame(op.data)
 
         memory_usage = raw_df.memory_usage(index=False, deep=True)
         chunk_size = df.extra_params.raw_chunk_size or options.tensor.chunk_size
@@ -89,3 +97,16 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 def from_pandas(data, chunk_size=None, gpu=None, sparse=False):
     op = DataFrameDataSource(data=data, gpu=gpu, sparse=sparse)
     return op(data.shape, chunk_size=chunk_size)
+
+
+def from_tensor(tensor, chunk_size=None, gpu=None, sparse=False):
+    if tensor.ndim != 2:
+        raise NotImplementedError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
+
+    # fetch the data from tensor firstly
+    data = tensor.execute()
+    op = DataFrameDataSource(data=data, dtypes=data.dtype, gpu=gpu, sparse=sparse)
+
+    # make index/column value if create DataFrame from tensor
+    return op(tensor.shape, index_value=list(range(tensor.shape[0])), columns_value=list(range(tensor.shape[1])),
+              chunk_size=chunk_size)
