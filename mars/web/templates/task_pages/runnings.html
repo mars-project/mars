@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% set active_page = 'task_operand' %}
+{% block page_nav %}
+    <h2>Task {{ session_name }}</h2>
+    <ul class="nav nav-pills nav-justified">
+        <li><a href="/session/{{ session_id }}/graph/{{ task_id }}">Progress</a></li>
+        <li class="active"><a href="#">Running Nodes</a></li>
+    </ul>
+{% endblock %}
+{% block body %}
+    <table class="table sortable">
+        <thead>
+        <tr>
+            <th>Key</th>
+            <th>Name</th>
+            <th>Worker</th>
+        </tr>
+        </thead>
+        <tbody>
+        {%- if running_info %}
+            {%- for op_key in running_info %}
+                {% set info = running_info[op_key] %}
+                <tr>
+                    <td>{{ op_key }}</td>
+                    <td>{{ info['op_name'] }}</td>
+                    {%- if info['worker'] %}
+                        <td><a href="/worker/{{ info['worker'] }}">{{ info['worker'] }}</a></td>
+                    {% else %}
+                        <td>N/A</td>
+                    {% endif -%}
+                </tr>
+            {% endfor -%}
+        {% else %}
+            <tr>
+                <td colspan="8" style="font-style: italic; text-align: center">No running operands.</td>
+            </tr>
+        {% endif -%}
+        </tbody>
+    </table>
+{% endblock %}

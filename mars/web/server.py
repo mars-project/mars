@@ -117,6 +117,10 @@ class MarsWebAPI(MarsAPI):
         graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
         return graph_meta_ref.calc_stats()
 
+    def get_operand_info(self, session_id, task_id, state=None):
+        graph_meta_ref = self.get_graph_meta_ref(session_id, task_id)
+        return graph_meta_ref.get_operand_info(state=state)
+
     def get_workers_meta(self):
         resource_uid = ResourceActor.default_uid()
         resource_ref = self.get_actor_ref(resource_uid)

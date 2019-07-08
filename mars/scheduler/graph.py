@@ -106,7 +106,8 @@ class GraphMetaActor(SchedulerActor):
         self._state = None
         self._final_state = None
 
-        self._op_states = dict()
+        self._op_infos = defaultdict(dict)
+        self._state_to_infos = defaultdict(dict)
 
     def post_create(self):
         super(GraphMetaActor, self).post_create()
@@ -115,7 +116,7 @@ class GraphMetaActor(SchedulerActor):
             self._kv_store_ref = None
 
     def get_graph_info(self):
-        return self._start_time, self._end_time, len(self._op_states)
+        return self._start_time, self._end_time, len(self._op_infos)
 
     def set_graph_start(self):
         self._start_time = time.time()
@@ -141,11 +142,34 @@ class GraphMetaActor(SchedulerActor):
     def get_final_state(self):
         return self._final_state
 
-    def update_op_state(self, op_key, op_name, op_state):
-        self._op_states[op_key] = dict(op_name=op_name, state=op_state)
+    def get_operand_info(self, state=None):
+        return self._op_infos if state is None else self._state_to_infos[state]
 
-    def update_op_states(self, op_stats):
-        self._op_states.update(op_stats)
+    def update_op_state(self, op_key, op_name, op_state):
+        new_info = dict(op_name=op_name, state=op_state)
+        old_state = self._op_infos[op_key].get('state')
+        self._op_infos[op_key].update(new_info)
+        if old_state is not None:
+            self._state_to_infos[old_state].pop(op_key, None)
+        self._state_to_infos[op_state][op_key] = self._op_infos[op_key]
+
+    def update_op_worker(self, op_key, op_name, worker):
+        new_info = dict(op_name=op_name, worker=worker)
+        self._op_infos[op_key].update(new_info)
+
+    def update_op_infos(self, op_infos):
+        for key, info in op_infos.items():
+            try:
+                old_state = self._op_infos[key].get('state')
+            except KeyError:
+                old_state = None
+
+            if old_state is not None:
+                self._state_to_infos[old_state].pop(key, None)
+            if info.get('state') is not None:
+                self._state_to_infos[info['state']][key] = info
+
+            self._op_infos[key].update(info)
 
     @log_unhandled
     def calc_stats(self):
@@ -155,13 +179,13 @@ class GraphMetaActor(SchedulerActor):
 
         op_stats = OrderedDict()
         finished = 0
-        total_count = len(self._op_states)
-        for operand_info in self._op_states.values():
+        total_count = len(self._op_infos)
+        for operand_info in self._op_infos.values():
             if operand_info.get('virtual'):
                 total_count -= 1
                 continue
             op_name = operand_info['op_name']
-            state = operand_info['state']
+            state = operand_info['state'] or OperandState.UNSCHEDULED
             if state in (OperandState.FINISHED, OperandState.FREED):
                 finished += 1
             try:
@@ -700,7 +724,7 @@ class GraphActor(SchedulerActor):
         operand_infos = self._operand_infos
 
         op_refs = dict()
-        op_states = dict()
+        meta_op_infos = dict()
         initial_keys = []
         for op_key in self._op_key_to_chunk:
             chunks = self._op_key_to_chunk[op_key]
@@ -711,10 +735,10 @@ class GraphActor(SchedulerActor):
 
             op_name = type(op).__name__
             op_info = operand_infos[op_key]
-            op_state = op_states[op_key] = dict()
+            meta_op_info = meta_op_infos[op_key] = dict()
 
             io_meta = self._collect_operand_io_meta(chunk_graph, chunks)
-            op_info['op_name'] = op_state['op_name'] = op_name
+            op_info['op_name'] = meta_op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
             op_info['executable_dag'] = self.get_executable_operand_dag(op_key)
 
@@ -724,7 +748,8 @@ class GraphActor(SchedulerActor):
                 initial_keys.append(op_key)
                 state = OperandState.READY
             op_info['retries'] = 0
-            op_info['state'] = op_state['state'] = state
+            meta_op_info['state'] = op_info['state'] = state
+            meta_op_info['worker'] = op_info.get('worker')
 
             position = None
             if op_key in self._terminal_chunk_op_tileable:
@@ -746,7 +771,7 @@ class GraphActor(SchedulerActor):
                 del op_info['io_meta']
 
         self.state = GraphState.RUNNING
-        self._graph_meta_ref.update_op_states(op_states, _tell=True, _wait=False)
+        self._graph_meta_ref.update_op_infos(meta_op_infos, _tell=True, _wait=False)
 
         if _start:
             existing_keys = []
@@ -840,18 +865,25 @@ class GraphActor(SchedulerActor):
     def get_operand_target_worker(self, op_key):
         return self._operand_infos[op_key]['target_worker']
 
-    def get_operand_info(self):
-        return self._operand_infos
+    def get_operand_info(self, state=None):
+        if not state:
+            return self._operand_infos
+        else:
+            return dict((k, info) for k, info in self._operand_infos.items()
+                        if info.get('state') == state)
 
     @log_unhandled
     def set_operand_worker(self, op_key, worker):
+        op_info = self._operand_infos[op_key]
         if worker:
-            self._operand_infos[op_key]['worker'] = worker
+            op_info['worker'] = worker
         else:
             try:
-                del self._operand_infos[op_key]['worker']
+                del op_info['worker']
             except KeyError:
                 pass
+        self._graph_meta_ref.update_op_worker(op_key, op_info['op_name'], worker,
+                                              _tell=True, _wait=False)
 
     @functools32.lru_cache(1000)
     def _get_operand_ref(self, key):

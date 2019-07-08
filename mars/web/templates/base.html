@@ -58,7 +58,9 @@
         </div>
         <!-- /.navbar-static-side -->
     </nav>
-
+    <div id="page-nav">
+        {% block page_nav %}{% endblock %}
+    </div>
     <div id="page-wrapper">
         {% block body %}{% endblock %}
     </div>
