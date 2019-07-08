@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import unittest
+import json
 
 import numpy as np
 try:
@@ -478,6 +479,11 @@ class Test(unittest.TestCase):
                     expected2 = expected1.dot(expected1)
                     np.testing.assert_array_almost_equal(r2, expected2)
 
+                    web_session = Session.default_or_local()._sess
+                    tasks_url = 'http://{0}/api/session/{1}/graph'.format(cluster.web_endpoint,
+                                                                          web_session.session_id)
+                    self.assertEqual(len(json.loads(web_session._req_session.get(tasks_url).text)), 3)
+
                 a = mt.ones((10, 10), chunk_size=3)
                 with self.assertRaises(ValueError):
                     a.fetch()
@@ -504,6 +510,11 @@ class Test(unittest.TestCase):
 
                     df3 = add(df1, df2)
                     pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)
+
+                web_session = Session.default_or_local()._sess
+                tasks_url = 'http://{0}/api/session/{1}/graph'.format(cluster.web_endpoint,
+                                                                      web_session.session_id)
+                self.assertEqual(len(json.loads(web_session._req_session.get(tasks_url).text)), 3)
 
     def testSparse(self, *_):
         import scipy.sparse as sps
