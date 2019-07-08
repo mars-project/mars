@@ -28,9 +28,10 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _level = AnyField('level')
     _fill_value = Float64Field('fill_value')
 
-    def __init__(self, axis=None, level=None, fill_value=None, **kw):
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, **kw):
         super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
-                                           _fill_value=fill_value, **kw)
+                                           _fill_value=fill_value,
+                                           _object_type=object_type, **kw)
 
     @classproperty
     def _operator(self):

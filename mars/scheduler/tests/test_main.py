@@ -320,7 +320,8 @@ class Test(unittest.TestCase):
 
     def testMainDataFrameWithoutEtcd(self):
         import pandas as pd
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas
+        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
         from mars.dataframe.expressions.arithmetic import add
 
         self.start_processes(etcd=False)
@@ -331,9 +332,9 @@ class Test(unittest.TestCase):
         session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
 
         data1 = pd.DataFrame(np.random.rand(10, 10))
-        df1 = from_pandas(data1, chunk_size=5)
+        df1 = from_pandas_df(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10))
-        df2 = from_pandas(data2, chunk_size=6)
+        df2 = from_pandas_df(data2, chunk_size=6)
 
         df3 = add(df1, df2)
 
@@ -352,10 +353,10 @@ class Test(unittest.TestCase):
 
         data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        df1 = from_pandas(data1, chunk_size=(10, 5))
+        df1 = from_pandas_df(data1, chunk_size=(10, 5))
         data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
-        df2 = from_pandas(data2, chunk_size=(10, 6))
+        df2 = from_pandas_df(data2, chunk_size=(10, 6))
 
         df3 = add(df1, df2)
 
@@ -374,10 +375,10 @@ class Test(unittest.TestCase):
 
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
                              columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        df1 = from_pandas(data1, chunk_size=5)
+        df1 = from_pandas_df(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
                              columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
-        df2 = from_pandas(data2, chunk_size=6)
+        df2 = from_pandas_df(data2, chunk_size=6)
 
         df3 = add(df1, df2)
 
@@ -393,6 +394,21 @@ class Test(unittest.TestCase):
         expected = data1 + data2
         result = session_ref.fetch_result(graph_key, df3.key)
         pd.testing.assert_frame_equal(expected, loads(result))
+
+        s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+        series1 = from_pandas_series(s1)
+
+        graph = series1.build_graph()
+        targets = [series1.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, series1.key)
+        pd.testing.assert_series_equal(s1, loads(result))
 
     def testWorkerFailOver(self):
         def kill_process_tree(proc):

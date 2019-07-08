@@ -12,44 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import operator
+
 import numpy as np
 
+from ...compat import Enum
+from ...serialize import Int8Field
 from ...operands import ShuffleProxy
 from ...core import TileableOperandMixin, FuseChunkData, FuseChunk
 from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
-from ..core import DataFrameChunkData, DataFrameChunk, DataFrameData, DataFrame, \
-    SeriesChunkData, SeriesChunk, SeriesData, Series
+from ..core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+
+
+class ObjectType(Enum):
+    dataframe = 1
+    series = 2
+    index = 3
+
+    def __mars_tokenize__(self):
+        return self.value
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
     _op_module_ = 'dataframe'
 
-    @property
-    def _chunk_type(self):
-        raise NotImplementedError
+    _OBJECT_TYPE_TO_CHUNK_TYPES = {
+        ObjectType.dataframe: DATAFRAME_CHUNK_TYPE,
+        ObjectType.series: SERIES_CHUNK_TYPE,
+        ObjectType.index: INDEX_CHUNK_TYPE
+    }
+
+    _OBJECT_TYPE_TO_TILEABLE_TYPES = {
+        ObjectType.dataframe: DATAFRAME_TYPE,
+        ObjectType.series: SERIES_TYPE,
+        ObjectType.index: INDEX_TYPE
+    }
+
+    @classmethod
+    def _chunk_types(cls, object_type):
+        return cls._OBJECT_TYPE_TO_CHUNK_TYPES[object_type]
+
+    @classmethod
+    def _tileable_types(cls, object_type):
+        return cls._OBJECT_TYPE_TO_TILEABLE_TYPES[object_type]
 
     def _create_chunk(self, output_idx, index, **kw):
-        chunk_type = self._chunk_type
-        if chunk_type is DataFrameChunkData:
-            pass
-
-    def _create_chunk(self, output_idx, index, **kw):
-        data = DataFrameChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
-                                  _dtypes=kw.pop('dtypes', None),
-                                  _index_value=kw.pop('index_value', None),
-                                  _columns_value=kw.pop('columns_value', None), **kw)
-        return DataFrameChunk(data)
+        object_type = self._object_type
+        if object_type is None:
+            raise ValueError('object_type should be specified')
+        chunk_type, chunk_data_type = self._chunk_types(object_type)
+        kw['op'] = self
+        kw['index'] = index
+        data = chunk_data_type(**kw)
+        return chunk_type(data)
 
     def _create_tileable(self, output_idx, **kw):
-        if kw.get('nsplits', None) is not None:
-            kw['_nsplits'] = kw['nsplits']
-        data = DataFrameData(_shape=kw.pop('shape', None), _op=self,
-                             _chunks=kw.pop('chunks', None),
-                             _dtypes=kw.pop('dtypes', None),
-                             _index_value=kw.pop('index_value', None),
-                             _columns_value=kw.pop('columns_value', None), **kw)
-        return DataFrame(data)
+        object_type = self._object_type
+        if object_type is None:
+            raise ValueError('object_type should be specified')
+        tileable_type, tileable_data_type = self._tileable_types(object_type)
+        kw['op'] = self
+        data = tileable_data_type(**kw)
+        return tileable_type(data)
 
     def new_dataframes(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None,
                        chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
@@ -64,39 +90,6 @@ class DataFrameOperandMixin(TileableOperandMixin):
         return self.new_dataframes(inputs, shape=shape, dtypes=dtypes,
                                    index_value=index_value, columns_value=columns_value, **kw)[0]
 
-    @staticmethod
-    def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
-        for shape in shapes:
-            for i, s in enumerate(shape):
-                if np.isnan(ret[i]) and not np.isnan(s):
-                    ret[i] = s
-        return tuple(ret)
-
-
-class DataFrameOperand(Operand):
-    pass
-
-
-class SeriesOperandMixin(TileableOperandMixin):
-    __slots__ = ()
-    _op_module_ = 'dataframe'
-
-    def _create_chunk(self, output_idx, index, **kw):
-        data = SeriesChunkData(_index=index, _shape=kw.pop('shape', None), _op=self,
-                               _dtype=kw.pop('dtype', None), _index_value=kw.pop('index_value', None),
-                               _name=kw.pop('name', None), **kw)
-        return SeriesChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        if kw.get('nsplits', None) is not None:
-            kw['_nsplits'] = kw['nsplits']
-        data = SeriesData(_shape=kw.pop('shape', None), _op=self,
-                          _chunks=kw.pop('chunks', None), _dtype=kw.pop('dtype', None),
-                          _index_value=kw.pop('index_value', None),
-                          _name=kw.pop('name', None), **kw)
-        return Series(data)
-
     def new_seriess(self, inputs, shape=None, dtype=None, index_value=None, name=None,
                     chunks=None, nsplits=None, output_limit=None, kws=None, **kw):
         return self.new_tileables(inputs, shape=shape, dtype=dtype, index_value=index_value,
@@ -110,18 +103,54 @@ class SeriesOperandMixin(TileableOperandMixin):
         return self.new_seriess(inputs, shape=shape, dtype=dtype,
                                 index_value=index_value, name=name, **kw)[0]
 
+    @staticmethod
+    def _merge_shape(*shapes):
+        ret = [np.nan, np.nan]
+        for shape in shapes:
+            for i, s in enumerate(shape):
+                if np.isnan(ret[i]) and not np.isnan(s):
+                    ret[i] = s
+        return tuple(ret)
+
+
+class DataFrameOperand(Operand):
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
+
+    @property
+    def object_type(self):
+        return self._object_type
+
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
-    def __init__(self, **kwargs):
-        super(DataFrameShuffleProxy, self).__init__(**kwargs)
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
+
+    def __init__(self, object_type=None, sparse=None, **kwargs):
+        super(DataFrameShuffleProxy, self).__init__(_object_type=object_type,
+                                                    _sparse=sparse, **kwargs)
+
+    @property
+    def object_type(self):
+        return self._object_type
 
 
 class DataFrameShuffleMap(ShuffleMap):
-    pass
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
+
+    @property
+    def object_type(self):
+        return self._object_type
 
 
 class DataFrameShuffleReduce(ShuffleReduce):
-    pass
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
+
+    @property
+    def object_type(self):
+        return self._object_type
 
 
 class DataFrameFuseMixin(DataFrameOperandMixin):
@@ -136,3 +165,7 @@ class DataFrameFuseMixin(DataFrameOperandMixin):
 class DataFrameFuseChunk(Fuse, DataFrameFuseMixin):
     def __init__(self, sparse=False, **kwargs):
         super(DataFrameFuseChunk, self).__init__(_sparse=sparse, **kwargs)
+
+    @property
+    def object_type(self):
+        return self._operands[-1].object_type

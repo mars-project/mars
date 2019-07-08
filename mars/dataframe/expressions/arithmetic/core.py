@@ -26,7 +26,8 @@ from ....serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, 
 from ....utils import classproperty, tokenize
 from ...core import DATAFRAME_TYPE
 from ...utils import hash_dtypes
-from ..core import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, DataFrameShuffleReduce
+from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
+    DataFrameShuffleProxy, DataFrameShuffleReduce
 from ..utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from .utils import infer_dtypes, infer_index_value, filter_dtypes
@@ -59,7 +60,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
         super(DataFrameIndexAlignMap, self).__init__(
             _index_shuffle_size=index_shuffle_size, _column_shuffle_size=column_shuffle_size,
             _column_shuffle_segments=column_shuffle_segments, _sparse=sparse,
-            _dtypes=dtypes, _gpu=gpu, **kw)
+            _dtypes=dtypes, _gpu=gpu, _object_type=ObjectType.dataframe, **kw)
 
     @property
     def index_min(self):
@@ -154,7 +155,8 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
     _input = KeyField('input')
 
     def __init__(self, shuffle_key=None, sparse=None, **kw):
-        super(DataFrameIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse, **kw)
+        super(DataFrameIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse,
+                                                        _object_type=ObjectType.dataframe, **kw)
 
     def _set_inputs(self, inputs):
         super(DataFrameIndexAlignReduce, self)._set_inputs(inputs)
@@ -414,7 +416,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     idx[align_axis] = align_axis_idx
                     idx[shuffle_axis] = j
                     map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx)))
-                proxy_chunk = DataFrameShuffleProxy(sparse=inp.issparse()).new_chunk(map_chunks, shape=())
+                proxy_chunk = DataFrameShuffleProxy(
+                    sparse=inp.issparse(), object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
                 for j in range(shuffle_size):
                     reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                     reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
@@ -446,7 +449,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     column_shuffle_size=out_shape[1])
                 map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), index=chunk.index))
 
-            proxy_chunk = DataFrameShuffleProxy().new_chunk(map_chunks, shape=())
+            proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.dataframe).new_chunk(
+                map_chunks, shape=())
             for out_idx in itertools.product(*(range(s) for s in out_shape)):
                 reduce_op = DataFrameIndexAlignReduce(i=out_idx,
                                                       sparse=proxy_chunk.issparse(),
@@ -599,9 +603,13 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             inputs, shape=shape, kws=kws, **kw)
 
     def _call(self, x1, x2):
-        kw = self._calc_properties(x1, x2)
-        shape = kw.pop('shape', None)
-        return self.new_dataframe([x1, x2], shape, **kw)
+        if isinstance(x1, DATAFRAME_TYPE) and isinstance(x2, DATAFRAME_TYPE):
+            setattr(self, '_object_type', ObjectType.dataframe)
+            kw = self._calc_properties(x1, x2)
+            shape = kw.pop('shape', None)
+            return self.new_dataframe([x1, x2], shape, **kw)
+        else:
+            raise NotImplementedError('Only support add two dataframes for now')
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)
@@ -622,7 +630,7 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
-                                     index_value=in_chunk.index_value, columns_value=in_chunk.columns)
+                                         index_value=in_chunk.index_value, columns_value=in_chunk.columns)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

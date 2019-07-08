@@ -264,9 +264,29 @@ class IndexValue(Serializable):
 class IndexChunkData(ChunkData):
     __slots__ = ()
 
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional field
     _dtype = DataTypeField('dtype')
+    _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue)
+
+    def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
+                 index_value=None, **kw):
+        if op is not None or '_op' not in kw:
+            kw['_op'] = op
+        if shape is not None or '_shape' not in kw:
+            kw['_shape'] = shape
+        if index is not None or '_index' not in kw:
+            kw['_index'] = index
+        if dtype is not None or '_dtype' not in kw:
+            kw['_dtype'] = dtype
+        if name is not None or '_name' not in kw:
+            kw['_name'] = name
+        if index_value is not None or '_index_value' not in kw:
+            kw['_index_value'] = index_value
+        super(IndexChunkData, self).__init__(**kw)
 
     @classmethod
     def cls(cls, provider):
@@ -274,6 +294,21 @@ class IndexChunkData(ChunkData):
             from ..serialize.protos.dataframe_pb2 import IndexChunkDef
             return IndexChunkDef
         return super(IndexChunkData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new chunk
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'index': self.index,
+            'index_value': self.index_value,
+            'name': self.name
+        }
+
+    @property
+    def shape(self):
+        return getattr(self, '_shape', None)
 
     @property
     def dtype(self):
@@ -294,10 +329,17 @@ class IndexData(TileableData):
 
     # optional field
     _dtype = DataTypeField('dtype')
+    _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue)
     _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
+                 name=None, index_value=None, chunks=None, **kw):
+        super(IndexData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
+                                        _dtype=dtype, _name=name, _index_value=index_value,
+                                        _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -305,6 +347,16 @@ class IndexData(TileableData):
             from ..serialize.protos.dataframe_pb2 import IndexDef
             return IndexDef
         return super(IndexData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'name': self.name,
+            'index_value': self.index_value,
+        }
 
     def __str__(self):
         if is_eager_mode():
@@ -338,10 +390,19 @@ class Index(Entity):
 class SeriesChunkData(ChunkData):
     __slots__ = ()
 
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional field
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue)
+
+    def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
+                 index_value=None, **kw):
+        super(SeriesChunkData, self).__init__(_op=op, _shape=shape, _index=index,
+                                              _dtype=dtype, _name=name,
+                                              _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -349,6 +410,21 @@ class SeriesChunkData(ChunkData):
             from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
             return SeriesChunkDef
         return super(SeriesChunkData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new chunk
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'index': self.index,
+            'index_value': self.index_value,
+            'name': self.name
+        }
+
+    @property
+    def shape(self):
+        return getattr(self, '_shape', None)
 
     @property
     def dtype(self):
@@ -379,12 +455,28 @@ class SeriesData(TileableData):
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
 
+    def __init__(self, op=None, shape=None, nsplits=None, dtype=None,
+                 name=None, index_value=None, chunks=None, **kw):
+        super(SeriesData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
+                                         _dtype=dtype, _name=name, _index_value=index_value,
+                                         _chunks=chunks, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
             from ..serialize.protos.dataframe_pb2 import SeriesDef
             return SeriesDef
         return super(SeriesData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape,
+            'dtype': self.dtype,
+            'name': self.name,
+            'index_value': self.index_value,
+        }
 
     def __str__(self):
         if is_eager_mode():
@@ -430,6 +522,12 @@ class DataFrameChunkData(ChunkData):
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue)
     _columns_value = ReferenceField('columns_value', IndexValue)
+
+    def __init__(self, op=None, shape=None, index=None, dtypes=None,
+                 index_value=None, columns_value=None, **kw):
+        super(DataFrameChunkData, self).__init__(_op=op, _shape=shape, _index=index,
+                                                 _dtypes=dtypes, _index_value=index_value,
+                                                 _columns_value=columns_value, **kw)
 
     @classmethod
     def cls(cls, provider):
@@ -489,6 +587,13 @@ class DataFrameData(TileableData):
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
+    def __init__(self, op=None, shape=None, nsplits=None, dtypes=None,
+                 index_value=None, columns_value=None, chunks=None, **kw):
+        super(DataFrameData, self).__init__(_op=op, _shape=shape, _nsplits=nsplits,
+                                            _dtypes=dtypes, _index_value=index_value,
+                                            _columns_value=columns_value,
+                                            _chunks=chunks, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -544,6 +649,10 @@ class DataFrame(Entity):
 
 
 INDEX_TYPE = (Index, IndexData)
+INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
 SERIES_TYPE = (Series, SeriesData)
+SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
-CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
+DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
+TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE
+CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE

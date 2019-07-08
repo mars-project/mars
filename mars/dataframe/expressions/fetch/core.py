@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....serialize.core import TupleField, SeriesField, ValueType
+import operator
+
+from ....serialize.core import TupleField, SeriesField, DataTypeField, ValueType, Int8Field
 from ....operands import Fetch, FetchShuffle
 from ....utils import on_serialize_shape, on_deserialize_shape
-from ..core import DataFrameOperandMixin
+from ..core import DataFrameOperandMixin, ObjectType
 
 
 class DataFrameFetchMixin(DataFrameOperandMixin):
@@ -34,18 +36,20 @@ class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    # optional fields
-    _dtypes = SeriesField('dtypes')
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
 
-    def __init__(self, dtypes=None, to_fetch_key=None, sparse=False, **kw):
+    def __init__(self, to_fetch_key=None, sparse=False, object_type=None, **kw):
         super(DataFrameFetch, self).__init__(
-            _dtypes=dtypes, _to_fetch_key=to_fetch_key, _sparse=sparse, **kw)
+            _to_fetch_key=to_fetch_key, _sparse=sparse, _object_type=object_type, **kw)
+
+    @property
+    def object_type(self):
+        return self._object_type
 
     def _new_chunks(self, inputs, kws=None, **kw):
         if '_key' in kw and self._to_fetch_key is None:
             self._to_fetch_key = kw['_key']
-        if '_dtypes' in kw and self._dtypes is None:
-            self._dtypes = kw['_dtypes']
         if '_shape' in kw and self._shape is None:
             self._shape = kw['_shape']
         return super(DataFrameFetch, self)._new_chunks(inputs, kws=kws, **kw)
@@ -60,9 +64,14 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    # optional fields
-    _dtypes = SeriesField('dtypes')
+    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
+                             on_deserialize=ObjectType)
 
-    def __init__(self, dtypes=None, to_fetch_keys=None, to_fetch_idxes=None, **kw):
+    def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, object_type=None, **kw):
         super(DataFrameFetchShuffle, self).__init__(
-            _dtypes=dtypes, _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes, **kw)
+            _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
+            _object_type=object_type, **kw)
+
+    @property
+    def object_type(self):
+        return self._object_type

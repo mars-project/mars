@@ -17,6 +17,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
+from ..expressions.core import ObjectType
+
 
 def _concat(ctx, chunk):
     inputs = [ctx[input.key] for input in chunk.inputs]
@@ -33,22 +35,41 @@ def _base_concat(chunk, inputs):
         # TODO: remove this when we support concat on dataframe
         raise NotImplementedError
     else:
-        # auto generated concat when executing a dataframe
-        n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
-        n_cols = int(len(inputs) // n_rows)
-        assert n_rows * n_cols == len(inputs)
+        # auto generated concat when executing a DataFrame, Series or Index
+        if chunk.op.object_type == ObjectType.dataframe:
+            return _auto_concat_dataframe_chunks(chunk, inputs)
+        elif chunk.op.object_type == ObjectType.series:
+            return _auto_concat_series_chunks(chunk, inputs)
+        else:
+            raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
+                            'can be automatically concatenated')
 
-        concats = []
-        for i in range(n_rows):
-            concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
-            concats.append(concat)
 
-        ret = pd.concat(concats)
-        if getattr(chunk.index_value, 'should_be_monotonic', False):
-            ret.sort_index(inplace=True)
-        if getattr(chunk.columns, 'should_be_monotonic', False):
-            ret.sort_index(axis=1, inplace=True)
-        return ret
+def _auto_concat_dataframe_chunks(chunk, inputs):
+    # auto generated concat when executing a DataFrame
+    n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
+    n_cols = int(len(inputs) // n_rows)
+    assert n_rows * n_cols == len(inputs)
+
+    concats = []
+    for i in range(n_rows):
+        concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
+        concats.append(concat)
+
+    ret = pd.concat(concats)
+    if getattr(chunk.index_value, 'should_be_monotonic', False):
+        ret.sort_index(inplace=True)
+    if getattr(chunk.columns, 'should_be_monotonic', False):
+        ret.sort_index(axis=1, inplace=True)
+    return ret
+
+
+def _auto_concat_series_chunks(chunk, inputs):
+    # auto generated concat when executing a Series
+    concat = pd.concat(inputs)
+    if getattr(chunk.index_value, 'should_be_monotonic', False):
+        concat.sort_index(inplace=True)
+    return concat
 
 
 def register_merge_handler():

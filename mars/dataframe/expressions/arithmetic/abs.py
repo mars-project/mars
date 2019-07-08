@@ -19,16 +19,18 @@ from ....utils import classproperty
 from ..core import DataFrameOperand
 from .core import DataFrameUnaryOpMixin
 
+
 class DataFrameAbs(DataFrameOperand, DataFrameUnaryOpMixin):
     _op_type_ = OperandDef.ABS
 
-    def __init__(self, **kw):
-        super(DataFrameAbs, self).__init__(**kw)
+    def __init__(self, object_type=None, **kw):
+        super(DataFrameAbs, self).__init__(_object_type=object_type, **kw)
 
     @classproperty
     def _operator(self):
         return operator.abs
 
+
 def abs(df):
-    op = DataFrameAbs()
+    op = DataFrameAbs(object_type=df.op.object_type)
     return op(df)

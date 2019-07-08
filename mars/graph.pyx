@@ -319,7 +319,8 @@ cdef class DirectedGraph:
             list nodes = []
 
         from .tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
-        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE, DataFrame
+        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, \
+            TILEABLE_TYPE as DATAFRAME_TYPE, DataFrame
         from .core import FUSE_CHUNK_TYPE
 
         level = None
@@ -513,9 +514,9 @@ class SerializableGraphNode(Serializable):
                        dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
                        dataframe='mars.dataframe.core.DataFrameData',
                        index_chunk='mars.dataframe.core.IndexChunkData',
-                       index='mars.dataframe.core.Index',
+                       index='mars.dataframe.core.IndexData',
                        series_chunk='mars.dataframe.core.SeriesChunkData',
-                       series='mars.dataframe.core.Series',
+                       series='mars.dataframe.core.SeriesData',
                        fuse_chunk='mars.core.FuseChunkData')
 
     @classmethod

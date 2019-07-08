@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\"\xa3\x01\n\rIndexChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\xd6\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\"\xdc\x01\n\x0eSeriesChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\x12\x14\n\x04name\x18\n \x01(\x0b\x32\x06.Value\"\xed\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xee\x01\n\x11\x44\x61taFrameChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x16\n\x06\x64types\x18\n \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\x0c \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\x83\x02\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\"\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x12.DataFrameChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\n \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
+  serialized_pb=_b('\n%mars/serialize/protos/dataframe.proto\x1a!mars/serialize/protos/value.proto\x1a&mars/serialize/protos/indexvalue.proto\"\xb9\x01\n\rIndexChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\x12\x14\n\x04name\x18\n \x01(\x0b\x32\x06.Value\"\xec\x01\n\x08IndexDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\x14\n\x04name\x18\n \x01(\x0b\x32\x06.Value\"\xdc\x01\n\x0eSeriesChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x15\n\x05\x64type\x18\x06 \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\x12\x14\n\x04name\x18\n \x01(\x0b\x32\x06.Value\"\xed\x01\n\tSeriesDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x15\n\x05\x64type\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\x1e\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x0e.IndexChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12\x14\n\x04name\x18\t \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\n \x01(\x0b\x32\x0b.IndexValue\"\xee\x01\n\x11\x44\x61taFrameChunkDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\x05index\x18\x02 \x03(\rB\x02\x10\x01\x12\r\n\x05shape\x18\x03 \x03(\x03\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x0e\n\x06\x63\x61\x63hed\x18\x05 \x01(\x08\x12\x16\n\x06\x64types\x18\n \x01(\x0b\x32\x06.Value\x12 \n\x0bindex_value\x18\x0b \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\x0c \x01(\x0b\x32\x0b.IndexValue\x12\x1c\n\x0c\x65xtra_params\x18\x08 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\t \x01(\t\"\x83\x02\n\x0c\x44\x61taFrameDef\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05shape\x18\x02 \x03(\x03\x12\x16\n\x06\x64types\x18\x03 \x01(\x0b\x32\x06.Value\x12\x12\n\x02op\x18\x04 \x01(\x0b\x32\x06.Value\x12\x17\n\x07nsplits\x18\x05 \x01(\x0b\x32\x06.Value\x12\"\n\x06\x63hunks\x18\x06 \x03(\x0b\x32\x12.DataFrameChunkDef\x12\x1c\n\x0c\x65xtra_params\x18\x07 \x01(\x0b\x32\x06.Value\x12\n\n\x02id\x18\x08 \x01(\t\x12 \n\x0bindex_value\x18\t \x01(\x0b\x32\x0b.IndexValue\x12\"\n\rcolumns_value\x18\n \x01(\x0b\x32\x0b.IndexValueb\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,mars_dot_serialize_dot_protos_dot_indexvalue__pb2.DESCRIPTOR,])
 
@@ -92,6 +92,13 @@ _INDEXCHUNKDEF = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='IndexChunkDef.name', index=8,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -105,7 +112,7 @@ _INDEXCHUNKDEF = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=117,
-  serialized_end=280,
+  serialized_end=302,
 )
 
 
@@ -179,6 +186,13 @@ _INDEXDEF = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='IndexDef.name', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -191,8 +205,8 @@ _INDEXDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=283,
-  serialized_end=497,
+  serialized_start=305,
+  serialized_end=541,
 )
 
 
@@ -285,8 +299,8 @@ _SERIESCHUNKDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=500,
-  serialized_end=720,
+  serialized_start=544,
+  serialized_end=764,
 )
 
 
@@ -379,8 +393,8 @@ _SERIESDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=723,
-  serialized_end=960,
+  serialized_start=767,
+  serialized_end=1004,
 )
 
 
@@ -473,8 +487,8 @@ _DATAFRAMECHUNKDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=963,
-  serialized_end=1201,
+  serialized_start=1007,
+  serialized_end=1245,
 )
 
 
@@ -567,19 +581,21 @@ _DATAFRAMEDEF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1204,
-  serialized_end=1463,
+  serialized_start=1248,
+  serialized_end=1507,
 )
 
 _INDEXCHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXCHUNKDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXCHUNKDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
+_INDEXCHUNKDEF.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['nsplits'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['chunks'].message_type = _INDEXCHUNKDEF
 _INDEXDEF.fields_by_name['extra_params'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _INDEXDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE
+_INDEXDEF.fields_by_name['name'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESCHUNKDEF.fields_by_name['op'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESCHUNKDEF.fields_by_name['dtype'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
 _SERIESCHUNKDEF.fields_by_name['index_value'].message_type = mars_dot_serialize_dot_protos_dot_indexvalue__pb2._INDEXVALUE

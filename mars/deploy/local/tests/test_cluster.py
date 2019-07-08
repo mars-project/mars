@@ -373,7 +373,7 @@ class Test(unittest.TestCase):
 
     @unittest.skipIf(pd is None, 'pandas not installed')
     def testFetchDataFrame(self, *_):
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas
+        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.expressions.arithmetic import add
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -381,9 +381,9 @@ class Test(unittest.TestCase):
             session = cluster.session
 
             data1 = pd.DataFrame(np.random.rand(10, 10))
-            df1 = from_pandas(data1, chunk_size=5)
+            df1 = from_pandas_df(data1, chunk_size=5)
             data2 = pd.DataFrame(np.random.rand(10, 10))
-            df2 = from_pandas(data2, chunk_size=6)
+            df2 = from_pandas_df(data2, chunk_size=6)
 
             df3 = add(df1, df2)
 
@@ -392,7 +392,7 @@ class Test(unittest.TestCase):
             pd.testing.assert_frame_equal(r1, r2)
 
             data4 = pd.DataFrame(np.random.rand(10, 10))
-            df4 = from_pandas(data4, chunk_size=6)
+            df4 = from_pandas_df(data4, chunk_size=6)
 
             df5 = add(df3, df4)
 
@@ -486,7 +486,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
             with new_session('http://' + cluster._web_endpoint).as_default():
-                from mars.dataframe.expressions.datasource.dataframe import from_pandas
+                from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
+                from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
                 from mars.dataframe.expressions.arithmetic import add
 
                 self.assertIsInstance(Session.default_or_local()._sess, WebSession)
@@ -494,16 +495,20 @@ class Test(unittest.TestCase):
                 with option_context({'eager_mode': True}):
                     data1 = pd.DataFrame(np.random.rand(10, 10), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
                                          columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-                    df1 = from_pandas(data1, chunk_size=5)
+                    df1 = from_pandas_df(data1, chunk_size=5)
                     pd.testing.assert_frame_equal(df1.fetch(), data1)
 
                     data2 = pd.DataFrame(np.random.rand(10, 10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
                                          columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
-                    df2 = from_pandas(data2, chunk_size=6)
+                    df2 = from_pandas_df(data2, chunk_size=6)
                     pd.testing.assert_frame_equal(df2.fetch(), data2)
 
                     df3 = add(df1, df2)
                     pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)
+
+                    s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+                    series1 = from_pandas_series(s1)
+                    pd.testing.assert_series_equal(series1.fetch(), s1)
 
     def testSparse(self, *_):
         import scipy.sparse as sps

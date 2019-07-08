@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from ..expressions.datasource.dataframe import DataFrameDataSource
+from ..expressions.datasource.series import SeriesDataSource
 
 
-def _dataframe_pandas_data_source(ctx, chunk):
+def _dataframe_or_series_pandas_data_source(ctx, chunk):
     ctx[chunk.key] = chunk.op.data
 
 
 def register_data_source_handler():
     from ...executor import register
 
-    register(DataFrameDataSource, _dataframe_pandas_data_source)
+    register(DataFrameDataSource, _dataframe_or_series_pandas_data_source)
+    register(SeriesDataSource, _dataframe_or_series_pandas_data_source)
