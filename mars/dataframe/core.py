@@ -274,19 +274,9 @@ class IndexChunkData(ChunkData):
 
     def __init__(self, op=None, shape=None, index=None, dtype=None, name=None,
                  index_value=None, **kw):
-        if op is not None or '_op' not in kw:
-            kw['_op'] = op
-        if shape is not None or '_shape' not in kw:
-            kw['_shape'] = shape
-        if index is not None or '_index' not in kw:
-            kw['_index'] = index
-        if dtype is not None or '_dtype' not in kw:
-            kw['_dtype'] = dtype
-        if name is not None or '_name' not in kw:
-            kw['_name'] = name
-        if index_value is not None or '_index_value' not in kw:
-            kw['_index_value'] = index_value
-        super(IndexChunkData, self).__init__(**kw)
+        super(IndexChunkData, self).__init__(_op=op, _shape=shape, _index=index,
+                                             _dtype=dtype, _name=name,
+                                             _index_value=index_value, **kw)
 
     @classmethod
     def cls(cls, provider):
