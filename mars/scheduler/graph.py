@@ -159,11 +159,7 @@ class GraphMetaActor(SchedulerActor):
 
     def update_op_infos(self, op_infos):
         for key, info in op_infos.items():
-            try:
-                old_state = self._op_infos[key].get('state')
-            except KeyError:
-                old_state = None
-
+            old_state = self._op_infos[key].get('state')
             if old_state is not None:
                 self._state_to_infos[old_state].pop(key, None)
             if info.get('state') is not None:
@@ -376,6 +372,7 @@ class GraphActor(SchedulerActor):
 
         if len(self._chunk_graph_cache) == 0:
             self.state = GraphState.SUCCEEDED
+            self._graph_meta_ref.set_graph_end(_tell=True)
 
     @log_unhandled
     def stop_graph(self):

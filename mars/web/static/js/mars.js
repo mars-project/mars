@@ -12,6 +12,6 @@ $(function() {
     $(window).resize(resize_page);
 
     if (window.location.hash) {
-        $('a[href*=\'' + location.hash + '\']').click();
+        $('a[href=\'' + location.hash + '\']').click();
     }
 });
