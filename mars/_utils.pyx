@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 from collections import deque
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
+from .compat import Enum
 
 import numpy as np
 try:
@@ -126,6 +127,8 @@ cdef inline object h_non_iterative(object ob):
         return h_numpy(ob)
     elif isinstance(ob, (np.dtype, np.generic)):
         return repr(ob)
+    elif isinstance(ob, Enum):
+        return h((type(ob), ob.name))
     elif pd is not None and isinstance(ob, pd.Index):
         return h_pandas_index(ob)
     elif pd is not None and isinstance(ob, pd.Series):

@@ -21,7 +21,7 @@ class SchedulerListHandler(MarsRequestHandler):
     def get(self):
         schedulers_info = self.web_api.get_schedulers_info()
 
-        template = _jinja_env.get_template('scheduler_list.html')
+        template = _jinja_env.get_template('scheduler_pages/list.html')
         self.write(template.render(scheduler_metrics=schedulers_info))
 
 
@@ -29,7 +29,7 @@ class SchedulerHandler(MarsRequestHandler):
     def get(self, endpoint):
         schedulers_info = self.web_api.get_schedulers_info()
 
-        template = _jinja_env.get_template('scheduler_detail.html')
+        template = _jinja_env.get_template('scheduler_pages/detail.html')
         self.write(template.render(
             endpoint=endpoint,
             scheduler_metrics=schedulers_info[endpoint],

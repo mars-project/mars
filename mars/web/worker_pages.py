@@ -23,7 +23,7 @@ class WorkerListHandler(MarsRequestHandler):
     def get(self):
         workers_meta = self.web_api.get_workers_meta()
 
-        template = _jinja_env.get_template('worker_list.html')
+        template = _jinja_env.get_template('worker_pages/list.html')
         self.write(template.render(worker_metrics=workers_meta))
 
 
@@ -43,7 +43,7 @@ class WorkerHandler(MarsRequestHandler):
             operands = sorted(progresses[k]['operands'].items(), key=lambda p: p[0])
             progresses[k]['operands'] = ', '.join('%s (%d)' % (k, v) for k, v in operands)
 
-        template = _jinja_env.get_template('worker_detail.html')
+        template = _jinja_env.get_template('worker_pages/detail.html')
         self.write(template.render(
             endpoint=endpoint,
             worker_metrics=workers_meta[endpoint],

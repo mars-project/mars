@@ -29,6 +29,7 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars import utils
+from mars.compat import Enum
 from mars.tensor.expressions.fetch import TensorFetch
 import mars.tensor as mt
 
@@ -92,6 +93,9 @@ class Test(unittest.TestCase):
         import shutil
         import tempfile
 
+        class TestEnum(Enum):
+            VAL1 = 'val1'
+
         tempdir = tempfile.mkdtemp('mars_test_utils_')
         try:
             filename = os.path.join(tempdir, 'test_npa.dat')
@@ -106,7 +110,7 @@ class Test(unittest.TestCase):
             try:
                 v = [1, 2.3, '456', u'789', b'101112', None, np.ndarray, [912, 'uvw'],
                      np.arange(0, 10), np.array(10), np.array([b'\x01\x32\xff']),
-                     np.int64]
+                     np.int64, TestEnum.VAL1]
                 copy_v = copy.deepcopy(v)
                 self.assertEqual(utils.tokenize(v + [mmp_array1], ext_data=1234),
                                  utils.tokenize(copy_v + [mmp_array2], ext_data=1234))

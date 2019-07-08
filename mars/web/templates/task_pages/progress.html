@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% set active_page = 'task_operand' %}
+{% block page_nav %}
+    <h2>Task {{ session_name }}</h2>
+    <ul class="nav nav-pills nav-justified">
+        <li class="active"><a href="#">Progress</a></li>
+        <li><a href="/session/{{ session_id }}/graph/{{ task_id }}/running_nodes">Running Nodes</a></li>
+    </ul>
+{% endblock %}
+{% block body %}
+    <div class="row">
+        {{ task_progress_script|safe }}
+    </div>
+{% endblock %}

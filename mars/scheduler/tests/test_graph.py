@@ -19,7 +19,7 @@ import unittest
 import mars.tensor as mt
 from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
-    AssignerActor, GraphState
+    AssignerActor, GraphState, OperandState
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
 from mars.actors import create_actor_pool
@@ -139,6 +139,8 @@ class Test(unittest.TestCase):
         with self.prepare_graph_in_pool(arr2, compose=True) as (pool, graph_ref):
             out_graph = graph_ref.get_chunk_graph()
             self.assertTrue(all(isinstance(v.op, TensorFuseChunk) for v in out_graph))
+
+            self.assertEqual(len(graph_ref.get_operand_info(state=OperandState.FREED)), 0)
 
     def testMultipleAddPreparation(self, *_):
         import numpy as np
