@@ -22,7 +22,8 @@ except ImportError:  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.dataframe.expressions.datasource.dataframe import from_pandas
+from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
+from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -31,9 +32,16 @@ class Test(TestBase):
         super(Test, self).setUp()
         self.executor = Executor()
 
-    def testPandasExecution(self):
+    def testFromPandasDataFrameExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
-        df = from_pandas(pdf, chunk_size=(13, 21))
+        df = from_pandas_df(pdf, chunk_size=(13, 21))
 
         result = self.executor.execute_dataframe(df, concat=True)[0]
         pd.testing.assert_frame_equal(pdf, result)
+
+    def testFromPandasSeriesExecution(self):
+        ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
+        series = from_pandas_series(ps, chunk_size=13)
+
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        pd.testing.assert_series_equal(ps, result)

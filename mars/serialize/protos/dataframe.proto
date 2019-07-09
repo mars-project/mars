@@ -13,6 +13,7 @@ message IndexChunkDef {
     Value dtype = 6;
     Value extra_params = 8;
     string id = 9;
+    Value name = 10;
 }
 
 
@@ -26,6 +27,7 @@ message IndexDef {
     Value extra_params = 7;
     string id = 8;
     IndexValue index_value = 9;
+    Value name = 10;
 }
 
 
@@ -39,6 +41,7 @@ message SeriesChunkDef {
     IndexValue index_value = 11;
     Value extra_params = 8;
     string id = 9;
+    Value name = 10;
 }
 
 

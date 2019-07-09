@@ -515,6 +515,7 @@ def build_fuse_chunk(fused_chunks, **kwargs):
     chunk_op = tail_chunk.op
     params = tail_chunk.params.copy()
 
-    fuse_op = get_fuse_op_cls(chunk_op)(sparse=tail_chunk.op.sparse, _key=tail_chunk.op.key)
+    fuse_op = get_fuse_op_cls(chunk_op)(sparse=chunk_op.sparse, _key=chunk_op.key,
+                                        _operands=[c.op for c in fused_chunks])
     return fuse_op.new_chunk(head_chunk.inputs, kws=[params], _key=tail_chunk.key,
                              _composed=fused_chunks, **kwargs)

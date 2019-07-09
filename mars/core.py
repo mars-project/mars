@@ -365,7 +365,7 @@ class TileableData(SerializableWithKey, Tileable):
     def __init__(self, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
-        if '_nsplits' in kwargs:
+        if kwargs.get('_nsplits', None) is not None:
             kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
 
         super(TileableData, self).__init__(*args, **kwargs)

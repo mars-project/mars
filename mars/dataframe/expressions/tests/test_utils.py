@@ -16,6 +16,7 @@
 import unittest
 from numbers import Integral
 
+import numpy as np
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -23,53 +24,63 @@ except ImportError:  # pragma: no cover
 
 from mars.config import option_context
 from mars.dataframe.core import IndexValue
-from mars.dataframe.expressions.utils import decide_chunk_sizes, \
+from mars.dataframe.expressions.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(unittest.TestCase):
-    def testDecideChunks(self):
+    def testDecideDataFrameChunks(self):
         with option_context() as options:
             options.tensor.chunk_store_limit = 64
 
             memory_usage = pd.Series([8, 22.2, 4, 2, 11.2], index=list('abcde'))
 
             shape = (10, 5)
-            nsplit = decide_chunk_sizes(shape, None, memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, {0: 4}, memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, {0: 4}, memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, (2, 3), memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, (2, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, (10, 3), memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, (10, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
             options.tensor.chunk_store_limit = 20
 
             shape = (10, 5)
-            nsplit = decide_chunk_sizes(shape, None, memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, {1: 3}, memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, {1: 3}, memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, (2, 3), memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, (2, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            nsplit = decide_chunk_sizes(shape, (10, 3), memory_usage)
+            nsplit = decide_dataframe_chunk_sizes(shape, (10, 3), memory_usage)
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
+
+    def testDecideSeriesChunks(self):
+        with option_context() as options:
+            options.tensor.chunk_store_limit = 64
+
+            s = pd.Series(np.empty(50, dtype=np.int64))
+            nsplit = decide_series_chunk_size(s.shape, None, s.memory_usage(index=False, deep=True))
+            self.assertEqual(len(nsplit), 1)
+            self.assertEqual(sum(nsplit[0]), 50)
+            self.assertEqual(nsplit[0][0], 8)
 
     def testParseIndex(self):
         index = pd.Int64Index([])
