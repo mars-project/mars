@@ -31,6 +31,7 @@ message OperandDef {
         TENSOR_STORE_TILEDB = 19;
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
+        DATAFRAME_FROM_TENSOR = 21;
         // series
         SERIES_DATA_SOURCE = 20;
 
