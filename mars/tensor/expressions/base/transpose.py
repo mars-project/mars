@@ -36,7 +36,9 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, axes=None, dtype=None, sparse=False, **kw):
         super(TensorTranspose, self).__init__(_axes=axes, _dtype=dtype,
-                                              _sparse=sparse, **kw)
+                                              _sparse=sparse,
+                                              # transpose will create a view
+                                              _create_view=True, **kw)
 
     @property
     def axes(self):

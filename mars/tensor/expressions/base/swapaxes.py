@@ -36,7 +36,7 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, axis1=None, axis2=None, dtype=None, sparse=False, **kw):
         super(TensorSwapAxes, self).__init__(_axis1=axis1, _axis2=axis2, _dtype=dtype,
-                                             _sparse=sparse, **kw)
+                                             _sparse=sparse, _create_view=True, **kw)
 
     @property
     def axis1(self):

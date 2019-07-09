@@ -34,7 +34,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
     _newshape = TupleField('newshape', ValueType.int64)
 
     def __init__(self, newshape=None, dtype=None, **kw):
-        super(TensorReshape, self).__init__(_newshape=newshape, _dtype=dtype, **kw)
+        super(TensorReshape, self).__init__(_newshape=newshape, _dtype=dtype,
+                                            _create_view=True, **kw)
 
     @property
     def newshape(self):

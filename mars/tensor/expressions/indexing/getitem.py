@@ -41,8 +41,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, indexes=None, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, create_view=False, **kw):
+        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
+                                          _create_view=create_view, **kw)
 
     @property
     def indexes(self):
@@ -520,6 +521,11 @@ class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
         return self._fancy_index_shape
 
 
+def _is_create_view(index):
+    # is view if all of index is slice or int or newaxis
+    return all(isinstance(ind, (slice, Integral)) or ind is None for ind in index)
+
+
 def _getitem(a, item):
     if isinstance(item, (list, tuple)) and \
             all(isinstance(it, slice) and it == slice(None) for it in item):
@@ -530,5 +536,6 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     shape = calc_shape(a.shape, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
+                     create_view=_is_create_view(index))
     return op(a, index, tuple(shape))

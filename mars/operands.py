@@ -63,6 +63,8 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _sparse = BoolField('sparse')
     _gpu = BoolField('gpu')
     _device = Int32Field('device')
+    # will this operand create a view of input data or not
+    _create_view = BoolField('create_view')
 
     _inputs = ListField('inputs', ValueType.key)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
@@ -122,6 +124,10 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     @property
     def device(self):
         return getattr(self, '_device', None)
+
+    @property
+    def create_view(self):
+        return getattr(self, '_create_view', False)
 
     @property
     def extra_params(self):
