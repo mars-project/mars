@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% set active_page = 'task_list' %}
+{% block page_nav %}
+    <h2>Session List</h2>
+{% endblock %}
 {% block body %}
     <div class="row">
-        <h2>Session List</h2>
         {% for session_id in sessions %}
             {% set tasks = sessions[session_id]['tasks'] %}
             <h3>{{ sessions[session_id]['name'] }}</h3>

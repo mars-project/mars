@@ -12,12 +12,24 @@ body {
   width: 100%;
   height: 100%;
 }
+#page-nav {
+  margin: 0;
+}
+#page-nav h2 {
+  padding: 15px;
+  background-color: white;
+  margin: 0;
+}
 #page-wrapper {
   padding: 0 15px;
   min-height: 568px;
   background-color: white;
 }
 @media (min-width: 768px) {
+  #page-nav {
+    position: inherit;
+    margin: 0 0 0 250px;
+  }
   #page-wrapper {
     position: inherit;
     margin: 0 0 0 250px;

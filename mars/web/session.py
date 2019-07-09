@@ -264,6 +264,10 @@ class Session(object):
         resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
         return json.loads(resp.text)
 
+    def get_task_count(self):
+        resp = self._req_session.get(self._endpoint + '/api/session/{0}/graph'.format(self._session_id))
+        return len(json.loads(resp.text))
+
     def __enter__(self):
         return self
 

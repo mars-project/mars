@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import requests
 import json
 import unittest
@@ -218,6 +217,8 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
             task_id = next(iter(graphs.keys()))
             res = requests.get('%s/session/%s/graph/%s' % (service_ep, sess._session_id, task_id))
+            self.assertEqual(res.status_code, 200)
+            res = requests.get('%s/session/%s/graph/%s/running_nodes' % (service_ep, sess._session_id, task_id))
             self.assertEqual(res.status_code, 200)
 
             from mars.web.task_pages import PROGRESS_APP_NAME

@@ -1,7 +1,7 @@
 $(function() {
     var resize_page = function() {
-        var new_height = $(window).height() - $('.navbar-static-top').outerHeight();
         var page_wrapper_obj = $('#page-wrapper');
+        var new_height = $(window).height() - $('.navbar-static-top').outerHeight() - $('#page-nav').outerHeight();
         if (new_height >= page_wrapper_obj[0].scrollHeight)
             page_wrapper_obj.css('height', new_height);
         else
@@ -10,4 +10,8 @@ $(function() {
     };
     resize_page();
     $(window).resize(resize_page);
+
+    if (window.location.hash) {
+        $('a[href=\'' + location.hash + '\']').click();
+    }
 });

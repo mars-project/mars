@@ -21,6 +21,7 @@ import numpy as np
 
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
+from mars.tests.core import mock
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
@@ -168,6 +169,7 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(session.run(arr + arr), expected + expected)
             np.testing.assert_array_equal(session.run(arr.sum()), expected.sum())
 
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorSession(self):
         with new_session() as session:
             with self.assertRaises(RuntimeError) as cm:

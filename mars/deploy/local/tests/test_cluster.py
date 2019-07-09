@@ -478,6 +478,9 @@ class Test(unittest.TestCase):
                     expected2 = expected1.dot(expected1)
                     np.testing.assert_array_almost_equal(r2, expected2)
 
+                    web_session = Session.default_or_local()._sess
+                    self.assertEqual(web_session.get_task_count(), 3)
+
                 a = mt.ones((10, 10), chunk_size=3)
                 with self.assertRaises(ValueError):
                     a.fetch()
@@ -509,6 +512,9 @@ class Test(unittest.TestCase):
                     s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
                     series1 = from_pandas_series(s1)
                     pd.testing.assert_series_equal(series1.fetch(), s1)
+                    
+                web_session = Session.default_or_local()._sess
+                self.assertEqual(web_session.get_task_count(), 3)
 
     def testSparse(self, *_):
         import scipy.sparse as sps
