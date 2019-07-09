@@ -22,11 +22,6 @@ from ....tensor.expressions.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
-
 
 class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     """
@@ -53,20 +48,17 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
     def dtypes(self):
         return self._dtypes
 
-    def __call__(self, shape, index_value=None, columns_value=None, chunk_size=None):
-        if index_value is None and columns_value is None:
-            index_value = parse_index(self._data.index)
-            columns_value = parse_index(self._data.columns, store_data=True)
-
+    def __call__(self, shape, chunk_size=None):
         return self.new_dataframe(None, shape, dtypes=self.dtypes,
-                                  index_value=index_value,
-                                  columns_value=columns_value,
+                                  index_value=parse_index(self._data.index),
+                                  columns_value=parse_index(self._data.columns,
+                                                            store_data=True),
                                   raw_chunk_size=chunk_size)
 
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
-        raw_df = pd.DataFrame(op.data)
+        raw_df = op.data
 
         memory_usage = raw_df.memory_usage(index=False, deep=True)
         chunk_size = df.extra_params.raw_chunk_size or options.tensor.chunk_size
