@@ -14,10 +14,22 @@
 
 from ..expressions.datasource.dataframe import DataFrameDataSource
 from ..expressions.datasource.series import SeriesDataSource
+from ..expressions.datasource.dataframe_from_tensor import TensorToDataFrame
+
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
 
 
 def _dataframe_or_series_pandas_data_source(ctx, chunk):
     ctx[chunk.key] = chunk.op.data
+
+
+def _dataframe_tensor_data_source(ctx, chunk):
+    df = ctx[chunk.inputs[0].key]
+    data = pd.DataFrame(df)
+    ctx[chunk.key] = data
 
 
 def register_data_source_handler():
@@ -25,3 +37,4 @@ def register_data_source_handler():
 
     register(DataFrameDataSource, _dataframe_or_series_pandas_data_source)
     register(SeriesDataSource, _dataframe_or_series_pandas_data_source)
+    register(TensorToDataFrame, _dataframe_tensor_data_source)

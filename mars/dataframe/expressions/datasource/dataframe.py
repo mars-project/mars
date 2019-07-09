@@ -97,16 +97,3 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 def from_pandas(data, chunk_size=None, gpu=None, sparse=False):
     op = DataFrameDataSource(data=data, gpu=gpu, sparse=sparse)
     return op(data.shape, chunk_size=chunk_size)
-
-
-def from_tensor(tensor, chunk_size=None, gpu=None, sparse=False):
-    if tensor.ndim != 2:
-        raise NotImplementedError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
-
-    # fetch the data from tensor firstly
-    data = tensor.execute()
-    op = DataFrameDataSource(data=data, dtypes=data.dtype, gpu=gpu, sparse=sparse)
-
-    # make index/column value if create DataFrame from tensor
-    return op(tensor.shape, index_value=list(range(tensor.shape[0])), columns_value=list(range(tensor.shape[1])),
-              chunk_size=chunk_size)

@@ -19,16 +19,17 @@ except ImportError:  # pragma: no cover
 
 from ..tensor.core import TENSOR_TYPE
 from .core import DATAFRAME_TYPE, DataFrame as _Frame
-from .expressions.datasource.dataframe import from_pandas, from_tensor
+from .expressions.datasource.dataframe import from_pandas
+from .expressions.datasource.dataframe_from_tensor import from_tensor
 
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            df = from_tensor(data)
+            df = from_tensor(data, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
-            df = from_pandas(data, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
+            df = data
         else:
             pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             df = from_pandas(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
