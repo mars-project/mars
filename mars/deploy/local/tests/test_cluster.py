@@ -514,7 +514,7 @@ class Test(unittest.TestCase):
                     pd.testing.assert_series_equal(series1.fetch(), s1)
                     
                 web_session = Session.default_or_local()._sess
-                self.assertEqual(web_session.get_task_count(), 3)
+                self.assertEqual(web_session.get_task_count(), 4)
 
     def testSparse(self, *_):
         import scipy.sparse as sps
