@@ -30,9 +30,6 @@ class ObjectType(Enum):
     series = 2
     index = 3
 
-    def __mars_tokenize__(self):
-        return self.value
-
 
 class DataFrameOperandMixin(TileableOperandMixin):
     __slots__ = ()
