@@ -3,11 +3,6 @@ from ..utils import parse_index
 from .... import opcodes as OperandDef
 from ....serialize import DataFrameField, SeriesField
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
-
 
 class TensorToDataFrame(DataFrameOperand, DataFrameOperandMixin):
     """
