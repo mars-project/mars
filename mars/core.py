@@ -792,11 +792,15 @@ class EntityDataModificationHandler(object):
         entity._data = data
         data.attach(entity)
 
+    @staticmethod
+    def _get_data(obj):
+        return obj.data if isinstance(obj, Entity) else obj
+
     @enter_build_mode
     def data_changed(self, old_data, new_data):
         notified = set()
         old_to_new = {old_data: new_data}
-        q = [old_data] if old_data.op.create_view else []
+        q = [old_data]
         while len(q) > 0:
             data = q.pop()
 
@@ -808,7 +812,7 @@ class EntityDataModificationHandler(object):
             observers = {ob for ob in self._data_to_entities.pop(data, set())
                          if ob not in notified}
             for ob in observers:
-                new_data = ob.op.on_input_modify(data)
+                new_data = self._get_data(ob.op.on_input_modify(old_to_new[data]))
                 old_data = ob.data
                 self._update_observe_data(ob, ob.data, new_data)
                 old_to_new[old_data] = new_data
@@ -817,7 +821,7 @@ class EntityDataModificationHandler(object):
 
             if data.op.create_view:
                 old_input_data = data.inputs[0]
-                new_input_data = data.op.on_output_modify(old_to_new[data])
+                new_input_data = self._get_data(data.op.on_output_modify(old_to_new[data]))
                 old_to_new[old_input_data] = new_input_data
                 q.append(old_input_data)
 

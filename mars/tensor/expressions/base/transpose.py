@@ -52,6 +52,14 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
         super(TensorTranspose, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def on_output_modify(self, new_output):
+        op = self.copy().reset_key()
+        return op(new_output)
+
+    def on_input_modify(self, new_input):
+        op = self.copy().reset_key()
+        return op(new_input)
+
     @classmethod
     def tile(cls, op):
         out_chunks = []

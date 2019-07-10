@@ -70,7 +70,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         if self._create_view:
             new_op = self.copy().reset_key()
             new_inputs = [data] + self.inputs[1:]
-            return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape).data
+            return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     def __call__(self, a, index, shape):
         self._indexes = index

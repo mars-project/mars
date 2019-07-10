@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 from mars.executor import Executor
-from mars.tensor import ones
+from mars.tensor import ones, add, swapaxes
 from mars.session import LocalSession, Session
 
 
@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
         q, r = np.linalg.qr(a)
         self.assertTrue(np.allclose(np.dot(q, r), a).execute())
 
-    def testViewData(self):
+    def testViewDataOnSlice(self):
         a = ones((10, 20), chunk_size=6)
         b = a[:5, 5:10]
         b[:3, :3] = 3
@@ -61,6 +61,26 @@ class Test(unittest.TestCase):
         npa = np.ones((10, 20))
         npb = npa[:5, 5:10]
         npb[:3, :3] = 3
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnTranspose(self):
+        a = ones((10, 20), chunk_size=6)
+        b = a.T
+        add(b, 1, out=b)
+
+        np.testing.assert_array_equal(b.execute(), np.ones((20, 10)) + 1)
+        np.testing.assert_array_equal(a.execute(), np.ones((10, 20)) + 1)
+
+    def testViewDataOnSwapaxes(self):
+        a = ones((10, 20), chunk_size=6)
+        b = swapaxes(a, 1, 0)
+        a[1] = 10
+
+        npa = np.ones((10, 20))
+        npb = np.swapaxes(npa, 1, 0)
+        npa[1] = 10
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
