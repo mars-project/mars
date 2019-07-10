@@ -184,13 +184,13 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         # the modification should be set back to the input.
         # This function is for this sort of usage.
         # Remember, if `create_view` is False, this function should take no effect.
-        pass
+        raise NotImplementedError
 
     def on_input_modify(self, new_input):
         # when `create_view` is True, if the input is modified,
         # this function could be used to respond the modification.
         # Remember, if `create_view` is False, this function should take no effect.
-        pass
+        raise NotImplementedError
 
 
 class HasInput(Operand):
