@@ -21,7 +21,7 @@ import numpy as np
 
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
-from mars.tests.core import mock
+
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
@@ -169,29 +169,8 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(session.run(arr + arr), expected + expected)
             np.testing.assert_array_equal(session.run(arr.sum()), expected.sum())
 
-    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
-    def testMutableTensorSession(self):
-        with new_session() as session:
-            with self.assertRaises(RuntimeError) as cm:
-                session.create_mutable_tensor("test", (4, 5), dtype=np.int32)
-
-            expected_msg = 'Only local cluster session can be used to manipulate mutable tensors.'
-            self.assertEqual(cm.exception.args[0], expected_msg)
-
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=True) as cluster:
-            with new_session('http://' + cluster._web_endpoint) as session:
-                with self.assertRaises(RuntimeError) as cm:
-                    session.create_mutable_tensor("test", (4, 5), dtype=np.int32)
-
-                expected_msg = "Only local cluster session can be used to manipulate mutable tensors."
-                self.assertEqual(cm.exception.args[0], expected_msg)
-
     def testMutableTensorDuplicateName(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
-            session = cluster.session
-
+        def testWithGivenSession(session):
             session.create_mutable_tensor("test", (4, 5), dtype='int32')
 
             # The two unsealed mutable tensors cannot have the same name.
@@ -201,11 +180,16 @@ class Test(unittest.TestCase):
             expected_msg = "The mutable tensor named 'test' already exists."
             self.assertEqual(cm.exception.args[0], expected_msg)
 
-    def testMutableTensorRaiseAfterSeal(self):
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M') as cluster:
             session = cluster.session
+            testWithGivenSession(session)
 
+    def testMutableTensorRaiseAfterSeal(self):
+        def testWithGivenSession(session):
             mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
             mut.seal()
 
@@ -228,6 +212,54 @@ class Test(unittest.TestCase):
                 session.seal(mut)
 
             self.assertEqual(cm.exception.args[0], expected_msg)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
+            session = cluster.session
+            testWithGivenSession(session)
+
+    def testMutableTensorLocal(self):
+        with new_session().as_default() as session:
+            mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
+            mut2 = session.get_mutable_tensor("test")
+
+            # In local session, mut1 and mut2 should be the same object
+            self.assertEqual(id(mut), id(mut2))
+
+            # Check the property
+            self.assertEqual(mut.shape, (4, 5))
+            self.assertEqual(np.dtype(mut.dtype), np.int32)
+
+            # Mutable tensor doesn't have chunks in local session
+            self.assertEqual(mut.chunks, None)
+
+            # Check write and seal
+            mut[1:4, 2] = 8
+            mut[2:4] = np.arange(10).reshape(2, 5)
+            mut[1] = np.arange(5)
+            arr = mut.seal()
+
+            # The arr should be executed after seal
+            self.assertIn(arr.key, session._sess.executed_tileables)
+
+            # The arr should has chunks
+            self.assertNotEqual(arr.chunks, None)
+
+            expected = np.zeros((4, 5), dtype='int32')
+            expected[1:4, 2] = 8
+            expected[2:4] = np.arange(10).reshape(2, 5)
+            expected[1] = np.arange(5)
+
+            # Check the value
+            np.testing.assert_array_equal(session.fetch(arr), expected)
+
+            # check operations on the sealed tensor
+            np.testing.assert_array_equal(session.run(arr + 1), expected + 1)
+            np.testing.assert_array_equal(session.run(arr + arr), expected + expected)
+            np.testing.assert_array_equal(session.run(arr.sum()), expected.sum())
 
     def assertRecordsEqual(self, records, expected):
         np.testing.assert_array_equal(records['index'], expected[:,0])

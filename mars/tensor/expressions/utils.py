@@ -555,6 +555,14 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
                                       chunks=chunks, _key=tensor_key, _id=tensor_id)
 
 
+def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
+    from ..core import MutableTensor, MutableTensorData
+    # Construct MutableTensor on the fly.
+    tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
+    return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
+                                                _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+
+
 def setitem_as_records(nsplits_acc, output_chunk, value, ts):
     """
     Turns a `__setitem__`  to a list of index-value records.

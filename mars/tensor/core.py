@@ -460,7 +460,11 @@ class MutableTensor(Entity):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        self._buffer_size = np.prod(self.chunks[0].shape)
+        if self.chunks:
+            self._buffer_size = np.prod(self.chunks[0].shape)
+        else:
+            # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
+            self._buffer_size = 0
 
     def __len__(self):
         return len(self._data)
