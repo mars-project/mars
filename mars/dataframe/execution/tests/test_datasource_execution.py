@@ -24,6 +24,8 @@ from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
+import mars.tensor as mt
+from mars.dataframe.expressions.datasource.dataframe_from_tensor import from_tensor as from_tensor_mt
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -45,3 +47,11 @@ class Test(TestBase):
 
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
+
+    def testFromTensorExecution(self):
+        tensor = mt.random.rand(10, 10)
+        df = from_tensor_mt(tensor)
+        tensor_res = self.executor.execute_tensor(tensor)
+        pdf = pd.DataFrame(tensor_res[0])
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(pdf, result)

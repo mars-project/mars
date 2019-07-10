@@ -14,8 +14,9 @@
 
 import unittest
 from weakref import ReferenceType
-
+import mars.tensor as mt
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -26,6 +27,7 @@ from mars.graph import DAG
 from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.expressions.datasource.dataframe_from_tensor import from_tensor as from_tensor_mt
 from mars.tests.core import TestBase
 
 
@@ -68,7 +70,7 @@ class Test(TestBase):
 
     def testDataFrameGraphSerialize(self):
         df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
-                                      columns=[np.random.bytes(10) for _ in range(10)]))
+                                         columns=[np.random.bytes(10) for _ in range(10)]))
         graph = df.build_graph(tiled=False)
 
         pb = graph.to_pb()
@@ -239,3 +241,12 @@ class Test(TestBase):
         self.assertTrue(series.chunks[2].index_value._index_value._is_monotonic_increasing)
         self.assertFalse(series.chunks[2].index_value._index_value._is_monotonic_decreasing)
         self.assertTrue(series.chunks[2].index_value._index_value._is_unique)
+
+    def testFromTensor(self):
+        tensor = mt.random.rand(10, 10, chunk_size=2)
+        df = from_tensor_mt(tensor)
+        self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(df.op.dtypes, tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
+
+        df.tiles()
+        self.assertEqual(len(df.chunks), 25)
