@@ -56,19 +56,19 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                        for index in self._indexes]
         self._indexes = new_indexes
 
-    def on_output_modify(self, data):
+    def on_output_modify(self, new_output):
         from .setitem import TensorIndexSetValue
 
         if self._create_view:
             a = self.input
             op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                                     indexes=self._indexes, value=data)
-            return op(a, self._indexes, data)
+                                     indexes=self._indexes, value=new_output)
+            return op(a, self._indexes, new_output)
 
-    def on_input_modify(self, data):
+    def on_input_modify(self, new_input):
         if self._create_view:
             new_op = self.copy().reset_key()
-            new_inputs = [data] + self.inputs[1:]
+            new_inputs = [new_input] + self.inputs[1:]
             return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     def __call__(self, a, index, shape):

@@ -54,14 +54,14 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
         super(TensorSwapAxes, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def on_output_modify(self, data):
-        op = TensorSwapAxes(axis1=self._axis2, axis2=self._axis1, dtype=data.dtype,
-                            sparse=data.issparse())
-        return op(data)
+    def on_output_modify(self, new_output):
+        op = TensorSwapAxes(axis1=self._axis2, axis2=self._axis1, dtype=new_output.dtype,
+                            sparse=new_output.issparse())
+        return op(new_output)
 
-    def on_input_modify(self, data):
+    def on_input_modify(self, new_input):
         op = self.copy().reset_key()
-        return op(data)
+        return op(new_input)
 
     @classmethod
     def tile(cls, op):
