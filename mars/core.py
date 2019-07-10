@@ -17,7 +17,7 @@
 import threading
 import itertools
 from operator import attrgetter, mul
-from weakref import WeakKeyDictionary, ref
+from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
@@ -349,7 +349,7 @@ FUSE_CHUNK_TYPE = (FuseChunkData, FuseChunk)
 
 
 class TileableData(SerializableWithKey, Tileable):
-    __slots__ = '__weakref__', '_siblings', '_cix'
+    __slots__ = '__weakref__', '_siblings', '_cix', '_entities'
     _no_copy_attrs_ = SerializableWithKey._no_copy_attrs_ | {'_cix'}
 
     # required fields
@@ -372,6 +372,8 @@ class TileableData(SerializableWithKey, Tileable):
 
         if hasattr(self, '_chunks') and self._chunks:
             self._chunks = sorted(self._chunks, key=attrgetter('index'))
+
+        self._entities = WeakSet()
 
     @property
     def ndim(self):
@@ -452,6 +454,10 @@ class TileableData(SerializableWithKey, Tileable):
         except (TypeError, ValueError):
             return ChunksIndexer(self)
 
+    @property
+    def entities(self):
+        return self._entities
+
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
@@ -469,6 +475,14 @@ class TileableData(SerializableWithKey, Tileable):
         return self.op.is_sparse()
 
     issparse = is_sparse
+
+    @enter_build_mode
+    def attach(self, entity):
+        self._entities.add(entity)
+
+    @enter_build_mode
+    def detach(self, entity):
+        self._entities.discard(entity)
 
     def tiles(self):
         return handler.tiles(self)
@@ -565,6 +579,20 @@ class TileableData(SerializableWithKey, Tileable):
         _cleaner.register(self, session)
 
     _execute_session = property(fset=_set_execute_session)
+
+
+class TileableEntity(Entity):
+    __slots__ = '__weakref__',
+
+    def __init__(self, data):
+        super(TileableEntity, self).__init__(data)
+        self._data.attach(self)
+        if data.op.create_view:
+            entity_view_handler.add_observer(data.inputs[0], self)
+
+    @Entity.data.setter
+    def data(self, new_data):
+        entity_view_handler.data_changed(self._data, new_data)
 
 
 class ChunksIndexer(object):
@@ -732,6 +760,66 @@ class _TileableDataCleaner(object):
             self._tileable_to_sessions[tensor] = [_TileableSession(tensor, session)]
 
 
-# we don't use __del__ to decref because a tensor holds an op,
-# and op's outputs contains the tensor, so a circular references exists
+# we don't use __del__ to avoid potential Circular reference
 _cleaner = _TileableDataCleaner()
+
+
+class EntityDataModificationHandler(object):
+    def __init__(self):
+        self._data_to_entities = WeakKeyDictionary()
+
+    def _add_observer(self, data, entity):
+        # only tileable data should be considered
+        assert isinstance(data, TileableData)
+        assert isinstance(entity, TileableEntity)
+
+        if data not in self._data_to_entities:
+            self._data_to_entities[data] = WeakSet()
+
+        self._data_to_entities[data].add(entity)
+
+    @enter_build_mode
+    def add_observer(self, data, entity):
+        self._add_observer(data, entity)
+
+    def _update_observe_data(self, observer, data, new_data):
+        self._data_to_entities.get(data, set()).discard(observer)
+        self._add_observer(new_data, observer)
+
+    @staticmethod
+    def _set_data(entity, data):
+        entity._data.detach(entity)
+        entity._data = data
+        data.attach(entity)
+
+    @enter_build_mode
+    def data_changed(self, old_data, new_data):
+        notified = set()
+        old_to_new = {old_data: new_data}
+        q = [old_data] if old_data.op.create_view else []
+        while len(q) > 0:
+            data = q.pop()
+
+            # handle entities
+            for entity in data.entities:
+                self._set_data(entity, old_to_new[data])
+                notified.add(entity)
+
+            observers = {ob for ob in self._data_to_entities.pop(data, set())
+                         if ob not in notified}
+            for ob in observers:
+                new_data = ob.op.on_input_modify(data)
+                old_data = ob.data
+                self._update_observe_data(ob, ob.data, new_data)
+                old_to_new[old_data] = new_data
+                q.append(old_data)
+                notified.add(ob)
+
+            if data.op.create_view:
+                old_input_data = data.inputs[0]
+                new_input_data = data.op.on_output_modify(old_to_new[data])
+                old_to_new[old_input_data] = new_input_data
+                q.append(old_input_data)
+
+
+entity_view_handler = EntityDataModificationHandler()

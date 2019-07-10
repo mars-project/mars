@@ -364,9 +364,13 @@ _kernel_mode = threading.local()
 
 
 def is_eager_mode():
-    if getattr(_kernel_mode, 'eager', None) is None:
+    if getattr(_kernel_mode, 'kernel', None) is None:
         return options.eager_mode
-    return _kernel_mode.eager
+    return _kernel_mode.kernel
+
+
+def kernel_entered():
+    return getattr(_kernel_mode, 'kernel', None) is not None
 
 
 def kernel_mode(func):
@@ -380,10 +384,10 @@ def kernel_mode(func):
 
     def _wrapped(*args, **kwargs):
         try:
-            _kernel_mode.eager = False
+            _kernel_mode.kernel = True
             return func(*args, **kwargs)
         finally:
-            _kernel_mode.eager = None
+            _kernel_mode.kernel = None
 
     return _wrapped
 

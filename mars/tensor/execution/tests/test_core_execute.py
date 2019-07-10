@@ -52,3 +52,15 @@ class Test(unittest.TestCase):
         # test qr
         q, r = np.linalg.qr(a)
         self.assertTrue(np.allclose(np.dot(q, r), a).execute())
+
+    def testViewData(self):
+        a = ones((10, 20), chunk_size=6)
+        b = a[:5, 5:10]
+        b[:3, :3] = 3
+
+        npa = np.ones((10, 20))
+        npb = npa[:5, 5:10]
+        npb[:3, :3] = 3
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)

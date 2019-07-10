@@ -24,6 +24,7 @@ from .... import opcodes as OperandDef
 from ....serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ....core import Base, Entity
 from ....compat import OrderedDict, Enum, reduce
+from ....utils import kernel_mode
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
@@ -55,6 +56,21 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
+
+    def on_output_modify(self, data):
+        from .setitem import TensorIndexSetValue
+
+        if self._create_view:
+            a = self.input
+            op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
+                                     indexes=self._indexes, value=data)
+            return op(a, self._indexes, data)
+
+    def on_input_modify(self, data):
+        if self._create_view:
+            new_op = self.copy().reset_key()
+            new_inputs = [data] + self.inputs[1:]
+            return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape).data
 
     def __call__(self, a, index, shape):
         self._indexes = index
@@ -522,7 +538,7 @@ class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
 
 
 def _is_create_view(index):
-    # is view if all of index is slice or int or newaxis
+    # is view if all of index is slice, int or newaxis
     return all(isinstance(ind, (slice, Integral)) or ind is None for ind in index)
 
 
