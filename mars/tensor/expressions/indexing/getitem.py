@@ -24,7 +24,6 @@ from .... import opcodes as OperandDef
 from ....serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ....core import Base, Entity
 from ....compat import OrderedDict, Enum, reduce
-from ....utils import kernel_mode
 from ...core import TENSOR_TYPE
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
