@@ -364,19 +364,14 @@ _kernel_mode = threading.local()
 
 
 def is_eager_mode():
-    if getattr(_kernel_mode, 'kernel', None) is None:
+    if getattr(_kernel_mode, 'eager', None) is None:
         return options.eager_mode
-    return _kernel_mode.kernel
-
-
-def kernel_entered():
-    return getattr(_kernel_mode, 'kernel', None) is not None
+    return _kernel_mode.eager
 
 
 def kernel_mode(func):
     """
     A decorator for kernel functions.
-
     When eager mode is on, expressions will be executed after `new_entities`, however
     `new_entities` is also called in `Executor` and `OperandTilesHandler`, this decorator
     provides an options context for kernel functions to avoid execution.
@@ -384,10 +379,10 @@ def kernel_mode(func):
 
     def _wrapped(*args, **kwargs):
         try:
-            _kernel_mode.kernel = True
+            _kernel_mode.eager = False
             return func(*args, **kwargs)
         finally:
-            _kernel_mode.kernel = None
+            _kernel_mode.eager = None
 
     return _wrapped
 
