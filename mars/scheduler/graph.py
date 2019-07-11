@@ -29,7 +29,7 @@ from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
 from ..actors.errors import ActorAlreadyExist
-from ..compat import six, functools32, reduce, OrderedDict
+from ..compat import functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
@@ -38,7 +38,7 @@ from ..serialize import dataserializer
 from ..core import ChunkData
 from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    concat_tileable_chunks, build_fetch_chunk, build_fetch_tileable
+    build_fetch_chunk, build_fetch_tileable
 
 logger = logging.getLogger(__name__)
 

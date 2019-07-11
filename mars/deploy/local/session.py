@@ -23,7 +23,7 @@ from ...compat import TimeoutError  # pylint: disable=W0622
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
-from ...utils import build_graph, merge_chunks
+from ...utils import build_graph
 from ...tensor.expressions.indexing import TensorIndex
 
 
