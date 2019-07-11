@@ -21,32 +21,41 @@ import numpy as np
 
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
+from mars.tests.core import mock
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorCreateAndGet(self):
+        def testWithGivenSession(session):
+            mut1 = session.create_mutable_tensor("test", (4, 5), dtype=np.double, chunk_size=3)
+            mut2 = session.get_mutable_tensor("test")
+
+            self.assertEqual(tuple(mut1.shape), (4, 5))
+            self.assertEqual(mut1.dtype, np.double)
+            self.assertEqual(mut1.nsplits, ((3, 1), (3, 2)))
+
+            # mut1 and mut2 are not the same object, but has the same properties.
+            self.assertNotEqual(mut1.id, mut2.id)
+            self.assertEqual(mut1.shape, mut2.shape)
+            self.assertEqual(mut1.dtype, mut2.dtype)
+            self.assertEqual(mut1.nsplits, mut2.nsplits)
+
+            for chunk1, chunk2 in zip(mut2.chunks, mut2.chunks):
+                self.assertEqual(chunk1.key, chunk2.key)
+                self.assertEqual(chunk1.index, chunk2.index)
+                self.assertEqual(chunk1.shape, chunk2.shape)
+                self.assertEqual(chunk1.dtype, chunk2.dtype)
+
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
-            with new_session(cluster.endpoint) as session:
-                mut1 = session.create_mutable_tensor("test", (4, 5), dtype=np.double, chunk_size=3)
-                mut2 = session.get_mutable_tensor("test")
+                         shared_memory='20M', web=True) as cluster:
+            with new_session(cluster.endpoint).as_default() as session:
+                testWithGivenSession(session)
 
-                self.assertEqual(mut1.shape, (4, 5))
-                self.assertEqual(mut1.dtype, np.double)
-                self.assertEqual(mut1.nsplits, ((3, 1), (3, 2)))
-
-                # mut1 and mut2 are not the same object, but has the same properties.
-                self.assertNotEqual(mut1.id, mut2.id)
-                self.assertEqual(mut1.shape, mut2.shape)
-                self.assertEqual(mut1.dtype, mut2.dtype)
-                self.assertEqual(mut1.nsplits, mut2.nsplits)
-
-                for chunk1, chunk2 in zip(mut2.chunks, mut2.chunks):
-                    self.assertEqual(chunk1.key, chunk2.key)
-                    self.assertEqual(chunk1.index, chunk2.index)
-                    self.assertEqual(chunk1.shape, chunk2.shape)
-                    self.assertEqual(chunk1.dtype, chunk2.dtype)
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
 
     def testMutableTensorWrite(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
@@ -138,11 +147,9 @@ class Test(unittest.TestCase):
                 expected = np.array([[0, 999.], [1, 999.]])
                 self.assertRecordsEqual(result, expected)
 
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorSeal(self):
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
-            session = cluster.session
-
+        def testWithGivenSession(session):
             mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
             mut[1:4, 2] = 8
             mut[2:4] = np.arange(10).reshape(2, 5)
@@ -169,6 +176,15 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(session.run(arr + arr), expected + expected)
             np.testing.assert_array_equal(session.run(arr.sum()), expected.sum())
 
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorDuplicateName(self):
         def testWithGivenSession(session):
             session.create_mutable_tensor("test", (4, 5), dtype='int32')
@@ -183,11 +199,14 @@ class Test(unittest.TestCase):
         with new_session().as_default() as session:
             testWithGivenSession(session)
 
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
-            session = cluster.session
+        with new_cluster(scheduler_n_process=2, worker_n_process=2, shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
             testWithGivenSession(session)
 
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorRaiseAfterSeal(self):
         def testWithGivenSession(session):
             mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
@@ -217,9 +236,12 @@ class Test(unittest.TestCase):
             testWithGivenSession(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
-            session = cluster.session
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
             testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
 
     def testMutableTensorLocal(self):
         with new_session().as_default() as session:

@@ -532,17 +532,17 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
     from ...config import options
     from .fetch import TensorFetch
 
+    if not isinstance(dtype, np.dtype):
+        dtype = np.dtype(dtype)
+    if chunk_keys is None:
+        chunk_keys = itertools.repeat(None)
+
     # compute chunks
     chunk_size = chunk_size or options.tensor.chunk_size
     chunk_size = decide_chunk_sizes(shape, chunk_size, dtype.itemsize)
     chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
     fetch_op = TensorFetch(dtype=dtype).reset_key()
-
-    if not isinstance(dtype, np.dtype):
-        dtype = np.dtype(dtype)
-    if chunk_keys is None:
-        chunk_keys = itertools.repeat(None)
 
     chunks = []
     for chunk_shape, chunk_idx, chunk_key in izip(itertools.product(*chunk_size),
@@ -559,8 +559,8 @@ def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
     from ..core import MutableTensor, MutableTensorData
     # Construct MutableTensor on the fly.
     tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-    return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
-                                                _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+    return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=tensor.dtype,
+                                                _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks))
 
 
 def setitem_as_records(nsplits_acc, output_chunk, value, ts):

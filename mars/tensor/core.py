@@ -456,6 +456,27 @@ class MutableTensor(Entity):
     __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
+    class Index(Serializable):
+        '''
+        Define a `Index` class to contain the raw index value of read/write
+        Operation on the mutable tensor.
+
+        This class is used to serialize `index` value at client and send it to
+        scheduler (mainly for WebSession). That says, the index will be wrapped
+        into a `Index` object and use the `to_json/from_json` to serialize and
+        deserialize.
+
+        This class is defined as a inner class to avoid name pollution.
+        '''
+        _index = AnyField('index')
+
+        def __init__(self, *args, **kwargs):
+            super(MutableTensor.Index, self).__init__(*args, **kwargs)
+
+        @property
+        def index(self):
+            return self._index
+
     def __init__(self, *args, **kwargs):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])

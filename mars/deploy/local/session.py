@@ -92,8 +92,8 @@ class LocalClusterSession(object):
         chunk_records_to_send = tensor._do_flush()
         self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 
-        graph_key, tensor_key, tensor_id, tensor_meta = self._api.seal(self._session_id, tensor.name)
-        self._executed_tileables[tensor_key] = graph_key, {tensor_id}
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = self._api.seal(self._session_id, tensor.name)
+        self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
         # Construct Tensor on the fly.
         shape, dtype, chunk_size, chunk_keys = tensor_meta

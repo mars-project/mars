@@ -17,7 +17,9 @@ import json
 import time
 import logging
 from numbers import Integral
+import uuid
 
+import numpy as np
 import requests
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
@@ -195,6 +197,83 @@ class Session(object):
             result_data = dataserializer.loads(resp.content)
             results.append(sort_dataframe_result(tileable, result_data))
         return results
+
+    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+        from ..tensor.expressions.utils import create_mutable_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_json = {
+            'name': name,
+            'shape': shape,
+            'dtype': str(np.dtype(dtype)),
+            'chunk_size': kwargs.pop('chunk_size', None),
+        }
+        resp = self._req_session.post(session_url + '/mutable-tensor', json=tensor_json)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = base64.b64decode(resp_json['exc_info'])
+            six.reraise(*exc_info)
+        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
+
+    def get_mutable_tensor(self, name):
+        from ..tensor.expressions.utils import create_mutable_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor?name=%s' % name
+        resp = self._req_session.get(tensor_url)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = base64.b64decode(resp_json['exc_info'])
+            six.reraise(*exc_info)
+        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
+
+    def write_mutable_tensor(self, tensor, index, value):
+        '''
+        How to serialize index and value:
+
+        1. process_index and serialize it as json
+        2. the payload of POST request:
+
+            * a int64 value indicate the size of index json
+            * ascii-encoded bytes of index json
+            * pyarrow serialized bytes of `value`
+        '''
+        from ..tensor.core import MutableTensor
+        from ..compat import BytesIO
+        from ..serialize import dataserializer
+
+        index = MutableTensor.Index(_index=index)
+        index_bytes = json.dumps(index.to_json()).encode('ascii')
+        bio = BytesIO()
+        bio.write(np.int64(len(index_bytes)).tobytes())
+        bio.write(index_bytes)
+        dataserializer.dump(value, bio, raw=False)
+
+        from ..tensor.expressions.utils import create_fetch_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/write?name=%s' % tensor.name
+        resp = self._req_session.post(tensor_url, data=bio.getvalue(),
+                                      headers={'Content-Type': 'application/octet-stream'})
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = base64.b64decode(resp_json['exc_info'])
+            six.reraise(*exc_info)
+
+    def seal(self, tensor):
+        from ..tensor.expressions.utils import create_fetch_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/seal?name=%s' % tensor.name
+        resp = self._req_session.get(tensor_url)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = base64.b64decode(resp_json['exc_info'])
+            six.reraise(*exc_info)
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = json.loads(resp.text)
+        self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
+
+        # # Construct Tensor on the fly.
+        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
 
     def _update_tileable_shape(self, tileable):
         tileable_key = tileable.key
