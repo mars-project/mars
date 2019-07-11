@@ -595,9 +595,9 @@ class Executor(object):
         return results
 
     def get_tileable_nsplits(self, tileable):
-        chunk_idx_to_shape = dict((c.index, r.shape) for c, r in zip(tileable.chunks,
-                                                                     [self._chunk_result[c.key]
-                                                                      for c in tileable.chunks]))
+        chunk_idx_to_shape = OrderedDict(
+            (c.index, r.shape) for c, r in zip(tileable.chunks,[self._chunk_result[c.key]
+                                                                for c in tileable.chunks]))
         return calc_nsplits(chunk_idx_to_shape)
 
     def decref(self, *keys):
