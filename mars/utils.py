@@ -379,10 +379,15 @@ def kernel_mode(func):
 
     def _wrapped(*args, **kwargs):
         try:
-            _kernel_mode.eager = False
+            enter_eager_count = getattr(_kernel_mode, 'eager_count', 0)
+            if enter_eager_count == 0:
+                _kernel_mode.eager = False
+            _kernel_mode.eager_count = enter_eager_count + 1
             return func(*args, **kwargs)
         finally:
-            _kernel_mode.eager = None
+            _kernel_mode.eager_count -= 1
+            if _kernel_mode.eager_count == 0:
+                _kernel_mode.eager = None
 
     return _wrapped
 

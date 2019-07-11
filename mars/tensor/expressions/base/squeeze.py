@@ -50,6 +50,16 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
         super(TensorSqueeze, self).__init__(_axis=axis, _dtype=dtype,
                                             _sparse=sparse, _create_view=True, **kw)
 
+    def on_output_modify(self, new_output):
+        slcs = [slice(None)] * new_output.ndim
+        for axis in self._axis:
+            slcs.insert(axis, None)
+        return new_output[slcs]
+
+    def on_input_modify(self, new_input):
+        op = self.copy().reset_key()
+        return op(new_input, self.outputs[0].shape)
+
     @property
     def axis(self):
         return self._axis

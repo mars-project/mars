@@ -165,15 +165,18 @@ class BuildMode(object):
     def __init__(self):
         self.is_build_mode = False
         self._old_mode = None
+        self._enter_times = 0
 
     def __enter__(self):
-        if self._old_mode is None:
+        if self._enter_times == 0:
             # check to prevent nested enter and exit
             self._old_mode = self.is_build_mode
             self.is_build_mode = True
+        self._enter_times += 1
 
     def __exit__(self, *_):
-        if self._old_mode is not None:
+        self._enter_times -= 1
+        if self._enter_times == 0:
             self.is_build_mode = self._old_mode
             self._old_mode = None
 
@@ -799,6 +802,7 @@ class EntityDataModificationHandler(object):
     @enter_build_mode
     def data_changed(self, old_data, new_data):
         notified = set()
+        processed_data = set()
         old_to_new = {old_data: new_data}
         q = [old_data]
         while len(q) > 0:
@@ -816,14 +820,18 @@ class EntityDataModificationHandler(object):
                 old_data = ob.data
                 self._update_observe_data(ob, ob.data, new_data)
                 old_to_new[old_data] = new_data
-                q.append(old_data)
+                if old_data not in processed_data:
+                    q.append(old_data)
+                    processed_data.add(old_data)
                 notified.add(ob)
 
             if data.op.create_view:
                 old_input_data = data.inputs[0]
                 new_input_data = self._get_data(data.op.on_output_modify(old_to_new[data]))
                 old_to_new[old_input_data] = new_input_data
-                q.append(old_input_data)
+                if old_input_data not in processed_data:
+                    q.append(old_input_data)
+                    processed_data.add(old_input_data)
 
 
 entity_view_handler = EntityDataModificationHandler()

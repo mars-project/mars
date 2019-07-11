@@ -45,6 +45,13 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         super(TensorReshape, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def on_output_modify(self, new_output):
+        return reshape(new_output, self._input.shape)
+
+    def on_input_modify(self, new_input):
+        op = self.copy().reset_key()
+        return op(new_input)
+
     def __call__(self, a):
         return self.new_tensor([a], self._newshape)
 

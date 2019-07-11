@@ -19,7 +19,8 @@ import unittest
 import numpy as np
 
 from mars.executor import Executor
-from mars.tensor import ones, add, swapaxes
+from mars.tensor import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
+    atleast_3d, squeeze
 from mars.session import LocalSession, Session
 
 
@@ -81,6 +82,73 @@ class Test(unittest.TestCase):
         npa = np.ones((10, 20))
         npb = np.swapaxes(npa, 1, 0)
         npa[1] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnMoveaxis(self):
+        a = ones((10, 20), chunk_size=6)
+        b = moveaxis(a, 1, 0)
+        a[0][1] = 10
+
+        npa = np.ones((10, 20))
+        npb = np.moveaxis(npa, 1, 0)
+        npa[0][1] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnAtleast1d(self):
+        a = atleast_1d(1)
+        b = a[:]
+        b[0] = 10
+
+        np.testing.assert_array_equal(b.execute(), np.array([10]))
+        np.testing.assert_array_equal(a.execute(), np.array([10]))
+
+    def testViewDataOnAtleast2d(self):
+        a = atleast_2d(ones(10, chunk_size=5))
+        b = add(a[:, :5], 1, out=a[:, 5:])
+
+        npa = np.atleast_2d(np.ones(10))
+        npb = np.add(npa[:, :5], 1, out=npa[:, 5:])
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnAtleast3d(self):
+        a = atleast_3d(ones((10, 20), chunk_size=5))
+        b = a[:, :5, :10][0]
+        c = add(b[:4], b[1:], out=a[0, 16:])
+
+        npa = np.atleast_3d(np.ones((10, 20)))
+        npb = npa[:, :5, :10][0]
+        npc = np.add(npb[:4], npb[1:], out=npa[0, 16:])
+
+        np.testing.assert_array_equal(c.execute(), npc)
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnSqueeze(self):
+        a = ones((1, 4, 1), chunk_size=2)
+        b = squeeze(a, axis=0)
+        b[:3] = 10
+
+        npa = np.ones((1, 4, 1))
+        npb = np.squeeze(npa, axis=0)
+        npb[:3] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnReshape(self):
+        a = ones((3, 4, 5), chunk_size=2)
+        b = a.reshape((5, 4, 3))
+        b[:3] = 10
+
+        npa = np.ones((3, 4, 5))
+        npb = npa.reshape((5, 4, 3))
+        npb[:3] = 10
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
