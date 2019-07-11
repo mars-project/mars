@@ -16,6 +16,7 @@ import logging
 import uuid
 import zlib
 import itertools
+from collections import OrderedDict
 
 import pyarrow
 
@@ -184,7 +185,7 @@ class MarsAPI(object):
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
                                  idx, k in chunk_indexes.items())
         else:
-            chunk_idx_to_shape = dict(zip(chunk_indexes.keys(), chunk_shapes))
+            chunk_idx_to_shape = OrderedDict(zip(chunk_indexes.keys(), chunk_shapes))
             nsplits = calc_nsplits(chunk_idx_to_shape)
             chunk_results = dict()
             indexes = dict()

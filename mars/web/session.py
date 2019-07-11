@@ -180,7 +180,14 @@ class Session(object):
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
                                  (resp.status_code, resp.reason, resp.text))
-            results.append(dataserializer.loads(resp.content))
+            result_data = dataserializer.loads(resp.content)
+            if hasattr(tileable, 'index_value'):
+                if getattr(tileable.index_value, 'should_be_monotonic', False):
+                    result_data.sort_index(inplace=True)
+                if hasattr(tileable, 'columns'):
+                    if getattr(tileable.columns, 'should_be_monotonic', False):
+                        result_data.sort_index(axis=1, inplace=True)
+            results.append(result_data)
         return results
 
     def _update_tileable_shape(self, tileable):

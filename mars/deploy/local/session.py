@@ -143,7 +143,15 @@ class LocalClusterSession(object):
             compressions = dataserializer.get_supported_compressions()
             result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
                                           compressions=compressions)
-            tileable_results.append(dataserializer.loads(result))
+            result_data = dataserializer.loads(result)
+            if hasattr(tileable, 'index_value'):
+                if getattr(tileable.index_value, 'should_be_monotonic', False):
+                    result_data.sort_index(inplace=True)
+                if hasattr(tileable, 'columns'):
+                    if getattr(tileable.columns, 'should_be_monotonic', False):
+                        result_data.sort_index(axis=1, inplace=True)
+
+            tileable_results.append(result_data)
         return tileable_results
 
     def decref(self, *keys):
