@@ -272,7 +272,7 @@ class Session(object):
 
         # # Construct Tensor on the fly.
         shape, dtype, chunk_size, chunk_keys = tensor_meta
-        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
+        return create_fetch_tensor(chunk_size, shape, dtype, tensor_key=tensor_key, chunk_keys=chunk_keys)
 
     def _update_tileable_shape(self, tileable):
         tileable_key = tileable.key
