@@ -210,6 +210,10 @@ def _scalar(ctx, chunk):
     ctx[chunk.key] = _create_array(chunk.op)('asarray', chunk.op.data)
 
 
+def _dataframe_to_tensor(ctx, chunk):
+    ctx[chunk.key] = ctx[chunk.inputs[0].key].values
+
+
 def register_data_source_handler():
     from ...executor import register
 
@@ -232,4 +236,4 @@ def register_data_source_handler():
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
     register(datasource.TensorTileDBDataSource, _tensor_tiledb)
     register(datasource.Scalar, _scalar)
-
+    register(datasource.TensorDataFrameDataSource, _dataframe_to_tensor)

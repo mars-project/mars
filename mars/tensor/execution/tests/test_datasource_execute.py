@@ -20,6 +20,7 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -32,6 +33,9 @@ from mars.tensor.expressions.datasource import tensor, ones_like, zeros, zeros_l
     triu, tril, fromtiledb
 from mars.lib.sparse import SparseNDArray
 from mars.tensor.expressions.lib import nd_grid
+import mars.dataframe as md
+import mars.tensor as mt
+from mars.tensor.expressions.datasource.fromdataframe import from_dataframe
 
 
 class Test(TestBase):
@@ -848,3 +852,10 @@ class Test(TestBase):
             np.testing.assert_allclose(expected.toarray()[0], result.toarray())
         finally:
             shutil.rmtree(tempdir)
+
+    def testFromDataFrameExecution(self):
+        mdf = md.DataFrame({'angle': [0, 3, 4], 'degree': [360, 180, 360]},
+                           index=['circle', 'triangle', 'rectangle'])
+        tensor_result = self.executor.execute_tensor(from_dataframe(mdf))
+        tensor_expected = self.executor.execute_tensor(mt.tensor([[0, 360], [3, 180], [4, 360]]))
+        np.testing.assert_equal(tensor_result, tensor_expected)

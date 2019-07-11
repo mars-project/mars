@@ -203,6 +203,14 @@ class TensorData(TileableData):
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
 
+    def from_dataframe(self, in_df):
+        from .expressions.datasource import from_dataframe
+        return from_dataframe(in_df)
+
+    def to_dataframe(self):
+        from mars.dataframe.expressions.datasource.dataframe_from_tensor import from_tensor
+        return from_tensor(self)
+
     @property
     def flat(self):
         return flatiter(self)
@@ -384,6 +392,12 @@ class Tensor(TileableEntity):
         array([2, 3])
         """
         return self._data.flat
+
+    def from_dataframe(self, in_df):
+        return self._data.from_dataframe(in_df)
+
+    def to_dataframe(self):
+        return self._data.to_dataframe()
 
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
