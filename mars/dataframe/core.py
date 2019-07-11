@@ -637,7 +637,8 @@ class DataFrameData(TileableData):
         from mars.tensor.expressions.datasource.fromdataframe import from_dataframe
         return from_dataframe(self)
 
-    def from_tensor(self, in_tensor):
+    @staticmethod
+    def from_tensor(in_tensor):
         from .expressions.datasource.dataframe_from_tensor import from_tensor
         return from_tensor(in_tensor)
 

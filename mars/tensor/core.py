@@ -203,7 +203,8 @@ class TensorData(TileableData):
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
 
-    def from_dataframe(self, in_df):
+    @staticmethod
+    def from_dataframe(in_df):
         from .expressions.datasource import from_dataframe
         return from_dataframe(in_df)
 
