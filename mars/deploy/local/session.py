@@ -23,7 +23,8 @@ from ...compat import TimeoutError  # pylint: disable=W0622
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
-from ...utils import build_graph
+from ...utils import build_graph, merge_chunks
+from ...tensor.expressions.indexing import TensorIndex
 
 
 class LocalClusterSession(object):
@@ -124,18 +125,26 @@ class LocalClusterSession(object):
             return self.fetch(*tileables)
 
     def fetch(self, *tileables):
-        futures = []
+        tileable_results = []
         for tileable in tileables:
-            key = tileable.key
-
+            # TODO: support DataFrame getitem
+            if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
+                key = tileable.inputs[0].key
+                indexes = tileable.op.indexes
+                if not all(isinstance(ind, slice) for ind in indexes):
+                    raise ValueError('Only support fetch data slices')
+            else:
+                key = tileable.key
+                indexes = None
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            graph_key = self._get_tileable_graph_key(tileable.key)
+            graph_key = self._get_tileable_graph_key(key)
             compressions = dataserializer.get_supported_compressions()
-            future = self._api.fetch_data(self._session_id, graph_key, key, compressions, wait=False)
-            futures.append(future)
-        return [dataserializer.loads(f.result()) for f in futures]
+            result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
+                                          compressions=compressions)
+            tileable_results.append(dataserializer.loads(result))
+        return tileable_results
 
     def decref(self, *keys):
         for tileable_key, tileable_id in keys:

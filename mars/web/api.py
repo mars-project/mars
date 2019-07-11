@@ -155,7 +155,7 @@ class GraphDataHandler(MarsApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions_arg)
+                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions=compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)

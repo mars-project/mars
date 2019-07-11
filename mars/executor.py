@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch
+from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch, calc_nsplits
 
 logger = logging.getLogger(__name__)
 
@@ -595,19 +595,10 @@ class Executor(object):
         return results
 
     def get_tileable_nsplits(self, tileable):
-        chunk_indexes = [c.index for c in tileable.chunks]
-        chunk_shapes = [r.shape for r in [self._chunk_result[c.key] for c in tileable.chunks]]
-
-        ndim = len(chunk_shapes[0])
-        tileable_nsplits = []
-        for i in range(ndim):
-            splits = []
-            for index, shape in zip(chunk_indexes, chunk_shapes):
-                if all(idx == 0 for j, idx in enumerate(index) if j != i):
-                    splits.append(shape[i])
-            tileable_nsplits.append(tuple(splits))
-
-        return tuple(tileable_nsplits)
+        chunk_idx_to_shape = dict((c.index, r.shape) for c, r in zip(tileable.chunks,
+                                                                     [self._chunk_result[c.key]
+                                                                      for c in tileable.chunks]))
+        return calc_nsplits(chunk_idx_to_shape)
 
     def decref(self, *keys):
         for key in keys:

@@ -27,7 +27,7 @@ from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled, build_exc_info
 from .dataio import FileBufferIO, ArrowBufferIO
-from .spill import build_spill_file_name, get_spill_data_size
+from .spill import build_spill_file_name, get_spill_data_size, read_spill_file
 from .utils import WorkerActor, ExpiringCache
 
 logger = logging.getLogger(__name__)
@@ -702,20 +702,33 @@ class ResultSenderActor(WorkerActor):
         super(ResultSenderActor, self).post_create()
         self._serialize_pool = self.ctx.threadpool(1)
 
-    def fetch_data(self, session_id, chunk_key):
+    def fetch_data(self, session_id, chunk_key, index_obj=None):
         buf = None
         try:
+            compression_type = dataserializer.CompressType(options.worker.transfer_compression)
             if self._chunk_store.contains(session_id, chunk_key):
-                buf = self._chunk_store.get_buffer(session_id, chunk_key)
-                compression_type = dataserializer.CompressType(options.worker.transfer_compression)
-                compressed = self._serialize_pool.submit(
-                    dataserializer.dumps, buf, compression_type, raw=True).result()
+                if index_obj is None:
+                    buf = self._chunk_store.get_buffer(session_id, chunk_key)
+                    compressed = self._serialize_pool.submit(
+                        dataserializer.dumps, buf, compression_type, raw=True).result()
+                else:
+                    value = self._chunk_store.get(session_id, chunk_key)
+                    sliced_value = value[index_obj]
+                    compressed = self._serialize_pool.submit(
+                        dataserializer.dumps, sliced_value, compression_type).result()
             else:
                 file_name = build_spill_file_name(chunk_key)
                 if not file_name:
                     raise SpillNotConfigured('Spill not configured')
-                with open(file_name, 'rb') as inf:
-                    compressed = self._serialize_pool.submit(inf.read).result()
+                if index_obj is None:
+                    with open(file_name, 'rb') as inf:
+                        compressed = self._serialize_pool.submit(inf.read).result()
+                else:
+                    value = read_spill_file(file_name)
+                    sliced_value = value[index_obj]
+                    compressed = self._serialize_pool.submit(
+                        dataserializer.dumps, sliced_value, compression_type).result()
+
         finally:
             del buf
         return compressed

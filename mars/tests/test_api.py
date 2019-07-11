@@ -83,10 +83,10 @@ class Test(unittest.TestCase):
         self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
         mock_indexes = [
-            OrderedDict(zip(['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'],
-                            [(0, ), (1,), (2,), (3,)])),
-            OrderedDict(zip(['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'],
-                            [(0, 0), (0, 1), (1, 0), (1, 1)]))
+            OrderedDict(zip([(0, ), (1,), (2,), (3,)],
+                            ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])),
+            OrderedDict(zip([(0, 0), (0, 1), (1, 0), (1, 1)],
+                            ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4']))
         ]
         mock_shapes = [
             [(3,), (4,), (5,), (6,)],

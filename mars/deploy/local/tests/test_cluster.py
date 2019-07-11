@@ -512,7 +512,7 @@ class Test(unittest.TestCase):
                     s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
                     series1 = from_pandas_series(s1)
                     pd.testing.assert_series_equal(series1.fetch(), s1)
-                    
+
                 web_session = Session.default_or_local()._sess
                 self.assertEqual(web_session.get_task_count(), 4)
 
@@ -585,3 +585,21 @@ class Test(unittest.TestCase):
 
             r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
+
+    def test_fetch_slices(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M') as cluster:
+            session = cluster.session
+            a = mt.random.rand(10, 10, chunk_size=3)
+
+            r = session.run(a)
+
+            r_slice1 = session.fetch(a[:2])
+            np.testing.assert_array_equal(r[:2], r_slice1)
+
+            r_slice2 = session.fetch(a[2:8, 2:8])
+            np.testing.assert_array_equal(r[2:8, 2:8], r_slice2)
+
+            r_slice3 = session.fetch(a[:, 2:])
+            np.testing.assert_array_equal(r[:, 2:], r_slice3)
+

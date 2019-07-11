@@ -30,7 +30,12 @@ import sys
 import time
 import zlib
 import threading
+import itertools
 
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
 import numpy as np
 
 from .compat import irange, functools32, getargspec
@@ -519,3 +524,54 @@ def build_fuse_chunk(fused_chunks, **kwargs):
                                         _operands=[c.op for c in fused_chunks])
     return fuse_op.new_chunk(head_chunk.inputs, kws=[params], _key=tail_chunk.key,
                              _composed=fused_chunks, **kwargs)
+
+
+def merge_chunks(chunk_results):
+    """
+    Concatenate chunk results according to index.
+    :param chunk_results: list of tuple, {(chunk_idx, chunk_result), ...,}
+    :return:
+    """
+    from .lib.sparse import SparseNDArray
+
+    chunk_results = sorted(chunk_results, key=lambda x: x[0])
+    v = chunk_results[0][1]
+    if isinstance(v, (np.ndarray, SparseNDArray)):
+        ndim = v.ndim
+        for i in range(ndim - 1):
+            new_chunks = []
+            for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
+                new_chunks.append((idx, np.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
+            chunk_results = new_chunks
+        concat_result = np.concatenate([c[1] for c in chunk_results])
+        return concat_result
+    else:
+        # auto generated concat when executing a DataFrame
+        n_rows = max([idx[0] for idx, _ in chunk_results]) + 1
+        n_cols = int(len(chunk_results) // n_rows)
+
+        concats = []
+        for i in range(n_rows):
+            concat = pd.concat([chunk_results[i * n_cols + j][1]
+                                for j in range(n_cols)], axis='columns')
+            concats.append(concat)
+
+        return pd.concat(concats)
+
+
+def calc_nsplits(chunk_idx_to_shape):
+    """
+    Calculate a tiled entity's nsplits
+    :param chunk_idx_to_shape: Dict type, {chunk_idx: chunk_shape}
+    :return: nsplits
+    """
+    ndim = len(next(iter(chunk_idx_to_shape)))
+    tileable_nsplits = []
+    # for each dimension, record chunk shape whose index is zero on other dimensions
+    for i in range(ndim):
+        splits = []
+        for index, shape in chunk_idx_to_shape.items():
+            if all(idx == 0 for j, idx in enumerate(index) if j != i):
+                splits.append(shape[i])
+        tileable_nsplits.append(tuple(splits))
+    return tuple(tileable_nsplits)

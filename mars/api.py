@@ -15,18 +15,21 @@
 import logging
 import uuid
 import zlib
+import itertools
+
 import pyarrow
 
 from .actors import new_client
-from .config import options
 from .errors import GraphNotExists
 from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, \
     SessionManagerActor, ChunkMetaClient
-from .scheduler.graph import ResultReceiverActor
 from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
+from .worker.transfer import ResultSenderActor
+from .tensor.expressions.utils import slice_split
+from .config import options
 from .serialize import dataserializer
-from .utils import tokenize
+from .utils import tokenize, calc_nsplits, merge_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,7 @@ class MarsAPI(object):
         self.cluster_info = self.actor_client.actor_ref(
             SchedulerClusterInfoActor.default_uid(), address=scheduler_ip)
         self.session_manager = self.get_actor_ref(SessionManagerActor.default_uid())
+        self.chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
 
     def get_actor_ref(self, uid):
         actor_address = self.cluster_info.get_scheduler(uid)
@@ -169,13 +173,42 @@ class MarsAPI(object):
         state = GraphState(state.lower())
         return state
 
-    def fetch_data(self, session_id, graph_key, tileable_key, compressions=None, wait=True):
+    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        graph_address = self.cluster_info.get_scheduler(graph_uid)
-        result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_uid(), address=graph_address)
+        graph_ref = self.get_actor_ref(graph_uid)
+        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
+        chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
+            session_id, list(chunk_indexes.values()))
 
-        compressions = set(compressions or []) | {dataserializer.CompressType.NONE}
-        return result_ref.fetch_tileable(session_id, graph_key, tileable_key, compressions, _wait=wait)
+        if index_obj is None:
+            chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
+                                 idx, k in chunk_indexes.items())
+        else:
+            chunk_idx_to_shape = dict(zip(chunk_indexes.keys(), chunk_shapes))
+            nsplits = calc_nsplits(chunk_idx_to_shape)
+            chunk_results = dict()
+            indexes = dict()
+            for i, s in enumerate(index_obj):
+                idx_to_slices = slice_split(s, nsplits[i])
+                indexes[i] = idx_to_slices
+            for chunk_index in itertools.product(*[v.keys() for v in indexes.values()]):
+                slice_obj = [indexes[i][j] for i, j in enumerate(chunk_index)]
+                chunk_key = chunk_indexes[chunk_index]
+                chunk_results[chunk_index] = self.fetch_chunk_data(session_id, chunk_key, slice_obj)
+
+        chunk_results = [(idx, dataserializer.loads(f.result())) for
+                         idx, f in chunk_results.items()]
+        if len(chunk_results) == 1:
+            ret = chunk_results[0][1]
+        else:
+            ret = merge_chunks(chunk_results)
+        return dataserializer.dumps(ret, compress=max(compressions))
+
+    def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
+        endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
+        sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
+        future = sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
+        return future
 
     def delete_data(self, session_id, graph_key, tileable_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
@@ -188,18 +221,7 @@ class MarsAPI(object):
         graph_ref = self.get_actor_ref(graph_uid)
         chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
 
-        chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
-        chunk_shapes = chunk_meta_client.batch_get_chunk_shape(
-            session_id, list(chunk_indexes.keys()))
+        chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
+            session_id, list(chunk_indexes.values()))
 
-        # for each dimension, record chunk shape whose index is zero on other dimensions
-        ndim = len(chunk_shapes[0])
-        tileable_nsplits = []
-        for i in range(ndim):
-            splits = []
-            for index, shape in zip(chunk_indexes.values(), chunk_shapes):
-                if all(idx == 0 for j, idx in enumerate(index) if j != i):
-                    splits.append(shape[i])
-            tileable_nsplits.append(tuple(splits))
-
-        return tuple(tileable_nsplits)
+        return calc_nsplits(dict(zip(chunk_indexes.keys(), chunk_shapes)))
