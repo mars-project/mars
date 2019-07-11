@@ -195,13 +195,6 @@ class TensorData(TileableData):
 
         return reshape(self, shape)
 
-    def ravel(self):
-        from .expressions.base import ravel
-
-        return ravel(self)
-
-    flatten = ravel
-
     def _equals(self, o):
         return self is o
 
@@ -217,9 +210,6 @@ class Tensor(TileableEntity):
 
     def __len__(self):
         return len(self._data)
-
-    def copy(self):
-        return Tensor(self._data)
 
     def tiles(self):
         return handler.tiles(self)
@@ -357,37 +347,6 @@ class Tensor(TileableEntity):
         array([ 1.,  2.,  3.,  4.])
         """
         return self._data.T
-
-    def ravel(self):
-        """
-        Return a flattened tensor.
-
-        Refer to `mt.ravel` for full documentation.
-
-        See Also
-        --------
-        mt.ravel : equivalent function
-        """
-        return self._data.ravel()
-
-    def reshape(self, shape, *shapes):
-        """
-        Returns a tensor containing the same data with a new shape.
-
-        Refer to `mt.reshape` for full documentation.
-
-        See Also
-        --------
-        mt.reshape : equivalent function
-
-        Notes
-        -----
-        Unlike the free function `mt.reshape`, this method on `Tensor` allows
-        the elements of the shape parameter to be passed in as separate arguments.
-        For example, ``a.reshape(10, 11)`` is equivalent to
-        ``a.reshape((10, 11))``.
-        """
-        return self._data.reshape(shape, *shapes)
 
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)

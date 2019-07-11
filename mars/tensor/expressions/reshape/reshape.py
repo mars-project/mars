@@ -33,9 +33,9 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _newshape = TupleField('newshape', ValueType.int64)
 
-    def __init__(self, newshape=None, dtype=None, **kw):
+    def __init__(self, newshape=None, dtype=None, create_view=None, **kw):
         super(TensorReshape, self).__init__(_newshape=newshape, _dtype=dtype,
-                                            _create_view=True, **kw)
+                                            _create_view=create_view, **kw)
 
     @property
     def newshape(self):
@@ -263,6 +263,24 @@ class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
         self._input = self._inputs[0]
 
 
+def calc_shape(size, newshape):
+    if isinstance(newshape, six.integer_types):
+        newshape = (newshape,)
+    else:
+        newshape = tuple(int(s) for s in newshape)
+
+    known_shape = [s for s in newshape if s >= 0]
+    missing_dim = len(newshape) - len(known_shape)
+    if missing_dim > 1:
+        raise ValueError('can only specify one unknown dimension')
+    if missing_dim == 1:
+        known_size = np.prod(known_shape)
+        newshape = tuple(int(size / known_size) if s < 0 and known_size > 0 else s
+                         for s in newshape)
+
+    return newshape
+
+
 def reshape(a, newshape):
     """
     Gives a new shape to a tensor without changing its data.
@@ -325,23 +343,10 @@ def reshape(a, newshape):
            [5, 6]])
     """
     a = astensor(a)
-    if isinstance(newshape, six.integer_types):
-        newshape = (newshape,)
-    else:
-        newshape = tuple(int(s) for s in newshape)
-
     if np.isnan(sum(a.shape)):
         raise ValueError('tensor shape is unknown, {0}'.format(a.shape))
 
-    known_shape = [s for s in newshape if s >= 0]
-    missing_dim = len(newshape) - len(known_shape)
-    if missing_dim > 1:
-        raise ValueError('can only specify one unknown dimension')
-    if missing_dim == 1:
-        known_size = np.prod(known_shape)
-        newshape = tuple(int(a.size / known_size) if s < 0 and known_size > 0 else s
-                         for s in newshape)
-
+    newshape = calc_shape(a.size, newshape)
     if a.size != np.prod(newshape):
         raise ValueError('cannot reshape array of size {0} into shape {1}'.format(a.size, newshape))
 
@@ -349,5 +354,5 @@ def reshape(a, newshape):
         # does not need to reshape
         return a
 
-    op = TensorReshape(newshape, dtype=a.dtype)
+    op = TensorReshape(newshape, dtype=a.dtype, create_view=True)
     return op(a)

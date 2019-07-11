@@ -140,10 +140,11 @@ class Entity(object):
         return self.copy()
 
     def copy(self):
-        self.copy_to(type(self)(None))
+        return self.copy_to(type(self)(None))
 
     def copy_to(self, target):
         target.data = self._data
+        return target
 
     def copy_from(self, obj):
         self.data = obj.data
@@ -589,13 +590,37 @@ class TileableEntity(Entity):
 
     def __init__(self, data):
         super(TileableEntity, self).__init__(data)
-        self._data.attach(self)
-        if data.op.create_view:
-            entity_view_handler.add_observer(data.inputs[0], self)
+        if self._data is not None:
+            self._data.attach(self)
+            if self._data.op.create_view:
+                entity_view_handler.add_observer(self._data.inputs[0], self)
+
+    def __copy__(self):
+        return self.view()
+
+    def view(self):
+        return super(TileableEntity, self).copy()
+
+    def copy(self):
+        new_op = self.op.copy().reset_key()
+        new_outs = new_op.new_tileables(self.op.inputs, kws=[t.params for t in self.op.outputs],
+                                        output_limit=len(self.op.outputs),
+                                        **self._data.extra_params)
+        pos = -1
+        for i, out in enumerate(self.op.outputs):
+            if self._data is out:
+                pos = i
+                break
+        assert pos >= 0
+        return new_outs[pos]
 
     @Entity.data.setter
     def data(self, new_data):
-        entity_view_handler.data_changed(self._data, new_data)
+        if self._data is None:
+            self._data = new_data
+            self._data.attach(self)
+        else:
+            entity_view_handler.data_changed(self._data, new_data)
 
 
 class ChunksIndexer(object):

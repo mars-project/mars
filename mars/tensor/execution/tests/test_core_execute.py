@@ -152,3 +152,51 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
+
+    def testViewDataOnRavel(self):
+        # ravel creates a view
+        a = ones((3, 4, 5), chunk_size=2)
+        b = a.ravel()
+        b[:10] = 10
+
+        npa = np.ones((3, 4, 5))
+        npb = npa.ravel()
+        npb[:10] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+        # flatten creates a copy
+        a = ones((3, 4, 5), chunk_size=2)
+        b = a.flatten()
+        b[:10] = 10
+
+        npa = np.ones((3, 4, 5))
+        npb = npa.flatten()
+        npb[:10] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+    def testCopyAndView(self):
+        a = ones((10, 20), chunk_size=6)
+        b = a.view()
+        b[:5] = 10
+
+        npa = np.ones((10, 20))
+        npb = npa.view()
+        npb[:5] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+        a = ones((10, 20), chunk_size=6)
+        b = a.copy()
+        b[:5] = 10
+
+        npa = np.ones((10, 20))
+        npb = npa.copy()
+        npb[:5] = 10
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
