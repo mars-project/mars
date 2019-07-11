@@ -249,7 +249,6 @@ class Session(object):
         bio.write(index_bytes)
         dataserializer.dump(value, bio, raw=False)
 
-        from ..tensor.expressions.utils import create_fetch_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/write?name=%s' % tensor.name
         resp = self._req_session.post(tensor_url, data=bio.getvalue(),

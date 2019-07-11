@@ -456,6 +456,7 @@ class MutableTensor(Entity):
     __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
+
     class Index(Serializable):
         '''
         Define a `Index` class to contain the raw index value of read/write
@@ -476,6 +477,7 @@ class MutableTensor(Entity):
         @property
         def index(self):
             return self._index
+
 
     def __init__(self, *args, **kwargs):
         super(MutableTensor, self).__init__(*args, **kwargs)
