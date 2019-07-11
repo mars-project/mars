@@ -212,6 +212,8 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
             res = requests.get('%s/worker/127.0.0.1:%s' % (service_ep, self.worker_port))
             self.assertEqual(res.status_code, 200)
+            res = requests.get('%s/worker/127.0.0.1:%s/timeline' % (service_ep, self.worker_port))
+            self.assertEqual(res.status_code, 200)
 
             res = requests.get('%s/session' % (service_ep,))
             self.assertEqual(res.status_code, 200)
@@ -224,6 +226,11 @@ class Test(unittest.TestCase):
             from mars.web.task_pages import PROGRESS_APP_NAME
             res = requests.get('%s/%s?session_id=%s&task_id=%s'
                                % (service_ep, PROGRESS_APP_NAME, sess._session_id, task_id))
+            self.assertEqual(res.status_code, 200)
+
+            from mars.web.worker_pages import TIMELINE_APP_NAME
+            res = requests.get('%s/%s?endpoint=127.0.0.1:%s'
+                               % (service_ep, TIMELINE_APP_NAME, self.worker_port))
             self.assertEqual(res.status_code, 200)
 
 

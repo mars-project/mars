@@ -27,6 +27,7 @@ from ..serialize import dataserializer
 from ..errors import *
 from ..utils import log_unhandled, build_exc_info
 from .dataio import FileBufferIO, ArrowBufferIO
+from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .spill import build_spill_file_name, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache
 
@@ -47,15 +48,22 @@ class SenderActor(WorkerActor):
     def __init__(self):
         super(SenderActor, self).__init__()
         self._dispatch_ref = None
+        self._events_ref = None
         self._mem_quota_ref = None
 
         self._serialize_pool = None
 
     def post_create(self):
         from .dispatcher import DispatchActor
+        from .events import EventsActor
         from .quota import MemQuotaActor
 
         super(SenderActor, self).post_create()
+
+        self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
+        if not self.ctx.has_actor(self._events_ref):
+            self._events_ref = None
+
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
@@ -251,23 +259,25 @@ class SenderActor(WorkerActor):
 
             futures = []
             checksum = 0
-            while True:
-                # read a data part from reader we defined above
-                next_chunk = self._serialize_pool.submit(reader.read, block_size).result()
-                # make sure all previous transfers finished
-                [f.result(timeout=timeout) for f in futures]
-                if not next_chunk:
-                    # no further data to read, we close and finish the transfer
-                    reader.close()
+            with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                              ProcedureEventType.NETWORK, self.uid):
+                while True:
+                    # read a data part from reader we defined above
+                    next_chunk = self._serialize_pool.submit(reader.read, block_size).result()
+                    # make sure all previous transfers finished
+                    [f.result(timeout=timeout) for f in futures]
+                    if not next_chunk:
+                        # no further data to read, we close and finish the transfer
+                        reader.close()
+                        for ref in target_refs:
+                            ref.finish_receive(session_id, chunk_key, checksum, _tell=True)
+                        break
+                    checksum = zlib.crc32(next_chunk, checksum)
+                    futures = []
                     for ref in target_refs:
-                        ref.finish_receive(session_id, chunk_key, checksum, _tell=True)
-                    break
-                checksum = zlib.crc32(next_chunk, checksum)
-                futures = []
-                for ref in target_refs:
-                    # we perform async transfer and wait after next part is loaded and compressed
-                    futures.append(ref.receive_data_part(
-                        session_id, chunk_key, next_chunk, checksum, _wait=False))
+                        # we perform async transfer and wait after next part is loaded and compressed
+                        futures.append(ref.receive_data_part(
+                            session_id, chunk_key, next_chunk, checksum, _wait=False))
         except:  # noqa: E722
             for ref in target_refs:
                 ref.cancel_receive(session_id, chunk_key, _tell=True, _wait=False)
@@ -280,16 +290,19 @@ class SenderActor(WorkerActor):
 
 class ReceiverDataMeta(object):
     __slots__ = 'start_time', 'chunk_size', 'write_shared', 'checksum', \
-                'source_address', 'status', 'callback_args', 'callback_kwargs'
+                'source_address', 'transfer_event_id', 'status', 'callback_args', \
+                'callback_kwargs'
 
     def __init__(self, start_time=None, chunk_size=None, write_shared=True, checksum=0,
-                 source_address=None, status=None, callback_args=None, callback_kwargs=None):
+                 source_address=None, transfer_event_id=None, status=None,
+                 callback_args=None, callback_kwargs=None):
         self.start_time = start_time or time.time()
         self.chunk_size = chunk_size
         self.write_shared = write_shared
         self.checksum = checksum
         self.source_address = source_address
         self.status = status
+        self.transfer_event_id = transfer_event_id
         self.callback_args = callback_args or ()
         self.callback_kwargs = callback_kwargs or {}
 
@@ -303,6 +316,7 @@ class ReceiverActor(WorkerActor):
         self._chunk_holder_ref = None
         self._mem_quota_ref = None
         self._dispatch_ref = None
+        self._events_ref = None
         self._status_ref = None
 
         self._finish_callbacks = defaultdict(list)
@@ -314,12 +328,17 @@ class ReceiverActor(WorkerActor):
     def post_create(self):
         from .chunkholder import ChunkHolderActor
         from .quota import MemQuotaActor
+        from .events import EventsActor
         from .status import StatusActor
         from .dispatcher import DispatchActor
 
         super(ReceiverActor, self).post_create()
         self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
+
+        self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
+        if not self.ctx.has_actor(self._events_ref):
+            self._events_ref = None
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
@@ -484,6 +503,9 @@ class ReceiverActor(WorkerActor):
                          data_size, chunk_key)
             # create a writer for the chunk
             self._data_writers[session_chunk_key] = ArrowBufferIO(buf, 'w', block_size=block_size)
+            if self._events_ref is not None:
+                data_meta.transfer_event_id = self._events_ref.add_open_event(
+                    EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.NETWORK, self.uid)
             return self.address, None
         except (KeyError, StoreKeyExists):
             if self.check_status(session_id, chunk_key) != ReceiveStatus.RECEIVED:
@@ -514,6 +536,9 @@ class ReceiverActor(WorkerActor):
                         block_size=block_size)
                     data_meta.start_time = time.time()
                     self._data_writers[session_chunk_key] = spill_file
+                    if self._events_ref is not None:
+                        data_meta.transfer_event_id = self._events_ref.add_open_event(
+                            EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.NETWORK, self.uid)
                 except (KeyError, IOError):
                     if self.check_status(session_id, chunk_key) == ReceiveStatus.RECEIVED:
                         logger.debug('Chunk %s already stored', chunk_key)
@@ -683,6 +708,9 @@ class ReceiverActor(WorkerActor):
         data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
         data_meta.callback_args = args
         data_meta.callback_kwargs = kwargs
+
+        if data_meta.transfer_event_id is not None and self._events_ref is not None:
+            self._events_ref.close_event(data_meta.transfer_event_id, _tell=True)
 
         for cb in self._finish_callbacks[session_chunk_key]:
             self.tell_promise(cb, *args, **kwargs)

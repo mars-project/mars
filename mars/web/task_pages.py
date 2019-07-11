@@ -57,7 +57,7 @@ class TaskHandler(MarsRequestHandler):
         ))
 
     @staticmethod
-    def task_progress(scheduler_ip, doc):
+    def task_progress_app(scheduler_ip, doc):
         session_id = to_str(doc.session_context.request.arguments.get('session_id')[0])
         task_id = to_str(doc.session_context.request.arguments.get('task_id')[0])
         web_api = MarsWebAPI(scheduler_ip)
@@ -91,8 +91,11 @@ class TaskHandler(MarsRequestHandler):
             p.title.text = "Total Progress: %0.2f%%" % new_progress
             source.data = new_stats
 
+            if new_progress >= 100.0:
+                doc.remove_periodic_callback(cb)
+
         if progress < 100.0:
-            doc.add_periodic_callback(_refresher, 5000)
+            cb = doc.add_periodic_callback(_refresher, 5000)
 
 
 class TaskRunningNodesHandler(MarsRequestHandler):
@@ -118,4 +121,4 @@ register_web_handler('/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)'
 register_web_handler('/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/running_nodes',
                      TaskRunningNodesHandler)
 
-register_bokeh_app('/' + PROGRESS_APP_NAME, TaskHandler.task_progress)
+register_bokeh_app('/' + PROGRESS_APP_NAME, TaskHandler.task_progress_app)
