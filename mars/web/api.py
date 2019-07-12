@@ -15,9 +15,10 @@
 import sys
 import base64
 import json
-import pickle
-import uuid
 import logging
+import pickle
+import traceback
+import uuid
 
 import numpy as np
 from tornado import gen, concurrent, web, ioloop
@@ -58,10 +59,13 @@ class MarsApiRequestHandler(MarsRequestHandler):
 
     def _dump_exception(self, exc_info):
         pickled_exc = pickle.dumps(exc_info)
+        # return pickled exc_info for python client, and textual exc_info for web.
         self.write(json.dumps(dict(
             exc_info=base64.b64encode(pickled_exc).decode('ascii'),
+            exc_info_text=traceback.format_exception(*exc_info),
         )))
-        raise web.HTTPError(500, 'Internal server error')
+        self.set_status(500)
+        self.finish()
 
 
 class ApiEntryHandler(MarsApiRequestHandler):
