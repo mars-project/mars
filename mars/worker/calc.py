@@ -14,7 +14,6 @@
 
 import logging
 import time
-import uuid
 from collections import defaultdict
 from functools import partial
 
@@ -24,6 +23,7 @@ from ..config import options
 from ..errors import *
 from ..executor import Executor
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size
+from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .spill import read_spill_file, write_spill_file, spill_exists
 from .utils import WorkerActor, concat_operand_keys, build_load_key, get_chunk_key
 
@@ -40,11 +40,13 @@ class InProcessCacheActor(WorkerActor):
         super(InProcessCacheActor, self).__init__()
         self._chunk_holder_ref = None
         self._mem_quota_ref = None
+        self._events_ref = None
 
         self._spill_dump_pool = None
 
     def post_create(self):
         from .chunkholder import ChunkHolderActor
+        from .events import EventsActor
         from .quota import MemQuotaActor
 
         super(InProcessCacheActor, self).post_create()
@@ -52,6 +54,10 @@ class InProcessCacheActor(WorkerActor):
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         if options.worker.spill_directory:
             self._spill_dump_pool = self.ctx.threadpool(len(options.worker.spill_directory))
+
+        self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
+        if not self.ctx.has_actor(self._events_ref):
+            self._events_ref = None
 
     @promise.reject_on_exception
     @log_unhandled
@@ -99,8 +105,10 @@ class InProcessCacheActor(WorkerActor):
 
             session_chunk_key = (session_id, chunk_key)
             logger.debug('Writing data %s directly into spill.', chunk_key)
-            self._spill_dump_pool.submit(write_spill_file, chunk_key,
-                                         _calc_result_cache[session_chunk_key]).result()
+            with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                              ProcedureEventType.DISK_IO, self.uid):
+                self._spill_dump_pool.submit(write_spill_file, chunk_key,
+                                             _calc_result_cache[session_chunk_key]).result()
 
             del _calc_result_cache[session_chunk_key]
             self._mem_quota_ref.release_quota(chunk_key, _tell=True)
@@ -152,6 +160,7 @@ class CpuCalcActor(WorkerActor):
         self._mem_quota_ref = None
         self._inproc_cache_ref = None
         self._dispatch_ref = None
+        self._events_ref = None
         self._status_ref = None
 
         self._execution_pool = None
@@ -160,13 +169,14 @@ class CpuCalcActor(WorkerActor):
     def post_create(self):
         from .quota import MemQuotaActor
         from .dispatcher import DispatchActor
+        from .events import EventsActor
         from .status import StatusActor
         from .daemon import WorkerDaemonActor
 
         super(CpuCalcActor, self).post_create()
         if isinstance(self.uid, six.string_types) and ':' in self.uid:
             uid_parts = self.uid.split(':')
-            inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + str(uuid.uuid4())
+            inproc_uid = 'w:' + uid_parts[1] + ':inproc-cache-' + hex(id(self))[2:]
         else:
             inproc_uid = None
 
@@ -183,6 +193,10 @@ class CpuCalcActor(WorkerActor):
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
+
+        self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
+        if not self.ctx.has_actor(self._events_ref):
+            self._events_ref = None
 
         self._execution_pool = self.ctx.threadpool(1)
         if options.worker.spill_directory:
@@ -226,12 +240,14 @@ class CpuCalcActor(WorkerActor):
         # collect results from futures
         direct_load_keys = []
         if spill_load_futures:
-            for k, future in spill_load_futures.items():
-                context_dict[k] = future.result()
-                load_key = build_load_key(op_key, k)
-                direct_load_keys.append(load_key)
-                self._mem_quota_ref.hold_quota(load_key)
-            spill_load_futures.clear()
+            with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                              ProcedureEventType.DISK_IO, self.uid):
+                for k, future in spill_load_futures.items():
+                    context_dict[k] = future.result()
+                    load_key = build_load_key(op_key, k)
+                    direct_load_keys.append(load_key)
+                    self._mem_quota_ref.hold_quota(load_key)
+                spill_load_futures.clear()
 
         return context_dict, direct_load_keys
 
@@ -242,8 +258,10 @@ class CpuCalcActor(WorkerActor):
 
         # start actual execution
         executor = Executor(storage=context_dict)
-        self._execution_pool.submit(executor.execute_graph, graph,
-                                    chunk_targets, retval=False).result()
+        with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                          ProcedureEventType.CALCULATION, self.uid):
+            self._execution_pool.submit(executor.execute_graph, graph,
+                                        chunk_targets, retval=False).result()
 
         # collect results
         result_pairs = []

@@ -24,6 +24,7 @@ from ..serialize import dataserializer
 from ..utils import mod_hash, log_unhandled, calc_data_size
 from ..errors import StoreFull, StoreKeyExists, SpillNotConfigured
 from .dataio import ArrowBufferIO
+from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .utils import WorkerActor
 
 logger = logging.getLogger(__name__)
@@ -135,6 +136,7 @@ class SpillActor(WorkerActor):
         self._chunk_holder_ref = None
         self._mem_quota_ref = None
         self._status_ref = None
+        self._events_ref = None
         self._dispatch_ref = None
 
         self._input_pool = None
@@ -145,11 +147,16 @@ class SpillActor(WorkerActor):
         from .chunkholder import ChunkHolderActor
         from .quota import MemQuotaActor
         from .status import StatusActor
+        from .events import EventsActor
         from .dispatcher import DispatchActor
 
         super(SpillActor, self).post_create()
         self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
+
+        self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
+        if not self.ctx.has_actor(self._events_ref):
+            self._events_ref = None
 
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
@@ -181,7 +188,10 @@ class SpillActor(WorkerActor):
 
                 logger.debug('Start spilling chunk %s in %s', chunk_key, self.uid)
                 start_time = time.time()
-                self._output_pool.submit(write_spill_file, chunk_key, data).result()
+
+                with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                                  ProcedureEventType.DISK_IO, self.uid):
+                    self._output_pool.submit(write_spill_file, chunk_key, data).result()
 
                 if self._status_ref:
                     self._status_ref.update_mean_stats(
@@ -239,18 +249,20 @@ class SpillActor(WorkerActor):
                 logger.debug('Creating data writer for chunk %s in plasma', chunk_key)
                 buf = self._chunk_store.create(session_id, chunk_key, data_size)
 
-                with open(file_name, 'rb') as inpf, \
-                        ArrowBufferIO(buf, 'w', block_size=block_size) as writer:
-                    logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
-                    compress_future = None
-                    while True:
-                        read_future = self._input_pool.submit(inpf.read, block_size)
-                        if compress_future is not None:
-                            compress_future.result()
-                        if not read_future.result():
-                            break
-                        compress_future = self._compress_pool.submit(writer.write, read_future.value)
-                    logger.debug('Data stream for chunk %s exhausted', chunk_key)
+                with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
+                                  ProcedureEventType.DISK_IO, self.uid):
+                    with open(file_name, 'rb') as inpf, \
+                            ArrowBufferIO(buf, 'w', block_size=block_size) as writer:
+                        logger.debug('Successfully created data writer for chunk %s in plasma', chunk_key)
+                        compress_future = None
+                        while True:
+                            read_future = self._input_pool.submit(inpf.read, block_size)
+                            if compress_future is not None:
+                                compress_future.result()
+                            if not read_future.result():
+                                break
+                            compress_future = self._compress_pool.submit(writer.write, read_future.value)
+                        logger.debug('Data stream for chunk %s exhausted', chunk_key)
 
                 self._chunk_store.seal(session_id, chunk_key)
                 sealed = True
