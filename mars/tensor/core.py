@@ -537,9 +537,9 @@ class MutableTensor(Entity):
         index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape)).single_tiles()
         output_chunks = index_tensor.chunks
 
-        if np.isscalar(value):
-            value = self.dtype.type(value)
-        else:
+        is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields
+
+        if not is_scalar:
             value = np.broadcast_to(value, output_shape).astype(self.dtype)
 
         nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
@@ -554,7 +554,7 @@ class MutableTensor(Entity):
                 output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
 
             records = self._chunk_buffers[output_chunk.op.input.key]
-            records += setitem_as_records(nsplits_acc, output_chunk, value, now)
+            records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
             affected_chunk_keys.append(output_chunk.op.input.key)
 
         # Try to flush affected chunks

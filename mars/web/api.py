@@ -29,7 +29,7 @@ from ..compat import six, futures
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
-from ..utils import to_str
+from ..utils import to_str, numpy_dtype_from_descr_json
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -194,7 +194,7 @@ class MutableTensorHandler(MarsApiRequestHandler):
             req_json = json.loads(self.request.body.decode('ascii'))
             name = req_json['name']
             shape = req_json['shape']
-            dtype = np.dtype(req_json['dtype'])
+            dtype = numpy_dtype_from_descr_json(req_json['dtype'])
             chunk_size = req_json['chunk_size']
             meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype, chunk_size=chunk_size)
             self.write(json.dumps(meta))

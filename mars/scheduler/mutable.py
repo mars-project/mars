@@ -54,7 +54,12 @@ class MutableTensorActor(SchedulerActor):
         self._tensor = create_mutable_tensor(self._name, self._chunk_size, self._shape, self._dtype)
 
     def tensor_meta(self):
-        return self._shape, str(self._dtype), self._chunk_size, [c.key for c in self._tensor.chunks]
+        # avoid built-in scalar dtypes are made into one-field record type.
+        if self._dtype.fields:
+            dtype_descr = self._dtype.descr
+        else:
+            dtype_descr = str(self._dtype)
+        return self._shape, dtype_descr, self._chunk_size, [c.key for c in self._tensor.chunks]
 
     def tensor_key(self):
         return self._tensor.key

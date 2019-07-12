@@ -243,6 +243,39 @@ class Test(unittest.TestCase):
             with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
                 testWithGivenSession(web_session)
 
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testMutableTensorStructured(self):
+        def testWithGivenSession(session):
+            rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+
+            mut = session.create_mutable_tensor("test", (4, 5), dtype=rec_type, chunk_size=3)
+            mut[1:4, 1] = (3, 4., (5, 6))
+            mut[1:4, 2] = 8
+            mut[2:4] = np.arange(10).reshape(2, 5)
+            mut[1] = np.arange(5)
+            arr = mut.seal()
+
+            expected = np.zeros((4, 5), dtype=rec_type)
+            expected[1:4, 1] = (3, 4., (5, 6))
+            expected[1:4, 2] = 8
+            expected[2:4] = np.arange(10).reshape(2, 5)
+            expected[1] = np.arange(5)
+
+            # check dtype and value
+            self.assertEqual(np.dtype(arr.dtype), expected.dtype)
+            np.testing.assert_array_equal(session.fetch(arr), expected)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
+
     def testMutableTensorLocal(self):
         with new_session().as_default() as session:
             mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
