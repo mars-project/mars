@@ -242,6 +242,29 @@ class Test(unittest.TestCase):
         raw[idx] = replace
         np.testing.assert_array_equal(res[0], raw)
 
+    def testSetItemStructuredExecution(self):
+        rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+
+        raw = np.zeros((4, 5), dtype=rec_type)
+        arr = tensor(raw.copy(), chunk_size=3)
+
+        arr[1:4, 1] = (3, 4., (5, 6))
+        arr[1:4, 2] = 8
+        arr[1:3] = np.arange(5)
+        arr[2:4] = np.arange(10).reshape(2, 5)
+        arr[0] = np.arange(5)
+
+        raw[1:4, 1] = (3, 4., (5, 6))
+        raw[1:4, 2] = 8
+        raw[1:3] = np.arange(5)
+        raw[2:4] = np.arange(10).reshape(2, 5)
+        raw[0] = np.arange(5)
+
+        res = self.executor.execute_tensor(arr, concat=True)
+        self.assertEqual(arr.dtype, raw.dtype)
+        self.assertEqual(arr.shape, raw.shape)
+        np.testing.assert_array_equal(res[0], raw)
+
     def testTakeExecution(self):
         data = np.random.rand(10, 20, 30)
         t = tensor(data, chunk_size=10)
