@@ -42,6 +42,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(updater.x_range, (datetime.fromtimestamp(base_time),
                                            datetime.fromtimestamp(base_time + 10)))
+        # three horizontal bars with ranges (0.5, 1.5), (1.5, 2.5), (2.5, 3.5) respectively
         self.assertEqual(updater.y_range, (0.5, 3.5))
 
         self.assertEqual(df.iloc[0].right, datetime.fromtimestamp(base_time + 10))
