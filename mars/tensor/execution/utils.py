@@ -18,8 +18,6 @@ except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ...compat import functools32
-import pandas as pd
-from packaging import version
 
 
 # As TileDB Ctx's creation is a bit time-consuming,
