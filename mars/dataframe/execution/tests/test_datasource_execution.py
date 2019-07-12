@@ -51,23 +51,17 @@ class Test(TestBase):
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
         df = from_tensor(tensor)
-        tensor_res = self.executor.execute_tensor(tensor)
-        pdf_0 = pd.DataFrame(tensor_res[0])
-        pdf_1 = pd.DataFrame(tensor_res[1])
-        pdf_2 = pd.DataFrame(tensor_res[2])
-        pdf_3 = pd.DataFrame(tensor_res[3])
-        result = self.executor.execute_dataframe(df, concat=True)[0]
+        tensor_res = self.executor.execute_tensor(tensor, concat=True)[0]
+        pdf_expected = pd.DataFrame(tensor_res)
+        df_result = self.executor.execute_dataframe(df, concat=True)[0]
 
-        pd.testing.assert_index_equal(result.index, pd.RangeIndex(0, 10))
-        pd.testing.assert_index_equal(result.columns, pd.RangeIndex(0, 10))
-
-        pd.testing.assert_frame_equal(pdf_0, result.iloc[0:5, 0:5])
-        np.array_equal(pdf_1.values, result.iloc[0:5, 5:10].values)
-        np.array_equal(pdf_2.values, result.iloc[5:10, 0:5].values)
-        np.array_equal(pdf_3.values, result.iloc[5:10, 5:10].values)
+        pd.testing.assert_index_equal(df_result.index, pd.RangeIndex(0, 10))
+        pd.testing.assert_index_equal(df_result.columns, pd.RangeIndex(0, 10))
+        pd.testing.assert_frame_equal(df_result, pdf_expected)
 
         # test converted from 1-d tensor
         tensor2 = mt.array([1, 2, 3])
         df2 = from_tensor(tensor2)
         result2 = self.executor.execute_dataframe(df2, concat=True)[0]
-        np.array_equal(np.array([1, 2, 3]), result2.values)
+        pdf_expected = pd.DataFrame(np.array([1, 2, 3]))
+        pd.testing.assert_frame_equal(pdf_expected, result2)

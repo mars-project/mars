@@ -267,6 +267,8 @@ class Test(TestBase):
         df3 = from_tensor(tensor3)
         df2.tiles()
         df3.tiles()
+        np.testing.assert_equal(df2.chunks[0].index, (0, 0))
+        np.testing.assert_equal(df3.chunks[0].index, (0, 0))
 
         pd.testing.assert_index_equal(df2.chunks[0].index_value, pd.RangeIndex(0, 3))
         pd.testing.assert_index_equal(df2.chunks[0].columns, pd.RangeIndex(0, 1))

@@ -213,8 +213,7 @@ def _scalar(ctx, chunk):
 
 def _dataframe_to_tensor(ctx, chunk):
     df = ctx[chunk.inputs[0].key]
-    values = to_numpy(df)
-    ctx[chunk.key] = values
+    ctx[chunk.key] = to_numpy(df)
 
 
 def register_data_source_handler():

@@ -68,5 +68,5 @@ def estimate_fuse_size(ctx, chunk):
 def to_numpy(pdf):
     try:
         return pdf.to_numpy()
-    except TypeError:
+    except AttributeError:
         return pdf.values

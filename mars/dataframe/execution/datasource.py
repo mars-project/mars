@@ -28,8 +28,7 @@ def _dataframe_or_series_pandas_data_source(ctx, chunk):
 
 def _dataframe_tensor_data_source(ctx, chunk):
     tensor_data = ctx[chunk.inputs[0].key]
-    pdf = pd.DataFrame(tensor_data, index=chunk.index_value, columns=chunk.columns)
-    ctx[chunk.key] = pdf
+    ctx[chunk.key] = pd.DataFrame(tensor_data, index=chunk.index_value, columns=chunk.columns)
 
 
 def register_data_source_handler():
