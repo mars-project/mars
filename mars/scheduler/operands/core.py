@@ -22,6 +22,7 @@ from ...utils import classproperty
 
 class OperandState(Enum):
     __order__ = 'UNSCHEDULED READY RUNNING FINISHED CACHED FREED FATAL CANCELLING CANCELLED'
+
     UNSCHEDULED = 'unscheduled'
     READY = 'ready'
     RUNNING = 'running'

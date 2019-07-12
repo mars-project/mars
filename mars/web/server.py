@@ -126,6 +126,11 @@ class MarsWebAPI(MarsAPI):
         resource_ref = self.get_actor_ref(resource_uid)
         return resource_ref.get_workers_meta()
 
+    def query_worker_events(self, endpoint, category, time_start=None, time_end=None):
+        from ..worker import EventsActor
+        ref = self.actor_client.actor_ref(EventsActor.default_uid(), address=endpoint)
+        return ref.query_by_time(category, time_start=time_start, time_end=time_end)
+
 
 class MarsWeb(object):
     def __init__(self, port=None, scheduler_ip=None):

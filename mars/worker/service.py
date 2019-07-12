@@ -29,6 +29,7 @@ from .status import StatusActor
 from .quota import QuotaActor, MemQuotaActor
 from .chunkholder import ChunkHolderActor
 from .dispatcher import DispatchActor
+from .events import EventsActor
 from .execution import ExecutionActor
 from .calc import CpuCalcActor
 from .transfer import ReceiverActor, SenderActor
@@ -49,6 +50,7 @@ class WorkerService(object):
         self._task_queue_ref = None
         self._mem_quota_ref = None
         self._dispatch_ref = None
+        self._events_ref = None
         self._status_ref = None
         self._execution_ref = None
         self._daemon_ref = None
@@ -191,6 +193,8 @@ class WorkerService(object):
             ChunkHolderActor, self._cache_mem_limit, uid=ChunkHolderActor.default_uid())
         # create DispatchActor
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+        # create EventsActor
+        self._events_ref = pool.create_actor(EventsActor, uid=EventsActor.default_uid())
         # create ExecutionActor
         self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 
@@ -252,6 +256,8 @@ class WorkerService(object):
                 self._status_ref.destroy(wait=False)
             if self._chunk_holder_ref:
                 self._chunk_holder_ref.destroy(wait=False)
+            if self._events_ref:
+                self._events_ref.destroy(wait=False)
             if self._dispatch_ref:
                 self._dispatch_ref.destroy(wait=False)
             if self._execution_ref:

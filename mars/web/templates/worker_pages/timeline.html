@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block worker_submenu %}
+    <ul class="nav nav-second-level">
+        <li>
+            <a href="#">{{ endpoint }}</a>
+        </li>
+    </ul>
+{% endblock %}
+{% block page_nav %}
+    <h2>Worker {{ host_name }}</h2>
+    <ul class="nav nav-pills nav-justified">
+        <li><a href="../{{ endpoint }}#worker-env">Environment</a></li>
+        <li><a href="../{{ endpoint }}#worker-res">Resources</a></li>
+        <li><a href="../{{ endpoint }}#worker-tasks">Tasks</a></li>
+        <li><a href="../{{ endpoint }}#worker-slots">Slots</a></li>
+        <li><a href="../{{ endpoint }}#worker-perf">Performance</a></li>
+        <li class="active"><a href="#">Timeline</a></li>
+    </ul>
+{% endblock %}
+{% block body %}
+    <div class="row">
+        {{ worker_timeline_script|safe }}
+    </div>
+{% endblock %}

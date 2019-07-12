@@ -16,6 +16,7 @@ from .calc import CpuCalcActor
 from .chunkholder import ChunkHolderActor, ensure_chunk
 from .daemon import WorkerDaemonActor
 from .dispatcher import DispatchActor
+from .events import EventsActor
 from .execution import ExecutionActor, ExecutionState
 from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
