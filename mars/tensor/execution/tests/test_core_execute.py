@@ -200,3 +200,19 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
+
+    def testFlat(self):
+        a = ones((10, 20), chunk_size=4)
+        fl = a.flat
+        fl[1: 10] = 10
+        b = fl[10: 20]
+        b[0: 4] = 20
+
+        npa = np.ones((10, 20))
+        npfl = npa.flat
+        npfl[1: 10] = 10
+        npb = npfl[10: 20]
+        npb[0: 4] = 20
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)

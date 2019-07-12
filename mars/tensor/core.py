@@ -203,6 +203,10 @@ class TensorData(TileableData):
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
 
+    @property
+    def flat(self):
+        return flatiter(self)
+
 
 class Tensor(TileableEntity):
     __slots__ = ()
@@ -351,8 +355,58 @@ class Tensor(TileableEntity):
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
+    @property
+    def flat(self):
+        """
+        Flat iterator object to iterate over arrays.
+
+        A `flatiter` iterator is returned by ``x.flat`` for any tensor `x`.
+        It allows iterating over the tensor as if it were a 1-D array,
+        either in a for-loop or by calling its `next` method.
+
+        Iteration is done in row-major, C-style order (the last
+        index varying the fastest). The iterator can also be indexed using
+        basic slicing or advanced indexing.
+
+        See Also
+        --------
+        ndarray.flat : Return a flat iterator over a tensor.
+        ndarray.flatten : Returns a flattened copy of a tensor.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+
+        >>> x = mt.arange(6).reshape(2, 3)
+        >>> fl = x.flat
+
+        >>> fl[2:4].execute()
+        array([2, 3])
+        """
+        return self._data.flat
+
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
+
+
+class SparseTensor(Tensor):
+    __slots__ = ()
+
+
+class flatiter(object):
+    def __init__(self, tensor):
+        # flatten creates a copy
+        self._flatten_tensor = tensor.flatten()
+        # ravel creates a view
+        self._ravel_tensor = tensor.ravel()
+
+    def __getitem__(self, item):
+        # a.flat[item] create a copy
+        return self._flatten_tensor[item]
+
+    def __setitem__(self, key, value):
+        # a.flat[item] = value will apply changes to original tensor
+        self._ravel_tensor[key] = value
 
 
 class MutableTensorData(TensorData):
@@ -487,10 +541,6 @@ class MutableTensor(Entity):
                 chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
-
-
-class SparseTensor(Tensor):
-    __slots__ = ()
 
 
 TENSOR_TYPE = (Tensor, TensorData)
