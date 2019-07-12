@@ -180,43 +180,34 @@ class WorkersApiHandler(MarsApiRequestHandler):
 
 
 class MutableTensorHandler(MarsApiRequestHandler):
-    def get(self, session_id):
+    def get(self, session_id, name):
         try:
-            name = self.get_query_argument('name')
             meta = self.web_api.get_mutable_tensor(session_id, name)
             self.write(json.dumps(meta))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
-    def post(self, session_id):
+    def post(self, session_id, name):
         try:
-            req_json = json.loads(self.request.body.decode('ascii'))
-            name = req_json['name']
-            shape = req_json['shape']
-            dtype = numpy_dtype_from_descr_json(req_json['dtype'])
-            chunk_size = req_json['chunk_size']
-            meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype, chunk_size=chunk_size)
-            self.write(json.dumps(meta))
+            # If the request contains no body payload, it is seal, otherwise it is create
+            if self.request.body:
+                req_json = json.loads(self.request.body.decode('ascii'))
+                shape = req_json['shape']
+                dtype = numpy_dtype_from_descr_json(req_json['dtype'])
+                chunk_size = req_json['chunk_size']
+                meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype,
+                                                          chunk_size=chunk_size)
+                self.write(json.dumps(meta))
+            else:
+                info = self.web_api.seal(session_id, name)
+                self.write(json.dumps(info))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
-
-class MutableTensorWriteHandler(MarsApiRequestHandler):
-    def post(self, session_id):
+    def put(self, session_id, name):
         try:
-            name = self.get_query_argument('name')
             body = self.request.body
             self.web_api.write_mutable_tensor(session_id, name, body)
-        except:  # noqa: E722
-            self._dump_exception(sys.exc_info())
-
-
-class MutableTensorSealHandler(MarsApiRequestHandler):
-    def get(self, session_id):
-        try:
-            name = self.get_query_argument('name')
-            info = self.web_api.seal(session_id, name)
-            self.write(json.dumps(info))
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
@@ -229,6 +220,4 @@ register_web_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandle
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataHandler)
-register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor', MutableTensorHandler)
-register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/write', MutableTensorWriteHandler)
-register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/seal', MutableTensorSealHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorHandler)

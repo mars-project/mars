@@ -202,6 +202,7 @@ class Session(object):
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from ..tensor.expressions.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/%s' % name
         if not isinstance(dtype, np.dtype):
             dtype = np.dtype(dtype)
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -210,12 +211,11 @@ class Session(object):
         else:
             dtype_descr = str(dtype)
         tensor_json = {
-            'name': name,
             'shape': shape,
             'dtype': dtype_descr,
             'chunk_size': kwargs.pop('chunk_size', None),
         }
-        resp = self._req_session.post(session_url + '/mutable-tensor', json=tensor_json)
+        resp = self._req_session.post(tensor_url, json=tensor_json)
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
@@ -226,7 +226,7 @@ class Session(object):
     def get_mutable_tensor(self, name):
         from ..tensor.expressions.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor?name=%s' % name
+        tensor_url = session_url + '/mutable-tensor/%s' % name
         resp = self._req_session.get(tensor_url)
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
@@ -258,9 +258,9 @@ class Session(object):
         dataserializer.dump(value, bio, raw=False)
 
         session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/write?name=%s' % tensor.name
-        resp = self._req_session.post(tensor_url, data=bio.getvalue(),
-                                      headers={'Content-Type': 'application/octet-stream'})
+        tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
+        resp = self._req_session.put(tensor_url, data=bio.getvalue(),
+                                     headers={'Content-Type': 'application/octet-stream'})
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
@@ -269,8 +269,8 @@ class Session(object):
     def seal(self, tensor):
         from ..tensor.expressions.utils import create_fetch_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/seal?name=%s' % tensor.name
-        resp = self._req_session.get(tensor_url)
+        tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
+        resp = self._req_session.post(tensor_url)
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
