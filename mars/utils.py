@@ -614,7 +614,6 @@ def numpy_dtype_from_descr_json(obj):
     case, the tuple in `descr` will be made as `list`, which can be understood by `np.dtype()`.
     This utility helps the reconstruct work.
     '''
-    print(obj)
-    if isinstance(obj, str):
-        return obj
-    return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
+    if isinstance(obj, list):
+        return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
+    return obj
