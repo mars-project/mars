@@ -20,7 +20,6 @@ import pickle
 import traceback
 import uuid
 
-import numpy as np
 from tornado import gen, concurrent, web, ioloop
 
 from ..tensor.core import Indexes
