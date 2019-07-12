@@ -141,6 +141,10 @@ class GraphDataHandler(MarsApiRequestHandler):
             compressions_arg = self.request.arguments.get('compressions')
             if compressions_arg:
                 compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
+            slices_arg = self.request.arguments.get('slices')
+            if slices_arg:
+                slices_arg = [slice(*tuple(int(ss) if ss.isdigit() else None for ss in s.split(',')))
+                              for s in to_str(slices_arg[0]).split('-') if s]
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:
@@ -155,7 +159,8 @@ class GraphDataHandler(MarsApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions=compressions_arg)
+                return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
+                                          compressions=compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)

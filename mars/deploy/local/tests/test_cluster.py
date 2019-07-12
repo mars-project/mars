@@ -588,9 +588,9 @@ class Test(unittest.TestCase):
 
     def test_fetch_slices(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M') as cluster:
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session
-            a = mt.random.rand(10, 10, chunk_size=3)
+            a = mt.random.rand(10, 10, 10, chunk_size=3)
 
             r = session.run(a)
 
@@ -602,4 +602,23 @@ class Test(unittest.TestCase):
 
             r_slice3 = session.fetch(a[:, 2:])
             np.testing.assert_array_equal(r[:, 2:], r_slice3)
+
+            r_slice4 = session.fetch(a[:, 2:, -5:])
+            np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
+
+            web_session = new_session('http://' + cluster._web_endpoint)
+            r = web_session.run(a)
+
+            r_slice1 = web_session.fetch(a[:2])
+            np.testing.assert_array_equal(r[:2], r_slice1)
+
+            r_slice2 = web_session.fetch(a[2:8, 2:8])
+            np.testing.assert_array_equal(r[2:8, 2:8], r_slice2)
+
+            r_slice3 = web_session.fetch(a[:, 2:])
+            np.testing.assert_array_equal(r[:, 2:], r_slice3)
+
+            r_slice4 = web_session.fetch(a[:, 2:, -5:])
+            np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
+
 

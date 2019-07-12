@@ -181,7 +181,7 @@ class MarsAPI(object):
         chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
             session_id, list(chunk_indexes.values()))
 
-        if index_obj is None:
+        if not index_obj:
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
                                  idx, k in chunk_indexes.items())
         else:
@@ -203,7 +203,8 @@ class MarsAPI(object):
             ret = chunk_results[0][1]
         else:
             ret = merge_chunks(chunk_results)
-        return dataserializer.dumps(ret, compress=max(compressions))
+        compressions = max(compressions) if compressions else dataserializer.CompressType.NONE
+        return dataserializer.dumps(ret, compress=compressions)
 
     def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
@@ -225,4 +226,4 @@ class MarsAPI(object):
         chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
             session_id, list(chunk_indexes.values()))
 
-        return calc_nsplits(dict(zip(chunk_indexes.keys(), chunk_shapes)))
+        return calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
