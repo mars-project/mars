@@ -68,7 +68,7 @@ def estimate_fuse_size(ctx, chunk):
 
 # this function is only used for pandas' compatibility
 def to_numpy(pdf):
-    if version.parse(pd.__version__) > version.parse("0.24.0."):
+    try:
         return pdf.to_numpy()
-    else:
+    except TypeError:
         return pdf.values
