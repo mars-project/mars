@@ -18,8 +18,7 @@ from datetime import datetime
 
 import numpy as np
 from bokeh.embed import server_document
-from bokeh.models import ColumnDataSource, Legend, DataRange1d, \
-    LinearAxis, DatetimeAxis
+from bokeh.models import ColumnDataSource, Legend
 from bokeh.plotting import figure
 
 from ..utils import to_str
@@ -200,29 +199,18 @@ class WorkerTimelineHandler(MarsRequestHandler):
         p.ygrid.grid_line_color = None
         p.outline_line_color = None
 
-        p.extra_x_ranges = {'top_axis': DataRange1d(start=0, end=0)}
-        top_axis = DatetimeAxis(x_range_name='top_axis')
-        top_axis.major_tick_in = 0
-        p.add_layout(top_axis, 'above')
-
-        p.extra_y_ranges = {'right_axis': DataRange1d(start=0, end=0)}
-        right_axis = LinearAxis(y_range_name='right_axis')
-        right_axis.major_tick_in = 0
-        p.add_layout(right_axis, 'right')
+        old_owners = set()
 
         def _update_axes():
             x_range, y_range = updater.x_range, updater.y_range
             if x_range is None or y_range is None:
                 return
 
-            p.title.text = 'Event time range: (%s - %s)' % tuple(x_range)
-            right_axis.ticker = p.yaxis.ticker = list(range(1, 1 + len(updater.owner_to_ticker)))
-            right_axis.major_label_overrides = p.yaxis.major_label_overrides = \
-                dict((v, k) for k, v in updater.owner_to_ticker.items())
-            p.extra_x_ranges['top_axis'].start = p.x_range.start = x_range[0]
-            p.extra_x_ranges['top_axis'].end = p.x_range.end = x_range[1]
-            p.extra_y_ranges['right_axis'].start = p.y_range.start = y_range[0]
-            p.extra_y_ranges['right_axis'].end = p.y_range.end = y_range[1]
+            p.title.text = 'Event time range: (%s - %s)' % tuple(t.strftime('%Y-%m-%d %H:%M:%S') for t in x_range)
+            if set(updater.owner_to_ticker.keys()) - old_owners:
+                p.yaxis.ticker = list(range(1, 1 + len(updater.owner_to_ticker)))
+                p.yaxis.major_label_overrides = dict((v, k) for k, v in updater.owner_to_ticker.items())
+                old_owners.update(updater.owner_to_ticker.keys())
 
         _update_axes()
 
