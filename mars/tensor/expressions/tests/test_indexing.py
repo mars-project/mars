@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 
+from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
 from mars.tensor.expressions.datasource import ones, tensor
 from mars.tensor.expressions.datasource.ones import TensorOnes
 from mars.tensor.expressions.indexing import choose, unravel_index, nonzero
@@ -190,7 +191,7 @@ class Test(unittest.TestCase):
         t.tiles()
         self.assertIsInstance(t.chunks[0].op, TensorOnes)
         self.assertIsInstance(t.cix[1, 1, 0, 0].op, TensorIndexSetValue)
-        self.assertEqual(t.cix[1, 1, 0, 0].op.value, 2)
+        self.assertEqual(t.cix[1, 1, 0, 0].op.value, 2.2)
 
         t2 = ones(shape, chunk_size=5, dtype='i4')
         shape = t2[5:20:3, 5, ..., :-5].shape
@@ -203,6 +204,39 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             t[0, 0, 0, 0] = ones(2, chunk_size=10)
+
+    def testSetItemStructured(self):
+        # Check to value is properly broadcast for `setitem` on complex record dtype arrays.
+        rec_type = np.dtype([('a', np.int32), ('b', np.double), ('c', np.dtype([('a', np.int16), ('b', np.int64)]))])
+
+        t = ones((4, 5), dtype=rec_type, chunk_size=3)
+
+        # assign tuple to record
+        t[1:4, 1] = (3, 4., (5, 6))
+        t.tiles()
+        self.assertEqual(t.cix[0, 0].op.value, (3, 4., (5, 6)))
+
+        # assign scalar to record
+        t[1:4, 2] = 8
+        t.tiles()
+        self.assertEqual(t.cix[0, 0].op.value, 8)
+
+        # assign scalar array to record array with broadcast
+        t[1:3] = np.arange(5)
+        t.tiles()
+        slices_op = t.cix[0, 0].op.value.op
+        self.assertEqual(slices_op.slices, (slice(None, None, None), slice(None, 3, None)))
+        broadcast_op = slices_op.inputs[0].op.inputs[0].op
+        self.assertIsInstance(broadcast_op, TensorBroadcastTo)
+        self.assertEqual(broadcast_op.shape, (2, 5))
+        np.testing.assert_array_equal(broadcast_op.inputs[0].op.data, np.arange(5))
+
+        # assign scalar array to record array of same shape, no broadcast
+        t[2:4] = np.arange(10).reshape(2, 5)
+        t.tiles()
+        slices_op = t.cix[0, 0].op.value.op
+        self.assertEqual(slices_op.slices, (slice(None, 1, None), slice(None, 3, None)))
+        np.testing.assert_array_equal(slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5))
 
     def testChoose(self):
         with option_context() as options:
