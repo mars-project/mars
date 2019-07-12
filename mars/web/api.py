@@ -187,7 +187,7 @@ class MutableTensorHandler(MarsApiRequestHandler):
 
     def post(self, session_id):
         try:
-            req_json = json.loads(self.request.body)
+            req_json = json.loads(self.request.body.decode('ascii'))
             name = req_json['name']
             shape = req_json['shape']
             dtype = np.dtype(req_json['dtype'])
