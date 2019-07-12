@@ -1,6 +1,7 @@
 from .core import TensorHasInput
 from .... import opcodes as OperandDef
 from ....serialize import KeyField
+from ....dataframe.expressions.utils import build_empty_df
 
 
 class TensorDataFrameDataSource(TensorHasInput):
@@ -15,8 +16,6 @@ class TensorDataFrameDataSource(TensorHasInput):
 
 
 def from_dataframe(in_df):
-    if not all(in_df.dtypes[0] == elem for elem in in_df.dtypes):
-        raise TypeError('Not support heterogeneous DataFrame to tensor')
-
-    op = TensorDataFrameDataSource(dtype=in_df.dtypes[0], gpu=in_df.op.gpu)
+    empty_pdf = build_empty_df(in_df.dtypes)
+    op = TensorDataFrameDataSource(dtype=empty_pdf.dtypes[0], gpu=in_df.op.gpu)
     return op(in_df)

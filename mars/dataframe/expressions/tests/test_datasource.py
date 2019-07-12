@@ -27,7 +27,7 @@ from mars.graph import DAG
 from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.expressions.datasource.dataframe_from_tensor import from_tensor as from_tensor_mt
+from mars.dataframe.expressions.datasource.from_tensor import from_tensor
 from mars.tests.core import TestBase
 
 
@@ -243,10 +243,32 @@ class Test(TestBase):
         self.assertTrue(series.chunks[2].index_value._index_value._is_unique)
 
     def testFromTensor(self):
-        tensor = mt.random.rand(10, 10, chunk_size=2)
-        df = from_tensor_mt(tensor)
+        tensor = mt.random.rand(10, 10, chunk_size=5)
+        df = from_tensor(tensor)
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(df.op.dtypes, tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
 
         df.tiles()
-        self.assertEqual(len(df.chunks), 25)
+        self.assertEqual(len(df.chunks), 4)
+        pd.testing.assert_index_equal(df.chunks[0].index_value, pd.RangeIndex(0, 5))
+        pd.testing.assert_index_equal(df.chunks[0].columns, pd.RangeIndex(0, 5))
+        pd.testing.assert_index_equal(df.chunks[1].index_value, pd.RangeIndex(0, 5))
+        pd.testing.assert_index_equal(df.chunks[1].columns, pd.RangeIndex(5, 10))
+        pd.testing.assert_index_equal(df.chunks[2].index_value, pd.RangeIndex(5, 10))
+        pd.testing.assert_index_equal(df.chunks[2].columns, pd.RangeIndex(0, 5))
+        pd.testing.assert_index_equal(df.chunks[3].index_value, pd.RangeIndex(5, 10))
+        pd.testing.assert_index_equal(df.chunks[3].columns, pd.RangeIndex(5, 10))
+
+        # test converted from 1-d tensor
+        tensor2 = mt.array([1, 2, 3])
+        tensor3 = mt.array([tensor2]).T
+
+        df2 = from_tensor(tensor2)
+        df3 = from_tensor(tensor3)
+        df2.tiles()
+        df3.tiles()
+
+        pd.testing.assert_index_equal(df2.chunks[0].index_value, pd.RangeIndex(0, 3))
+        pd.testing.assert_index_equal(df2.chunks[0].columns, pd.RangeIndex(0, 1))
+        pd.testing.assert_index_equal(df3.chunks[0].index_value, pd.RangeIndex(0, 3))
+        pd.testing.assert_index_equal(df3.chunks[0].columns, pd.RangeIndex(0, 1))

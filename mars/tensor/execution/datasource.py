@@ -22,6 +22,7 @@ from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, na
 from ...lib.sparse import SparseNDArray
 from ..expressions import datasource
 from .utils import get_tiledb_ctx
+from .utils import to_numpy
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,9 @@ def _scalar(ctx, chunk):
 
 
 def _dataframe_to_tensor(ctx, chunk):
-    ctx[chunk.key] = ctx[chunk.inputs[0].key].values
+    df = ctx[chunk.inputs[0].key]
+    values = to_numpy(df)
+    ctx[chunk.key] = values
 
 
 def register_data_source_handler():

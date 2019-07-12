@@ -18,10 +18,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     _dtypes = SeriesField('dtypes')
     _input = KeyField('input')
 
-    def __init__(self, data=None, dtypes=None, gpu=None, sparse=None, **kw):
-        if dtypes is None and data is not None:
-            dtypes = data.dtypes
-        super(DataFrameFromTensor, self).__init__(input=data, _dtypes=dtypes,
+    def __init__(self, dtypes=None, gpu=None, sparse=None, **kw):
+        super(DataFrameFromTensor, self).__init__(_dtypes=dtypes,
                                                   _gpu=gpu, _sparse=sparse,
                                                   _object_type=ObjectType.dataframe, **kw)
 
@@ -38,8 +36,17 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         self._input = inputs
 
     def __call__(self, input_tensor):
-        index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
-        columns_value = pd.RangeIndex(start=0, stop=input_tensor.shape[1])
+        if input_tensor.ndim == 0:
+            raise IndexError('Not support converted from 0-dim tensor')
+        elif input_tensor.ndim == 1:
+            # convert to Series
+            index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
+            columns_value = pd.RangeIndex(start=0, stop=1)
+
+        else:
+            # convert to DataFrame
+            index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
+            columns_value = pd.RangeIndex(start=0, stop=input_tensor.shape[1])
 
         return self.new_dataframe(input_tensor, input_tensor.shape, dtypes=self.dtypes,
                                   index_value=parse_index(index_value),
@@ -51,18 +58,22 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         in_tensor = op.input
         out_chunks = []
         nsplits = in_tensor.nsplits
-        for t in nsplits:
-            if np.nan in t:
-                raise NotImplementedError('NAN shape is not supported in DataFrame')
+        if any(any(np.isnan(ns)) for ns in nsplits):
+            raise NotImplementedError('NAN shape is not supported in DataFrame')
 
         cum_size = [np.cumsum(s) for s in nsplits]
         for in_chunk in in_tensor.chunks:
             out_op = op.copy().reset_key()
-            i, j = in_chunk.index
+            if in_chunk.ndim == 1:
+                i = in_chunk.index
+                columns_value = pd.RangeIndex(0, 1)
+            else:
+                i, j = in_chunk.index
+                column_stop = cum_size[1][j]
+                columns_value = pd.RangeIndex(start=column_stop - in_chunk.shape[1], stop=column_stop)
+
             index_stop = cum_size[0][i]
-            column_stop = cum_size[1][j]
             index_value = pd.RangeIndex(start=index_stop - in_chunk.shape[0], stop=index_stop)
-            columns_value = pd.RangeIndex(start=column_stop - in_chunk.shape[1], stop=column_stop)
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
                                          index_value=index_value,
                                          columns_value=columns_value)
@@ -79,5 +90,5 @@ def from_tensor(tensor, gpu=None, sparse=False):
     if tensor.ndim > 2:
         raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
 
-    op = DataFrameFromTensor(data=tensor, dtypes=tensor.dtype, gpu=gpu, sparse=sparse)
+    op = DataFrameFromTensor(dtypes=tensor.dtype, gpu=gpu, sparse=sparse)
     return op(tensor)

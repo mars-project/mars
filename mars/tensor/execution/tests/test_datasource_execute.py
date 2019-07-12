@@ -35,7 +35,7 @@ from mars.lib.sparse import SparseNDArray
 from mars.tensor.expressions.lib import nd_grid
 import mars.dataframe as md
 import mars.tensor as mt
-from mars.tensor.expressions.datasource.fromdataframe import from_dataframe
+from mars.tensor.expressions.datasource.from_dataframe import from_dataframe
 
 
 class Test(TestBase):
@@ -859,3 +859,10 @@ class Test(TestBase):
         tensor_result = self.executor.execute_tensor(from_dataframe(mdf))
         tensor_expected = self.executor.execute_tensor(mt.tensor([[0, 360], [3, 180], [4, 360]]))
         np.testing.assert_equal(tensor_result, tensor_expected)
+
+        # test up-casting
+        mdf2 = md.DataFrame({'a': [0.1, 0.2, 0.3], 'b': [1, 2, 3]})
+        tensor_result2 = self.executor.execute_tensor(from_dataframe(mdf2))
+        np.testing.assert_equal(tensor_result2[0].dtype, np.dtype('float64'))
+        tensor_expected2 = self.executor.execute_tensor(mt.tensor([[0.1, 1.0], [0.2, 2.0], [0.3, 3.0]]))
+        np.testing.assert_equal(tensor_result2, tensor_expected2)

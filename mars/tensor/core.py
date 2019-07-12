@@ -209,7 +209,7 @@ class TensorData(TileableData):
         return from_dataframe(in_df)
 
     def to_dataframe(self):
-        from mars.dataframe.expressions.datasource.dataframe_from_tensor import from_tensor
+        from ..dataframe.expressions.datasource.from_tensor import from_tensor
         return from_tensor(self)
 
     @property

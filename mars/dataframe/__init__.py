@@ -18,6 +18,6 @@ from .initializer import DataFrame
 # do imports to register operands
 from . import expressions
 from .expressions.arithmetic import add
-from .expressions.datasource.dataframe_from_tensor import from_tensor
+from .expressions.datasource.from_tensor import from_tensor
 
 del expressions

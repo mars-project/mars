@@ -18,6 +18,8 @@ except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ...compat import functools32
+import pandas as pd
+from packaging import version
 
 
 # As TileDB Ctx's creation is a bit time-consuming,
@@ -62,3 +64,11 @@ def estimate_fuse_size(ctx, chunk):
         for key in output_keys:
             r = ctx[key]
             ctx[key] = (r[0], max(r[1], r[1] * executor.mock_max_memory // total_mem))
+
+
+# this function is only used for pandas' compatibility
+def to_numpy(pdf):
+    if version.parse(pd.__version__) > version.parse("0.24.0."):
+        return pdf.to_numpy()
+    else:
+        return pdf.values

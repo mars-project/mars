@@ -24,7 +24,7 @@ from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu,
 from mars.tensor.expressions.datasource import fromdense
 from mars.tensor.expressions.datasource.tri import TensorTriu, TensorTril
 from mars.tensor.expressions.datasource.zeros import TensorZeros
-from mars.tensor.expressions.datasource.fromdense import DenseToSparse
+from mars.tensor.expressions.datasource.from_dense import DenseToSparse
 from mars.tensor.expressions.datasource.array import CSRMatrixDataSource
 from mars.tensor.expressions.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.expressions.fuse.core import TensorFuseChunk

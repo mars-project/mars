@@ -634,12 +634,12 @@ class DataFrameData(TileableData):
         return self._columns_value
 
     def to_tensor(self):
-        from mars.tensor.expressions.datasource.fromdataframe import from_dataframe
+        from ..tensor.expressions.datasource.from_dataframe import from_dataframe
         return from_dataframe(self)
 
     @staticmethod
     def from_tensor(in_tensor):
-        from .expressions.datasource.dataframe_from_tensor import from_tensor
+        from .expressions.datasource.from_tensor import from_tensor
         return from_tensor(in_tensor)
 
 

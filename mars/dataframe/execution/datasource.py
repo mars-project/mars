@@ -14,7 +14,7 @@
 
 from ..expressions.datasource.dataframe import DataFrameDataSource
 from ..expressions.datasource.series import SeriesDataSource
-from ..expressions.datasource.dataframe_from_tensor import DataFrameFromTensor
+from ..expressions.datasource.from_tensor import DataFrameFromTensor
 
 try:
     import pandas as pd
@@ -27,10 +27,8 @@ def _dataframe_or_series_pandas_data_source(ctx, chunk):
 
 
 def _dataframe_tensor_data_source(ctx, chunk):
-    tensor_chunk = ctx[chunk.inputs[0].key]
-    pdf = pd.DataFrame(tensor_chunk)
-    pdf.index = chunk.index_value
-    pdf.columns = chunk.columns
+    tensor_data = ctx[chunk.inputs[0].key]
+    pdf = pd.DataFrame(tensor_data, index=chunk.index_value, columns=chunk.columns)
     ctx[chunk.key] = pdf
 
 

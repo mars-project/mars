@@ -16,7 +16,7 @@ import unittest
 import shutil
 import tempfile
 import mars.dataframe as md
-from mars.tensor.expressions.datasource.fromdataframe import from_dataframe
+from mars.tensor.expressions.datasource.from_dataframe import from_dataframe
 import numpy as np
 
 try:
