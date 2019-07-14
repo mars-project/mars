@@ -360,7 +360,7 @@ def unify_nsplits(*tensor_axes):
 
     tensor_splits = [dict((a, split) for a, split in izip(axes, t.nsplits) if split != (1,))
                      for t, axes in tensor_axes if t.nsplits]
-    common_axes = reduce(operator.and_, [set(lkeys(ts)) for ts in tensor_splits])
+    common_axes = reduce(operator.and_, [set(lkeys(ts)) for ts in tensor_splits]) if tensor_splits else set()
     axes_unified_splits = dict((ax, decide_unify_split(*(t[ax] for t in tensor_splits)))
                                for ax in common_axes)
 
