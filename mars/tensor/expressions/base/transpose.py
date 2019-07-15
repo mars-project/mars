@@ -36,7 +36,9 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, axes=None, dtype=None, sparse=False, **kw):
         super(TensorTranspose, self).__init__(_axes=axes, _dtype=dtype,
-                                              _sparse=sparse, **kw)
+                                              _sparse=sparse,
+                                              # transpose will create a view
+                                              _create_view=True, **kw)
 
     @property
     def axes(self):
@@ -49,6 +51,14 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorTranspose, self)._set_inputs(inputs)
         self._input = self._inputs[0]
+
+    def on_output_modify(self, new_output):
+        op = self.copy().reset_key()
+        return op(new_output)
+
+    def on_input_modify(self, new_input):
+        op = self.copy().reset_key()
+        return op(new_input)
 
     @classmethod
     def tile(cls, op):

@@ -20,7 +20,8 @@ import numpy as np
 
 from mars.tensor.expressions.datasource import ones, tensor, arange, array, asarray
 from mars.tensor.expressions.base import transpose, broadcast_to, where, argwhere, array_split, \
-    split, squeeze, digitize, result_type, repeat, copyto, isin, TensorCopyTo
+    split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
+    atleast_1d, atleast_2d, atleast_3d
 
 
 class Test(unittest.TestCase):
@@ -368,3 +369,42 @@ class Test(unittest.TestCase):
         self.assertEqual(len(mask.op.test_elements.chunks), 1)
         self.assertIs(mask.chunks[0].inputs[0], element.chunks[0].data)
         self.assertTrue(mask.chunks[0].op.invert)
+
+    def testCreateView(self):
+        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
+        arr2 = transpose(arr)
+        self.assertTrue(arr2.op.create_view)
+
+        arr3 = transpose(arr)
+        self.assertTrue(arr3.op.create_view)
+
+        arr4 = arr.swapaxes(0, 1)
+        self.assertTrue(arr4.op.create_view)
+
+        arr5 = moveaxis(arr, 1, 0)
+        self.assertTrue(arr5.op.create_view)
+
+        arr6 = atleast_1d(1)
+        self.assertTrue(arr6.op.create_view)
+
+        arr7 = atleast_2d([1, 1])
+        self.assertTrue(arr7.op.create_view)
+
+        arr8 = atleast_3d([1, 1])
+        self.assertTrue(arr8.op.create_view)
+
+        arr9 = arr[:3, [1, 2, 3]]
+        # no view cuz of fancy indexing
+        self.assertFalse(arr9.op.create_view)
+
+        arr10 = arr[:3, None, :5]
+        self.assertTrue(arr10.op.create_view)
+
+        data = np.array([[[0], [1], [2]]])
+        x = tensor(data)
+
+        t = squeeze(x)
+        self.assertTrue(t.op.create_view)
+
+        y = x.reshape(3)
+        self.assertTrue(y.op.create_view)

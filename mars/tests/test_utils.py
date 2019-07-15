@@ -212,6 +212,15 @@ class Test(unittest.TestCase):
             self.assertTrue(options.eager_mode)
             self.assertFalse(wrapped())
 
+        @utils.kernel_mode
+        def wrapped2():
+            wrapped()
+            with option_context({'eager_mode': True}):
+                self.assertTrue(options.eager_mode)
+                self.assertFalse(utils.is_eager_mode())
+
+        wrapped2()
+
     def testBlacklistSet(self):
         blset = utils.BlacklistSet(0.1)
         blset.update([1, 2])

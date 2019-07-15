@@ -63,6 +63,8 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _sparse = BoolField('sparse')
     _gpu = BoolField('gpu')
     _device = Int32Field('device')
+    # will this operand create a view of input data or not
+    _create_view = BoolField('create_view')
 
     _inputs = ListField('inputs', ValueType.key)
     _outputs = ListField('outputs', ValueType.key, weak_ref=True)
@@ -124,6 +126,10 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         return getattr(self, '_device', None)
 
     @property
+    def create_view(self):
+        return getattr(self, '_create_view', False)
+
+    @property
     def extra_params(self):
         return self._extra_params
 
@@ -172,6 +178,19 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         new_op.outputs = []
 
         return new_op
+
+    def on_output_modify(self, new_output):
+        # when `create_view` is True, if the output is modified,
+        # the modification should be set back to the input.
+        # This function is for this sort of usage.
+        # Remember, if `create_view` is False, this function should take no effect.
+        raise NotImplementedError
+
+    def on_input_modify(self, new_input):
+        # when `create_view` is True, if the input is modified,
+        # this function could be used to respond the modification.
+        # Remember, if `create_view` is False, this function should take no effect.
+        raise NotImplementedError
 
 
 class HasInput(Operand):

@@ -196,13 +196,6 @@ class TensorData(TileableData):
 
         return reshape(self, shape)
 
-    def ravel(self):
-        from .expressions.base import ravel
-
-        return ravel(self)
-
-    flatten = ravel
-
     def _equals(self, o):
         return self is o
 
@@ -211,16 +204,17 @@ class TensorData(TileableData):
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
 
+    @property
+    def flat(self):
+        return flatiter(self)
 
-class Tensor(Entity):
+
+class Tensor(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
 
     def __len__(self):
         return len(self._data)
-
-    def copy(self):
-        return Tensor(self._data)
 
     def tiles(self):
         return handler.tiles(self)
@@ -359,42 +353,61 @@ class Tensor(Entity):
         """
         return self._data.T
 
-    def ravel(self):
-        """
-        Return a flattened tensor.
-
-        Refer to `mt.ravel` for full documentation.
-
-        See Also
-        --------
-        mt.ravel : equivalent function
-        """
-        return self._data.ravel()
-
-    def reshape(self, shape, *shapes):
-        """
-        Returns a tensor containing the same data with a new shape.
-
-        Refer to `mt.reshape` for full documentation.
-
-        See Also
-        --------
-        mt.reshape : equivalent function
-
-        Notes
-        -----
-        Unlike the free function `mt.reshape`, this method on `Tensor` allows
-        the elements of the shape parameter to be passed in as separate arguments.
-        For example, ``a.reshape(10, 11)`` is equivalent to
-        ``a.reshape((10, 11))``.
-        """
-        return self._data.reshape(shape, *shapes)
-
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
+    @property
+    def flat(self):
+        """
+        Flat iterator object to iterate over arrays.
+
+        A `flatiter` iterator is returned by ``x.flat`` for any tensor `x`.
+        It allows iterating over the tensor as if it were a 1-D array,
+        either in a for-loop or by calling its `next` method.
+
+        Iteration is done in row-major, C-style order (the last
+        index varying the fastest). The iterator can also be indexed using
+        basic slicing or advanced indexing.
+
+        See Also
+        --------
+        ndarray.flat : Return a flat iterator over a tensor.
+        ndarray.flatten : Returns a flattened copy of a tensor.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+
+        >>> x = mt.arange(6).reshape(2, 3)
+        >>> fl = x.flat
+
+        >>> fl[2:4].execute()
+        array([2, 3])
+        """
+        return self._data.flat
+
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
+
+
+class SparseTensor(Tensor):
+    __slots__ = ()
+
+
+class flatiter(object):
+    def __init__(self, tensor):
+        # flatten creates a copy
+        self._flatten_tensor = tensor.flatten()
+        # ravel creates a view
+        self._ravel_tensor = tensor.ravel()
+
+    def __getitem__(self, item):
+        # a.flat[item] create a copy
+        return self._flatten_tensor[item]
+
+    def __setitem__(self, key, value):
+        # a.flat[item] = value will apply changes to original tensor
+        self._ravel_tensor[key] = value
 
 
 class MutableTensorData(TensorData):
@@ -545,7 +558,6 @@ class Indexes(Serializable):
     @property
     def indexes(self):
         return self._indexes
-
 
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (TensorChunk, TensorChunkData)

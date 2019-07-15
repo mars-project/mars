@@ -107,9 +107,8 @@ def _setitem(a, item, value):
         if not isinstance(ix, (slice, Integral)):
             raise NotImplementedError('Only slice or int supported by now, got {0}'.format(type(ix)))
 
-    if np.isscalar(value):
-        value = a.dtype.type(value)
-    else:
+    # don't broadcast for tuple when dtype is record type.
+    if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
         value = broadcast_to(value, shape).astype(a.dtype)
 
     op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value)

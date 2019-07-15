@@ -36,7 +36,7 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
 
     def __init__(self, axis1=None, axis2=None, dtype=None, sparse=False, **kw):
         super(TensorSwapAxes, self).__init__(_axis1=axis1, _axis2=axis2, _dtype=dtype,
-                                             _sparse=sparse, **kw)
+                                             _sparse=sparse, _create_view=True, **kw)
 
     @property
     def axis1(self):
@@ -53,6 +53,15 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorSwapAxes, self)._set_inputs(inputs)
         self._input = self._inputs[0]
+
+    def on_output_modify(self, new_output):
+        op = TensorSwapAxes(axis1=self._axis2, axis2=self._axis1, dtype=new_output.dtype,
+                            sparse=new_output.issparse())
+        return op(new_output)
+
+    def on_input_modify(self, new_input):
+        op = self.copy().reset_key()
+        return op(new_input)
 
     @classmethod
     def tile(cls, op):

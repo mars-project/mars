@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     pass
 
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type
-from ..core import ChunkData, Chunk, Entity, TileableData, is_eager_mode
+from ..core import ChunkData, Chunk, TileableEntity, TileableData, is_eager_mode
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
@@ -373,7 +373,8 @@ class IndexData(TileableData):
         return self._index_value
 
 
-class Index(Entity):
+class Index(TileableEntity):
+    __slots__ = ()
     _allow_data_type_ = (IndexData,)
 
 
@@ -497,7 +498,7 @@ class SeriesData(TileableData):
         return self._index_value
 
 
-class Series(Entity):
+class Series(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (SeriesData,)
 
@@ -633,7 +634,7 @@ class DataFrameData(TileableData):
         return self._columns_value
 
 
-class DataFrame(Entity):
+class DataFrame(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
 

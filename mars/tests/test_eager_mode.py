@@ -208,6 +208,19 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             a.fetch()
 
+    def testView(self):
+        with option_context({'eager_mode': True}):
+            a = mt.ones((10, 20), chunk_size=3)
+            b = a[0][1:4]
+            b[1] = 10
+
+            npa = np.ones((10, 20))
+            npb = npa[0][1:4]
+            npb[1] = 10
+
+            np.testing.assert_array_equal(a.fetch(), npa)
+            np.testing.assert_array_equal(b.fetch(), npb)
+
     def testDataFrame(self):
         with option_context({'eager_mode': True}):
             from mars.dataframe.expressions.arithmetic import add
