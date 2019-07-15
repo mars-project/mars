@@ -261,7 +261,7 @@ class GraphExecution(object):
             # note that currently execution is the chunk-level
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
-            Executor.handle(first_op.outputs[0], results, self._mock)
+            Executor.handle(first_op, results, self._mock)
 
             # update maximal memory usage during execution
             if self._mock:
@@ -438,24 +438,29 @@ class Executor(object):
         return graph
 
     @staticmethod
-    def _get_op_runner(chunk, mapper):
+    def _get_op_runner(op, mapper, method):
         try:
-            op_cls = type(chunk.op)
-            return mapper[op_cls]
+            op_cls = type(op)
+            return mapper[op_cls], False
         except KeyError:
+            if hasattr(op, method):
+                return getattr(op, method), True
             for op_cls in mapper.keys():
-                if isinstance(chunk.op, op_cls):
-                    mapper[type(chunk.op)] = mapper[op_cls]
-                    return mapper[op_cls]
+                if isinstance(op, op_cls):
+                    mapper[type(op)] = mapper[op_cls]
+                    return mapper[op_cls], False
 
-            raise KeyError('No handler found for op: %s' % chunk.op)
+            raise KeyError('No handler found for op: %s' % op)
 
     @classmethod
-    def handle(cls, chunk, results, mock=False):
+    def handle(cls, op, results, mock=False):
+        # TODO: remove new_fashion after refactoring finished
         if not mock:
-            return cls._get_op_runner(chunk, cls._op_runners)(results, chunk)
+            runner, new_fashion = cls._get_op_runner(op, cls._op_runners, 'execute')
+            return runner(results, op) if new_fashion else runner(results, op.outputs[0])
         else:
-            return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
+            estimator, new_fashion = cls._get_op_runner(op, cls._op_size_estimators, 'estimate_size')
+            return estimator(results, op) if new_fashion else estimator(results, op.outputs[0])
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, no_intermediate=False, compose=True, retval=True):
