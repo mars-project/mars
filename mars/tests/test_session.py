@@ -17,6 +17,7 @@
 import unittest
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -298,3 +299,42 @@ class Test(unittest.TestCase):
         arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
         r2 = sess.run(arr2, compose=False)
         np.testing.assert_array_equal(r1, r2)
+
+    def testDataFrameCreate(self):
+        sess = new_session()
+        tensor = mt.ones((2, 2))
+        df = md.DataFrame(tensor)
+        df_result = sess.run(df)
+        df2 = md.DataFrame(df)
+        df2 = sess.run(df2)
+        np.testing.assert_equal(df_result.values, np.ones((2, 2)))
+        pd.testing.assert_frame_equal(df_result, df2)
+
+    def testDataFrameTensorConvert(self):
+        # test from_tensor(), from_dataframe(), to_tensor(), to_dataframe()
+        sess = new_session()
+        tensor = mt.ones((2, 2))
+        df = tensor.to_dataframe()
+        np.testing.assert_equal(sess.run(df), np.ones((2, 2)))
+        tensor2 = mt.from_dataframe(df)
+        np.testing.assert_equal(sess.run(tensor2), np.ones((2, 2)))
+
+        tensor3 = tensor2.from_dataframe(df)
+        np.testing.assert_equal(sess.run(tensor3), np.ones((2, 2)))
+
+        tensor4 = df.to_tensor()
+        np.testing.assert_equal(sess.run(tensor4), np.ones((2, 2)))
+
+        df = md.from_tensor(tensor3)
+        np.testing.assert_equal(sess.run(df).values, np.ones((2, 2)))
+
+        df = df.from_tensor(tensor3)
+        np.testing.assert_equal(sess.run(df).values, np.ones((2, 2)))
+
+        # test raise error exception
+        with self.assertRaises(TypeError):
+            md.from_tensor(mt.ones((1, 2, 3)))
+
+        # test exception
+        tensor = md.from_tensor(mt.array([1, 2, 3]))
+        np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
