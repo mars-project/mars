@@ -70,7 +70,7 @@ class Test(unittest.TestCase):
         self.api.delete_graph(session_id, graph_key)
         self.assertFalse(self.pool.has_actor(graph_ref))
 
-    @patch_method(GraphActor.get_tileable_chunk_indexes)
+    @patch_method(GraphActor.get_tileable_meta)
     @patch_method(ChunkMetaClient.batch_get_chunk_shape)
     def testGetTensorNsplits(self, *_):
         session_id = 'mock_session_id'
@@ -83,17 +83,17 @@ class Test(unittest.TestCase):
         self.pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
 
         mock_indexes = [
-            OrderedDict(zip([(0, ), (1,), (2,), (3,)],
-                            ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])),
-            OrderedDict(zip([(0, 0), (0, 1), (1, 0), (1, 1)],
-                            ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4']))
+            (((3, 4, 5, 6),), OrderedDict(zip([(0, ), (1,), (2,), (3,)],
+                                              ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4']))),
+            (((3, 2), (4, 2)), OrderedDict(zip([(0, 0), (0, 1), (1, 0), (1, 1)],
+                                               ['chunk_key1', 'chunk_key2', 'chunk_key3', 'chunk_key4'])))
         ]
         mock_shapes = [
             [(3,), (4,), (5,), (6,)],
             [(3, 4), (3, 2), (2, 4), (2, 2)]
         ]
 
-        GraphActor.get_tileable_chunk_indexes.side_effect = mock_indexes
+        GraphActor.get_tileable_meta.side_effect = mock_indexes
         ChunkMetaClient.batch_get_chunk_shape.side_effect = mock_shapes
 
         nsplits = self.api.get_tileable_nsplits(session_id, graph_key, tensor_key)
