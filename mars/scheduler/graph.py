@@ -21,6 +21,8 @@ import random
 import time
 from collections import deque, defaultdict
 
+import numpy as np
+
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
@@ -38,7 +40,7 @@ from ..serialize import dataserializer
 from ..core import ChunkData
 from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    build_fetch_chunk, build_fetch_tileable
+    build_fetch_chunk, build_fetch_tileable, calc_nsplits
 
 logger = logging.getLogger(__name__)
 
@@ -856,8 +858,21 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             self._get_operand_ref(chunk.op.key).free_data(_tell=True)
 
-    def get_tileable_chunk_indexes(self, tileable_key):
-        return OrderedDict((c.index, c.key) for c in self._get_tileable_by_key(tileable_key).chunks)
+    def get_tileable_meta(self, tileable_key):
+        """
+        Get tileable meta including nsplit, chunk keys and chunk indexes.
+        :param tileable_key: tileable_key
+        :return: tuple, (nsplits, OrderedDict(chunk_index -> chunk_key))
+        """
+        tileable = self._get_tileable_by_key(tileable_key)
+        chunk_indexes = OrderedDict((c.index, c.key) for c in tileable.chunks)
+        nsplits = tileable.nsplits
+        if np.nan in tileable.shape:
+            chunk_shapes = self.chunk_meta.batch_get_chunk_shape(
+                self._session_id, list(chunk_indexes.values()))
+            nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
+
+        return nsplits, chunk_indexes
 
     def build_fetch_graph(self, tileable_key):
         """

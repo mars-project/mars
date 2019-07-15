@@ -608,13 +608,14 @@ class Executor(object):
             for j, concat_result in zip(to_concat_tileables, concat_results):
                 results[j] = concat_result
 
-        results = [result[indexes] for indexes, result in zip(tileable_indexes, results)]
+        results = [result[indexes] if indexes else result for
+                   indexes, result in zip(tileable_indexes, results)]
         return results
 
     def get_tileable_nsplits(self, tileable):
         chunk_idx_to_shape = OrderedDict(
-            (c.index, r.shape) for c, r in zip(tileable.chunks,[self._chunk_result[c.key]
-                                                                for c in tileable.chunks]))
+            (c.index, r.shape) for c, r in zip(tileable.chunks, [self._chunk_result[c.key]
+                                                                 for c in tileable.chunks]))
         return calc_nsplits(chunk_idx_to_shape)
 
     def decref(self, *keys):

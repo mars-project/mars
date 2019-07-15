@@ -17,7 +17,6 @@ import uuid
 import zlib
 import itertools
 import random
-from collections import OrderedDict
 
 import pyarrow
 
@@ -31,7 +30,7 @@ from .worker.transfer import ResultSenderActor
 from .tensor.expressions.utils import slice_split
 from .config import options
 from .serialize import dataserializer
-from .utils import tokenize, calc_nsplits, merge_chunks
+from .utils import tokenize, merge_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -178,16 +177,12 @@ class MarsAPI(object):
     def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
-        chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
-            session_id, list(chunk_indexes.values()))
+        nsplits, chunk_indexes = graph_ref.get_tileable_meta(tileable_key)
 
         if not index_obj:
             chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
                                  idx, k in chunk_indexes.items())
         else:
-            chunk_idx_to_shape = OrderedDict(zip(chunk_indexes.keys(), chunk_shapes))
-            nsplits = calc_nsplits(chunk_idx_to_shape)
             chunk_results = dict()
             indexes = dict()
             for axis, s in enumerate(index_obj):
@@ -223,9 +218,5 @@ class MarsAPI(object):
         # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
 
-        chunk_shapes = self.chunk_meta_client.batch_get_chunk_shape(
-            session_id, list(chunk_indexes.values()))
-
-        return calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
+        return graph_ref.get_tileable_meta(tileable_key)[0]
