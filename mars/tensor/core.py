@@ -20,7 +20,8 @@ from datetime import datetime
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TileableData, Serializable, is_eager_mode, build_mode
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, \
+    build_mode, Serializable
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
@@ -544,10 +545,6 @@ class MutableTensor(Entity):
         return chunk_records_to_send
 
 
-class SparseTensor(Tensor):
-    __slots__ = ()
-
-
 class Indexes(Serializable):
     _indexes = AnyField('indexes')
 
@@ -558,6 +555,7 @@ class Indexes(Serializable):
     @property
     def indexes(self):
         return self._indexes
+
 
 TENSOR_TYPE = (Tensor, TensorData)
 CHUNK_TYPE = (TensorChunk, TensorChunkData)
