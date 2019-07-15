@@ -56,14 +56,14 @@ class MarsApiRequestHandler(MarsRequestHandler):
         super(MarsApiRequestHandler, self).set_default_headers()
         self.set_header('Content-Type', 'application/json')
 
-    def _dump_exception(self, exc_info):
+    def _dump_exception(self, exc_info, status_code=500):
         pickled_exc = pickle.dumps(exc_info)
         # return pickled exc_info for python client, and textual exc_info for web.
         self.write(json.dumps(dict(
             exc_info=base64.b64encode(pickled_exc).decode('ascii'),
             exc_info_text=traceback.format_exception(*exc_info),
         )))
-        self.set_status(500)
+        self.set_status(status_code)
         self.finish()
 
 
@@ -135,7 +135,10 @@ class GraphApiHandler(MarsApiRequestHandler):
             self.write(json.dumps(dict(state='preparing')))
 
     def delete(self, session_id, graph_key):
-        self.web_api.stop_graph(session_id, graph_key)
+        try:
+            self.web_api.stop_graph(session_id, graph_key)
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info(), 404)
 
 
 class GraphDataHandler(MarsApiRequestHandler):
