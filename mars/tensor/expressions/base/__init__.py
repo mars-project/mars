@@ -26,6 +26,7 @@ from .rollaxis import rollaxis
 from .swapaxes import swapaxes, TensorSwapAxes
 from .moveaxis import moveaxis
 from .ravel import ravel
+from .flatten import flatten
 from .atleast_1d import atleast_1d
 from .atleast_2d import atleast_2d
 from .atleast_3d import atleast_3d
@@ -60,10 +61,14 @@ def _install():
     setattr(Tensor, 'swapaxes', swapaxes)
     setattr(Tensor, 'squeeze', squeeze)
     setattr(Tensor, 'repeat', repeat)
+    setattr(Tensor, 'ravel', ravel)
+    setattr(Tensor, 'flatten', flatten)
     setattr(TensorData, 'astype', _astype)
     setattr(TensorData, 'swapaxes', swapaxes)
     setattr(TensorData, 'squeeze', squeeze)
     setattr(TensorData, 'repeat', repeat)
+    setattr(TensorData, 'ravel', ravel)
+    setattr(TensorData, 'flatten', flatten)
 
 
 _install()

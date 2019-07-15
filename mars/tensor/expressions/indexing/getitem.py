@@ -41,8 +41,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, indexes=None, **kw):
-        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes, **kw)
+    def __init__(self, dtype=None, sparse=False, indexes=None, create_view=False, **kw):
+        super(TensorIndex, self).__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
+                                          _create_view=create_view, **kw)
 
     @property
     def indexes(self):
@@ -54,6 +55,21 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
                        for index in self._indexes]
         self._indexes = new_indexes
+
+    def on_output_modify(self, new_output):
+        from .setitem import TensorIndexSetValue
+
+        if self._create_view:
+            a = self.input
+            op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
+                                     indexes=self._indexes, value=new_output)
+            return op(a, self._indexes, new_output)
+
+    def on_input_modify(self, new_input):
+        if self._create_view:
+            new_op = self.copy().reset_key()
+            new_inputs = [new_input] + self.inputs[1:]
+            return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     def __call__(self, a, index, shape):
         self._indexes = index
@@ -520,6 +536,11 @@ class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
         return self._fancy_index_shape
 
 
+def _is_create_view(index):
+    # is view if all of index is slice, int or newaxis
+    return all(isinstance(ind, (slice, Integral)) or ind is None for ind in index)
+
+
 def _getitem(a, item):
     if isinstance(item, (list, tuple)) and \
             all(isinstance(it, slice) and it == slice(None) for it in item):
@@ -530,5 +551,6 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     shape = calc_shape(a.shape, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index)
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
+                     create_view=_is_create_view(index))
     return op(a, index, tuple(shape))
