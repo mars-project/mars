@@ -533,17 +533,19 @@ def merge_chunks(chunk_results):
     :return:
     """
     from .lib.sparse import SparseNDArray
+    from .tensor.execution.array import get_array_module
 
     chunk_results = sorted(chunk_results, key=lambda x: x[0])
     v = chunk_results[0][1]
     if isinstance(v, (np.ndarray, SparseNDArray)):
+        xp = get_array_module(v)
         ndim = v.ndim
         for i in range(ndim - 1):
             new_chunks = []
             for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
-                new_chunks.append((idx, np.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
+                new_chunks.append((idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
             chunk_results = new_chunks
-        concat_result = np.concatenate([c[1] for c in chunk_results])
+        concat_result = xp.concatenate([c[1] for c in chunk_results])
         return concat_result
     else:
         # auto generated concat when executing a DataFrame
@@ -575,3 +577,15 @@ def calc_nsplits(chunk_idx_to_shape):
                 splits.append(shape[i])
         tileable_nsplits.append(tuple(splits))
     return tuple(tileable_nsplits)
+
+
+def sort_dataframe_result(df, result):
+    """ sort DataFrame on client according to `should_be_monotonic` attribute """
+    if hasattr(df, 'index_value'):
+        if getattr(df.index_value, 'should_be_monotonic', False):
+            result.sort_index(inplace=True)
+        if hasattr(df, 'columns'):
+            if getattr(df.columns, 'should_be_monotonic', False):
+                result.sort_index(axis=1, inplace=True)
+    return result
+

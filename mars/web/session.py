@@ -16,6 +16,7 @@ import base64
 import json
 import time
 import logging
+from numbers import Integral
 
 import requests
 
@@ -23,7 +24,8 @@ from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..utils import build_graph
+from ..utils import build_graph, to_str, to_binary, sort_dataframe_result
+from ..tensor.core import Indexes
 from ..tensor.expressions.indexing import TensorIndex
 
 logger = logging.getLogger(__name__)
@@ -171,7 +173,7 @@ class Session(object):
             if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
-                if not all(isinstance(ind, slice) for ind in indexes):
+                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                     raise ValueError('Only support fetch data slices')
             else:
                 key = tileable.key
@@ -180,24 +182,18 @@ class Session(object):
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            slice_str = '-'.join(['{0},{1},{2}'.format(s.start, s.stop, s.step) for s in indexes])
+            indexes_str = to_str(base64.b64encode(to_binary(json.dumps(Indexes(indexes).to_json()))))
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
             data_url = session_url + '/graph/%s/data/%s?compressions=%s&slices=%s' \
-                % (self._get_tileable_graph_key(key), key, compression_str, slice_str)
+                % (self._get_tileable_graph_key(key), key, compression_str, indexes_str)
             resp = self._req_session.get(data_url, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
                                  (resp.status_code, resp.reason, resp.text))
             result_data = dataserializer.loads(resp.content)
-            if hasattr(tileable, 'index_value'):
-                if getattr(tileable.index_value, 'should_be_monotonic', False):
-                    result_data.sort_index(inplace=True)
-                if hasattr(tileable, 'columns'):
-                    if getattr(tileable.columns, 'should_be_monotonic', False):
-                        result_data.sort_index(axis=1, inplace=True)
-            results.append(result_data)
+            results.append(sort_dataframe_result(tileable, result_data))
         return results
 
     def _update_tileable_shape(self, tileable):

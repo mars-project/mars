@@ -17,13 +17,14 @@
 import uuid
 import json
 import time
+from numbers import Integral
 
 from ...api import MarsAPI
 from ...compat import TimeoutError  # pylint: disable=W0622
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
-from ...utils import build_graph
+from ...utils import build_graph, sort_dataframe_result
 from ...tensor.expressions.indexing import TensorIndex
 
 
@@ -131,7 +132,7 @@ class LocalClusterSession(object):
             if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
-                if not all(isinstance(ind, slice) for ind in indexes):
+                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
                     raise ValueError('Only support fetch data slices')
             else:
                 key = tileable.key
@@ -144,14 +145,7 @@ class LocalClusterSession(object):
             result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
                                           compressions=compressions)
             result_data = dataserializer.loads(result)
-            if hasattr(tileable, 'index_value'):
-                if getattr(tileable.index_value, 'should_be_monotonic', False):
-                    result_data.sort_index(inplace=True)
-                if hasattr(tileable, 'columns'):
-                    if getattr(tileable.columns, 'should_be_monotonic', False):
-                        result_data.sort_index(axis=1, inplace=True)
-
-            tileable_results.append(result_data)
+            tileable_results.append(sort_dataframe_result(tileable, result_data))
         return tileable_results
 
     def decref(self, *keys):

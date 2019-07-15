@@ -21,6 +21,7 @@ import logging
 
 from tornado import gen, concurrent, web, ioloop
 
+from ..tensor.core import Indexes
 from ..actors import new_client
 from ..compat import six, futures
 from ..errors import GraphNotExists
@@ -143,8 +144,7 @@ class GraphDataHandler(MarsApiRequestHandler):
                 compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
             slices_arg = self.request.arguments.get('slices')
             if slices_arg:
-                slices_arg = [slice(*tuple(int(ss) if ss.isdigit() else None for ss in s.split(',')))
-                              for s in to_str(slices_arg[0]).split('-') if s]
+                slices_arg = Indexes.from_json(json.loads(base64.b64decode(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:

@@ -606,6 +606,9 @@ class Test(unittest.TestCase):
             r_slice4 = session.fetch(a[:, 2:, -5:])
             np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
 
+            r_slice5 = session.fetch(a[0])
+            np.testing.assert_array_equal(r[0], r_slice5)
+
             web_session = new_session('http://' + cluster._web_endpoint)
             r = web_session.run(a)
 
@@ -620,5 +623,8 @@ class Test(unittest.TestCase):
 
             r_slice4 = web_session.fetch(a[:, 2:, -5:])
             np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
+
+            r_slice5 = web_session.fetch(a[4])
+            np.testing.assert_array_equal(r[4], r_slice5)
 
 

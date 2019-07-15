@@ -20,9 +20,10 @@ from datetime import datetime
 
 import numpy as np
 
-from ..core import Entity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
+from ..core import Entity, ChunkData, Chunk, TileableData, Serializable, is_eager_mode, build_mode
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
+    BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
@@ -532,6 +533,18 @@ class MutableTensor(Entity):
 
 class SparseTensor(Tensor):
     __slots__ = ()
+
+
+class Indexes(Serializable):
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, **kw):
+        self._indexes = indexes
+        super(Indexes, self).__init__(**kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
 
 
 TENSOR_TYPE = (Tensor, TensorData)

@@ -16,6 +16,7 @@ import logging
 import uuid
 import zlib
 import itertools
+import random
 from collections import OrderedDict
 
 import pyarrow
@@ -189,11 +190,11 @@ class MarsAPI(object):
             nsplits = calc_nsplits(chunk_idx_to_shape)
             chunk_results = dict()
             indexes = dict()
-            for i, s in enumerate(index_obj):
-                idx_to_slices = slice_split(s, nsplits[i])
-                indexes[i] = idx_to_slices
+            for axis, s in enumerate(index_obj):
+                idx_to_slices = slice_split(s, nsplits[axis])
+                indexes[axis] = idx_to_slices
             for chunk_index in itertools.product(*[v.keys() for v in indexes.values()]):
-                slice_obj = [indexes[i][j] for i, j in enumerate(chunk_index)]
+                slice_obj = [indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index)]
                 chunk_key = chunk_indexes[chunk_index]
                 chunk_results[chunk_index] = self.fetch_chunk_data(session_id, chunk_key, slice_obj)
 
@@ -208,7 +209,8 @@ class MarsAPI(object):
 
     def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
         endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
-        sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
+        sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
+                                                 address=random.choice(endpoints))
         future = sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
         return future
 
