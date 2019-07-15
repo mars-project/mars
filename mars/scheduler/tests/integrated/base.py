@@ -69,13 +69,6 @@ class SchedulerIntegratedTest(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
-        try:
-            delay_state_file = os.environ.get('DELAY_STATE_FILE')
-            if delay_state_file:
-                os.unlink(delay_state_file)
-        except OSError:
-            pass
-
     def setUp(self):
         self.scheduler_endpoints = []
         self.proc_schedulers = []

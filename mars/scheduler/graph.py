@@ -1085,7 +1085,7 @@ class GraphActor(SchedulerActor):
                 outf.write(c + '\n')
             outf.write('\n\nLOST CHUNKS:\n')
             for c in lost_chunks:
-                outf.write(c + '\n')
+                outf.write(repr(c) + '\n')
             outf.write('\n\nOPERAND SNAPSHOT:\n')
             for key, op_info in self._operand_infos.items():
                 outf.write('Chunk: %s Worker: %r State: %s\n' %

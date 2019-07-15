@@ -34,10 +34,10 @@ logger = logging.getLogger(__name__)
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
 class Test(SchedulerIntegratedTest):
     def testCommonOperandFailover(self):
-        delay_file = self.add_state_file('DELAY_STATE_FILE')
+        delay_file = self.add_state_file('OP_DELAY_STATE_FILE')
         open(delay_file, 'w').close()
 
-        terminate_file = self.add_state_file('TERMINATE_STATE_FILE')
+        terminate_file = self.add_state_file('OP_TERMINATE_STATE_FILE')
 
         self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
 
@@ -71,3 +71,37 @@ class Test(SchedulerIntegratedTest):
         result = session_ref.fetch_result(graph_key, c.key)
         expected = (np_a * 2 + 1).dot(np_b * 2 + 1) * 2 + 1
         assert_allclose(loads(result), expected)
+
+    def testShuffleFailoverBeforeSuccStart(self):
+        pred_finish_file = self.add_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
+        succ_start_file = self.add_state_file('SHUFFLE_START_SUCC_FILE')
+
+        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        a = mt.ones((31, 27), chunk_size=10)
+        b = a.reshape(27, 31)
+        b.op.extra_params['_reshape_with_shuffle'] = True
+        graph = b.build_graph()
+        targets = [b.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+        actor_client.sleep(1)
+
+        while not os.path.exists(pred_finish_file):
+            actor_client.sleep(0.01)
+
+        self.kill_process_tree(self.proc_workers[0])
+        logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
+        self.proc_workers = self.proc_workers[1:]
+        open(succ_start_file, 'w').close()
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, b.key)
+        assert_allclose(loads(result), np.ones((27, 31)))

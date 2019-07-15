@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import defaultdict
 
 from ...operands import ShuffleProxy
 from ...errors import WorkerDead
 from .base import BaseOperandActor
 from .core import register_operand_class, rewrite_worker_errors, OperandState
+
+logger = logging.getLogger(__name__)
 
 
 class ShuffleProxyActor(BaseOperandActor):
@@ -37,16 +40,6 @@ class ShuffleProxyActor(BaseOperandActor):
         self._mapper_op_to_chunk = dict()
         self._reducer_to_mapper = defaultdict(dict)
 
-    def _submit_successor_operand(self, reducer_op_key, wait=True):
-        shuffle_key = self._op_to_shuffle_keys[reducer_op_key]
-        input_data_metas = dict(((self._mapper_op_to_chunk[k], shuffle_key), meta)
-                                for k, meta in self._reducer_to_mapper[reducer_op_key].items())
-
-        return self._get_operand_actor(reducer_op_key).start_operand(
-            OperandState.READY, io_meta=dict(input_data_metas=input_data_metas),
-            target_worker=self._reducer_workers.get(reducer_op_key),
-            _tell=True, _wait=wait)
-
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         super(ShuffleProxyActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 
@@ -61,6 +54,8 @@ class ShuffleProxyActor(BaseOperandActor):
 
         for (chunk_key, shuffle_key), data_size in output_sizes.items() or ():
             self._mapper_op_to_chunk[op_key] = chunk_key
+            # create a pseudo meta at the meta store
+            self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
 
             succ_op_key = shuffle_keys_to_op[shuffle_key]
             meta = self._reducer_to_mapper[succ_op_key][op_key] = \
@@ -79,14 +74,25 @@ class ShuffleProxyActor(BaseOperandActor):
                 self._resource_ref.detach_dead_workers([worker], _tell=True)
 
         if all(k in self._finish_preds for k in self._pred_keys):
-            self._all_deps_built = True
-            futures = []
+            self._start_successors()
 
-            for succ_key in self._succ_keys:
-                futures.append(self._submit_successor_operand(succ_key, wait=False))
+    def _start_successors(self):
+        self._all_deps_built = True
+        futures = []
 
-            [f.result() for f in futures]
-            self.ref().start_operand(OperandState.FINISHED, _tell=True)
+        logger.debug('Predecessors of shuffle proxy %s done, notifying successors', self._op_key)
+        for succ_key in self._succ_keys:
+            shuffle_key = self._op_to_shuffle_keys[succ_key]
+            input_data_metas = dict(((self._mapper_op_to_chunk[k], shuffle_key), meta)
+                                    for k, meta in self._reducer_to_mapper[succ_key].items())
+
+            futures.append(self._get_operand_actor(succ_key).start_operand(
+                OperandState.READY, io_meta=dict(input_data_metas=input_data_metas),
+                target_worker=self._reducer_workers.get(succ_key),
+                _tell=True, _wait=True))
+
+        [f.result() for f in futures]
+        self.ref().start_operand(OperandState.FINISHED, _tell=True)
 
     def add_finished_successor(self, op_key, worker):
         super(ShuffleProxyActor, self).add_finished_successor(op_key, worker)
@@ -99,11 +105,19 @@ class ShuffleProxyActor(BaseOperandActor):
             workers_list.append(tuple(set(meta.workers + (worker,))))
         self._free_data_in_worker(data_keys, workers_list)
 
-        futures = []
         if all(k in self._finish_succs for k in self._succ_keys):
-            for k in self._pred_keys:
-                futures.append(self._get_operand_actor(k).start_operand(
-                    OperandState.FREED, _tell=True, _wait=False))
+            self._free_predecessors()
+
+    def _free_predecessors(self):
+        futures = []
+        for k in self._pred_keys:
+            futures.append(self._get_operand_actor(k).start_operand(
+                OperandState.FREED, _tell=True, _wait=False))
+
+        inp_chunk_keys = [self._mapper_op_to_chunk[k] for k in self._pred_keys
+                          if k in self._mapper_op_to_chunk]
+        futures.append(self.chunk_meta.batch_delete_meta(
+            self._session_id, inp_chunk_keys, _tell=True, _wait=False))
         [f.result() for f in futures]
 
         self.ref().start_operand(OperandState.FREED, _tell=True)
@@ -115,7 +129,7 @@ class ShuffleProxyActor(BaseOperandActor):
         pass
 
     def move_failover_state(self, from_states, state, new_target, dead_workers):
-        pass
+        logger.debug('Trying to move shuffle proxy %s from %s into %s', self._op_key, from_states, state)
 
     def free_data(self, state=OperandState.FREED):
         pass
