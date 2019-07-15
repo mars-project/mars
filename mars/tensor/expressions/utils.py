@@ -529,6 +529,10 @@ def concat_tileable_chunks(tensor):
 
 
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
+    '''
+    Construct Fetch tensor on the fly, using given chunk_size, shape, dtype,
+    as well as possible tensor_key, tensor_id and chunk keys.
+    '''
     from ...config import options
     from .fetch import TensorFetch
 
@@ -556,8 +560,11 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
 
 
 def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
+    '''
+    Construct MutableTensor on the fly, using given name, chunk_size, shape, dtype,
+    as well as possible chunk keys.
+    '''
     from ..core import MutableTensor, MutableTensorData
-    # Construct MutableTensor on the fly.
     tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
     return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=tensor.dtype,
                                                 _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks))
