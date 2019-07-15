@@ -27,7 +27,7 @@ class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            df = from_tensor(data, gpu=gpu, sparse=sparse)
+            df = from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             df = data
         else:

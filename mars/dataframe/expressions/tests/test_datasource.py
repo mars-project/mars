@@ -242,25 +242,55 @@ class Test(TestBase):
         self.assertFalse(series.chunks[2].index_value._index_value._is_monotonic_decreasing)
         self.assertTrue(series.chunks[2].index_value._index_value._is_unique)
 
+    def testFromTensorSerialize(self):
+        # test serialization and deserialization
+        # pb
+        tensor = mt.random.rand(10, 10)
+        df = from_tensor(tensor)
+        df.tiles()
+        chunk = df.chunks[0]
+        serials = self._pb_serial(chunk)
+        op, pb = serials[chunk.op, chunk.data]
+
+        self.assertEqual(tuple(pb.index), chunk.index)
+        self.assertEqual(pb.key, chunk.key)
+        self.assertEqual(tuple(pb.shape), chunk.shape)
+        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.DATAFRAME_FROM_TENSOR)
+
+        chunk2 = self._pb_deserial(serials)[chunk.data]
+
+        self.assertEqual(chunk.index, chunk2.index)
+        self.assertEqual(chunk.key, chunk2.key)
+        self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+
+        # json
+        chunk = df.chunks[0]
+        serials = self._json_serial(chunk)
+
+        chunk2 = self._json_deserial(serials)[chunk.data]
+
+        self.assertEqual(chunk.index, chunk2.index)
+        self.assertEqual(chunk.key, chunk2.key)
+        self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+
     def testFromTensor(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
         df = from_tensor(tensor)
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
-        self.assertEqual(df.op.dtypes, tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
+        self.assertEqual(df.op.dtypes[0], tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
 
         df.tiles()
         self.assertEqual(len(df.chunks), 4)
-        pd.testing.assert_index_equal(df.chunks[0].index_value, pd.RangeIndex(0, 5))
-        pd.testing.assert_index_equal(df.chunks[0].columns, pd.RangeIndex(0, 5))
-        pd.testing.assert_index_equal(df.chunks[1].index_value, pd.RangeIndex(0, 5))
-        pd.testing.assert_index_equal(df.chunks[1].columns, pd.RangeIndex(5, 10))
-        pd.testing.assert_index_equal(df.chunks[2].index_value, pd.RangeIndex(5, 10))
-        pd.testing.assert_index_equal(df.chunks[2].columns, pd.RangeIndex(0, 5))
-        pd.testing.assert_index_equal(df.chunks[3].index_value, pd.RangeIndex(5, 10))
-        pd.testing.assert_index_equal(df.chunks[3].columns, pd.RangeIndex(5, 10))
+        self.assertIsInstance(df.chunks[0].index_value._index_value, IndexValue.RangeIndex)
+        self.assertIsInstance(df.chunks[0].index_value, IndexValue)
 
         # test converted from 1-d tensor
         tensor2 = mt.array([1, 2, 3])
+        # in fact, tensor3 is (3,1)
         tensor3 = mt.array([tensor2]).T
 
         df2 = from_tensor(tensor2)
@@ -269,8 +299,3 @@ class Test(TestBase):
         df3.tiles()
         np.testing.assert_equal(df2.chunks[0].index, (0, 0))
         np.testing.assert_equal(df3.chunks[0].index, (0, 0))
-
-        pd.testing.assert_index_equal(df2.chunks[0].index_value, pd.RangeIndex(0, 3))
-        pd.testing.assert_index_equal(df2.chunks[0].columns, pd.RangeIndex(0, 1))
-        pd.testing.assert_index_equal(df3.chunks[0].index_value, pd.RangeIndex(0, 3))
-        pd.testing.assert_index_equal(df3.chunks[0].columns, pd.RangeIndex(0, 1))

@@ -67,9 +67,9 @@ class TestBase(unittest.TestCase):
     @classmethod
     def _serial(cls, obj):
         from mars.operands import Operand
-        from mars.tensor.core import Tensor, TensorData, Chunk, ChunkData
+        from mars.core import Tileable, TileableData, Chunk, ChunkData
 
-        if isinstance(obj, (Tensor, Chunk)):
+        if isinstance(obj, (Tileable, Chunk)):
             obj = obj.data
 
         to_serials = set()
@@ -77,7 +77,7 @@ class TestBase(unittest.TestCase):
         def serial(ob):
             if ob in to_serials:
                 return
-            if isinstance(ob, TensorData):
+            if isinstance(ob, TileableData):
                 to_serials.add(ob)
                 [serial(i) for i in (ob.chunks or [])]
                 serial(ob.op)

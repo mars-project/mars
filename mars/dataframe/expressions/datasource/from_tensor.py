@@ -33,23 +33,33 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super(DataFrameFromTensor, self)._set_inputs(inputs)
-        self._input = inputs
+        self._input = inputs[0]
 
-    def __call__(self, input_tensor):
+    def __call__(self, input_tensor, index, columns):
+        if index is not None or columns is not None:
+            if input_tensor.shape != (len(index), len(columns)):
+                raise ValueError(
+                    '({0},{1}) should have the same shape with tensor: {2}'.format(index, columns, input_tensor.shape))
         if input_tensor.ndim == 1:
             # convert to 1-d DataFrame
-            index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
-            columns_value = pd.RangeIndex(start=0, stop=1)
+            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
+            columns_value = parse_index(pd.RangeIndex(start=0, stop=1))
         elif input_tensor.ndim != 2:
             raise ValueError('Must pass 1-d or 2-d input')
         else:
             # convert to DataFrame
-            index_value = pd.RangeIndex(start=0, stop=input_tensor.shape[0])
-            columns_value = pd.RangeIndex(start=0, stop=input_tensor.shape[1])
+            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
+            columns_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[1]))
 
-        return self.new_dataframe(input_tensor, input_tensor.shape, dtypes=self.dtypes,
-                                  index_value=parse_index(index_value),
-                                  columns_value=parse_index(columns_value))
+        # overwrite index_value and columns_value if user has set them
+        if index is not None:
+            index_value = parse_index(index, store_data=True)
+        if columns is not None:
+            columns_value = parse_index(columns, store_data=True)
+
+        return self.new_dataframe([input_tensor], input_tensor.shape, dtypes=self.dtypes,
+                                  index_value=index_value,
+                                  columns_value=columns_value)
 
     @classmethod
     def tile(cls, op):
@@ -65,31 +75,46 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             if in_chunk.ndim == 1:
                 i, = in_chunk.index
-                columns_value = pd.RangeIndex(0, 1)
                 index = (in_chunk.index[0], 0)
+                if out_df.columns is not None:
+                    columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
+                else:
+                    columns_value = parse_index(pd.RangeIndex(0, 1))
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
-                columns_value = pd.RangeIndex(start=column_stop - in_chunk.shape[1], stop=column_stop)
                 index = in_chunk.index
+                if out_df.columns is not None:
+                    columns_value = parse_index(out_df.columns.to_pandas()[column_stop - in_chunk.shape[1]:column_stop],
+                                                store_data=True)
+                else:
+                    columns_value = parse_index(pd.RangeIndex(start=column_stop - in_chunk.shape[1], stop=column_stop))
 
             index_stop = cum_size[0][i]
-            index_value = pd.RangeIndex(start=index_stop - in_chunk.shape[0], stop=index_stop)
+            if out_df.index_value is not None:
+                index_value = parse_index(out_df.index_value.to_pandas()[index_stop - in_chunk.shape[0]:index_stop],
+                                          store_data=True)
+            else:
+                index_value = parse_index(pd.RangeIndex(start=index_stop - in_chunk.shape[0], stop=index_stop))
+
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=index,
                                          index_value=index_value,
                                          columns_value=columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_dataframes(None, out_df.shape, dtypes=out_df.dtypes,
+        return new_op.new_dataframes(out_df.inputs, out_df.shape, dtypes=out_df.dtypes,
                                      index_value=out_df.index_value,
                                      columns_value=out_df.columns,
                                      chunks=out_chunks, nsplits=in_tensor.nsplits)
 
 
-def from_tensor(tensor, gpu=None, sparse=False):
+def from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
     if tensor.ndim > 2:
         raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
-
-    op = DataFrameFromTensor(dtypes=tensor.dtype, gpu=gpu, sparse=sparse)
-    return op(tensor)
+    try:
+        col_num = tensor.shape[1]
+    except IndexError:
+        col_num = 1
+    op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num), gpu=gpu, sparse=sparse)
+    return op(tensor, index, columns)
