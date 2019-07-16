@@ -149,7 +149,6 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(arr1.execute(), expected)
 
-    @unittest.skipIf(pd is None, 'pandas not installed')
     def testDataFrameExecuteNotFetch(self):
         data1 = pd.DataFrame(np.random.random((5, 4)), columns=list('abcd'))
         sess = Session.default_or_local()
@@ -300,7 +299,6 @@ class Test(unittest.TestCase):
         r2 = sess.run(arr2, compose=False)
         np.testing.assert_array_equal(r1, r2)
 
-    @unittest.skipIf(pd is None, 'pandas not installed')
     def testDataFrameCreate(self):
         sess = new_session()
         tensor = mt.ones((2, 2))

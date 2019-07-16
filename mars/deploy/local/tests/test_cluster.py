@@ -371,7 +371,6 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
-    @unittest.skipIf(pd is None, 'pandas not installed')
     def testFetchDataFrame(self, *_):
         from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.expressions.arithmetic import add
