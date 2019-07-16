@@ -16,9 +16,6 @@ import itertools
 import logging
 import random
 import uuid
-import zlib
-
-import pyarrow
 
 from .actors import new_client
 from .errors import GraphNotExists
@@ -28,7 +25,6 @@ from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
 from .worker.transfer import ResultSenderActor
 from .tensor.expressions.utils import slice_split
-from .config import options
 from .serialize import dataserializer
 from .utils import tokenize, merge_chunks
 

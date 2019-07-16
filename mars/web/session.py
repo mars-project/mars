@@ -246,11 +246,11 @@ class Session(object):
             * ascii-encoded bytes of index json
             * pyarrow serialized bytes of `value`
         '''
-        from ..tensor.core import MutableTensor
+        from ..tensor.core import Indexes
         from ..compat import BytesIO
         from ..serialize import dataserializer
 
-        index = MutableTensor.Index(_index=index)
+        index = Indexes(_indexes=index)
         index_bytes = json.dumps(index.to_json()).encode('ascii')
         bio = BytesIO()
         bio.write(np.int64(len(index_bytes)).tobytes())
