@@ -16,6 +16,7 @@ import base64
 import json
 import time
 import logging
+from numbers import Integral
 
 import requests
 
@@ -23,7 +24,9 @@ from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..utils import build_graph
+from ..utils import build_graph, sort_dataframe_result
+from ..tensor.core import Indexes
+from ..tensor.expressions.indexing import TensorIndex
 
 logger = logging.getLogger(__name__)
 
@@ -167,20 +170,30 @@ class Session(object):
 
         results = list()
         for tileable in tileables:
-            key = tileable.key
+            if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
+                key = tileable.inputs[0].key
+                indexes = tileable.op.indexes
+                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
+                    raise ValueError('Only support fetch data slices')
+            else:
+                key = tileable.key
+                indexes = []
 
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
+            indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
+
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
-            data_url = session_url + '/graph/%s/data/%s?compressions=%s' \
-                % (self._get_tileable_graph_key(key), key, compression_str)
-            resp = self._req_session.get(data_url, timeout=timeout)
+            params = dict(compressions=compression_str, slices=indexes_str)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
+            resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
                                  (resp.status_code, resp.reason, resp.text))
-            results.append(dataserializer.loads(resp.content))
+            result_data = dataserializer.loads(resp.content)
+            results.append(sort_dataframe_result(tileable, result_data))
         return results
 
     def _update_tileable_shape(self, tileable):

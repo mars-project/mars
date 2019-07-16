@@ -20,9 +20,11 @@ from datetime import datetime
 
 import numpy as np
 
-from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, \
+    build_mode, Serializable
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
+    BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
@@ -556,6 +558,18 @@ class MutableTensor(Entity):
                 chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
+
+
+class Indexes(Serializable):
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, **kw):
+        self._indexes = indexes
+        super(Indexes, self).__init__(**kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
 
 
 TENSOR_TYPE = (Tensor, TensorData)

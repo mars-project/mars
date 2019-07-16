@@ -555,7 +555,7 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
 
 
 def setitem_as_records(nsplits_acc, output_chunk, value, ts):
-    '''
+    """
     Turns a `__setitem__`  to a list of index-value records.
 
     Parameters:
@@ -573,7 +573,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
 
     :returns:
         A list of `[index, value, timestamp]`.
-    '''
+    """
     # prepare chunk value
     if np.isscalar(value):
         chunk_value = value

@@ -337,3 +337,15 @@ class Test(unittest.TestCase):
         # test exception
         tensor = md.from_tensor(mt.array([1, 2, 3]))
         np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
+        
+    def testFetchSlices(self):
+        sess = new_session()
+
+        arr1 = mt.random.rand(10, 8, chunk_size=3)
+        r1 = sess.run(arr1)
+
+        r2 = sess.fetch(arr1[:2, 3:9])
+        np.testing.assert_array_equal(r2, r1[:2, 3:9])
+
+        r3 = sess.fetch(arr1[0])
+        np.testing.assert_array_equal(r3, r1[0])
