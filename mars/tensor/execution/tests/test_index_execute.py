@@ -85,6 +85,10 @@ class Test(unittest.TestCase):
 
         self.assertTrue(np.array_equal(res[0], raw[2:9:2, 3:7, -1:-9:-2, 12:-11:-4]))
 
+        arr3 = arr[-4, 2:]
+        res = self.executor.execute_tensor(arr3, concat=True)
+        np.testing.assert_equal(res[0], raw[-4, 2:])
+
         raw = sps.random(12, 14, density=.1)
         arr = tensor(raw, chunk_size=3)
 
