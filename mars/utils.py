@@ -530,6 +530,18 @@ def build_fuse_chunk(fused_chunks, **kwargs):
                              _composed=fused_chunks, **kwargs)
 
 
+def get_chunk_shuffle_key(chunk):
+    op = chunk.op
+    try:
+        return op.shuffle_key
+    except AttributeError:
+        from .operands import Fuse
+        if isinstance(op, Fuse):
+            return chunk.composed[0].op.shuffle_key
+        else:  # pragma: no cover
+            raise
+
+
 def merge_chunks(chunk_results):
     """
     Concatenate chunk results according to index.
