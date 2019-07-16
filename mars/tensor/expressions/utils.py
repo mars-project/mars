@@ -207,6 +207,7 @@ def slice_split(index, sizes):
     size = sum(sizes)
 
     if isinstance(index, Integral):
+        index = index if index >= 0 else size + index
         i = 0
         ind = index
         lens = list(sizes)
