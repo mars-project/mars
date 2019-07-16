@@ -126,13 +126,45 @@ OP_TO_HANDLER = {
 }
 
 
+BINARY_FUNC_NAMES = [f.__name__ for f in arithmetic.BIN_UFUNC] + \
+                    ['floor_divide', 'true_divide', 'right_shift',
+                     'left_shift', 'bitwise_and', 'bitwise_or', 'bitwise_xor']
+
+
 def _handle_out_dtype(val, dtype):
     if val.dtype != dtype:
         return val.astype(dtype)
     return val
 
 
-def _build_elementwise(op):
+def _build_binary(op):
+    def _handle(ctx, chunk):
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
+
+        if isinstance(op, six.string_types):
+            func = getattr(xp, op)
+        else:
+            func = op
+
+        with device(device_id):
+            kw = {'casting': chunk.op.casting} if chunk.op.out else {}
+
+            inputs_iter = iter(inputs)
+            lhs = chunk.op.lhs if np.isscalar(chunk.op.lhs) else next(inputs_iter)
+            rhs = chunk.op.rhs if np.isscalar(chunk.op.rhs) else next(inputs_iter)
+            if chunk.op.out:
+                kw['out'] = next(inputs_iter).copy()
+            if chunk.op.where:
+                kw['where'] = next(inputs_iter)
+
+            with np.errstate(**chunk.op.err):
+                ctx[chunk.key] = _handle_out_dtype(func(lhs, rhs, **kw), chunk.op.dtype)
+
+    return _handle
+
+
+def _build_unary(op):
     def _handle(ctx, chunk):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
@@ -153,59 +185,8 @@ def _build_elementwise(op):
                 inputs, kw['where'] = inputs[:-1], inputs[-1]
 
             with np.errstate(**chunk.op.err):
-                if len(inputs) == 1:
-                    try:
-                        ctx[chunk.key] = _handle_out_dtype(func(inputs[0], **kw), chunk.op.dtype)
-                    except TypeError:
-                        if kw.get('where') is None:
-                            raise
-                        out, where = kw.pop('out'), kw.pop('where')
-                        ctx[chunk.key] = _handle_out_dtype(xp.where(where, func(inputs[0]), out),
-                                                           chunk.op.dtype)
-                else:
-                    try:
-                        if is_sparse_module(xp):
-                            ctx[chunk.key] = _handle_out_dtype(reduce(lambda a, b: func(a, b, **kw), inputs),
-                                                               chunk.op.dtype)
-                        else:
-                            if 'out' not in kw:
-                                dest_value = xp.empty(chunk.shape, chunk.dtype)
-                                kw['out'] = dest_value
-                            ctx[chunk.key] = _handle_out_dtype(reduce(lambda a, b: func(a, b, **kw), inputs),
-                                                               chunk.op.dtype)
-                    except TypeError:
-                        if kw.get('where') is None:
-                            raise
-                        out, where = kw.pop('out'), kw.pop('where')
-                        ctx[chunk.key] = _handle_out_dtype(
-                            xp.where(where, reduce(lambda a, b: func(a, b), inputs), out),
-                            chunk.op.dtype)
-    return _handle
+                ctx[chunk.key] = _handle_out_dtype(func(inputs[0], **kw), chunk.op.dtype)
 
-
-def _const_elementwise(op):
-    def _handle(ctx, chunk):
-        if chunk.inputs is not None:
-            try:
-                _, device_id, xp = as_same_device(
-                    [ctx[c.key] for c in chunk.inputs], device=chunk.device, ret_extra=True)
-            except KeyError:
-                raise
-        else:
-            # all constants
-            device_id, xp = -1, np
-
-        if isinstance(op, six.string_types):
-            func = getattr(xp, op)
-        else:
-            func = op
-
-        get = lambda x: ctx[x.key] if hasattr(x, 'key') else x
-
-        with device(device_id):
-            with np.errstate(**chunk.op.err):
-                ctx[chunk.key] = _handle_out_dtype(
-                    reduce(func, (get(chunk.op.lhs), get(chunk.op.rhs))), chunk.op.dtype)
     return _handle
 
 
@@ -406,16 +387,13 @@ def register_arithmetic_handler():
     from ...executor import register
 
     for op, new_op in six.iteritems(OP_TO_HANDLER):
-        register(op, _build_elementwise(new_op))
-        if hasattr(op, 'constant_cls'):
-            const_op = op.constant_cls()
-            if const_op:
-                register(const_op, _const_elementwise(OP_TO_HANDLER[op]))
+        if new_op in BINARY_FUNC_NAMES:
+            register(op, _build_binary(new_op))
+        else:
+            register(op, _build_unary(new_op))
 
     register(arithmetic.TensorSetReal, _set_real)
-    register(arithmetic.TensorSetRealConstant, _set_real)
     register(arithmetic.TensorSetImag, _set_imag)
-    register(arithmetic.TensorSetImagConstant, _set_imag)
 
     register(arithmetic.TensorTreeAdd, _tree_add, _tree_op_estimate_size)
     register(arithmetic.TensorTreeMultiply, _tree_multiply, _tree_op_estimate_size)

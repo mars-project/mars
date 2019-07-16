@@ -20,12 +20,11 @@ from ...expressions.fuse import TensorNeFuseChunk
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
 SUPPORT_OP = {
-    arithmetic.TensorAdd, arithmetic.TensorAddConstant,
-    arithmetic.TensorSubtract, arithmetic.TensorSubConstant,
-    arithmetic.TensorMultiply, arithmetic.TensorMulConstant,
-    arithmetic.TensorDivide, arithmetic.TensorDivConstant,
-    arithmetic.TensorPower, arithmetic.TensorPowConstant,
-    arithmetic.TensorMod, arithmetic.TensorModConstant,
+    arithmetic.TensorSubtract,
+    arithmetic.TensorMultiply,
+    arithmetic.TensorDivide,
+    arithmetic.TensorPower,
+    arithmetic.TensorMod,
     arithmetic.TensorNegative,
     arithmetic.TensorAbs,
     arithmetic.TensorConj,
@@ -36,12 +35,12 @@ SUPPORT_OP = {
     arithmetic.TensorLog1p,
     arithmetic.TensorSqrt,
 
-    arithmetic.TensorEqual, arithmetic.TensorEqConstant,
-    arithmetic.TensorNotEqual, arithmetic.TensorNeConstant,
-    arithmetic.TensorLessThan, arithmetic.TensorLtConstant,
-    arithmetic.TensorLessEqual, arithmetic.TensorLeConstant,
-    arithmetic.TensorGreaterThan, arithmetic.TensorGtConstant,
-    arithmetic.TensorGreaterEqual, arithmetic.TensorGeConstant,
+    arithmetic.TensorEqual,
+    arithmetic.TensorNotEqual,
+    arithmetic.TensorLessThan,
+    arithmetic.TensorLessEqual,
+    arithmetic.TensorGreaterThan,
+    arithmetic.TensorGreaterEqual,
 
     arithmetic.TensorSin,
     arithmetic.TensorCos,
@@ -56,8 +55,8 @@ SUPPORT_OP = {
     arithmetic.TensorArccosh,
     arithmetic.TensorArctanh,
 
-    arithmetic.TensorLshift, arithmetic.TensorLshiftConstant,
-    arithmetic.TensorRshift, arithmetic.TensorRshiftConstant,
+    arithmetic.TensorLshift,
+    arithmetic.TensorRshift,
 
     arithmetic.TensorTreeAdd,
     arithmetic.TensorTreeMultiply,

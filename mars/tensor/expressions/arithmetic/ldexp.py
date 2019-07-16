@@ -19,26 +19,13 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from ..datasource import tensor as astensor
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
 class TensorLdexp(TensorBinOp):
     _op_type_ = OperandDef.LDEXP
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        return x1.issparse()
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorLdexpConstant
-
-
-@arithmetic_operand
-class TensorLdexpConstant(TensorConstant):
-    _op_type_ = OperandDef.LDEXP_CONSTANT
 
     @classmethod
     def _is_sparse(cls, x1, x2):

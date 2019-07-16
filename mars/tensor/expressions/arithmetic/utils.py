@@ -26,10 +26,16 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
             super(cls, self).__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
 
         def _is_sparse_binary_and_const(x1, x2):
-            if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2) and x2 == 0:
-                return True
-            if hasattr(x2, 'issparse') and x2.issparse() and np.isscalar(x1) and x1 == 0:
-                return True
+            if hasattr(x1, 'issparse') and x1.issparse():
+                if np.isscalar(x2) or hasattr(x2, 'issparse') and x2.issparse():
+                    return True
+                else:
+                    return False
+            if hasattr(x2, 'issparse') and x2.issparse():
+                if np.isscalar(x1) or hasattr(x1, 'issparse') and x1.issparse():
+                    return True
+                else:
+                    return False
             return False
 
         def _is_sparse_binary_or_const(x1, x2):
@@ -41,10 +47,8 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
         _is_sparse_dict = dict(
             always_false=lambda *_: False,
             unary=lambda x: x.issparse(),
-            binary_and=lambda x1, x2: x1.issparse() and x2.issparse(),
-            binary_or=lambda x1, x2: x1.issparse() or x2.issparse(),
-            binary_and_const=_is_sparse_binary_and_const,
-            binary_or_const=_is_sparse_binary_or_const,
+            binary_and=_is_sparse_binary_and_const,
+            binary_or=_is_sparse_binary_or_const,
         )
         for v in _is_sparse_dict.values():
             v.__name__ = '_is_sparse'

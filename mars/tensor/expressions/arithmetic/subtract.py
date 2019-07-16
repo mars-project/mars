@@ -18,22 +18,13 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorSubtract(TensorBinOp):
     _op_type_ = OperandDef.SUB
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorSubConstant
-
-
-@arithmetic_operand(sparse_mode='binary_or_const')
-class TensorSubConstant(TensorConstant):
-    _op_type_ = OperandDef.SUB_CONSTANT
 
 
 @infer_dtype(np.subtract)

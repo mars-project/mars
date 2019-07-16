@@ -18,22 +18,13 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='always_false')
 class TensorCopysign(TensorBinOp):
     _op_type_ = OperandDef.COPYSIGN
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorCopysignConstant
-
-
-@arithmetic_operand(sparse_mode='binary_or_const')
-class TensorCopysignConstant(TensorConstant):
-    _op_type_ = OperandDef.COPYSIGN_CONSTANT
 
 
 @infer_dtype(np.copysign)

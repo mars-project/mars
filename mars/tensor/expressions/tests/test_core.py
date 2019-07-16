@@ -601,9 +601,6 @@ class Test(TestBase):
         self.assertEqual(t3.op.inputs, [t1.data, t2.data])
         self.assertEqual(t3.inputs, [t1.data, t2.data])
 
-        with self.assertRaises(ValueError):
-            t3.inputs = []
-
         t1 = tensor([1, 2], chunk_size=2)
         t2 = tensor([True, False], chunk_size=2)
         t3 = t1[t2]

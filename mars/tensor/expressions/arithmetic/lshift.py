@@ -18,22 +18,13 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorLshift(TensorBinOp):
     _op_type_ = OperandDef.LSHIFT
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorLshiftConstant
-
-
-@arithmetic_operand(sparse_mode='binary_or_const')
-class TensorLshiftConstant(TensorConstant):
-    _op_type_ = OperandDef.RSHIFT_CONSTANT
 
 
 @infer_dtype(np.left_shift)

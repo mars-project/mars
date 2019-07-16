@@ -18,7 +18,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
@@ -28,27 +28,13 @@ class TensorDivide(TensorBinOp):
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        # According to scipy.sparse,
-        # will not be sparse unless x2 is constant which cannot happen in Divide but in DivConstant
-        return False
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorDivConstant
-
-
-@arithmetic_operand
-class TensorDivConstant(TensorConstant):
-    _op_type_ = OperandDef.DIV_CONSTANT
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
+        if not np.isscalar(x1) and not np.isscalar(x2):
+            return False
         if hasattr(x1, 'issparse') and x1.issparse():
             if x2 != 0:
                 return True
             else:
                 raise ZeroDivisionError('float division by zero')
-        return False
 
 
 @infer_dtype(np.divide)

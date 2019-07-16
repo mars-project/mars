@@ -53,36 +53,22 @@ NE_UNARYOP_TO_STRING = {
 
 NE_BINOP_TO_STRING = {
     arithmetic.TensorAdd: '+',
-    arithmetic.TensorAddConstant: '+',
     arithmetic.TensorTreeAdd: '+',
     arithmetic.TensorSubtract: '-',
-    arithmetic.TensorSubConstant: '-',
     arithmetic.TensorMultiply: '*',
-    arithmetic.TensorMulConstant: '*',
     arithmetic.TensorTreeMultiply: '*',
     arithmetic.TensorDivide: '/',
-    arithmetic.TensorDivConstant: '/',
     arithmetic.TensorMod: '%',
-    arithmetic.TensorModConstant: '%',
     arithmetic.TensorPower: '**',
-    arithmetic.TensorPowConstant: '**',
     arithmetic.TensorLshift: '<<',
-    arithmetic.TensorLshiftConstant: '<<',
     arithmetic.TensorRshift: '>>',
-    arithmetic.TensorRshiftConstant: '>>',
 
     arithmetic.TensorEqual: '==',
-    arithmetic.TensorEqConstant: '==',
     arithmetic.TensorNotEqual: '!=',
-    arithmetic.TensorNeConstant: '!=',
     arithmetic.TensorLessThan: '<',
-    arithmetic.TensorLtConstant: '<',
     arithmetic.TensorLessEqual: '<=',
-    arithmetic.TensorLeConstant: '<=',
     arithmetic.TensorGreaterThan: '>',
-    arithmetic.TensorGtConstant: '>',
     arithmetic.TensorGreaterEqual: '>=',
-    arithmetic.TensorGeConstant: '>='
 }
 
 
@@ -112,16 +98,16 @@ def _decompose(chunk):
 
 
 def _handle_bin(chunk):
-    const = getattr(chunk.op, 'constant', [])
+    lhs = str(chunk.op.lhs) if np.isscalar(chunk.op.lhs) else _VAR_FLAG + chunk.op.lhs.key
+    rhs = str(chunk.op.rhs) if np.isscalar(chunk.op.rhs) else _VAR_FLAG + chunk.op.rhs.key
     reverse = getattr(chunk.op, 'reverse', False)
     op = NE_BINOP_TO_STRING[type(chunk.op)]
-
-    exprs = [op.join(_VAR_FLAG + c.key for c in chunk.inputs), op.join(str(c) for c in const)]
-
     if reverse:
-        exprs = list(reversed(exprs))
+        exprs = [rhs, lhs]
+    else:
+        exprs = [lhs, rhs]
 
-    return op.join(filter(None, exprs))
+    return op.join(exprs)
 
 
 def _wrap_bool(data):

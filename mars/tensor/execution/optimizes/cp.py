@@ -20,9 +20,7 @@ from ...expressions.fuse import TensorCpFuseChunk
 
 CP_ELEMENTWISE_OP = {
     arithmetic.TensorSubtract,
-    arithmetic.TensorSubConstant,
     arithmetic.TensorMultiply,
-    arithmetic.TensorMulConstant,
     arithmetic.TensorTrueDiv,
     arithmetic.TensorSqrt
 }

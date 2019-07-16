@@ -18,22 +18,13 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import inject_dtype
-from .core import TensorCompare, TensorCompareConstant
+from .core import TensorCompare
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
 class TensorNotEqual(TensorCompare):
     _op_type_ = OperandDef.NE
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorNeConstant
-
-
-@arithmetic_operand
-class TensorNeConstant(TensorCompareConstant):
-    _op_type_ = OperandDef.NE_CONSTANT
 
 
 @inject_dtype(np.bool_)

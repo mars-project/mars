@@ -19,22 +19,13 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
 from ..core import TensorOperand
-from .core import TensorBinOp, TensorConstant, TensorElementWise
+from .core import TensorBinOp, TensorElementWise
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorAdd(TensorBinOp):
     _op_type_ = OperandDef.ADD
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorAddConstant
-
-
-@arithmetic_operand(sparse_mode='binary_or_const')
-class TensorAddConstant(TensorConstant):
-    _op_type_ = OperandDef.ADD_CONSTANT
 
 
 @infer_dtype(np.add)

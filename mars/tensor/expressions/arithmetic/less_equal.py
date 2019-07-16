@@ -18,7 +18,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import inject_dtype
-from .core import TensorCompare, TensorCompareConstant
+from .core import TensorCompare
 
 
 class TensorLessEqual(TensorCompare):
@@ -28,19 +28,6 @@ class TensorLessEqual(TensorCompare):
         err = err if err is not None else np.geterr()
         super(TensorLessEqual, self).__init__(_casting=casting, _err=err,
                                               _dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorLeConstant
-
-
-class TensorLeConstant(TensorCompareConstant):
-    _op_type_ = OperandDef.LE_CONSTANT
-
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
-        err = err if err is not None else np.geterr()
-        super(TensorLeConstant, self).__init__(_casting=casting, _err=err,
-                                               _dtype=dtype, _sparse=sparse, **kw)
 
 
 @inject_dtype(np.bool_)

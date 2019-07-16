@@ -18,22 +18,13 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ..utils import infer_dtype
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorHypot(TensorBinOp):
     _op_type_ = OperandDef.HYPOT
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorHypotConstant
-
-
-@arithmetic_operand(sparse_mode='binary_or_const')
-class TensorHypotConstant(TensorConstant):
-    _op_type_ = OperandDef.HYPOT_CONSTANT
 
 
 @infer_dtype(np.hypot)

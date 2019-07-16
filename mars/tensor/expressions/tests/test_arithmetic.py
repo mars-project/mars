@@ -21,8 +21,7 @@ import numpy as np
 from mars.tensor.expressions.datasource import array, ones, tensor, empty
 from mars.tensor.expressions.fetch import TensorFetch
 from mars.tensor.expressions.arithmetic import add, subtract, truediv, log, frexp, around, \
-    isclose, isfinite, negative, cos, TensorAdd, TensorAddConstant, TensorSubConstant, \
-    TensorLog, TensorIsclose, TensorIscloseConstant, TensorGreaterThan
+    isclose, isfinite, negative, cos, TensorAdd, TensorSubtract, TensorLog, TensorIsclose, TensorGreaterThan
 from mars.tensor.expressions.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
 from mars.core import build_mode
@@ -50,13 +49,13 @@ class Test(unittest.TestCase):
         self.assertEqual(t4.shape, (3, 4))
         self.assertEqual(len(t3.chunks), 4)
         self.assertEqual(t4.chunks[0].inputs, [t1.chunks[0].data])
-        self.assertEqual(t4.chunks[0].op.constant[0], 1)
+        self.assertEqual(t4.chunks[0].op.rhs, 1)
         self.assertEqual(t4.chunks[1].inputs, [t1.chunks[1].data])
-        self.assertEqual(t4.chunks[1].op.constant[0], 1)
+        self.assertEqual(t4.chunks[1].op.rhs, 1)
         self.assertEqual(t4.chunks[2].inputs, [t1.chunks[2].data])
-        self.assertEqual(t4.chunks[2].op.constant[0], 1)
+        self.assertEqual(t4.chunks[2].op.rhs, 1)
         self.assertEqual(t4.chunks[3].inputs, [t1.chunks[3].data])
-        self.assertEqual(t4.chunks[3].op.constant[0], 1)
+        self.assertEqual(t4.chunks[3].op.rhs, 1)
 
         # sparse tests
         t5 = add([1, 2, 3, 4], 1)
@@ -158,11 +157,11 @@ class Test(unittest.TestCase):
         t1 = array([np.datetime64('2005-02-02'), np.datetime64('2005-02-03')])
         t2 = t1 + np.timedelta64(1)
 
-        self.assertIsInstance(t2.op, TensorAddConstant)
+        self.assertIsInstance(t2.op, TensorAdd)
 
         t3 = t1 - np.datetime64('2005-02-02')
 
-        self.assertIsInstance(t3.op, TensorSubConstant)
+        self.assertIsInstance(t3.op, TensorSubtract)
         self.assertEqual(t3.dtype,
                          (np.array(['2005-02-02', '2005-02-03'], dtype=np.datetime64) -
                           np.datetime64('2005-02-02')).dtype)
@@ -396,14 +395,14 @@ class Test(unittest.TestCase):
 
         t = isclose(t1, 2, atol=atol, rtol=rtol, equal_nan=equal_nan)
 
-        self.assertIsInstance(t.op, TensorIscloseConstant)
+        self.assertIsInstance(t.op, TensorIsclose)
         self.assertEqual(t.op.atol, atol)
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
 
         t.tiles()
 
-        self.assertIsInstance(t.chunks[0].op, TensorIscloseConstant)
+        self.assertIsInstance(t.chunks[0].op, TensorIsclose)
         self.assertEqual(t.chunks[0].op.atol, atol)
         self.assertEqual(t.chunks[0].op.rtol, rtol)
         self.assertEqual(t.chunks[0].op.equal_nan, equal_nan)

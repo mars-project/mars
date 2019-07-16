@@ -20,22 +20,13 @@ from .... import opcodes as OperandDef
 from ....core import build_mode
 from ..utils import inject_dtype
 from ..datasource import tensor as astensor
-from .core import TensorCompare, TensorCompareConstant
+from .core import TensorCompare
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand
 class TensorEqual(TensorCompare):
     _op_type_ = OperandDef.EQ
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorEqConstant
-
-
-@arithmetic_operand
-class TensorEqConstant(TensorCompareConstant):
-    _op_type_ = OperandDef.EQ_CONSTANT
 
 
 @inject_dtype(np.bool_)

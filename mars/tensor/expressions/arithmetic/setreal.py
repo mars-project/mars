@@ -15,22 +15,13 @@
 # limitations under the License.
 
 from .... import opcodes as OperandDef
-from .core import TensorBinOp, TensorConstant
+from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorSetReal(TensorBinOp):
     _op_type_ = OperandDef.SET_REAL
-
-    @classmethod
-    def constant_cls(cls):
-        return TensorSetRealConstant
-
-
-@arithmetic_operand(sparse_mode='binary_and_const')
-class TensorSetRealConstant(TensorConstant):
-    _op_type_ = OperandDef.SET_REAL_CONSTANT
 
 
 def set_real(val, real):

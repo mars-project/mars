@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 
 from ....compat import lrange
-from ....core import Base, ExecutableTuple
+from ....core import ExecutableTuple
 from ....serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ...core import Tensor
 from ..core import TensorOperandMixin, TensorOperand
@@ -78,19 +78,23 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
     def check_inputs(self, inputs):
-        if len(inputs) < 2 or len(inputs) > 4:
+        if len(inputs) > 4:
             raise ValueError(
-                "Binary operand can only accept 2 to 4 inputs, got {0}".format(len(inputs)))
+                "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
 
     @classmethod
     def _is_sparse(cls, x1, x2):
         return False
 
     def _set_sparse(self, inputs):
-        setattr(self, '_sparse', self._is_sparse(inputs[0], inputs[1]))
+        inputs_iter = iter(inputs)
+        x1 = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
+        x2 = self._rhs if np.isscalar(self._rhs) else next(inputs_iter)
+        setattr(self, '_sparse', self._is_sparse(x1, x2))
 
     def _process_inputs(self, x1, x2, out, where):
-        x1, x2 = astensor(x1), astensor(x2)
+        x1 = x1 if np.isscalar(x1) else astensor(x1)
+        x2 = x2 if np.isscalar(x2) else astensor(x2)
         self._lhs = x1
         self._rhs = x2
 
@@ -107,24 +111,12 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
 
         return x1, x2, out, where
 
-    @classmethod
-    def constant_cls(cls):
-        raise NotImplementedError
-
-    def to_constant(self, x1, x2):
-        constant_op_cls = self.constant_cls()
-        constant_op = constant_op_cls(getattr(self, '_casting'), getattr(self, '_err'),
-                                      getattr(self, '_dtype'), getattr(self, '_sparse'))
-        return constant_op(x1, x2)
-
     def _call(self, x1, x2, out=None, where=None):
-        # if x1 or x2 is scalar, and out is none, to constant
-        if (np.isscalar(x1) or np.isscalar(x2)) and not out and not where:
-            return self.to_constant(x1, x2)
-
         x1, x2, out, where = self._process_inputs(x1, x2, out, where)
         # check broadcast
-        shape = broadcast_shape(x1.shape, x2.shape)
+        x1_shape = () if np.isscalar(x1) else x1.shape
+        x2_shape = () if np.isscalar(x2) else x2.shape
+        shape = broadcast_shape(x1_shape, x2_shape)
 
         inputs = filter_inputs([x1, x2, out, where])
         t = self.new_tensor(inputs, shape)
@@ -151,8 +143,8 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
-    _lhs = KeyField('lhs')
-    _rhs = KeyField('rhs')
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
     _out = KeyField('out')
     _where = KeyField('where')
     _casting = StringField('casting')
@@ -189,95 +181,12 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         super(TensorBinOp, self)._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
 
-        self._lhs = next(inputs_iter)
-        self._rhs = next(inputs_iter)
+        self._lhs = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
+        self._rhs = self._rhs if np.isscalar(self._rhs) else next(inputs_iter)
         if getattr(self, '_out', None) is not None:
             self._out = next(inputs_iter)
         if getattr(self, '_where', None) is not None:
             self._where = next(inputs_iter)
-
-
-class TensorConstantMixin(TensorElementWiseWithInputs):
-    __slots__ = ()
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        return False
-
-    def _set_sparse(self, inputs):
-        if len(inputs) == 2:
-            setattr(self, '_sparse', self._is_sparse(*inputs))
-        elif len(inputs) == 1:
-            if np.isscalar(getattr(self, '_lhs')):
-                setattr(self, '_sparse', self._is_sparse(getattr(self, '_lhs'), inputs[0]))
-            if np.isscalar(getattr(self, '_rhs')):
-                setattr(self, '_sparse', self._is_sparse(inputs[0], getattr(self, '_rhs')))
-
-    def _call(self, x1, x2):
-        x1_scalar = np.isscalar(x1)
-        x2_scalar = np.isscalar(x2)
-        if x1_scalar and x2_scalar:
-            shape = ()
-        elif x1_scalar:
-            x2 = astensor(x2)
-            shape = x2.shape
-        else:
-            x1 = astensor(x1)
-            shape = x1.shape
-
-        self._lhs = x1
-        self._rhs = x2
-        return self.new_tensor(filter_inputs([x1, x2]), shape)
-
-    def __call__(self, x1, x2):
-        return self._call(x1, x2)
-
-    def rcall(self, x1, x2):
-        return self._call(x2, x1)
-
-
-class TensorConstant(TensorOperand, TensorConstantMixin):
-    _lhs = AnyField('lhs')
-    _rhs = AnyField('rhs')
-    _casting = StringField('casting')
-    _err = DictField('err', ValueType.string, ValueType.string)
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
-
-    @property
-    def constant(self):
-        if isinstance(self._lhs, Base):
-            return [self._rhs]
-        elif isinstance(self._rhs, Base):
-            return [self._lhs]
-        return [self._lhs, self._rhs]
-
-    @property
-    def reverse(self):
-        return isinstance(self._rhs, Base)
-
-    @property
-    def casting(self):
-        return getattr(self, '_casting', None)
-
-    @property
-    def err(self):
-        return getattr(self, '_err', dict())
-
-    def _set_inputs(self, inputs):
-        super(TensorConstant, self)._set_inputs(inputs)
-        inputs_iter = iter(self._inputs)
-
-        if not np.isscalar(self._lhs):
-            self._lhs = next(inputs_iter)
-        if not np.isscalar(self._rhs):
-            self._rhs = next(inputs_iter)
 
 
 class TensorUnaryOpMixin(TensorElementWiseWithInputs):
@@ -375,17 +284,9 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
 class TensorCompare(TensorBinOp):
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if x1.issparse() and x2.issparse():
+        if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2):
             return True
-        return False
-
-
-class TensorCompareConstant(TensorConstant):
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
-            return True
-        if hasattr(x2, 'issparse') and x2.issparse():
+        if hasattr(x2, 'issparse') and x2.issparse() and np.isscalar(x1):
             return True
         return False
 

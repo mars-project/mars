@@ -24,9 +24,7 @@ from ...utils import tokenize
 
 CP_BINOP_TO_STRING = {
     arithmetic.TensorSubtract: '-',
-    arithmetic.TensorSubConstant: '-',
     arithmetic.TensorMultiply: '*',
-    arithmetic.TensorMulConstant: '*',
     arithmetic.TensorTrueDiv: '/',
 }
 

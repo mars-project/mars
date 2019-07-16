@@ -14,20 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .add import add, TensorAdd, TensorAddConstant, TensorTreeAdd
-from .subtract import subtract, TensorSubtract, TensorSubConstant
-from .multiply import multiply, TensorMultiply, TensorMulConstant, TensorTreeMultiply
-from .divide import divide, TensorDivide, TensorDivConstant
-from .truediv import truediv, TensorTrueDiv, TensorTDivConstant
-from .floordiv import floordiv, TensorFloorDiv, TensorFDivConstant
-from .mod import mod, TensorMod, TensorModConstant
-from .power import power, TensorPower, TensorPowConstant
-from .float_power import float_power, TensorFloatPower, TensorFloatPowerConstant
-from .fmod import fmod, TensorFMod, TensorFModConstant
+from .add import add, TensorAdd, TensorTreeAdd
+from .subtract import subtract, TensorSubtract
+from .multiply import multiply, TensorMultiply, TensorTreeMultiply
+from .divide import divide, TensorDivide
+from .truediv import truediv, TensorTrueDiv
+from .floordiv import floordiv, TensorFloorDiv
+from .mod import mod, TensorMod
+from .power import power, TensorPower
+from .float_power import float_power, TensorFloatPower
+from .fmod import fmod, TensorFMod
 from .sqrt import sqrt, TensorSqrt
 from .around import around, around as round_, TensorAround
-from .logaddexp import logaddexp, TensorLogAddExp, TensorLAEConstant
-from .logaddexp2 import logaddexp2, TensorLogAddExp2, TensorLAE2Constant
+from .logaddexp import logaddexp, TensorLogAddExp
+from .logaddexp2 import logaddexp2, TensorLogAddExp2
 from .negative import negative, TensorNegative
 from .positive import positive, TensorPositive
 from .absolute import absolute, TensorAbsolute
@@ -49,19 +49,19 @@ from .sqrt import sqrt, TensorSqrt
 from .square import square, TensorSquare
 from .cbrt import cbrt, TensorCbrt
 from .reciprocal import reciprocal, TensorReciprocal
-from .equal import equal, TensorEqual, TensorEqConstant
-from .not_equal import not_equal, TensorNotEqual, TensorNeConstant
-from .less import less, TensorLessThan, TensorLtConstant
-from .less_equal import less_equal, TensorLessEqual, TensorLeConstant
-from .greater import greater, TensorGreaterThan, TensorGtConstant
-from .greater_equal import greater_equal, TensorGreaterEqual, TensorGeConstant
+from .equal import equal, TensorEqual
+from .not_equal import not_equal, TensorNotEqual
+from .less import less, TensorLessThan
+from .less_equal import less_equal, TensorLessEqual
+from .greater import greater, TensorGreaterThan
+from .greater_equal import greater_equal, TensorGreaterEqual
 from .sin import sin, TensorSin
 from .cos import cos, TensorCos
 from .tan import tan, TensorTan
 from .arcsin import arcsin, TensorArcsin
 from .arccos import arccos, TensorArccos
 from .arctan import arctan, TensorArctan
-from .arctan2 import arctan2, TensorArctan2, TensorArct2Constant
+from .arctan2 import arctan2, TensorArctan2
 from .hypot import hypot, TensorHypot
 from .sinh import sinh, TensorSinh
 from .cosh import cosh, TensorCosh
@@ -71,34 +71,34 @@ from .arccosh import arccosh, TensorArccosh
 from .arctanh import arctanh, TensorArctanh
 from .deg2rad import deg2rad, TensorDeg2rad
 from .rad2deg import rad2deg, TensorRad2deg
-from .bitand import bitand, TensorBitand, TensorBitandConstant
-from .bitor import bitor, TensorBitor, TensorBitorConstant
-from .bitxor import bitxor, TensorBitxor, TensorBitxorConstant
+from .bitand import bitand, TensorBitand
+from .bitor import bitor, TensorBitor
+from .bitxor import bitxor, TensorBitxor
 from .invert import invert, TensorInvert
-from .lshift import lshift, TensorLshift, TensorLshiftConstant
-from .rshift import rshift, TensorRshift, TensorRshiftConstant
-from .logical_and import logical_and, TensorAnd, TensorAndConstant
-from .logical_or import logical_or, TensorOr, TensorOrConstant
-from .logical_xor import logical_xor, TensorXor, TensorXorConstant
+from .lshift import lshift, TensorLshift
+from .rshift import rshift, TensorRshift
+from .logical_and import logical_and, TensorAnd
+from .logical_or import logical_or, TensorOr
+from .logical_xor import logical_xor, TensorXor
 from .logical_not import logical_not, TensorNot
 from .maximum import maximum, TensorMaximum
 from .minimum import minimum, TensorMinimum
 from .floor import floor, TensorFloor
 from .ceil import ceil, TensorCeil
 from .trunc import trunc, TensorTrunc
-from .mod import mod as remainder, TensorMod, TensorModConstant
-from .fmax import fmax, TensorFMax, TensorFMaxConstant
-from .fmin import fmin, TensorFMin, TensorFMinConstant
+from .mod import mod as remainder, TensorMod
+from .fmax import fmax, TensorFMax
+from .fmin import fmin, TensorFMin
 from .isfinite import isfinite, TensorIsFinite
 from .isinf import isinf, TensorIsInf
 from .isnan import isnan, TensorIsNan
 from .signbit import signbit, TensorSignbit
 from .copysign import copysign, TensorCopysign
-from .nextafter import nextafter, TensorNextafter, TensorNextafterConstant
+from .nextafter import nextafter, TensorNextafter
 from .spacing import spacing, TensorSpacing
 from .clip import clip, TensorClip
-from .isclose import isclose, TensorIsclose, TensorIscloseConstant
-from .ldexp import ldexp, TensorLdexp, TensorLdexpConstant
+from .isclose import isclose, TensorIsclose
+from .ldexp import ldexp, TensorLdexp
 from .frexp import frexp, TensorFrexp
 from .modf import modf, TensorModf
 from .angle import angle, TensorAngle
@@ -110,8 +110,8 @@ from .fix import fix, TensorFix
 from .i0 import i0, TensorI0
 from .sinc import sinc, TensorSinc
 from .nan_to_num import nan_to_num, TensorNanToNum
-from .setreal import TensorSetReal, TensorSetRealConstant
-from .setimag import TensorSetImag, TensorSetImagConstant
+from .setreal import TensorSetReal
+from .setimag import TensorSetImag
 
 
 def _install():

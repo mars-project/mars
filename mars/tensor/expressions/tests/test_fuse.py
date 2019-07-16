@@ -22,8 +22,8 @@ import mars.tensor as mt
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
 from mars.tensor.expressions.datasource import CSRMatrixDataSource, SparseToDense
 from mars.tensor.expressions.random import TensorRand
-from mars.tensor.expressions.arithmetic import TensorAddConstant, TensorMulConstant, \
-    TensorTDivConstant, TensorDivConstant, TensorSubConstant
+from mars.tensor.expressions.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv,\
+    TensorDivide, TensorSubtract
 from mars.tensor.expressions.merge import TensorConcatenate
 from mars.tensor.expressions.reduction import TensorSum
 
@@ -42,8 +42,8 @@ class Test(unittest.TestCase):
         self.assertEqual(fuse_node.shape, (3, 3))
         self.assertEqual(len(fuse_node.composed), 3)
         self.assertIsInstance(fuse_node.composed[0].op, TensorRand)
-        self.assertIsInstance(fuse_node.composed[1].op, TensorAddConstant)
-        self.assertIsInstance(fuse_node.composed[2].op, TensorMulConstant)
+        self.assertIsInstance(fuse_node.composed[1].op, TensorAdd)
+        self.assertIsInstance(fuse_node.composed[2].op, TensorMultiply)
 
         t2 = mt.sum((t / 2) - 1, axis=0)
 
@@ -62,8 +62,8 @@ class Test(unittest.TestCase):
         self.assertEqual(agg_node.shape, (1, 3))
         self.assertEqual(len(agg_node.composed), 4)
         self.assertIsInstance(agg_node.composed[0].op, TensorRand)
-        self.assertIsInstance(agg_node.composed[1].op, (TensorTDivConstant, TensorDivConstant))
-        self.assertIsInstance(agg_node.composed[2].op, TensorSubConstant)
+        self.assertIsInstance(agg_node.composed[1].op, (TensorTrueDiv, TensorDivide))
+        self.assertIsInstance(agg_node.composed[2].op, TensorSubtract)
         self.assertIsInstance(agg_node.composed[3].op, TensorSum)
 
     def testSparse(self):
@@ -81,8 +81,8 @@ class Test(unittest.TestCase):
         self.assertEqual(fuse_node.shape, (3, 3))
         self.assertEqual(len(fuse_node.composed), 3)
         self.assertIsInstance(fuse_node.composed[0].op, CSRMatrixDataSource)
-        self.assertIsInstance(fuse_node.composed[1].op, TensorMulConstant)
-        self.assertIsInstance(fuse_node.composed[2].op, (TensorTDivConstant, TensorDivConstant))
+        self.assertIsInstance(fuse_node.composed[1].op, TensorMultiply)
+        self.assertIsInstance(fuse_node.composed[2].op, (TensorTrueDiv, TensorDivide))
         self.assertTrue(all(c.op.sparse for c in fuse_node.composed))
 
         t2 = (t * 2).todense()
@@ -96,7 +96,7 @@ class Test(unittest.TestCase):
         self.assertEqual(fuse_node.shape, (3, 3))
         self.assertEqual(len(fuse_node.composed), 3)
         self.assertIsInstance(fuse_node.composed[0].op, CSRMatrixDataSource)
-        self.assertIsInstance(fuse_node.composed[1].op, TensorMulConstant)
+        self.assertIsInstance(fuse_node.composed[1].op, TensorMultiply)
         self.assertTrue(fuse_node.composed[1].op.sparse)
         self.assertIsInstance(fuse_node.composed[2].op, SparseToDense)
         self.assertFalse(fuse_node.composed[2].op.sparse)
