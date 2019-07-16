@@ -62,9 +62,6 @@ class LocalSession(object):
         tileable.nsplits = new_nsplits
 
     def fetch(self, *tileables, **kw):
-        for t in tileables:
-            if t.key not in self.executed_tileables:
-                raise ValueError('Cannot fetch the unexecuted tileable')
         if self._executor is None:
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
@@ -229,6 +226,7 @@ class Session(object):
         from .deploy.local.session import LocalClusterSession
         if not isinstance(self._sess, LocalClusterSession):
             raise RuntimeError("Only local cluster session can be used to manipulate mutable tensors.")
+
 
 def new_session(scheduler=None, **kwargs):
     return Session(scheduler, **kwargs)

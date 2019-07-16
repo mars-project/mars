@@ -298,3 +298,15 @@ class Test(unittest.TestCase):
         arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
         r2 = sess.run(arr2, compose=False)
         np.testing.assert_array_equal(r1, r2)
+
+    def testFetchSlices(self):
+        sess = new_session()
+
+        arr1 = mt.random.rand(10, 8, chunk_size=3)
+        r1 = sess.run(arr1)
+
+        r2 = sess.fetch(arr1[:2, 3:9])
+        np.testing.assert_array_equal(r2, r1[:2, 3:9])
+
+        r3 = sess.fetch(arr1[0])
+        np.testing.assert_array_equal(r3, r1[0])

@@ -21,6 +21,7 @@ import logging
 
 from tornado import gen, concurrent, web, ioloop
 
+from ..tensor.core import Indexes
 from ..actors import new_client
 from ..compat import six, futures
 from ..errors import GraphNotExists
@@ -141,6 +142,9 @@ class GraphDataHandler(MarsApiRequestHandler):
             compressions_arg = self.request.arguments.get('compressions')
             if compressions_arg:
                 compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
+            slices_arg = self.request.arguments.get('slices')
+            if slices_arg:
+                slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:
@@ -155,7 +159,8 @@ class GraphDataHandler(MarsApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions_arg)
+                return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
+                                          compressions=compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)

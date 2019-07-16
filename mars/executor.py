@@ -20,6 +20,7 @@ import sys
 import threading
 import weakref
 from collections import deque, defaultdict
+from numbers import Integral
 
 import numpy as np
 try:
@@ -30,7 +31,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch
+from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch, calc_nsplits
 
 logger = logging.getLogger(__name__)
 
@@ -566,11 +567,26 @@ class Executor(object):
 
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
+        from .tensor.expressions.indexing import TensorIndex
+
         results = []
         to_concat_tileables = OrderedDict()
 
+        tileable_indexes = []
         for i, tileable in enumerate(tileables):
-            if tileable.key not in self.stored_tileables:
+            if tileable.key not in self.stored_tileables and isinstance(tileable.op, TensorIndex):
+                key = tileable.inputs[0].key
+                indexes = tileable.op.indexes
+                tileable = tileable.inputs[0]
+                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
+                    raise ValueError('Only support fetch data slices')
+            else:
+                key = tileable.key
+                indexes = None
+
+            tileable_indexes.append(indexes)
+
+            if key not in self.stored_tileables:
                 # check if the tileable is executed before
                 raise ValueError(
                     'Tileable object to fetch must be executed before, got {0}'.format(tileable))
@@ -592,22 +608,15 @@ class Executor(object):
             for j, concat_result in zip(to_concat_tileables, concat_results):
                 results[j] = concat_result
 
+        results = [result[indexes] if indexes else result for
+                   indexes, result in zip(tileable_indexes, results)]
         return results
 
     def get_tileable_nsplits(self, tileable):
-        chunk_indexes = [c.index for c in tileable.chunks]
-        chunk_shapes = [r.shape for r in [self._chunk_result[c.key] for c in tileable.chunks]]
-
-        ndim = len(chunk_shapes[0])
-        tileable_nsplits = []
-        for i in range(ndim):
-            splits = []
-            for index, shape in zip(chunk_indexes, chunk_shapes):
-                if all(idx == 0 for j, idx in enumerate(index) if j != i):
-                    splits.append(shape[i])
-            tileable_nsplits.append(tuple(splits))
-
-        return tuple(tileable_nsplits)
+        chunk_idx_to_shape = OrderedDict(
+            (c.index, r.shape) for c, r in zip(tileable.chunks, [self._chunk_result[c.key]
+                                                                 for c in tileable.chunks]))
+        return calc_nsplits(chunk_idx_to_shape)
 
     def decref(self, *keys):
         for key in keys:
