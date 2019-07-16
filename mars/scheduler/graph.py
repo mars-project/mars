@@ -40,7 +40,8 @@ from ..serialize import dataserializer
 from ..core import ChunkData
 from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    build_fetch_chunk, build_fetch_tileable, calc_nsplits
+    build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
+    get_chunk_shuffle_key
 
 logger = logging.getLogger(__name__)
 
@@ -653,7 +654,7 @@ class GraphActor(SchedulerActor):
                 successor_keys.add(sn.op.key)
             if isinstance(c.op, ShuffleProxy):
                 for sn in graph.iter_successors(c):
-                    shuffle_keys[sn.op.key] = sn.op.shuffle_key
+                    shuffle_keys[sn.op.key] = get_chunk_shuffle_key(sn)
 
             chunk_keys.update(co.key for co in c.op.outputs)
 

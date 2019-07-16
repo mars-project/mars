@@ -27,7 +27,8 @@ from ..errors import PinChunkFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
 from ..operands import Fetch, FetchShuffle
-from ..utils import deserialize_graph, log_unhandled, build_exc_info, calc_data_size, BlacklistSet
+from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
+    calc_data_size, get_chunk_shuffle_key
 from .chunkholder import ensure_chunk
 from .spill import spill_exists, get_spill_data_size
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys, build_load_key
@@ -219,7 +220,7 @@ class ExecutionActor(WorkerActor):
                 # use actual size as potential allocation size
                 input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key, calc_data_size(chunk))
             elif isinstance(op, FetchShuffle):
-                shuffle_key = graph.successors(chunk)[0].op.shuffle_key
+                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
                 for k in op.to_fetch_keys:
                     part_key = (k, shuffle_key)
                     try:
@@ -524,7 +525,7 @@ class ExecutionActor(WorkerActor):
             if isinstance(op, Fetch):
                 input_keys.add(op.to_fetch_key or chunk.key)
             elif isinstance(op, FetchShuffle):
-                shuffle_key = graph.successors(chunk)[0].op.shuffle_key
+                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
                 for k in op.to_fetch_keys:
                     part_key = (k, shuffle_key)
                     input_keys.add(part_key)
