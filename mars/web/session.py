@@ -199,7 +199,7 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
-    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *args, **kwargs):
         from ..tensor.expressions.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
         tensor_url = session_url + '/mutable-tensor/%s' % name
@@ -213,7 +213,8 @@ class Session(object):
         tensor_json = {
             'shape': shape,
             'dtype': dtype_descr,
-            'chunk_size': kwargs.pop('chunk_size', None),
+            'fill_value': fill_value,
+            'chunk_size': chunk_size,
         }
         resp = self._req_session.post(tensor_url, json=tensor_json)
         if resp.status_code >= 400:

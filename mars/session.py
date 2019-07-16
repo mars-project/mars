@@ -71,13 +71,16 @@ class LocalSession(object):
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
 
-    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
             raise ValueError("The mutable tensor named '%s' already exists." % name)
         mut_tensor = MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype))
         self._mut_tensor[name] = mut_tensor
-        self._mut_tensor_data[name] = np.zeros(shape, dtype=dtype)
+        if fill_value is None:
+            self._mut_tensor_data[name] = np.zeros(shape, dtype=dtype)
+        else:
+            self._mut_tensor_data[name] = np.full(shape, fill_value, dtype=dtype)
         return mut_tensor
 
     def get_mutable_tensor(self, name):
@@ -220,8 +223,8 @@ class Session(object):
         cls._default_session = Session()
         return cls._default_session
 
-    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
-        return self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
+        return self._sess.create_mutable_tensor(name, shape, dtype, fill_value=fill_value, *args, **kwargs)
 
     def get_mutable_tensor(self, name):
         return self._sess.get_mutable_tensor(name)

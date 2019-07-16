@@ -197,9 +197,10 @@ class MutableTensorHandler(MarsApiRequestHandler):
                 req_json = json.loads(self.request.body.decode('ascii'))
                 shape = req_json['shape']
                 dtype = numpy_dtype_from_descr_json(req_json['dtype'])
+                fill_value = req_json['fill_value']
                 chunk_size = req_json['chunk_size']
                 meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype,
-                                                          chunk_size=chunk_size)
+                                                          fill_value=fill_value, chunk_size=chunk_size)
                 self.write(json.dumps(meta))
             else:
                 info = self.web_api.seal(session_id, name)

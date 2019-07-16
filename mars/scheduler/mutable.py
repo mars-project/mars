@@ -29,7 +29,7 @@ class MutableTensorActor(SchedulerActor):
     def gen_uid(session_id, name):
         return 's:0:mutable-tensor$%s$%s' % (session_id, name)
 
-    def __init__(self, session_id, name, shape, dtype, graph_key, chunk_size=None, *args, **kwargs):
+    def __init__(self, session_id, name, shape, dtype, graph_key, fill_value=None, chunk_size=None, *args, **kwargs):
         super(MutableTensorActor, self).__init__(*args, **kwargs)
         self._session_id = session_id
         self._name = name
@@ -40,6 +40,7 @@ class MutableTensorActor(SchedulerActor):
             self._dtype = np.dtype(dtype)
         self._graph_key = graph_key
         self._chunk_size = chunk_size
+        self._fill_value = fill_value
         self._tensor = None
         self._sealed = False
         self._chunk_map = defaultdict(lambda: [])
@@ -97,7 +98,7 @@ class MutableTensorActor(SchedulerActor):
             sealer_ref = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
             sealer_ref.seal_chunk(self._session_id, self._graph_key,
                                   chunk.key, self._chunk_map[chunk.key],
-                                  chunk.shape, self._record_type, self._dtype)
+                                  chunk.shape, self._record_type, self._dtype, self._fill_value)
         # return the hex of self._graph_key since UUID is not json serializable.
         return self._graph_key.hex, self._tensor.key, self._tensor.id, self.tensor_meta()
 

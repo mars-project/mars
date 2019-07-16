@@ -561,7 +561,7 @@ class MutableTensor(Entity):
         return chunk_records_to_send
 
 
-def mutable_tensor(name, shape=None, dtype=np.float_, chunk_size=None):
+def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_size=None):
     """
     Create or get a mutable tensor using the local or default session.
 
@@ -578,6 +578,9 @@ def mutable_tensor(name, shape=None, dtype=np.float_, chunk_size=None):
         The desired data-type for the mutable tensor, e.g., `mt.int8`.  Default is `mt.float_`.
     chunk_size: int or tuple of ints, optional
         Specifies chunk size for each dimension.
+    fill_value: scalar, optional
+        The created mutable tensor will be filled by `fill_value` defaultly, if the parameter is None,
+        the newly created mutable tensor will be initialized with `np.zeros`. See also `numpy.full`.
     """
     from ..session import Session
     session = Session.default_or_local()
@@ -585,7 +588,8 @@ def mutable_tensor(name, shape=None, dtype=np.float_, chunk_size=None):
     if shape is None:
         return session.get_mutable_tensor(name)
     else:
-        return session.create_mutable_tensor(name, shape=shape, dtype=dtype, chunk_size=chunk_size)
+        return session.create_mutable_tensor(name, shape=shape, dtype=dtype,
+                                             fill_value=fill_value, chunk_size=chunk_size)
 
 
 TENSOR_TYPE = (Tensor, TensorData)

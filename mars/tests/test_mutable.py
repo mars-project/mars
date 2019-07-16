@@ -373,6 +373,48 @@ class Test(unittest.TestCase):
             with new_session('http://' + cluster._web_endpoint).as_default():
                 testWithGivenSession(session)
 
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testMutableTensorFillValue(self):
+        def testWithGivenSession(session):
+            from mars.tensor.core import mutable_tensor
+
+            # simple dtype.
+            mut1 = mutable_tensor("test", (4, 5), dtype='double', fill_value=123.456, chunk_size=3)
+
+            mut1[1:4, 2] = 8
+            mut1[2:4] = np.arange(10).reshape(2, 5)
+            arr1 = mut1.seal()
+
+            expected = np.full((4, 5), fill_value=123.456, dtype='double')
+            expected[1:4, 2] = 8
+            expected[2:4] = np.arange(10).reshape(2, 5)
+            np.testing.assert_array_equal(session.fetch(arr1), expected)
+
+            # structured dtype, but the `fill_value` cannot be tuple (consistent with np.full).
+            dtype = np.dtype([('x', np.int32), ('y', np.double)])
+            mut2 = mutable_tensor("test", (4, 5), dtype=dtype, fill_value=123.456, chunk_size=3)
+
+            mut2[1:4, 2] = (1, 2.)
+            mut2[2:4] = np.arange(10).reshape(2, 5)
+            arr2 = mut2.seal()
+
+            expected = np.full((4, 5), fill_value=123.456, dtype=dtype)
+            expected[1:4, 2] = (1, 2.)
+            expected[2:4] = np.arange(10).reshape(2, 5)
+            np.testing.assert_array_equal(session.fetch(arr2), expected)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default():
+                testWithGivenSession(session)
+
     def assertRecordsEqual(self, records, expected):
         np.testing.assert_array_equal(records['index'], expected[:,0])
         np.testing.assert_array_equal(records['value'], expected[:,1])
