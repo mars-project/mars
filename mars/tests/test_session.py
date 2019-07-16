@@ -300,6 +300,7 @@ class Test(unittest.TestCase):
         r2 = sess.run(arr2, compose=False)
         np.testing.assert_array_equal(r1, r2)
 
+    @unittest.skipIf(pd is None, 'pandas not installed')
     def testDataFrameCreate(self):
         sess = new_session()
         tensor = mt.ones((2, 2))
