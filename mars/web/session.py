@@ -182,11 +182,11 @@ class Session(object):
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            indexes_obj = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
+            indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
-            params = dict(compressions=compression_str, slices=indexes_obj)
+            params = dict(compressions=compression_str, slices=indexes_str)
             data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
             resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
