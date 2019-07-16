@@ -411,6 +411,18 @@ class flatiter(object):
         self._ravel_tensor[key] = value
 
 
+class Indexes(Serializable):
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, **kw):
+        self._indexes = indexes
+        super(Indexes, self).__init__(**kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+
 class MutableTensorData(TensorData):
     __slots__ = ()
 
@@ -572,16 +584,31 @@ class MutableTensor(Entity):
         return chunk_records_to_send
 
 
-class Indexes(Serializable):
-    _indexes = AnyField('indexes')
+def mutable_tensor(name, shape=None, dtype=np.float_, chunk_size=None):
+    """
+    Create or get a mutable tensor using the local or default session.
 
-    def __init__(self, indexes=None, **kw):
-        self._indexes = indexes
-        super(Indexes, self).__init__(**kw)
+    When `shape` is `None`, it will try to get the mutable tensor with name `name`. Otherwise,
+    it will try to create a mutable tensor using the provided `name` and `shape`.
 
-    @property
-    def indexes(self):
-        return self._indexes
+    Parameters
+    ----------
+    name : str
+        Name of the mutable tensor.
+    shape : int or sequence of ints
+        Shape of the new mutable tensor, e.g., ``(2, 3)`` or ``2``.
+    dtype : data-type, optional
+        The desired data-type for the mutable tensor, e.g., `mt.int8`.  Default is `mt.float_`.
+    chunk_size: int or tuple of ints, optional
+        Specifies chunk size for each dimension.
+    """
+    from ..session import Session
+    session = Session.default_or_local()
+
+    if shape is None:
+        return session.get_mutable_tensor(name)
+    else:
+        return session.create_mutable_tensor(name, shape=shape, dtype=dtype, chunk_size=chunk_size)
 
 
 TENSOR_TYPE = (Tensor, TensorData)

@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 from mars.deploy.local.core import new_cluster
-from mars.session import new_session
+from mars.session import new_session, LocalSession
 from mars.tests.core import mock
 
 
@@ -38,7 +38,7 @@ class Test(unittest.TestCase):
             self.assertEqual(mut1.nsplits, ((3, 1), (3, 2)))
 
             # mut1 and mut2 are not the same object, but has the same properties.
-            self.assertNotEqual(mut1.id, mut2.id)
+            self.assertTrue(mut1 is not mut2)
             self.assertEqual(mut1.shape, mut2.shape)
             self.assertEqual(mut1.dtype, mut2.dtype)
             self.assertEqual(mut1.nsplits, mut2.nsplits)
@@ -315,6 +315,63 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(session.run(arr + 1), expected + 1)
             np.testing.assert_array_equal(session.run(arr + arr), expected + expected)
             np.testing.assert_array_equal(session.run(arr.sum()), expected.sum())
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testMutableTensorCtor(self):
+        def testWithGivenSession(session):
+            from mars.tensor.core import mutable_tensor
+
+            # cannot get non-existing mutable tensor
+            with self.assertRaises(ValueError):
+                mutable_tensor("test")
+
+            # should be create
+            mut1 = mutable_tensor("test", (4, 5), dtype='int32', chunk_size=3)
+
+            # should be get
+            mut2 = mutable_tensor("test")
+
+            # mut1 should equal to mut2, but are not the same object
+            self.assertEqual(mut1.shape, mut2.shape)
+            self.assertEqual(mut1.dtype, mut2.dtype)
+
+            # LocalSession return the same MutableTensor instance when `get_mutable_tensor`.
+            if isinstance(session._sess, LocalSession):
+                self.assertTrue(mut1 is mut2)
+            else:
+                self.assertTrue(mut1 is not mut2)
+
+            mut2[1:4, 2] = 8
+            mut2[2:4] = np.arange(10).reshape(2, 5)
+
+            expected = np.zeros((4, 5), dtype='int32')
+            expected[1:4, 2] = 8
+            expected[2:4] = np.arange(10).reshape(2, 5)
+
+            # cannot be sealed twice
+            #
+            # Note that we operate on `mut2`, if we seal `mut1`, the result may not be correct.
+            #
+            # When we operate both on `mut1` and `mut2`, the result may not correct since the
+            # two MutableTensor instances both main their own local buffers, but they cannot
+            # be both sealed.
+            arr = mut2.seal()
+            with self.assertRaises(ValueError):
+                mut1.seal()
+
+            # check value
+            np.testing.assert_array_equal(session.fetch(arr), expected)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default():
+                testWithGivenSession(session)
 
     def assertRecordsEqual(self, records, expected):
         np.testing.assert_array_equal(records['index'], expected[:,0])
