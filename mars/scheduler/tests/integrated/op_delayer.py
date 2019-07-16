@@ -22,6 +22,13 @@ class DelayedOperandActor(OperandActor):
     def _on_ready(self):
         if 'OP_DELAY_STATE_FILE' in os.environ and os.path.exists(os.environ['OP_DELAY_STATE_FILE']):
             self.ctx.sleep(1)
+        if 'SHUFFLE_ALL_PRED_FINISHED_FILE' in os.environ and \
+                os.path.exists(os.environ['SHUFFLE_ALL_PRED_FINISHED_FILE']):
+            self.ctx.sleep(1)
+
+        if 'SHUFFLE_HAS_SUCC_FINISH_FILE' in os.environ:
+            while os.path.exists(os.environ['SHUFFLE_HAS_SUCC_FINISH_FILE']):
+                self.ctx.sleep(1)
         super(DelayedOperandActor, self)._on_ready()
 
     def _on_finished(self):
@@ -45,21 +52,12 @@ class DelayedShuffleProxyActor(ShuffleProxyActor):
                 self.ctx.sleep(1)
         super(DelayedShuffleProxyActor, self)._start_successors()
 
-    def _free_predecessors(self):
-        if 'SHUFFLE_ALL_SUCC_FINISHED_FILE' in os.environ:
-            try:
-                open(os.environ['SHUFFLE_ALL_SUCC_FINISHED_FILE'], 'w').close()
-            except OSError:
-                pass
-        if 'SHUFFLE_START_FREE_FILE' in os.environ:
-            fn = os.environ['SHUFFLE_START_FREE_FILE']
-            while not os.path.exists(fn):
-                self.ctx.sleep(1)
-            with open(fn, 'r') as f:
-                content = f.read().strip()
-            if content == 'NO_FREE':
-                return
-        super(DelayedShuffleProxyActor, self)._free_predecessors()
+    def add_finished_successor(self, op_key, worker):
+        r = super(DelayedShuffleProxyActor, self).add_finished_successor(op_key, worker)
+        if 'SHUFFLE_HAS_SUCC_FINISH_FILE' in os.environ:
+            open(os.environ['SHUFFLE_HAS_SUCC_FINISH_FILE'], 'w').close()
+            os.environ.pop('SHUFFLE_HAS_SUCC_FINISH_FILE')
+        return r
 
 
 register_actor_implementation(OperandActor, DelayedOperandActor)

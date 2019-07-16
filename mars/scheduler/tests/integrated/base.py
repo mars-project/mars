@@ -159,7 +159,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-p', p,
                               '--format', '%(asctime)-15s %(message)s',
                               '-Dscheduler.retry_delay=5',
-                              '-Dscheduler.status_timeout=30']
+                              '-Dscheduler.status_timeout=10']
                              + append_args, env=proc_env)
             for p in scheduler_ports]
         self.proc_workers = [

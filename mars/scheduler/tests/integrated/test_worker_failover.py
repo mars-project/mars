@@ -29,6 +29,8 @@ from mars.actors.core import new_client
 from mars.scheduler.graph import GraphState
 
 logger = logging.getLogger(__name__)
+os.environ['DUMP_GRAPH_DATA'] = '1'
+os.environ['CHECK_TIMEOUT'] = '6000'
 
 
 @unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
@@ -99,6 +101,41 @@ class Test(SchedulerIntegratedTest):
         logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
         self.proc_workers = self.proc_workers[1:]
         open(succ_start_file, 'w').close()
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, b.key)
+        assert_allclose(loads(result), np.ones((27, 31)))
+
+    def testShuffleFailoverBeforeAllSuccFinish(self):
+        self.add_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
+        succ_finish_file = self.add_state_file('SHUFFLE_HAS_SUCC_FINISH_FILE')
+
+        self.start_processes(modules=['mars.scheduler.tests.integrated.op_delayer'], log_worker=True)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        a = mt.ones((31, 27), chunk_size=10)
+        b = a.reshape(27, 31)
+        b.op.extra_params['_reshape_with_shuffle'] = True
+        graph = b.build_graph()
+        targets = [b.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+        actor_client.sleep(1)
+
+        while not os.path.exists(succ_finish_file):
+            actor_client.sleep(0.01)
+
+        self.kill_process_tree(self.proc_workers[0])
+        logger.warning('Worker %s KILLED!\n\n', self.proc_workers[0].pid)
+        self.proc_workers = self.proc_workers[1:]
+
+        os.unlink(succ_finish_file)
 
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)

@@ -37,6 +37,10 @@ class DispatchActor(WorkerActor):
 
     def post_create(self):
         super(DispatchActor, self).post_create()
+        try:
+            self.set_cluster_info_ref()
+        except ActorNotExist:
+            pass
 
         from .status import StatusActor
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
@@ -47,9 +51,16 @@ class DispatchActor(WorkerActor):
         try:
             self.tell_promise(callback, slot)
         except (ActorNotExist, BrokenPipeError, ConnectionRefusedError,
-                TimeoutError, promise.PromiseTimeout):
+                TimeoutError, promise.PromiseTimeout) as ex:
+            from ..scheduler import ResourceActor
             logger.exception('Failed to tell slot %s of queue %s into promise %r',
                              slot, queue_name, callback)
+
+            callback_addr = callback[0][-1]
+            if callback_addr != self.address and self.get_schedulers() and \
+                    not isinstance(ex, (TimeoutError, promise.PromiseTimeout)):
+                self.get_actor_ref(ResourceActor.default_uid()).detach_dead_workers([callback_addr], _tell=True)
+
             if slot is not None:
                 self.ref().register_free_slot(slot, queue_name, _tell=True)
 

@@ -18,7 +18,7 @@ from collections import defaultdict
 
 from ...errors import WorkerDead
 from ..utils import SchedulerActor
-from .core import OperandState, rewrite_worker_errors
+from .core import OperandState, OperandPosition, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,23 @@ class BaseOperandActor(SchedulerActor):
         pass
 
     def move_failover_state(self, from_states, state, new_target, dead_workers):
-        raise NotImplementedError
+        if dead_workers:
+            futures = []
+            # remove executed traces in neighbor operands
+            for out_key in self._succ_keys:
+                futures.append(self._get_operand_actor(out_key).remove_finished_predecessor(
+                    self._op_key, _tell=True, _wait=False))
+            for in_key in self._pred_keys:
+                futures.append(self._get_operand_actor(in_key).remove_finished_successor(
+                    self._op_key, _tell=True, _wait=False))
+            if self._position == OperandPosition.TERMINAL:
+                for graph_ref in self._graph_refs:
+                    futures.append(graph_ref.remove_finished_terminal(
+                        self._op_key, _tell=True, _wait=False))
+            [f.result() for f in futures]
+
+        # actual start the new state
+        self.start_operand(state)
 
     def _on_unscheduled(self):
         pass
