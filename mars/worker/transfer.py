@@ -752,10 +752,14 @@ class ResultSenderActor(WorkerActor):
                     with open(file_name, 'rb') as inf:
                         compressed = self._serialize_pool.submit(inf.read).result()
                 else:
-                    value = read_spill_file(file_name)
-                    sliced_value = value[index_obj]
+                    # TODO: may have potential memory issue
+                    def get_data_slices_from_file(file_name, index_obj, compression_type):
+                        value = read_spill_file(file_name)
+                        sliced_value = value[index_obj]
+                        return dataserializer.dumps(sliced_value, compression_type)
+
                     compressed = self._serialize_pool.submit(
-                        dataserializer.dumps, sliced_value, compression_type).result()
+                        get_data_slices_from_file, file_name, index_obj, compression_type).result()
 
         finally:
             del buf

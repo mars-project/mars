@@ -24,7 +24,7 @@ from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..utils import build_graph, to_str, to_binary, sort_dataframe_result
+from ..utils import build_graph, sort_dataframe_result
 from ..tensor.core import Indexes
 from ..tensor.expressions.indexing import TensorIndex
 
@@ -182,13 +182,13 @@ class Session(object):
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            indexes_str = to_str(base64.b64encode(to_binary(json.dumps(Indexes(indexes).to_json()))))
+            indexes_obj = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
-            data_url = session_url + '/graph/%s/data/%s?compressions=%s&slices=%s' \
-                % (self._get_tileable_graph_key(key), key, compression_str, indexes_str)
-            resp = self._req_session.get(data_url, timeout=timeout)
+            params = dict(compressions=compression_str, slices=indexes_obj)
+            data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
+            resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
                                  (resp.status_code, resp.reason, resp.text))

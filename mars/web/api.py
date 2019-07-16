@@ -144,7 +144,7 @@ class GraphDataHandler(MarsApiRequestHandler):
                 compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
             slices_arg = self.request.arguments.get('slices')
             if slices_arg:
-                slices_arg = Indexes.from_json(json.loads(to_str(base64.b64decode(slices_arg[0])))).indexes
+                slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:
