@@ -1,4 +1,4 @@
 numpy>=1.14.0
+pandas>=0.20.0
 requests>=2.4.0
 pyarrow>=0.11.0
-pandas>=0.20.0
