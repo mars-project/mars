@@ -192,8 +192,10 @@ class MutableTensorHandler(MarsApiRequestHandler):
 
     def post(self, session_id, name):
         try:
-            # If the request contains no body payload, it is seal, otherwise it is create
-            if self.request.body:
+            action = self.request.arguments.get('action')
+            if action:
+                action = to_str(action[0])
+            if action == 'create':
                 req_json = json.loads(self.request.body.decode('ascii'))
                 shape = req_json['shape']
                 dtype = numpy_dtype_from_descr_json(req_json['dtype'])
@@ -202,9 +204,11 @@ class MutableTensorHandler(MarsApiRequestHandler):
                 meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype,
                                                           fill_value=fill_value, chunk_size=chunk_size)
                 self.write(json.dumps(meta))
-            else:
+            elif action == 'seal':
                 info = self.web_api.seal(session_id, name)
                 self.write(json.dumps(info))
+            else:
+                raise web.HTTPError(400, 'Invalid argument')
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 

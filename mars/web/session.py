@@ -202,7 +202,7 @@ class Session(object):
     def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *args, **kwargs):
         from ..tensor.expressions.utils import create_mutable_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s' % name
+        tensor_url = session_url + '/mutable-tensor/%s?action=create' % name
         if not isinstance(dtype, np.dtype):
             dtype = np.dtype(dtype)
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -270,7 +270,7 @@ class Session(object):
     def seal(self, tensor):
         from ..tensor.expressions.utils import create_fetch_tensor
         session_url = self._endpoint + '/api/session/' + self._session_id
-        tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
+        tensor_url = session_url + '/mutable-tensor/%s?action=seal' % tensor.name
         resp = self._req_session.post(tensor_url)
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
