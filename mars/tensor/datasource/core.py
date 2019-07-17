@@ -32,7 +32,7 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
     __slots__ = ()
 
     def to_chunk_op(self, *args):
-        chunk_shape, _, chunk_size = args
+        chunk_shape = args[0]
         chunk_op = self.copy().reset_key()
         chunk_op.extra_params = {'size': chunk_shape}  # to make op key different
         return chunk_op

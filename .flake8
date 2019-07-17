@@ -10,3 +10,4 @@ exclude =
     mars/lib/functools32/*
     mars/lib/futures/*
     mars/lib/uhashring/*
+    mars/compat.py
