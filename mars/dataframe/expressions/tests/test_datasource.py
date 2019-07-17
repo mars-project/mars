@@ -299,3 +299,9 @@ class Test(TestBase):
         df3.tiles()
         np.testing.assert_equal(df2.chunks[0].index, (0, 0))
         np.testing.assert_equal(df3.chunks[0].index, (0, 0))
+
+        # test converted from scalar
+        scalar = mt.array(1)
+        np.testing.assert_equal(scalar.ndim, 0)
+        with self.assertRaises(TypeError):
+            from_tensor(scalar)

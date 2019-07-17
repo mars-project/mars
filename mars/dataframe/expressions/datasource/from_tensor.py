@@ -76,19 +76,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             if in_chunk.ndim == 1:
                 i, = in_chunk.index
                 index = (in_chunk.index[0], 0)
-                if out_df.columns is not None:
-                    columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
-                else:
-                    columns_value = parse_index(pd.RangeIndex(0, 1))
+                columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
                 index = in_chunk.index
-                if out_df.columns is not None:
-                    columns_value = parse_index(out_df.columns.to_pandas()[column_stop - in_chunk.shape[1]:column_stop],
-                                                store_data=True)
-                else:
-                    columns_value = parse_index(pd.RangeIndex(start=column_stop - in_chunk.shape[1], stop=column_stop))
+                columns_value = parse_index(out_df.columns.to_pandas()[column_stop - in_chunk.shape[1]:column_stop],
+                                            store_data=True)
 
             index_stop = cum_size[0][i]
             if out_df.index_value is not None:
@@ -110,7 +104,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
 
 def from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
-    if tensor.ndim > 2:
+    if tensor.ndim > 2 or tensor.ndim <= 0:
         raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
     try:
         col_num = tensor.shape[1]
