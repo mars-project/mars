@@ -115,7 +115,7 @@ from .setimag import TensorSetImag
 
 
 def _install():
-    from ...core import TENSOR_TYPE, Tensor, TensorData
+    from ..core import TENSOR_TYPE, Tensor, TensorData
     from .add import add, radd
     from .subtract import subtract, rsubtract
     from .multiply import multiply, rmultiply
@@ -177,8 +177,8 @@ def _install():
     setattr(TensorData, 'conjugate', conjugate)
 
 
-# _install()
-# del _install
+_install()
+del _install
 
 
 BIN_UFUNC = {add, subtract, multiply, divide, truediv, floordiv, power, mod, fmod, logaddexp, logaddexp2, equal,

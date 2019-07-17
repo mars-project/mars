@@ -35,8 +35,11 @@ from mars.scheduler.utils import SchedulerClusterInfoActor
 try:
     from flaky import flaky
 except ImportError:
-    def flaky(o, **__):
-        return o
+    def flaky(*_, **__):
+        def _wrapper(obj):
+            return obj
+
+        return _wrapper
 
 logger = logging.getLogger(__name__)
 

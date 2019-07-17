@@ -24,19 +24,20 @@ from .expressions.base import result_type, copyto, transpose, where, broadcast_t
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
     average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin
-from .expressions.arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
-    floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
-    around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
-    absolute, fabs, absolute as abs, rint, sign, degrees, radians, conj, conjugate, exp, exp2, \
-    log, log2, log10, expm1, log1p, square, cbrt, reciprocal, \
-    equal, not_equal, less, less_equal, greater, greater_equal, sin, cos, tan, \
-    arcsin, arccos, arctan, arctan2, hypot, sinh, cosh, tanh, arcsinh, arccosh, arctanh, \
-    deg2rad, rad2deg, bitand as bitwise_and, bitor as bitwise_or, bitxor as bitwise_xor, \
-    invert, invert as bitwise_not, lshift as left_shift, rshift as right_shift, \
-    logical_and, logical_or, logical_xor, logical_not, \
-    maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
-    signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
-    isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
+from . import arithmetic
+# from .expressions.arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
+#     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
+#     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
+#     absolute, fabs, absolute as abs, rint, sign, degrees, radians, conj, conjugate, exp, exp2, \
+#     log, log2, log10, expm1, log1p, square, cbrt, reciprocal, \
+#     equal, not_equal, less, less_equal, greater, greater_equal, sin, cos, tan, \
+#     arcsin, arccos, arctan, arctan2, hypot, sinh, cosh, tanh, arcsinh, arccosh, arctanh, \
+#     deg2rad, rad2deg, bitand as bitwise_and, bitor as bitwise_or, bitxor as bitwise_xor, \
+#     invert, invert as bitwise_not, lshift as left_shift, rshift as right_shift, \
+#     logical_and, logical_or, logical_xor, logical_not, \
+#     maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
+#     signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
+#     isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
 from .expressions.linalg.tensordot import tensordot
 from .expressions.linalg.dot import dot
 from .expressions.linalg.inner import inner, innerproduct
