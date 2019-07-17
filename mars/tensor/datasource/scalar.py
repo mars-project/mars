@@ -44,6 +44,14 @@ class Scalar(TensorNoInput):
     def data(self):
         return self._data
 
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        if chunk.ndim != 0:
+            raise ValueError('Missing op for chunk')
+        from .execute_util import _create_array
+        ctx[chunk.key] = _create_array(op)('asarray', op.data)
+
 
 def scalar(data, dtype=None, gpu=False):
     try:
