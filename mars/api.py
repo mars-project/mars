@@ -90,7 +90,7 @@ class MarsAPI(object):
     def send_chunk_records(self, session_id, name, chunk_records_to_send, directly=True):
         from .worker.dispatcher import DispatchActor
         from .worker.quota import MemQuotaActor
-        from .worker.utils import put_chunk
+        from .worker.transfer import put_remote_chunk
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
 
@@ -105,7 +105,7 @@ class MarsAPI(object):
             dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
             receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
             receiver_ref = self.actor_client.actor_ref(receiver_uid, address=ep)
-            put_chunk(session_id, record_chunk_key, records, receiver_ref)
+            put_remote_chunk(session_id, record_chunk_key, records, receiver_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunk to MutableTensorActor

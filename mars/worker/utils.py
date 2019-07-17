@@ -18,9 +18,6 @@ import os
 import time
 from collections import OrderedDict
 
-import pyarrow
-import zlib
-
 from ..actors import ActorNotExist
 from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
 from ..compat import OrderedDict3
@@ -168,33 +165,3 @@ def build_load_key(graph_key, chunk_key):
     if isinstance(chunk_key, tuple):
         chunk_key = '@'.join(chunk_key)
     return '%s_load_memory_%s' % (graph_key, chunk_key)
-
-
-def put_chunk(session_id, chunk_key, data, receiver_ref):
-    '''Put a chunk to target machine using given receiver_ref.
-    '''
-    from .dataio import ArrowBufferIO
-    buf = pyarrow.serialize(data).to_buffer()
-    receiver_ref.create_data_writer(session_id, chunk_key, buf.size, None,
-                                    ensure_cached=False, use_promise=False)
-
-    block_size = options.worker.transfer_block_size
-
-    try:
-        reader = ArrowBufferIO(buf, 'r', block_size=block_size)
-        checksum = 0
-        while True:
-            next_chunk = reader.read(block_size)
-            if not next_chunk:
-                reader.close()
-                receiver_ref.finish_receive(session_id, chunk_key, checksum)
-                break
-            checksum = zlib.crc32(next_chunk, checksum)
-            receiver_ref.receive_data_part(session_id, chunk_key, next_chunk, checksum)
-    except:
-        receiver_ref.cancel_receive(session_id, chunk_key)
-        raise
-    finally:
-        if reader:
-            reader.close()
-        del reader

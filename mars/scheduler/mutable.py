@@ -106,7 +106,7 @@ class MutableTensorActor(SchedulerActor):
     def _send_chunk_records(self, chunk_records_to_send):
         from ..worker.dispatcher import DispatchActor
         from ..worker.quota import MemQuotaActor
-        from ..worker.utils import put_chunk
+        from ..worker.transfer import put_remote_chunk
 
         chunk_records = []
         for chunk_key, records in chunk_records_to_send.items():
@@ -119,7 +119,7 @@ class MutableTensorActor(SchedulerActor):
             dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid(), address=ep)
             receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
             receiver_ref = self.ctx.actor_ref(receiver_uid, address=ep)
-            put_chunk(self._session_id, record_chunk_key, records, receiver_ref)
+            put_remote_chunk(self._session_id, record_chunk_key, records, receiver_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunks
