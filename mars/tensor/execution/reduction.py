@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 import numpy as np
 
-from ...compat import getargspec, numpy_compat, reduce
+from ...compat import getargspec, reduce
 from ..expressions.reduction import TensorMean
 from .array import get_array_module, as_same_device, device, cp
 
@@ -76,17 +76,9 @@ nanargmax = keepdims_wrapper(np.nanargmax)
 any = keepdims_wrapper(np.any)
 all = keepdims_wrapper(np.all)
 nansum = keepdims_wrapper(np.nansum)
-
-try:
-    from numpy import nanprod, nancumprod, nancumsum
-except ImportError:  # pragma: no cover
-    nanprod = numpy_compat.nanprod
-    nancumprod = numpy_compat.nancumprod
-    nancumsum = numpy_compat.nancumsum
-
-nanprod = keepdims_wrapper(nanprod)
-nancumprod = keepdims_wrapper(nancumprod)
-nancumsum = keepdims_wrapper(nancumsum)
+nanprod = keepdims_wrapper(np.nanprod)
+nancumprod = keepdims_wrapper(np.nancumprod)
+nancumsum = keepdims_wrapper(np.nancumsum)
 
 nanmin = keepdims_wrapper(np.nanmin)
 nanmax = keepdims_wrapper(np.nanmax)
