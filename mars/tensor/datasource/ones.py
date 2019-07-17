@@ -20,6 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from .core import TensorNoInput, TensorLike
 from .array import tensor
+from ..array_utils import create_array
 
 
 class TensorOnes(TensorNoInput):
@@ -32,8 +33,7 @@ class TensorOnes(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        from .execute_util import _create_array
-        ctx[op.key] = _create_array(op)('ones', chunk.shape, dtype=op.dtype)
+        ctx[chunk.key] = create_array(op)('ones', chunk.shape, dtype=op.dtype)
 
 
 def ones(shape, dtype=None, chunk_size=None, gpu=False):

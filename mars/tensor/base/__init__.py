@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .broadcast_to import broadcast_to, TensorBroadcastTo
 # from .result_type import result_type
 # from .astype import TensorAstype
 # from .copyto import copyto, TensorCopyTo
 # from .transpose import transpose, TensorTranspose
 # from .where import where, TensorWhere
-# from .broadcast_to import broadcast_to, TensorBroadcastTo
+from .broadcast_to import broadcast_to, TensorBroadcastTo
 # from .broadcast_arrays import broadcast_arrays
 # from .expand_dims import expand_dims
 # from .rollaxis import rollaxis
@@ -55,7 +54,8 @@ from .atleast_3d import atleast_3d
 
 
 def _install():
-    from ..core import Tensor, TensorData
+    pass
+    # from ..core import Tensor, TensorData
     # from .astype import _astype
 
     # setattr(Tensor, 'astype', _astype)

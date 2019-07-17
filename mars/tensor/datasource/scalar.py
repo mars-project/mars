@@ -18,6 +18,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
 from .core import TensorNoInput
+from ..array_utils import create_array
 
 
 class Scalar(TensorNoInput):
@@ -49,8 +50,7 @@ class Scalar(TensorNoInput):
         chunk = op.outputs[0]
         if chunk.ndim != 0:
             raise ValueError('Missing op for chunk')
-        from .execute_util import _create_array
-        ctx[chunk.key] = _create_array(op)('asarray', op.data)
+        ctx[chunk.key] = create_array(op)('asarray', op.data)
 
 
 def scalar(data, dtype=None, gpu=False):

@@ -74,8 +74,3 @@ def atleast_1d(*tensors):
     if len(new_tensors) == 1:
         return new_tensors[0]
     return new_tensors
-
-
-def execute():
-
-    pass

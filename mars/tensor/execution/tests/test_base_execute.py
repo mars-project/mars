@@ -25,8 +25,7 @@ from mars.tensor.expressions.datasource import tensor, ones, zeros, arange
 from mars.tensor.expressions.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin
-from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d
+    flip, flipud, fliplr, repeat, tile, isin, atleast_1d, atleast_2d, atleast_3d
 from mars.tensor.expressions.merge import stack
 from mars.tensor.expressions.reduction import all as tall
 

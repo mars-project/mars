@@ -14,113 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
+
 from collections import Iterable, defaultdict
 from datetime import datetime
-
 import numpy as np
-
-from ..core import Entity, TileableEntity, TileableOperandMixin, ChunkData, Chunk, TileableData, is_eager_mode, \
-    build_mode
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, ListField, TupleField, BoolField, StringField, DataTypeField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
-from ..operands import Operand, HasInput, ShuffleProxy, ShuffleMap, ShuffleReduce, Fuse
+
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class TensorOperandMixin(TileableOperandMixin):
-    __slots__ = ()
-    _op_module_ = 'tensor'
-
-    @staticmethod
-    def _get_dtype(kw, i):
-        dtype = kw.pop('dtype', None)
-        return dtype[i] if isinstance(dtype, (list, tuple)) else dtype
-
-    def _create_chunk(self, output_idx, index, **kw):
-        dt = self._get_dtype(kw, output_idx)
-        shape = kw.pop('shape', None)
-        data = TensorChunkData(_index=index, _shape=shape, _op=self,
-                               _dtype=dt, **kw)
-        return TensorChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        tensor_cls = SparseTensor if getattr(self, 'issparse')() else Tensor
-        dt = self._get_dtype(kw, output_idx)
-        nsplits = kw.pop('nsplits', None)
-        shape = kw.pop('shape', None)
-        chunks = kw.pop('chunks', None)
-        if nsplits is not None:
-            kw['_nsplits'] = nsplits
-        data = TensorData(_shape=shape, _dtype=dt, _op=self, _chunks=chunks, **kw)
-        return tensor_cls(data)
-
-    def new_tensors(self, inputs, shape=None, dtype=None, chunks=None, nsplits=None,
-                    output_limit=None, kws=None, **kw):
-        return self.new_tileables(inputs, shape=shape, chunks=chunks, nsplits=nsplits,
-                                  output_limit=output_limit, kws=kws, dtype=dtype, **kw)
-
-    def new_tensor(self, inputs, shape, dtype=None, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new tensor with more than 1 outputs')
-
-        return self.new_tensors(inputs, shape=shape, dtype=dtype, **kw)[0]
-
-
-class TensorOperand(Operand):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorHasInput(HasInput):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
-    _dtype = DataTypeField('dtype')
-
-    def __init__(self, dtype=None, **kwargs):
-        kwargs['_dtype'] = kwargs.get('_dtype', dtype)
-        super(TensorShuffleProxy, self).__init__(**kwargs)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorShuffleMap(ShuffleMap):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorShuffleReduce(ShuffleReduce):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
-
-
-class TensorFuse(Fuse):
-    _dtype = DataTypeField('dtype')
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
 
 
 class TensorChunkData(ChunkData):

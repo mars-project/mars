@@ -22,7 +22,6 @@ from mars.tensor.expressions.datasource import ones, tensor, arange, array, asar
 from mars.tensor.expressions.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d
-from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d
 
 
 class Test(unittest.TestCase):
