@@ -13,10 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from ...compat import izip
-from ...compat.numpy_compat import broadcast_to
 from .array import as_same_device, device
 
 
@@ -70,13 +67,8 @@ def _broadcast_to(ctx, chunk):
     (x,), device_id, xp = as_same_device(
         [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
 
-    if xp == np:
-        func = broadcast_to
-    else:
-        func = xp.broadcast_to
-
     with device(device_id):
-        ctx[chunk.key] = func(x, chunk.op.shape)
+        ctx[chunk.key] = xp.broadcast_to(x, chunk.op.shape)
 
 
 def _where(ctx, chunk):

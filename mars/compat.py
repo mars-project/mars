@@ -20,7 +20,7 @@ import os
 import socket
 from unicodedata import east_asian_width
 
-from ..lib import six
+from .lib import six
 
 PY27 = six.PY2 and sys.version_info[1] == 7
 PYPY = platform.python_implementation().lower() == 'pypy'
@@ -57,7 +57,7 @@ if six.PY3:
     BytesIO = io.BytesIO
 
     if PY27:
-        from ..lib import enum
+        from .lib import enum
     else:
         import enum
 
@@ -123,7 +123,7 @@ else:
 
     long_type = long  # noqa F821
 
-    from ..lib import enum
+    from .lib import enum
 
     try:
         import cdecimal as decimal
@@ -168,10 +168,10 @@ else:
     total_seconds = timedelta.total_seconds
 
     import __builtin__ as builtins  # don't remove
-    from ..lib import futures  # don't remove
-    from ..lib.functools32.functools32 import OrderedDict as OrderedDict3
+    from .lib import futures  # don't remove
+    from .lib.functools32.functools32 import OrderedDict as OrderedDict3
 
-    from ..lib import functools32  # don't remove
+    from .lib import functools32  # don't remove
 
     def np_getbuffer(n):
         import numpy as np
@@ -236,15 +236,15 @@ else:
     def queue_get(q):
         return q.get()
 
-from ..lib.lib_utils import isvalidattr, dir2, getargspec, getfullargspec
+from .lib.lib_utils import isvalidattr, dir2, getargspec, getfullargspec
 
-from ..lib.six.moves import reduce, zip_longest
-from ..lib.six.moves import reload_module
-from ..lib.six.moves.queue import Queue, Empty, PriorityQueue
-from ..lib.six.moves.urllib.request import urlretrieve
-from ..lib.six.moves import cPickle as pickle
-from ..lib.six.moves.urllib.parse import urlencode, urlparse, unquote, quote, quote_plus, parse_qsl
-from ..lib.six.moves import configparser as ConfigParser
+from .lib.six.moves import reduce, zip_longest
+from .lib.six.moves import reload_module
+from .lib.six.moves.queue import Queue, Empty, PriorityQueue
+from .lib.six.moves.urllib.request import urlretrieve
+from .lib.six.moves import cPickle as pickle
+from .lib.six.moves.urllib.parse import urlencode, urlparse, unquote, quote, quote_plus, parse_qsl
+from .lib.six.moves import configparser as ConfigParser
 
 
 try:
