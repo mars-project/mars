@@ -1,5 +1,4 @@
 scipy>=1.0.0
-pandas>=0.20.0
 numexpr>=2.6.4
 psutil>=4.0.0
 lz4>=1.0.0

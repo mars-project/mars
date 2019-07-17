@@ -62,3 +62,11 @@ def estimate_fuse_size(ctx, chunk):
         for key in output_keys:
             r = ctx[key]
             ctx[key] = (r[0], max(r[1], r[1] * executor.mock_max_memory // total_mem))
+
+
+# this function is only used for pandas' compatibility
+def to_numpy(pdf):
+    try:
+        return pdf.to_numpy()
+    except AttributeError:  # pragma: no cover
+        return pdf.values

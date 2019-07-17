@@ -29,8 +29,10 @@ message OperandDef {
         // external storage
         TENSOR_FROM_TILEDB = 18;
         TENSOR_STORE_TILEDB = 19;
+        TENSOR_FROM_DATAFRAME = 22;
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
+        DATAFRAME_FROM_TENSOR = 21;
         // series
         SERIES_DATA_SOURCE = 20;
 

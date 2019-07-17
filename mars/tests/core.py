@@ -30,7 +30,6 @@ from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 
-
 if compat.PY27:
     try:
         import mock  # noqa F821
@@ -38,6 +37,7 @@ if compat.PY27:
         mock = None
 else:
     from unittest import mock
+
     _mock = mock
 
 
@@ -67,9 +67,9 @@ class TestBase(unittest.TestCase):
     @classmethod
     def _serial(cls, obj):
         from mars.operands import Operand
-        from mars.tensor.core import Tensor, TensorData, Chunk, ChunkData
+        from mars.core import Entity, TileableData, Chunk, ChunkData
 
-        if isinstance(obj, (Tensor, Chunk)):
+        if isinstance(obj, (Entity, Chunk)):
             obj = obj.data
 
         to_serials = set()
@@ -77,7 +77,7 @@ class TestBase(unittest.TestCase):
         def serial(ob):
             if ob in to_serials:
                 return
-            if isinstance(ob, TensorData):
+            if isinstance(ob, TileableData):
                 to_serials.add(ob)
                 [serial(i) for i in (ob.chunks or [])]
                 serial(ob.op)

@@ -22,6 +22,7 @@ from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, na
 from ...lib.sparse import SparseNDArray
 from ..expressions import datasource
 from .utils import get_tiledb_ctx
+from .utils import to_numpy
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +211,11 @@ def _scalar(ctx, chunk):
     ctx[chunk.key] = _create_array(chunk.op)('asarray', chunk.op.data)
 
 
+def _dataframe_to_tensor(ctx, chunk):
+    df = ctx[chunk.inputs[0].key]
+    ctx[chunk.key] = to_numpy(df)
+
+
 def register_data_source_handler():
     from ...executor import register
 
@@ -232,4 +238,4 @@ def register_data_source_handler():
     register(datasource.DenseToSparse, _tensor_dense_to_sparse)
     register(datasource.TensorTileDBDataSource, _tensor_tiledb)
     register(datasource.Scalar, _scalar)
-
+    register(datasource.TensorDataFrameDataSource, _dataframe_to_tensor)

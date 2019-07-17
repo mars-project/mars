@@ -15,8 +15,10 @@
 import unittest
 import shutil
 import tempfile
-
+import mars.dataframe as md
+from mars.tensor.expressions.datasource.from_dataframe import from_dataframe
 import numpy as np
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -114,3 +116,9 @@ class Test(TestBase):
                 fromtiledb(tempdir, ctx=ctx)
         finally:
             shutil.rmtree(tempdir)
+
+    def testFromDataFrame(self):
+        mdf = md.DataFrame({'a': [0, 1, 2], 'b': [3, 4, 5]}, index=['c', 'd', 'e'], chunk_size=2)
+        tensor = from_dataframe(mdf)
+        self.assertEqual(tensor.shape, (3, 2))
+        self.assertEqual(mdf.dtypes[0], tensor.dtype)
