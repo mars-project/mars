@@ -13,14 +13,41 @@
 # limitations under the License.
 
 import itertools
+import operator
+from collections import Iterable
 
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...compat import six, lrange, lmap
 from ...serialize import AnyField
+from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
 from ..operands import TensorOperand, TensorOperandMixin
+from ..indexing.slice import TensorSlice
+
+
+def _get_index(chunk):
+    try:
+        return chunk.index
+    except AttributeError:
+        if isinstance(chunk.op, TensorSlice):
+            return chunk.inputs[0].index
+        raise
+
+
+def _norm_axis(axis):
+    if isinstance(axis, six.integer_types):
+        return axis, True
+    if isinstance(axis, Iterable):
+        axis = sorted(tuple(axis))
+        if len(axis) == 1:
+            return axis[0], True
+        return axis, False
+
+    assert axis is None
+    return None, False
 
 
 class TensorConcatenate(TensorOperand, TensorOperandMixin):
@@ -95,6 +122,36 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   nsplits=out_nsplits, chunks=out_chunks)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        def _base_concatenate(chunk, inputs):
+            inputs, device_id, xp = as_same_device(inputs, device=chunk.op.device, ret_extra=True)
+
+            axis, single_axis = _norm_axis(chunk.op.axis)
+            if single_axis:
+                with device(device_id):
+                    res = xp.concatenate(tuple(inputs), axis=axis)
+            else:
+                axes = axis or lrange(chunk.ndim)
+                chunks = [(_get_index(input), data) for input, data in zip(chunk.inputs, inputs)]
+                with device(device_id):
+                    for i in range(len(axes) - 1):
+                        new_chunks = []
+                        for idx, cs in itertools.groupby(chunks, key=lambda t: t[0][:-1]):
+                            cs = lmap(operator.itemgetter(1), cs)
+                            new_chunks.append((idx, xp.concatenate(cs, axis=len(axes) - i - 1)))
+                        chunks = new_chunks
+                    res = xp.concatenate(lmap(operator.itemgetter(1), chunks), axis=axes[0])
+            return res
+
+        inputs = [ctx[input.key] for input in op.inputs]
+
+        if isinstance(inputs[0], tuple):
+            ctx[op.outputs[0].key] = tuple(_base_concatenate(op.outputs[0], [input[i] for input in inputs])
+                                   for i in range(len(inputs[0])))
+        else:
+            ctx[op.outputs[0].key] = _base_concatenate(op.outputs[0], inputs)
 
 
 def concatenate(tensors, axis=0):
