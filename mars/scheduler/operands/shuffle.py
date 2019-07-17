@@ -87,7 +87,10 @@ class ShuffleProxyActor(BaseOperandActor):
             if succ_key in self._finish_succs:
                 continue
 
-            shuffle_key = self._op_to_shuffle_keys[succ_key]
+            try:
+                shuffle_key = self._op_to_shuffle_keys[succ_key]
+            except KeyError:
+                raise
             input_data_metas = dict(((self._mapper_op_to_chunk[k], shuffle_key), meta)
                                     for k, meta in self._reducer_to_mapper[succ_key].items())
 
@@ -102,10 +105,27 @@ class ShuffleProxyActor(BaseOperandActor):
     def add_finished_successor(self, op_key, worker):
         super(ShuffleProxyActor, self).add_finished_successor(op_key, worker)
 
-        if all(k in self._finish_succs for k in self._succ_keys):
-            self._free_predecessors()
+        # input data in reduce nodes can be freed safely
+        data_keys = []
+        workers_list = []
+        shuffle_key = self._op_to_shuffle_keys[op_key]
+        for pred_key, meta in self._reducer_to_mapper[op_key].items():
+            data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
+            workers_list.append((self._reducer_workers[op_key],))
+        self._free_data_in_worker(data_keys, workers_list)
 
-    def _free_predecessors(self):
+        if all(k in self._finish_succs for k in self._succ_keys):
+            self.free_predecessors()
+
+    def free_predecessors(self):
+        can_be_freed, determined = self.check_can_be_freed()
+        if not determined:
+            # if we cannot determine whether to do failover, just delay and retry
+            self.ref().free_predecessors(_delay=1, _tell=True)
+            return
+        elif not can_be_freed:
+            return
+
         futures = []
         for k in self._pred_keys:
             futures.append(self._get_operand_actor(k).start_operand(
@@ -113,7 +133,7 @@ class ShuffleProxyActor(BaseOperandActor):
 
         data_keys = []
         workers_list = []
-        for op_key in self._pred_keys:
+        for op_key in self._succ_keys:
             shuffle_key = self._op_to_shuffle_keys[op_key]
             for pred_key, meta in self._reducer_to_mapper[op_key].items():
                 data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))

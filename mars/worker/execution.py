@@ -591,8 +591,9 @@ class ExecutionActor(WorkerActor):
         :param graph_key: key of the execution graph
         :param calc_uid: uid of the allocated CpuCalcActor
         """
-        graph_record = self._graph_records[(session_id, graph_key)]
         try:
+            graph_record = self._graph_records[(session_id, graph_key)]
+
             if graph_record.stop_requested:
                 raise ExecutionInterrupted
 

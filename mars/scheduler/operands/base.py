@@ -248,6 +248,24 @@ class BaseOperandActor(SchedulerActor):
         # actual start the new state
         self.start_operand(state)
 
+    def check_can_be_freed(self, target_state=OperandState.FREED):
+        if self.state == OperandState.FREED:
+            return False, True
+        if target_state == OperandState.CANCELLED:
+            can_be_freed = True
+        else:
+            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
+                                   graph_ref in self._graph_refs]
+            if None in can_be_freed_states:
+                can_be_freed = None
+            else:
+                can_be_freed = all(can_be_freed_states)
+        if can_be_freed is None:
+            return False, False
+        elif not can_be_freed:
+            return False, True
+        return True, True
+
     def _on_unscheduled(self):
         pass
 

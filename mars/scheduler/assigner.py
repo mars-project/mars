@@ -197,6 +197,8 @@ class AssignerActor(SchedulerActor):
         while self._req_heap:
             item = heapq.heappop(self._req_heap)
             if item.op_key in self._requests:
+                # use latest request item
+                item = self._requests[item.op_key]
                 break
             else:
                 item = None

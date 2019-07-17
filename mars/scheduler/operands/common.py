@@ -262,18 +262,8 @@ class OperandActor(BaseOperandActor):
         Free output data of current operand
         :param state: target state
         """
-        if self.state == OperandState.FREED:
-            return
-        if state == OperandState.CANCELLED:
-            can_be_freed = True
-        else:
-            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
-                                   graph_ref in self._graph_refs]
-            if None in can_be_freed_states:
-                can_be_freed = None
-            else:
-                can_be_freed = all(can_be_freed_states)
-        if can_be_freed is None:
+        can_be_freed, determined = self.check_can_be_freed(state)
+        if not determined:
             self.ref().free_data(state, _delay=1, _tell=True)
             return
         elif not can_be_freed:
