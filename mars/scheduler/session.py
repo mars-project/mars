@@ -69,6 +69,8 @@ class SessionActor(SchedulerActor):
         self.ctx.destroy_actor(self._assigner_ref)
         for graph_ref in self._graph_refs.values():
             self.ctx.destroy_actor(graph_ref)
+        for mut_tensor_ref in self._mut_tensor_refs.values():
+            self.ctx.destroy_actor(mut_tensor_ref)
 
     @log_unhandled
     def submit_tileable_graph(self, serialized_graph, graph_key, target_tileables=None, compose=True):
@@ -111,6 +113,13 @@ class SessionActor(SchedulerActor):
         return tensor_ref.tensor_meta()
 
     @log_unhandled
+    def write_mutable_tensor(self, name, index, value):
+        tensor_ref = self._mut_tensor_refs.get(name)
+        if tensor_ref is None or tensor_ref.sealed():
+            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+        return tensor_ref.write(index, value)
+
+    @log_unhandled
     def append_chunk_records(self, name, chunk_records):
         tensor_ref = self._mut_tensor_refs.get(name)
         if tensor_ref is None or tensor_ref.sealed():
@@ -126,8 +135,9 @@ class SessionActor(SchedulerActor):
         if tensor_ref is None or tensor_ref.sealed():
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
 
-        graph_key, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
         shape, dtype, chunk_size, chunk_keys = tensor_meta
+        graph_key = uuid.UUID(graph_key_hex)
 
         # Create a GraphActor
         graph_uid = GraphActor.gen_uid(self._session_id, graph_key)
@@ -146,8 +156,10 @@ class SessionActor(SchedulerActor):
         self._tileable_to_graph[tensor_key] = graph_ref
 
         # Clean up mutable tensor refs.
-        self._mut_tensor_refs.pop(name)
-        return graph_key, tensor_key, tensor_id, tensor_meta
+        actor_ref = self._mut_tensor_refs[name]
+        actor_ref.destroy()
+        del self._mut_tensor_refs[name]
+        return graph_key_hex, tensor_key, tensor_id, tensor_meta
 
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()

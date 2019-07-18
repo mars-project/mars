@@ -426,6 +426,18 @@ class flatiter(object):
         self._ravel_tensor[key] = value
 
 
+class Indexes(Serializable):
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, **kw):
+        self._indexes = indexes
+        super(Indexes, self).__init__(**kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+
 class MutableTensorData(TensorData):
     __slots__ = ()
 
@@ -475,7 +487,11 @@ class MutableTensor(Entity):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        self._buffer_size = np.prod(self.chunks[0].shape)
+        if self.chunks:
+            self._buffer_size = np.prod(self.chunks[0].shape)
+        else:
+            # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
+            self._buffer_size = 0
 
     def __len__(self):
         return len(self._data)
@@ -525,9 +541,9 @@ class MutableTensor(Entity):
         index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape)).single_tiles()
         output_chunks = index_tensor.chunks
 
-        if np.isscalar(value):
-            value = self.dtype.type(value)
-        else:
+        is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields
+
+        if not is_scalar:
             value = np.broadcast_to(value, output_shape).astype(self.dtype)
 
         nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
@@ -542,7 +558,7 @@ class MutableTensor(Entity):
                 output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
 
             records = self._chunk_buffers[output_chunk.op.input.key]
-            records += setitem_as_records(nsplits_acc, output_chunk, value, now)
+            records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
             affected_chunk_keys.append(output_chunk.op.input.key)
 
         # Try to flush affected chunks
@@ -560,16 +576,35 @@ class MutableTensor(Entity):
         return chunk_records_to_send
 
 
-class Indexes(Serializable):
-    _indexes = AnyField('indexes')
+def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_size=None):
+    """
+    Create or get a mutable tensor using the local or default session.
 
-    def __init__(self, indexes=None, **kw):
-        self._indexes = indexes
-        super(Indexes, self).__init__(**kw)
+    When `shape` is `None`, it will try to get the mutable tensor with name `name`. Otherwise,
+    it will try to create a mutable tensor using the provided `name` and `shape`.
 
-    @property
-    def indexes(self):
-        return self._indexes
+    Parameters
+    ----------
+    name : str
+        Name of the mutable tensor.
+    shape : int or sequence of ints
+        Shape of the new mutable tensor, e.g., ``(2, 3)`` or ``2``.
+    dtype : data-type, optional
+        The desired data-type for the mutable tensor, e.g., `mt.int8`.  Default is `mt.float_`.
+    chunk_size: int or tuple of ints, optional
+        Specifies chunk size for each dimension.
+    fill_value: scalar, optional
+        The created mutable tensor will be filled by `fill_value` defaultly, if the parameter is None,
+        the newly created mutable tensor will be initialized with `np.zeros`. See also `numpy.full`.
+    """
+    from ..session import Session
+    session = Session.default_or_local()
+
+    if shape is None:
+        return session.get_mutable_tensor(name)
+    else:
+        return session.create_mutable_tensor(name, shape=shape, dtype=dtype,
+                                             fill_value=fill_value, chunk_size=chunk_size)
 
 
 TENSOR_TYPE = (Tensor, TensorData)

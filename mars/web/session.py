@@ -17,16 +17,19 @@ import json
 import time
 import logging
 from numbers import Integral
+import pickle
+import uuid
 
+import numpy as np
 import requests
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..utils import build_graph, sort_dataframe_result
 from ..tensor.core import Indexes
 from ..tensor.expressions.indexing import TensorIndex
+from ..utils import build_graph, sort_dataframe_result, numpy_dtype_from_descr_json
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +199,91 @@ class Session(object):
             results.append(sort_dataframe_result(tileable, result_data))
         return results
 
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, chunk_size=None, *args, **kwargs):
+        from ..tensor.expressions.utils import create_mutable_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/%s?action=create' % name
+        if not isinstance(dtype, np.dtype):
+            dtype = np.dtype(dtype)
+        # avoid built-in scalar dtypes are made into one-field record type.
+        if dtype.fields:
+            dtype_descr = dtype.descr
+        else:
+            dtype_descr = str(dtype)
+        tensor_json = {
+            'shape': shape,
+            'dtype': dtype_descr,
+            'fill_value': fill_value,
+            'chunk_size': chunk_size,
+        }
+        resp = self._req_session.post(tensor_url, json=tensor_json)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            six.reraise(*exc_info)
+        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype), chunk_keys)
+
+    def get_mutable_tensor(self, name):
+        from ..tensor.expressions.utils import create_mutable_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/%s' % name
+        resp = self._req_session.get(tensor_url)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            six.reraise(*exc_info)
+        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype), chunk_keys)
+
+    def write_mutable_tensor(self, tensor, index, value):
+        '''
+        How to serialize index and value:
+
+        1. process_index and serialize it as json
+        2. the payload of POST request:
+
+            * a int64 value indicate the size of index json
+            * ascii-encoded bytes of index json
+            * pyarrow serialized bytes of `value`
+        '''
+        from ..tensor.core import Indexes
+        from ..compat import BytesIO
+        from ..serialize import dataserializer
+
+        index = Indexes(_indexes=index)
+        index_bytes = json.dumps(index.to_json()).encode('ascii')
+        bio = BytesIO()
+        bio.write(np.int64(len(index_bytes)).tobytes())
+        bio.write(index_bytes)
+        dataserializer.dump(value, bio, raw=False)
+
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/%s' % tensor.name
+        resp = self._req_session.put(tensor_url, data=bio.getvalue(),
+                                     headers={'Content-Type': 'application/octet-stream'})
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            six.reraise(*exc_info)
+
+    def seal(self, tensor):
+        from ..tensor.expressions.utils import create_fetch_tensor
+        session_url = self._endpoint + '/api/session/' + self._session_id
+        tensor_url = session_url + '/mutable-tensor/%s?action=seal' % tensor.name
+        resp = self._req_session.post(tensor_url)
+        if resp.status_code >= 400:
+            resp_json = json.loads(resp.text)
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            six.reraise(*exc_info)
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = json.loads(resp.text)
+        self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
+
+        # # Construct Tensor on the fly.
+        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+                                   tensor_key=tensor_key, chunk_keys=chunk_keys)
+
     def _update_tileable_shape(self, tileable):
         tileable_key = tileable.key
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -239,7 +327,7 @@ class Session(object):
         ))
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
-            exc_info = base64.b64decode(resp_json['exc_info'])
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
         resp_json = json.loads(resp.text)
         return resp_json
@@ -249,7 +337,7 @@ class Session(object):
         resp = self._req_session.get(session_url + '/graph')
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
-            exc_info = base64.b64decode(resp_json['exc_info'])
+            exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
         resp_json = json.loads(resp.text)
         return resp_json

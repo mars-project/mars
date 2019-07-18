@@ -529,8 +529,17 @@ def concat_tileable_chunks(tensor):
 
 
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
+    '''
+    Construct Fetch tensor on the fly, using given chunk_size, shape, dtype,
+    as well as possible tensor_key, tensor_id and chunk keys.
+    '''
     from ...config import options
     from .fetch import TensorFetch
+
+    if not isinstance(dtype, np.dtype):
+        dtype = np.dtype(dtype)
+    if chunk_keys is None:
+        chunk_keys = itertools.repeat(None)
 
     # compute chunks
     chunk_size = chunk_size or options.tensor.chunk_size
@@ -538,11 +547,6 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
     chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
     fetch_op = TensorFetch(dtype=dtype).reset_key()
-
-    if not isinstance(dtype, np.dtype):
-        dtype = np.dtype(dtype)
-    if chunk_keys is None:
-        chunk_keys = itertools.repeat(None)
 
     chunks = []
     for chunk_shape, chunk_idx, chunk_key in izip(itertools.product(*chunk_size),
@@ -555,7 +559,18 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
                                       chunks=chunks, _key=tensor_key, _id=tensor_id)
 
 
-def setitem_as_records(nsplits_acc, output_chunk, value, ts):
+def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
+    '''
+    Construct MutableTensor on the fly, using given name, chunk_size, shape, dtype,
+    as well as possible chunk keys.
+    '''
+    from ..core import MutableTensor, MutableTensorData
+    tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
+    return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=tensor.dtype,
+                                                _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks))
+
+
+def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
     """
     Turns a `__setitem__`  to a list of index-value records.
 
@@ -572,11 +587,15 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
     :arg ts:
         The timestamp value will be contained in the records.
 
+    :arg is_scalar:
+        Whether the value should be treat as scalar value, including tuple
+        for structured arrays.
+
     :returns:
         A list of `[index, value, timestamp]`.
     """
     # prepare chunk value
-    if np.isscalar(value):
+    if is_scalar:
         chunk_value = value
     else:
         chunk_value_slice = tuple(slice(nsplits_acc[i][output_chunk.index[i]],
@@ -598,10 +617,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
     records = []
     for chunk_idx, value_idx in zip(itertools.product(*input_indices),
                                     itertools.product(*value_indices)):
-        if np.isscalar(chunk_value):
-            new_value = chunk_value
-        else:
-            new_value = chunk_value[value_idx]
+        new_value = chunk_value if is_scalar else chunk_value[value_idx]
         records.append((np.ravel_multi_index(chunk_idx, input_chunk.shape), ts, new_value))
     return records
 

@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import uuid
-import zlib
 import itertools
+import logging
 import random
-
-import pyarrow
+import uuid
 
 from .actors import new_client
 from .errors import GraphNotExists
@@ -28,7 +25,6 @@ from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
 from .worker.transfer import ResultSenderActor
 from .tensor.expressions.utils import slice_split
-from .config import options
 from .serialize import dataserializer
 from .utils import tokenize, merge_chunks
 
@@ -61,13 +57,6 @@ class MarsAPI(object):
             infos[scheduler] = info_ref.get_info()
         return infos
 
-    def _get_receiver_ref(self, chunk_key):
-        from .worker.dispatcher import DispatchActor
-        ep = self.cluster_info.get_scheduler(chunk_key)
-        dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
-        uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
-        return self.actor_client.actor_ref(uid, address=ep)
-
     def count_workers(self):
         try:
             uid = ResourceActor.default_uid()
@@ -99,8 +88,9 @@ class MarsAPI(object):
         return session_ref.get_mutable_tensor(name)
 
     def send_chunk_records(self, session_id, name, chunk_records_to_send, directly=True):
-        from .worker.dataio import ArrowBufferIO
+        from .worker.dispatcher import DispatchActor
         from .worker.quota import MemQuotaActor
+        from .worker.transfer import put_remote_chunk
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
 
@@ -112,32 +102,10 @@ class MarsAPI(object):
             quota_ref = self.actor_client.actor_ref(MemQuotaActor.default_uid(), address=ep)
             quota_ref.request_batch_quota({record_chunk_key: records.nbytes})
             # send record chunk
-            buf = pyarrow.serialize(records).to_buffer()
-            receiver_ref = self._get_receiver_ref(chunk_key)
-            receiver_ref.create_data_writer(session_id, record_chunk_key, buf.size, None,
-                                            ensure_cached=False, use_promise=False)
-
-            block_size = options.worker.transfer_block_size
-
-            try:
-                reader = ArrowBufferIO(buf, 'r', block_size=block_size)
-                checksum = 0
-                while True:
-                    next_chunk = reader.read(block_size)
-                    if not next_chunk:
-                        reader.close()
-                        receiver_ref.finish_receive(session_id, record_chunk_key, checksum)
-                        break
-                    checksum = zlib.crc32(next_chunk, checksum)
-                    receiver_ref.receive_data_part(session_id, record_chunk_key, next_chunk, checksum)
-            except:
-                receiver_ref.cancel_receive(session_id, chunk_key)
-                raise
-            finally:
-                if reader:
-                    reader.close()
-                del reader
-
+            dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
+            receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
+            receiver_ref = self.actor_client.actor_ref(receiver_uid, address=ep)
+            put_remote_chunk(session_id, record_chunk_key, records, receiver_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunk to MutableTensorActor

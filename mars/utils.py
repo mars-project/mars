@@ -605,3 +605,15 @@ def sort_dataframe_result(df, result):
                 result.sort_index(axis=1, inplace=True)
     return result
 
+
+def numpy_dtype_from_descr_json(obj):
+    '''
+    Construct numpy dtype from it's np.dtype.descr.
+
+    The dtype can be trivial, but can also be very complex (nested) record type. In that
+    case, the tuple in `descr` will be made as `list`, which can be understood by `np.dtype()`.
+    This utility helps the reconstruct work.
+    '''
+    if isinstance(obj, list):
+        return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
+    return obj
