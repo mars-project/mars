@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d
-from mars.tensor.expressions.base import transpose, squeeze, moveaxis, atleast_1d, atleast_2d, atleast_3d
+from mars.tensor.expressions.base import transpose, squeeze, moveaxis
 from mars.tensor.expressions.datasource import ones, tensor
 
 
