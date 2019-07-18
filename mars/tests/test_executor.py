@@ -20,7 +20,7 @@ import numpy as np
 import mars.tensor as mt
 from mars.executor import Executor, register
 from mars.serialize import Int64Field
-from mars.tensor.expressions.core import TensorOperand, TensorOperandMixin
+from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
 from mars.actors import create_actor_pool, Distributor, Actor
 
@@ -84,8 +84,8 @@ class Test(unittest.TestCase):
     def testMockExecuteSize(self):
         import mars.tensor as mt
         from mars.graph import DAG
-        from mars.tensor.expressions.fetch import TensorFetch
-        from mars.tensor.expressions.arithmetic import TensorTreeAdd
+        from mars.tensor.fetch import TensorFetch
+        from mars.tensor.arithmetic import TensorTreeAdd
 
         graph_add = DAG()
         input_chunks = []

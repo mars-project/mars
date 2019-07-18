@@ -22,7 +22,7 @@ from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_ea
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
-from .expressions.utils import get_chunk_slices
+from .utils import get_chunk_slices
 
 import logging
 
@@ -133,12 +133,12 @@ class TensorData(TileableData):
 
     @property
     def real(self):
-        from .expressions.arithmetic import real
+        from .arithmetic import real
         return real(self)
 
     @property
     def imag(self):
-        from .expressions.arithmetic import imag
+        from .arithmetic import imag
         return imag(self)
 
     @property
@@ -161,18 +161,18 @@ class TensorData(TileableData):
         if self.issparse():
             return self
 
-        from .expressions.datasource import fromdense
+        from .datasource import fromdense
         return fromdense(self)
 
     def todense(self):
         if not self.issparse():
             return self
 
-        from .expressions.datasource import fromsparse
+        from .datasource import fromsparse
         return fromsparse(self)
 
     def transpose(self, *axes):
-        from .expressions.base import transpose
+        from .base import transpose
 
         if len(axes) == 1 and isinstance(axes[0], Iterable):
             axes = axes[0]
@@ -237,7 +237,7 @@ class Tensor(TileableEntity):
 
     @real.setter
     def real(self, new_real):
-        from .expressions.arithmetic.setreal import set_real
+        from .arithmetic.setreal import set_real
 
         self._data = set_real(self._data, new_real).data
 
@@ -247,7 +247,7 @@ class Tensor(TileableEntity):
 
     @imag.setter
     def imag(self, new_imag):
-        from .expressions.arithmetic.setimag import set_imag
+        from .arithmetic.setimag import set_imag
 
         self._data = set_imag(self._data, new_imag).data
 

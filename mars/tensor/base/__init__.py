@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # from .result_type import result_type
-# from .astype import TensorAstype
+from .astype import TensorAstype
 # from .copyto import copyto, TensorCopyTo
 # from .transpose import transpose, TensorTranspose
 # from .where import where, TensorWhere
@@ -55,16 +55,16 @@ from .atleast_3d import atleast_3d
 
 def _install():
     pass
-    # from ..core import Tensor, TensorData
-    # from .astype import _astype
+    from ..core import Tensor, TensorData
+    from .astype import _astype
 
-    # setattr(Tensor, 'astype', _astype)
+    setattr(Tensor, 'astype', _astype)
     # setattr(Tensor, 'swapaxes', swapaxes)
     # setattr(Tensor, 'squeeze', squeeze)
     # setattr(Tensor, 'repeat', repeat)
     # setattr(Tensor, 'ravel', ravel)
     # setattr(Tensor, 'flatten', flatten)
-    # setattr(TensorData, 'astype', _astype)
+    setattr(TensorData, 'astype', _astype)
     # setattr(TensorData, 'swapaxes', swapaxes)
     # setattr(TensorData, 'squeeze', squeeze)
     # setattr(TensorData, 'repeat', repeat)

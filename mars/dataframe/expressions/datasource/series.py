@@ -18,7 +18,7 @@ from .... import opcodes as OperandDef
 from ....serialize import SeriesField, DataTypeField
 from ....config import options
 from ....compat import izip
-from ....tensor.expressions.utils import get_chunk_slices
+from ....tensor.utils import get_chunk_slices
 from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, decide_series_chunk_size
 

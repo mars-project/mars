@@ -35,3 +35,7 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super(TensorSlice, self)._set_inputs(inputs)
         self._input = self._inputs[0]
+
+    @classmethod
+    def execute(cls, ctx, op):
+        ctx[op.outputs[0].key] = ctx[op.inputs[0].key][tuple(op.slices)]

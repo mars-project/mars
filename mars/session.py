@@ -192,7 +192,7 @@ class Session(object):
 
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from .tensor.core import MutableTensor, MutableTensorData
-        from .tensor.expressions.utils import create_fetch_tensor
+        from .tensor.utils import create_fetch_tensor
         self._ensure_local_cluster()
         shape, dtype, chunk_size, chunk_keys = \
                 self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
@@ -203,7 +203,7 @@ class Session(object):
 
     def get_mutable_tensor(self, name):
         from .tensor.core import MutableTensor, MutableTensorData
-        from .tensor.expressions.utils import create_fetch_tensor
+        from .tensor.utils import create_fetch_tensor
         self._ensure_local_cluster()
         shape, dtype, chunk_size, chunk_keys = self._sess.get_mutable_tensor(name)
         # Construct MutableTensor on the fly.
@@ -217,7 +217,7 @@ class Session(object):
         return self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
 
     def seal(self, tensor):
-        from .tensor.expressions.utils import create_fetch_tensor
+        from .tensor.utils import create_fetch_tensor
         self._ensure_local_cluster()
         chunk_records_to_send = tensor._do_flush()
         self._sess.send_chunk_records(tensor.name, chunk_records_to_send)

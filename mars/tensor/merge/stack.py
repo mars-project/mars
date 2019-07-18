@@ -21,7 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..utils import unify_chunks
-from ..core import TensorOperand, TensorOperandMixin
+from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 
 

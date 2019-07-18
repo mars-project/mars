@@ -16,3 +16,6 @@
 from .array import tensor, array, asarray, ArrayDataSource, CSRMatrixDataSource
 from .scalar import scalar, Scalar
 from .ones import ones, ones_like, TensorOnes, TensorOnesLike
+from .zeros import zeros, zeros_like, TensorZeros, TensorZerosLike
+from .from_dense import fromdense, DenseToSparse
+from .empty import empty, empty_like, TensorEmpty, TensorEmptyLike

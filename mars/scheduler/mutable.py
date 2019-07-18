@@ -46,7 +46,7 @@ class MutableTensorActor(SchedulerActor):
 
     @log_unhandled
     def post_create(self):
-        from ..tensor.expressions.utils import create_fetch_tensor
+        from ..tensor.utils import create_fetch_tensor
 
         super(MutableTensorActor, self).post_create()
         self.set_cluster_info_ref()

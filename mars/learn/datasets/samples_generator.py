@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ... import tensor as mt
-from ...tensor.expressions.utils import check_random_state
+from ...tensor.utils import check_random_state
 from ...tensor.expressions import linalg
 
 

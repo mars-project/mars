@@ -21,7 +21,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ...tensor.expressions.utils import dictify_chunk_size, normalize_chunk_sizes
+from ...tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ...utils import tokenize
 from ..core import IndexValue
 

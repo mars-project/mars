@@ -28,8 +28,8 @@ except ImportError:
     pd = None
 
 from mars import tensor as mt
-from mars.tensor.expressions.core import TensorOperand
-from mars.tensor.expressions.arithmetic.core import TensorElementWise
+from mars.tensor.operands import TensorOperand
+from mars.tensor.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
@@ -512,7 +512,7 @@ class Test(unittest.TestCase):
                     s1 = pd.Series(np.random.rand(10), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
                     series1 = from_pandas_series(s1)
                     pd.testing.assert_series_equal(series1.fetch(), s1)
-                    
+
                 web_session = Session.default_or_local()._sess
                 self.assertEqual(web_session.get_task_count(), 4)
 

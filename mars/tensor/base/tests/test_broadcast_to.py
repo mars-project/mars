@@ -14,7 +14,7 @@
 
 import unittest
 
-from mars.tensor.expressions.datasource import ones
+from mars.tensor.datasource import ones
 from mars.tensor.base import broadcast_to
 
 

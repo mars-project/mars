@@ -30,7 +30,7 @@ except ImportError:  # pragma: no cover
 
 from mars import utils
 from mars.compat import Enum
-from mars.tensor.expressions.fetch import TensorFetch
+from mars.tensor.fetch import TensorFetch
 import mars.tensor as mt
 
 try:
