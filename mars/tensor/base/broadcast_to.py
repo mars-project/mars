@@ -62,7 +62,6 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         xp = get_array_module(ctx[op.input.key])
-
         chunk = op.outputs[0]
         input_data = ctx[op.input.key]
         device_id = input_data.device.id if hasattr(input_data, 'device') else -1

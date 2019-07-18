@@ -18,6 +18,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
+from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, naked
+from ...lib.sparse import SparseNDArray
 from .core import TensorNoInput, TensorLike
 from .array import tensor
 from ..array_utils import create_array
@@ -93,6 +95,26 @@ class TensorOnesLike(TensorLike):
     def __init__(self, dtype=None, gpu=None, sparse=False, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
         super(TensorOnesLike, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+
+    @classmethod
+    def execute_sparse(cls, ctx, op):
+        chunk = op.outputs[0]
+        in_data = naked(ctx[op.input.key])
+        xps = get_sparse_module(in_data)
+        xp = get_array_module(in_data)
+        ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
+            (xp.ones_like(in_data.data, dtype=chunk.op.dtype),
+             in_data.indices, in_data.indptr), shape=in_data.shape
+        ))
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if op.sparse:
+            cls.execute_sparse(ctx, op)
+        else:
+            chunk = op.outputs[0]
+            ctx[chunk.key] = create_array(chunk.op)(
+                'ones_like', ctx[chunk.inputs[0].key], dtype=chunk.op.dtype)
 
 
 def ones_like(a, dtype=None, gpu=None):

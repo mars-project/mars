@@ -11,8 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-from .array import tensor, array, asarray, ArrayDataSource, CSRMatrixDataSource
-from .scalar import scalar, Scalar
-from .ones import ones, ones_like, TensorOnes, TensorOnesLike

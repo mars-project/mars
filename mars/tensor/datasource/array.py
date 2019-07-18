@@ -17,6 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
+from ...lib.sparse import SparseNDArray
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ...serialize import ValueType, NDArrayField, TupleField
 from ..core import TENSOR_TYPE, Tensor
@@ -114,6 +115,14 @@ class CSRMatrixDataSource(TensorNoInput):
     @property
     def shape(self):
         return self._shape
+
+    @classmethod
+    def execute(cls, ctx, op):
+        xps = cps if op.gpu else sps
+        chunk_shape = (1, op.shape[0]) if op.outputs[0].ndim == 1 else op.shape
+        ctx[op.outputs[0].key] = SparseNDArray(xps.csr_matrix(
+            (op.data, op.indices, op.indptr), shape=chunk_shape
+        ), shape=op.shape)
 
 
 def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
