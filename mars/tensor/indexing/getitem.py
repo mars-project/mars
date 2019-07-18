@@ -78,6 +78,42 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         tile_handler = TensorIndexTilesHandler(op)
         return tile_handler()
 
+    @classmethod
+    def execute(cls, ctx, op):
+        indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
+                        for index in op.indexes)
+        input_ = ctx[op.inputs[0].key]
+        ctx[op.outputs[0].key] = input_[indexes]
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        from mars.core import Base, Entity
+
+        shape = op.outputs[0].shape
+        new_indexes = [index for index in op._indexes if index is not None]
+
+        new_shape = []
+        first_fancy_index = False
+        for index in new_indexes:
+            if isinstance(index, (Base, Entity)):
+                if index.dtype != np.bool_:
+                    if not first_fancy_index:
+                        first_fancy_index = True
+                    else:
+                        continue
+                new_shape.append(ctx[index.key][0] // index.dtype.itemsize)
+
+        rough_shape = []
+        idx = 0
+        for s in shape:
+            if np.isnan(s):
+                rough_shape.append(new_shape[idx])
+                idx += 1
+            else:
+                rough_shape.append(s)
+        result = int(np.prod(rough_shape) * op.dtype.itemsize)
+        ctx[op.outputs[0].key] = (result, result)
+
 
 class IndexInfo(object):
     def __init__(self, raw_index_obj, index_obj, index_type, in_axis, out_axis):

@@ -99,7 +99,7 @@ class Test(unittest.TestCase):
     @staticmethod
     def _filter_graph_level_op_keys(graph_ref):
         from mars.tensor.expressions.random import TensorRandomSample
-        from mars.tensor.expressions.indexing.getitem import TensorIndex
+        from mars.tensor.indexing.getitem import TensorIndex
         from mars.tensor.arithmetic import TensorAdd
 
         graph = graph_ref.get_chunk_graph()
@@ -113,7 +113,7 @@ class Test(unittest.TestCase):
     @staticmethod
     def _filter_graph_level_chunk_keys(graph_ref):
         from mars.tensor.expressions.random import TensorRandomSample
-        from mars.tensor.expressions.indexing.getitem import TensorIndex
+        from mars.tensor.indexing.getitem import TensorIndex
         from mars.tensor.arithmetic import TensorAdd
 
         graph = graph_ref.get_chunk_graph()

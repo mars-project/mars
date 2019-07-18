@@ -531,7 +531,7 @@ def concat_tileable_chunks(tensor):
 
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
     from ..config import options
-    from .expressions.fetch import TensorFetch
+    from .fetch import TensorFetch
 
     # compute chunks
     chunk_size = chunk_size or options.tensor.chunk_size
@@ -609,7 +609,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts):
 
 def get_fetch_op_cls(op):
     from ..operands import ShuffleProxy
-    from .expressions.fetch import TensorFetchShuffle, TensorFetch
+    from .fetch import TensorFetchShuffle, TensorFetch
     if isinstance(op, ShuffleProxy):
         return TensorFetchShuffle
     else:
@@ -617,7 +617,7 @@ def get_fetch_op_cls(op):
 
 
 def get_fuse_op_cls():
-    from .expressions.fuse import TensorFuseChunk
+    from .fuse import TensorFuseChunk
 
     return TensorFuseChunk
 

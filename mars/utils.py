@@ -449,7 +449,7 @@ def get_expr_module(op):
         return _expr_modules[module_name]
     except KeyError:
         # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
-        expr_module_name = '.{0}.expressions'.format(module_name)
+        expr_module_name = '.{0}'.format(module_name)
         expr_module = _expr_modules[module_name] = importlib.import_module(expr_module_name, __package__)
         return expr_module
 

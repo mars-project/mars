@@ -54,6 +54,7 @@ from .arithmetic import add, subtract, multiply, divide, truediv as true_divide,
 # from .expressions import linalg
 # from .expressions import lib
 # from .expressions.lib.index_tricks import mgrid, ogrid, ndindex
+from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

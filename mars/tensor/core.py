@@ -161,18 +161,18 @@ class TensorData(TileableData):
         if self.issparse():
             return self
 
-        from .expressions.datasource import fromdense
+        from .datasource import fromdense
         return fromdense(self)
 
     def todense(self):
         if not self.issparse():
             return self
 
-        from .expressions.datasource import fromsparse
+        from .datasource import fromsparse
         return fromsparse(self)
 
     def transpose(self, *axes):
-        from .expressions.base import transpose
+        from .base import transpose
 
         if len(axes) == 1 and isinstance(axes[0], Iterable):
             axes = axes[0]

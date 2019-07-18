@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..tensor import arithmetic
-from ..tensor.fuse import TensorNeFuseChunk
+from .. import arithmetic
+from ..fuse import TensorNeFuseChunk
 
+# TODO: uncomment after refactor of reduction
 REDUCTION_OP = {}
 # REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
 #                 reduction.TensorMax, reduction.TensorMin}

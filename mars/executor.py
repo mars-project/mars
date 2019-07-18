@@ -435,7 +435,7 @@ class Executor(object):
 
     def _preprocess(self, graph, keys):
         # TODO(xuye.qin): make an universal optimzier
-        from .tensor.execution.optimizes.core import Optimizer
+        from .tensor.optimizes.core import Optimizer
 
         Optimizer(graph, self._engine).optimize(keys=keys)
         return graph

@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..tensor import arithmetic
-from ..tensor.fuse import TensorCpFuseChunk
+from ...utils import lazy_import
+from .. import arithmetic
+from ..fuse import TensorCpFuseChunk
 
+cp = lazy_import('cupy', globals=globals(), rename='cp')
+CP_INSTALLED = cp is not None
 
 CP_ELEMENTWISE_OP = {
     arithmetic.TensorSubtract,

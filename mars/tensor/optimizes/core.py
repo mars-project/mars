@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...utils import lazy_import
 from .ne import NeOptimizer
 from .cp import CpOptimizer
-from ...execution.core import NUMEXPR_INSTALLED
+
+ne = lazy_import('numexpr', globals=globals(), rename='ne')
+NUMEXPR_INSTALLED = ne is not None
 
 
 class Optimizer(object):
