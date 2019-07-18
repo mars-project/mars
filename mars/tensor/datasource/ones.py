@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...lib.sparse.core import get_sparse_module, get_array_module, cps, sps, naked
+from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ...lib.sparse import SparseNDArray
 from .core import TensorNoInput, TensorLike
 from .array import tensor
