@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorPositive(TensorUnaryOp):
     _op_type_ = OperandDef.POSITIVE
-    _handler_name = 'positive'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'positive'
 
 
 @infer_dtype(np.positive)

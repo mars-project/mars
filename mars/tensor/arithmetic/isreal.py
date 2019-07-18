@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorIsReal(TensorUnaryOp):
     _op_type_ = OperandDef.ISREAL
-    _handler_name = 'isreal'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'isreal'
 
 
 @inject_dtype(np.bool_)

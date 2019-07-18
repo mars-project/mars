@@ -77,7 +77,7 @@ class Test(unittest.TestCase):
         for func in _new_unary_ufunc:
             res_tensor = func(arr1)
             res = self.executor.execute_tensor(res_tensor, concat=True)
-            expected = self._get_func(res_tensor.op.handler_name)(data1)
+            expected = self._get_func(res_tensor.op._func_name)(data1)
             self.assertTrue(np.allclose(res[0], expected))
 
         _new_bin_ufunc = BIN_UFUNC - _sp_bin_ufunc
@@ -90,9 +90,9 @@ class Test(unittest.TestCase):
             res2 = self.executor.execute_tensor(res_tensor2, concat=True)
             res3 = self.executor.execute_tensor(res_tensor3, concat=True)
 
-            expected1 = self._get_func(res_tensor1.op.handler_name)(data1, data2)
-            expected2 = self._get_func(res_tensor1.op.handler_name)(data1, rand)
-            expected3 = self._get_func(res_tensor1.op.handler_name)(rand, data1)
+            expected1 = self._get_func(res_tensor1.op._func_name)(data1, data2)
+            expected2 = self._get_func(res_tensor1.op._func_name)(data1, rand)
+            expected3 = self._get_func(res_tensor1.op._func_name)(rand, data1)
 
             self.assertTrue(np.allclose(res1[0], expected1))
             self.assertTrue(np.allclose(res2[0], expected2))
@@ -107,7 +107,7 @@ class Test(unittest.TestCase):
         for func in _sp_unary_ufunc:
             res_tensor = func(arr1)
             res = self.executor.execute_tensor(res_tensor, concat=True)
-            expected = self._get_func(res_tensor.op.handler_name)(data1)
+            expected = self._get_func(res_tensor.op._func_name)(data1)
             self.assertTrue(np.allclose(res[0], expected))
 
         for func in _sp_bin_ufunc:
@@ -119,9 +119,9 @@ class Test(unittest.TestCase):
             res2 = self.executor.execute_tensor(res_tensor2, concat=True)
             res3 = self.executor.execute_tensor(res_tensor3, concat=True)
 
-            expected1 = self._get_func(res_tensor1.op.handler_name)(data1, data2)
-            expected2 = self._get_func(res_tensor1.op.handler_name)(data1, rand)
-            expected3 = self._get_func(res_tensor1.op.handler_name)(rand, data1)
+            expected1 = self._get_func(res_tensor1.op._func_name)(data1, data2)
+            expected2 = self._get_func(res_tensor1.op._func_name)(data1, rand)
+            expected3 = self._get_func(res_tensor1.op._func_name)(rand, data1)
 
             self.assertTrue(np.allclose(res1[0], expected1))
             self.assertTrue(np.allclose(res2[0], expected2))
@@ -169,7 +169,7 @@ class Test(unittest.TestCase):
         for func in _new_unary_ufunc:
             res_tensor = func(arr1)
             res = self.executor.execute_tensor(res_tensor, concat=True)
-            expected = self._get_sparse_func(res_tensor.op.handler_name)(data1)
+            expected = self._get_sparse_func(res_tensor.op._func_name)(data1)
             self._nan_equal(self.toarray(res[0]), expected)
 
         _new_bin_ufunc = BIN_UFUNC - _sp_bin_ufunc
@@ -182,9 +182,9 @@ class Test(unittest.TestCase):
             res2 = self.executor.execute_tensor(res_tensor2, concat=True)
             res3 = self.executor.execute_tensor(res_tensor3, concat=True)
 
-            expected1 = self._get_sparse_func(res_tensor1.op.handler_name)(data1, data2)
-            expected2 = self._get_sparse_func(res_tensor1.op.handler_name)(data1, rand)
-            expected3 = self._get_sparse_func(res_tensor1.op.handler_name)(rand, data1)
+            expected1 = self._get_sparse_func(res_tensor1.op._func_name)(data1, data2)
+            expected2 = self._get_sparse_func(res_tensor1.op._func_name)(data1, rand)
+            expected3 = self._get_sparse_func(res_tensor1.op._func_name)(rand, data1)
 
             self._nan_equal(self.toarray(res1[0]), expected1)
             self._nan_equal(self.toarray(res2[0]), expected2)
@@ -199,7 +199,7 @@ class Test(unittest.TestCase):
         for func in _sp_unary_ufunc:
             res_tensor = func(arr1)
             res = self.executor.execute_tensor(res_tensor, concat=True)
-            expected = self._get_sparse_func(res_tensor.op.handler_name)(data1)
+            expected = self._get_sparse_func(res_tensor.op._func_name)(data1)
             self._nan_equal(self.toarray(res[0]), expected)
 
         for func in _sp_bin_ufunc:
@@ -211,9 +211,9 @@ class Test(unittest.TestCase):
             res2 = self.executor.execute_tensor(res_tensor2, concat=True)
             res3 = self.executor.execute_tensor(res_tensor3, concat=True)
 
-            expected1 = self._get_sparse_func(res_tensor1.op.handler_name)(data1, data2)
-            expected2 = self._get_sparse_func(res_tensor1.op.handler_name)(data1, rand)
-            expected3 = self._get_sparse_func(res_tensor1.op.handler_name)(rand, data1)
+            expected1 = self._get_sparse_func(res_tensor1.op._func_name)(data1, data2)
+            expected2 = self._get_sparse_func(res_tensor1.op._func_name)(data1, rand)
+            expected3 = self._get_sparse_func(res_tensor1.op._func_name)(rand, data1)
 
             self._nan_equal(self.toarray(res1[0]), expected1)
             self._nan_equal(self.toarray(res2[0]), expected2)

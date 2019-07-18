@@ -22,7 +22,7 @@ import mars.tensor as mt
 from mars.tensor.expressions.fuse.core import TensorFuseChunk
 from mars.tensor.expressions.datasource import CSRMatrixDataSource, SparseToDense
 from mars.tensor.expressions.random import TensorRand
-from mars.tensor.expressions.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv,\
+from mars.tensor.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv,\
     TensorDivide, TensorSubtract
 from mars.tensor.expressions.merge import TensorConcatenate
 from mars.tensor.expressions.reduction import TensorSum

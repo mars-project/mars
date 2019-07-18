@@ -26,11 +26,7 @@ from .utils import arithmetic_operand
 class TensorArccos(TensorUnaryOp):
     _op_type_ = OperandDef.ARCCOS
 
-    _handler_name = 'arccos'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'arccos'
 
 
 @infer_dtype(np.arccos)

@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='always_false')
 class TensorLogAddExp(TensorBinOp):
     _op_type_ = OperandDef.LOGADDEXP
-    _handler_name = 'logaddexp'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'logaddexp'
 
 
 @infer_dtype(np.logaddexp)

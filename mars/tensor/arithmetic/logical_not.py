@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorNot(TensorUnaryOp):
     _op_type_ = OperandDef.NOT
-    _handler_name = 'logical_not'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'logical_not'
 
 
 @infer_dtype(np.logical_not)

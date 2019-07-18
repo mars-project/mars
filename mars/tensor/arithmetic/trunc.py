@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorTrunc(TensorUnaryOp):
     _op_type_ = OperandDef.TRUNC
-    _handler_name = 'trunc'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'trunc'
 
 
 @infer_dtype(np.trunc)

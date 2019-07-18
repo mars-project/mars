@@ -22,17 +22,13 @@ from ..array_utils import device, as_same_device
 from ..utils import infer_dtype
 from ..operands import TensorOperand
 from .core import TensorBinOp, TensorElementWise
-from .utils import arithmetic_operand
+from .utils import arithmetic_operand, tree_op_estimate_size
 
 
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorAdd(TensorBinOp):
     _op_type_ = OperandDef.ADD
-    _handler_name = 'add'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'add'
 
 
 @infer_dtype(np.add)
@@ -103,3 +99,6 @@ class TensorTreeAdd(TensorOperand, TensorElementWise):
         with device(device_id):
             ctx[op.outputs[0].key] = reduce(xp.add, inputs)
 
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        tree_op_estimate_size(ctx, op)

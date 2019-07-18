@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorDeg2rad(TensorUnaryOp):
     _op_type_ = OperandDef.DEG2RAD
-    _handler_name = 'deg2rad'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'deg2rad'
 
 
 @infer_dtype(np.deg2rad)

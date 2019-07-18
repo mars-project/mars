@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorBitand(TensorBinOp):
     _op_type_ = OperandDef.BITAND
-    _handler_name = 'bitwise_and'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'bitwise_and'
 
 
 @infer_dtype(np.bitwise_and)

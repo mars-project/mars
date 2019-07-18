@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorIsComplex(TensorUnaryOp):
     _op_type_ = OperandDef.ISCOMPLEX
-    _handler_name = 'iscomplex'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'iscomplex'
 
 
 @inject_dtype(np.bool_)

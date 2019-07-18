@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorRshift(TensorBinOp):
     _op_type_ = OperandDef.RSHIFT
-    _handler_name = 'right_shift'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'right_shift'
 
 
 @infer_dtype(np.right_shift)

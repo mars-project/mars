@@ -25,16 +25,12 @@ from .core import TensorBinOp
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorLessThan(TensorBinOp):
     _op_type_ = OperandDef.LT
-    _handler_name = 'less'
+    _func_name = 'less'
 
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorLessThan, self).__init__(_casting=casting, _err=err,
                                              _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def handler_name(self):
-        return self._handler_name
 
 
 @inject_dtype(np.bool_)

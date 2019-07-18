@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorDegrees(TensorUnaryOp):
     _op_type_ = OperandDef.DEGREES
-    _handler_name = 'degrees'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'degrees'
 
 
 @infer_dtype(np.degrees)

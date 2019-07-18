@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorDivide(TensorBinOp):
     _op_type_ = OperandDef.DIV
-    _handler_name = 'divide'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'divide'
 
     @classmethod
     def _is_sparse(cls, x1, x2):

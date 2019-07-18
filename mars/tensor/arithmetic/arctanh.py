@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorArctanh(TensorUnaryOp):
     _op_type_ = OperandDef.ARCTANH
-    _handler_name = 'arctanh'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'arctanh'
 
 
 @infer_dtype(np.arctanh)

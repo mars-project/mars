@@ -26,11 +26,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorNanToNum(TensorUnaryOp):
     _op_type_ = OperandDef.NAN_TO_NUM
-    _handler_name = 'nan_to_num'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'nan_to_num'
 
 
 @infer_dtype(np.nan_to_num)

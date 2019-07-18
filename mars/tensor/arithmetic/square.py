@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorSquare(TensorUnaryOp):
     _op_type_ = OperandDef.SQUARE
-    _handler_name = 'square'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'square'
 
 
 @infer_dtype(np.square)

@@ -26,11 +26,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorLdexp(TensorBinOp):
     _op_type_ = OperandDef.LDEXP
-    _handler_name = 'ldexp'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'ldexp'
 
     @classmethod
     def _is_sparse(cls, x1, x2):

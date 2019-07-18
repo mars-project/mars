@@ -24,8 +24,7 @@ from .expressions.base import result_type, copyto, transpose, where, broadcast_t
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
     average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin
-from . import arithmetic
-from .expressions.arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
+from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
     absolute, fabs, absolute as abs, rint, sign, degrees, radians, conj, conjugate, exp, exp2, \

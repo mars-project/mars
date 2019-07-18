@@ -154,13 +154,14 @@ class Test(unittest.TestCase):
             pass
 
     def testGraphTermination(self, *_):
-        from mars.tensor.expressions.arithmetic.add import TensorAddConstant
+        from mars.tensor.arithmetic.add import TensorAdd
+
         arr = mt.random.random((8, 2), chunk_size=2)
         arr2 = arr + 1
         with self.prepare_graph_in_pool(arr2) as (pool, graph_ref):
             out_graph = graph_ref.get_chunk_graph()
             for c in out_graph:
-                if not isinstance(c.op, TensorAddConstant):
+                if not isinstance(c.op, TensorAdd):
                     continue
                 self.assertNotEqual(graph_ref.get_state(), GraphState.SUCCEEDED)
                 graph_ref.add_finished_terminal(c.op.key)
@@ -172,7 +173,7 @@ class Test(unittest.TestCase):
         with self.prepare_graph_in_pool(arr2) as (pool, graph_ref):
             out_graph = graph_ref.get_chunk_graph()
             for c in out_graph:
-                if not isinstance(c.op, TensorAddConstant):
+                if not isinstance(c.op, TensorAdd):
                     continue
                 self.assertNotEqual(graph_ref.get_state(), GraphState.FAILED)
                 graph_ref.add_finished_terminal(c.op.key, GraphState.FAILED)

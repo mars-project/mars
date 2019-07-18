@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorSignbit(TensorUnaryOp):
     _op_type_ = OperandDef.SIGNBIT
-    _handler_name = 'signbit'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'signbit'
 
 
 @inject_dtype(np.bool_)

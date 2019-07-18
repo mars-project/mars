@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorConj(TensorUnaryOp):
     _op_type_ = OperandDef.CONJ
-    _handler_name = 'conj'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'conj'
 
 
 @infer_dtype(np.conj)

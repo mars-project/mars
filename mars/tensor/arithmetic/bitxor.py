@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorBitxor(TensorBinOp):
     _op_type_ = OperandDef.BITXOR
-    _handler_name = 'bitwise_xor'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'bitwise_xor'
 
 
 @infer_dtype(np.bitwise_xor)

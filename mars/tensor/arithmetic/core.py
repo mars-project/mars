@@ -25,6 +25,7 @@ from ..core import Tensor
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs
 from ..operands import TensorOperandMixin, TensorOperand
+from ..array_utils import device, as_same_device
 
 
 class TensorElementWise(TensorOperandMixin):
@@ -74,6 +75,36 @@ class TensorElementWiseWithInputs(TensorElementWise):
                 inputs, kws=kws, **kw)
 
 
+def _handle_out_dtype(val, dtype):
+    if val.dtype != dtype:
+        return val.astype(dtype)
+    return val
+
+
+def _build_binary_execution(func_name):
+    def _handle(ctx, op):
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        func = getattr(xp, func_name)
+
+        with device(device_id):
+            kw = {'casting': op.casting} if op.out else {}
+
+            inputs_iter = iter(inputs)
+            lhs = op.lhs if np.isscalar(op.lhs) else next(inputs_iter)
+            rhs = op.rhs if np.isscalar(op.rhs) else next(inputs_iter)
+            if op.out:
+                kw['out'] = next(inputs_iter).copy()
+            if op.where:
+                kw['where'] = next(inputs_iter)
+
+            with np.errstate(**op.err):
+                ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
+
+    return _handle
+
+
 class TensorBinOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
@@ -84,9 +115,7 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
 
     @classmethod
     def execute(cls, ctx, op):
-        from .utils import build_binary_execution
-
-        build_binary_execution(op.handler_name)(ctx, op)
+        _build_binary_execution(getattr(cls, '_func_name'))(ctx, op)
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
@@ -195,6 +224,29 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         return self._call(x2, x1, out=out, where=where)
 
 
+def _build_unary_execution(func_name):
+    def _handle(ctx, op):
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        func = getattr(xp, func_name)
+
+        with device(device_id):
+            kw = {'casting': op.casting} if op.out else {}
+
+            if op.out and op.where:
+                inputs, kw['out'], kw['where'] = inputs[:-2], inputs[-2].copy(), inputs[-1]
+            elif op.out:
+                inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
+            elif op.where:
+                inputs, kw['where'] = inputs[:-1], inputs[-1]
+
+            with np.errstate(**op.err):
+                ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
+
+    return _handle
+
+
 class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     __slots__ = ()
 
@@ -205,9 +257,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
     @classmethod
     def execute(cls, ctx, op):
-        from .utils import build_unary_execution
-
-        build_unary_execution(op.handler_name)(ctx, op)
+        _build_unary_execution(getattr(cls, '_func_name'))(ctx, op)
 
 
 class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):

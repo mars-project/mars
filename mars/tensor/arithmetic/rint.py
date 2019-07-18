@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorRint(TensorUnaryOp):
     _op_type_ = OperandDef.RINT
-    _handler_name = 'rint'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'rint'
 
 
 @infer_dtype(np.rint)

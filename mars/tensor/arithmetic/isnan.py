@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorIsNan(TensorUnaryOp):
     _op_type_ = OperandDef.ISNAN
-    _handler_name = 'isnan'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'isnan'
 
 
 @inject_dtype(np.bool_)

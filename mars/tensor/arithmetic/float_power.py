@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorFloatPower(TensorBinOp):
     _op_type_ = OperandDef.FLOAT_POWER
-    _handler_name = 'float_power'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'float_power'
 
     @classmethod
     def _is_sparse(cls, x1, x2):

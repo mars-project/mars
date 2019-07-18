@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='always_false')
 class TensorSpacing(TensorUnaryOp):
     _op_type_ = OperandDef.SPACING
-    _handler_name = 'spacing'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'spacing'
 
 
 @infer_dtype(np.spacing)

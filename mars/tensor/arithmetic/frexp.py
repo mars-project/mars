@@ -23,15 +23,11 @@ from .core import TensorOutBinOp
 
 class TensorFrexp(TensorOutBinOp):
     _op_type_ = OperandDef.FREXP
-    _handler_name = 'frexp'
+    _func_name = 'frexp'
 
     def __init__(self, casting='same_kind', dtype=None, sparse=False, **kw):
         super(TensorFrexp, self).__init__(_casting=casting,
                                           _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def handler_name(self):
-        return self._handler_name
 
     @property
     def _fun(self):

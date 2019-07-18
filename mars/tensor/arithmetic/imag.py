@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorImag(TensorUnaryOp):
     _op_type_ = OperandDef.IMAG
-    _handler_name = 'imag'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'imag'
 
 
 @infer_dtype(np.imag)

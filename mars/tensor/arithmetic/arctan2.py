@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorArctan2(TensorBinOp):
     _op_type_ = OperandDef.ARCTAN2
-    _handler_name = 'arctan2'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'arctan2'
 
     @classmethod
     def _is_sparse(cls, x1, x2):

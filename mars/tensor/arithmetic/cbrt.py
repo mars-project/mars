@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorCbrt(TensorUnaryOp):
     _op_type_ = OperandDef.CBRT
-    _handler_name = 'cbrt'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'cbrt'
 
 
 @infer_dtype(np.cbrt)

@@ -27,13 +27,9 @@ from .utils import arithmetic_operand
 @arithmetic_operand(init=False, sparse_mode='unary')
 class TensorAngle(TensorUnaryOp):
     _op_type_ = OperandDef.ANGLE
-    _handler_name = 'angle'
+    _func_name = 'angle'
 
     _deg = BoolField('deg')
-
-    @property
-    def handler_name(self):
-        return self._handler_name
 
     @property
     def deg(self):

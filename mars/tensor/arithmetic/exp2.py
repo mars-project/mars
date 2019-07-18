@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorExp2(TensorUnaryOp):
     _op_type_ = OperandDef.EXP2
-    _handler_name = 'exp2'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'exp2'
 
 
 @infer_dtype(np.exp2)

@@ -22,11 +22,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorFabs(TensorUnaryOp):
     _op_type_ = OperandDef.FABS
-    _handler_name = 'fabs'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'fabs'
 
 
 def fabs(x, out=None, where=None, **kwargs):

@@ -18,60 +18,6 @@
 import numpy as np
 
 from ...config import options
-from ..array_utils import as_same_device, device
-
-
-def _handle_out_dtype(val, dtype):
-    if val.dtype != dtype:
-        return val.astype(dtype)
-    return val
-
-
-def build_binary_execution(handler_name):
-    def _handle(ctx, op):
-        inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-        func = getattr(xp, handler_name)
-
-        with device(device_id):
-            kw = {'casting': op.casting} if op.out else {}
-
-            inputs_iter = iter(inputs)
-            lhs = op.lhs if np.isscalar(op.lhs) else next(inputs_iter)
-            rhs = op.rhs if np.isscalar(op.rhs) else next(inputs_iter)
-            if op.out:
-                kw['out'] = next(inputs_iter).copy()
-            if op.where:
-                kw['where'] = next(inputs_iter)
-
-            with np.errstate(**op.err):
-                ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
-
-    return _handle
-
-
-def build_unary_execution(handler_name):
-    def _handle(ctx, op):
-        inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-        func = getattr(xp, handler_name)
-
-        with device(device_id):
-            kw = {'casting': op.casting} if op.out else {}
-
-            if op.out and op.where:
-                inputs, kw['out'], kw['where'] = inputs[:-2], inputs[-2].copy(), inputs[-1]
-            elif op.out:
-                inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
-            elif op.where:
-                inputs, kw['where'] = inputs[:-1], inputs[-1]
-
-            with np.errstate(**op.err):
-                ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
-
-    return _handle
 
 
 def arithmetic_operand(cls=None, init=True, sparse_mode=None):
@@ -164,3 +110,17 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
 
     op = TensorTreeAdd(dtype=dtype, sparse=sparse)
     return op.new_chunk(chunks, shape=shape, index=idx)
+
+
+def tree_op_estimate_size(ctx, chunk):
+    sum_inputs = sum(ctx[inp.key][0] for inp in chunk.inputs)
+    if not chunk.is_sparse():
+        calc_size = chunk_size = chunk.nbytes
+        if np.isnan(calc_size):
+            chunk_size = calc_size = sum_inputs
+    else:
+        calc_size = sum_inputs
+        chunk_size = min(sum_inputs, chunk.nbytes + np.dtype(np.int64).itemsize * np.prod(chunk.shape) * chunk.ndim)
+        if np.isnan(chunk_size):
+            chunk_size = sum_inputs
+    ctx[chunk.key] = (chunk_size, calc_size)

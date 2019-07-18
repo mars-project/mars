@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorSubtract(TensorBinOp):
     _op_type_ = OperandDef.SUB
-    _handler_name = 'subtract'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'subtract'
 
 
 @infer_dtype(np.subtract)

@@ -27,11 +27,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorEqual(TensorBinOp):
     _op_type_ = OperandDef.EQ
-    _handler_name = 'equal'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'equal'
 
 
 @inject_dtype(np.bool_)

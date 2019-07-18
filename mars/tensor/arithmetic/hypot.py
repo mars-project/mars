@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorHypot(TensorBinOp):
     _op_type_ = OperandDef.HYPOT
-    _handler_name = 'hypot'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'hypot'
 
 
 @infer_dtype(np.hypot)

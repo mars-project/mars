@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorSinc(TensorUnaryOp):
     _op_type_ = OperandDef.SINC
-    _handler_name = 'sinc'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'sinc'
 
 
 @infer_dtype(np.sinc)

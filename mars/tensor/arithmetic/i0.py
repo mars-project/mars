@@ -26,11 +26,7 @@ from ..array_utils import get_array_module, is_sparse_module
 @arithmetic_operand(sparse_mode='unary')
 class TensorI0(TensorUnaryOp):
     _op_type_ = OperandDef.I0
-    _handler_name = 'i0'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'i0'
 
     @classmethod
     def execute(cls, ctx, op):

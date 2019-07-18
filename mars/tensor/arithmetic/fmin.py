@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorFMin(TensorBinOp):
     _op_type_ = OperandDef.FMIN
-    _handler_name = 'fmin'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'fmin'
 
     @classmethod
     def _is_sparse(cls, x1, x2):

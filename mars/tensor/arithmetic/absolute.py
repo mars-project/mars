@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorAbsolute(TensorUnaryOp):
     _op_type_ = OperandDef.ABSOLUTE
-    _handler_name = 'absolute'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'absolute'
 
 
 @infer_dtype(np.absolute)

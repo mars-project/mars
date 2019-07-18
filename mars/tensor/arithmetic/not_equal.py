@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorNotEqual(TensorBinOp):
     _op_type_ = OperandDef.NE
-    _handler_name = 'not_equal'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'not_equal'
 
 
 @inject_dtype(np.bool_)

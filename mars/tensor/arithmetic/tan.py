@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorTan(TensorUnaryOp):
     _op_type_ = OperandDef.TAN
-    _handler_name = 'tan'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'tan'
 
 
 @infer_dtype(np.tan)

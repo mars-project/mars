@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorMod(TensorBinOp):
     _op_type_ = OperandDef.MOD
-    _handler_name = 'mod'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'mod'
 
 
 @infer_dtype(np.mod)

@@ -22,17 +22,13 @@ from ..array_utils import device, as_same_device
 from ..utils import infer_dtype
 from .core import TensorOperand
 from .core import TensorBinOp, TensorElementWise
-from .utils import arithmetic_operand
+from .utils import arithmetic_operand, tree_op_estimate_size
 
 
 @arithmetic_operand(sparse_mode='binary_or')
 class TensorMultiply(TensorBinOp):
     _op_type_ = OperandDef.MUL
-    _handler_name = 'multiply'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'multiply'
 
 
 @infer_dtype(np.multiply)
@@ -99,3 +95,7 @@ class TensorTreeMultiply(TensorOperand, TensorElementWise):
 
         with device(device_id):
             ctx[op.outputs[0].key] = reduce(xp.multiply, inputs)
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        tree_op_estimate_size(ctx, op)

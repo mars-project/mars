@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorIsFinite(TensorUnaryOp):
     _op_type_ = OperandDef.ISFINITE
-    _handler_name = 'isfinite'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'isfinite'
 
 
 @inject_dtype(np.bool_)

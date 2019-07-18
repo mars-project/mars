@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorFix(TensorUnaryOp):
     _op_type_ = OperandDef.FIX
-    _handler_name = 'fix'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'fix'
 
 
 @infer_dtype(np.fix)

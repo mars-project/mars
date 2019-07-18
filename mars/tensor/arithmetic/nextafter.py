@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorNextafter(TensorBinOp):
     _op_type_ = OperandDef.NEXTAFTER
-    _handler_name = 'nextafter'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'nextafter'
 
 
 @infer_dtype(np.nextafter)

@@ -29,11 +29,7 @@ class TensorAround(TensorUnaryOp):
     _op_type_ = OperandDef.AROUND
 
     _decimals = Int32Field('decimals')
-    _handler_name = 'around'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'around'
 
     @property
     def decimals(self):

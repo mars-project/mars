@@ -25,16 +25,12 @@ from .core import TensorBinOp
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorGreaterThan(TensorBinOp):
     _op_type_ = OperandDef.GT
-    _handler_name = 'greater'
+    _func_name = 'greater'
 
     def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super(TensorGreaterThan, self).__init__(_casting=casting, _err=err,
                                                 _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def handler_name(self):
-        return self._handler_name
 
 
 @inject_dtype(np.bool_)

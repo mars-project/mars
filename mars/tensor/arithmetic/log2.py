@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorLog2(TensorUnaryOp):
     _op_type_ = OperandDef.LOG2
-    _handler_name = 'log2'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'log2'
 
 
 @infer_dtype(np.log2)

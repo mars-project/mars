@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorNegative(TensorUnaryOp):
     _op_type_ = OperandDef.NEGATIVE
-    _handler_name = 'negative'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'negative'
 
 
 @infer_dtype(np.negative)

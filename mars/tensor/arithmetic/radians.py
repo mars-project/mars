@@ -25,11 +25,7 @@ from .utils import arithmetic_operand
 @arithmetic_operand(sparse_mode='unary')
 class TensorRadians(TensorUnaryOp):
     _op_type_ = OperandDef.RADIANS
-    _handler_name = 'radians'
-
-    @property
-    def handler_name(self):
-        return self._handler_name
+    _func_name = 'radians'
 
 
 @infer_dtype(np.radians)
