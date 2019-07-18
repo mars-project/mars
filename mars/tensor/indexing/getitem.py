@@ -29,7 +29,6 @@ from ..operands import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
 from .core import process_index, calc_shape
 
-
 FANCY_INDEX_TYPES = TENSOR_TYPE + (np.ndarray,)
 
 
@@ -324,7 +323,7 @@ class TensorIndexTilesHandler(object):
                     chunk_index_obj = index_info.index_obj.cix[chunk_index_obj_idx]
                     chunk_index_objs.append(chunk_index_obj)
                     cs = self._in_tensor.chunk_shape
-                    out_chunk_idx = sum(idx * reduce(operator.mul, cs[i+1:], 1) for i, idx
+                    out_chunk_idx = sum(idx * reduce(operator.mul, cs[i + 1:], 1) for i, idx
                                         in zip(itertools.count(0), chunk_index_obj_idx))
                     chunk_index.append(out_chunk_idx)
                 elif index_info.index_type == IndexType.fancy_index:
@@ -405,16 +404,16 @@ class TensorIndexTilesHandler(object):
             out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.issparse(),
                                        indexes=out_index_obj)
             pos_select_shape = concat_chunk.shape[:concat_axis] + fancy_indexes[0].shape + \
-                concat_chunk.shape[concat_axis + 1:]
+                               concat_chunk.shape[concat_axis + 1:]
             pos_select_idx = out_idx[:concat_axis] + (0,) * fancy_indexes[0].ndim + \
-                out_idx[concat_axis + 1:]
+                             out_idx[concat_axis + 1:]
             pos_select_chunk = out_chunk_op.new_chunk([concat_chunk], shape=pos_select_shape,
                                                       index=pos_select_idx)
             out_chunks.append(pos_select_chunk)
 
         self._out_chunks = out_chunks
         self._nsplits = self._nsplits[:concat_axis] + [(s,) for s in fancy_indexes[0].shape] + \
-            self._nsplits[concat_axis + 1:]
+                        self._nsplits[concat_axis + 1:]
 
     def _postprocess_tensor_fancy_index(self, fancy_index_infos):
         concat_axis = fancy_index_infos[0].out_axis
@@ -451,7 +450,7 @@ class TensorIndexTilesHandler(object):
                                                              sparse=to_shuffle_chunks[0].issparse(),
                                                              _shuffle_key=str(next(acc)))
                 reduce_chunk_shape = no_shuffle_chunk_shape[:concat_axis] + \
-                    fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
+                                     fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
                 reduce_chunk_idx = idx[:concat_axis] + fancy_index_chunk.index + idx[concat_axis:]
                 concat_reduce_chunk = concat_reduce_op.new_chunk([proxy_chunk], shape=reduce_chunk_shape,
                                                                  index=reduce_chunk_idx)
@@ -459,7 +458,7 @@ class TensorIndexTilesHandler(object):
 
         self._out_chunks = out_chunks
         self._nsplits = self._nsplits[:concat_axis] + list(fancy_indexes[0].nsplits) + \
-            self._nsplits[concat_axis + 1:]
+                        self._nsplits[concat_axis + 1:]
 
     def _postprocess_fancy_index(self):
         if not self._fancy_index_info:

@@ -17,9 +17,9 @@
 import unittest
 
 import numpy as np
-from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d
-from mars.tensor.base import transpose, squeeze, moveaxis
 from mars.tensor.datasource import ones, tensor
+from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d, argwhere
+from mars.tensor.expressions.base import transpose, squeeze, moveaxis
 
 
 class Test(unittest.TestCase):
@@ -61,3 +61,14 @@ class Test(unittest.TestCase):
 
         y = x.reshape(3)
         self.assertTrue(y.op.create_view)
+
+    def testArgwhere(self):
+        cond = tensor([[True, False], [False, True]], chunk_size=1)
+        indices = argwhere(cond)
+
+        self.assertTrue(np.isnan(indices.shape[0]))
+        self.assertEqual(indices.shape[1], 2)
+
+        indices.tiles()
+
+        self.assertEqual(indices.nsplits[1], (1, 1))

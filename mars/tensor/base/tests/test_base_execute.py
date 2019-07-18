@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 from mars.executor import Executor
-from mars.tensor.datasource import tensor, ones
-from mars.tensor.base import broadcast_to, atleast_1d, atleast_2d, atleast_3d
+from mars.tensor.datasource import tensor, ones, arange
+from mars.tensor.base import broadcast_to, atleast_1d, atleast_2d, atleast_3d, argwhere
 
 
 class Test(unittest.TestCase):
@@ -74,3 +74,12 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[0], np.atleast_3d(x)))
         self.assertTrue(np.array_equal(res[1], np.atleast_3d(np.ones(3))))
         self.assertTrue(np.array_equal(res[2], np.atleast_3d(np.ones((3, 4)))))
+
+    def testArgwhereExecution(self):
+        x = arange(6, chunk_size=2).reshape(2, 3)
+        t = argwhere(x > 1)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.argwhere(np.arange(6).reshape(2, 3) > 1)
+
+        self.assertTrue(np.array_equal(res, expected))

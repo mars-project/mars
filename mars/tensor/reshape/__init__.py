@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,11 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from .array import tensor, array, asarray, ArrayDataSource, CSRMatrixDataSource
-from .scalar import scalar, Scalar
-from .arange import arange
-from .ones import ones, ones_like, TensorOnes, TensorOnesLike
-from .zeros import zeros, zeros_like, TensorZeros, TensorZerosLike
-from .from_dense import fromdense, DenseToSparse
-from .empty import empty, empty_like, TensorEmpty, TensorEmptyLike
+from .reshape import reshape

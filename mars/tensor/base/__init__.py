@@ -28,9 +28,9 @@ from .broadcast_to import broadcast_to, TensorBroadcastTo
 from .atleast_1d import atleast_1d
 from .atleast_2d import atleast_2d
 from .atleast_3d import atleast_3d
+from .argwhere import argwhere, TensorArgwhere
 
 
-# from .argwhere import argwhere, TensorArgwhere
 # from .array_split import array_split
 # from .split import split, TensorSplit
 # from .hsplit import hsplit

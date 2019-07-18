@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # from .take import take
 # from .compress import compress
 # from .extract import extract
 # from .choose import choose, TensorChoose
-# from .unravel_index import unravel_index, TensorUnravelIndex
+from .unravel_index import unravel_index, TensorUnravelIndex
 # from .nonzero import nonzero, TensorNonzero
 # from .flatnonzero import flatnonzero
 from .slice import TensorSlice
