@@ -81,8 +81,17 @@ def _handle_out_dtype(val, dtype):
     return val
 
 
-def _build_binary_execution(func_name):
-    def _handle(ctx, op):
+class TensorBinOpMixin(TensorElementWiseWithInputs):
+    __slots__ = ()
+
+    def check_inputs(self, inputs):
+        if len(inputs) > 4:
+            raise ValueError(
+                "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
+
+    @classmethod
+    def execute(cls, ctx, op):
+        func_name = getattr(cls, '_func_name')
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -101,21 +110,6 @@ def _build_binary_execution(func_name):
 
             with np.errstate(**op.err):
                 ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
-
-    return _handle
-
-
-class TensorBinOpMixin(TensorElementWiseWithInputs):
-    __slots__ = ()
-
-    def check_inputs(self, inputs):
-        if len(inputs) > 4:
-            raise ValueError(
-                "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
-
-    @classmethod
-    def execute(cls, ctx, op):
-        _build_binary_execution(getattr(cls, '_func_name'))(ctx, op)
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
@@ -224,8 +218,17 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         return self._call(x2, x1, out=out, where=where)
 
 
-def _build_unary_execution(func_name):
-    def _handle(ctx, op):
+class TensorUnaryOpMixin(TensorElementWiseWithInputs):
+    __slots__ = ()
+
+    def check_inputs(self, inputs):
+        if len(inputs) > 3:
+            raise ValueError(
+                "Binary operand's inputs should less than or equal 3, got {0}".format(len(inputs)))
+
+    @classmethod
+    def execute(cls, ctx, op):
+        func_name = getattr(cls, '_func_name')
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -243,21 +246,6 @@ def _build_unary_execution(func_name):
 
             with np.errstate(**op.err):
                 ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
-
-    return _handle
-
-
-class TensorUnaryOpMixin(TensorElementWiseWithInputs):
-    __slots__ = ()
-
-    def check_inputs(self, inputs):
-        if len(inputs) > 3:
-            raise ValueError(
-                "Binary operand's inputs should less than or equal 3, got {0}".format(len(inputs)))
-
-    @classmethod
-    def execute(cls, ctx, op):
-        _build_unary_execution(getattr(cls, '_func_name'))(ctx, op)
 
 
 class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
