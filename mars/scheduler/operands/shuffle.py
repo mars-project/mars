@@ -87,10 +87,7 @@ class ShuffleProxyActor(BaseOperandActor):
             if succ_key in self._finish_succs:
                 continue
 
-            try:
-                shuffle_key = self._op_to_shuffle_keys[succ_key]
-            except KeyError:
-                raise
+            shuffle_key = self._op_to_shuffle_keys[succ_key]
             input_data_metas = dict(((self._mapper_op_to_chunk[k], shuffle_key), meta)
                                     for k, meta in self._reducer_to_mapper[succ_key].items())
 
@@ -104,11 +101,11 @@ class ShuffleProxyActor(BaseOperandActor):
 
     def add_finished_successor(self, op_key, worker):
         super(ShuffleProxyActor, self).add_finished_successor(op_key, worker)
+        shuffle_key = self._op_to_shuffle_keys[op_key]
 
         # input data in reduce nodes can be freed safely
         data_keys = []
         workers_list = []
-        shuffle_key = self._op_to_shuffle_keys[op_key]
         for pred_key, meta in self._reducer_to_mapper[op_key].items():
             data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
             workers_list.append((self._reducer_workers[op_key],))
@@ -118,8 +115,8 @@ class ShuffleProxyActor(BaseOperandActor):
             self.free_predecessors()
 
     def free_predecessors(self):
-        can_be_freed, determined = self.check_can_be_freed()
-        if not determined:
+        can_be_freed, deterministic = self.check_can_be_freed()
+        if not deterministic:
             # if we cannot determine whether to do failover, just delay and retry
             self.ref().free_predecessors(_delay=1, _tell=True)
             return

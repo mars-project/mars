@@ -249,6 +249,12 @@ class BaseOperandActor(SchedulerActor):
         self.start_operand(state)
 
     def check_can_be_freed(self, target_state=OperandState.FREED):
+        """
+        Check if the data of the operand can be freed.
+        :param target_state: The state to move into, FREED by default
+        :return: a tuple. The first value indicates whether data cleaning can be performed,
+            and the last value indicates whether the result is deterministic.
+        """
         if self.state == OperandState.FREED:
             return False, True
         if target_state == OperandState.CANCELLED:

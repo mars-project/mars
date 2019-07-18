@@ -160,21 +160,23 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-H', '127.0.0.1',
                               '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
-                              '--format', '%(asctime)-15s %(message)s',
+                              '--format', 'SCH%d %%(asctime)-15s %%(message)s' % idx,
                               '-Dscheduler.retry_delay=5',
+                              '-Dscheduler.default_cpu_usage=0',
                               '-Dscheduler.status_timeout=10']
                              + append_args, env=proc_env)
-            for p in scheduler_ports]
+            for idx, p in enumerate(scheduler_ports)]
         self.proc_workers = [
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
                               '--cpu-procs', '1',
                               '--level', 'debug' if log_worker else 'warning',
+                              '--format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
                               '-Dworker.prepare_data_timeout=30']
                              + append_args, env=proc_env)
-            for _ in range(n_workers)
+            for idx in range(n_workers)
         ]
 
         actor_client = new_client()

@@ -22,6 +22,7 @@ import time
 from collections import defaultdict
 
 from .. import promise
+from ..config import options
 from ..errors import DependencyMissing
 from ..utils import log_unhandled
 from .resource import ResourceActor
@@ -332,7 +333,7 @@ class AssignEvaluationActor(SchedulerActor):
             return None, []
 
         # todo make more detailed allocation plans
-        alloc_dict = dict(cpu=1, memory=sum(input_sizes.values()))
+        alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, memory=sum(input_sizes.values()))
         rejects = []
         for worker_ep in candidate_workers:
             if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):

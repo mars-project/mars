@@ -262,8 +262,8 @@ class OperandActor(BaseOperandActor):
         Free output data of current operand
         :param state: target state
         """
-        can_be_freed, determined = self.check_can_be_freed(state)
-        if not determined:
+        can_be_freed, deterministic = self.check_can_be_freed(state)
+        if not deterministic:
             self.ref().free_data(state, _delay=1, _tell=True)
             return
         elif not can_be_freed:
