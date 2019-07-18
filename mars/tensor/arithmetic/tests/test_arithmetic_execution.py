@@ -21,7 +21,7 @@ import scipy.sparse as sps
 
 from mars.compat import six
 from mars.executor import Executor
-from mars.tensor.expressions.datasource import ones, tensor, zeros
+from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, truediv, frexp, \
     modf, clip, isclose
 from mars.config import option_context
