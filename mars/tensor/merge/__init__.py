@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .concatenate import concatenate, TensorConcatenate
+from .stack import stack, TensorStack
