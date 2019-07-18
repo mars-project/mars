@@ -10,8 +10,8 @@ class Test(unittest.TestCase):
         self.executor = Executor('numpy')
 
     def testReshapeExecution(self):
-        x = ones((10, 20, 30), chunk_size=[4, 3, 5])
-        y = x.reshape(300, 20)
-        res = self.executor.execute_tensor(y)
-        self.assertEqual(y.shape, (300, 20))
-        self.assertEqual(res, np.ones(300, 20))
+        x = ones((1, 2, 3), chunk_size=[4, 3, 5])
+        y = x.reshape(3, 2)
+        res = self.executor.execute_tensor(y)[0]
+        self.assertEqual(y.shape, (3, 2))
+        np.testing.assert_equal(res, np.ones((3, 2)))
