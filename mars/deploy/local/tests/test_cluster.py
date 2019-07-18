@@ -38,7 +38,7 @@ from mars.scheduler import SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
-from mars.config import option_context
+from mars.config import options, option_context
 from mars.web.session import Session as WebSession
 from mars.tests.core import mock
 
@@ -62,6 +62,15 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class Test(unittest.TestCase):
+    def setUp(self):
+        super(Test, self).setUp()
+        self._old_default_cpu_usage = options.scheduler.default_cpu_usage
+        options.scheduler.default_cpu_usage = 0
+
+    def tearDown(self):
+        super(Test, self).tearDown()
+        options.scheduler.default_cpu_usage = self._old_default_cpu_usage
+
     def testLocalCluster(self, *_):
         endpoint = gen_endpoint('0.0.0.0')
         with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,

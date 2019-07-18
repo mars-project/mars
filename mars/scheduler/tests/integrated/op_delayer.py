@@ -14,23 +14,58 @@
 
 import os
 
-from mars.scheduler.operands import OperandActor, OperandPosition
+from mars.scheduler.operands import OperandActor, OperandPosition, ShuffleProxyActor
 from mars.actors.core import register_actor_implementation
 
 
+def _write_state_file(var_name):
+    if var_name in os.environ:
+        try:
+            open(os.environ[var_name], 'w').close()
+        except OSError:
+            pass
+        os.environ.pop(var_name)
+
+
 class DelayedOperandActor(OperandActor):
-    def _on_running(self):
-        super(DelayedOperandActor, self)._on_running()
-        if 'DELAY_STATE_FILE' in os.environ and os.path.exists(os.environ['DELAY_STATE_FILE']):
-            self.ctx.sleep(1)
+    def _on_ready(self):
+        for ctrl_file_var in ('OP_DELAY_STATE_FILE', 'SHUFFLE_ALL_PRED_FINISHED_FILE',
+                              'SHUFFLE_ALL_SUCC_FINISH_FILE'):
+            if ctrl_file_var in os.environ and os.path.exists(os.environ[ctrl_file_var]):
+                self.ctx.sleep(1)
+
+        while 'SHUFFLE_HAS_SUCC_FINISH_FILE' in os.environ and \
+                os.path.exists(os.environ['SHUFFLE_HAS_SUCC_FINISH_FILE']):
+            self.ctx.sleep(0.1)
+
+        super(DelayedOperandActor, self)._on_ready()
 
     def _on_finished(self):
         super(DelayedOperandActor, self)._on_finished()
-        if self._position == OperandPosition.TERMINAL and 'TERMINATE_STATE_FILE' in os.environ:
-            try:
-                open(os.environ['TERMINATE_STATE_FILE'], 'w').close()
-            except OSError:
-                pass
+        if self._position == OperandPosition.TERMINAL:
+            _write_state_file('OP_TERMINATE_STATE_FILE')
+
+
+class DelayedShuffleProxyActor(ShuffleProxyActor):
+    def _start_successors(self):
+        _write_state_file('SHUFFLE_ALL_PRED_FINISHED_FILE')
+
+        if 'SHUFFLE_START_SUCC_FILE' in os.environ:
+            while not os.path.exists(os.environ['SHUFFLE_START_SUCC_FILE']):
+                self.ctx.sleep(0.1)
+
+        super(DelayedShuffleProxyActor, self)._start_successors()
+
+    def add_finished_successor(self, op_key, worker):
+        try:
+            return super(DelayedShuffleProxyActor, self).add_finished_successor(op_key, worker)
+        finally:
+            _write_state_file('SHUFFLE_HAS_SUCC_FINISH_FILE')
+
+    def free_predecessors(self):
+        _write_state_file('SHUFFLE_ALL_SUCC_FINISH_FILE')
+        super(DelayedShuffleProxyActor, self).free_predecessors()
 
 
 register_actor_implementation(OperandActor, DelayedOperandActor)
+register_actor_implementation(ShuffleProxyActor, DelayedShuffleProxyActor)

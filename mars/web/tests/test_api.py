@@ -100,13 +100,15 @@ class Test(unittest.TestCase):
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
+                                        '--format', 'WOR %(asctime)-15s %(message)s',
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '--nproc', '1',
                                            '--level', 'debug',
                                            '-H', '127.0.0.1',
                                            '-p', scheduler_port,
-                                           '--format', '%(asctime)-15s %(message)s'])
+                                           '-Dscheduler.default_cpu_usage=0',
+                                           '--format', 'SCH %(asctime)-15s %(message)s'])
 
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
@@ -117,6 +119,7 @@ class Test(unittest.TestCase):
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
                                      '--level', 'debug',
+                                     '--format', 'WEB %(asctime)-15s %(message)s',
                                      '-p', web_port,
                                      '-s', '127.0.0.1:' + self.scheduler_port])
         self.proc_web = proc_web
