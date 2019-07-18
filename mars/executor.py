@@ -22,6 +22,7 @@ import weakref
 from collections import deque, defaultdict
 
 import numpy as np
+
 try:
     import gevent
 except ImportError:  # pragma: no cover
@@ -30,7 +31,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch
+from .utils import kernel_mode, calc_data_size, concat_tileable_chunks, build_fetch
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
 if gevent:
     import gevent.threadpool
     import gevent.event
+
 
     class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
         @staticmethod
@@ -173,6 +175,7 @@ class GraphExecution(object):
     """
     Represent an execution for a specified graph.
     """
+
     def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
                  n_parallel=None, prefetch=False, print_progress=False,
                  mock=False, mock_max_memory=0, fetch_keys=None, no_intermediate=False):
@@ -701,4 +704,4 @@ def register(op, handler, size_estimator=None, size_multiplier=1):
             functools.partial(size_estimator_wrapper, original_estimator=size_estimator)
     else:
         Executor._op_size_estimators[op] = size_estimator or \
-            functools.partial(default_size_estimator, multiplier=size_multiplier)
+                                           functools.partial(default_size_estimator, multiplier=size_multiplier)
