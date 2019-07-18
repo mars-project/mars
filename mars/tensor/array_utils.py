@@ -120,3 +120,13 @@ def device(device_id):
     else:
         with cp.cuda.Device(device_id):
             yield
+
+
+def create_array(op):
+    xp = array_module(op.gpu)
+
+    def inner(func, *args, **kwargs):
+        with device(op.device):
+            return getattr(xp, func)(*args, **kwargs)
+
+    return inner

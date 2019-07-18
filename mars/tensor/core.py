@@ -17,9 +17,7 @@
 
 from collections import Iterable, defaultdict
 from datetime import datetime
-
 import numpy as np
-
 from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
@@ -27,6 +25,7 @@ from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .expressions.utils import get_chunk_slices
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 

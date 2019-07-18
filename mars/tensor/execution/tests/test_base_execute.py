@@ -23,9 +23,9 @@ from mars import tensor as mt
 from mars.executor import Executor
 from mars.tensor.expressions.datasource import tensor, ones, zeros, arange
 from mars.tensor.expressions.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
-    expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
+    expand_dims, rollaxis, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin
+    flip, flipud, fliplr, repeat, tile, isin, atleast_1d, atleast_2d, atleast_3d
 from mars.tensor.expressions.merge import stack
 from mars.tensor.expressions.reduction import all as tall
 
@@ -578,14 +578,14 @@ class Test(unittest.TestCase):
         self.assertEqual(res, expected)
 
         data = arange(6, chunk_size=2).reshape((3, 2))
-        t = average(data, axis=1, weights=tensor([1./4, 3./4], chunk_size=2))
+        t = average(data, axis=1, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
 
         res = self.executor.execute_tensor(t, concat=True)[0]
-        expected = np.average(np.arange(6).reshape(3, 2), axis=1, weights=(1./4, 3./4))
+        expected = np.average(np.arange(6).reshape(3, 2), axis=1, weights=(1. / 4, 3. / 4))
         np.testing.assert_equal(res, expected)
 
         with self.assertRaises(TypeError):
-            average(data, weights=tensor([1./4, 3./4], chunk_size=2))
+            average(data, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
 
     def testCovExecution(self):
         data = np.array([[0, 2], [1, 1], [2, 0]]).T
@@ -598,7 +598,7 @@ class Test(unittest.TestCase):
         np.testing.assert_equal(res, expected)
 
         data_x = [-2.1, -1, 4.3]
-        data_y = [3,  1.1,  0.12]
+        data_y = [3, 1.1, 0.12]
         x = tensor(data_x, chunk_size=1)
         y = tensor(data_y, chunk_size=1)
 

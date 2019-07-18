@@ -15,3 +15,4 @@
 
 from .array import tensor, array, asarray, ArrayDataSource, CSRMatrixDataSource
 from .scalar import scalar, Scalar
+from .ones import ones
