@@ -118,11 +118,6 @@ class DataFrameOperand(Operand):
     def object_type(self):
         return self._object_type
 
-    @classmethod
-    def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = chunk.op.data
-
 
 class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),

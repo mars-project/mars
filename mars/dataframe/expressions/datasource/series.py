@@ -80,6 +80,11 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
                                   index_value=series.index_value,
                                   name=series.name, chunks=out_chunks, nsplits=chunk_size)
 
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        ctx[chunk.key] = chunk.op.data
+
 
 def from_pandas(data, chunk_size=None, gpu=None, sparse=False):
     op = SeriesDataSource(data=data, gpu=gpu, sparse=sparse)
