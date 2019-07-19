@@ -35,7 +35,7 @@ message OperandDef {
         DATAFRAME_DATA_SOURCE = 17;
         DATAFRAME_FROM_TENSOR = 21;
         // series
-        SERIES_DATA_SOURCE = 20;
+        SERIES_DATA_SOURCE = 23;
 
         // random
         RAND_RAND = 41;
