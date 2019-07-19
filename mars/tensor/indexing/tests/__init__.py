@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,10 +13,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .concatenate import concatenate, TensorConcatenate
-from .stack import stack, TensorStack
-from .hstack import hstack
-from .vstack import vstack
-from .dstack import dstack
-from .column_stack import column_stack

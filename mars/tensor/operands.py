@@ -87,6 +87,11 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     def dtype(self):
         return getattr(self, '_dtype', None)
 
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        ctx[chunk.key] = None
+
 
 class TensorShuffleMap(ShuffleMap):
     _dtype = DataTypeField('dtype')

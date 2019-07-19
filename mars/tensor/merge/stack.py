@@ -44,7 +44,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        from ..expressions.indexing.slice import TensorSlice
+        from ..indexing.slice import TensorSlice
 
         inputs = unify_chunks(*op.inputs)
         axis = op.axis

@@ -94,6 +94,18 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=op.input.nsplits)
 
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        indexes = [ctx[index.key] if hasattr(index, 'key') else index
+                   for index in chunk.op.indexes]
+        input_ = ctx[chunk.inputs[0].key].copy()
+        value = ctx[chunk.op.value.key] if hasattr(chunk.op.value, 'key') else chunk.op.value
+        if hasattr(input_, 'flags') and not input_.flags.writeable:
+            input_.setflags(write=True)
+        input_[tuple(indexes)] = value
+        ctx[chunk.key] = input_
+
 
 def _setitem(a, item, value):
     from ..base import broadcast_to

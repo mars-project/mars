@@ -53,7 +53,8 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = create_array(op)('empty', op.shape, dtype=op.dtype)
+        chunk = op.outputs[0]
+        ctx[chunk.key] = create_array(chunk.op)('empty', chunk.shape, dtype=chunk.op.dtype)
 
 
 def empty(shape, dtype=None, chunk_size=None, gpu=False):

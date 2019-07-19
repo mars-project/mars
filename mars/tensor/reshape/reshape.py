@@ -25,6 +25,8 @@ from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
 from ..array_utils import as_same_device, device
+from ...utils import get_shuffle_input_keys_idxes
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -404,15 +406,6 @@ def calc_shape(size, newshape):
                          for s in newshape)
 
     return newshape
-
-
-def get_shuffle_input_keys_idxes(chunk):
-    from ...operands import ShuffleProxy
-
-    if isinstance(chunk.op, ShuffleProxy):
-        return [inp.key for inp in chunk.inputs], [inp.index for inp in chunk.inputs]
-    else:
-        return chunk.op.to_fetch_keys, chunk.op.to_fetch_idxes
 
 
 def reshape(a, newshape):

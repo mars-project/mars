@@ -15,8 +15,20 @@
 
 from .array import tensor, array, asarray, ArrayDataSource, CSRMatrixDataSource
 from .scalar import scalar, Scalar
-from .arange import arange
+from .empty import empty, empty_like, TensorEmpty, TensorEmptyLike
 from .ones import ones, ones_like, TensorOnes, TensorOnesLike
 from .zeros import zeros, zeros_like, TensorZeros, TensorZerosLike
+from .full import full, TensorFull
+from .arange import arange, TensorArange
+from .diag import diag, TensorDiag
+from .diagflat import diagflat
+from .eye import eye, TensorEye
+from .identity import identity
+from .linspace import linspace, TensorLinspace
+from .meshgrid import meshgrid
+from .indices import indices, TensorIndices
+from .tri import triu, tril, TensorTriu, TensorTril
 from .from_dense import fromdense, DenseToSparse
-from .empty import empty, empty_like, TensorEmpty, TensorEmptyLike
+from .from_sparse import fromsparse, SparseToDense
+from .from_tiledb import fromtiledb, TensorTileDBDataSource
+from .from_dataframe import from_dataframe, TensorDataFrameDataSource

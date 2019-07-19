@@ -26,7 +26,8 @@ from ...lib.sparse.core import issparse, get_array_module, get_sparse_module
 from .core import TensorHasInput
 from .zeros import TensorZeros
 from .array import tensor
-
+from ...lib import sparse
+from ..array_utils import create_array
 
 def _get_diag_shape(v_shape, k):
     size_0, size_1 = 0, 0
@@ -177,6 +178,15 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     @property
     def k(self):
         return getattr(self, '_k', 0)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        if chunk.issparse():
+            ctx[chunk.key] = sparse.diag(ctx[chunk.inputs[0].key], k=chunk.op.k, gpu=chunk.op.gpu)
+        else:
+            ctx[chunk.key] = create_array(chunk.op)(
+                'diag', ctx[chunk.inputs[0].key], k=chunk.op.k)
 
 
 def diag(v, k=0, sparse=None, gpu=False, chunk_size=None):

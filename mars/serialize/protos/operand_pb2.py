@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n#mars/serialize/protos/operand.proto\x1a!mars/serialize/protos/value.proto\"\xf8#\n\nOperandDef\x12\x0c\n\x04type\x18\x01 \x01(\t\x12#\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x15.OperandDef.AttrEntry\x12\x1d\n\x08operands\x18\x03 \x03(\x0b\x32\x0b.OperandDef\x12\n\n\x02id\x18\x04 \x01(\t\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\"\xd6\"\n\x0bOperandType\x12\x08\n\x04NULL\x10\x00\x12\n\n\x06SCALAR\x10\x01\x12\x16\n\x12TENSOR_DATA_SOURCE\x10\x02\x12\x0f\n\x0bTENSOR_ONES\x10\x03\x12\x14\n\x10TENSOR_ONES_LIKE\x10\x04\x12\x10\n\x0cTENSOR_ZEROS\x10\x05\x12\x15\n\x11TENSOR_ZEROS_LIKE\x10\x06\x12\x10\n\x0cTENSOR_EMPTY\x10\x07\x12\x15\n\x11TENSOR_EMPTY_LIKE\x10\x08\x12\x0f\n\x0bTENSOR_FULL\x10\t\x12\x11\n\rTENSOR_ARANGE\x10\n\x12\x12\n\x0eTENSOR_INDICES\x10\x0b\x12\x0f\n\x0bTENSOR_DIAG\x10\x0c\x12\x0e\n\nTENSOR_EYE\x10\r\x12\x13\n\x0fTENSOR_LINSPACE\x10\x0e\x12\x0f\n\x0bTENSOR_TRIU\x10\x0f\x12\x0f\n\x0bTENSOR_TRIL\x10\x10\x12\x16\n\x12TENSOR_FROM_TILEDB\x10\x12\x12\x17\n\x13TENSOR_STORE_TILEDB\x10\x13\x12\x19\n\x15\x44\x41TAFRAME_DATA_SOURCE\x10\x11\x12\x16\n\x12SERIES_DATA_SOURCE\x10\x14\x12\r\n\tRAND_RAND\x10)\x12\x0e\n\nRAND_RANDN\x10*\x12\x10\n\x0cRAND_RANDINT\x10+\x12\x18\n\x14RAND_RANDOM_INTEGERS\x10,\x12\x16\n\x12RAND_RANDOM_SAMPLE\x10-\x12\x0f\n\x0bRAND_RANDOM\x10.\x12\r\n\tRAND_RANF\x10/\x12\x0f\n\x0bRAND_SAMPLE\x10\x30\x12\x0e\n\nRAND_BYTES\x10\x31\x12\r\n\tRAND_BETA\x10\x32\x12\x11\n\rRAND_BINOMIAL\x10\x33\x12\x12\n\x0eRAND_CHISQUARE\x10\x34\x12\x0f\n\x0bRAND_CHOICE\x10\x35\x12\x12\n\x0eRAND_DIRICHLET\x10\x36\x12\x14\n\x10RAND_EXPONENTIAL\x10\x37\x12\n\n\x06RAND_F\x10\x38\x12\x0e\n\nRAND_GAMMA\x10\x39\x12\x12\n\x0eRAND_GEOMETRIC\x10:\x12\x0f\n\x0bRAND_GUMBEL\x10;\x12\x17\n\x13RAND_HYPERGEOMETRIC\x10<\x12\x10\n\x0cRAND_LAPLACE\x10=\x12\x11\n\rRAND_LOGISTIC\x10>\x12\x12\n\x0eRAND_LOGNORMAL\x10?\x12\x12\n\x0eRAND_LOGSERIES\x10@\x12\x14\n\x10RAND_MULTINOMIAL\x10\x41\x12\x1c\n\x18RAND_MULTIVARIATE_NORMAL\x10\x42\x12\x1a\n\x16RAND_NEGATIVE_BINOMIAL\x10\x43\x12\x1c\n\x18RAND_NONCENTRAL_CHISQURE\x10\x44\x12\x15\n\x11RAND_NONCENTRAL_F\x10\x45\x12\x0f\n\x0bRAND_NORMAL\x10\x46\x12\x0f\n\x0bRAND_PARETO\x10G\x12\x14\n\x10RAND_PERMUTATION\x10H\x12\x10\n\x0cRAND_POSSION\x10I\x12\x0e\n\nRAND_POWER\x10J\x12\x11\n\rRAND_RAYLEIGH\x10K\x12\x10\n\x0cRAND_SHUFFLE\x10L\x12\x18\n\x14RAND_STANDARD_CAUCHY\x10M\x12\x1d\n\x19RAND_STANDARD_EXPONENTIAL\x10N\x12\x18\n\x14RAND_STANDARD_GAMMMA\x10O\x12\x18\n\x14RAND_STANDARD_NORMAL\x10P\x12\x13\n\x0fRAND_STANDARD_T\x10Q\x12\x11\n\rRAND_TOMAXINT\x10R\x12\x13\n\x0fRAND_TRIANGULAR\x10S\x12\x10\n\x0cRAND_UNIFORM\x10T\x12\x11\n\rRAND_VONMISES\x10U\x12\r\n\tRAND_WALD\x10V\x12\x10\n\x0cRAND_WEIBULL\x10W\x12\r\n\tRAND_ZIPF\x10X\x12\x07\n\x03\x41\x44\x44\x10\x65\x12\x07\n\x03SUB\x10\x66\x12\x07\n\x03MUL\x10g\x12\x07\n\x03\x44IV\x10h\x12\x0b\n\x07TRUEDIV\x10i\x12\x0c\n\x08\x46LOORDIV\x10j\x12\x07\n\x03POW\x10k\x12\x07\n\x03MOD\x10l\x12\x08\n\x04\x46MOD\x10m\x12\r\n\tLOGADDEXP\x10n\x12\x0e\n\nLOGADDEXP2\x10o\x12\x0c\n\x08NEGATIVE\x10p\x12\x0c\n\x08POSITIVE\x10q\x12\x0c\n\x08\x41\x42SOLUTE\x10r\x12\x08\n\x04\x46\x41\x42S\x10s\x12\x07\n\x03\x41\x42S\x10t\x12\x08\n\x04RINT\x10u\x12\x08\n\x04SIGN\x10v\x12\x08\n\x04\x43ONJ\x10w\x12\x07\n\x03\x45XP\x10x\x12\x08\n\x04\x45XP2\x10y\x12\x07\n\x03LOG\x10z\x12\x08\n\x04LOG2\x10{\x12\t\n\x05LOG10\x10|\x12\t\n\x05\x45XPM1\x10}\x12\t\n\x05LOG1P\x10~\x12\x08\n\x04SQRT\x10\x7f\x12\x0b\n\x06SQUARE\x10\x80\x01\x12\t\n\x04\x43\x42RT\x10\x81\x01\x12\x0f\n\nRECIPROCAL\x10\x82\x01\x12\x07\n\x02\x45Q\x10\x83\x01\x12\x07\n\x02NE\x10\x84\x01\x12\x07\n\x02LT\x10\x85\x01\x12\x07\n\x02LE\x10\x86\x01\x12\x07\n\x02GT\x10\x87\x01\x12\x07\n\x02GE\x10\x88\x01\x12\x08\n\x03SIN\x10\x89\x01\x12\x08\n\x03\x43OS\x10\x8a\x01\x12\x08\n\x03TAN\x10\x8b\x01\x12\x0b\n\x06\x41RCSIN\x10\x8c\x01\x12\x0b\n\x06\x41RCCOS\x10\x8d\x01\x12\x0b\n\x06\x41RCTAN\x10\x8e\x01\x12\x0c\n\x07\x41RCTAN2\x10\x8f\x01\x12\n\n\x05HYPOT\x10\x90\x01\x12\t\n\x04SINH\x10\x91\x01\x12\t\n\x04\x43OSH\x10\x92\x01\x12\t\n\x04TANH\x10\x93\x01\x12\x0c\n\x07\x41RCSINH\x10\x94\x01\x12\x0c\n\x07\x41RCCOSH\x10\x95\x01\x12\x0c\n\x07\x41RCTANH\x10\x96\x01\x12\x0c\n\x07\x44\x45G2RAD\x10\x97\x01\x12\x0c\n\x07RAD2DEG\x10\x98\x01\x12\x0b\n\x06\x42ITAND\x10\x99\x01\x12\n\n\x05\x42ITOR\x10\x9a\x01\x12\x0b\n\x06\x42ITXOR\x10\x9b\x01\x12\x0b\n\x06INVERT\x10\x9c\x01\x12\x0b\n\x06LSHIFT\x10\x9d\x01\x12\x0b\n\x06RSHIFT\x10\x9e\x01\x12\x08\n\x03\x41ND\x10\x9f\x01\x12\x07\n\x02OR\x10\xa0\x01\x12\x08\n\x03XOR\x10\xa1\x01\x12\x08\n\x03NOT\x10\xa2\x01\x12\x0c\n\x07MAXIMUM\x10\xa3\x01\x12\x0c\n\x07MINIMUM\x10\xa4\x01\x12\x0b\n\x06\x41ROUND\x10\xa5\x01\x12\x10\n\x0b\x46LOAT_POWER\x10\xa6\x01\x12\t\n\x04\x46MAX\x10\xa7\x01\x12\t\n\x04\x46MIN\x10\xa8\x01\x12\r\n\x08ISFINITE\x10\xa9\x01\x12\n\n\x05ISINF\x10\xaa\x01\x12\n\n\x05ISNAN\x10\xab\x01\x12\x0c\n\x07SIGNBIT\x10\xac\x01\x12\r\n\x08\x43OPYSIGN\x10\xad\x01\x12\x0e\n\tNEXTAFTER\x10\xae\x01\x12\x0c\n\x07SPACING\x10\xaf\x01\x12\n\n\x05LDEXP\x10\xb0\x01\x12\n\n\x05\x46REXP\x10\xb1\x01\x12\t\n\x04MODF\x10\xb2\x01\x12\n\n\x05\x46LOOR\x10\xb3\x01\x12\t\n\x04\x43\x45IL\x10\xb4\x01\x12\n\n\x05TRUNC\x10\xb5\x01\x12\x0c\n\x07\x44\x45GREES\x10\xb6\x01\x12\x0c\n\x07RADIANS\x10\xb7\x01\x12\t\n\x04\x43LIP\x10\xb8\x01\x12\x0b\n\x06ISREAL\x10\xb9\x01\x12\x0e\n\tISCOMPLEX\x10\xba\x01\x12\t\n\x04REAL\x10\xbb\x01\x12\t\n\x04IMAG\x10\xbc\x01\x12\x08\n\x03\x46IX\x10\xbd\x01\x12\x07\n\x02I0\x10\xbe\x01\x12\t\n\x04SINC\x10\xbf\x01\x12\x0f\n\nNAN_TO_NUM\x10\xc0\x01\x12\x0c\n\x07ISCLOSE\x10\xc1\x01\x12\x0b\n\x06\x44IVMOD\x10\xc2\x01\x12\n\n\x05\x41NGLE\x10\xc3\x01\x12\r\n\x08SET_REAL\x10\xc4\x01\x12\r\n\x08SET_IMAG\x10\xc5\x01\x12\r\n\x08TREE_ADD\x10\xfb\x01\x12\x12\n\rTREE_MULTIPLY\x10\xfc\x01\x12\x0b\n\x06\x43UMSUM\x10\xad\x02\x12\x0c\n\x07\x43UMPROD\x10\xae\x02\x12\t\n\x04PROD\x10\xaf\x02\x12\x08\n\x03SUM\x10\xb0\x02\x12\x08\n\x03MAX\x10\xb1\x02\x12\x08\n\x03MIN\x10\xb2\x02\x12\x08\n\x03\x41LL\x10\xb3\x02\x12\x08\n\x03\x41NY\x10\xb4\x02\x12\x0f\n\nMEAN_CHUNK\x10\xb5\x02\x12\x11\n\x0cMEAN_COMBINE\x10\xb6\x02\x12\t\n\x04MEAN\x10\xb7\x02\x12\x0b\n\x06\x41RGMAX\x10\xb8\x02\x12\x11\n\x0c\x41RGMAX_CHUNK\x10\xb9\x02\x12\x13\n\x0e\x41RGMAX_COMBINE\x10\xba\x02\x12\x0b\n\x06\x41RGMIN\x10\xbb\x02\x12\x11\n\x0c\x41RGMIN_CHUNK\x10\xbc\x02\x12\x13\n\x0e\x41RGMIN_COMBINE\x10\xbd\x02\x12\x0b\n\x06NANSUM\x10\xbe\x02\x12\x0b\n\x06NANMAX\x10\xbf\x02\x12\x0b\n\x06NANMIN\x10\xc0\x02\x12\x0c\n\x07NANPROD\x10\xc1\x02\x12\x0c\n\x07NANMEAN\x10\xc2\x02\x12\x12\n\rNANMEAN_CHUNK\x10\xc3\x02\x12\x0e\n\tNANARGMAX\x10\xc4\x02\x12\x14\n\x0fNANARGMAX_CHUNK\x10\xc5\x02\x12\x16\n\x11NANARGMAX_COMBINE\x10\xc6\x02\x12\x0e\n\tNANARGMIN\x10\xc7\x02\x12\x14\n\x0fNANARGMIN_CHUNK\x10\xc8\x02\x12\x16\n\x11NANARGMIN_COMBINE\x10\xc9\x02\x12\x12\n\rCOUNT_NONZERO\x10\xca\x02\x12\x11\n\x0cMOMENT_CHUNK\x10\xcb\x02\x12\x14\n\x0fNANMOMENT_CHUNK\x10\xcc\x02\x12\x13\n\x0eMOMENT_COMBINE\x10\xcd\x02\x12\x16\n\x11NANMOMENT_COMBINE\x10\xce\x02\x12\x0b\n\x06MOMENT\x10\xcf\x02\x12\x0e\n\tNANMOMENT\x10\xd0\x02\x12\x08\n\x03VAR\x10\xd1\x02\x12\x08\n\x03STD\x10\xd2\x02\x12\x0b\n\x06NANVAR\x10\xd3\x02\x12\x0b\n\x06NANSTD\x10\xd4\x02\x12\x0e\n\tNANCUMSUM\x10\xd5\x02\x12\x0f\n\nNANCUMPROD\x10\xd6\x02\x12\x0c\n\x07RESHAPE\x10\x91\x03\x12\n\n\x05SLICE\x10\x92\x03\x12\n\n\x05INDEX\x10\x93\x03\x12\x12\n\rINDEXSETVALUE\x10\x94\x03\x12\x10\n\x0b\x43ONCATENATE\x10\x95\x03\x12\x0c\n\x07RECHUNK\x10\x96\x03\x12\x0b\n\x06\x41STYPE\x10\x97\x03\x12\x0e\n\tTRANSPOSE\x10\x98\x03\x12\r\n\x08SWAPAXES\x10\x99\x03\x12\x11\n\x0c\x42ROADCAST_TO\x10\x9a\x03\x12\n\n\x05STACK\x10\x9b\x03\x12\n\n\x05WHERE\x10\x9c\x03\x12\x0b\n\x06\x43HOOSE\x10\x9d\x03\x12\x0c\n\x07NONZERO\x10\x9e\x03\x12\r\n\x08\x41RGWHERE\x10\x9f\x03\x12\x12\n\rUNRAVEL_INDEX\x10\xa0\x03\x12\x16\n\x11RAVEL_MULTI_INDEX\x10\xa1\x03\x12\x10\n\x0b\x41RRAY_SPLIT\x10\xa2\x03\x12\x0c\n\x07SQUEEZE\x10\xa3\x03\x12\r\n\x08\x44IGITIZE\x10\xa4\x03\x12\x0b\n\x06REPEAT\x10\xa5\x03\x12\x0b\n\x06\x43OPYTO\x10\xa6\x03\x12\t\n\x04ISIN\x10\xa7\x03\x12\x1f\n\x1a\x46\x41NCY_INDEX_DISTRIBUTE_MAP\x10\xa8\x03\x12\"\n\x1d\x46\x41NCY_INDEX_DISTRIBUTE_REDUCE\x10\xa9\x03\x12\x1b\n\x16\x46\x41NCY_INDEX_CONCAT_MAP\x10\xaa\x03\x12\x1e\n\x19\x46\x41NCY_INDEX_CONCAT_REDUCE\x10\xab\x03\x12\x0e\n\tTENSORDOT\x10\xf5\x03\x12\x08\n\x03\x44OT\x10\xf6\x03\x12\x0b\n\x06MATMUL\x10\xf7\x03\x12\r\n\x08\x43HOLESKY\x10\xfe\x03\x12\x07\n\x02QR\x10\xff\x03\x12\x08\n\x03SVD\x10\x80\x04\x12\x07\n\x02LU\x10\x81\x04\x12\x15\n\x10SOLVE_TRIANGULAR\x10\x88\x04\x12\x08\n\x03INV\x10\x89\x04\x12\t\n\x04NORM\x10\x92\x04\x12\x08\n\x03\x46\x46T\x10\xd9\x04\x12\t\n\x04IFFT\x10\xda\x04\x12\t\n\x04\x46\x46T2\x10\xdb\x04\x12\n\n\x05IFFT2\x10\xdc\x04\x12\t\n\x04\x46\x46TN\x10\xdd\x04\x12\n\n\x05IFFTN\x10\xde\x04\x12\t\n\x04RFFT\x10\xdf\x04\x12\n\n\x05IRFFT\x10\xe0\x04\x12\n\n\x05RFFT2\x10\xe1\x04\x12\x0b\n\x06IRFFT2\x10\xe2\x04\x12\n\n\x05RFFTN\x10\xe3\x04\x12\x0b\n\x06IRFFTN\x10\xe4\x04\x12\t\n\x04HFFT\x10\xe5\x04\x12\n\n\x05IHFFT\x10\xe6\x04\x12\x0c\n\x07\x46\x46TFREQ\x10\xe7\x04\x12\x12\n\rFFTFREQ_CHUNK\x10\xe8\x04\x12\r\n\x08RFFTFREQ\x10\xe9\x04\x12\r\n\x08\x46\x46TSHIFT\x10\xea\x04\x12\x0e\n\tIFFTSHIFT\x10\xeb\x04\x12\x1e\n\x19SPARSE_MATRIX_DATA_SOURCE\x10\xbd\x05\x12\x14\n\x0f\x44\x45NSE_TO_SPARSE\x10\xbe\x05\x12\x14\n\x0fSPARSE_TO_DENSE\x10\xbf\x05\x12\t\n\x04\x46USE\x10\xa1\x06\x12\n\n\x05\x45NTER\x10\x85\x07\x12\n\n\x05LEAVE\x10\x86\x07\x12\x0f\n\nFIX_LATEST\x10\x87\x07\x12\x0c\n\x07IF_ELSE\x10\x88\x07\x12\x0e\n\tNEXT_ITER\x10\x89\x07\x12\x0e\n\tTABLE_COO\x10\xeb\x07\x12\x0e\n\tSTORE_COO\x10\xec\x07\x12\x12\n\rSHUFFLE_PROXY\x10\xd1\x0f\x12\x10\n\x0bRESHAPE_MAP\x10\xd2\x0f\x12\x13\n\x0eRESHAPE_REDUCE\x10\xd3\x0f\x12\x1e\n\x19\x44\x41TAFRAME_INDEX_ALIGN_MAP\x10\xd4\x0f\x12!\n\x1c\x44\x41TAFRAME_INDEX_ALIGN_REDUCE\x10\xd5\x0f\x12\x13\n\rFETCH_SHUFFLE\x10\xbe\x84=\x12\x0b\n\x05\x46\x45TCH\x10\xbf\x84=b\x06proto3')
+  serialized_pb=_b('\n#mars/serialize/protos/operand.proto\x1a!mars/serialize/protos/value.proto\"\x93$\n\nOperandDef\x12\x0c\n\x04type\x18\x01 \x01(\t\x12#\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x15.OperandDef.AttrEntry\x12\x1d\n\x08operands\x18\x03 \x03(\x0b\x32\x0b.OperandDef\x12\n\n\x02id\x18\x04 \x01(\t\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\"\xf1\"\n\x0bOperandType\x12\x08\n\x04NULL\x10\x00\x12\n\n\x06SCALAR\x10\x01\x12\x16\n\x12TENSOR_DATA_SOURCE\x10\x02\x12\x0f\n\x0bTENSOR_ONES\x10\x03\x12\x14\n\x10TENSOR_ONES_LIKE\x10\x04\x12\x10\n\x0cTENSOR_ZEROS\x10\x05\x12\x15\n\x11TENSOR_ZEROS_LIKE\x10\x06\x12\x10\n\x0cTENSOR_EMPTY\x10\x07\x12\x15\n\x11TENSOR_EMPTY_LIKE\x10\x08\x12\x0f\n\x0bTENSOR_FULL\x10\t\x12\x11\n\rTENSOR_ARANGE\x10\n\x12\x12\n\x0eTENSOR_INDICES\x10\x0b\x12\x0f\n\x0bTENSOR_DIAG\x10\x0c\x12\x0e\n\nTENSOR_EYE\x10\r\x12\x13\n\x0fTENSOR_LINSPACE\x10\x0e\x12\x0f\n\x0bTENSOR_TRIU\x10\x0f\x12\x0f\n\x0bTENSOR_TRIL\x10\x10\x12\x16\n\x12TENSOR_FROM_TILEDB\x10\x12\x12\x17\n\x13TENSOR_STORE_TILEDB\x10\x13\x12\x19\n\x15\x44\x41TAFRAME_DATA_SOURCE\x10\x11\x12\x19\n\x15TENSOR_FROM_DATAFRAME\x10\x15\x12\x16\n\x12SERIES_DATA_SOURCE\x10\x14\x12\r\n\tRAND_RAND\x10)\x12\x0e\n\nRAND_RANDN\x10*\x12\x10\n\x0cRAND_RANDINT\x10+\x12\x18\n\x14RAND_RANDOM_INTEGERS\x10,\x12\x16\n\x12RAND_RANDOM_SAMPLE\x10-\x12\x0f\n\x0bRAND_RANDOM\x10.\x12\r\n\tRAND_RANF\x10/\x12\x0f\n\x0bRAND_SAMPLE\x10\x30\x12\x0e\n\nRAND_BYTES\x10\x31\x12\r\n\tRAND_BETA\x10\x32\x12\x11\n\rRAND_BINOMIAL\x10\x33\x12\x12\n\x0eRAND_CHISQUARE\x10\x34\x12\x0f\n\x0bRAND_CHOICE\x10\x35\x12\x12\n\x0eRAND_DIRICHLET\x10\x36\x12\x14\n\x10RAND_EXPONENTIAL\x10\x37\x12\n\n\x06RAND_F\x10\x38\x12\x0e\n\nRAND_GAMMA\x10\x39\x12\x12\n\x0eRAND_GEOMETRIC\x10:\x12\x0f\n\x0bRAND_GUMBEL\x10;\x12\x17\n\x13RAND_HYPERGEOMETRIC\x10<\x12\x10\n\x0cRAND_LAPLACE\x10=\x12\x11\n\rRAND_LOGISTIC\x10>\x12\x12\n\x0eRAND_LOGNORMAL\x10?\x12\x12\n\x0eRAND_LOGSERIES\x10@\x12\x14\n\x10RAND_MULTINOMIAL\x10\x41\x12\x1c\n\x18RAND_MULTIVARIATE_NORMAL\x10\x42\x12\x1a\n\x16RAND_NEGATIVE_BINOMIAL\x10\x43\x12\x1c\n\x18RAND_NONCENTRAL_CHISQURE\x10\x44\x12\x15\n\x11RAND_NONCENTRAL_F\x10\x45\x12\x0f\n\x0bRAND_NORMAL\x10\x46\x12\x0f\n\x0bRAND_PARETO\x10G\x12\x14\n\x10RAND_PERMUTATION\x10H\x12\x10\n\x0cRAND_POSSION\x10I\x12\x0e\n\nRAND_POWER\x10J\x12\x11\n\rRAND_RAYLEIGH\x10K\x12\x10\n\x0cRAND_SHUFFLE\x10L\x12\x18\n\x14RAND_STANDARD_CAUCHY\x10M\x12\x1d\n\x19RAND_STANDARD_EXPONENTIAL\x10N\x12\x18\n\x14RAND_STANDARD_GAMMMA\x10O\x12\x18\n\x14RAND_STANDARD_NORMAL\x10P\x12\x13\n\x0fRAND_STANDARD_T\x10Q\x12\x11\n\rRAND_TOMAXINT\x10R\x12\x13\n\x0fRAND_TRIANGULAR\x10S\x12\x10\n\x0cRAND_UNIFORM\x10T\x12\x11\n\rRAND_VONMISES\x10U\x12\r\n\tRAND_WALD\x10V\x12\x10\n\x0cRAND_WEIBULL\x10W\x12\r\n\tRAND_ZIPF\x10X\x12\x07\n\x03\x41\x44\x44\x10\x65\x12\x07\n\x03SUB\x10\x66\x12\x07\n\x03MUL\x10g\x12\x07\n\x03\x44IV\x10h\x12\x0b\n\x07TRUEDIV\x10i\x12\x0c\n\x08\x46LOORDIV\x10j\x12\x07\n\x03POW\x10k\x12\x07\n\x03MOD\x10l\x12\x08\n\x04\x46MOD\x10m\x12\r\n\tLOGADDEXP\x10n\x12\x0e\n\nLOGADDEXP2\x10o\x12\x0c\n\x08NEGATIVE\x10p\x12\x0c\n\x08POSITIVE\x10q\x12\x0c\n\x08\x41\x42SOLUTE\x10r\x12\x08\n\x04\x46\x41\x42S\x10s\x12\x07\n\x03\x41\x42S\x10t\x12\x08\n\x04RINT\x10u\x12\x08\n\x04SIGN\x10v\x12\x08\n\x04\x43ONJ\x10w\x12\x07\n\x03\x45XP\x10x\x12\x08\n\x04\x45XP2\x10y\x12\x07\n\x03LOG\x10z\x12\x08\n\x04LOG2\x10{\x12\t\n\x05LOG10\x10|\x12\t\n\x05\x45XPM1\x10}\x12\t\n\x05LOG1P\x10~\x12\x08\n\x04SQRT\x10\x7f\x12\x0b\n\x06SQUARE\x10\x80\x01\x12\t\n\x04\x43\x42RT\x10\x81\x01\x12\x0f\n\nRECIPROCAL\x10\x82\x01\x12\x07\n\x02\x45Q\x10\x83\x01\x12\x07\n\x02NE\x10\x84\x01\x12\x07\n\x02LT\x10\x85\x01\x12\x07\n\x02LE\x10\x86\x01\x12\x07\n\x02GT\x10\x87\x01\x12\x07\n\x02GE\x10\x88\x01\x12\x08\n\x03SIN\x10\x89\x01\x12\x08\n\x03\x43OS\x10\x8a\x01\x12\x08\n\x03TAN\x10\x8b\x01\x12\x0b\n\x06\x41RCSIN\x10\x8c\x01\x12\x0b\n\x06\x41RCCOS\x10\x8d\x01\x12\x0b\n\x06\x41RCTAN\x10\x8e\x01\x12\x0c\n\x07\x41RCTAN2\x10\x8f\x01\x12\n\n\x05HYPOT\x10\x90\x01\x12\t\n\x04SINH\x10\x91\x01\x12\t\n\x04\x43OSH\x10\x92\x01\x12\t\n\x04TANH\x10\x93\x01\x12\x0c\n\x07\x41RCSINH\x10\x94\x01\x12\x0c\n\x07\x41RCCOSH\x10\x95\x01\x12\x0c\n\x07\x41RCTANH\x10\x96\x01\x12\x0c\n\x07\x44\x45G2RAD\x10\x97\x01\x12\x0c\n\x07RAD2DEG\x10\x98\x01\x12\x0b\n\x06\x42ITAND\x10\x99\x01\x12\n\n\x05\x42ITOR\x10\x9a\x01\x12\x0b\n\x06\x42ITXOR\x10\x9b\x01\x12\x0b\n\x06INVERT\x10\x9c\x01\x12\x0b\n\x06LSHIFT\x10\x9d\x01\x12\x0b\n\x06RSHIFT\x10\x9e\x01\x12\x08\n\x03\x41ND\x10\x9f\x01\x12\x07\n\x02OR\x10\xa0\x01\x12\x08\n\x03XOR\x10\xa1\x01\x12\x08\n\x03NOT\x10\xa2\x01\x12\x0c\n\x07MAXIMUM\x10\xa3\x01\x12\x0c\n\x07MINIMUM\x10\xa4\x01\x12\x0b\n\x06\x41ROUND\x10\xa5\x01\x12\x10\n\x0b\x46LOAT_POWER\x10\xa6\x01\x12\t\n\x04\x46MAX\x10\xa7\x01\x12\t\n\x04\x46MIN\x10\xa8\x01\x12\r\n\x08ISFINITE\x10\xa9\x01\x12\n\n\x05ISINF\x10\xaa\x01\x12\n\n\x05ISNAN\x10\xab\x01\x12\x0c\n\x07SIGNBIT\x10\xac\x01\x12\r\n\x08\x43OPYSIGN\x10\xad\x01\x12\x0e\n\tNEXTAFTER\x10\xae\x01\x12\x0c\n\x07SPACING\x10\xaf\x01\x12\n\n\x05LDEXP\x10\xb0\x01\x12\n\n\x05\x46REXP\x10\xb1\x01\x12\t\n\x04MODF\x10\xb2\x01\x12\n\n\x05\x46LOOR\x10\xb3\x01\x12\t\n\x04\x43\x45IL\x10\xb4\x01\x12\n\n\x05TRUNC\x10\xb5\x01\x12\x0c\n\x07\x44\x45GREES\x10\xb6\x01\x12\x0c\n\x07RADIANS\x10\xb7\x01\x12\t\n\x04\x43LIP\x10\xb8\x01\x12\x0b\n\x06ISREAL\x10\xb9\x01\x12\x0e\n\tISCOMPLEX\x10\xba\x01\x12\t\n\x04REAL\x10\xbb\x01\x12\t\n\x04IMAG\x10\xbc\x01\x12\x08\n\x03\x46IX\x10\xbd\x01\x12\x07\n\x02I0\x10\xbe\x01\x12\t\n\x04SINC\x10\xbf\x01\x12\x0f\n\nNAN_TO_NUM\x10\xc0\x01\x12\x0c\n\x07ISCLOSE\x10\xc1\x01\x12\x0b\n\x06\x44IVMOD\x10\xc2\x01\x12\n\n\x05\x41NGLE\x10\xc3\x01\x12\r\n\x08SET_REAL\x10\xc4\x01\x12\r\n\x08SET_IMAG\x10\xc5\x01\x12\r\n\x08TREE_ADD\x10\xfb\x01\x12\x12\n\rTREE_MULTIPLY\x10\xfc\x01\x12\x0b\n\x06\x43UMSUM\x10\xad\x02\x12\x0c\n\x07\x43UMPROD\x10\xae\x02\x12\t\n\x04PROD\x10\xaf\x02\x12\x08\n\x03SUM\x10\xb0\x02\x12\x08\n\x03MAX\x10\xb1\x02\x12\x08\n\x03MIN\x10\xb2\x02\x12\x08\n\x03\x41LL\x10\xb3\x02\x12\x08\n\x03\x41NY\x10\xb4\x02\x12\x0f\n\nMEAN_CHUNK\x10\xb5\x02\x12\x11\n\x0cMEAN_COMBINE\x10\xb6\x02\x12\t\n\x04MEAN\x10\xb7\x02\x12\x0b\n\x06\x41RGMAX\x10\xb8\x02\x12\x11\n\x0c\x41RGMAX_CHUNK\x10\xb9\x02\x12\x13\n\x0e\x41RGMAX_COMBINE\x10\xba\x02\x12\x0b\n\x06\x41RGMIN\x10\xbb\x02\x12\x11\n\x0c\x41RGMIN_CHUNK\x10\xbc\x02\x12\x13\n\x0e\x41RGMIN_COMBINE\x10\xbd\x02\x12\x0b\n\x06NANSUM\x10\xbe\x02\x12\x0b\n\x06NANMAX\x10\xbf\x02\x12\x0b\n\x06NANMIN\x10\xc0\x02\x12\x0c\n\x07NANPROD\x10\xc1\x02\x12\x0c\n\x07NANMEAN\x10\xc2\x02\x12\x12\n\rNANMEAN_CHUNK\x10\xc3\x02\x12\x0e\n\tNANARGMAX\x10\xc4\x02\x12\x14\n\x0fNANARGMAX_CHUNK\x10\xc5\x02\x12\x16\n\x11NANARGMAX_COMBINE\x10\xc6\x02\x12\x0e\n\tNANARGMIN\x10\xc7\x02\x12\x14\n\x0fNANARGMIN_CHUNK\x10\xc8\x02\x12\x16\n\x11NANARGMIN_COMBINE\x10\xc9\x02\x12\x12\n\rCOUNT_NONZERO\x10\xca\x02\x12\x11\n\x0cMOMENT_CHUNK\x10\xcb\x02\x12\x14\n\x0fNANMOMENT_CHUNK\x10\xcc\x02\x12\x13\n\x0eMOMENT_COMBINE\x10\xcd\x02\x12\x16\n\x11NANMOMENT_COMBINE\x10\xce\x02\x12\x0b\n\x06MOMENT\x10\xcf\x02\x12\x0e\n\tNANMOMENT\x10\xd0\x02\x12\x08\n\x03VAR\x10\xd1\x02\x12\x08\n\x03STD\x10\xd2\x02\x12\x0b\n\x06NANVAR\x10\xd3\x02\x12\x0b\n\x06NANSTD\x10\xd4\x02\x12\x0e\n\tNANCUMSUM\x10\xd5\x02\x12\x0f\n\nNANCUMPROD\x10\xd6\x02\x12\x0c\n\x07RESHAPE\x10\x91\x03\x12\n\n\x05SLICE\x10\x92\x03\x12\n\n\x05INDEX\x10\x93\x03\x12\x12\n\rINDEXSETVALUE\x10\x94\x03\x12\x10\n\x0b\x43ONCATENATE\x10\x95\x03\x12\x0c\n\x07RECHUNK\x10\x96\x03\x12\x0b\n\x06\x41STYPE\x10\x97\x03\x12\x0e\n\tTRANSPOSE\x10\x98\x03\x12\r\n\x08SWAPAXES\x10\x99\x03\x12\x11\n\x0c\x42ROADCAST_TO\x10\x9a\x03\x12\n\n\x05STACK\x10\x9b\x03\x12\n\n\x05WHERE\x10\x9c\x03\x12\x0b\n\x06\x43HOOSE\x10\x9d\x03\x12\x0c\n\x07NONZERO\x10\x9e\x03\x12\r\n\x08\x41RGWHERE\x10\x9f\x03\x12\x12\n\rUNRAVEL_INDEX\x10\xa0\x03\x12\x16\n\x11RAVEL_MULTI_INDEX\x10\xa1\x03\x12\x10\n\x0b\x41RRAY_SPLIT\x10\xa2\x03\x12\x0c\n\x07SQUEEZE\x10\xa3\x03\x12\r\n\x08\x44IGITIZE\x10\xa4\x03\x12\x0b\n\x06REPEAT\x10\xa5\x03\x12\x0b\n\x06\x43OPYTO\x10\xa6\x03\x12\t\n\x04ISIN\x10\xa7\x03\x12\x1f\n\x1a\x46\x41NCY_INDEX_DISTRIBUTE_MAP\x10\xa8\x03\x12\"\n\x1d\x46\x41NCY_INDEX_DISTRIBUTE_REDUCE\x10\xa9\x03\x12\x1b\n\x16\x46\x41NCY_INDEX_CONCAT_MAP\x10\xaa\x03\x12\x1e\n\x19\x46\x41NCY_INDEX_CONCAT_REDUCE\x10\xab\x03\x12\x0e\n\tTENSORDOT\x10\xf5\x03\x12\x08\n\x03\x44OT\x10\xf6\x03\x12\x0b\n\x06MATMUL\x10\xf7\x03\x12\r\n\x08\x43HOLESKY\x10\xfe\x03\x12\x07\n\x02QR\x10\xff\x03\x12\x08\n\x03SVD\x10\x80\x04\x12\x07\n\x02LU\x10\x81\x04\x12\x15\n\x10SOLVE_TRIANGULAR\x10\x88\x04\x12\x08\n\x03INV\x10\x89\x04\x12\t\n\x04NORM\x10\x92\x04\x12\x08\n\x03\x46\x46T\x10\xd9\x04\x12\t\n\x04IFFT\x10\xda\x04\x12\t\n\x04\x46\x46T2\x10\xdb\x04\x12\n\n\x05IFFT2\x10\xdc\x04\x12\t\n\x04\x46\x46TN\x10\xdd\x04\x12\n\n\x05IFFTN\x10\xde\x04\x12\t\n\x04RFFT\x10\xdf\x04\x12\n\n\x05IRFFT\x10\xe0\x04\x12\n\n\x05RFFT2\x10\xe1\x04\x12\x0b\n\x06IRFFT2\x10\xe2\x04\x12\n\n\x05RFFTN\x10\xe3\x04\x12\x0b\n\x06IRFFTN\x10\xe4\x04\x12\t\n\x04HFFT\x10\xe5\x04\x12\n\n\x05IHFFT\x10\xe6\x04\x12\x0c\n\x07\x46\x46TFREQ\x10\xe7\x04\x12\x12\n\rFFTFREQ_CHUNK\x10\xe8\x04\x12\r\n\x08RFFTFREQ\x10\xe9\x04\x12\r\n\x08\x46\x46TSHIFT\x10\xea\x04\x12\x0e\n\tIFFTSHIFT\x10\xeb\x04\x12\x1e\n\x19SPARSE_MATRIX_DATA_SOURCE\x10\xbd\x05\x12\x14\n\x0f\x44\x45NSE_TO_SPARSE\x10\xbe\x05\x12\x14\n\x0fSPARSE_TO_DENSE\x10\xbf\x05\x12\t\n\x04\x46USE\x10\xa1\x06\x12\n\n\x05\x45NTER\x10\x85\x07\x12\n\n\x05LEAVE\x10\x86\x07\x12\x0f\n\nFIX_LATEST\x10\x87\x07\x12\x0c\n\x07IF_ELSE\x10\x88\x07\x12\x0e\n\tNEXT_ITER\x10\x89\x07\x12\x0e\n\tTABLE_COO\x10\xeb\x07\x12\x0e\n\tSTORE_COO\x10\xec\x07\x12\x12\n\rSHUFFLE_PROXY\x10\xd1\x0f\x12\x10\n\x0bRESHAPE_MAP\x10\xd2\x0f\x12\x13\n\x0eRESHAPE_REDUCE\x10\xd3\x0f\x12\x1e\n\x19\x44\x41TAFRAME_INDEX_ALIGN_MAP\x10\xd4\x0f\x12!\n\x1c\x44\x41TAFRAME_INDEX_ALIGN_REDUCE\x10\xd5\x0f\x12\x13\n\rFETCH_SHUFFLE\x10\xbe\x84=\x12\x0b\n\x05\x46\x45TCH\x10\xbf\x84=b\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,])
 
@@ -114,1066 +114,1070 @@ _OPERANDDEF_OPERANDTYPE = _descriptor.EnumDescriptor(
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SERIES_DATA_SOURCE', index=20, number=20,
+      name='TENSOR_FROM_DATAFRAME', index=20, number=21,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RAND', index=21, number=41,
+      name='SERIES_DATA_SOURCE', index=21, number=20,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANDN', index=22, number=42,
+      name='RAND_RAND', index=22, number=41,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANDINT', index=23, number=43,
+      name='RAND_RANDN', index=23, number=42,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANDOM_INTEGERS', index=24, number=44,
+      name='RAND_RANDINT', index=24, number=43,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANDOM_SAMPLE', index=25, number=45,
+      name='RAND_RANDOM_INTEGERS', index=25, number=44,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANDOM', index=26, number=46,
+      name='RAND_RANDOM_SAMPLE', index=26, number=45,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RANF', index=27, number=47,
+      name='RAND_RANDOM', index=27, number=46,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_SAMPLE', index=28, number=48,
+      name='RAND_RANF', index=28, number=47,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_BYTES', index=29, number=49,
+      name='RAND_SAMPLE', index=29, number=48,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_BETA', index=30, number=50,
+      name='RAND_BYTES', index=30, number=49,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_BINOMIAL', index=31, number=51,
+      name='RAND_BETA', index=31, number=50,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_CHISQUARE', index=32, number=52,
+      name='RAND_BINOMIAL', index=32, number=51,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_CHOICE', index=33, number=53,
+      name='RAND_CHISQUARE', index=33, number=52,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_DIRICHLET', index=34, number=54,
+      name='RAND_CHOICE', index=34, number=53,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_EXPONENTIAL', index=35, number=55,
+      name='RAND_DIRICHLET', index=35, number=54,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_F', index=36, number=56,
+      name='RAND_EXPONENTIAL', index=36, number=55,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_GAMMA', index=37, number=57,
+      name='RAND_F', index=37, number=56,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_GEOMETRIC', index=38, number=58,
+      name='RAND_GAMMA', index=38, number=57,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_GUMBEL', index=39, number=59,
+      name='RAND_GEOMETRIC', index=39, number=58,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_HYPERGEOMETRIC', index=40, number=60,
+      name='RAND_GUMBEL', index=40, number=59,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_LAPLACE', index=41, number=61,
+      name='RAND_HYPERGEOMETRIC', index=41, number=60,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_LOGISTIC', index=42, number=62,
+      name='RAND_LAPLACE', index=42, number=61,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_LOGNORMAL', index=43, number=63,
+      name='RAND_LOGISTIC', index=43, number=62,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_LOGSERIES', index=44, number=64,
+      name='RAND_LOGNORMAL', index=44, number=63,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_MULTINOMIAL', index=45, number=65,
+      name='RAND_LOGSERIES', index=45, number=64,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_MULTIVARIATE_NORMAL', index=46, number=66,
+      name='RAND_MULTINOMIAL', index=46, number=65,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_NEGATIVE_BINOMIAL', index=47, number=67,
+      name='RAND_MULTIVARIATE_NORMAL', index=47, number=66,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_NONCENTRAL_CHISQURE', index=48, number=68,
+      name='RAND_NEGATIVE_BINOMIAL', index=48, number=67,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_NONCENTRAL_F', index=49, number=69,
+      name='RAND_NONCENTRAL_CHISQURE', index=49, number=68,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_NORMAL', index=50, number=70,
+      name='RAND_NONCENTRAL_F', index=50, number=69,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_PARETO', index=51, number=71,
+      name='RAND_NORMAL', index=51, number=70,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_PERMUTATION', index=52, number=72,
+      name='RAND_PARETO', index=52, number=71,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_POSSION', index=53, number=73,
+      name='RAND_PERMUTATION', index=53, number=72,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_POWER', index=54, number=74,
+      name='RAND_POSSION', index=54, number=73,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_RAYLEIGH', index=55, number=75,
+      name='RAND_POWER', index=55, number=74,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_SHUFFLE', index=56, number=76,
+      name='RAND_RAYLEIGH', index=56, number=75,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_STANDARD_CAUCHY', index=57, number=77,
+      name='RAND_SHUFFLE', index=57, number=76,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_STANDARD_EXPONENTIAL', index=58, number=78,
+      name='RAND_STANDARD_CAUCHY', index=58, number=77,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_STANDARD_GAMMMA', index=59, number=79,
+      name='RAND_STANDARD_EXPONENTIAL', index=59, number=78,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_STANDARD_NORMAL', index=60, number=80,
+      name='RAND_STANDARD_GAMMMA', index=60, number=79,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_STANDARD_T', index=61, number=81,
+      name='RAND_STANDARD_NORMAL', index=61, number=80,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_TOMAXINT', index=62, number=82,
+      name='RAND_STANDARD_T', index=62, number=81,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_TRIANGULAR', index=63, number=83,
+      name='RAND_TOMAXINT', index=63, number=82,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_UNIFORM', index=64, number=84,
+      name='RAND_TRIANGULAR', index=64, number=83,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_VONMISES', index=65, number=85,
+      name='RAND_UNIFORM', index=65, number=84,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_WALD', index=66, number=86,
+      name='RAND_VONMISES', index=66, number=85,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_WEIBULL', index=67, number=87,
+      name='RAND_WALD', index=67, number=86,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAND_ZIPF', index=68, number=88,
+      name='RAND_WEIBULL', index=68, number=87,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ADD', index=69, number=101,
+      name='RAND_ZIPF', index=69, number=88,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SUB', index=70, number=102,
+      name='ADD', index=70, number=101,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MUL', index=71, number=103,
+      name='SUB', index=71, number=102,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DIV', index=72, number=104,
+      name='MUL', index=72, number=103,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TRUEDIV', index=73, number=105,
+      name='DIV', index=73, number=104,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FLOORDIV', index=74, number=106,
+      name='TRUEDIV', index=74, number=105,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='POW', index=75, number=107,
+      name='FLOORDIV', index=75, number=106,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MOD', index=76, number=108,
+      name='POW', index=76, number=107,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FMOD', index=77, number=109,
+      name='MOD', index=77, number=108,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOGADDEXP', index=78, number=110,
+      name='FMOD', index=78, number=109,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOGADDEXP2', index=79, number=111,
+      name='LOGADDEXP', index=79, number=110,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NEGATIVE', index=80, number=112,
+      name='LOGADDEXP2', index=80, number=111,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='POSITIVE', index=81, number=113,
+      name='NEGATIVE', index=81, number=112,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ABSOLUTE', index=82, number=114,
+      name='POSITIVE', index=82, number=113,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FABS', index=83, number=115,
+      name='ABSOLUTE', index=83, number=114,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ABS', index=84, number=116,
+      name='FABS', index=84, number=115,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RINT', index=85, number=117,
+      name='ABS', index=85, number=116,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SIGN', index=86, number=118,
+      name='RINT', index=86, number=117,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CONJ', index=87, number=119,
+      name='SIGN', index=87, number=118,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='EXP', index=88, number=120,
+      name='CONJ', index=88, number=119,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='EXP2', index=89, number=121,
+      name='EXP', index=89, number=120,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOG', index=90, number=122,
+      name='EXP2', index=90, number=121,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOG2', index=91, number=123,
+      name='LOG', index=91, number=122,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOG10', index=92, number=124,
+      name='LOG2', index=92, number=123,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='EXPM1', index=93, number=125,
+      name='LOG10', index=93, number=124,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LOG1P', index=94, number=126,
+      name='EXPM1', index=94, number=125,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SQRT', index=95, number=127,
+      name='LOG1P', index=95, number=126,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SQUARE', index=96, number=128,
+      name='SQRT', index=96, number=127,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CBRT', index=97, number=129,
+      name='SQUARE', index=97, number=128,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RECIPROCAL', index=98, number=130,
+      name='CBRT', index=98, number=129,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='EQ', index=99, number=131,
+      name='RECIPROCAL', index=99, number=130,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NE', index=100, number=132,
+      name='EQ', index=100, number=131,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LT', index=101, number=133,
+      name='NE', index=101, number=132,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LE', index=102, number=134,
+      name='LT', index=102, number=133,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GT', index=103, number=135,
+      name='LE', index=103, number=134,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GE', index=104, number=136,
+      name='GT', index=104, number=135,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SIN', index=105, number=137,
+      name='GE', index=105, number=136,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COS', index=106, number=138,
+      name='SIN', index=106, number=137,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TAN', index=107, number=139,
+      name='COS', index=107, number=138,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCSIN', index=108, number=140,
+      name='TAN', index=108, number=139,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCCOS', index=109, number=141,
+      name='ARCSIN', index=109, number=140,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCTAN', index=110, number=142,
+      name='ARCCOS', index=110, number=141,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCTAN2', index=111, number=143,
+      name='ARCTAN', index=111, number=142,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='HYPOT', index=112, number=144,
+      name='ARCTAN2', index=112, number=143,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SINH', index=113, number=145,
+      name='HYPOT', index=113, number=144,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COSH', index=114, number=146,
+      name='SINH', index=114, number=145,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TANH', index=115, number=147,
+      name='COSH', index=115, number=146,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCSINH', index=116, number=148,
+      name='TANH', index=116, number=147,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCCOSH', index=117, number=149,
+      name='ARCSINH', index=117, number=148,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARCTANH', index=118, number=150,
+      name='ARCCOSH', index=118, number=149,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DEG2RAD', index=119, number=151,
+      name='ARCTANH', index=119, number=150,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAD2DEG', index=120, number=152,
+      name='DEG2RAD', index=120, number=151,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BITAND', index=121, number=153,
+      name='RAD2DEG', index=121, number=152,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BITOR', index=122, number=154,
+      name='BITAND', index=122, number=153,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BITXOR', index=123, number=155,
+      name='BITOR', index=123, number=154,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='INVERT', index=124, number=156,
+      name='BITXOR', index=124, number=155,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LSHIFT', index=125, number=157,
+      name='INVERT', index=125, number=156,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RSHIFT', index=126, number=158,
+      name='LSHIFT', index=126, number=157,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='AND', index=127, number=159,
+      name='RSHIFT', index=127, number=158,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='OR', index=128, number=160,
+      name='AND', index=128, number=159,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='XOR', index=129, number=161,
+      name='OR', index=129, number=160,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NOT', index=130, number=162,
+      name='XOR', index=130, number=161,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MAXIMUM', index=131, number=163,
+      name='NOT', index=131, number=162,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MINIMUM', index=132, number=164,
+      name='MAXIMUM', index=132, number=163,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='AROUND', index=133, number=165,
+      name='MINIMUM', index=133, number=164,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FLOAT_POWER', index=134, number=166,
+      name='AROUND', index=134, number=165,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FMAX', index=135, number=167,
+      name='FLOAT_POWER', index=135, number=166,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FMIN', index=136, number=168,
+      name='FMAX', index=136, number=167,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISFINITE', index=137, number=169,
+      name='FMIN', index=137, number=168,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISINF', index=138, number=170,
+      name='ISFINITE', index=138, number=169,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISNAN', index=139, number=171,
+      name='ISINF', index=139, number=170,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SIGNBIT', index=140, number=172,
+      name='ISNAN', index=140, number=171,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COPYSIGN', index=141, number=173,
+      name='SIGNBIT', index=141, number=172,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NEXTAFTER', index=142, number=174,
+      name='COPYSIGN', index=142, number=173,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SPACING', index=143, number=175,
+      name='NEXTAFTER', index=143, number=174,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LDEXP', index=144, number=176,
+      name='SPACING', index=144, number=175,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FREXP', index=145, number=177,
+      name='LDEXP', index=145, number=176,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MODF', index=146, number=178,
+      name='FREXP', index=146, number=177,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FLOOR', index=147, number=179,
+      name='MODF', index=147, number=178,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CEIL', index=148, number=180,
+      name='FLOOR', index=148, number=179,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TRUNC', index=149, number=181,
+      name='CEIL', index=149, number=180,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DEGREES', index=150, number=182,
+      name='TRUNC', index=150, number=181,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RADIANS', index=151, number=183,
+      name='DEGREES', index=151, number=182,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CLIP', index=152, number=184,
+      name='RADIANS', index=152, number=183,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISREAL', index=153, number=185,
+      name='CLIP', index=153, number=184,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISCOMPLEX', index=154, number=186,
+      name='ISREAL', index=154, number=185,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='REAL', index=155, number=187,
+      name='ISCOMPLEX', index=155, number=186,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IMAG', index=156, number=188,
+      name='REAL', index=156, number=187,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FIX', index=157, number=189,
+      name='IMAG', index=157, number=188,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='I0', index=158, number=190,
+      name='FIX', index=158, number=189,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SINC', index=159, number=191,
+      name='I0', index=159, number=190,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NAN_TO_NUM', index=160, number=192,
+      name='SINC', index=160, number=191,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISCLOSE', index=161, number=193,
+      name='NAN_TO_NUM', index=161, number=192,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DIVMOD', index=162, number=194,
+      name='ISCLOSE', index=162, number=193,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ANGLE', index=163, number=195,
+      name='DIVMOD', index=163, number=194,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SET_REAL', index=164, number=196,
+      name='ANGLE', index=164, number=195,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SET_IMAG', index=165, number=197,
+      name='SET_REAL', index=165, number=196,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TREE_ADD', index=166, number=251,
+      name='SET_IMAG', index=166, number=197,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TREE_MULTIPLY', index=167, number=252,
+      name='TREE_ADD', index=167, number=251,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CUMSUM', index=168, number=301,
+      name='TREE_MULTIPLY', index=168, number=252,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CUMPROD', index=169, number=302,
+      name='CUMSUM', index=169, number=301,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='PROD', index=170, number=303,
+      name='CUMPROD', index=170, number=302,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SUM', index=171, number=304,
+      name='PROD', index=171, number=303,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MAX', index=172, number=305,
+      name='SUM', index=172, number=304,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MIN', index=173, number=306,
+      name='MAX', index=173, number=305,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ALL', index=174, number=307,
+      name='MIN', index=174, number=306,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ANY', index=175, number=308,
+      name='ALL', index=175, number=307,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MEAN_CHUNK', index=176, number=309,
+      name='ANY', index=176, number=308,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MEAN_COMBINE', index=177, number=310,
+      name='MEAN_CHUNK', index=177, number=309,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MEAN', index=178, number=311,
+      name='MEAN_COMBINE', index=178, number=310,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMAX', index=179, number=312,
+      name='MEAN', index=179, number=311,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMAX_CHUNK', index=180, number=313,
+      name='ARGMAX', index=180, number=312,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMAX_COMBINE', index=181, number=314,
+      name='ARGMAX_CHUNK', index=181, number=313,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMIN', index=182, number=315,
+      name='ARGMAX_COMBINE', index=182, number=314,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMIN_CHUNK', index=183, number=316,
+      name='ARGMIN', index=183, number=315,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGMIN_COMBINE', index=184, number=317,
+      name='ARGMIN_CHUNK', index=184, number=316,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANSUM', index=185, number=318,
+      name='ARGMIN_COMBINE', index=185, number=317,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMAX', index=186, number=319,
+      name='NANSUM', index=186, number=318,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMIN', index=187, number=320,
+      name='NANMAX', index=187, number=319,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANPROD', index=188, number=321,
+      name='NANMIN', index=188, number=320,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMEAN', index=189, number=322,
+      name='NANPROD', index=189, number=321,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMEAN_CHUNK', index=190, number=323,
+      name='NANMEAN', index=190, number=322,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMAX', index=191, number=324,
+      name='NANMEAN_CHUNK', index=191, number=323,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMAX_CHUNK', index=192, number=325,
+      name='NANARGMAX', index=192, number=324,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMAX_COMBINE', index=193, number=326,
+      name='NANARGMAX_CHUNK', index=193, number=325,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMIN', index=194, number=327,
+      name='NANARGMAX_COMBINE', index=194, number=326,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMIN_CHUNK', index=195, number=328,
+      name='NANARGMIN', index=195, number=327,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANARGMIN_COMBINE', index=196, number=329,
+      name='NANARGMIN_CHUNK', index=196, number=328,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COUNT_NONZERO', index=197, number=330,
+      name='NANARGMIN_COMBINE', index=197, number=329,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MOMENT_CHUNK', index=198, number=331,
+      name='COUNT_NONZERO', index=198, number=330,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMOMENT_CHUNK', index=199, number=332,
+      name='MOMENT_CHUNK', index=199, number=331,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MOMENT_COMBINE', index=200, number=333,
+      name='NANMOMENT_CHUNK', index=200, number=332,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMOMENT_COMBINE', index=201, number=334,
+      name='MOMENT_COMBINE', index=201, number=333,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MOMENT', index=202, number=335,
+      name='NANMOMENT_COMBINE', index=202, number=334,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANMOMENT', index=203, number=336,
+      name='MOMENT', index=203, number=335,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='VAR', index=204, number=337,
+      name='NANMOMENT', index=204, number=336,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='STD', index=205, number=338,
+      name='VAR', index=205, number=337,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANVAR', index=206, number=339,
+      name='STD', index=206, number=338,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANSTD', index=207, number=340,
+      name='NANVAR', index=207, number=339,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANCUMSUM', index=208, number=341,
+      name='NANSTD', index=208, number=340,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NANCUMPROD', index=209, number=342,
+      name='NANCUMSUM', index=209, number=341,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RESHAPE', index=210, number=401,
+      name='NANCUMPROD', index=210, number=342,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SLICE', index=211, number=402,
+      name='RESHAPE', index=211, number=401,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='INDEX', index=212, number=403,
+      name='SLICE', index=212, number=402,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='INDEXSETVALUE', index=213, number=404,
+      name='INDEX', index=213, number=403,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CONCATENATE', index=214, number=405,
+      name='INDEXSETVALUE', index=214, number=404,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RECHUNK', index=215, number=406,
+      name='CONCATENATE', index=215, number=405,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ASTYPE', index=216, number=407,
+      name='RECHUNK', index=216, number=406,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TRANSPOSE', index=217, number=408,
+      name='ASTYPE', index=217, number=407,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SWAPAXES', index=218, number=409,
+      name='TRANSPOSE', index=218, number=408,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='BROADCAST_TO', index=219, number=410,
+      name='SWAPAXES', index=219, number=409,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='STACK', index=220, number=411,
+      name='BROADCAST_TO', index=220, number=410,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='WHERE', index=221, number=412,
+      name='STACK', index=221, number=411,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CHOOSE', index=222, number=413,
+      name='WHERE', index=222, number=412,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NONZERO', index=223, number=414,
+      name='CHOOSE', index=223, number=413,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARGWHERE', index=224, number=415,
+      name='NONZERO', index=224, number=414,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='UNRAVEL_INDEX', index=225, number=416,
+      name='ARGWHERE', index=225, number=415,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RAVEL_MULTI_INDEX', index=226, number=417,
+      name='UNRAVEL_INDEX', index=226, number=416,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ARRAY_SPLIT', index=227, number=418,
+      name='RAVEL_MULTI_INDEX', index=227, number=417,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SQUEEZE', index=228, number=419,
+      name='ARRAY_SPLIT', index=228, number=418,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DIGITIZE', index=229, number=420,
+      name='SQUEEZE', index=229, number=419,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='REPEAT', index=230, number=421,
+      name='DIGITIZE', index=230, number=420,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COPYTO', index=231, number=422,
+      name='REPEAT', index=231, number=421,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ISIN', index=232, number=423,
+      name='COPYTO', index=232, number=422,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_DISTRIBUTE_MAP', index=233, number=424,
+      name='ISIN', index=233, number=423,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_DISTRIBUTE_REDUCE', index=234, number=425,
+      name='FANCY_INDEX_DISTRIBUTE_MAP', index=234, number=424,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_CONCAT_MAP', index=235, number=426,
+      name='FANCY_INDEX_DISTRIBUTE_REDUCE', index=235, number=425,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_CONCAT_REDUCE', index=236, number=427,
+      name='FANCY_INDEX_CONCAT_MAP', index=236, number=426,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TENSORDOT', index=237, number=501,
+      name='FANCY_INDEX_CONCAT_REDUCE', index=237, number=427,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DOT', index=238, number=502,
+      name='TENSORDOT', index=238, number=501,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MATMUL', index=239, number=503,
+      name='DOT', index=239, number=502,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CHOLESKY', index=240, number=510,
+      name='MATMUL', index=240, number=503,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='QR', index=241, number=511,
+      name='CHOLESKY', index=241, number=510,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SVD', index=242, number=512,
+      name='QR', index=242, number=511,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LU', index=243, number=513,
+      name='SVD', index=243, number=512,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SOLVE_TRIANGULAR', index=244, number=520,
+      name='LU', index=244, number=513,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='INV', index=245, number=521,
+      name='SOLVE_TRIANGULAR', index=245, number=520,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NORM', index=246, number=530,
+      name='INV', index=246, number=521,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFT', index=247, number=601,
+      name='NORM', index=247, number=530,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFT', index=248, number=602,
+      name='FFT', index=248, number=601,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFT2', index=249, number=603,
+      name='IFFT', index=249, number=602,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFT2', index=250, number=604,
+      name='FFT2', index=250, number=603,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTN', index=251, number=605,
+      name='IFFT2', index=251, number=604,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFTN', index=252, number=606,
+      name='FFTN', index=252, number=605,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFT', index=253, number=607,
+      name='IFFTN', index=253, number=606,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFT', index=254, number=608,
+      name='RFFT', index=254, number=607,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFT2', index=255, number=609,
+      name='IRFFT', index=255, number=608,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFT2', index=256, number=610,
+      name='RFFT2', index=256, number=609,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFTN', index=257, number=611,
+      name='IRFFT2', index=257, number=610,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFTN', index=258, number=612,
+      name='RFFTN', index=258, number=611,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='HFFT', index=259, number=613,
+      name='IRFFTN', index=259, number=612,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IHFFT', index=260, number=614,
+      name='HFFT', index=260, number=613,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTFREQ', index=261, number=615,
+      name='IHFFT', index=261, number=614,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTFREQ_CHUNK', index=262, number=616,
+      name='FFTFREQ', index=262, number=615,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFTFREQ', index=263, number=617,
+      name='FFTFREQ_CHUNK', index=263, number=616,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTSHIFT', index=264, number=618,
+      name='RFFTFREQ', index=264, number=617,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFTSHIFT', index=265, number=619,
+      name='FFTSHIFT', index=265, number=618,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SPARSE_MATRIX_DATA_SOURCE', index=266, number=701,
+      name='IFFTSHIFT', index=266, number=619,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DENSE_TO_SPARSE', index=267, number=702,
+      name='SPARSE_MATRIX_DATA_SOURCE', index=267, number=701,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SPARSE_TO_DENSE', index=268, number=703,
+      name='DENSE_TO_SPARSE', index=268, number=702,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FUSE', index=269, number=801,
+      name='SPARSE_TO_DENSE', index=269, number=703,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ENTER', index=270, number=901,
+      name='FUSE', index=270, number=801,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LEAVE', index=271, number=902,
+      name='ENTER', index=271, number=901,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FIX_LATEST', index=272, number=903,
+      name='LEAVE', index=272, number=902,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IF_ELSE', index=273, number=904,
+      name='FIX_LATEST', index=273, number=903,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NEXT_ITER', index=274, number=905,
+      name='IF_ELSE', index=274, number=904,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TABLE_COO', index=275, number=1003,
+      name='NEXT_ITER', index=275, number=905,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='STORE_COO', index=276, number=1004,
+      name='TABLE_COO', index=276, number=1003,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SHUFFLE_PROXY', index=277, number=2001,
+      name='STORE_COO', index=277, number=1004,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RESHAPE_MAP', index=278, number=2002,
+      name='SHUFFLE_PROXY', index=278, number=2001,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RESHAPE_REDUCE', index=279, number=2003,
+      name='RESHAPE_MAP', index=279, number=2002,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_INDEX_ALIGN_MAP', index=280, number=2004,
+      name='RESHAPE_REDUCE', index=280, number=2003,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_INDEX_ALIGN_REDUCE', index=281, number=2005,
+      name='DATAFRAME_INDEX_ALIGN_MAP', index=281, number=2004,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FETCH_SHUFFLE', index=282, number=999998,
+      name='DATAFRAME_INDEX_ALIGN_REDUCE', index=282, number=2005,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FETCH', index=283, number=999999,
+      name='FETCH_SHUFFLE', index=283, number=999998,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='FETCH', index=284, number=999999,
       serialized_options=None,
       type=None),
   ],
   containing_type=None,
   serialized_options=None,
   serialized_start=237,
-  serialized_end=4675,
+  serialized_end=4702,
 )
 _sym_db.RegisterEnumDescriptor(_OPERANDDEF_OPERANDTYPE)
 
@@ -1264,7 +1268,7 @@ _OPERANDDEF = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=75,
-  serialized_end=4675,
+  serialized_end=4702,
 )
 
 _OPERANDDEF_ATTRENTRY.fields_by_name['value'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
