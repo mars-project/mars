@@ -211,14 +211,13 @@ class TensorBaseSingleDimensionFFT(TensorBaseFFT):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        a = ctx[chunk.inputs[0].key]
+        a = ctx[op.inputs[0].key]
         xp = get_array_module(a)
-        fun = _get_fft_func(chunk.op, xp)
-        res = fun(a, n=chunk.op.n, axis=chunk.op.axis, norm=chunk.op.norm)
-        if res.dtype != chunk.op.dtype:
-            res = res.astype(chunk.op.dtype)
-        ctx[chunk.key] = res
+        fun = _get_fft_func(op, xp)
+        res = fun(a, n=op.n, axis=op.axis, norm=op.norm)
+        if res.dtype != op.dtype:
+            res = res.astype(op.dtype)
+        ctx[op.outputs[0].key] = res
 
 
 class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
@@ -235,14 +234,13 @@ class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        a = ctx[chunk.inputs[0].key]
+        a = ctx[op.inputs[0].key]
         xp = get_array_module(a)
-        fun = _get_fft_func(chunk.op, xp)
-        res = fun(a, s=chunk.op.shape, axes=chunk.op.axes, norm=chunk.op.norm)
-        if res.dtype != chunk.op.dtype:
-            res = res.astype(chunk.op.dtype)
-        ctx[chunk.key] = res
+        fun = _get_fft_func(op, xp)
+        res = fun(a, s=op.shape, axes=op.axes, norm=op.norm)
+        if res.dtype != op.dtype:
+            res = res.astype(op.dtype)
+        ctx[op.outputs[0].key] = res
 
 
 def _get_fft_func(op, xp):

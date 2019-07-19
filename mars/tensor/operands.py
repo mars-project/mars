@@ -89,8 +89,7 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = None
+        ctx[op.outputs[0].key] = None
 
 
 class TensorShuffleMap(ShuffleMap):

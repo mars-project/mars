@@ -57,12 +57,12 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        if chunk.issparse():
-            ctx[chunk.key] = sparse.eye(chunk.shape[0], M=chunk.shape[1], k=chunk.op.k,
-                                        dtype=chunk.op.dtype, gpu=chunk.op.gpu)
+        if op.sparse:
+            ctx[chunk.key] = sparse.eye(chunk.shape[0], M=chunk.shape[1], k=op.k,
+                                        dtype=op.dtype, gpu=op.gpu)
         else:
-            ctx[chunk.key] = create_array(chunk.op)(
-                'eye', chunk.shape[0], M=chunk.shape[1], k=chunk.op.k, dtype=chunk.op.dtype)
+            ctx[chunk.key] = create_array(op)(
+                'eye', chunk.shape[0], M=chunk.shape[1], k=op.k, dtype=op.dtype)
 
 
 def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None):

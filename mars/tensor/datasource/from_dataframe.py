@@ -17,9 +17,8 @@ class TensorDataFrameDataSource(TensorHasInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        df = ctx[chunk.inputs[0].key]
-        ctx[chunk.key] = to_numpy(df)
+        df = ctx[op.inputs[0].key]
+        ctx[op.outputs[0].key] = to_numpy(df)
 
 
 def from_dataframe(in_df):

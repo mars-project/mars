@@ -78,13 +78,12 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        axes = chunk.op.axes
+        axes = op.axes
         with device(device_id):
-            ctx[chunk.key] = xp.transpose(x, axes or None)
+            ctx[op.outputs[0].key] = xp.transpose(x, axes or None)
 
 
 def transpose(a, axes=None):

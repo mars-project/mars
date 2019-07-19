@@ -88,12 +88,11 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[chunk.key] = xp.squeeze(a, axis=chunk.op.axis)
+            ctx[op.outputs[0].key] = xp.squeeze(a, axis=op.axis)
 
 
 def squeeze(a, axis=None):

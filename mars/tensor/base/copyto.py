@@ -141,16 +141,15 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
             dst = inputs[1].copy()
             src = inputs[0]
             where = inputs[2] if len(inputs) > 2 else None
 
-            xp.copyto(dst, src, casting=chunk.op.casting, where=where)
+            xp.copyto(dst, src, casting=op.casting, where=where)
 
 
 def copyto(dst, src, casting='same_kind', where=True):

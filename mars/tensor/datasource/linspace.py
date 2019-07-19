@@ -23,6 +23,7 @@ from ..utils import decide_chunk_sizes
 from .core import TensorNoInput
 from ..array_utils import create_array
 
+
 class TensorLinspace(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_LINSPACE
 
@@ -94,10 +95,9 @@ class TensorLinspace(TensorNoInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(chunk.op)(
-            'linspace', chunk.op.start, chunk.op.stop, num=chunk.op.num,
-            endpoint=chunk.op.endpoint, dtype=chunk.op.dtype)
+        ctx[op.outputs[0].key] = create_array(op)(
+            'linspace', op.start, op.stop, num=op.num,
+            endpoint=op.endpoint, dtype=op.dtype)
 
 
 def linspace(start, stop, num=50, endpoint=True, retstep=False,

@@ -112,9 +112,8 @@ class TensorOnesLike(TensorLike):
         if op.sparse:
             cls.execute_sparse(ctx, op)
         else:
-            chunk = op.outputs[0]
-            ctx[chunk.key] = create_array(chunk.op)(
-                'ones_like', ctx[chunk.inputs[0].key], dtype=chunk.op.dtype)
+            ctx[op.outputs[0].key] = create_array(op)(
+                'ones_like', ctx[op.inputs[0].key], dtype=op.dtype)
 
 
 def ones_like(a, dtype=None, gpu=None):

@@ -96,15 +96,14 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         indexes = [ctx[index.key] if hasattr(index, 'key') else index
-                   for index in chunk.op.indexes]
-        input_ = ctx[chunk.inputs[0].key].copy()
-        value = ctx[chunk.op.value.key] if hasattr(chunk.op.value, 'key') else chunk.op.value
+                   for index in op.indexes]
+        input_ = ctx[op.inputs[0].key].copy()
+        value = ctx[op.value.key] if hasattr(op.value, 'key') else op.value
         if hasattr(input_, 'flags') and not input_.flags.writeable:
             input_.setflags(write=True)
         input_[tuple(indexes)] = value
-        ctx[chunk.key] = input_
+        ctx[op.outputs[0].key] = input_
 
 
 def _setitem(a, item, value):

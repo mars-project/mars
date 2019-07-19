@@ -31,8 +31,7 @@ class SparseToDense(TensorHasInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = ctx[chunk.inputs[0].key].toarray()
+        ctx[op.outputs[0].key] = ctx[op.inputs[0].key].toarray()
 
 
 def fromsparse(a):

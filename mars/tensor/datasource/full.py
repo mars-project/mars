@@ -22,6 +22,7 @@ from .core import TensorNoInput
 from .array import tensor
 from ..array_utils import create_array
 
+
 class TensorFull(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_FULL
 
@@ -43,8 +44,8 @@ class TensorFull(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(chunk.op)('full', chunk.shape,
-                                                 chunk.op.fill_value, dtype=chunk.op.dtype)
+        ctx[chunk.key] = create_array(op)('full', chunk.shape,
+                                                op.fill_value, dtype=op.dtype)
 
 
 def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False):

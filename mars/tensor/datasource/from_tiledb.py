@@ -82,14 +82,14 @@ class TensorTileDBDataSource(TensorNoInput):
         from ..array_utils import array_module
         from ..execute_utils import get_tiledb_ctx
 
-        xp = array_module(chunk.op.gpu)
+        xp = array_module(op.gpu)
 
         axis_offsets = [offset + dim_start for offset, dim_start
-                        in zip(chunk.op.axis_offsets, chunk.op.tiledb_dim_starts)]
-        tiledb_ctx = get_tiledb_ctx(chunk.op.tiledb_config)
-        uri = chunk.op.tiledb_uri
-        key = chunk.op.tiledb_key
-        timestamp = chunk.op.tiledb_timestamp
+                        in zip(op.axis_offsets, op.tiledb_dim_starts)]
+        tiledb_ctx = get_tiledb_ctx(op.tiledb_config)
+        uri = op.tiledb_uri
+        key = op.tiledb_key
+        timestamp = op.tiledb_timestamp
 
         slcs = []
         for axis in range(chunk.ndim):
@@ -97,7 +97,7 @@ class TensorTileDBDataSource(TensorNoInput):
             axis_length = chunk.shape[axis]
             slcs.append(slice(axis_offset, axis_offset + axis_length))
 
-        if not chunk.issparse():
+        if not op.sparse:
             # read dense array from tiledb
             with tiledb.DenseArray(uri=uri, ctx=tiledb_ctx, key=key, timestamp=timestamp) as tiledb_arr:
                 ctx[chunk.key] = tiledb_arr[tuple(slcs)]

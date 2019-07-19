@@ -87,8 +87,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = chunk.op.data
+        ctx[op.outputs[0].key] = op.data
 
 
 def from_pandas(data, chunk_size=None, gpu=None, sparse=False):

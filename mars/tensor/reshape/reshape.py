@@ -229,12 +229,11 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[chunk.key] = x.reshape(chunk.op.newshape)
+            ctx[op.outputs[0].key] = x.reshape(op.newshape)
 
 
 class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
@@ -271,14 +270,14 @@ class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
         chunk = op.outpus[0]
         # todo this function is an experimental one making shuffle runnable.
         # try elevate performance when needed.
-        old_shape = chunk.op.oldshape
-        new_shape = chunk.op.newshape
-        new_chunk_size = chunk.op.new_chunk_size
-        axis_offset = chunk.op.axis_offsets
+        old_shape = op.oldshape
+        new_shape = op.newshape
+        new_chunk_size = op.new_chunk_size
+        axis_offset = op.axis_offsets
 
         logger.debug('Reshape mapper: Start mapping step for %s', chunk.key)
 
-        data = ctx[chunk.inputs[0].key]
+        data = ctx[op.inputs[0].key]
         indices = list(np.nonzero(data))
         nz_data = data[indices]
 

@@ -78,14 +78,13 @@ class TensorTri(TensorHasInput):
 
     @classmethod
     def execute(cls, ctx, op):
-
         chunk = op.outputs[0]
-        f = 'triu' if isinstance(chunk.op, TensorTriu) else 'tril'
-        if chunk.op.sparse:
-            ctx[chunk.key] = getattr(sparse, f)(ctx[chunk.inputs[0].key], k=chunk.op.k)
+        f = 'triu' if isinstance(op, TensorTriu) else 'tril'
+        if op.sparse:
+            ctx[chunk.key] = getattr(sparse, f)(ctx[op.inputs[0].key], k=op.k)
         else:
-            ctx[chunk.key] = create_array(chunk.op)(
-                f, ctx[chunk.inputs[0].key], chunk.op.k)
+            ctx[chunk.key] = create_array(op)(
+                f, ctx[op.inputs[0].key], op.k)
 
 
 class TensorTriu(TensorTri):

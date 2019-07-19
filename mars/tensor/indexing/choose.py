@@ -70,13 +70,12 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         a, choices = inputs[0], inputs[1:]
 
         with device(device_id):
-            ctx[chunk.key] = xp.choose(a, choices, mode=chunk.op.mode)
+            ctx[op.outputs[0].key] = xp.choose(a, choices, mode=op.mode)
 
 
 def choose(a, choices, mode='raise'):

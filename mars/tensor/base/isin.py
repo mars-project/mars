@@ -83,15 +83,15 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
                                   chunks=out_chunks, nsplits=in_tensor.nsplits)
 
     @classmethod
-    def execute(cls,ctx,op):
-        chunk = op.outputs[0]
+    def execute(cls, ctx, op):
         (element, test_elements), device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[chunk.key] = xp.isin(element, test_elements,
-                                     assume_unique=chunk.op.assume_unique,
-                                     invert=chunk.op.invert)
+            ctx[op.outputs[0].key] = xp.isin(element, test_elements,
+                                             assume_unique=op.assume_unique,
+                                             invert=op.invert)
+
 
 def isin(element, test_elements, assume_unique=False, invert=False):
     """

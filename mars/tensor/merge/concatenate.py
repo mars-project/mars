@@ -146,7 +146,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             return res
 
         chunk = op.outputs[0]
-        inputs = [ctx[input.key] for input in chunk.inputs]
+        inputs = [ctx[input.key] for input in op.inputs]
 
         if isinstance(inputs[0], tuple):
             ctx[chunk.key] = tuple(_base_concatenate(chunk, [input[i] for input in inputs])

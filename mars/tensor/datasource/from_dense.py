@@ -33,10 +33,9 @@ class DenseToSparse(TensorHasInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         in_data = naked(ctx[op.inputs[0].key])
-        xps = cps if chunk.op.gpu else sps
-        ctx[chunk.key] = SparseNDArray(xps.csr_matrix(in_data), shape=chunk.shape)
+        xps = cps if op.gpu else sps
+        ctx[op.outputs[0].key] = SparseNDArray(xps.csr_matrix(in_data), shape=op.outputs[0].shape)
 
 
 def fromdense(a):

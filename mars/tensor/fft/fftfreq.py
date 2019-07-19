@@ -90,12 +90,11 @@ class TensorFFTFreqChunk(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        n, d = chunk.op.n, chunk.op.d
-        x = ctx[chunk.inputs[0].key].copy()
+        n, d = op.n, op.d
+        x = ctx[op.inputs[0].key].copy()
         x[x >= (n + 1) // 2] -= n
         x /= n * d
-        ctx[chunk.key] = x
+        ctx[op.outputs[0].key] = x
 
 
 def fftfreq(n, d=1.0, gpu=False, chunk_size=None):

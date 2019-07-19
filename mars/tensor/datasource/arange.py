@@ -90,8 +90,7 @@ class TensorArange(TensorNoInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(op)(
+        ctx[op.outputs[0].key] = create_array(op)(
             'arange', op.start, op.stop, op.step, dtype=op.dtype)
 
 

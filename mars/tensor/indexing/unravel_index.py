@@ -73,15 +73,13 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         indices = inputs[0]
 
         with device(device_id):
-            outputs = xp.unravel_index(indices, chunk.op.dims)
-            for o, output in izip(chunk.op.outputs, outputs):
+            outputs = xp.unravel_index(indices, op.dims)
+            for o, output in izip(op.outputs, outputs):
                 ctx[o.key] = output
 
 

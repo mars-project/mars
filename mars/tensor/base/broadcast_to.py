@@ -62,11 +62,10 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         xp = get_array_module(ctx[op.input.key])
-        chunk = op.outputs[0]
         input_data = ctx[op.input.key]
         device_id = input_data.device.id if hasattr(input_data, 'device') else -1
         with device(device_id):
-            ctx[chunk.key] = xp.broadcast_to(input_data, op.shape)
+            ctx[op.outputs[0].key] = xp.broadcast_to(input_data, op.shape)
 
 
 def broadcast_to(tensor, shape):

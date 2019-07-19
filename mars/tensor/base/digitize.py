@@ -83,18 +83,17 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in chunk.inputs], device=chunk.op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         x = inputs[0]
         if len(inputs) > 1:
             bins = inputs[1]
         else:
-            bins = chunk.op.bins
+            bins = op.bins
 
         with device(device_id):
-            ctx[chunk.key] = xp.digitize(x, bins=bins, right=chunk.op.right)
+            ctx[op.outputs[0].key] = xp.digitize(x, bins=bins, right=op.right)
 
 
 def digitize(x, bins, right=False):

@@ -36,10 +36,10 @@ class TensorZeros(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        if op.issparse():
-            ctx[chunk.key] = sparse.zeros(chunk.shape, dtype=chunk.op.dtype, gpu=chunk.op.gpu)
+        if op.sparse:
+            ctx[chunk.key] = sparse.zeros(chunk.shape, dtype=op.dtype, gpu=op.gpu)
         else:
-            ctx[chunk.key] = create_array(chunk.op)('zeros', chunk.shape, dtype=chunk.op.dtype)
+            ctx[chunk.key] = create_array(op)('zeros', chunk.shape, dtype=op.dtype)
 
 
 def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False):
@@ -104,17 +104,17 @@ class TensorZerosLike(TensorLike):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        if chunk.issparse():
-            in_data = naked(ctx[chunk.inputs[0].key])
+        if op.sparse:
+            in_data = naked(ctx[op.inputs[0].key])
             xps = get_sparse_module(in_data)
             xp = get_array_module(in_data)
             ctx[chunk.key] = sparse.SparseNDArray(xps.csr_matrix(
-                (xp.zeros_like(in_data.data, dtype=chunk.op.dtype),
+                (xp.zeros_like(in_data.data, dtype=op.dtype),
                  in_data.indices, in_data.indptr), shape=in_data.shape
             ))
         else:
-            ctx[chunk.key] = create_array(chunk.op)(
-                'zeros_like', ctx[chunk.inputs[0].key], dtype=chunk.op.dtype)
+            ctx[chunk.key] = create_array(op)(
+                'zeros_like', ctx[op.inputs[0].key], dtype=op.dtype)
 
 
 def zeros_like(a, dtype=None, gpu=None):
