@@ -14,8 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from .core import create_actor_pool, Actor, FunctionActor, new_client, \
     register_actor_implementation, unregister_actor_implementation
 from .errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from .distributor import Distributor
+
+# import gipc first to avoid stack issue of `call stack is not deep enough`
+try:
+    from ..lib import gipc
+    del gipc
+except ImportError:  # pragma: no cover
+    pass
