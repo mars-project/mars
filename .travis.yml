@@ -56,10 +56,16 @@ before_install:
 # command to install dependencies
 install:
   - export DEFAULT_VENV=$VIRTUAL_ENV
-  - pip install -r requirements-dev.txt
-  - pip install -r requirements-extra.txt
-  - pip install virtualenv coveralls flake8 etcd-gevent
-  - conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4" || true
+  - if [ ! -z "$TRAVIS_TAG" ]; then unset CYTHON_TRACE; fi
+  - if [ -z "$CYTHON_TRACE" ]; then
+      for cf in `ls .coveragerc*`; do
+        sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
+      done
+    fi
+  - pip install -r requirements-dev.txt &&
+    pip install -r requirements-extra.txt &&
+    pip install virtualenv coveralls flake8 etcd-gevent
+  - conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true
   - virtualenv testenv && source testenv/bin/activate
   - pip install -r requirements.txt
   - pip install pytest pytest-timeout
