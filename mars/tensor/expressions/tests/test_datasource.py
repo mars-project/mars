@@ -54,7 +54,8 @@ class Test(TestBase):
             tempdir = tempfile.mkdtemp()
             try:
                 # create tiledb array
-                tiledb.DenseArray.create(tempdir, schema)
+                array_type = tiledb.DenseArray if not sparse else tiledb.SparseArray
+                array_type.create(tempdir, schema)
 
                 tensor = fromtiledb(tempdir)
                 self.assertIsInstance(tensor.op, TensorTileDBDataSource)
