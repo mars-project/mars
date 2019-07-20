@@ -14,3 +14,7 @@
 
 from .concatenate import concatenate, TensorConcatenate
 from .stack import stack, TensorStack
+from .hstack import hstack
+from .vstack import vstack
+from .dstack import dstack
+from .column_stack import column_stack

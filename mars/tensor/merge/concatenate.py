@@ -68,7 +68,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             raise ValueError('all the input tensors must have same number of dimensions')
 
         axis = self._axis
-        shapes = [t.shape[:axis] + t.shape[axis+1:] for t in tensors]
+        shapes = [t.shape[:axis] + t.shape[axis + 1:] for t in tensors]
         if len(set(shapes)) != 1:
             raise ValueError('all the input tensor dimensions '
                              'except for the concatenation axis must match exactly')
@@ -106,8 +106,8 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             axis_index = np.searchsorted(axis_cum_chunk_shape, out_idx[axis], side='right')
             t = inputs[axis_index]
             axis_inner_index = out_idx[axis] - \
-                (0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1])
-            idx = out_idx[:axis] + (axis_inner_index,) + out_idx[axis+1:]
+                               (0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1])
+            idx = out_idx[:axis] + (axis_inner_index,) + out_idx[axis + 1:]
             in_chunk = t.cix[idx]
             if idx == out_idx:
                 # if index is the same, just use the input chunk
@@ -145,13 +145,14 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                     res = xp.concatenate(lmap(operator.itemgetter(1), chunks), axis=axes[0])
             return res
 
+        chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]
 
         if isinstance(inputs[0], tuple):
-            ctx[op.outputs[0].key] = tuple(_base_concatenate(op.outputs[0], [input[i] for input in inputs])
+            ctx[chunk.key] = tuple(_base_concatenate(chunk, [input[i] for input in inputs])
                                    for i in range(len(inputs[0])))
         else:
-            ctx[op.outputs[0].key] = _base_concatenate(op.outputs[0], inputs)
+            ctx[chunk.key] = _base_concatenate(chunk, inputs)
 
 
 def concatenate(tensors, axis=0):

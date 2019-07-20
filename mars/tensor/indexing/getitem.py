@@ -28,7 +28,8 @@ from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
 from ..operands import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
 from .core import process_index, calc_shape
-
+from ...utils import get_shuffle_input_keys_idxes
+from ..array_utils import get_array_module
 
 FANCY_INDEX_TYPES = TENSOR_TYPE + (np.ndarray,)
 
@@ -88,8 +89,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     @classmethod
     def estimate_size(cls, ctx, op):
         from mars.core import Base, Entity
-
-        shape = op.outputs[0].shape
+        chunk = op.outputs[0]
+        shape = chunk.shape
         new_indexes = [index for index in op._indexes if index is not None]
 
         new_shape = []
@@ -111,8 +112,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
                 idx += 1
             else:
                 rough_shape.append(s)
-        result = int(np.prod(rough_shape) * op.dtype.itemsize)
-        ctx[op.outputs[0].key] = (result, result)
+        result = int(np.prod(rough_shape) * chunk.dtype.itemsize)
+        ctx[chunk.key] = (result, result)
 
 
 class IndexInfo(object):
@@ -324,7 +325,7 @@ class TensorIndexTilesHandler(object):
                     chunk_index_obj = index_info.index_obj.cix[chunk_index_obj_idx]
                     chunk_index_objs.append(chunk_index_obj)
                     cs = self._in_tensor.chunk_shape
-                    out_chunk_idx = sum(idx * reduce(operator.mul, cs[i+1:], 1) for i, idx
+                    out_chunk_idx = sum(idx * reduce(operator.mul, cs[i + 1:], 1) for i, idx
                                         in zip(itertools.count(0), chunk_index_obj_idx))
                     chunk_index.append(out_chunk_idx)
                 elif index_info.index_type == IndexType.fancy_index:
@@ -405,16 +406,16 @@ class TensorIndexTilesHandler(object):
             out_chunk_op = TensorIndex(dtype=concat_chunk.dtype, sparse=concat_chunk.issparse(),
                                        indexes=out_index_obj)
             pos_select_shape = concat_chunk.shape[:concat_axis] + fancy_indexes[0].shape + \
-                concat_chunk.shape[concat_axis + 1:]
+                               concat_chunk.shape[concat_axis + 1:]
             pos_select_idx = out_idx[:concat_axis] + (0,) * fancy_indexes[0].ndim + \
-                out_idx[concat_axis + 1:]
+                             out_idx[concat_axis + 1:]
             pos_select_chunk = out_chunk_op.new_chunk([concat_chunk], shape=pos_select_shape,
                                                       index=pos_select_idx)
             out_chunks.append(pos_select_chunk)
 
         self._out_chunks = out_chunks
         self._nsplits = self._nsplits[:concat_axis] + [(s,) for s in fancy_indexes[0].shape] + \
-            self._nsplits[concat_axis + 1:]
+                        self._nsplits[concat_axis + 1:]
 
     def _postprocess_tensor_fancy_index(self, fancy_index_infos):
         concat_axis = fancy_index_infos[0].out_axis
@@ -451,7 +452,7 @@ class TensorIndexTilesHandler(object):
                                                              sparse=to_shuffle_chunks[0].issparse(),
                                                              _shuffle_key=str(next(acc)))
                 reduce_chunk_shape = no_shuffle_chunk_shape[:concat_axis] + \
-                    fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
+                                     fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
                 reduce_chunk_idx = idx[:concat_axis] + fancy_index_chunk.index + idx[concat_axis:]
                 concat_reduce_chunk = concat_reduce_op.new_chunk([proxy_chunk], shape=reduce_chunk_shape,
                                                                  index=reduce_chunk_idx)
@@ -459,7 +460,7 @@ class TensorIndexTilesHandler(object):
 
         self._out_chunks = out_chunks
         self._nsplits = self._nsplits[:concat_axis] + list(fancy_indexes[0].nsplits) + \
-            self._nsplits[concat_axis + 1:]
+                        self._nsplits[concat_axis + 1:]
 
     def _postprocess_fancy_index(self):
         if not self._fancy_index_info:
@@ -503,6 +504,26 @@ class FancyIndexingDistributeMap(TensorShuffleMap, TensorOperandMixin):
     def axes(self):
         return self._axes
 
+    @classmethod
+    def execute(cls, ctx, op):
+        nsplits = op.dest_nsplits
+        axes = op.axes
+        fancy_index_nsplits = [nsplits[ax] for ax in axes]
+        indexes = ctx[op.inputs[0].key]
+        flatten_indexes = indexes.reshape(indexes.shape[0], -1)
+        idx_to_fancy_indexes, idx_to_poses = \
+            split_indexes_into_chunks(fancy_index_nsplits, flatten_indexes, False)
+        for idx in idx_to_fancy_indexes:
+            group_key = ','.join(str(i) for i in idx)
+            ctx[(op.outputs[0].key, group_key)] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        fancy_index_size = len(op.axes)
+        inp_size = ctx[op.inputs[0].key][0]
+        factor = 1 / float(fancy_index_size) + fancy_index_size  # 1/#fancy_index is the poses
+        ctx[op.outputs[0].key] = (inp_size * factor,) * 2
+
 
 class FancyIndexingDistributeReduce(TensorShuffleReduce, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_DISTRIBUTE_REDUCE
@@ -531,6 +552,42 @@ class FancyIndexingDistributeReduce(TensorShuffleReduce, TensorOperandMixin):
     def input(self):
         return self._input
 
+    @classmethod
+    def execute(cls, ctx, op):
+        in_chunk = op.inputs[0]
+
+        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
+
+        fancy_indexes = []
+        poses = []
+        shuffle_key = op.shuffle_key
+        xp = None
+        for input_key in input_keys:
+            key = (input_key, shuffle_key)
+            fancy_index, pos = ctx[key]
+            if xp is None:
+                xp = get_array_module(fancy_index)
+            if fancy_index.size == 0:
+                fancy_index = fancy_index.reshape(len(op.axes), 0)
+            fancy_indexes.append(fancy_index)
+            poses.append(pos)
+
+        fancy_index = np.hstack(fancy_indexes)
+        pos = np.hstack(poses)
+
+        assert len(op.outputs) - 1 == len(fancy_index)
+        for out_chunk, axis_fancy_index in zip(op.outputs[:-1], fancy_index):
+            ctx[out_chunk.key] = axis_fancy_index
+        ctx[op.outputs[-1].key] = np.asarray([len(p) for p in poses]), pos
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        sum_size = 0
+        for shuffle_input in op.inputs[0].inputs or ():
+            sum_size += ctx[shuffle_input.key]
+        for out_chunk in op.outputs:
+            ctx[out_chunk.key] = sum_size, sum_size
+
 
 class FancyIndexingConcatMap(TensorShuffleMap, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_CONCAT_MAP
@@ -548,6 +605,25 @@ class FancyIndexingConcatMap(TensorShuffleMap, TensorOperandMixin):
     @property
     def fancy_index_axis(self):
         return self._fancy_index_axis
+
+    @classmethod
+    def execute(cls, ctx, op):
+        indexed_array = ctx[op.inputs[0].key]
+        sizes, pos = ctx[op.inputs[1].key]
+        acc_sizes = np.cumsum(sizes)
+        fancy_index_axis = op.fancy_index_axis
+
+        for i in range(len(sizes)):
+            start = 0 if i == 0 else acc_sizes[i - 1]
+            end = acc_sizes[i]
+            select = (slice(None),) * fancy_index_axis + (slice(start, end),)
+            ctx[(op.outputs[0].key, str(i))] = (indexed_array[select], pos[start: end])
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        input_size = ctx[op.inputs[0].key][0]
+        pos_size = ctx[op.inputs[0].key][0]
+        ctx[op.outputs[0].key] = input_size + pos_size, input_size + pos_size * 2
 
 
 class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
@@ -568,6 +644,33 @@ class FancyIndexingConcatReduce(TensorShuffleReduce, TensorOperandMixin):
     @property
     def fancy_index_shape(self):
         return self._fancy_index_shape
+
+    @classmethod
+    def execute(cls, ctx, op):
+        in_chunk = op.inputs[0]
+        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
+        fancy_index_axis = op.fancy_index_axis
+        fancy_index_shape = op.fancy_index_shape
+
+        indexed_arrays = []
+        poses = []
+        shuffle_key = op.shuffle_key
+        for input_key in input_keys:
+            index_array, pos = ctx[(input_key, shuffle_key)]
+            indexed_arrays.append(index_array)
+            poses.append(pos)
+
+        concat_array = np.concatenate(indexed_arrays, axis=fancy_index_axis)
+        concat_pos = np.hstack(poses)
+        select_pos = calc_pos(fancy_index_shape, concat_pos)
+        select = (slice(None),) * fancy_index_axis + (select_pos,)
+        ctx[op.outputs[0].key] = concat_array[select]
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        chunk = op.outputs[0]
+        input_sizes = [ctx[c.key][0] for c in op.inputs[0].inputs or ()]
+        ctx[chunk.key] = chunk.nbytes, chunk.nbytes + sum(input_sizes)
 
 
 def _is_create_view(index):
