@@ -62,7 +62,17 @@ def _store_tiledb(ctx, chunk):
                                        shape=chunk.shape)
 
 
+def _tiledb_consolidate(ctx, chunk):
+    tiledb_config = tiledb.Config(chunk.op.tiledb_config)
+    uri = chunk.op.tiledb_uri
+    key = chunk.op.tiledb_key
+
+    tiledb.consolidate(config=tiledb_config, uri=uri, key=key)
+    ctx[chunk.key] = ctx[chunk.inputs[0].key]
+
+
 def register_data_store_handler():
     from ...executor import register
 
     register(datastore.TensorTileDBDataStore, _store_tiledb)
+    register(datastore.TensorTileDBConsolidate, _tiledb_consolidate)
