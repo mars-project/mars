@@ -184,7 +184,7 @@ class TensorData(TileableData):
         return self.transpose()
 
     def reshape(self, shape, *shapes):
-        from .expressions.reshape import reshape
+        from .reshape import reshape
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)

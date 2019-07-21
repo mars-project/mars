@@ -53,7 +53,8 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
 
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = create_array(op)('empty', op.shape, dtype=op.dtype)
+        chunk = op.outputs[0]
+        ctx[chunk.key] = create_array(op)('empty', chunk.shape, dtype=op.dtype)
 
 
 def empty(shape, dtype=None, chunk_size=None, gpu=False):
@@ -116,12 +117,12 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
             xps = get_array_module(in_data)
             xp = get_array_module(in_data)
             ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
-                (xp.empty_like(in_data.data, dtype=chunk.op.dtype),
+                (xp.empty_like(in_data.data, dtype=op.dtype),
                  in_data.indices, in_data.indptr), shape=in_data.shape
             ))
         else:
-            ctx[chunk.key] = create_array(chunk.op)(
-                'empty_like', ctx[chunk.inputs[0].key], dtype=chunk.op.dtype)
+            ctx[chunk.key] = create_array(op)(
+                'empty_like', ctx[op.inputs[0].key], dtype=op.dtype)
 
 
 def empty_like(a, dtype=None, gpu=None):
