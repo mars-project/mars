@@ -21,13 +21,13 @@ import scipy.sparse as sps
 
 from mars import tensor as mt
 from mars.executor import Executor
-from mars.tensor.expressions.datasource import tensor, ones, zeros, arange
-from mars.tensor.expressions.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
+from mars.tensor.datasource import tensor, ones, zeros, arange
+from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
     flip, flipud, fliplr, repeat, tile, isin
 from mars.tensor.base import atleast_1d, atleast_2d, atleast_3d, argwhere
-from mars.tensor.expressions.merge import stack
+from mars.tensor.merge import stack
 from mars.tensor.expressions.reduction import all as tall
 
 

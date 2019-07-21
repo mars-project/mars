@@ -21,7 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, KeyField, BoolField
 from ..core import TENSOR_TYPE
-# from ..datasource import arange, array
+from ..datasource import arange, array
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 

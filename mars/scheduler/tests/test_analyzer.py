@@ -58,7 +58,7 @@ class Test(unittest.TestCase):
 
     def testInitialAssignsWithInputs(self):
         import numpy as np
-        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
         n1 = TensorRandint(dtype=np.float32()).new_chunk(None, shape=(10, 10))
@@ -83,7 +83,7 @@ class Test(unittest.TestCase):
 
     def testFullInitialAssign(self):
         import numpy as np
-        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
         graph = DAG()
@@ -116,7 +116,7 @@ class Test(unittest.TestCase):
 
     def testSameKeyAssign(self):
         import numpy as np
-        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
         graph = DAG()
@@ -149,7 +149,7 @@ class Test(unittest.TestCase):
     def testAssignWithPreviousData(self):
         import numpy as np
         from mars.scheduler.chunkmeta import WorkerMeta
-        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
         graph = DAG()
@@ -251,7 +251,7 @@ class Test(unittest.TestCase):
     def testAssignOnWorkerAdd(self):
         import numpy as np
         from mars.scheduler import OperandState
-        from mars.tensor.expressions.random import TensorRandint
+        from mars.tensor.random import TensorRandint
         from mars.tensor.arithmetic import TensorTreeAdd
 
         graph = DAG()

@@ -44,8 +44,8 @@ from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
 from .indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
-# from .expressions import random
-from .fft import fft
+from . import random
+from . import fft
 
 # from .expressions.linalg.tensordot import tensordot
 # from .expressions.linalg.dot import dot
@@ -58,9 +58,6 @@ from .fft import fft
 #     var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
 # from .expressions.reshape import reshape
 # from .expressions.merge import concatenate, stack, hstack, vstack, dstack, column_stack
-# from .expressions.indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
-# from .expressions import random
-# from .expressions import fft
 # from .expressions import linalg
 # from .expressions import lib
 # from .expressions.lib.index_tricks import mgrid, ogrid, ndindex

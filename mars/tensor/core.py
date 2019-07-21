@@ -496,9 +496,9 @@ class MutableTensor(Entity):
         2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
            size is guaranteed to less than 2 * chunk_size.
         '''
-        from .expressions.indexing.core import process_index, calc_shape
-        from .expressions.indexing.setitem import TensorIndex
-        from .expressions.utils import setitem_as_records
+        from .indexing.core import process_index, calc_shape
+        from .indexing.setitem import TensorIndex
+        from .utils import setitem_as_records
 
         tensor_index = process_index(self, tensor_index)
         output_shape = calc_shape(self.shape, tensor_index)
