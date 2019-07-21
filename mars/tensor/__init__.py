@@ -49,11 +49,12 @@ from .arithmetic import add, subtract, multiply, divide, truediv as true_divide,
 # from .expressions.reshape import reshape
 # from .expressions.merge import concatenate, stack, hstack, vstack, dstack, column_stack
 # from .expressions.indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
-# from .expressions import random
+from . import random
 # from .expressions import fft
 # from .expressions import linalg
 # from .expressions import lib
 # from .expressions.lib.index_tricks import mgrid, ogrid, ndindex
+from .rechunk import rechunk
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
