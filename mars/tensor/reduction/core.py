@@ -230,13 +230,14 @@ class TensorReductionMixin(TensorOperandMixin):
         (input_chunk,), device_id, _ = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         axis = get_axis(op.axis)
+        reduce_func = cls._get_op_func()
         with device(device_id):
-            if "dtype" in getargspec(op).args:
-                ctx[op.outputs[0].key] = cls._get_op_func()(input_chunk, axis=axis,
+            if "dtype" in getargspec(reduce_func).args:
+                ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
                                                             dtype=op.dtype,
                                                             keepdims=bool(op.keepdims))
             else:
-                ctx[op.outputs[0].key] = cls._get_op_func()(input_chunk, axis=axis,
+                ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
                                                             keepdims=bool(op.keepdims))
 
 
