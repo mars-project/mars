@@ -14,10 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame
-# do imports to register operands
-from . import expressions
-from .expressions.arithmetic import add
-from .expressions import get_fuse_op_cls, get_fetch_op_cls, concat_tileable_chunks
-del expressions
-
+from .totiledb import totiledb, TensorTileDBDataStore, TensorTileDBConsolidate

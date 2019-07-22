@@ -52,6 +52,7 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def estimate_size(cls, ctx, op):
         estimate_fuse_size(ctx, op)
 
+
 # execution part
 _VAR_FLAG = 'V_'
 
@@ -83,10 +84,8 @@ NE_UNARYOP_TO_STRING = {
 
 NE_BINOP_TO_STRING = {
     arithmetic.TensorAdd: '+',
-    arithmetic.TensorTreeAdd: '+',
     arithmetic.TensorSubtract: '-',
     arithmetic.TensorMultiply: '*',
-    arithmetic.TensorTreeMultiply: '*',
     arithmetic.TensorDivide: '/',
     arithmetic.TensorMod: '%',
     arithmetic.TensorPower: '**',
@@ -99,6 +98,12 @@ NE_BINOP_TO_STRING = {
     arithmetic.TensorLessEqual: '<=',
     arithmetic.TensorGreaterThan: '>',
     arithmetic.TensorGreaterEqual: '>=',
+}
+
+
+NE_TREE_OP_TO_STRING = {
+    arithmetic.TensorTreeAdd: '+',
+    arithmetic.TensorTreeMultiply: '*',
 }
 
 
@@ -140,6 +145,11 @@ def _handle_bin(chunk):
     return op.join(exprs)
 
 
+def _handle_tree(chunk):
+    op = NE_TREE_OP_TO_STRING[type(chunk.op)]
+    return op.join(_VAR_FLAG + c.key for c in chunk.inputs)
+
+
 def _wrap_bool(data):
     if data.dtype == np.bool_:
         return lambda x: 'where({0}, 1, 0)'.format(x)
@@ -169,6 +179,8 @@ def _evalute(chunk):
         return _handle_unary(chunk)
     elif type(chunk.op) in NE_BINOP_TO_STRING:
         return _handle_bin(chunk)
+    elif type(chunk.op) in NE_TREE_OP_TO_STRING:
+        return _handle_tree(chunk)
     elif type(chunk.op) in NE_REDUCTION_TO_STRING:
         return _handle_reduction(chunk)
     elif type(chunk.op) == TensorNeFuseChunk:
@@ -182,9 +194,3 @@ def _maybe_keepdims(chunk, res):
     if type(out_chunk.op) in NE_REDUCTION_TO_STRING and out_chunk.op.keepdims:
         res = np.reshape(res, out_chunk.shape)
     return res
-
-
-def register_numexpr_handler():
-    from ...executor import register
-
-    register(TensorNeFuseChunk, evaluate, estimate_fuse_size)

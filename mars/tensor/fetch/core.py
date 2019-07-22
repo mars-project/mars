@@ -27,6 +27,11 @@ class TensorFetchMixin(TensorOperandMixin):
     def tile(cls, op):
         raise NotImplementedError('Fetch tile cannot be handled by operand itself')
 
+    @classmethod
+    def execute(cls, ctx, op):
+        # fetch op need to do nothing
+        pass
+
 
 class TensorFetch(Fetch, TensorFetchMixin):
     _dtype = DataTypeField('dtype')

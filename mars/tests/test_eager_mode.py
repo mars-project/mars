@@ -210,7 +210,7 @@ class Test(unittest.TestCase):
 
     def testView(self):
         with option_context({'eager_mode': True}):
-            a = mt.ones((10, 20), chunk_size=3)
+            a = mt.ones((10, 20), chunk_size=5)
             b = a[0][1:4]
             b[1] = 10
 
