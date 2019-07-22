@@ -236,16 +236,23 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outputs[0]
-        (a, b), device_id, xp = as_same_device(
+        (a,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            if not op.sparse and is_sparse_module(xp):
-                # tell sparse to do calculation on numpy or cupy dot
-                ctx[chunk.key] = xp.dot(a, b, sparse=False)
+            if xp is np:
+                import scipy.linalg
+
+                p, l, u = scipy.linalg.lu(a)
+            elif is_sparse_module(xp):
+                p, l, u = xp.lu(a)
             else:
-                ctx[chunk.key] = xp.dot(a, b)
+                raise NotImplementedError
+            pc, lc, uc = op.outputs
+
+            ctx[pc.key] = p
+            ctx[lc.key] = l
+            ctx[uc.key] = u
 
 
 def lu(a):

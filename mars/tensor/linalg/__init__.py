@@ -31,7 +31,7 @@ from .vdot import vdot
 
 
 def _install():
-    from ...core import Tensor, TensorData
+    from ..core import Tensor, TensorData
 
     setattr(Tensor, '__matmul__', matmul)
     setattr(Tensor, 'dot', dot)

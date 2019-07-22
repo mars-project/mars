@@ -32,7 +32,7 @@ from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, fromtiledb
 from mars.lib.sparse import SparseNDArray
-# from mars.tensor.lib import nd_grid
+from mars.tensor.lib import nd_grid
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.tensor.datasource.from_dataframe import from_dataframe
@@ -756,27 +756,27 @@ class Test(TestBase):
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res, expected)
 
-    # def testIndexTrickExecution(self):
-    #     mgrid = nd_grid()
-    #     t = mgrid[0:5, 0:5]
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.lib.index_tricks.nd_grid()[0:5, 0:5]
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     t = mgrid[-1:1:5j]
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.lib.index_tricks.nd_grid()[-1:1:5j]
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     ogrid = nd_grid(sparse=True)
-    #
-    #     t = ogrid[0:5, 0:5]
-    #
-    #     res = [self.executor.execute_tensor(o, concat=True)[0] for o in t]
-    #     expected = np.lib.index_tricks.nd_grid(sparse=True)[0:5, 0:5]
-    #     [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
+    def testIndexTrickExecution(self):
+        mgrid = nd_grid()
+        t = mgrid[0:5, 0:5]
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.lib.index_tricks.nd_grid()[0:5, 0:5]
+        np.testing.assert_equal(res, expected)
+
+        t = mgrid[-1:1:5j]
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.lib.index_tricks.nd_grid()[-1:1:5j]
+        np.testing.assert_equal(res, expected)
+
+        ogrid = nd_grid(sparse=True)
+
+        t = ogrid[0:5, 0:5]
+
+        res = [self.executor.execute_tensor(o, concat=True)[0] for o in t]
+        expected = np.lib.index_tricks.nd_grid(sparse=True)[0:5, 0:5]
+        [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
     @unittest.skipIf(tiledb is None, 'tiledb not installed')
     def testReadTileDBExecution(self):

@@ -20,7 +20,7 @@ import numpy as np
 from mars.tensor.datasource import ones, tensor, arange, array, asarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d
+    atleast_1d, atleast_2d, atleast_3d, ravel
 
 
 class Test(unittest.TestCase):
@@ -418,3 +418,8 @@ class Test(unittest.TestCase):
         indices.tiles()
 
         self.assertEqual(indices.nsplits[1], (1, 1))
+
+    def testRavel(self):
+        arr = ones((10, 5), chunk_size=2)
+        flat_arr = ravel(arr)
+        self.assertEqual(flat_arr.shape, (50,))

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,25 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import unittest
 
-import numpy as np
-
-from mars.executor import Executor
-from mars.tensor.datasource import tensor
-from mars.tensor.base import broadcast_to
+from mars.tensor.lib import nd_grid
 
 
 class Test(unittest.TestCase):
-    def setUp(self):
-        self.executor = Executor('numpy')
+    def testIndexTricks(self):
+        mgrid = nd_grid()
+        g = mgrid[0:5, 0:5]
+        g.tiles()  # tilesable means no loop exists
 
-    def testBroadcastToExecution(self):
-        raw = np.random.random((10, 5, 1))
-        arr = tensor(raw, chunk_size=2)
-        arr2 = broadcast_to(arr, (5, 10, 5, 6))
-
-        res = self.executor.execute_tensor(arr2, concat=True)
-
-        self.assertTrue(np.array_equal(res[0], np.broadcast_to(raw, (5, 10, 5, 6))))
+        ogrid = nd_grid(sparse=True)
+        o = ogrid[0:5, 0:5]
+        [ob.tiles() for ob in o]  # tilesable means no loop exists

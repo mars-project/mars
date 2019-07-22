@@ -47,22 +47,21 @@ from .indexing import take, compress, extract, choose, unravel_index, nonzero, f
 from . import random
 from . import fft
 
-# from .expressions.linalg.tensordot import tensordot
-# from .expressions.linalg.dot import dot
-# from .expressions.linalg.inner import inner, innerproduct
-# from .expressions.linalg.vdot import vdot
-# from .expressions.linalg.matmul import matmul
-# from .expressions.reduction import sum, nansum, prod, prod as product, nanprod, \
-#     max, max as amax, nanmax, min, min as amin, nanmin, all, any, mean, nanmean, \
-#     argmax, nanargmax, argmin, nanargmin, cumsum, cumprod, \
-#     var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
-# from .expressions.reshape import reshape
-# from .expressions.merge import concatenate, stack, hstack, vstack, dstack, column_stack
-# from .expressions import linalg
-# from .expressions import lib
-# from .expressions.lib.index_tricks import mgrid, ogrid, ndindex
+from . import linalg
+from .linalg.tensordot import tensordot
+from .linalg.dot import dot
+from .linalg.inner import inner, innerproduct
+from .linalg.vdot import vdot
+from .linalg.matmul import matmul
+from .reduction import sum, nansum, prod, prod as product, nanprod, \
+    max, max as amax, nanmax, min, min as amin, nanmin, all, any, mean, nanmean, \
+    argmax, nanargmax, argmin, nanargmin, cumsum, cumprod, \
+    var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
+from .reshape import reshape
+from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
 from .rechunk import rechunk
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+from .lib.index_tricks import mgrid, ogrid, ndindex
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr
