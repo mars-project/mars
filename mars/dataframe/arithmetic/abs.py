@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .abs import abs, DataFrameAbs
-from .add import add, DataFrameAdd
+import operator
+
+from ... import opcodes as OperandDef
+from ...utils import classproperty
+from ..operands import DataFrameOperand
+from .core import DataFrameUnaryOpMixin
 
 
-def _install():
-    from ...core import DATAFRAME_TYPE
-    from .add import add, radd
-    for cls in DATAFRAME_TYPE:
-        setattr(cls, '__add__', add)
-        setattr(cls, '__radd__', radd)
-        setattr(cls, 'add', add)
-        setattr(cls, 'radd', radd)
+class DataFrameAbs(DataFrameOperand, DataFrameUnaryOpMixin):
+    _op_type_ = OperandDef.ABS
+    _func_name = 'abs'
+
+    def __init__(self, object_type=None, **kw):
+        super(DataFrameAbs, self).__init__(_object_type=object_type, **kw)
+
+    @classproperty
+    def _operator(self):
+        return operator.abs
 
 
-_install()
-del _install
+def abs(df):
+    op = DataFrameAbs(object_type=df.op.object_type)
+    return op(df)

@@ -149,9 +149,9 @@ class Test(SchedulerIntegratedTest):
 
     def testMainDataFrameWithoutEtcd(self):
         import pandas as pd
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-        from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
-        from mars.dataframe.expressions.arithmetic import add
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+        from mars.dataframe.arithmetic import add
 
         self.start_processes(etcd=False)
 

@@ -21,8 +21,8 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.dataframe.core import IndexValue
-from mars.dataframe.expressions.utils import parse_index
-from mars.dataframe.expressions.arithmetic.utils import infer_dtypes, infer_index_value
+from mars.dataframe.expression_utils import parse_index
+from mars.dataframe.arithmetic.utils import infer_dtypes, infer_index_value
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')

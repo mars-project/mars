@@ -21,9 +21,9 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ...tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ...utils import tokenize
-from ..core import IndexValue
+from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
+from ..utils import tokenize
+from .core import IndexValue
 
 
 def is_pd_range_empty(pd_range_index):
@@ -43,7 +43,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     :return: the calculated chunk size for each dimension
     :rtype: tuple
     """
-    from ...config import options
+    from ..config import options
 
     chunk_size = dictify_chunk_size(shape, chunk_size)
     average_memory_usage = memory_usage / shape[0]
@@ -98,7 +98,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
 
 
 def decide_series_chunk_size(shape, chunk_size, memory_usage):
-    from ...config import options
+    from ..config import options
 
     chunk_size = dictify_chunk_size(shape, chunk_size)
     average_memory_usage = memory_usage / shape[0]
@@ -359,49 +359,3 @@ def filter_index_value(index_value, min_max, store_data=False):
         f = f & (pd_index < max_val)
 
     return parse_index(pd_index[f], store_data=store_data)
-
-
-def concat_tileable_chunks(df):
-    from ..core import DATAFRAME_TYPE, SERIES_TYPE
-    from .merge.concat import DataFrameConcat
-    from .core import ObjectType
-
-    assert not df.is_coarse()
-
-    if isinstance(df, DATAFRAME_TYPE):
-        chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
-            df.chunks, shape=df.shape, dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns)
-        return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
-            [df], shape=df.shape, chunks=[chunk],
-            nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns)
-    elif isinstance(df, SERIES_TYPE):
-        chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
-            df.chunks, shape=df.shape, dtype=df.dtype, index_value=df.index_value, name=df.name)
-        return DataFrameConcat(object_type=ObjectType.series).new_series(
-            [df], shape=df.shape, chunks=[chunk],
-            nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
-            index_value=df.index_value, name=df.name)
-    else:
-        raise NotImplementedError
-
-
-def get_fetch_op_cls(op):
-    from ...operands import ShuffleProxy
-    from .fetch import DataFrameFetchShuffle, DataFrameFetch
-    if isinstance(op, ShuffleProxy):
-        cls = DataFrameFetchShuffle
-    else:
-        cls = DataFrameFetch
-
-    def _inner(**kw):
-        return cls(object_type=op.object_type, **kw)
-
-    return _inner
-
-
-def get_fuse_op_cls():
-    from .core import DataFrameFuseChunk
-
-    return DataFrameFuseChunk

@@ -1,7 +1,7 @@
 from .core import TensorHasInput
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...dataframe.expressions.utils import build_empty_df
+from ...dataframe.expression_utils import build_empty_df
 from ..execute_utils import to_numpy
 
 

@@ -49,8 +49,17 @@ from .reduction import sum, nansum, prod, prod as product, nanprod, \
 from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
 from .rechunk import rechunk
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 from .lib.index_tricks import mgrid, ogrid, ndindex
+
+from . import random
+from . import fft
+from . import linalg
+from . import lib
+
+# register fuse op and fetch op
+from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
+from .fetch import TensorFetch, TensorFetchShuffle
+del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

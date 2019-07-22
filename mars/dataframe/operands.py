@@ -16,12 +16,12 @@ import operator
 
 import numpy as np
 
-from ...compat import Enum
-from ...serialize import Int8Field
-from ...operands import ShuffleProxy
-from ...core import TileableOperandMixin, FuseChunkData, FuseChunk
-from ...operands import Operand, ShuffleMap, ShuffleReduce, Fuse
-from ..core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
+from ..compat import Enum
+from ..serialize import Int8Field
+from ..operands import ShuffleProxy
+from ..core import TileableOperandMixin, FuseChunkData, FuseChunk
+from ..operands import Operand, ShuffleMap, ShuffleReduce, Fuse
+from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
 
@@ -130,6 +130,10 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     @property
     def object_type(self):
         return self._object_type
+
+    @classmethod
+    def execute(cls, ctx, op):
+        ctx[op.outputs[0].key] = None
 
 
 class DataFrameShuffleMap(ShuffleMap):

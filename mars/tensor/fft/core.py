@@ -21,7 +21,6 @@ from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, ListField
 from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
-from .. import fft as fftop
 import numpy as np
 from ..array_utils import get_array_module
 
@@ -244,6 +243,8 @@ class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
 
 
 def _get_fft_func(op, xp):
+    from .. import fft as fftop
+
     fun_name = type(op).__name__.lower()[6:]  # all op starts with tensor
     if type(op) in (fftop.TensorFFT, fftop.TensorIFFT, fftop.TensorFFT2, fftop.TensorIFFT2,
                     fftop.TensorFFTN, fftop.TensorIFFTN):

@@ -705,10 +705,3 @@ def register(op, handler, size_estimator=None, size_multiplier=1):
     else:
         Executor._op_size_estimators[op] = size_estimator or \
                                            functools.partial(default_size_estimator, multiplier=size_multiplier)
-
-
-# register tensor and dataframe execution handler
-from .dataframe.execution.core import register_dataframe_execution_handler
-
-register_dataframe_execution_handler()
-del register_dataframe_execution_handler

@@ -23,12 +23,12 @@ except ImportError:  # pragma: no cover
 
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import hash_dtypes
-from mars.dataframe.expressions.utils import split_monotonic_index_min_max, \
+from mars.dataframe.expression_utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
-from mars.dataframe.expressions.datasource.dataframe import from_pandas
-from mars.dataframe.expressions.arithmetic import add, abs, \
+from mars.dataframe.datasource.dataframe import from_pandas
+from mars.dataframe.arithmetic import add, abs, \
     DataFrameAdd, DataFrameAbs
-from mars.dataframe.expressions.arithmetic.core import DataFrameIndexAlignMap, \
+from mars.dataframe.arithmetic.core import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
 from mars.tests.core import TestBase
 

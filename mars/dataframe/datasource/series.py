@@ -14,13 +14,13 @@
 
 import itertools
 
-from .... import opcodes as OperandDef
-from ....serialize import SeriesField, DataTypeField
-from ....config import options
-from ....compat import izip
-from ....tensor.utils import get_chunk_slices
-from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index, decide_series_chunk_size
+from ... import opcodes as OperandDef
+from ...serialize import SeriesField, DataTypeField
+from ...config import options
+from ...compat import izip
+from ...tensor.utils import get_chunk_slices
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..expression_utils import parse_index, decide_series_chunk_size
 
 
 class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):

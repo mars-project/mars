@@ -23,8 +23,8 @@ except ImportError:  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.dataframe.expressions.datasource.dataframe import from_pandas
-from mars.dataframe.expressions.arithmetic import add, abs
+from mars.dataframe.datasource.dataframe import from_pandas
+from mars.dataframe.arithmetic import add, abs
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')

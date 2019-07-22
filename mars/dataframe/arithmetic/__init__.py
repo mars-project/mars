@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..expressions.core import DataFrameShuffleProxy
-from .datasource import register_data_source_handler
-from .arithmetic import register_arithmetic_handler
-from .fetch import register_fetch_handler
-from .merge import register_merge_handler
+from .abs import abs, DataFrameAbs
+from .add import add, DataFrameAdd
 
 
-def register_dataframe_execution_handler():
-    from ...executor import register
-    register(DataFrameShuffleProxy, lambda *_: None)
+def _install():
+    from ..operands import DATAFRAME_TYPE
+    from .add import add, radd
+    for cls in DATAFRAME_TYPE:
+        setattr(cls, '__add__', add)
+        setattr(cls, '__radd__', radd)
+        setattr(cls, 'add', add)
+        setattr(cls, 'radd', radd)
 
-    register_data_source_handler()
-    register_arithmetic_handler()
-    register_fetch_handler()
-    register_merge_handler()
+
+_install()
+del _install

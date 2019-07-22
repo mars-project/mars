@@ -14,10 +14,10 @@
 
 import operator
 
-from ....serialize.core import TupleField, ValueType, Int8Field
-from ....operands import Fetch, FetchShuffle
-from ....utils import on_serialize_shape, on_deserialize_shape
-from ..core import DataFrameOperandMixin, ObjectType
+from ...serialize.core import TupleField, ValueType, Int8Field
+from ...operands import Fetch, FetchShuffle
+from ...utils import on_serialize_shape, on_deserialize_shape
+from ..operands import DataFrameOperandMixin, ObjectType
 
 
 class DataFrameFetchMixin(DataFrameOperandMixin):

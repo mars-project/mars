@@ -14,10 +14,10 @@
 
 import operator
 
-from .... import opcodes as OperandDef
-from ....serialize import AnyField, Float64Field
-from ....utils import classproperty
-from ..core import DataFrameOperand
+from ... import opcodes as OperandDef
+from ...serialize import AnyField, Float64Field
+from ...utils import classproperty
+from ..operands import DataFrameOperand
 from .core import DataFrameBinOpMixin
 
 
@@ -27,6 +27,8 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _axis = AnyField('axis')
     _level = AnyField('level')
     _fill_value = Float64Field('fill_value')
+
+    _func_name = 'add'
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, **kw):
         super(DataFrameAdd, self).__init__(_axis=axis, _level=level,

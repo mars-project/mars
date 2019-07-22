@@ -19,9 +19,9 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..utils import build_empty_df, parse_index
-from ...core import IndexValue
-from ....utils import tokenize
+from ..expression_utils import build_empty_df, parse_index
+from ..core import IndexValue
+from ...utils import tokenize
 
 
 def infer_dtypes(left_dtypes, right_dtypes, operator):
