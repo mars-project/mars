@@ -18,13 +18,13 @@ import copy
 import itertools
 from math import ceil, log
 try:
-    from collections.abc import Container, Iterable, Sequence
+    from collections.abc import Iterable
 except ImportError:  # pragma: no cover
-    from collections import Container, Iterable, Sequence
+    from collections import Iterable
 
 import numpy as np
 
-from ...compat import lrange, izip, irange, builtins, six, getargspec, reduce
+from ...compat import lrange, izip, irange, builtins, six, getargspec
 from ...config import options
 from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
 from ..core import Tensor

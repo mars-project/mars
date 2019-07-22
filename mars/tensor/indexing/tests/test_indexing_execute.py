@@ -17,7 +17,6 @@
 import unittest
 
 import numpy as np
-import scipy.sparse as sps
 
 from mars.executor import Executor
 from mars.tensor.datasource import tensor, arange
