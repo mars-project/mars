@@ -21,18 +21,19 @@ from ..tensor.core import TENSOR_TYPE
 from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
+from .datasource.from_tensor import from_tensor
 
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            raise NotImplementedError('Not support create DataFrame from tensor')
-        if isinstance(data, DATAFRAME_TYPE):
-            raise NotImplementedError('Not support yet')
-
-        pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
-        df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
+            df = from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+        elif isinstance(data, DATAFRAME_TYPE):
+            df = data
+        else:
+            pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
+            df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
         super(DataFrame, self).__init__(df.data)
 
 

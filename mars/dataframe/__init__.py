@@ -17,6 +17,7 @@
 from .initializer import DataFrame, Series
 # do imports to register operands
 from .arithmetic import add
+from .datasource.from_tensor import from_tensor
 
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import DataFrameConcat
