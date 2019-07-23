@@ -1,13 +1,29 @@
-from ..core import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index
-from .... import opcodes as OperandDef
-from ....serialize import KeyField, SeriesField
-import numpy as np
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
+import numpy as np
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
     pass
+
+from ...serialize import KeyField, SeriesField
+from ... import opcodes as OperandDef
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..expression_utils import parse_index
 
 
 class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
@@ -101,6 +117,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                                      index_value=out_df.index_value,
                                      columns_value=out_df.columns,
                                      chunks=out_chunks, nsplits=in_tensor.nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        tensor_data = ctx[op.inputs[0].key]
+        ctx[chunk.key] = pd.DataFrame(tensor_data, index=chunk.index_value.to_pandas(),
+                                      columns=chunk.columns.to_pandas())
 
 
 def from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):

@@ -24,10 +24,11 @@ except ImportError:  # pragma: no cover
 
 from mars import opcodes as OperandDef
 from mars.graph import DAG
+from mars.tests.core import TestBase
 from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.tests.core import TestBase
+from mars.dataframe.datasource.from_tensor import from_tensor
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')

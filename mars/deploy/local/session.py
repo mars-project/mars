@@ -25,7 +25,7 @@ from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
 from ...utils import build_graph, sort_dataframe_result
-from ...tensor.expressions.indexing import TensorIndex
+from ...tensor.indexing import TensorIndex
 
 
 class LocalClusterSession(object):
@@ -71,14 +71,14 @@ class LocalClusterSession(object):
         tileable.nsplits = new_nsplits
 
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
-        from ...tensor.expressions.utils import create_mutable_tensor
+        from ...tensor.utils import create_mutable_tensor
         shape, dtype, chunk_size, chunk_keys = \
                 self._api.create_mutable_tensor(self._session_id, name, shape,
                                                 dtype, *args, **kwargs)
         return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
 
     def get_mutable_tensor(self, name):
-        from ...tensor.expressions.utils import create_mutable_tensor
+        from ...tensor.utils import create_mutable_tensor
         shape, dtype, chunk_size, chunk_keys = \
                  self._api.get_mutable_tensor(self._session_id, name)
         return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
@@ -88,7 +88,7 @@ class LocalClusterSession(object):
         self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 
     def seal(self, tensor):
-        from ...tensor.expressions.utils import create_fetch_tensor
+        from ...tensor.utils import create_fetch_tensor
         chunk_records_to_send = tensor._do_flush()
         self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 

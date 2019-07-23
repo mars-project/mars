@@ -59,7 +59,8 @@ from . import lib
 # register fuse op and fetch op
 from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
 from .fetch import TensorFetch, TensorFetchShuffle
-del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle
+from . import ufunc
+del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle, ufunc
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

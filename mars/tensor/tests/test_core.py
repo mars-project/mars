@@ -21,13 +21,13 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
-from mars.tensor.expressions.datasource import fromdense
-from mars.tensor.expressions.datasource.tri import TensorTriu, TensorTril
-from mars.tensor.expressions.datasource.zeros import TensorZeros
-from mars.tensor.expressions.datasource.from_dense import DenseToSparse
-from mars.tensor.expressions.datasource.array import CSRMatrixDataSource
-from mars.tensor.expressions.datasource.ones import TensorOnes, TensorOnesLike
-from mars.tensor.expressions.fuse.core import TensorFuseChunk
+from mars.tensor.datasource import fromdense
+from mars.tensor.datasource.tri import TensorTriu, TensorTril
+from mars.tensor.datasource.zeros import TensorZeros
+from mars.tensor.datasource.from_dense import DenseToSparse
+from mars.tensor.datasource.array import CSRMatrixDataSource
+from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
+from mars.tensor.fuse.core import TensorFuseChunk
 from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.core import build_mode
 from mars.graph import DAG
@@ -260,7 +260,7 @@ class Test(TestBase):
         self.assertEqual(len({c.key for c in tensor.chunks}), 1)
 
     def testDataSource(self):
-        from mars.tensor.expressions.base.broadcast_to import TensorBroadcastTo
+        from mars.tensor.base.broadcast_to import TensorBroadcastTo
 
         data = np.random.random((10, 3))
         t = tensor(data, chunk_size=2)
@@ -601,7 +601,7 @@ class Test(TestBase):
         self.assertEqual(t3.op.inputs, [t1.data, t2.data])
         self.assertEqual(t3.inputs, [t1.data, t2.data])
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(StopIteration):
             t3.inputs = []
 
         t1 = tensor([1, 2], chunk_size=2)

@@ -18,9 +18,10 @@
 from collections import Iterable, defaultdict
 from datetime import datetime
 import numpy as np
-from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
+    BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices
 

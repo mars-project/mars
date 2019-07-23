@@ -95,7 +95,7 @@ class LocalSession(object):
         tensor_data[index] = value
 
     def seal(self, tensor):
-        from .tensor.expressions.datasource.array import ArrayDataSource
+        from .tensor.datasource.array import ArrayDataSource
         if tensor.name not in self._mut_tensor:
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % tensor.name)
         mut_tensor = self._mut_tensor.pop(tensor.name)
