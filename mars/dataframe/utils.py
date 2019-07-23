@@ -87,15 +87,34 @@ def get_fuse_op_cls():
     return DataFrameFuseChunk
 
 
-def is_pd_range_empty(pd_range_index):
+def _get_range_index_start(pd_range_index):
     try:
         start = pd_range_index.start
-        stop = pd_range_index.stop
-        step = pd_range_index.step
     except AttributeError:
         start = pd_range_index._start
-        stop = pd_range_index._stop
-        step = pd_range_index._step
+    return start
+
+
+def _get_range_index_stop(pd_range_index):
+    try:
+        start = pd_range_index.stop
+    except AttributeError:
+        start = pd_range_index._stop
+    return start
+
+
+def _get_range_index_step(pd_range_index):
+    try:
+        start = pd_range_index.step
+    except AttributeError:
+        start = pd_range_index._step
+    return start
+
+
+def is_pd_range_empty(pd_range_index):
+    start, stop, step = _get_range_index_start(pd_range_index), \
+                        _get_range_index_stop(pd_range_index), \
+                        _get_range_index_step(pd_range_index)
     return (start >= stop and step >= 0) or (start <= stop and step < 0)
 
 
@@ -207,15 +226,17 @@ def parse_index(index_value, store_data=False, key=None):
                 '_is_monotonic_increasing': True,
                 '_is_monotonic_decreasing': False,
                 '_is_unique': True,
-                '_min_val': index._start,
-                '_max_val': index._stop,
+                '_min_val': _get_range_index_start(index),
+                '_max_val': _get_range_index_stop(index),
                 '_min_val_close': True,
                 '_max_val_close': False,
                 '_key': key or tokenize(index),
             }
         else:
             properties = _extract_property(index, False)
-        return IndexValue.RangeIndex(_slice=slice(index._start, index._stop, index._step),
+        return IndexValue.RangeIndex(_slice=slice(_get_range_index_start(index),
+                                                  _get_range_index_stop(index),
+                                                  _get_range_index_step(index)),
                                      _name=index.name, **properties)
 
     def _serialize_multi_index(index):
@@ -384,7 +405,7 @@ def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val
     if is_pd_range_empty(pd_range_index):
         return pd_range_index
 
-    raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), pd_range_index._step
+    raw_min, raw_max, step = pd_range_index.min(), pd_range_index.max(), _get_range_index_step(pd_range_index)
 
     # seek min range
     greater_func = operator.gt if min_val_close else operator.ge
