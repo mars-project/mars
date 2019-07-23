@@ -27,8 +27,15 @@ from .core import IndexValue
 
 
 def is_pd_range_empty(pd_range_index):
-    return (pd_range_index._start >= pd_range_index._stop and pd_range_index._step >= 0) or \
-           (pd_range_index._start <= pd_range_index._stop and pd_range_index._step < 0)
+    try:
+        start = pd_range_index.start
+        stop = pd_range_index.stop
+        step = pd_range_index.step
+    except AttributeError:
+        start = pd_range_index._start
+        stop = pd_range_index._stop
+        step = pd_range_index._step
+    return (start >= stop and step >= 0) or (start <= stop and step < 0)
 
 
 def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
