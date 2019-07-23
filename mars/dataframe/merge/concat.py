@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
+import numpy as np
 
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
@@ -121,10 +119,13 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         def _auto_concat_series_chunks(chunk, inputs):
             # auto generated concat when executing a Series
-            concat = pd.concat(inputs)
-            if getattr(chunk.index_value, 'should_be_monotonic', False):
-                concat.sort_index(inplace=True)
-            return concat
+            if all(np.isscalar(inp) for inp in inputs):
+                return pd.Series(inputs)
+            else:
+                concat = pd.concat(inputs)
+                if getattr(chunk.index_value, 'should_be_monotonic', False):
+                    concat.sort_index(inplace=True)
+                return concat
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]
