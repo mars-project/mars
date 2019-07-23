@@ -19,7 +19,7 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..expression_utils import build_empty_df, parse_index
+from ..utils import build_empty_df, parse_index
 from ..core import IndexValue
 from ...utils import tokenize
 

@@ -25,7 +25,7 @@ from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import sps
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin
-from ..execute_utils import get_tiledb_ctx
+from ..utils import get_tiledb_ctx
 from .core import TensorDataStore
 from .utils import check_tiledb_array_with_tensor, get_tiledb_schema_from_tensor
 

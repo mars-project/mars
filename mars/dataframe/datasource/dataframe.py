@@ -19,7 +19,7 @@ from ...serialize import DataFrameField, SeriesField
 from ...config import options
 from ...compat import izip
 from ...tensor.utils import get_chunk_slices
-from ..expression_utils import decide_dataframe_chunk_sizes, parse_index
+from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
 

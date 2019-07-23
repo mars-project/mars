@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import hash_dtypes
-from mars.dataframe.expression_utils import split_monotonic_index_min_max, \
+from mars.dataframe.utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.arithmetic import add, abs, \

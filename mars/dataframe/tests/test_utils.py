@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars.dataframe.core import IndexValue
-from mars.dataframe.expression_utils import parse_index
+from mars.dataframe.utils import parse_index
 from mars.dataframe.arithmetic.utils import infer_dtypes, infer_index_value
 
 

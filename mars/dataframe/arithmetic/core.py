@@ -31,7 +31,7 @@ from ..utils import hash_dtypes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameShuffleProxy, DataFrameShuffleReduce
 from ..utils import hash_index
-from ..expression_utils import parse_index, split_monotonic_index_min_max, \
+from ..utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
 from .utils import infer_dtypes, infer_index_value, filter_dtypes
 

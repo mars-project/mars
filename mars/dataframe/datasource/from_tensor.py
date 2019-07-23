@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 from ...serialize import KeyField, SeriesField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..expression_utils import parse_index
+from ..utils import parse_index
 
 
 class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):

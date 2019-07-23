@@ -23,9 +23,13 @@ import itertools
 from functools import wraps
 
 import numpy as np
+try:
+    import tiledb
+except (ImportError, OSError):  # pragma: no cover
+    tildb = None
 
 from ..utils import lazy_import
-from ..compat import zip_longest, izip, six, reduce, lkeys, OrderedDict
+from ..compat import zip_longest, izip, six, reduce, lkeys, OrderedDict, functools32
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 
@@ -644,3 +648,26 @@ def filter_inputs(inputs):
     from ..core import Base, Entity
 
     return [inp for inp in inputs if isinstance(inp, (Base, Entity))]
+
+
+# As TileDB Ctx's creation is a bit time-consuming,
+# we just cache the Ctx
+# also remember the arguments should be hashable
+@functools32.lru_cache(10)
+def _create_tiledb_ctx(conf_tuple):
+    if conf_tuple is not None:
+        return tiledb.Ctx(dict(conf_tuple))
+    return tiledb.Ctx()
+
+
+def get_tiledb_ctx(conf):
+    key = tuple(conf.items()) if conf is not None else None
+    return _create_tiledb_ctx(key)
+
+
+# this function is only used for pandas' compatibility
+def to_numpy(pdf):
+    try:
+        return pdf.to_numpy()
+    except AttributeError:  # pragma: no cover
+        return pdf.values

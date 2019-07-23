@@ -16,8 +16,8 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...dataframe.expression_utils import build_empty_df
-from ..execute_utils import to_numpy
+from ...dataframe.utils import build_empty_df
+from ..utils import to_numpy
 from .core import TensorHasInput
 
 
