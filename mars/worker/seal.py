@@ -44,11 +44,14 @@ class SealActor(WorkerActor):
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
     @log_unhandled
-    def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype):
+    def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype, fill_value):
         from ..serialize.dataserializer import decompressors, mars_serialize_context
         chunk_bytes_size = np.prod(shape) * dtype.itemsize
         self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
-        ndarr = np.zeros(shape, dtype=dtype)
+        if fill_value is None:
+            ndarr = np.zeros(shape, dtype=dtype)
+        else:
+            ndarr = np.full(shape, fill_value, dtype=dtype)
         ndarr_ts = np.zeros(shape, dtype=np.dtype('datetime64[ns]'))
 
         # consolidate

@@ -26,10 +26,12 @@ from .lib import nvutils
 _proc = psutil.Process()
 _timer = getattr(time, 'monotonic', time.time)
 
+_cpu_use_process_stat = bool(int(os.environ.get('MARS_CPU_USE_PROCESS_STAT', '0').strip('"')))
+_mem_use_process_stat = bool(int(os.environ.get('MARS_MEM_USE_PROCESS_STAT', '0').strip('"')))
+
 if 'MARS_USE_PROCESS_STAT' in os.environ:
-    _use_process_stat = bool(int(os.environ['MARS_USE_PROCESS_STAT'].strip('"')))
-else:
-    _use_process_stat = False
+    _cpu_use_process_stat = _mem_use_process_stat = \
+        bool(int(os.environ['MARS_USE_PROCESS_STAT'].strip('"')))
 
 if 'MARS_CPU_TOTAL' in os.environ:
     _cpu_total = int(os.environ['MARS_CPU_TOTAL'].strip('"'))
@@ -53,7 +55,7 @@ else:
 
 def virtual_memory():
     sys_mem = psutil.virtual_memory()
-    if not _use_process_stat:
+    if not _mem_use_process_stat:
         total = sys_mem.total
         used = sys_mem.used + getattr(sys_mem, 'shared', 0)
         available = sys_mem.available
@@ -112,7 +114,7 @@ def _take_process_cpu_snapshot():
 
 def cpu_percent():
     global _last_cpu_measure
-    if not _use_process_stat:
+    if not _cpu_use_process_stat:
         return sum(psutil.cpu_percent(percpu=True))
 
     num_cpus = cpu_count() or 1

@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
+import random
 import uuid
-import zlib
-import pyarrow
 
 from .actors import new_client
-from .config import options
 from .errors import GraphNotExists
 from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, \
     SessionManagerActor, ChunkMetaClient
-from .scheduler.graph import ResultReceiverActor
 from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
+from .worker.transfer import ResultSenderActor
+from .tensor.expressions.utils import slice_split
 from .serialize import dataserializer
-from .utils import tokenize
+from .utils import tokenize, merge_chunks
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ class MarsAPI(object):
         self.cluster_info = self.actor_client.actor_ref(
             SchedulerClusterInfoActor.default_uid(), address=scheduler_ip)
         self.session_manager = self.get_actor_ref(SessionManagerActor.default_uid())
+        self.chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
 
     def get_actor_ref(self, uid):
         actor_address = self.cluster_info.get_scheduler(uid)
@@ -55,13 +56,6 @@ class MarsAPI(object):
             info_ref = self.actor_client.actor_ref(NodeInfoActor.default_uid(), address=scheduler)
             infos[scheduler] = info_ref.get_info()
         return infos
-
-    def _get_receiver_ref(self, chunk_key):
-        from .worker.dispatcher import DispatchActor
-        ep = self.cluster_info.get_scheduler(chunk_key)
-        dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
-        uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
-        return self.actor_client.actor_ref(uid, address=ep)
 
     def count_workers(self):
         try:
@@ -94,8 +88,9 @@ class MarsAPI(object):
         return session_ref.get_mutable_tensor(name)
 
     def send_chunk_records(self, session_id, name, chunk_records_to_send, directly=True):
-        from .worker.dataio import ArrowBufferIO
+        from .worker.dispatcher import DispatchActor
         from .worker.quota import MemQuotaActor
+        from .worker.transfer import put_remote_chunk
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
 
@@ -107,32 +102,10 @@ class MarsAPI(object):
             quota_ref = self.actor_client.actor_ref(MemQuotaActor.default_uid(), address=ep)
             quota_ref.request_batch_quota({record_chunk_key: records.nbytes})
             # send record chunk
-            buf = pyarrow.serialize(records).to_buffer()
-            receiver_ref = self._get_receiver_ref(chunk_key)
-            receiver_ref.create_data_writer(session_id, record_chunk_key, buf.size, None,
-                                            ensure_cached=False, use_promise=False)
-
-            block_size = options.worker.transfer_block_size
-
-            try:
-                reader = ArrowBufferIO(buf, 'r', block_size=block_size)
-                checksum = 0
-                while True:
-                    next_chunk = reader.read(block_size)
-                    if not next_chunk:
-                        reader.close()
-                        receiver_ref.finish_receive(session_id, record_chunk_key, checksum)
-                        break
-                    checksum = zlib.crc32(next_chunk, checksum)
-                    receiver_ref.receive_data_part(session_id, record_chunk_key, next_chunk, checksum)
-            except:
-                receiver_ref.cancel_receive(session_id, chunk_key)
-                raise
-            finally:
-                if reader:
-                    reader.close()
-                del reader
-
+            dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
+            receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
+            receiver_ref = self.actor_client.actor_ref(receiver_uid, address=ep)
+            put_remote_chunk(session_id, record_chunk_key, records, receiver_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunk to MutableTensorActor
@@ -169,13 +142,40 @@ class MarsAPI(object):
         state = GraphState(state.lower())
         return state
 
-    def fetch_data(self, session_id, graph_key, tileable_key, compressions=None, wait=True):
+    def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
-        graph_address = self.cluster_info.get_scheduler(graph_uid)
-        result_ref = self.actor_client.actor_ref(ResultReceiverActor.default_uid(), address=graph_address)
+        graph_ref = self.get_actor_ref(graph_uid)
+        nsplits, chunk_indexes = graph_ref.get_tileable_meta(tileable_key)
 
-        compressions = set(compressions or []) | {dataserializer.CompressType.NONE}
-        return result_ref.fetch_tileable(session_id, graph_key, tileable_key, compressions, _wait=wait)
+        if not index_obj:
+            chunk_results = dict((idx, self.fetch_chunk_data(session_id, k)) for
+                                 idx, k in chunk_indexes.items())
+        else:
+            chunk_results = dict()
+            indexes = dict()
+            for axis, s in enumerate(index_obj):
+                idx_to_slices = slice_split(s, nsplits[axis])
+                indexes[axis] = idx_to_slices
+            for chunk_index in itertools.product(*[v.keys() for v in indexes.values()]):
+                slice_obj = [indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index)]
+                chunk_key = chunk_indexes[chunk_index]
+                chunk_results[chunk_index] = self.fetch_chunk_data(session_id, chunk_key, slice_obj)
+
+        chunk_results = [(idx, dataserializer.loads(f.result())) for
+                         idx, f in chunk_results.items()]
+        if len(chunk_results) == 1:
+            ret = chunk_results[0][1]
+        else:
+            ret = merge_chunks(chunk_results)
+        compressions = max(compressions) if compressions else dataserializer.CompressType.NONE
+        return dataserializer.dumps(ret, compress=compressions)
+
+    def fetch_chunk_data(self, session_id, chunk_key, index_obj=None):
+        endpoints = self.chunk_meta_client.get_workers(session_id, chunk_key)
+        sender_ref = self.actor_client.actor_ref(ResultSenderActor.default_uid(),
+                                                 address=random.choice(endpoints))
+        future = sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
+        return future
 
     def delete_data(self, session_id, graph_key, tileable_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
@@ -186,20 +186,5 @@ class MarsAPI(object):
         # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        chunk_indexes = graph_ref.get_tileable_chunk_indexes(tileable_key)
 
-        chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
-        chunk_shapes = chunk_meta_client.batch_get_chunk_shape(
-            session_id, list(chunk_indexes.keys()))
-
-        # for each dimension, record chunk shape whose index is zero on other dimensions
-        ndim = len(chunk_shapes[0])
-        tileable_nsplits = []
-        for i in range(ndim):
-            splits = []
-            for index, shape in zip(chunk_indexes.values(), chunk_shapes):
-                if all(idx == 0 for j, idx in enumerate(index) if j != i):
-                    splits.append(shape[i])
-            tileable_nsplits.append(tuple(splits))
-
-        return tuple(tileable_nsplits)
+        return graph_ref.get_tileable_meta(tileable_key)[0]

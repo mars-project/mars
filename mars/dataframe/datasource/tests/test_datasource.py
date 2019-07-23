@@ -14,8 +14,9 @@
 
 import unittest
 from weakref import ReferenceType
-
+import mars.tensor as mt
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -68,7 +69,7 @@ class Test(TestBase):
 
     def testDataFrameGraphSerialize(self):
         df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
-                                      columns=[np.random.bytes(10) for _ in range(10)]))
+                                         columns=[np.random.bytes(10) for _ in range(10)]))
         graph = df.build_graph(tiled=False)
 
         pb = graph.to_pb()
@@ -239,3 +240,67 @@ class Test(TestBase):
         self.assertTrue(series.chunks[2].index_value._index_value._is_monotonic_increasing)
         self.assertFalse(series.chunks[2].index_value._index_value._is_monotonic_decreasing)
         self.assertTrue(series.chunks[2].index_value._index_value._is_unique)
+
+    def testFromTensorSerialize(self):
+        # test serialization and deserialization
+        # pb
+        tensor = mt.random.rand(10, 10)
+        df = from_tensor(tensor)
+        df.tiles()
+        chunk = df.chunks[0]
+        serials = self._pb_serial(chunk)
+        op, pb = serials[chunk.op, chunk.data]
+
+        self.assertEqual(tuple(pb.index), chunk.index)
+        self.assertEqual(pb.key, chunk.key)
+        self.assertEqual(tuple(pb.shape), chunk.shape)
+        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.DATAFRAME_FROM_TENSOR)
+
+        chunk2 = self._pb_deserial(serials)[chunk.data]
+
+        self.assertEqual(chunk.index, chunk2.index)
+        self.assertEqual(chunk.key, chunk2.key)
+        self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+
+        # json
+        chunk = df.chunks[0]
+        serials = self._json_serial(chunk)
+
+        chunk2 = self._json_deserial(serials)[chunk.data]
+
+        self.assertEqual(chunk.index, chunk2.index)
+        self.assertEqual(chunk.key, chunk2.key)
+        self.assertEqual(chunk.shape, chunk2.shape)
+        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+
+    def testFromTensor(self):
+        tensor = mt.random.rand(10, 10, chunk_size=5)
+        df = from_tensor(tensor)
+        self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(df.op.dtypes[0], tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
+
+        df.tiles()
+        self.assertEqual(len(df.chunks), 4)
+        self.assertIsInstance(df.chunks[0].index_value._index_value, IndexValue.RangeIndex)
+        self.assertIsInstance(df.chunks[0].index_value, IndexValue)
+
+        # test converted from 1-d tensor
+        tensor2 = mt.array([1, 2, 3])
+        # in fact, tensor3 is (3,1)
+        tensor3 = mt.array([tensor2]).T
+
+        df2 = from_tensor(tensor2)
+        df3 = from_tensor(tensor3)
+        df2.tiles()
+        df3.tiles()
+        np.testing.assert_equal(df2.chunks[0].index, (0, 0))
+        np.testing.assert_equal(df3.chunks[0].index, (0, 0))
+
+        # test converted from scalar
+        scalar = mt.array(1)
+        np.testing.assert_equal(scalar.ndim, 0)
+        with self.assertRaises(TypeError):
+            from_tensor(scalar)

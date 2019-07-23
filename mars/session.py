@@ -30,6 +30,9 @@ class LocalSession(object):
         self._executor = Executor()
         self._endpoint = None
 
+        self._mut_tensor = dict()
+        self._mut_tensor_data = dict()
+
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError('Local session got unexpected arguments: %s' % unexpected_keys)
@@ -62,14 +65,44 @@ class LocalSession(object):
         tileable.nsplits = new_nsplits
 
     def fetch(self, *tileables, **kw):
-        for t in tileables:
-            if t.key not in self.executed_tileables:
-                raise ValueError('Cannot fetch the unexecuted tileable')
         if self._executor is None:
             raise RuntimeError('Session has closed')
         if 'n_parallel' not in kw:
             kw['n_parallel'] = cpu_count()
         return self._executor.fetch_tileables(tileables, **kw)
+
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
+        from .tensor.core import MutableTensor, MutableTensorData
+        if name in self._mut_tensor:
+            raise ValueError("The mutable tensor named '%s' already exists." % name)
+        mut_tensor = MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype))
+        self._mut_tensor[name] = mut_tensor
+        if fill_value is None:
+            self._mut_tensor_data[name] = np.zeros(shape, dtype=dtype)
+        else:
+            self._mut_tensor_data[name] = np.full(shape, fill_value, dtype=dtype)
+        return mut_tensor
+
+    def get_mutable_tensor(self, name):
+        if name not in self._mut_tensor:
+            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
+        return self._mut_tensor.get(name)
+
+    def write_mutable_tensor(self, tensor, index, value):
+        if tensor.name not in self._mut_tensor:
+            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % tensor.name)
+        tensor_data = self._mut_tensor_data.get(tensor.name)
+        tensor_data[index] = value
+
+    def seal(self, tensor):
+        from .tensor.expressions.datasource.array import ArrayDataSource
+        if tensor.name not in self._mut_tensor:
+            raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % tensor.name)
+        mut_tensor = self._mut_tensor.pop(tensor.name)
+        tensor_data = self._mut_tensor_data.pop(tensor.name)
+        sealed_tensor = ArrayDataSource(tensor_data, dtype=mut_tensor.dtype)(shape=mut_tensor.shape)
+        self._executor.execute_tileables([sealed_tensor])
+        return sealed_tensor
 
     def decref(self, *keys):
         self._executor.decref(*keys)
@@ -190,45 +223,18 @@ class Session(object):
         cls._default_session = Session()
         return cls._default_session
 
-    def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
-        from .tensor.core import MutableTensor, MutableTensorData
-        from .tensor.utils import create_fetch_tensor
-        self._ensure_local_cluster()
-        shape, dtype, chunk_size, chunk_keys = \
-                self._sess.create_mutable_tensor(name, shape, dtype, *args, **kwargs)
-        # Construct MutableTensor on the fly.
-        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
-                                                    _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+    def create_mutable_tensor(self, name, shape, dtype, fill_value=None, *args, **kwargs):
+        return self._sess.create_mutable_tensor(name, shape, dtype, fill_value=fill_value, *args, **kwargs)
 
     def get_mutable_tensor(self, name):
-        from .tensor.core import MutableTensor, MutableTensorData
-        from .tensor.utils import create_fetch_tensor
-        self._ensure_local_cluster()
-        shape, dtype, chunk_size, chunk_keys = self._sess.get_mutable_tensor(name)
-        # Construct MutableTensor on the fly.
-        tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-        return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=dtype,
-                                                    _nsplits=tensor.nsplits, _chunks=tensor.chunks))
+        return self._sess.get_mutable_tensor(name)
 
     def write_mutable_tensor(self, tensor, index, value):
-        self._ensure_local_cluster()
-        chunk_records_to_send = tensor._do_write(index, value)
-        return self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
+        self._sess.write_mutable_tensor(tensor, index, value)
 
     def seal(self, tensor):
-        from .tensor.utils import create_fetch_tensor
-        self._ensure_local_cluster()
-        chunk_records_to_send = tensor._do_flush()
-        self._sess.send_chunk_records(tensor.name, chunk_records_to_send)
-        shape, dtype, chunk_size, chunk_keys = self._sess.seal(tensor.name)
-        # Construct Tensor on the fly.
-        return create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
+        return self._sess.seal(tensor)
 
-    def _ensure_local_cluster(self):
-        from .deploy.local.session import LocalClusterSession
-        if not isinstance(self._sess, LocalClusterSession):
-            raise RuntimeError("Only local cluster session can be used to manipulate mutable tensors.")
 
 def new_session(scheduler=None, **kwargs):
     return Session(scheduler, **kwargs)

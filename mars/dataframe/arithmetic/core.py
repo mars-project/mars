@@ -17,6 +17,7 @@ import operator
 import copy
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -280,7 +281,7 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 class _AxisMinMaxSplitInfo(object):
     def __init__(self, left_split, left_increase, right_split, right_increase):
         self._left_split = left_split
-        self._right_split =right_split
+        self._right_split = right_split
 
         self._left_split_idx_to_origin_idx = \
             build_split_idx_to_origin_idx(self._left_split, left_increase)
@@ -419,7 +420,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _need_align_map(cls, input_chunk, index_min_max, column_min_max):
-        assert not np.isnan(index_min_max[0]) and not np.isnan(index_min_max[2])
+        assert not pd.isnull(index_min_max[0]) and not pd.isnull(index_min_max[2])
         if input_chunk.index_value is None or input_chunk.columns is None:
             return True
         if input_chunk.index_value.min_max != index_min_max:
@@ -597,7 +598,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
                     # both left and right has only 1 chunk
                     left_splits, right_splits = \
-                        [left_chunk_index_min_max[0]],  [right_chunk_index_min_max[0]]
+                        [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
                 else:
                     left_splits, right_splits = split_monotonic_index_min_max(
                         *(left_chunk_index_min_max + right_chunk_index_min_max))

@@ -21,6 +21,8 @@ import random
 import time
 from collections import deque, defaultdict
 
+import numpy as np
+
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
@@ -29,7 +31,7 @@ from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
 from ..actors.errors import ActorAlreadyExist
-from ..compat import six, functools32, reduce, OrderedDict
+from ..compat import functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
@@ -38,52 +40,10 @@ from ..serialize import dataserializer
 from ..core import ChunkData
 from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    concat_tileable_chunks, build_fetch_chunk, build_fetch_tileable
+    build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
+    get_chunk_shuffle_key
 
 logger = logging.getLogger(__name__)
-
-
-class ResultReceiverActor(SchedulerActor):
-    def post_create(self):
-        super(ResultReceiverActor, self).post_create()
-        self.set_cluster_info_ref()
-
-    def fetch_tileable(self, session_id, graph_key, tileable_key, compressions):
-        from ..executor import Executor
-        from ..worker.transfer import ResultSenderActor
-
-        graph_actor = self.ctx.actor_ref(GraphActor.gen_uid(session_id, graph_key))
-        fetch_graph = deserialize_graph(graph_actor.build_tileable_merge_graph(tileable_key))
-
-        if len(fetch_graph) == 1 and isinstance(next(fetch_graph.iter_nodes()).op, Fetch):
-            c = next(fetch_graph.iter_nodes())
-            worker_ip = self.chunk_meta.get_workers(session_id, c.key)[-1]
-            sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=worker_ip)
-            future = sender_ref.fetch_data(session_id, c.key, _wait=False)
-
-            data = future.result()
-            header = dataserializer.read_file_header(data)
-            if header.compress in compressions:
-                return data
-            else:
-                return dataserializer.dumps(dataserializer.loads(data), compress=max(compressions))
-        else:
-            ctx = dict()
-            target_keys = set()
-            for c in fetch_graph:
-                if isinstance(c.op, Fetch):
-                    if c.key in ctx:
-                        continue
-                    endpoints = self.chunk_meta.get_workers(session_id, c.key)
-                    sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
-                    future = sender_ref.fetch_data(session_id, c.key, _wait=False)
-                    ctx[c.key] = future
-                else:
-                    target_keys.add(c.key)
-            ctx = dict((k, dataserializer.loads(future.result())) for k, future in six.iteritems(ctx))
-            executor = Executor(storage=ctx)
-            concat_result = executor.execute_graph(fetch_graph, keys=target_keys)
-            return dataserializer.dumps(concat_result[0], compress=max(compressions))
 
 
 class GraphMetaActor(SchedulerActor):
@@ -694,7 +654,7 @@ class GraphActor(SchedulerActor):
                 successor_keys.add(sn.op.key)
             if isinstance(c.op, ShuffleProxy):
                 for sn in graph.iter_successors(c):
-                    shuffle_keys[sn.op.key] = sn.op.shuffle_key
+                    shuffle_keys[sn.op.key] = get_chunk_shuffle_key(sn)
 
             chunk_keys.update(co.key for co in c.op.outputs)
 
@@ -899,27 +859,21 @@ class GraphActor(SchedulerActor):
         for chunk in tileable.chunks:
             self._get_operand_ref(chunk.op.key).free_data(_tell=True)
 
-    def get_tileable_chunk_indexes(self, tileable_key):
-        return OrderedDict((c.key, c.index) for c in self._get_tileable_by_key(tileable_key).chunks)
-
-    @log_unhandled
-    def build_tileable_merge_graph(self, tileable_key):
+    def get_tileable_meta(self, tileable_key):
+        """
+        Get tileable meta including nsplit, chunk keys and chunk indexes.
+        :param tileable_key: tileable_key
+        :return: tuple, (nsplits, OrderedDict(chunk_index -> chunk_key))
+        """
         tileable = self._get_tileable_by_key(tileable_key)
-        graph = DAG()
-        if len(tileable.chunks) == 1:
-            # only one chunk, just trigger fetch
-            c = tileable.chunks[0]
-            fetch_chunk = build_fetch_chunk(c, index=c.index)
-            graph.add_node(fetch_chunk)
-        else:
-            fetch_tileable = build_fetch_tileable(tileable)
-            chunk = concat_tileable_chunks(fetch_tileable).chunks[0]
-            graph.add_node(chunk)
-            for fetch_chunk in fetch_tileable.chunks:
-                graph.add_node(fetch_chunk)
-                graph.add_edge(fetch_chunk, chunk)
+        chunk_indexes = OrderedDict((c.index, c.key) for c in tileable.chunks)
+        nsplits = tileable.nsplits
+        if np.nan in tileable.shape:
+            chunk_shapes = self.chunk_meta.batch_get_chunk_shape(
+                self._session_id, list(chunk_indexes.values()))
+            nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))
 
-        return serialize_graph(graph)
+        return nsplits, chunk_indexes
 
     def build_fetch_graph(self, tileable_key):
         """
@@ -1131,7 +1085,7 @@ class GraphActor(SchedulerActor):
                 outf.write(c + '\n')
             outf.write('\n\nLOST CHUNKS:\n')
             for c in lost_chunks:
-                outf.write(c + '\n')
+                outf.write(repr(c) + '\n')
             outf.write('\n\nOPERAND SNAPSHOT:\n')
             for key, op_info in self._operand_infos.items():
                 outf.write('Chunk: %s Worker: %r State: %s\n' %

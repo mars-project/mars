@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import json
 import logging
 import random
 import threading
@@ -30,7 +31,7 @@ from .. import kvstore
 from ..compat import six
 from ..utils import get_next_port
 from ..config import options
-from ..scheduler import ResourceActor
+from ..scheduler import ResourceActor, SessionActor
 from ..api import MarsAPI
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,18 @@ class MarsWebAPI(MarsAPI):
         from ..worker import EventsActor
         ref = self.actor_client.actor_ref(EventsActor.default_uid(), address=endpoint)
         return ref.query_by_time(category, time_start=time_start, time_end=time_end)
+
+    def write_mutable_tensor(self, session_id, name, body):
+        from ..serialize import dataserializer
+        from ..tensor.core import Indexes
+        session_uid = SessionActor.gen_uid(session_id)
+        session_ref = self.get_actor_ref(session_uid)
+
+        index_json_size = np.asscalar(np.frombuffer(body[0:8], dtype=np.int64))
+        index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
+        index = Indexes.from_json(index_json).indexes
+        value = dataserializer.loads(body[8+index_json_size:], raw=False)
+        return session_ref.write_mutable_tensor(name, index, value)
 
 
 class MarsWeb(object):

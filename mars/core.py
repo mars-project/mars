@@ -561,7 +561,8 @@ class TileableData(SerializableWithKey, Tileable):
         from graphviz import Source
 
         g = self.build_graph(**kw)
-        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs)
+        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs,
+                       result_chunk_keys={c.key for c in self.chunks})
 
         return Source(dot)
 

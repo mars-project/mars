@@ -193,6 +193,41 @@ class TensorTileDBConsolidate(Operand, TensorOperandMixin):
         ctx[op.outputs[0].key] = ctx[op.inputs[0].key]
 
 
+class TensorTileDBConsolidate(Operand, TensorOperandMixin):
+    _op_type_ = OperandDef.TENSOR_STORE_TILEDB_CONSOLIDATE
+
+    _tiledb_config = DictField('tiledb_config')
+    # URI of array to write
+    _tiledb_uri = StringField('tiledb_uri')
+    # encryption key to decrypt if provided
+    _tiledb_key = StringField('tiledb_key')
+
+    def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
+                 dtype=None, sparse=None, **kw):
+        super(TensorTileDBConsolidate, self).__init__(
+            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
+            _dtype=dtype, _sparse=sparse, **kw)
+
+    def calc_shape(self, *inputs_shape):
+        return self.outputs[0].shape
+
+    @property
+    def tiledb_config(self):
+        return self._tiledb_config
+
+    @property
+    def tiledb_uri(self):
+        return self._tiledb_uri
+
+    @property
+    def tiledb_key(self):
+        return self._tiledb_key
+
+    @classmethod
+    def tile(cls, op):
+        raise TypeError('{0} is a chunk op, cannot be tiled'.format(cls.__name__))
+
+
 def totiledb(uri, x, ctx=None, key=None, timestamp=None):
     import tiledb
 

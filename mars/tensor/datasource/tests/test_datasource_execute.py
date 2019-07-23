@@ -20,7 +20,6 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
-
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover

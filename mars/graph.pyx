@@ -364,7 +364,7 @@ cdef class DirectedGraph:
             return '"{0}"'.format(val)
         return val
 
-    def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5):
+    def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5, result_chunk_keys=None):
         sio = six.StringIO()
         sio.write('digraph {\n')
         sio.write('splines=curved\n')
@@ -398,7 +398,10 @@ cdef class DirectedGraph:
 
             for output_chunk in (op.outputs or []):
                 if output_chunk.key not in visited:
-                    sio.write('"Chunk:%s" %s\n' % (output_chunk.key[:trunc_key], chunk_style))
+                    tmp_chunk_style = chunk_style
+                    if result_chunk_keys and output_chunk.key in result_chunk_keys:
+                        tmp_chunk_style = '[shape=box,style=filled,fillcolor=cadetblue1]'
+                    sio.write('"Chunk:%s" %s\n' % (output_chunk.key[:trunc_key], tmp_chunk_style))
                     visited.add(output_chunk.key)
                 if op.key not in visited:
                     sio.write('"%s:%s" %s\n' % (type(op).__name__, op.key[:trunc_key], operand_style))
@@ -457,10 +460,10 @@ cdef class DirectedGraph:
 
         Fusion(self).decompose(nodes=nodes)
 
-    def view(self, filename='default', graph_attrs=None, node_attrs=None):  # pragma: no cover
+    def view(self, filename='default', graph_attrs=None, node_attrs=None, result_chunk_keys=None):  # pragma: no cover
         from graphviz import Source
 
-        g = Source(self.to_dot(graph_attrs, node_attrs))
+        g = Source(self.to_dot(graph_attrs, node_attrs, result_chunk_keys=result_chunk_keys))
         g.view(filename=filename, cleanup=True)
 
 

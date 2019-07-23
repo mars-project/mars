@@ -82,7 +82,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     def new_dataframe(self, inputs, shape=None, dtypes=None, index_value=None, columns_value=None, **kw):
         if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new tensor with more than 1 outputs')
+            raise TypeError('cannot new DataFrame with more than 1 outputs')
 
         return self.new_dataframes(inputs, shape=shape, dtypes=dtypes,
                                    index_value=index_value, columns_value=columns_value, **kw)[0]

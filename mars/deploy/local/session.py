@@ -17,13 +17,15 @@
 import uuid
 import json
 import time
+from numbers import Integral
 
 from ...api import MarsAPI
 from ...compat import TimeoutError  # pylint: disable=W0622
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
-from ...utils import build_graph
+from ...utils import build_graph, sort_dataframe_result
+from ...tensor.expressions.indexing import TensorIndex
 
 
 class LocalClusterSession(object):
@@ -69,19 +71,33 @@ class LocalClusterSession(object):
         tileable.nsplits = new_nsplits
 
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
-        return self._api.create_mutable_tensor(self._session_id, name, shape,
-                                               dtype, *args, **kwargs)
+        from ...tensor.expressions.utils import create_mutable_tensor
+        shape, dtype, chunk_size, chunk_keys = \
+                self._api.create_mutable_tensor(self._session_id, name, shape,
+                                                dtype, *args, **kwargs)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
 
     def get_mutable_tensor(self, name):
-        return self._api.get_mutable_tensor(self._session_id, name)
+        from ...tensor.expressions.utils import create_mutable_tensor
+        shape, dtype, chunk_size, chunk_keys = \
+                 self._api.get_mutable_tensor(self._session_id, name)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
 
-    def send_chunk_records(self, name, chunk_records_to_send):
-        return self._api.send_chunk_records(self._session_id, name, chunk_records_to_send)
+    def write_mutable_tensor(self, tensor, index, value):
+        chunk_records_to_send = tensor._do_write(index, value)
+        self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
 
-    def seal(self, name):
-        graph_key, tensor_key, tensor_id, tensor_meta = self._api.seal(self._session_id, name)
-        self._executed_tileables[tensor_key] = graph_key, {tensor_id}
-        return tensor_meta
+    def seal(self, tensor):
+        from ...tensor.expressions.utils import create_fetch_tensor
+        chunk_records_to_send = tensor._do_flush()
+        self._api.send_chunk_records(self._session_id, tensor.name, chunk_records_to_send)
+
+        graph_key_hex, tensor_key, tensor_id, tensor_meta = self._api.seal(self._session_id, tensor.name)
+        self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
+
+        # Construct Tensor on the fly.
+        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        return create_fetch_tensor(chunk_size, shape, dtype, tensor_key=tensor_key, chunk_keys=chunk_keys)
 
     def run(self, *tileables, **kw):
         timeout = kw.pop('timeout', -1)
@@ -124,18 +140,27 @@ class LocalClusterSession(object):
             return self.fetch(*tileables)
 
     def fetch(self, *tileables):
-        futures = []
+        tileable_results = []
         for tileable in tileables:
-            key = tileable.key
-
+            # TODO: support DataFrame getitem
+            if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
+                key = tileable.inputs[0].key
+                indexes = tileable.op.indexes
+                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
+                    raise ValueError('Only support fetch data slices')
+            else:
+                key = tileable.key
+                indexes = None
             if key not in self._executed_tileables:
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
-            graph_key = self._get_tileable_graph_key(tileable.key)
+            graph_key = self._get_tileable_graph_key(key)
             compressions = dataserializer.get_supported_compressions()
-            future = self._api.fetch_data(self._session_id, graph_key, key, compressions, wait=False)
-            futures.append(future)
-        return [dataserializer.loads(f.result()) for f in futures]
+            result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
+                                          compressions=compressions)
+            result_data = dataserializer.loads(result)
+            tileable_results.append(sort_dataframe_result(tileable, result_data))
+        return tileable_results
 
     def decref(self, *keys):
         for tileable_key, tileable_id in keys:
