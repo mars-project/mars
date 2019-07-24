@@ -234,11 +234,11 @@ class TensorReductionMixin(TensorOperandMixin):
         with device(device_id):
             if "dtype" in getargspec(reduce_func).args:
                 ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
-                                                            dtype=op.dtype,
-                                                            keepdims=bool(op.keepdims))
+                                                     dtype=op.dtype,
+                                                     keepdims=bool(op.keepdims))
             else:
                 ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
-                                                            keepdims=bool(op.keepdims))
+                                                     keepdims=bool(op.keepdims))
 
 
 class TensorArgReductionMixin(TensorReductionMixin):

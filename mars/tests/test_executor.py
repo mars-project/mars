@@ -128,3 +128,28 @@ class Test(unittest.TestCase):
         # larger than maximal memory size in calc procedure
         self.assertGreaterEqual(res[0][0], 800)
         self.assertGreaterEqual(executor.mock_max_memory, 8000)
+
+    def testRegister(self):
+        from mars.graph import DAG
+
+        fake_result = np.random.rand(10, 10)
+        fake_size = (fake_result.nbytes * 2, fake_result.nbytes * 2)
+
+        def fake_execute(ctx, op):
+            ctx[op.outputs[0].key] = fake_result
+
+        def fake_estimate(ctx, op):
+            ctx[op.outputs[0].key] = fake_size
+
+        register(FakeOperand, fake_execute, fake_estimate)
+
+        graph = DAG()
+        chunk = FakeOperand().new_chunk(None, shape=(10, 10))
+        graph.add_node(chunk.data)
+
+        executor = Executor()
+        res = executor.execute_graph(graph, keys=[chunk.key])[0]
+        np.testing.assert_array_equal(res, fake_result)
+
+        size = executor.execute_graph(graph, keys=[chunk.key], mock=True)[0]
+        self.assertEqual(size, fake_size)

@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
+from .utils import keepdims_wrapper
 from .core import TensorReduction, TensorReductionMixin
 
 
@@ -34,7 +35,7 @@ class TensorNanMin(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def _get_op_func(cls):
-        return np.nanmin
+        return keepdims_wrapper(np.nanmin)
 
 
 def nanmin(a, axis=None, out=None, keepdims=None, combine_size=None):

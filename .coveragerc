@@ -7,7 +7,7 @@ plugins = Cython.Coverage
 include =
     mars/*
 omit =
-    mars/compat/*
+    mars/compat.py
     mars/lib/functools32/*
     mars/lib/futures/*
     mars/lib/enum.py
