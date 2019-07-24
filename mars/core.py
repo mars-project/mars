@@ -757,6 +757,10 @@ class TileableOperandMixin(object):
         return tileables
 
     @classmethod
+    def execute(cls, ctx, op):
+        raise NotImplementedError
+
+    @classmethod
     def estimate_size(cls, ctx, op):
         exec_size = 0
         outputs = op.outputs

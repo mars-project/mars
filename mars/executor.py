@@ -444,26 +444,25 @@ class Executor(object):
     def _get_op_runner(op, mapper, method):
         try:
             op_cls = type(op)
-            return mapper[op_cls], False
+            return mapper[op_cls]
         except KeyError:
             if hasattr(op, method):
-                return getattr(op, method), True
+                return getattr(op, method)
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
                     mapper[type(op)] = mapper[op_cls]
-                    return mapper[op_cls], False
+                    return mapper[op_cls]
 
             raise KeyError('No handler found for op: %s' % op)
 
     @classmethod
     def handle(cls, op, results, mock=False):
-        # TODO: remove new_fashion after refactoring finished
         if not mock:
-            runner, new_fashion = cls._get_op_runner(op, cls._op_runners, 'execute')
-            return runner(results, op) if new_fashion else runner(results, op.outputs[0])
+            runner = cls._get_op_runner(op, cls._op_runners, 'execute')
+            return runner(results, op)
         else:
-            estimator, new_fashion = cls._get_op_runner(op, cls._op_size_estimators, 'estimate_size')
-            return estimator(results, op) if new_fashion else estimator(results, op.outputs[0])
+            estimator = cls._get_op_runner(op, cls._op_size_estimators, 'estimate_size')
+            return estimator(results, op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, no_intermediate=False, compose=True, retval=True):

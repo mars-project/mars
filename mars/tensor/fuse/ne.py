@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    import numexpr as ne
+    NUMEXPR_INSTALLED = True
+except ImportError:
+    ne = None
+    NUMEXPR_INSTALLED = False
 import numpy as np
 
 from ...compat import six, izip
@@ -38,8 +44,6 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        import numexpr as ne
-
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
         for c, i in izip(op.inputs, inputs):
