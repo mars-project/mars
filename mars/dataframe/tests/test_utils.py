@@ -13,95 +13,245 @@
 # limitations under the License.
 
 import unittest
-import operator
+from numbers import Integral
 
+import numpy as np
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
     pd = None
 
+from mars.config import option_context
 from mars.dataframe.core import IndexValue
-from mars.dataframe.utils import parse_index
-from mars.dataframe.arithmetic.utils import infer_dtypes, infer_index_value
+from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
+    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(unittest.TestCase):
-    def testInferDtypes(self):
-        data1 = pd.DataFrame([[1, 'a', False]], columns=[2.0, 3.0, 4.0])
-        data2 = pd.DataFrame([[1, 3.0, 'b']], columns=[1, 2, 3])
+    def testDecideDataFrameChunks(self):
+        with option_context() as options:
+            options.tensor.chunk_store_limit = 64
 
-        pd.testing.assert_series_equal(infer_dtypes(data1.dtypes, data2.dtypes, operator.add),
-                                      (data1 + data2).dtypes)
+            memory_usage = pd.Series([8, 22.2, 4, 2, 11.2], index=list('abcde'))
 
-    def testInferIndexValue(self):
-        # same range index
-        index1 = pd.RangeIndex(1, 3)
-        index2 = pd.RangeIndex(1, 3)
+            shape = (10, 5)
+            nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+            nsplit = decide_dataframe_chunk_sizes(shape, {0: 4}, memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        self.assertEqual(oival.key, ival1.key)
-        self.assertEqual(oival.key, ival2.key)
+            nsplit = decide_dataframe_chunk_sizes(shape, (2, 3), memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        # different range index
-        index1 = pd.RangeIndex(1, 3)
-        index2 = pd.RangeIndex(2, 4)
+            nsplit = decide_dataframe_chunk_sizes(shape, (10, 3), memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+            options.tensor.chunk_store_limit = 20
 
-        self.assertIsInstance(oival.value, IndexValue.Int64Index)
-        self.assertNotEqual(oival.key, ival1.key)
-        self.assertNotEqual(oival.key, ival2.key)
+            shape = (10, 5)
+            nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        # same int64 index, all unique
-        index1 = pd.Int64Index([1, 2])
-        index2 = pd.Int64Index([1, 2])
+            nsplit = decide_dataframe_chunk_sizes(shape, {1: 3}, memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+            nsplit = decide_dataframe_chunk_sizes(shape, (2, 3), memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        self.assertIsInstance(oival.value, IndexValue.Int64Index)
-        self.assertEqual(oival.key, ival1.key)
-        self.assertEqual(oival.key, ival2.key)
+            nsplit = decide_dataframe_chunk_sizes(shape, (10, 3), memory_usage)
+            [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
+            self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-        # same int64 index, not all unique
-        index1 = pd.Int64Index([1, 2, 2])
-        index2 = pd.Int64Index([1, 2, 2])
+    def testDecideSeriesChunks(self):
+        with option_context() as options:
+            options.tensor.chunk_store_limit = 64
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+            s = pd.Series(np.empty(50, dtype=np.int64))
+            nsplit = decide_series_chunk_size(s.shape, None, s.memory_usage(index=False, deep=True))
+            self.assertEqual(len(nsplit), 1)
+            self.assertEqual(sum(nsplit[0]), 50)
+            self.assertEqual(nsplit[0][0], 8)
 
-        self.assertIsInstance(oival.value, IndexValue.Int64Index)
-        self.assertNotEqual(oival.key, ival1.key)
-        self.assertNotEqual(oival.key, ival2.key)
+    def testParseIndex(self):
+        index = pd.Int64Index([])
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        # different int64 index
-        index1 = pd.Int64Index([1, 2])
-        index2 = pd.Int64Index([2, 3])
+        index = pd.Int64Index([1, 2])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.Int64Index)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        self.assertIsInstance(oival.value, IndexValue.Int64Index)
-        self.assertNotEqual(oival.key, ival1.key)
-        self.assertNotEqual(oival.key, ival2.key)
+        index = pd.RangeIndex(0, 10, 3)
+        parsed_index = parse_index(index)
+        self.assertIsInstance(parsed_index.value, IndexValue.RangeIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        # different index type
-        index1 = pd.Int64Index([1, 2])
-        index2 = pd.Float64Index([2.0, 3.0])
+        index = pd.MultiIndex.from_arrays([[0, 1], ['a', 'b']])
+        parsed_index = parse_index(index)  # not parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        with self.assertRaises(AssertionError):
+            pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        ival1 = parse_index(index1)
-        ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        parsed_index = parse_index(index, store_data=True)  # parse data
+        self.assertIsInstance(parsed_index.value, IndexValue.MultiIndex)
+        pd.testing.assert_index_equal(index, parsed_index.to_pandas())
 
-        self.assertIsInstance(oival.value, IndexValue.Float64Index)
-        self.assertNotEqual(oival.key, ival1.key)
-        self.assertNotEqual(oival.key, ival2.key)
+    def testSplitMonotonicIndexMinMax(self):
+        left_min_max = [[0, True, 3, True], [3, False, 5, False]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        self.assertEqual(right_splits,
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        left_splits, right_splits = split_monotonic_index_min_max(right_min_max, False, left_min_max, False)
+        self.assertEqual(list(reversed(left_splits)),
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+        self.assertEqual(list(reversed(right_splits)),
+                         [[(0, True, 1, True), (1, False, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)]])
+
+        left_min_max = [[2, True, 4, True], [8, True, 9, False]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 6, True), (8, True, 9, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 6, True), (8, True, 9, False)]])
+
+        left_min_max = [[1, False, 3, True], [4, False, 6, True], [10, True, 12, False], [13, True, 14, False]]
+        right_min_max = [[2, True, 4, True], [5, True, 7, False]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+                          [(6, False, 7, False), (10, True, 12, False)],
+                          [(13, True, 14, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
+                           (10, True, 12, False), (13, True, 14, False)]])
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(right_min_max, True, left_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 2, False), (2, True, 3, True), (3, False, 4, True)],
+                          [(4, False, 5, False), (5, True, 6, True), (6, False, 7, False),
+                           (10, True, 12, False), (13, True, 14, False)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 2, False), (2, True, 3, True)],
+                          [(3, False, 4, True), (4, False, 5, False), (5, True, 6, True)],
+                          [(6, False, 7, False), (10, True, 12, False)],
+                          [(13, True, 14, False)]])
+
+        # left min_max like ([.., .., 4 True], [4, False, ..., ...]
+        # right min_max like ([..., ..., 4 False], [4, True, ..., ...]
+        left_min_max = [[1, False, 4, True], [4, False, 6, True]]
+        right_min_max = [[1, False, 4, False], [4, True, 6, True]]
+        left_splits, right_splits = split_monotonic_index_min_max(
+            left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits,
+                         [[(1, False, 4, False), (4, True, 4, True)], [(4, False, 6, True)]])
+        self.assertEqual(right_splits,
+                         [[(1, False, 4, False)], [(4, True, 4, True), (4, False, 6, True)]])
+
+        # identical index
+        left_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        right_min_max = [[1, False, 3, True], [4, False, 6, True]]
+        left_splits, right_splits = \
+            split_monotonic_index_min_max(left_min_max, True, right_min_max, True)
+        self.assertEqual(left_splits, [[tuple(it)] for it in left_min_max])
+        self.assertEqual(right_splits, [[tuple(it)] for it in left_min_max])
+
+    def testBuildSplitIdxToOriginIdx(self):
+        splits = [[(1, False, 2, False), (2, True, 3, True)], [(5, False, 6, True)]]
+        res = build_split_idx_to_origin_idx(splits)
+
+        self.assertEqual(res, {0: (0, 0), 1: (0, 1), 2: (1, 0)})
+
+        splits = [[(5, False, 6, True)], [(1, False, 2, False), (2, True, 3, True)]]
+        res = build_split_idx_to_origin_idx(splits, increase=False)
+
+        self.assertEqual(res, {0: (1, 0), 1: (1, 1), 2: (0, 0)})
+
+    def testFilterIndexValue(self):
+        pd_index = pd.RangeIndex(10)
+        index_value = parse_index(pd_index)
+
+        min_max = (0, True, 9, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist())
+
+        min_max = (0, False, 9, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 0) & (pd_index < 9)].tolist())
+
+        pd_index = pd.RangeIndex(1, 11, 3)
+        index_value = parse_index(pd_index)
+
+        min_max = (2, True, 10, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist())
+
+        min_max = (2, False, 10, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 2) & (pd_index < 10)].tolist())
+
+        pd_index = pd.RangeIndex(9, -1, -1)
+        index_value = parse_index(pd_index)
+
+        min_max = (0, True, 9, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 0) & (pd_index <= 9)].tolist())
+
+        min_max = (0, False, 9, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 0) & (pd_index < 9)].tolist())
+
+        pd_index = pd.RangeIndex(10, 0, -3)
+        index_value = parse_index(pd_index, store_data=False)
+
+        min_max = (2, True, 10, True)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index <= 10)].tolist())
+
+        min_max = (2, False, 10, False)
+        self.assertEqual(filter_index_value(index_value, min_max).to_pandas().tolist(),
+                         pd_index[(pd_index > 2) & (pd_index < 10)].tolist())
+
+        pd_index = pd.Int64Index([0, 3, 8])
+        index_value = parse_index(pd_index, store_data=True)
+
+        min_max = (2, True, 8, False)
+        self.assertEqual(filter_index_value(index_value, min_max, store_data=True).to_pandas().tolist(),
+                         pd_index[(pd_index >= 2) & (pd_index < 8)].tolist())
+
+        index_value = parse_index(pd_index)
+
+        min_max = (2, True, 8, False)
+        filtered = filter_index_value(index_value, min_max)
+        self.assertEqual(len(filtered.to_pandas().tolist()), 0)
+        self.assertIsInstance(filtered.value, IndexValue.Int64Index)
