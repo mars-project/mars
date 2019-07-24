@@ -645,18 +645,18 @@ def ignore(*_):
     pass
 
 
-def default_size_estimator(ctx, chunk, multiplier=1):
+def default_size_estimator(ctx, op, multiplier=1):
     exec_size = 0
-    outputs = chunk.op.outputs
+    outputs = op.outputs
     if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
         for out in outputs:
             ctx[out.key] = (out.nbytes, out.nbytes * multiplier)
 
-    for inp in chunk.inputs or ():
+    for inp in op.inputs or ():
         try:
             exec_size += ctx[inp.key][0]
         except KeyError:
-            if not chunk.is_sparse():
+            if not op.sparse:
                 inp_size = calc_data_size(inp)
                 if not np.isnan(inp_size):
                     exec_size += inp_size

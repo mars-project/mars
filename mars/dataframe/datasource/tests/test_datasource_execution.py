@@ -21,6 +21,7 @@ except ImportError:  # pragma: no cover
     pd = None
 
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
@@ -45,6 +46,17 @@ class Test(TestBase):
         ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
         series = from_pandas_series(ps, chunk_size=13)
 
+        result = self.executor.execute_dataframe(series, concat=True)[0]
+        pd.testing.assert_series_equal(ps, result)
+
+    def testInitializerExecution(self):
+        pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
+        df = md.DataFrame(pdf, chunk_size=(15, 10))
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        pd.testing.assert_frame_equal(pdf, result)
+
+        ps = pd.Series(np.random.rand(20), index=[np.arange(20), np.arange(20, 0, -1)], name='a')
+        series = md.Series(ps, chunk_size=7)
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
 
