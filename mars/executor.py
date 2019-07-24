@@ -14,15 +14,12 @@
 
 import datetime
 import itertools
-import functools
 import logging
 import sys
 import threading
 import weakref
 from collections import deque, defaultdict
 from numbers import Integral
-
-import numpy as np
 
 try:
     import gevent
@@ -32,7 +29,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size, concat_tileable_chunks, build_fetch, calc_nsplits
+from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
 
 logger = logging.getLogger(__name__)
 
