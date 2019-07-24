@@ -267,7 +267,7 @@ class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk = op.outpus[0]
+        chunk = op.outputs[0]
         # todo this function is an experimental one making shuffle runnable.
         # try elevate performance when needed.
         old_shape = op.oldshape

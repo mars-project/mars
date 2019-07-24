@@ -27,6 +27,7 @@ class TensorBeta(TensorDistribution, TensorRandomOperandMixin):
 
     _a = AnyField('a')
     _b = AnyField('b')
+    _func_name = 'beta'
 
     def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype

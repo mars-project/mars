@@ -561,7 +561,8 @@ class TileableData(SerializableWithKey, Tileable):
         from graphviz import Source
 
         g = self.build_graph(**kw)
-        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs)
+        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs,
+                       result_chunk_keys={c.key for c in self.chunks})
 
         return Source(dot)
 
@@ -754,6 +755,10 @@ class TileableOperandMixin(object):
         if is_eager_mode():
             ExecutableTuple(tileables).execute(fetch=False)
         return tileables
+
+    @classmethod
+    def execute(cls, ctx, op):
+        raise NotImplementedError
 
     @classmethod
     def estimate_size(cls, ctx, op):

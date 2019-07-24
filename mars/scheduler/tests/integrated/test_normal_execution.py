@@ -93,8 +93,9 @@ class Test(SchedulerIntegratedTest):
         a = mt.ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
-        graph = b.build_graph()
-        targets = [b.key]
+        r = b.sum(axis=1)
+        graph = r.build_graph()
+        targets = [r.key]
         graph_key = uuid.uuid1()
         session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
                                           graph_key, target_tileables=targets)
@@ -102,8 +103,8 @@ class Test(SchedulerIntegratedTest):
         state = self.wait_for_termination(actor_client, session_ref, graph_key)
         self.assertEqual(state, GraphState.SUCCEEDED)
 
-        result = session_ref.fetch_result(graph_key, b.key)
-        assert_allclose(loads(result), np.ones((27, 31)))
+        result = session_ref.fetch_result(graph_key, r.key)
+        assert_allclose(loads(result), np.ones((27, 31)).sum(axis=1))
 
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=(5, 4))
@@ -149,9 +150,9 @@ class Test(SchedulerIntegratedTest):
 
     def testMainDataFrameWithoutEtcd(self):
         import pandas as pd
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-        from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
-        from mars.dataframe.expressions.arithmetic import add
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+        from mars.dataframe.arithmetic import add
 
         self.start_processes(etcd=False)
 

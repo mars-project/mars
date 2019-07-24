@@ -44,12 +44,12 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-class WorkerRequirementUnmetError(RuntimeError):
+class ProcessRequirementUnmetError(RuntimeError):
     pass
 
 
 def _rerun_filter(err, *_, **__):
-    if issubclass(err[0], WorkerRequirementUnmetError):
+    if issubclass(err[0], ProcessRequirementUnmetError):
         return True
     return False
 
@@ -70,19 +70,13 @@ class SchedulerIntegratedTest(unittest.TestCase):
         if os.path.exists(options.worker.spill_directory):
             shutil.rmtree(options.worker.spill_directory)
 
-        try:
-            delay_state_file = os.environ.get('DELAY_STATE_FILE')
-            if delay_state_file:
-                os.unlink(delay_state_file)
-        except OSError:
-            pass
-
     def setUp(self):
         self.scheduler_endpoints = []
         self.proc_schedulers = []
         self.proc_workers = []
         self.state_files = []
         self.etcd_helper = None
+        self.intentional_death_pids = set()
 
     def tearDown(self):
         for fn in self.state_files:
@@ -107,8 +101,10 @@ class SchedulerIntegratedTest(unittest.TestCase):
             self.etcd_helper.stop()
         options.kv_store = ':inproc:'
 
-    @staticmethod
-    def kill_process_tree(proc):
+    def kill_process_tree(self, proc, intentional=True):
+        if intentional:
+            self.intentional_death_pids.add(proc.pid)
+
         import psutil
         proc = psutil.Process(proc.pid)
         plasma_sock_dir = None
@@ -165,21 +161,23 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-H', '127.0.0.1',
                               '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
-                              '--format', '%(asctime)-15s %(message)s',
+                              '--format', 'SCH%d %%(asctime)-15s %%(message)s' % idx,
                               '-Dscheduler.retry_delay=5',
-                              '-Dscheduler.status_timeout=30']
+                              '-Dscheduler.default_cpu_usage=0',
+                              '-Dscheduler.status_timeout=10']
                              + append_args, env=proc_env)
-            for p in scheduler_ports]
+            for idx, p in enumerate(scheduler_ports)]
         self.proc_workers = [
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
                               '--cpu-procs', '1',
                               '--level', 'debug' if log_worker else 'warning',
+                              '--format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
                               '-Dworker.prepare_data_timeout=30']
                              + append_args, env=proc_env)
-            for _ in range(n_workers)
+            for idx in range(n_workers)
         ]
 
         actor_client = new_client()
@@ -191,7 +189,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
             try:
                 started_schedulers = self.cluster_info.get_schedulers()
                 if len(started_schedulers) < n_schedulers:
-                    raise WorkerRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
+                    raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
                         len(started_schedulers), n_schedulers
                     ))
                 actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
@@ -202,7 +200,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
                 resource_ref = actor_client.actor_ref(ResourceActor.default_uid(), address=actor_address)
 
                 if resource_ref.get_worker_count() < n_workers:
-                    raise WorkerRequirementUnmetError('Workers does not met requirement: %d < %d.' % (
+                    raise ProcessRequirementUnmetError('Workers does not met requirement: %d < %d.' % (
                         resource_ref.get_worker_count(), n_workers
                     ))
                 break
@@ -216,10 +214,10 @@ class SchedulerIntegratedTest(unittest.TestCase):
     def check_process_statuses(self):
         for scheduler_proc in self.proc_schedulers:
             if scheduler_proc.poll() is not None:
-                raise SystemError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
+                raise ProcessRequirementUnmetError('Scheduler not started. exit code %s' % self.proc_scheduler.poll())
         for worker_proc in self.proc_workers:
-            if worker_proc.poll() is not None:
-                raise SystemError('Worker not started. exit code %s' % worker_proc.poll())
+            if worker_proc.poll() is not None and worker_proc.pid not in self.intentional_death_pids:
+                raise ProcessRequirementUnmetError('Worker not started. exit code %s' % worker_proc.poll())
 
     def wait_for_termination(self, actor_client, session_ref, graph_key):
         check_time = time.time()

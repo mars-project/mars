@@ -18,7 +18,7 @@ from collections import defaultdict
 
 from ...errors import WorkerDead
 from ..utils import SchedulerActor
-from .core import OperandState, rewrite_worker_errors
+from .core import OperandState, OperandPosition, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +230,47 @@ class BaseOperandActor(SchedulerActor):
         pass
 
     def move_failover_state(self, from_states, state, new_target, dead_workers):
-        raise NotImplementedError
+        if dead_workers:
+            futures = []
+            # remove executed traces in neighbor operands
+            for out_key in self._succ_keys:
+                futures.append(self._get_operand_actor(out_key).remove_finished_predecessor(
+                    self._op_key, _tell=True, _wait=False))
+            for in_key in self._pred_keys:
+                futures.append(self._get_operand_actor(in_key).remove_finished_successor(
+                    self._op_key, _tell=True, _wait=False))
+            if self._position == OperandPosition.TERMINAL:
+                for graph_ref in self._graph_refs:
+                    futures.append(graph_ref.remove_finished_terminal(
+                        self._op_key, _tell=True, _wait=False))
+            [f.result() for f in futures]
+
+        # actual start the new state
+        self.start_operand(state)
+
+    def check_can_be_freed(self, target_state=OperandState.FREED):
+        """
+        Check if the data of the operand can be freed.
+        :param target_state: The state to move into, FREED by default
+        :return: a tuple. The first value indicates whether data cleaning can be performed,
+            and the last value indicates whether the result is deterministic.
+        """
+        if self.state == OperandState.FREED:
+            return False, True
+        if target_state == OperandState.CANCELLED:
+            can_be_freed = True
+        else:
+            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
+                                   graph_ref in self._graph_refs]
+            if None in can_be_freed_states:
+                can_be_freed = None
+            else:
+                can_be_freed = all(can_be_freed_states)
+        if can_be_freed is None:
+            return False, False
+        elif not can_be_freed:
+            return False, True
+        return True, True
 
     def _on_unscheduled(self):
         pass

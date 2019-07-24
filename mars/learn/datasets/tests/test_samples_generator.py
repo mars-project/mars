@@ -15,7 +15,7 @@
 import unittest
 
 from mars.learn.datasets.samples_generator import make_low_rank_matrix
-from mars.tensor.expressions.linalg import svd
+from mars.tensor.linalg import svd
 
 
 class Test(unittest.TestCase):

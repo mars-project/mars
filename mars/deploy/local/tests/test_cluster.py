@@ -38,7 +38,7 @@ from mars.scheduler import SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
-from mars.config import option_context
+from mars.config import options, option_context
 from mars.web.session import Session as WebSession
 from mars.tests.core import mock
 
@@ -62,6 +62,15 @@ class SerializeMustFailOperand(TensorOperand, TensorElementWise):
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
 class Test(unittest.TestCase):
+    def setUp(self):
+        super(Test, self).setUp()
+        self._old_default_cpu_usage = options.scheduler.default_cpu_usage
+        options.scheduler.default_cpu_usage = 0
+
+    def tearDown(self):
+        super(Test, self).tearDown()
+        options.scheduler.default_cpu_usage = self._old_default_cpu_usage
+
     def testLocalCluster(self, *_):
         endpoint = gen_endpoint('0.0.0.0')
         with LocalDistributedCluster(endpoint, scheduler_n_process=2, worker_n_process=3,
@@ -371,10 +380,9 @@ class Test(unittest.TestCase):
                 r4 = session.run(a4, timeout=_exec_timeout)
                 np.testing.assert_array_equal(r4, r1)
 
-    @unittest.skipIf(pd is None, 'pandas not installed')
     def testFetchDataFrame(self, *_):
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-        from mars.dataframe.expressions.arithmetic import add
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.arithmetic import add
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
@@ -489,9 +497,9 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
             with new_session('http://' + cluster._web_endpoint).as_default():
-                from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-                from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
-                from mars.dataframe.expressions.arithmetic import add
+                from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+                from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+                from mars.dataframe.arithmetic import add
 
                 self.assertIsInstance(Session.default_or_local()._sess, WebSession)
 
@@ -585,3 +593,46 @@ class Test(unittest.TestCase):
 
             r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
+
+    def test_fetch_slices(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+            a = mt.random.rand(10, 10, 10, chunk_size=3)
+
+            r = session.run(a)
+
+            r_slice1 = session.fetch(a[:2])
+            np.testing.assert_array_equal(r[:2], r_slice1)
+
+            r_slice2 = session.fetch(a[2:8, 2:8])
+            np.testing.assert_array_equal(r[2:8, 2:8], r_slice2)
+
+            r_slice3 = session.fetch(a[:, 2:])
+            np.testing.assert_array_equal(r[:, 2:], r_slice3)
+
+            r_slice4 = session.fetch(a[:, 2:, -5:])
+            np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
+
+            r_slice5 = session.fetch(a[0])
+            np.testing.assert_array_equal(r[0], r_slice5)
+
+            web_session = new_session('http://' + cluster._web_endpoint)
+            r = web_session.run(a)
+
+            r_slice1 = web_session.fetch(a[:2])
+            np.testing.assert_array_equal(r[:2], r_slice1)
+
+            r_slice2 = web_session.fetch(a[2:8, 2:8])
+            np.testing.assert_array_equal(r[2:8, 2:8], r_slice2)
+
+            r_slice3 = web_session.fetch(a[:, 2:])
+            np.testing.assert_array_equal(r[:, 2:], r_slice3)
+
+            r_slice4 = web_session.fetch(a[:, 2:, -5:])
+            np.testing.assert_array_equal(r[:, 2:, -5:], r_slice4)
+
+            r_slice5 = web_session.fetch(a[4])
+            np.testing.assert_array_equal(r[4], r_slice5)
+
+

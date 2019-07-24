@@ -22,7 +22,7 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.config import option_context
-from mars.dataframe.expressions.datasource.dataframe import from_pandas
+from mars.dataframe.datasource.dataframe import from_pandas
 
 
 class Test(unittest.TestCase):
@@ -210,7 +210,7 @@ class Test(unittest.TestCase):
 
     def testView(self):
         with option_context({'eager_mode': True}):
-            a = mt.ones((10, 20), chunk_size=3)
+            a = mt.ones((10, 20), chunk_size=5)
             b = a[0][1:4]
             b[1] = 10
 
@@ -223,7 +223,7 @@ class Test(unittest.TestCase):
 
     def testDataFrame(self):
         with option_context({'eager_mode': True}):
-            from mars.dataframe.expressions.arithmetic import add
+            from mars.dataframe.arithmetic import add
 
             data1 = pd.DataFrame(np.random.rand(10, 10))
             df1 = from_pandas(data1, chunk_size=5)

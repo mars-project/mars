@@ -60,9 +60,9 @@ class FakeOperand(TensorOperand, TensorOperandMixin):
 
 
 def fake_execution_maker(actor_ctx):
-    def run(ctx, chunk):
+    def run(ctx, op):
         actor = actor_ctx.create_actor(RunActor, uid='1-run')
-        ctx[chunk.key] = actor.send(chunk.op.num)
+        ctx[op.outputs[0].key] = actor.send(op.num)
 
     return run
 

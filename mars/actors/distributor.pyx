@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.lib.mmh3 import hash as mmh_hash
+from __future__ import absolute_import
+
+from ..lib.mmh3 import hash as mmh_hash
 
 
 cdef class Distributor(object):

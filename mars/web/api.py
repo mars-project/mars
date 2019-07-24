@@ -15,18 +15,20 @@
 import sys
 import base64
 import json
-import pickle
-import uuid
 import logging
+import pickle
+import traceback
+import uuid
 
 from tornado import gen, concurrent, web, ioloop
 
+from ..tensor.core import Indexes
 from ..actors import new_client
 from ..compat import six, futures
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
-from ..utils import to_str
+from ..utils import to_str, numpy_dtype_from_descr_json
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -54,12 +56,15 @@ class MarsApiRequestHandler(MarsRequestHandler):
         super(MarsApiRequestHandler, self).set_default_headers()
         self.set_header('Content-Type', 'application/json')
 
-    def _dump_exception(self, exc_info):
+    def _dump_exception(self, exc_info, status_code=500):
         pickled_exc = pickle.dumps(exc_info)
+        # return pickled exc_info for python client, and textual exc_info for web.
         self.write(json.dumps(dict(
-            exc_info=base64.b64encode(pickled_exc),
+            exc_info=base64.b64encode(pickled_exc).decode('ascii'),
+            exc_info_text=traceback.format_exception(*exc_info),
         )))
-        raise web.HTTPError(500, 'Internal server error')
+        self.set_status(status_code)
+        self.finish()
 
 
 class ApiEntryHandler(MarsApiRequestHandler):
@@ -130,7 +135,10 @@ class GraphApiHandler(MarsApiRequestHandler):
             self.write(json.dumps(dict(state='preparing')))
 
     def delete(self, session_id, graph_key):
-        self.web_api.stop_graph(session_id, graph_key)
+        try:
+            self.web_api.stop_graph(session_id, graph_key)
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info(), 404)
 
 
 class GraphDataHandler(MarsApiRequestHandler):
@@ -141,6 +149,9 @@ class GraphDataHandler(MarsApiRequestHandler):
             compressions_arg = self.request.arguments.get('compressions')
             if compressions_arg:
                 compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
+            slices_arg = self.request.arguments.get('slices')
+            if slices_arg:
+                slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
         if type_arg:
@@ -155,7 +166,8 @@ class GraphDataHandler(MarsApiRequestHandler):
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
-                return web_api.fetch_data(session_id, graph_key, tileable_key, compressions_arg)
+                return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
+                                          compressions=compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
             self.write(data)
@@ -170,6 +182,44 @@ class WorkersApiHandler(MarsApiRequestHandler):
         self.write(json.dumps(workers_num))
 
 
+class MutableTensorHandler(MarsApiRequestHandler):
+    def get(self, session_id, name):
+        try:
+            meta = self.web_api.get_mutable_tensor(session_id, name)
+            self.write(json.dumps(meta))
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info())
+
+    def post(self, session_id, name):
+        try:
+            action = self.request.arguments.get('action')
+            if action:
+                action = to_str(action[0])
+            if action == 'create':
+                req_json = json.loads(self.request.body.decode('ascii'))
+                shape = req_json['shape']
+                dtype = numpy_dtype_from_descr_json(req_json['dtype'])
+                fill_value = req_json['fill_value']
+                chunk_size = req_json['chunk_size']
+                meta = self.web_api.create_mutable_tensor(session_id, name, shape, dtype,
+                                                          fill_value=fill_value, chunk_size=chunk_size)
+                self.write(json.dumps(meta))
+            elif action == 'seal':
+                info = self.web_api.seal(session_id, name)
+                self.write(json.dumps(info))
+            else:
+                raise web.HTTPError(400, 'Invalid argument')
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info())
+
+    def put(self, session_id, name):
+        try:
+            body = self.request.body
+            self.web_api.write_mutable_tensor(session_id, name, body)
+        except:  # noqa: E722
+            self._dump_exception(sys.exc_info())
+
+
 register_web_handler('/api', ApiEntryHandler)
 register_web_handler('/api/session', SessionsApiHandler)
 register_web_handler('/api/worker', WorkersApiHandler)
@@ -178,3 +228,4 @@ register_web_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandle
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
                      GraphDataHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorHandler)

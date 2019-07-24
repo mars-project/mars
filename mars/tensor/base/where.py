@@ -22,6 +22,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...compat import lrange
 from ..utils import broadcast_shape, unify_chunks
+from ..array_utils import as_same_device, device
 from ..core import TENSOR_TYPE
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -82,6 +83,14 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(inputs, op.outputs[0].shape,
                                   chunks=out_chunks, nsplits=nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        (cond, x, y), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.where(cond, x, y)
 
 
 def where(condition, x=None, y=None):

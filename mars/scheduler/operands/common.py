@@ -255,41 +255,15 @@ class OperandActor(BaseOperandActor):
                                  self._op_key, self._target_worker)
                     return
 
-        if dead_workers:
-            futures = []
-            # remove executed traces in neighbor operands
-            for out_key in self._succ_keys:
-                futures.append(self._get_operand_actor(out_key).remove_finished_predecessor(
-                    self._op_key, _tell=True, _wait=False))
-            for in_key in self._pred_keys:
-                futures.append(self._get_operand_actor(in_key).remove_finished_successor(
-                    self._op_key, _tell=True, _wait=False))
-            if self._position == OperandPosition.TERMINAL:
-                for graph_ref in self._graph_refs:
-                    futures.append(graph_ref.remove_finished_terminal(
-                        self._op_key, _tell=True, _wait=False))
-            [f.result() for f in futures]
-
-        # actual start the new state
-        self.start_operand(state)
+        super(OperandActor, self).move_failover_state(from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED):
         """
         Free output data of current operand
         :param state: target state
         """
-        if self.state == OperandState.FREED:
-            return
-        if state == OperandState.CANCELLED:
-            can_be_freed = True
-        else:
-            can_be_freed_states = [graph_ref.check_operand_can_be_freed(self._succ_keys) for
-                                   graph_ref in self._graph_refs]
-            if None in can_be_freed_states:
-                can_be_freed = None
-            else:
-                can_be_freed = all(can_be_freed_states)
-        if can_be_freed is None:
+        can_be_freed, deterministic = self.check_can_be_freed(state)
+        if not deterministic:
             self.ref().free_data(state, _delay=1, _tell=True)
             return
         elif not can_be_freed:

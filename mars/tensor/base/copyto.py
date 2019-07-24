@@ -150,6 +150,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
             where = inputs[2] if len(inputs) > 2 else None
 
             xp.copyto(dst, src, casting=op.casting, where=where)
+            ctx[op.outputs[0].key] = dst
 
 
 def copyto(dst, src, casting='same_kind', where=True):

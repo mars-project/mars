@@ -83,7 +83,7 @@ class PromiseTestActor(promise.PromiseActor):
 
     def test_spawn(self, raises=False):
         def _task():
-            self.ctx.sleep(0.1)
+            self.ctx.sleep(0.5)
             if raises:
                 raise SystemError
 
@@ -526,24 +526,24 @@ class Test(unittest.TestCase):
 
                 start_time = time.time()
                 test_ref.test_spawn()
-                self.assertLess(time.time() - start_time, 0.1)
+                self.assertLess(time.time() - start_time, 0.5)
                 wait_test_actor_result(test_ref, 30)
                 self.assertEqual(serve_ref.get_result(), [0])
 
-                self.assertGreaterEqual(time.time() - start_time, 0.1)
-                self.assertLess(time.time() - start_time, 0.3)
+                self.assertGreaterEqual(time.time() - start_time, 0.5)
+                self.assertLess(time.time() - start_time, 1)
 
                 serve_ref.clear_result()
                 test_ref.reset_finished()
 
                 start_time = time.time()
                 test_ref.test_spawn(raises=True)
-                self.assertLess(time.time() - start_time, 0.1)
+                self.assertLess(time.time() - start_time, 0.5)
                 wait_test_actor_result(test_ref, 30)
                 self.assertEqual(serve_ref.get_result(), ['SystemError'])
 
-                self.assertGreaterEqual(time.time() - start_time, 0.1)
-                self.assertLess(time.time() - start_time, 0.3)
+                self.assertGreaterEqual(time.time() - start_time, 0.5)
+                self.assertLess(time.time() - start_time, 1)
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 

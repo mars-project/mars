@@ -30,7 +30,12 @@ import sys
 import time
 import zlib
 import threading
+import itertools
 
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pass
 import numpy as np
 
 from .compat import irange, functools32, getargspec
@@ -448,8 +453,8 @@ def get_expr_module(op):
     try:
         return _expr_modules[module_name]
     except KeyError:
-        # tensor.expressions and dataframe.expressions have method concat_tileable_chunks
-        expr_module_name = '.{0}'.format(module_name)
+        # tensor.utils and dataframe.utils have method concat_tileable_chunks
+        expr_module_name = '.{0}.utils'.format(module_name)
         expr_module = _expr_modules[module_name] = importlib.import_module(expr_module_name, __package__)
         return expr_module
 
@@ -523,3 +528,92 @@ def build_fuse_chunk(fused_chunks, **kwargs):
                                         _operands=[c.op for c in fused_chunks])
     return fuse_op.new_chunk(head_chunk.inputs, kws=[params], _key=tail_chunk.key,
                              _composed=fused_chunks, **kwargs)
+
+
+def get_chunk_shuffle_key(chunk):
+    op = chunk.op
+    try:
+        return op.shuffle_key
+    except AttributeError:
+        from .operands import Fuse
+        if isinstance(op, Fuse):
+            return chunk.composed[0].op.shuffle_key
+        else:  # pragma: no cover
+            raise
+
+
+def merge_chunks(chunk_results):
+    """
+    Concatenate chunk results according to index.
+    :param chunk_results: list of tuple, {(chunk_idx, chunk_result), ...,}
+    :return:
+    """
+    from .lib.sparse import SparseNDArray
+    from .tensor.array_utils import get_array_module
+
+    chunk_results = sorted(chunk_results, key=lambda x: x[0])
+    v = chunk_results[0][1]
+    if isinstance(v, (np.ndarray, SparseNDArray)):
+        xp = get_array_module(v)
+        ndim = v.ndim
+        for i in range(ndim - 1):
+            new_chunks = []
+            for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
+                new_chunks.append((idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
+            chunk_results = new_chunks
+        concat_result = xp.concatenate([c[1] for c in chunk_results])
+        return concat_result
+    else:
+        # auto generated concat when executing a DataFrame
+        n_rows = max([idx[0] for idx, _ in chunk_results]) + 1
+        n_cols = int(len(chunk_results) // n_rows)
+
+        concats = []
+        for i in range(n_rows):
+            concat = pd.concat([chunk_results[i * n_cols + j][1]
+                                for j in range(n_cols)], axis='columns')
+            concats.append(concat)
+
+        return pd.concat(concats)
+
+
+def calc_nsplits(chunk_idx_to_shape):
+    """
+    Calculate a tiled entity's nsplits
+    :param chunk_idx_to_shape: Dict type, {chunk_idx: chunk_shape}
+    :return: nsplits
+    """
+    ndim = len(next(iter(chunk_idx_to_shape)))
+    tileable_nsplits = []
+    # for each dimension, record chunk shape whose index is zero on other dimensions
+    for i in range(ndim):
+        splits = []
+        for index, shape in chunk_idx_to_shape.items():
+            if all(idx == 0 for j, idx in enumerate(index) if j != i):
+                splits.append(shape[i])
+        tileable_nsplits.append(tuple(splits))
+    return tuple(tileable_nsplits)
+
+
+def sort_dataframe_result(df, result):
+    """ sort DataFrame on client according to `should_be_monotonic` attribute """
+    if hasattr(df, 'index_value'):
+        if getattr(df.index_value, 'should_be_monotonic', False):
+            result.sort_index(inplace=True)
+        if hasattr(df, 'columns'):
+            if getattr(df.columns, 'should_be_monotonic', False):
+                result.sort_index(axis=1, inplace=True)
+    return result
+
+
+def numpy_dtype_from_descr_json(obj):
+    """
+    Construct numpy dtype from it's np.dtype.descr.
+
+    The dtype can be trivial, but can also be very complex (nested) record type. In that
+    case, the tuple in `descr` will be made as `list`, which can be understood by `np.dtype()`.
+    This utility helps the reconstruct work.
+    """
+    if isinstance(obj, list):
+        return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
+    return obj

@@ -112,8 +112,9 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
     return op.new_chunk(chunks, shape=shape, index=idx)
 
 
-def tree_op_estimate_size(ctx, chunk):
-    sum_inputs = sum(ctx[inp.key][0] for inp in chunk.inputs)
+def tree_op_estimate_size(ctx, op):
+    chunk = op.outputs[0]
+    sum_inputs = sum(ctx[inp.key][0] for inp in op.inputs)
     if not chunk.is_sparse():
         calc_size = chunk_size = chunk.nbytes
         if np.isnan(calc_size):

@@ -633,10 +633,25 @@ class DataFrameData(TileableData):
     def columns(self):
         return self._columns_value
 
+    def to_tensor(self):
+        from ..tensor.datasource.from_dataframe import from_dataframe
+        return from_dataframe(self)
+
+    @staticmethod
+    def from_tensor(in_tensor):
+        from .datasource.from_tensor import from_tensor
+        return from_tensor(in_tensor)
+
 
 class DataFrame(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
+
+    def to_tensor(self):
+        return self._data.to_tensor()
+
+    def from_tensor(self, in_tensor):
+        return self._data.from_tensor(in_tensor)
 
 
 INDEX_TYPE = (Index, IndexData)

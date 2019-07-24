@@ -80,7 +80,7 @@ class TensorTileDBDataSource(TensorNoInput):
         import tiledb
         chunk = op.outputs[0]
         from ..array_utils import array_module
-        from ..execute_utils import get_tiledb_ctx
+        from ..utils import get_tiledb_ctx
 
         xp = array_module(op.gpu)
 

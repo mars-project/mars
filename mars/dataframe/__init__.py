@@ -14,9 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame
+from .initializer import DataFrame, Series
 # do imports to register operands
-from . import expressions
-from .expressions.arithmetic import add
-del expressions
+from .arithmetic import add
+from .datasource.from_tensor import from_tensor
 
+from .fetch import DataFrameFetch, DataFrameFetchShuffle
+from .merge import DataFrameConcat
+del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat

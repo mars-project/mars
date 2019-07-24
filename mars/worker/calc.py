@@ -22,7 +22,8 @@ from ..compat import six, OrderedDict3
 from ..config import options
 from ..errors import *
 from ..executor import Executor
-from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size
+from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
+    get_chunk_shuffle_key
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .spill import read_spill_file, write_spill_file, spill_exists
 from .utils import WorkerActor, concat_operand_keys, build_load_key, get_chunk_key
@@ -211,7 +212,7 @@ class CpuCalcActor(WorkerActor):
             if isinstance(chunk.op, Fetch):
                 fetch_keys.add(chunk.op.to_fetch_key or chunk.key)
             elif isinstance(chunk.op, FetchShuffle):
-                shuffle_key = graph.successors(chunk)[0].op.shuffle_key
+                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
                 for k in chunk.op.to_fetch_keys:
                     fetch_keys.add((k, shuffle_key))
             else:

@@ -18,14 +18,14 @@
 from collections import Iterable, defaultdict
 from datetime import datetime
 import numpy as np
-from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
 from ..tiles import handler
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, BoolField, StringField
+from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
+    BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -198,9 +198,18 @@ class TensorData(TileableData):
         return self is o
 
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
-        from .expressions.datastore import totiledb
+        from .datastore import totiledb
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
+
+    @staticmethod
+    def from_dataframe(in_df):
+        from .datasource import from_dataframe
+        return from_dataframe(in_df)
+
+    def to_dataframe(self):
+        from ..dataframe.datasource.from_tensor import from_tensor
+        return from_tensor(self)
 
     @property
     def flat(self):
@@ -384,6 +393,12 @@ class Tensor(TileableEntity):
         """
         return self._data.flat
 
+    def from_dataframe(self, in_df):
+        return self._data.from_dataframe(in_df)
+
+    def to_dataframe(self):
+        return self._data.to_dataframe()
+
     def execute(self, session=None, **kw):
         return self._data.execute(session, **kw)
 
@@ -406,6 +421,18 @@ class flatiter(object):
     def __setitem__(self, key, value):
         # a.flat[item] = value will apply changes to original tensor
         self._ravel_tensor[key] = value
+
+
+class Indexes(Serializable):
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, **kw):
+        self._indexes = indexes
+        super(Indexes, self).__init__(**kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
 
 
 class MutableTensorData(TensorData):
@@ -457,7 +484,11 @@ class MutableTensor(Entity):
         super(MutableTensor, self).__init__(*args, **kwargs)
         self._chunk_buffers = defaultdict(lambda: [])
         self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        self._buffer_size = np.prod(self.chunks[0].shape)
+        if self.chunks:
+            self._buffer_size = np.prod(self.chunks[0].shape)
+        else:
+            # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
+            self._buffer_size = 0
 
     def __len__(self):
         return len(self._data)
@@ -496,9 +527,9 @@ class MutableTensor(Entity):
         2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
            size is guaranteed to less than 2 * chunk_size.
         '''
-        from .expressions.indexing.core import process_index, calc_shape
-        from .expressions.indexing.setitem import TensorIndex
-        from .expressions.utils import setitem_as_records
+        from .indexing.core import process_index, calc_shape
+        from .indexing.setitem import TensorIndex
+        from .utils import setitem_as_records
 
         tensor_index = process_index(self, tensor_index)
         output_shape = calc_shape(self.shape, tensor_index)
@@ -507,9 +538,9 @@ class MutableTensor(Entity):
         index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape)).single_tiles()
         output_chunks = index_tensor.chunks
 
-        if np.isscalar(value):
-            value = self.dtype.type(value)
-        else:
+        is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields
+
+        if not is_scalar:
             value = np.broadcast_to(value, output_shape).astype(self.dtype)
 
         nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
@@ -524,7 +555,7 @@ class MutableTensor(Entity):
                 output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
 
             records = self._chunk_buffers[output_chunk.op.input.key]
-            records += setitem_as_records(nsplits_acc, output_chunk, value, now)
+            records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
             affected_chunk_keys.append(output_chunk.op.input.key)
 
         # Try to flush affected chunks
@@ -540,6 +571,37 @@ class MutableTensor(Entity):
                 chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
+
+
+def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_size=None):
+    """
+    Create or get a mutable tensor using the local or default session.
+
+    When `shape` is `None`, it will try to get the mutable tensor with name `name`. Otherwise,
+    it will try to create a mutable tensor using the provided `name` and `shape`.
+
+    Parameters
+    ----------
+    name : str
+        Name of the mutable tensor.
+    shape : int or sequence of ints
+        Shape of the new mutable tensor, e.g., ``(2, 3)`` or ``2``.
+    dtype : data-type, optional
+        The desired data-type for the mutable tensor, e.g., `mt.int8`.  Default is `mt.float_`.
+    chunk_size: int or tuple of ints, optional
+        Specifies chunk size for each dimension.
+    fill_value: scalar, optional
+        The created mutable tensor will be filled by `fill_value` defaultly, if the parameter is None,
+        the newly created mutable tensor will be initialized with `np.zeros`. See also `numpy.full`.
+    """
+    from ..session import Session
+    session = Session.default_or_local()
+
+    if shape is None:
+        return session.get_mutable_tensor(name)
+    else:
+        return session.create_mutable_tensor(name, shape=shape, dtype=dtype,
+                                             fill_value=fill_value, chunk_size=chunk_size)
 
 
 TENSOR_TYPE = (Tensor, TensorData)

@@ -18,8 +18,8 @@
 from .datasource import tensor, array, asarray, scalar, \
     empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, arange, diag, diagflat, eye, identity, linspace, \
-    meshgrid, indices, tril, triu, fromtiledb
-# from .expressions.datastore import totiledb
+    meshgrid, indices, tril, triu, fromtiledb, from_dataframe
+from .datastore import totiledb
 from .base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
@@ -37,19 +37,30 @@ from .arithmetic import add, subtract, multiply, divide, truediv as true_divide,
     maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
     signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
     isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
-from . import rechunk
-from . import fuse
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
-
+from .linalg.tensordot import tensordot
+from .linalg.dot import dot
+from .linalg.inner import inner, innerproduct
+from .linalg.vdot import vdot
+from .linalg.matmul import matmul
+from .reduction import sum, nansum, prod, prod as product, nanprod, \
+    max, max as amax, nanmax, min, min as amin, nanmin, all, any, mean, nanmean, \
+    argmax, nanargmax, argmin, nanargmin, cumsum, cumprod, \
+    var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
 from .reshape import reshape
 from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
-from .indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
-# from .expressions import random
-from .fft import fft
-# from .expressions import linalg
-# from .expressions import lib
-# from .expressions.lib.index_tricks import mgrid, ogrid, ndindex
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+from .rechunk import rechunk
+from .lib.index_tricks import mgrid, ogrid, ndindex
+
+from . import random
+from . import fft
+from . import linalg
+from . import lib
+
+# register fuse op and fetch op
+from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
+from .fetch import TensorFetch, TensorFetchShuffle
+from . import ufunc
+del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle, ufunc
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

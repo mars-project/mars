@@ -14,7 +14,7 @@
 
 from ... import tensor as mt
 from ...tensor.utils import check_random_state
-from ...tensor.expressions import linalg
+from ...tensor import linalg
 
 
 # -------------------------------------------------------------------

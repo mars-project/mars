@@ -25,6 +25,7 @@ from ...serialize import ValueType, TupleField
 from ...utils import tokenize
 from ..core import TENSOR_TYPE, CHUNK_TYPE
 from ..utils import decide_chunk_sizes, random_state_data, broadcast_shape
+from ..array_utils import array_module
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..base import broadcast_to
@@ -198,6 +199,66 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         return new_op.new_tensors(op.inputs, tensor.shape,
                                   chunks=out_chunks, nsplits=nsplits)
 
+    @classmethod
+    def execute(cls, ctx, op):
+        xp = array_module(op.gpu)
+        if op.state:
+            rs = op.state.random_state
+        else:
+            if xp == np:
+                rs = xp.random.RandomState()
+            else:
+                rs = xp.random
+        get_val = lambda x: ctx[x.key] if isinstance(x, CHUNK_TYPE) else x
+
+        method_name = getattr(cls, '_func_name')
+        try:
+            if method_name in ('rand', 'randn'):
+                try:
+                    res = getattr(rs, method_name)(*op.size, dtype=op.dtype)
+                except TypeError:
+                    res = getattr(rs, method_name)(*op.size)
+            elif method_name == 'randint':
+                try:
+                    res = rs.randint(get_val(op.low), get_val(op.high), size=op.size,
+                                     dtype=op.dtype)
+                except TypeError:
+                    res = rs.randint(get_val(op.low), get_val(op.high), size=op.size)
+            else:
+                try:
+                    res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args),
+                                                   dtype=op.dtype)
+                except TypeError:
+                    res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args))
+            if hasattr(res, 'dtype') and res.dtype != op.dtype:
+                res = res.astype(op.dtype)
+            if xp != np:
+                with xp.cuda.Device(op.device or 0):
+                    ctx[op.outputs[0].key] = xp.asarray(res)
+            else:
+                ctx[op.outputs[0].key] = res
+        except AttributeError:
+            if xp != np:
+                if not op.state:
+                    rs = np.random.RandomState()
+                if method_name in ('rand', 'randn'):
+                    try:
+                        res = getattr(rs, method_name)(*op.size, dtype=op.dtype)
+                    except TypeError:
+                        res = getattr(rs, method_name)(*op.size)
+                else:
+                    try:
+                        res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args),
+                                                       dtype=op.dtype)
+                    except TypeError:
+                        res = getattr(rs, method_name)(*(get_val(getattr(op, arg)) for arg in op.args))
+                if res.dtype != op.dtype:
+                    res = res.astype(op.dtype)
+                with xp.cuda.Device(op.device or 0):
+                    ctx[op.outputs[0].key] = xp.asarray(res)
+            else:
+                raise
+
     def _get_shape(self, shapes):
         shapes = list(shapes)
         if getattr(self, '_size', None) is not None:
@@ -298,6 +359,40 @@ class TensorDistribution(TensorRandomOperand):
     @property
     def size(self):
         return self._size
+
+    @classmethod
+    def execute(cls, ctx, op):
+        xp = array_module(op.gpu)
+        if op.state:
+            rs = op.state.random_state
+        else:
+            rs = xp.random.RandomState()
+
+        args = []
+        for k in op.args:
+            val = getattr(op, k, None)
+            if isinstance(val, CHUNK_TYPE):
+                args.append(ctx[val.key])
+            else:
+                args.append(val)
+
+        method_name = getattr(cls, '_func_name')
+        try:
+            res = getattr(rs, method_name)(*args)
+            if xp != np:
+                with xp.cuda.Device(op.device or 0):
+                    ctx[op.outputs[0].key] = xp.asarray(res)
+            else:
+                ctx[op.outputs[0].key] = res
+        except AttributeError:
+            if xp != np:
+                if not op.state:
+                    rs = np.random.RandomState()
+                res = getattr(rs, method_name)(*args)
+                with xp.cuda.Device(op.device or 0):
+                    ctx[op.outputs[0].key] = xp.asarray(res)
+            else:
+                raise
 
 
 class TensorSimpleRandomData(TensorRandomOperand):

@@ -21,7 +21,7 @@ import numpy as np
 from mars.executor import Executor
 from mars.tensor.datasource import tensor
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
-    rfftn, irfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift
+    rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift
 
 
 class Test(unittest.TestCase):
@@ -418,7 +418,7 @@ class Test(unittest.TestCase):
     #     res = self.executor.execute_tensor(r, concat=True)[0]
     #     expected = np.fft.irfftn(raw, s=(11, 21, 5))
     #     np.testing.assert_allclose(res, expected)
-    # 
+    #
     #     r = irfftn(t, s=(11, 21, 30), axes=(-1, -2, -3))
     #     res = self.executor.execute_tensor(r, concat=True)[0]
     #     expected = np.fft.irfftn(raw, s=(11, 21, 30), axes=(-1, -2, -3))

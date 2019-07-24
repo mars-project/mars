@@ -13,14 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import requests
 import json
 import unittest
 import os
+import pickle
 import sys
 import signal
 import subprocess
 import time
+import traceback
 import uuid
 
 import gevent
@@ -29,6 +32,7 @@ from numpy.testing import assert_array_equal
 
 from mars import tensor as mt
 from mars.actors import new_client
+from mars.actors.errors import ActorNotExist
 from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.session import new_session
@@ -96,13 +100,15 @@ class Test(unittest.TestCase):
                                         '--cpu-procs', '2',
                                         '--cache-mem', '10m',
                                         '--schedulers', '127.0.0.1:' + scheduler_port,
+                                        '--format', 'WOR %(asctime)-15s %(message)s',
                                         '--ignore-avail-mem'])
         proc_scheduler = subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                                            '--nproc', '1',
                                            '--level', 'debug',
                                            '-H', '127.0.0.1',
                                            '-p', scheduler_port,
-                                           '--format', '%(asctime)-15s %(message)s'])
+                                           '-Dscheduler.default_cpu_usage=0',
+                                           '--format', 'SCH %(asctime)-15s %(message)s'])
 
         self.proc_worker = proc_worker
         self.proc_scheduler = proc_scheduler
@@ -113,6 +119,7 @@ class Test(unittest.TestCase):
         proc_web = subprocess.Popen([sys.executable, '-m', 'mars.web',
                                     '-H', '127.0.0.1',
                                      '--level', 'debug',
+                                     '--format', 'WEB %(asctime)-15s %(message)s',
                                      '-p', web_port,
                                      '-s', '127.0.0.1:' + self.scheduler_port])
         self.proc_web = proc_web
@@ -232,6 +239,26 @@ class Test(unittest.TestCase):
             res = requests.get('%s/%s?endpoint=127.0.0.1:%s'
                                % (service_ep, TIMELINE_APP_NAME, self.worker_port))
             self.assertEqual(res.status_code, 200)
+
+    def testWebApiException(self):
+        service_ep = 'http://127.0.0.1:' + self.web_port
+        with new_session(service_ep) as sess:
+            # Stop non-existing graph should raise an exception
+            graph_key = str(uuid.uuid4())
+            res = requests.delete('%s/api/session/%s/graph/%s' % (service_ep, sess._session_id, graph_key))
+            self.assertEqual(res.status_code, 404)
+            resp_json = json.loads(res.text)
+            typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            self.assertEqual(typ, ActorNotExist)
+            self.assertEqual(traceback.format_exception(typ, value, tb), resp_json['exc_info_text'])
+
+            # get graph states of non-existing session should raise an exception
+            res = requests.get('%s/api/session/%s/graph' % (service_ep, 'xxxx'))
+            self.assertEqual(res.status_code, 500)
+            resp_json = json.loads(res.text)
+            typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))
+            self.assertEqual(typ, KeyError)
+            self.assertEqual(traceback.format_exception(typ, value, tb), resp_json['exc_info_text'])
 
 
 class MockResponse:

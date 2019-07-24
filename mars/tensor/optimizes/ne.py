@@ -15,12 +15,12 @@
 # limitations under the License.
 
 from .. import arithmetic
+from .. import reduction
 from ..fuse import TensorNeFuseChunk
 
 # TODO: uncomment after refactor of reduction
-REDUCTION_OP = {}
-# REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
-#                 reduction.TensorMax, reduction.TensorMin}
+REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
+                reduction.TensorMax, reduction.TensorMin}
 SUPPORT_OP = {
     arithmetic.TensorSubtract,
     arithmetic.TensorMultiply,
@@ -63,10 +63,10 @@ SUPPORT_OP = {
     arithmetic.TensorTreeAdd,
     arithmetic.TensorTreeMultiply,
 
-    # reduction.TensorSum,
-    # reduction.TensorProd,
-    # reduction.TensorMax,
-    # reduction.TensorMin
+    reduction.TensorSum,
+    reduction.TensorProd,
+    reduction.TensorMax,
+    reduction.TensorMin
 }
 
 

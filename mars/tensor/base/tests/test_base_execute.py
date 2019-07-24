@@ -27,6 +27,7 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
     flip, flipud, fliplr, repeat, tile, isin
 from mars.tensor.merge import stack
+from mars.tensor.reduction import all as tall
 
 
 class Test(unittest.TestCase):
@@ -47,16 +48,16 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res[4], raw[8:, :4]))
         self.assertTrue(np.array_equal(res[5], raw[8:, 4:]))
 
-    # def testCopytoExecution(self):
-    #     a = ones((2, 3), chunk_size=1)
-    #     b = tensor([3, -1, 3], chunk_size=2)
-    #
-    #     copyto(a, b, where=b > 1)
-    #
-    #     res = self.executor.execute_tensor(a, concat=True)[0]
-    #     expected = np.array([[3, 1, 3], [3, 1, 3]])
-    #
-    #     np.testing.assert_equal(res, expected)
+    def testCopytoExecution(self):
+        a = ones((2, 3), chunk_size=1)
+        b = tensor([3, -1, 3], chunk_size=2)
+
+        copyto(a, b, where=b > 1)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        expected = np.array([[3, 1, 3], [3, 1, 3]])
+
+        np.testing.assert_equal(res, expected)
 
     def testAstypeExecution(self):
         raw = np.random.random((10, 5))
@@ -146,6 +147,134 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr2, concat=True)
 
         self.assertTrue(np.array_equal(res[0], np.broadcast_to(raw, (5, 10, 5, 6))))
+
+    def testBroadcastArraysExecutions(self):
+        x_data = [[1, 2, 3]]
+        x = tensor(x_data, chunk_size=1)
+        y_data = [[1], [2], [3]]
+        y = tensor(y_data, chunk_size=2)
+
+        a = broadcast_arrays(x, y)
+
+        res = [self.executor.execute_tensor(arr, concat=True)[0] for arr in a]
+        expected = np.broadcast_arrays(x_data, y_data)
+
+        for r, e in zip(res, expected):
+            np.testing.assert_equal(r, e)
+
+    def testWhereExecution(self):
+        raw_cond = np.random.randint(0, 2, size=(4, 4), dtype='?')
+        raw_x = np.random.rand(4, 1)
+        raw_y = np.random.rand(4, 4)
+
+        cond, x, y = tensor(raw_cond, chunk_size=2), tensor(raw_x, chunk_size=2), tensor(raw_y, chunk_size=2)
+
+        arr = where(cond, x, y)
+        res = self.executor.execute_tensor(arr, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.where(raw_cond, raw_x, raw_y)))
+
+        raw_cond = sps.csr_matrix(np.random.randint(0, 2, size=(4, 4), dtype='?'))
+        raw_x = sps.random(4, 1, density=.1)
+        raw_y = sps.random(4, 4, density=.1)
+
+        cond, x, y = tensor(raw_cond, chunk_size=2), tensor(raw_x, chunk_size=2), tensor(raw_y, chunk_size=2)
+
+        arr = where(cond, x, y)
+        res = self.executor.execute_tensor(arr, concat=True)[0]
+        self.assertTrue(np.array_equal(res.toarray(),
+                                       np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray())))
+
+    def testReshapeExecution(self):
+        raw_data = np.random.rand(10, 20, 30)
+        x = tensor(raw_data, chunk_size=6)
+
+        y = x.reshape(-1, 30)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 30)))
+
+        y2 = x.reshape(10, -1)
+
+        res = self.executor.execute_tensor(y2, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(10, -1)))
+
+        y3 = x.reshape(-1)
+
+        res = self.executor.execute_tensor(y3, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1)))
+
+        y4 = x.ravel()
+
+        res = self.executor.execute_tensor(y4, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.ravel()))
+
+        raw_data = np.random.rand(30, 100, 20)
+        x = tensor(raw_data, chunk_size=6)
+
+        y = x.reshape(-1, 20, 5, 5, 4)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 20, 5, 5, 4)))
+
+        y2 = x.reshape(3000, 10, 2)
+
+        res = self.executor.execute_tensor(y2, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(3000, 10, 2)))
+
+        y3 = x.reshape(60, 25, 40)
+
+        res = self.executor.execute_tensor(y3, concat=True)
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+
+        y4 = x.reshape(60, 25, 40)
+        y4.op.extra_params['_reshape_with_shuffle'] = True
+
+        size_res = self.executor.execute_tensor(y4, mock=True)
+        res = self.executor.execute_tensor(y4, concat=True)
+        self.assertEqual(res[0].nbytes, sum(v[0] for v in size_res))
+        self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+
+    def testExpandDimsExecution(self):
+        raw_data = np.random.rand(10, 20, 30)
+        x = tensor(raw_data, chunk_size=6)
+
+        y = expand_dims(x, 1)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.expand_dims(raw_data, 1)))
+
+        y = expand_dims(x, 0)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.expand_dims(raw_data, 0)))
+
+        y = expand_dims(x, 3)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.expand_dims(raw_data, 3)))
+
+        y = expand_dims(x, -1)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.expand_dims(raw_data, -1)))
+
+        y = expand_dims(x, -4)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.expand_dims(raw_data, -4)))
+
+        with self.assertRaises(np.AxisError):
+            expand_dims(x, -5)
+
+        with self.assertRaises(np.AxisError):
+            expand_dims(x, 4)
+
+    def testRollAxisExecution(self):
+        x = ones((3, 4, 5, 6), chunk_size=1)
+        y = rollaxis(x, 3, 1)
+
+        res = self.executor.execute_tensor(y, concat=True)
+        self.assertTrue(np.array_equal(res[0], np.rollaxis(np.ones((3, 4, 5, 6)), 3, 1)))
 
     def testAtleast1dExecution(self):
         x = 1
@@ -308,26 +437,26 @@ class Test(unittest.TestCase):
         expected = np.squeeze(data, axis=2)
         np.testing.assert_equal(res, expected)
 
-    # def testPtpExecution(self):
-    #     x = arange(4, chunk_size=1).reshape(2, 2)
-    #
-    #     t = ptp(x, axis=0)
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.ptp(np.arange(4).reshape(2, 2), axis=0)
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     t = ptp(x, axis=1)
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.ptp(np.arange(4).reshape(2, 2), axis=1)
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     t = ptp(x)
-    #
-    #     res = self.executor.execute_tensor(t)[0]
-    #     expected = np.ptp(np.arange(4).reshape(2, 2))
-    #     np.testing.assert_equal(res, expected)
+    def testPtpExecution(self):
+        x = arange(4, chunk_size=1).reshape(2, 2)
+
+        t = ptp(x, axis=0)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.ptp(np.arange(4).reshape(2, 2), axis=0)
+        np.testing.assert_equal(res, expected)
+
+        t = ptp(x, axis=1)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.ptp(np.arange(4).reshape(2, 2), axis=1)
+        np.testing.assert_equal(res, expected)
+
+        t = ptp(x)
+
+        res = self.executor.execute_tensor(t)[0]
+        expected = np.ptp(np.arange(4).reshape(2, 2))
+        np.testing.assert_equal(res, expected)
 
     def testDiffExecution(self):
         data = np.array([1, 2, 4, 7, 0])
@@ -434,61 +563,61 @@ class Test(unittest.TestCase):
         expected = np.digitize(data.toarray(), bins, right=False)
         np.testing.assert_equal(res.toarray(), expected)
 
-    # def testAverageExecution(self):
-    #     data = arange(1, 5, chunk_size=1)
-    #     t = average(data)
-    #
-    #     res = self.executor.execute_tensor(t)[0]
-    #     expected = np.average(np.arange(1, 5))
-    #     self.assertEqual(res, expected)
-    #
-    #     t = average(arange(1, 11, chunk_size=2), weights=arange(10, 0, -1, chunk_size=2))
-    #
-    #     res = self.executor.execute_tensor(t)[0]
-    #     expected = np.average(range(1, 11), weights=range(10, 0, -1))
-    #     self.assertEqual(res, expected)
-    #
-    #     data = arange(6, chunk_size=2).reshape((3, 2))
-    #     t = average(data, axis=1, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.average(np.arange(6).reshape(3, 2), axis=1, weights=(1. / 4, 3. / 4))
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     with self.assertRaises(TypeError):
-    #         average(data, weights=tensor([1. / 4, 3. / 4], chunk_size=2))
+    def testAverageExecution(self):
+        data = arange(1, 5, chunk_size=1)
+        t = average(data)
 
-    # def testCovExecution(self):
-    #     data = np.array([[0, 2], [1, 1], [2, 0]]).T
-    #     x = tensor(data, chunk_size=1)
-    #
-    #     t = cov(x)
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.cov(data)
-    #     np.testing.assert_equal(res, expected)
-    #
-    #     data_x = [-2.1, -1, 4.3]
-    #     data_y = [3, 1.1, 0.12]
-    #     x = tensor(data_x, chunk_size=1)
-    #     y = tensor(data_y, chunk_size=1)
-    #
-    #     X = stack((x, y), axis=0)
-    #     t = cov(x, y)
-    #     r = tall(t == cov(X))
-    #     self.assertTrue(self.executor.execute_tensor(r)[0])
+        res = self.executor.execute_tensor(t)[0]
+        expected = np.average(np.arange(1, 5))
+        self.assertEqual(res, expected)
 
-    # def testCorrcoefExecution(self):
-    #     data_x = [-2.1, -1, 4.3]
-    #     data_y = [3, 1.1, 0.12]
-    #     x = tensor(data_x, chunk_size=1)
-    #     y = tensor(data_y, chunk_size=1)
-    #
-    #     t = corrcoef(x, y)
-    #
-    #     res = self.executor.execute_tensor(t, concat=True)[0]
-    #     expected = np.corrcoef(data_x, data_y)
-    #     np.testing.assert_equal(res, expected)
+        t = average(arange(1, 11, chunk_size=2), weights=arange(10, 0, -1, chunk_size=2))
+
+        res = self.executor.execute_tensor(t)[0]
+        expected = np.average(range(1, 11), weights=range(10, 0, -1))
+        self.assertEqual(res, expected)
+
+        data = arange(6, chunk_size=2).reshape((3, 2))
+        t = average(data, axis=1, weights=tensor([1./4, 3./4], chunk_size=2))
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.average(np.arange(6).reshape(3, 2), axis=1, weights=(1./4, 3./4))
+        np.testing.assert_equal(res, expected)
+
+        with self.assertRaises(TypeError):
+            average(data, weights=tensor([1./4, 3./4], chunk_size=2))
+
+    def testCovExecution(self):
+        data = np.array([[0, 2], [1, 1], [2, 0]]).T
+        x = tensor(data, chunk_size=1)
+
+        t = cov(x)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.cov(data)
+        np.testing.assert_equal(res, expected)
+
+        data_x = [-2.1, -1, 4.3]
+        data_y = [3,  1.1,  0.12]
+        x = tensor(data_x, chunk_size=1)
+        y = tensor(data_y, chunk_size=1)
+
+        X = stack((x, y), axis=0)
+        t = cov(x, y)
+        r = tall(t == cov(X))
+        self.assertTrue(self.executor.execute_tensor(r)[0])
+
+    def testCorrcoefExecution(self):
+        data_x = [-2.1, -1, 4.3]
+        data_y = [3, 1.1, 0.12]
+        x = tensor(data_x, chunk_size=1)
+        y = tensor(data_y, chunk_size=1)
+
+        t = corrcoef(x, y)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.corrcoef(data_x, data_y)
+        np.testing.assert_equal(res, expected)
 
     def testFlipExecution(self):
         a = arange(8, chunk_size=2).reshape((2, 2, 2))
@@ -636,3 +765,11 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(mask, concat=True)[0]
         expected = np.isin(2 * np.arange(4).reshape((2, 2)), test_set)
         np.testing.assert_equal(res, expected)
+
+    def testRavelExecution(self):
+        arr = ones((10, 5), chunk_size=2)
+        flat_arr = mt.ravel(arr)
+
+        res = self.executor.execute_tensor(flat_arr, concat=True)[0]
+        self.assertEqual(len(res), 50)
+        np.testing.assert_equal(res, np.ones(50))

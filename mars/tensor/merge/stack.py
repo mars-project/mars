@@ -21,6 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..utils import unify_chunks
+from ..array_utils import as_same_device, device
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 
@@ -67,6 +68,15 @@ class TensorStack(TensorOperand, TensorOperandMixin):
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=out_chunks, nsplits=output_nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        axis = op.axis
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.stack(inputs, axis=axis)
 
 
 def stack(tensors, axis=0):
