@@ -46,13 +46,13 @@ class Test(unittest.TestCase):
         svc = WorkerService(ignore_avail_mem=True, spill_dirs='/tmp/a')
         self.assertListEqual(svc._spill_dirs, ['/tmp/a'])
 
-        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_io_process=2)
+        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2)
         self.assertEqual(svc.n_process, 7)
 
-        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_io_process=2,
+        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2,
                             spill_dirs='/tmp/a')
         self.assertEqual(svc.n_process, 8)
 
-        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_io_process=2,
+        svc = WorkerService(ignore_avail_mem=True, n_cpu_process=4, n_net_process=2,
                             spill_dirs=['/tmp/a', '/tmp/b'])
         self.assertEqual(svc.n_process, 8)

@@ -22,9 +22,9 @@ import logging   # noqa: E402
 import random    # noqa: E402
 import time      # noqa: E402
 
-from ..base_app import BaseApplication   # noqa: E402
-from ..compat import six                 # noqa: E402
-from ..errors import StartArgumentError  # noqa: E402
+from ..base_app import BaseApplication, arg_deprecated_action  # noqa: E402
+from ..compat import six                                       # noqa: E402
+from ..errors import StartArgumentError                        # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class WebApplication(BaseApplication):
         self.require_pool = False
 
     def config_args(self, parser):
-        parser.add_argument('--ui-port', help=argparse.SUPPRESS)
+        parser.add_argument('--ui-port', help=argparse.SUPPRESS, action=arg_deprecated_action('-p'))
 
     def validate_arguments(self):
         if not self.args.schedulers and not self.args.kv_store:

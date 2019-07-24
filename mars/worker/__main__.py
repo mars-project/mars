@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import logging
 
-from ..base_app import BaseApplication
+from ..base_app import BaseApplication, arg_deprecated_action
 from ..distributor import MarsDistributor
 from ..errors import StartArgumentError
 from ..config import options
@@ -37,7 +38,9 @@ class WorkerApplication(BaseApplication):
 
     def config_args(self, parser):
         parser.add_argument('--cpu-procs', help='number of processes used for cpu')
-        parser.add_argument('--io-procs', help='number of processes used for io')
+        parser.add_argument('--net-procs', help='number of processes used for networking')
+        parser.add_argument('--io-procs', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--net-procs'))
         parser.add_argument('--phy-mem', help='physical memory size limit')
         parser.add_argument('--ignore-avail-mem', action='store_true', help='ignore available memory')
         parser.add_argument('--cache-mem', help='cache memory size limit')
@@ -74,7 +77,7 @@ class WorkerApplication(BaseApplication):
         self._service = WorkerService(
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
-            n_io_process=self.args.io_procs,
+            n_net_process=self.args.net_procs or self.args.io_procs,
             spill_dirs=self.args.spill_dir,
             total_mem=self.args.phy_mem,
             cache_mem_limit=self.args.cache_mem,
