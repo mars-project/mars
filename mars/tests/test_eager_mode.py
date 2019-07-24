@@ -210,11 +210,12 @@ class Test(unittest.TestCase):
 
     def testView(self):
         with option_context({'eager_mode': True}):
-            a = mt.ones((10, 20), chunk_size=5)
+            data = np.random.rand(10, 20)
+            a = mt.tensor(data, chunk_size=5)
             b = a[0][1:4]
             b[1] = 10
 
-            npa = np.ones((10, 20))
+            npa = data.copy()
             npb = npa[0][1:4]
             npb[1] = 10
 
