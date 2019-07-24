@@ -408,17 +408,6 @@ class Test(unittest.TestCase):
         y = x.reshape(3)
         self.assertTrue(y.op.create_view)
 
-    def testArgwhere(self):
-        cond = tensor([[True, False], [False, True]], chunk_size=1)
-        indices = argwhere(cond)
-
-        self.assertTrue(np.isnan(indices.shape[0]))
-        self.assertEqual(indices.shape[1], 2)
-
-        indices.tiles()
-
-        self.assertEqual(indices.nsplits[1], (1, 1))
-
     def testRavel(self):
         arr = ones((10, 5), chunk_size=2)
         flat_arr = ravel(arr)

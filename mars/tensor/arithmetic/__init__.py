@@ -86,7 +86,7 @@ from .minimum import minimum, TensorMinimum
 from .floor import floor, TensorFloor
 from .ceil import ceil, TensorCeil
 from .trunc import trunc, TensorTrunc
-from .mod import mod as remainder, TensorMod
+from .mod import mod as remainder
 from .fmax import fmax, TensorFMax
 from .fmin import fmin, TensorFMin
 from .isfinite import isfinite, TensorIsFinite
