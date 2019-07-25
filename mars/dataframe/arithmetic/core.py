@@ -634,7 +634,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_scalar(cls, op):
         new_op = op.copy()
-        left, right = op.inputs
+        left = op.inputs[0]
 
         df = op.outputs[0]
         out_chunks = []
