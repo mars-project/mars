@@ -19,6 +19,7 @@ from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..operands import DataFrameOperand
 from .core import DataFrameBinOpMixin
+import numpy as np
 
 
 class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):

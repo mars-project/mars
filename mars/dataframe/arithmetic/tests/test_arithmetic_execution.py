@@ -256,6 +256,14 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df1.radd(df2), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
 
+    def testAddScalar(self):
+        # test add a dataframe with scalar
+        pdf = pd.DataFrame(np.random.rand(10, 10))
+        df = from_pandas(pdf, chunk_size=2)
+        expected = pdf + 1
+        result = self.executor.execute_dataframe(add(df, 1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
         df1 = from_pandas(data1, chunk_size=5)
