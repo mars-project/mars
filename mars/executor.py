@@ -437,29 +437,23 @@ class Executor(object):
         Optimizer(graph, self._engine).optimize(keys=keys)
         return graph
 
-    @staticmethod
-    def _get_op_runner(op, mapper, method):
+    @classmethod
+    def handle(cls, op, results, mock=False):
+        method_name, mapper = ('execute', cls._op_runners) if not mock else\
+            ('estimate_size', cls._op_size_estimators)
         try:
-            op_cls = type(op)
-            return mapper[op_cls]
+            runner = mapper[type(op)]
         except KeyError:
-            if hasattr(op, method):
-                return getattr(op, method)
+            runner = getattr(op, method_name)
+        try:
+            return runner(results, op)
+        except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
                     mapper[type(op)] = mapper[op_cls]
-                    return mapper[op_cls]
-
+                    runner = mapper[op_cls]
+                    return runner(results, op)
             raise KeyError('No handler found for op: %s' % op)
-
-    @classmethod
-    def handle(cls, op, results, mock=False):
-        if not mock:
-            runner = cls._get_op_runner(op, cls._op_runners, 'execute')
-            return runner(results, op)
-        else:
-            estimator = cls._get_op_runner(op, cls._op_size_estimators, 'estimate_size')
-            return estimator(results, op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, no_intermediate=False, compose=True, retval=True):

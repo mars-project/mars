@@ -48,7 +48,7 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
         for c, i in izip(op.inputs, inputs):
             six.exec_('V_' + c.key + ' = i')
-        expr = _evalute(chunk)
+        expr = _evaluate(chunk)
         res = ne.evaluate(expr)
         res = _maybe_keepdims(chunk, res)
         ctx[chunk.key] = res
@@ -132,7 +132,7 @@ def _handle_unary(chunk):
 def _decompose(chunk):
     expr = _VAR_FLAG + chunk.key
     for node, op in zip(reversed(chunk.composed), reversed(chunk.op.operands)):
-        _expr = _evalute(node)
+        _expr = _evaluate(node)
         expr = expr.replace(_VAR_FLAG + node.key, '({})'.format(_expr))
     return expr
 
@@ -179,7 +179,7 @@ def _handle_reduction(chunk):
     return _expr
 
 
-def _evalute(chunk):
+def _evaluate(chunk):
     if type(chunk.op) in NE_UNARYOP_TO_STRING:
         return _handle_unary(chunk)
     elif type(chunk.op) in NE_BINOP_TO_STRING:

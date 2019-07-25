@@ -19,9 +19,9 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..datasource import tensor as astensor
-from .var import _var, _moment_combine, _moment_chunk, _moment
 from .core import TensorReduction, TensorReductionMixin
-from .utils import _nansum, _nannumel
+from .utils import nansum_, nannumel, var_execute, moment_execute, moment_chunk_execute,\
+    moment_combine_execcute
 
 
 class TensorNanMoment(TensorReduction, TensorReductionMixin):
@@ -46,7 +46,7 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _moment(ctx, op, _nansum)
+        moment_execute(ctx, op, nansum_)
 
 
 class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
@@ -66,7 +66,7 @@ class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _moment_chunk(ctx, op, _nannumel, _nansum)
+        moment_chunk_execute(ctx, op, nannumel, nansum_)
 
 
 class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
@@ -86,7 +86,7 @@ class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _moment_combine(ctx, op, _nansum)
+        moment_combine_execcute(ctx, op, nansum_)
 
 
 class TensorNanVar(TensorReduction, TensorReductionMixin):
@@ -113,7 +113,7 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _var(ctx, op)
+        var_execute(ctx, op)
 
 
 def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):

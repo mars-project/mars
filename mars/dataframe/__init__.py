@@ -19,6 +19,8 @@ from .initializer import DataFrame, Series
 from .arithmetic import add
 from .datasource.from_tensor import from_tensor
 
+from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import DataFrameConcat
 del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat

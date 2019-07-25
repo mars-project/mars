@@ -185,7 +185,7 @@ cdef h_pandas_index(ob):
             stop = ob._stop
             step = ob._step
         # for range index, there is no need to get the values
-        return h_iterative([ob.name, getattr(ob, 'names', None),slice(start, stop, step)])
+        return h_iterative([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
         return h_iterative([ob.name, getattr(ob, 'names', None), ob.values])
 

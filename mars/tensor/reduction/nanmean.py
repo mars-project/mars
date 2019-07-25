@@ -20,8 +20,8 @@ from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..array_utils import get_array_module
 from .core import TensorReduction, TensorReductionMixin
-from .mean import TensorMeanCombine, _mean, _mean_chunk
-from .utils import _nannumel, _nansum
+from .mean import TensorMeanCombine, mean_execute, mean_chunk_execute
+from .utils import nannumel, nansum_
 
 
 class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
@@ -33,7 +33,7 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _mean_chunk(ctx, op, _nannumel, _nansum)
+        mean_chunk_execute(ctx, op, nannumel, nansum_)
 
 
 class TensorNanMean(TensorReduction, TensorReductionMixin):
@@ -50,7 +50,7 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
     @classmethod
     def execute(cls, ctx, op):
         xp = get_array_module(ctx[op.inputs[0].key])
-        _mean(ctx, op, xp.nanmean)
+        mean_execute(ctx, op, xp.nanmean)
 
 
 def nanmean(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):

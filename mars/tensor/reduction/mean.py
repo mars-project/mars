@@ -18,60 +18,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from ..array_utils import as_same_device, device, get_array_module
+from ..array_utils import get_array_module
 from .core import TensorReduction, TensorReductionMixin
-from .utils import get_axis, _numel, _sum
-
-
-def _mean_chunk(ctx, op, count_func, sum_func):
-    (in_chunk,), device_id, _ = as_same_device(
-        [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-    axis = get_axis(op.axis)
-
-    with device(device_id):
-        chunk_count = count_func(in_chunk, axis=axis, dtype=np.int64,
-                                 keepdims=bool(op.keepdims))
-        chunk_sum = sum_func(in_chunk, axis=axis, dtype=op.dtype,
-                             keepdims=bool(op.keepdims))
-        ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
-
-
-def _mean_combine(ctx, op):
-    axis = get_axis(op.axis)
-    (_data, _count), device_id, _ = as_same_device(
-        ctx[op.inputs[0].key], device=op.device, ret_extra=True)
-
-    with device(device_id):
-        chunk_count = _sum(_count, axis=axis, dtype=np.int64,
-                           keepdims=bool(op.keepdims))
-        chunk_sum = _sum(_data, axis=axis, dtype=op.dtype,
-                         keepdims=bool(op.keepdims))
-        ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
-
-
-def _mean(ctx, op, mean_func):
-    axis = get_axis(op.axis)
-
-    a = ctx[op.inputs[0].key]
-    if not isinstance(a, (list, tuple)):
-        (inp,), device_id, xp = as_same_device(
-            [a], device=op.device, ret_extra=True)
-
-        with device(device_id):
-            ctx[op.outputs[0].key] = mean_func(inp, axis=axis, dtype=op.dtype,
-                                               keepdims=bool(op.keepdims))
-    else:
-        (_data, _count), device_id, xp = as_same_device(
-            a, device=op.device, ret_extra=True)
-
-        with device(device_id):
-            chunk_count = _sum(_count, axis=axis, dtype=op.dtype,
-                               keepdims=bool(op.keepdims))
-            chunk_sum = _sum(_data, axis=axis, dtype=op.dtype,
-                             keepdims=bool(op.keepdims))
-            ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
-                                                    dtype=op.dtype)
+from .utils import numel, sum_, mean_chunk_execute, mean_combine_execute, mean_execute
 
 
 class TensorMeanChunk(TensorReduction, TensorReductionMixin):
@@ -83,7 +32,7 @@ class TensorMeanChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _mean_chunk(ctx, op, _numel, _sum)
+        mean_chunk_execute(ctx, op, numel, sum_)
 
 
 class TensorMeanCombine(TensorReduction, TensorReductionMixin):
@@ -95,7 +44,7 @@ class TensorMeanCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        _mean_combine(ctx, op)
+        mean_combine_execute(ctx, op)
 
 
 class TensorMean(TensorReduction, TensorReductionMixin):
@@ -112,7 +61,7 @@ class TensorMean(TensorReduction, TensorReductionMixin):
     @classmethod
     def execute(cls, ctx, op):
         xp = get_array_module(ctx[op.inputs[0].key])
-        _mean(ctx, op, xp.mean)
+        mean_execute(ctx, op, xp.mean)
 
 
 def mean(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):

@@ -59,6 +59,10 @@ class FakeOperand(TensorOperand, TensorOperandMixin):
         return self._num
 
 
+class SubFakeOperand(FakeOperand):
+    pass
+
+
 def fake_execution_maker(actor_ctx):
     def run(ctx, op):
         actor = actor_ctx.create_actor(RunActor, uid='1-run')
@@ -150,6 +154,13 @@ class Test(unittest.TestCase):
         executor = Executor()
         res = executor.execute_graph(graph, keys=[chunk.key])[0]
         np.testing.assert_array_equal(res, fake_result)
-
         size = executor.execute_graph(graph, keys=[chunk.key], mock=True)[0]
         self.assertEqual(size, fake_size)
+
+        graph = DAG()
+        chunk = SubFakeOperand().new_chunk(None, shape=(10, 10))
+        graph.add_node(chunk.data)
+
+        executor = Executor()
+        res = executor.execute_graph(graph, keys=[chunk.key])[0]
+        np.testing.assert_array_equal(res, fake_result)

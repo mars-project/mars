@@ -18,13 +18,13 @@ import itertools
 
 import numpy as np
 
+from ...lib import sparse
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, Int32Field
+from ..array_utils import create_array
 from .core import TensorHasInput
 from .zeros import TensorZeros
 from .array import tensor
-from ...lib import sparse
-from ..array_utils import create_array
 
 
 class TensorTri(TensorHasInput):

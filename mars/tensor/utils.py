@@ -536,10 +536,10 @@ def concat_tileable_chunks(tensor):
 
 
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
-    '''
+    """
     Construct Fetch tensor on the fly, using given chunk_size, shape, dtype,
     as well as possible tensor_key, tensor_id and chunk keys.
-    '''
+    """
     from ..config import options
     from .fetch import TensorFetch
 

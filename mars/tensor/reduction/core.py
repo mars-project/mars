@@ -286,91 +286,105 @@ class TensorArgReductionMixin(TensorReductionMixin):
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
     @classmethod
-    def execute(cls, ctx, op):
-        chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
+    def _execute_chunk_op_type(cls, ctx, op):
         arg_axis = get_arg_axis(op.axis, op.inputs[0].ndim)
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         arg_func = cls._get_op_func()
 
-        if isinstance(op, chunk_op_type):
-            offset = op.offset
-            reduction_func = getattr(cls, '_get_reduction_func')()
+        offset = op.offset
+        reduction_func = getattr(cls, '_get_reduction_func')()
+        with device(device_id):
+            vals = reduction_func(in_chunk, axis=arg_axis, keepdims=True)
+            arg = arg_func(in_chunk, axis=arg_axis, keepdims=True)
 
-            with device(device_id):
-                vals = reduction_func(in_chunk, axis=arg_axis, keepdims=True)
-                arg = arg_func(in_chunk, axis=arg_axis, keepdims=True)
+            if arg_axis is None:
+                if xp == cp:
+                    # we need to copy to do cpu computation, then copy back to gpu
+                    # cuz unravel_index and ravel_multi_index are not implemented in cupy
+                    in_chunk = in_chunk.get()
 
-                if arg_axis is None:
-                    if xp == cp:
-                        # we need to copy to do cpu computation, then copy back to gpu
-                        # cuz unravel_index and ravel_multi_index are not implemented in cupy
-                        in_chunk = in_chunk.get()
+                total_shape = op.total_shape
+                ind = np.unravel_index(arg.ravel()[0], in_chunk.shape)
+                total_ind = tuple(o + i for (o, i) in zip(offset, ind))
+                res = np.ravel_multi_index(total_ind, total_shape)
 
-                    total_shape = op.total_shape
-                    ind = np.unravel_index(arg.ravel()[0], in_chunk.shape)
-                    total_ind = tuple(o + i for (o, i) in zip(offset, ind))
-                    res = np.ravel_multi_index(total_ind, total_shape)
-
-                    if xp == cp:
-                        # copy back
-                        with xp.cuda.Device(in_chunk.device.id):
-                            arg[:] = xp.asarray(res)
-                    else:
-                        arg[:] = res
+                if xp == cp:
+                    # copy back
+                    with xp.cuda.Device(in_chunk.device.id):
+                        arg[:] = xp.asarray(res)
                 else:
-                    arg += offset
-                ctx[op.outputs[0].key] = (vals, arg)
-        elif isinstance(op, agg_op_type):
-            from .nanargmax import _nanargmax
-            from .nanargmin import _nanargmin
+                    arg[:] = res
+            else:
+                arg += offset
+            ctx[op.outputs[0].key] = (vals, arg)
 
-            axis = get_arg_axis(op.axis, op.inputs[0].ndim)
-            (vals, arg), device_id, xp = as_same_device(
-                ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+    @classmethod
+    def _execute_agg_op_type(cls, ctx, op):
+        from .nanargmax import _nanargmax
+        from .nanargmin import _nanargmin
 
-            with device(device_id):
-                if xp.any(xp.isnan(vals)) and arg_func in [_nanargmin, _nanargmax]:
-                    raise ValueError("All NaN slice encountered")
-                keepdims = bool(op.keepdims)
-                if axis is None:
-                    local_args = arg_func(vals, axis=axis, keepdims=keepdims)
-                    arg = arg.ravel()[local_args]
-                else:
-                    local_args = arg_func(vals, axis=axis)
-                    inds = np.ogrid[tuple(map(slice, local_args.shape))]
-                    if xp != np:
-                        inds = [xp.asarray(it) for it in inds]
-                    inds.insert(axis, local_args)
-                    arg = arg[tuple(inds)]
-                    if keepdims:
-                        arg = xp.expand_dims(arg, axis)
-                ctx[op.outputs[0].key] = arg
-        elif isinstance(op, combine_op_type):
-            axis = get_arg_axis(op.axis, op.inputs[0].ndim)
-            (vals, arg), device_id, xp = as_same_device(
-                ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+        arg_func = cls._get_op_func()
+        axis = get_arg_axis(op.axis, op.inputs[0].ndim)
+        (vals, arg), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            if xp.any(xp.isnan(vals)) and arg_func in [_nanargmin, _nanargmax]:
+                raise ValueError("All NaN slice encountered")
             keepdims = bool(op.keepdims)
+            if axis is None:
+                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
+                arg = arg.ravel()[local_args]
+            else:
+                local_args = arg_func(vals, axis=axis)
+                inds = np.ogrid[tuple(map(slice, local_args.shape))]
+                if xp != np:
+                    inds = [xp.asarray(it) for it in inds]
+                inds.insert(axis, local_args)
+                arg = arg[tuple(inds)]
+                if keepdims:
+                    arg = xp.expand_dims(arg, axis)
+            ctx[op.outputs[0].key] = arg
 
-            with device(device_id):
-                if axis is None:
-                    local_args = arg_func(vals, axis=axis, keepdims=keepdims)
-                    vals = vals.ravel()[local_args]
-                    arg = arg.ravel()[local_args]
-                else:
-                    local_args = arg_func(vals, axis=axis)
-                    inds = np.ogrid[tuple(map(slice, local_args.shape))]
-                    if xp != np:
-                        inds = [xp.asarray(it) for it in inds]
-                    inds.insert(axis, local_args)
-                    inds_tuple = tuple(inds)
-                    vals = vals[inds_tuple]
-                    arg = arg[inds_tuple]
-                    if keepdims:
-                        vals = xp.expand_dims(vals, axis)
-                        arg = xp.expand_dims(arg, axis)
-                ctx[op.outputs[0].key] = (vals, arg)
+    @classmethod
+    def _execute_combine_op_type(cls, ctx, op):
+        arg_func = cls._get_op_func()
+        axis = get_arg_axis(op.axis, op.inputs[0].ndim)
+        (vals, arg), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+        keepdims = bool(op.keepdims)
+
+        with device(device_id):
+            if axis is None:
+                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
+                vals = vals.ravel()[local_args]
+                arg = arg.ravel()[local_args]
+            else:
+                local_args = arg_func(vals, axis=axis)
+                inds = np.ogrid[tuple(map(slice, local_args.shape))]
+                if xp != np:
+                    inds = [xp.asarray(it) for it in inds]
+                inds.insert(axis, local_args)
+                inds_tuple = tuple(inds)
+                vals = vals[inds_tuple]
+                arg = arg[inds_tuple]
+                if keepdims:
+                    vals = xp.expand_dims(vals, axis)
+                    arg = xp.expand_dims(arg, axis)
+            ctx[op.outputs[0].key] = (vals, arg)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
+
+        if isinstance(op, chunk_op_type):
+            cls._execute_chunk_op_type(ctx, op)
+        elif isinstance(op, agg_op_type):
+            cls._execute_agg_op_type(ctx, op)
+        elif isinstance(op, combine_op_type):
+            cls._execute_combine_op_type(ctx, op)
         else:
             raise TypeError('No supported arg reduction operand %s' % (type(op)))
 

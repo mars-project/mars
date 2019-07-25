@@ -45,7 +45,7 @@ class TensorFull(TensorNoInput):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         ctx[chunk.key] = create_array(op)('full', chunk.shape,
-                                                op.fill_value, dtype=op.dtype)
+                                          op.fill_value, dtype=op.dtype)
 
 
 def full(shape, fill_value, dtype=None, chunk_size=None, gpu=False):

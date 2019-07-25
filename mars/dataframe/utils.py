@@ -13,10 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
 from mars.lib.mmh3 import hash as mmh_hash
 
 import itertools
@@ -88,27 +85,15 @@ def get_fuse_op_cls():
 
 
 def _get_range_index_start(pd_range_index):
-    try:
-        start = pd_range_index.start
-    except AttributeError:
-        start = pd_range_index._start
-    return start
+    return getattr(pd_range_index, 'start', getattr(pd_range_index, '_start'))
 
 
 def _get_range_index_stop(pd_range_index):
-    try:
-        start = pd_range_index.stop
-    except AttributeError:
-        start = pd_range_index._stop
-    return start
+    return getattr(pd_range_index, 'stop', getattr(pd_range_index, '_stop'))
 
 
 def _get_range_index_step(pd_range_index):
-    try:
-        start = pd_range_index.step
-    except AttributeError:
-        start = pd_range_index._step
-    return start
+    return getattr(pd_range_index, 'step', getattr(pd_range_index, '_step'))
 
 
 def is_pd_range_empty(pd_range_index):

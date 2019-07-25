@@ -64,6 +64,11 @@ class MockStorage(object):
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = Executor('numpy', storage=MockStorage(), prefetch=True)
+        self._raw_tensor_ones = TensorOnes.execute
+        self.executor._op_runners[TensorOnes] = _slow_tensor_ones
+
+    def tearDown(self):
+        self.executor._op_runners[TensorOnes] = self._raw_tensor_ones
 
     def testPrefetch(self):
         t1 = ones((10, 8), chunk_size=10)

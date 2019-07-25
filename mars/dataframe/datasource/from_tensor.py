@@ -15,10 +15,7 @@
 # limitations under the License.
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
 
 from ...serialize import KeyField, SeriesField
 from ... import opcodes as OperandDef

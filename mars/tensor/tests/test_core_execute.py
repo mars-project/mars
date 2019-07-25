@@ -20,7 +20,7 @@ import numpy as np
 
 from mars.executor import Executor
 from mars.tensor import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
-    atleast_3d, squeeze
+    atleast_3d, squeeze, tensor
 from mars.session import LocalSession, Session
 
 
@@ -67,12 +67,13 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(a.execute(), npa)
 
     def testViewDataOnTranspose(self):
-        a = ones((10, 20), chunk_size=6)
+        data = np.random.rand(10, 20)
+        a = tensor(data, chunk_size=6)
         b = a.T
         add(b, 1, out=b)
 
-        np.testing.assert_array_equal(b.execute(), np.ones((20, 10)) + 1)
-        np.testing.assert_array_equal(a.execute(), np.ones((10, 20)) + 1)
+        np.testing.assert_array_equal(b.execute(), data.T + 1)
+        np.testing.assert_array_equal(a.execute(), data + 1)
 
     def testViewDataOnSwapaxes(self):
         a = ones((10, 20), chunk_size=6)
@@ -142,11 +143,12 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(a.execute(), npa)
 
     def testViewDataOnReshape(self):
-        a = ones((3, 4, 5), chunk_size=2)
+        data = np.random.random((3, 4, 5))
+        a = tensor(data, chunk_size=2)
         b = a.reshape((5, 4, 3))
         b[:3] = 10
 
-        npa = np.ones((3, 4, 5))
+        npa = data
         npb = npa.reshape((5, 4, 3))
         npb[:3] = 10
 
