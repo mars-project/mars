@@ -26,7 +26,7 @@ try:
 except ImportError:  # pragma: no cover
     gevent = None
 
-from .operands import Fetch
+from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
@@ -637,6 +637,7 @@ def ignore(*_):
 
 
 Executor._op_runners[Fetch] = ignore
+Executor._op_runners[ShuffleProxy] =ignore
 
 
 def register(op, handler, size_estimator=None):

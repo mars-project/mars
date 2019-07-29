@@ -131,10 +131,6 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
     def object_type(self):
         return self._object_type
 
-    @classmethod
-    def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = None
-
 
 class DataFrameShuffleMap(ShuffleMap):
     _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
