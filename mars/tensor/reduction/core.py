@@ -32,7 +32,6 @@ from ..array_utils import as_same_device, device, cp
 from ..utils import check_out_param, validate_axis
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
-from .utils import get_axis, get_arg_axis
 
 
 class TensorReductionMixin(TensorOperandMixin):
@@ -131,6 +130,14 @@ class TensorReductionMixin(TensorOperandMixin):
         raise NotImplementedError
 
     @classmethod
+    def get_axis(cls, axis):
+        return tuple(axis) if axis is not None else axis
+
+    @classmethod
+    def get_arg_axis(cls, axis, ndim):
+        return None if len(axis) == ndim or ndim == 1 else axis[0]
+
+    @classmethod
     def _tree_reduction(cls, op, tensor, agg_op_type, axis, combine_op_type=None):
         kw = getattr(op, '_get_op_kw')() or {}
         keepdims = op.keepdims
@@ -227,9 +234,9 @@ class TensorReductionMixin(TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        (input_chunk,), device_id, _ = as_same_device(
+        (input_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-        axis = get_axis(op.axis)
+        axis = cls.get_axis(op.axis)
         reduce_func = cls._get_op_func()
         with device(device_id):
             if "dtype" in getargspec(reduce_func).args:
@@ -286,8 +293,38 @@ class TensorArgReductionMixin(TensorReductionMixin):
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
     @classmethod
-    def _execute_chunk_op_type(cls, ctx, op):
-        arg_axis = get_arg_axis(op.axis, op.inputs[0].ndim)
+    def execute(cls, ctx, op):
+        from .nanargmax import _nanargmax
+        from .nanargmin import _nanargmin
+
+        arg_func = cls._get_op_func()
+        axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
+        (vals, arg), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            if xp.any(xp.isnan(vals)) and arg_func in [_nanargmin, _nanargmax]:
+                raise ValueError("All NaN slice encountered")
+            keepdims = bool(op.keepdims)
+            if axis is None:
+                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
+                arg = arg.ravel()[local_args]
+            else:
+                local_args = arg_func(vals, axis=axis)
+                inds = np.ogrid[tuple(map(slice, local_args.shape))]
+                if xp != np:
+                    inds = [xp.asarray(it) for it in inds]
+                inds.insert(axis, local_args)
+                arg = arg[tuple(inds)]
+                if keepdims:
+                    arg = xp.expand_dims(arg, axis)
+            ctx[op.outputs[0].key] = arg
+
+
+class TensorArgMapMixin(TensorArgReductionMixin):
+    @classmethod
+    def execute(cls, ctx, op):
+        arg_axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
@@ -320,38 +357,12 @@ class TensorArgReductionMixin(TensorReductionMixin):
                 arg += offset
             ctx[op.outputs[0].key] = (vals, arg)
 
+
+class TensorArgCombineMixin(TensorArgReductionMixin):
     @classmethod
-    def _execute_agg_op_type(cls, ctx, op):
-        from .nanargmax import _nanargmax
-        from .nanargmin import _nanargmin
-
+    def execute(cls, ctx, op):
         arg_func = cls._get_op_func()
-        axis = get_arg_axis(op.axis, op.inputs[0].ndim)
-        (vals, arg), device_id, xp = as_same_device(
-            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
-
-        with device(device_id):
-            if xp.any(xp.isnan(vals)) and arg_func in [_nanargmin, _nanargmax]:
-                raise ValueError("All NaN slice encountered")
-            keepdims = bool(op.keepdims)
-            if axis is None:
-                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
-                arg = arg.ravel()[local_args]
-            else:
-                local_args = arg_func(vals, axis=axis)
-                inds = np.ogrid[tuple(map(slice, local_args.shape))]
-                if xp != np:
-                    inds = [xp.asarray(it) for it in inds]
-                inds.insert(axis, local_args)
-                arg = arg[tuple(inds)]
-                if keepdims:
-                    arg = xp.expand_dims(arg, axis)
-            ctx[op.outputs[0].key] = arg
-
-    @classmethod
-    def _execute_combine_op_type(cls, ctx, op):
-        arg_func = cls._get_op_func()
-        axis = get_arg_axis(op.axis, op.inputs[0].ndim)
+        axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (vals, arg), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
         keepdims = bool(op.keepdims)
@@ -374,19 +385,6 @@ class TensorArgReductionMixin(TensorReductionMixin):
                     vals = xp.expand_dims(vals, axis)
                     arg = xp.expand_dims(arg, axis)
             ctx[op.outputs[0].key] = (vals, arg)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
-
-        if isinstance(op, chunk_op_type):
-            cls._execute_chunk_op_type(ctx, op)
-        elif isinstance(op, agg_op_type):
-            cls._execute_agg_op_type(ctx, op)
-        elif isinstance(op, combine_op_type):
-            cls._execute_combine_op_type(ctx, op)
-        else:
-            raise TypeError('No supported arg reduction operand %s' % (type(op)))
 
 
 class TensorCumReductionMixin(TensorReductionMixin):

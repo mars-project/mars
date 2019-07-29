@@ -19,7 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
 from ..array_utils import get_array_module
-from .core import TensorReduction, TensorArgReductionMixin
+from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
 from .utils import keepdims_wrapper
 
 
@@ -31,7 +31,7 @@ def _nanargmin(x, axis, **kwargs):
         return keepdims_wrapper(np.nanargmin)(xp.where(xp.isnan(x), -np.inf, x), **kwargs)
 
 
-class TensorNanArgminChunk(TensorReduction, TensorArgReductionMixin):
+class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
     _op_type_ = OperandDef.NANARGMIN_CHUNK
 
     _offset = Int64Field('offset')
@@ -39,9 +39,9 @@ class TensorNanArgminChunk(TensorReduction, TensorArgReductionMixin):
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
                  combine_size=None, offset=None, total_shape=None,**kw):
-        super(TensorNanArgminChunk, self).__init__(_axis=axis, _dtype=dtype,
-                                                   _keepdims=keepdims, _combine_size=combine_size,
-                                                   _offset=offset, _total_shape=total_shape, **kw)
+        super(TensorNanArgminMap, self).__init__(_axis=axis, _dtype=dtype,
+                                                 _keepdims=keepdims, _combine_size=combine_size,
+                                                 _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -50,10 +50,6 @@ class TensorNanArgminChunk(TensorReduction, TensorArgReductionMixin):
     @property
     def total_shape(self):
         return getattr(self, '_total_shape', None)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgminChunk, TensorNanArgmin, TensorNanArgminCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -64,16 +60,12 @@ class TensorNanArgminChunk(TensorReduction, TensorArgReductionMixin):
         return keepdims_wrapper(np.nanmin)
 
 
-class TensorNanArgminCombine(TensorReduction, TensorArgReductionMixin):
+class TensorNanArgminCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.NANARGMIN_COMBINE
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
         super(TensorNanArgminCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                      _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgminChunk, TensorNanArgmin, TensorNanArgminCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -89,7 +81,7 @@ class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorNanArgminChunk, TensorNanArgmin, TensorNanArgminCombine
+        return TensorNanArgminMap, TensorNanArgmin, TensorNanArgminCombine
 
     @classmethod
     def _get_op_func(cls):

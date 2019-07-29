@@ -24,6 +24,7 @@ from .utils import keepdims_wrapper
 
 class TensorMax(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.MAX
+    _func_name = 'max'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMax, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,

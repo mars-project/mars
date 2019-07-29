@@ -15,13 +15,27 @@
 # limitations under the License.
 
 import numpy as np
+from math import factorial
 
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..datasource import tensor as astensor
+from ..array_utils import as_same_device, device, get_array_module
 from .core import TensorReduction, TensorReductionMixin
-from .utils import sum_, numel, moment_chunk_execute, moment_execute, var_execute, \
-    moment_combine_execute
+from .utils import sum_, numel
+
+
+def reduce_var_square(var_square, avg_diff, count, op, axis, sum_func):
+    moment = op.moment
+    dtype = op.dtype
+    kw = dict(axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+
+    reduced_var_square = var_square[..., moment - 2].sum(**kw) + \
+                         sum_func(count * avg_diff ** moment, **kw)
+    for i in range(1, moment - 1):
+        coeff = factorial(moment) / float(factorial(i) * factorial(moment - i))
+        reduced_var_square += coeff * sum_func(var_square[..., moment - i - 2] * avg_diff ** moment, **kw)
+    return reduced_var_square
 
 
 class TensorMoment(TensorReduction, TensorReductionMixin):
@@ -46,10 +60,27 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_execute(ctx, op, sum_)
+        axis = cls.get_axis(op.axis)
+        dtype = op.dtype
+
+        (_data, _count, _var_square), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            chunk_count = sum_(_count, axis=axis, dtype=np.int64,
+                                   keepdims=True)
+            chunk_sum = sum_(_data, axis=axis, dtype=dtype, keepdims=True)
+            avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
+            avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
+            var_square = reduce_var_square(_var_square, avg_diff, _count, op, axis, sum_)
+
+            ctx[op.outputs[0].key] = xp.true_divide(
+                var_square,
+                sum_(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
+                dtype=dtype)
 
 
-class TensorMomentChunk(TensorReduction, TensorReductionMixin):
+class TensorMomentMap(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.MOMENT_CHUNK
 
     _moment = Int32Field('moment', default=2)
@@ -57,8 +88,8 @@ class TensorMomentChunk(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorMomentChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                _combine_size=combine_size, **kw)
+        super(TensorMomentMap, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+                                              _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -66,7 +97,24 @@ class TensorMomentChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_chunk_execute(ctx, op, numel, sum_)
+        (in_chunk,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        axis = cls.get_axis(op.axis)
+        moment = op.moment
+        dtype = op.dtype
+        empty = get_array_module(in_chunk, nosparse=True).empty
+
+        with device(device_id):
+            chunk_count = numel(in_chunk, axis=axis, dtype=np.int64,
+                                     keepdims=bool(op.keepdims))
+            chunk_sum = sum_(in_chunk, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            avg = xp.true_divide(chunk_sum, chunk_count)
+            var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
+            for i in range(2, moment + 1):
+                var_square[..., i - 2] = sum_((in_chunk - avg) ** i, axis=axis, dtype=dtype,
+                                              keepdims=bool(op.keepdims))
+            ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
 
 class TensorMomentCombine(TensorReduction, TensorReductionMixin):
@@ -86,7 +134,25 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_combine_execute(ctx, op, sum_)
+        axis = cls.get_axis(op.axis)
+        moment = op.moment
+        dtype = op.dtype
+
+        (_data, _count, _var_square), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+        empty = get_array_module(_data, nosparse=True).empty
+
+        with device(device_id):
+            chunk_count = sum_(_count, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
+            chunk_sum = sum_(_data, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
+            avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
+            var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
+
+            for m in range(2, moment + 1):
+                var_square[..., m - 2] = reduce_var_square(_var_square, avg_diff, _count, op, axis, sum_)
+
+            ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
 
 class TensorVar(TensorReduction, TensorReductionMixin):
@@ -104,7 +170,7 @@ class TensorVar(TensorReduction, TensorReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorMomentChunk, TensorMoment, TensorMomentCombine
+        return TensorMomentMap, TensorMoment, TensorMomentCombine
 
     def _get_op_kw(self):
         kw = dict()
@@ -113,7 +179,13 @@ class TensorVar(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        var_execute(ctx, op)
+        axis = cls.get_axis(op.axis)
+        (in_chunk,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.var(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
+                                            keepdims=bool(op.keepdims))
 
 
 def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):

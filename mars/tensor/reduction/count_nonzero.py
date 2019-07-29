@@ -20,7 +20,6 @@ from ... import opcodes as OperandDef
 from ..array_utils import device, as_same_device
 from .sum import TensorSum
 from .core import TensorReduction, TensorReductionMixin
-from .utils import get_arg_axis
 
 
 class TensorCountNonzero(TensorReduction, TensorReductionMixin):
@@ -39,7 +38,7 @@ class TensorCountNonzero(TensorReduction, TensorReductionMixin):
         (x,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], op.device, ret_extra=True)
 
-        axis = get_arg_axis(op.axis, op.inputs[0].ndim)
+        axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         keepdims = op.keepdims
         with device(device_id):
             nz = xp.count_nonzero(x, axis=axis)

@@ -19,9 +19,10 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..datasource import tensor as astensor
+from ..array_utils import device, as_same_device, get_array_module
+from .var import reduce_var_square
 from .core import TensorReduction, TensorReductionMixin
-from .utils import nansum_, nannumel, var_execute, moment_execute, moment_chunk_execute,\
-    moment_combine_execute
+from .utils import nansum_, nannumel
 
 
 class TensorNanMoment(TensorReduction, TensorReductionMixin):
@@ -46,10 +47,27 @@ class TensorNanMoment(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_execute(ctx, op, nansum_)
+        axis = cls.get_axis(op.axis)
+        dtype = op.dtype
+
+        (_data, _count, _var_square), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            chunk_count = nansum_(_count, axis=axis, dtype=np.int64,
+                                   keepdims=True)
+            chunk_sum = nansum_(_data, axis=axis, dtype=dtype, keepdims=True)
+            avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
+            avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
+            var_square = reduce_var_square(_var_square, avg_diff, _count, op, axis, nansum_)
+
+            ctx[op.outputs[0].key] = xp.true_divide(
+                var_square,
+                nansum_(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
+                dtype=dtype)
 
 
-class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
+class TensorNanMomentMap(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMOMENT_CHUNK
 
     _moment = Int32Field('moment', default=2)
@@ -57,8 +75,8 @@ class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
     def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, combine_size=None, **kw):
         if moment is not None:
             kw['_moment'] = moment
-        super(TensorNanMomentChunk, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                   _combine_size=combine_size, **kw)
+        super(TensorNanMomentMap, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+                                                 _combine_size=combine_size, **kw)
 
     @property
     def moment(self):
@@ -66,7 +84,23 @@ class TensorNanMomentChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_chunk_execute(ctx, op, nannumel, nansum_)
+        (in_chunk,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        axis = cls.get_axis(op.axis)
+        moment = op.moment
+        dtype = op.dtype
+        empty = get_array_module(in_chunk, nosparse=True).empty
+
+        with device(device_id):
+            chunk_count = nannumel(in_chunk, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
+            chunk_sum = nansum_(in_chunk, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            avg = xp.true_divide(chunk_sum, chunk_count)
+            var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
+            for i in range(2, moment + 1):
+                var_square[..., i - 2] = nansum_((in_chunk - avg) ** i, axis=axis, dtype=dtype,
+                                                 keepdims=bool(op.keepdims))
+            ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
 
 class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
@@ -86,7 +120,25 @@ class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_combine_execute(ctx, op, nansum_)
+        axis = cls.get_axis(op.axis)
+        moment = op.moment
+        dtype = op.dtype
+
+        (_data, _count, _var_square), device_id, xp = as_same_device(
+            ctx[op.inputs[0].key], device=op.device, ret_extra=True)
+        empty = get_array_module(_data, nosparse=True).empty
+
+        with device(device_id):
+            chunk_count = nansum_(_count, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
+            chunk_sum = nansum_(_data, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
+            avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
+            var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
+
+            for m in range(2, moment + 1):
+                var_square[..., m - 2] = reduce_var_square(_var_square, avg_diff, _count, op, axis, nansum_)
+
+            ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
 
 class TensorNanVar(TensorReduction, TensorReductionMixin):
@@ -104,7 +156,7 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorNanMomentChunk, TensorNanMoment, TensorNanMomentCombine
+        return TensorNanMomentMap, TensorNanMoment, TensorNanMomentCombine
 
     def _get_op_kw(self):
         kw = dict()
@@ -113,7 +165,13 @@ class TensorNanVar(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        var_execute(ctx, op)
+        axis = cls.get_axis(op.axis)
+        (in_chunk,), device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        with device(device_id):
+            ctx[op.outputs[0].key] = xp.nanvar(in_chunk, axis=axis, dtype=op.dtype, ddof=op.ddof,
+                                               keepdims=bool(op.keepdims))
 
 
 def nanvar(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=None):

@@ -18,11 +18,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
-from .core import TensorReduction, TensorArgReductionMixin
+from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
 from .utils import keepdims_wrapper
 
 
-class TensorArgmaxChunk(TensorReduction, TensorArgReductionMixin):
+class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
     _op_type_ = OperandDef.ARGMAX_CHUNK
 
     _offset = Int64Field('offset')
@@ -30,9 +30,9 @@ class TensorArgmaxChunk(TensorReduction, TensorArgReductionMixin):
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
                  combine_size=None, offset=None, total_shape=None, **kw):
-        super(TensorArgmaxChunk, self).__init__(_axis=axis, _dtype=dtype,
-                                                _keepdims=keepdims, _combine_size=combine_size,
-                                                _offset=offset, _total_shape=total_shape, **kw)
+        super(TensorArgmaxMap, self).__init__(_axis=axis, _dtype=dtype,
+                                              _keepdims=keepdims, _combine_size=combine_size,
+                                              _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -41,10 +41,6 @@ class TensorArgmaxChunk(TensorReduction, TensorArgReductionMixin):
     @property
     def total_shape(self):
         return getattr(self, '_total_shape', None)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorArgmaxChunk, TensorArgmax, TensorArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -55,16 +51,12 @@ class TensorArgmaxChunk(TensorReduction, TensorArgReductionMixin):
         return keepdims_wrapper(np.max)
 
 
-class TensorArgmaxCombine(TensorReduction, TensorArgReductionMixin):
+class TensorArgmaxCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.ARGMAX_COMBINE
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
         super(TensorArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                   _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorArgmaxChunk, TensorArgmax, TensorArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -80,7 +72,7 @@ class TensorArgmax(TensorReduction, TensorArgReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorArgmaxChunk, TensorArgmax, TensorArgmaxCombine
+        return TensorArgmaxMap, TensorArgmax, TensorArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):

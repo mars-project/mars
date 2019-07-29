@@ -19,7 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
 from ..array_utils import get_array_module
-from .core import TensorReduction, TensorArgReductionMixin
+from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
 from .utils import keepdims_wrapper
 
 
@@ -31,7 +31,7 @@ def _nanargmax(x, **kwargs):
         return keepdims_wrapper(np.nanargmax)(xp.where(xp.isnan(x), np.inf, x), **kwargs)
 
 
-class TensorNanArgmaxChunk(TensorReduction, TensorArgReductionMixin):
+class TensorNanArgmaxMap(TensorReduction, TensorArgMapMixin):
     _op_type_ = OperandDef.NANARGMAX_CHUNK
 
     _offset = Int64Field('offset')
@@ -39,9 +39,9 @@ class TensorNanArgmaxChunk(TensorReduction, TensorArgReductionMixin):
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
                  combine_size=None, offset=None, total_shape=None,**kw):
-        super(TensorNanArgmaxChunk, self).__init__(_axis=axis, _dtype=dtype,
-                                                   _keepdims=keepdims, _combine_size=combine_size,
-                                                   _offset=offset, _total_shape=total_shape, **kw)
+        super(TensorNanArgmaxMap, self).__init__(_axis=axis, _dtype=dtype,
+                                                 _keepdims=keepdims, _combine_size=combine_size,
+                                                 _offset=offset, _total_shape=total_shape, **kw)
 
     @property
     def offset(self):
@@ -53,7 +53,7 @@ class TensorNanArgmaxChunk(TensorReduction, TensorArgReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorNanArgmaxChunk, TensorNanArgmax, TensorNanArgmaxCombine
+        return TensorNanArgmaxMap, TensorNanArgmax, TensorNanArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -64,16 +64,12 @@ class TensorNanArgmaxChunk(TensorReduction, TensorArgReductionMixin):
         return keepdims_wrapper(np.nanmax)
 
 
-class TensorNanArgmaxCombine(TensorReduction, TensorArgReductionMixin):
+class TensorNanArgmaxCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.NANARGMAX_COMBINE
 
     def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
         super(TensorNanArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
                                                      _combine_size=combine_size, **kw)
-
-    @staticmethod
-    def _get_op_types():
-        return TensorNanArgmaxChunk, TensorNanArgmax, TensorNanArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):
@@ -89,7 +85,7 @@ class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
 
     @staticmethod
     def _get_op_types():
-        return TensorNanArgmaxChunk, TensorNanArgmax, TensorNanArgmaxCombine
+        return TensorNanArgmaxMap, TensorNanArgmax, TensorNanArgmaxCombine
 
     @classmethod
     def _get_op_func(cls):

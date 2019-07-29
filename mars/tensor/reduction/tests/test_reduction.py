@@ -21,7 +21,7 @@ import numpy as np
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.merge import TensorConcatenate
 from mars.tensor.reduction import all, TensorMean, TensorMeanChunk, TensorMeanCombine, \
-    TensorArgmax, TensorArgmaxChunk, TensorArgmaxCombine, TensorArgmin, TensorArgminChunk, TensorArgminCombine
+    TensorArgmax, TensorArgmaxMap, TensorArgmaxCombine, TensorArgmin, TensorArgminMap, TensorArgminCombine
 
 
 class Test(unittest.TestCase):
@@ -141,8 +141,8 @@ class Test(unittest.TestCase):
         self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
         self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
         self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxChunk)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminChunk)
+        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmaxMap)
+        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgminMap)
 
         self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
         self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))

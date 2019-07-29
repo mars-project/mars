@@ -18,10 +18,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from ..array_utils import get_array_module
+from ..array_utils import as_same_device, device
 from .core import TensorReduction, TensorReductionMixin
-from .mean import TensorMeanCombine, mean_execute, mean_chunk_execute
-from .utils import nannumel, nansum_
+from .mean import TensorMeanCombine
+from .utils import nannumel, nansum_, sum_
 
 
 class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
@@ -33,7 +33,17 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        mean_chunk_execute(ctx, op, nannumel, nansum_)
+        (in_chunk,), device_id, _ = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        axis = cls.get_axis(op.axis)
+
+        with device(device_id):
+            chunk_count = nannumel(in_chunk, axis=axis, dtype=np.int64,
+                                   keepdims=bool(op.keepdims))
+            chunk_sum = nansum_(in_chunk, axis=axis, dtype=op.dtype,
+                                keepdims=bool(op.keepdims))
+            ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
 
 class TensorNanMean(TensorReduction, TensorReductionMixin):
@@ -49,8 +59,27 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        xp = get_array_module(ctx[op.inputs[0].key])
-        mean_execute(ctx, op, xp.nanmean)
+        axis = cls.get_axis(op.axis)
+
+        a = ctx[op.inputs[0].key]
+        if not isinstance(a, (list, tuple)):
+            (inp,), device_id, xp = as_same_device(
+                [a], device=op.device, ret_extra=True)
+
+            with device(device_id):
+                ctx[op.outputs[0].key] = xp.nanmean(inp, axis=axis, dtype=op.dtype,
+                                                    keepdims=bool(op.keepdims))
+        else:
+            (_data, _count), device_id, xp = as_same_device(
+                a, device=op.device, ret_extra=True)
+
+            with device(device_id):
+                chunk_count = sum_(_count, axis=axis, dtype=op.dtype,
+                                   keepdims=bool(op.keepdims))
+                chunk_sum = sum_(_data, axis=axis, dtype=op.dtype,
+                                 keepdims=bool(op.keepdims))
+                ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
+                                                        dtype=op.dtype)
 
 
 def nanmean(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):
