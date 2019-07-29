@@ -926,7 +926,7 @@ class GraphActor(SchedulerActor):
 
     @log_unhandled
     def add_fetch_tileable(self, tileable_key, tileable_id, shape, dtype, chunk_size, chunk_keys):
-        from ..tensor.expressions.utils import create_fetch_tensor
+        from ..tensor.utils import create_fetch_tensor
         tensor = create_fetch_tensor(chunk_size, shape, dtype,
                                      tileable_key, tileable_id, chunk_keys)
         self._tileable_key_to_opid[tileable_key] = tensor.op.id

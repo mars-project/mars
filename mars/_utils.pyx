@@ -176,9 +176,11 @@ cdef h_numpy(ob):
 
 cdef h_pandas_index(ob):
     if isinstance(ob, pd.RangeIndex):
+        start = getattr(ob, 'start', None) or getattr(ob, '_start')
+        stop = getattr(ob, 'stop', None) or getattr(ob, '_stop')
+        step = getattr(ob, 'step', None) or getattr(ob, '_step')
         # for range index, there is no need to get the values
-        return h_iterative([ob.name, getattr(ob, 'names', None),
-                            slice(ob._start, ob._stop, ob._step)])
+        return h_iterative([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
         return h_iterative([ob.name, getattr(ob, 'names', None), ob.values])
 

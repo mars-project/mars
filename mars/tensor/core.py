@@ -17,16 +17,13 @@
 
 from collections import Iterable, defaultdict
 from datetime import datetime
-
 import numpy as np
-
-from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, \
-    build_mode, Serializable
+from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
-from .expressions.utils import get_chunk_slices
+from .utils import get_chunk_slices
 
 import logging
 logger = logging.getLogger(__name__)
@@ -136,12 +133,12 @@ class TensorData(TileableData):
 
     @property
     def real(self):
-        from .expressions.arithmetic import real
+        from .arithmetic import real
         return real(self)
 
     @property
     def imag(self):
-        from .expressions.arithmetic import imag
+        from .arithmetic import imag
         return imag(self)
 
     @property
@@ -164,18 +161,18 @@ class TensorData(TileableData):
         if self.issparse():
             return self
 
-        from .expressions.datasource import fromdense
+        from .datasource import fromdense
         return fromdense(self)
 
     def todense(self):
         if not self.issparse():
             return self
 
-        from .expressions.datasource import fromsparse
+        from .datasource import fromsparse
         return fromsparse(self)
 
     def transpose(self, *axes):
-        from .expressions.base import transpose
+        from .base import transpose
 
         if len(axes) == 1 and isinstance(axes[0], Iterable):
             axes = axes[0]
@@ -187,7 +184,7 @@ class TensorData(TileableData):
         return self.transpose()
 
     def reshape(self, shape, *shapes):
-        from .expressions.reshape import reshape
+        from .reshape import reshape
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)
@@ -201,17 +198,17 @@ class TensorData(TileableData):
         return self is o
 
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
-        from .expressions.datastore import totiledb
+        from .datastore import totiledb
 
         return totiledb(uri, self, ctx=ctx, key=key, timestamp=timestamp)
 
     @staticmethod
     def from_dataframe(in_df):
-        from .expressions.datasource import from_dataframe
+        from .datasource import from_dataframe
         return from_dataframe(in_df)
 
     def to_dataframe(self):
-        from ..dataframe.expressions.datasource.from_tensor import from_tensor
+        from ..dataframe.datasource.from_tensor import from_tensor
         return from_tensor(self)
 
     @property
@@ -249,7 +246,7 @@ class Tensor(TileableEntity):
 
     @real.setter
     def real(self, new_real):
-        from .expressions.arithmetic.setreal import set_real
+        from .arithmetic.setreal import set_real
 
         self._data = set_real(self._data, new_real).data
 
@@ -259,7 +256,7 @@ class Tensor(TileableEntity):
 
     @imag.setter
     def imag(self, new_imag):
-        from .expressions.arithmetic.setimag import set_imag
+        from .arithmetic.setimag import set_imag
 
         self._data = set_imag(self._data, new_imag).data
 
@@ -530,9 +527,9 @@ class MutableTensor(Entity):
         2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
            size is guaranteed to less than 2 * chunk_size.
         '''
-        from .expressions.indexing.core import process_index, calc_shape
-        from .expressions.indexing.setitem import TensorIndex
-        from .expressions.utils import setitem_as_records
+        from .indexing.core import process_index, calc_shape
+        from .indexing.setitem import TensorIndex
+        from .utils import setitem_as_records
 
         tensor_index = process_index(self, tensor_index)
         output_shape = calc_shape(self.shape, tensor_index)

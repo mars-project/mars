@@ -14,7 +14,6 @@
 
 import datetime
 import itertools
-import functools
 import logging
 import sys
 import threading
@@ -22,17 +21,15 @@ import weakref
 from collections import deque, defaultdict
 from numbers import Integral
 
-import numpy as np
-
 try:
     import gevent
 except ImportError:  # pragma: no cover
     gevent = None
 
-from .operands import Fetch
+from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, calc_data_size , concat_tileable_chunks, build_fetch, calc_nsplits
+from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +81,6 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
 if gevent:
     import gevent.threadpool
     import gevent.event
-
 
     class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
         @staticmethod
@@ -265,7 +261,7 @@ class GraphExecution(object):
             # note that currently execution is the chunk-level
             # so we pass the first operand's first output to Executor.handle
             first_op = ops[0]
-            Executor.handle(first_op.outputs[0], results, self._mock)
+            Executor.handle(first_op, results, self._mock)
 
             # update maximal memory usage during execution
             if self._mock:
@@ -436,30 +432,28 @@ class Executor(object):
 
     def _preprocess(self, graph, keys):
         # TODO(xuye.qin): make an universal optimzier
-        from .tensor.execution.optimizes.core import Optimizer
+        from .tensor.optimizes.core import Optimizer
 
         Optimizer(graph, self._engine).optimize(keys=keys)
         return graph
 
-    @staticmethod
-    def _get_op_runner(chunk, mapper):
-        try:
-            op_cls = type(chunk.op)
-            return mapper[op_cls]
-        except KeyError:
-            for op_cls in mapper.keys():
-                if isinstance(chunk.op, op_cls):
-                    mapper[type(chunk.op)] = mapper[op_cls]
-                    return mapper[op_cls]
-
-            raise KeyError('No handler found for op: %s' % chunk.op)
-
     @classmethod
-    def handle(cls, chunk, results, mock=False):
-        if not mock:
-            return cls._get_op_runner(chunk, cls._op_runners)(results, chunk)
-        else:
-            return cls._get_op_runner(chunk, cls._op_size_estimators)(results, chunk)
+    def handle(cls, op, results, mock=False):
+        method_name, mapper = ('execute', cls._op_runners) if not mock else\
+            ('estimate_size', cls._op_size_estimators)
+        try:
+            runner = mapper[type(op)]
+        except KeyError:
+            runner = getattr(op, method_name)
+        try:
+            return runner(results, op)
+        except NotImplementedError:
+            for op_cls in mapper.keys():
+                if isinstance(op, op_cls):
+                    mapper[type(op)] = mapper[op_cls]
+                    runner = mapper[op_cls]
+                    return runner(results, op)
+            raise KeyError('No handler found for op: %s' % op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
                       mock=False, no_intermediate=False, compose=True, retval=True):
@@ -570,7 +564,7 @@ class Executor(object):
 
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
-        from .tensor.expressions.indexing import TensorIndex
+        from .tensor.indexing import TensorIndex
 
         results = []
         to_concat_tileables = OrderedDict()
@@ -642,81 +636,17 @@ def ignore(*_):
     pass
 
 
-def default_size_estimator(ctx, chunk, multiplier=1):
-    exec_size = 0
-    outputs = chunk.op.outputs
-    if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
-        for out in outputs:
-            ctx[out.key] = (out.nbytes, out.nbytes * multiplier)
-
-    for inp in chunk.inputs or ():
-        try:
-            exec_size += ctx[inp.key][0]
-        except KeyError:
-            if not chunk.is_sparse():
-                inp_size = calc_data_size(inp)
-                if not np.isnan(inp_size):
-                    exec_size += inp_size
-    exec_size = int(exec_size * multiplier)
-
-    total_out_size = 0
-    chunk_sizes = dict()
-    for out in outputs:
-        try:
-            chunk_size = calc_data_size(out) if not out.is_sparse() else exec_size
-            if np.isnan(chunk_size):
-                raise TypeError
-            chunk_sizes[out.key] = chunk_size
-            total_out_size += chunk_size
-        except (AttributeError, TypeError, ValueError):
-            pass
-    exec_size = max(exec_size, total_out_size)
-    for out in outputs:
-        if out.key in ctx:
-            continue
-        if out.key in chunk_sizes:
-            store_size = chunk_sizes[out.key]
-        else:
-            store_size = max(exec_size // len(outputs),
-                             total_out_size // max(len(chunk_sizes), 1))
-        try:
-            if out.is_sparse():
-                max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
-            else:
-                max_sparse_size = np.nan
-        except TypeError:  # pragma: no cover
-            max_sparse_size = np.nan
-        if not np.isnan(max_sparse_size):
-            store_size = min(store_size, max_sparse_size)
-        ctx[out.key] = (store_size, exec_size // len(outputs))
-
-
-def size_estimator_wrapper(ctx, chunk, original_estimator=None):
-    try:
-        return original_estimator(ctx, chunk)
-    except NotImplementedError:
-        return default_size_estimator(ctx, chunk)
-
-
 Executor._op_runners[Fetch] = ignore
+Executor._op_runners[ShuffleProxy] =ignore
 
 
-def register(op, handler, size_estimator=None, size_multiplier=1):
+def register(op, handler, size_estimator=None):
     Executor._op_runners[op] = handler
     if size_estimator:
-        Executor._op_size_estimators[op] = \
-            functools.partial(size_estimator_wrapper, original_estimator=size_estimator)
-    else:
-        Executor._op_size_estimators[op] = size_estimator or \
-                                           functools.partial(default_size_estimator, multiplier=size_multiplier)
+        Executor._op_size_estimators[op] = size_estimator
 
 
-# register tensor and dataframe execution handler
-from .tensor.execution.core import register_tensor_execution_handler
-
-register_tensor_execution_handler()
-del register_tensor_execution_handler
-from .dataframe.execution.core import register_dataframe_execution_handler
-
-register_dataframe_execution_handler()
-del register_dataframe_execution_handler
+# import to register operands
+from . import tensor
+from . import dataframe
+del tensor, dataframe

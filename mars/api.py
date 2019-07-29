@@ -24,7 +24,7 @@ from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, 
 from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
 from .worker.transfer import ResultSenderActor
-from .tensor.expressions.utils import slice_split
+from .tensor.utils import slice_split
 from .serialize import dataserializer
 from .utils import tokenize, merge_chunks
 

@@ -20,7 +20,7 @@ import numpy as np
 import mars.tensor as mt
 from mars.executor import Executor, register
 from mars.serialize import Int64Field
-from mars.tensor.expressions.core import TensorOperand, TensorOperandMixin
+from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
 from mars.actors import create_actor_pool, Distributor, Actor
 
@@ -59,10 +59,14 @@ class FakeOperand(TensorOperand, TensorOperandMixin):
         return self._num
 
 
+class SubFakeOperand(FakeOperand):
+    pass
+
+
 def fake_execution_maker(actor_ctx):
-    def run(ctx, chunk):
+    def run(ctx, op):
         actor = actor_ctx.create_actor(RunActor, uid='1-run')
-        ctx[chunk.key] = actor.send(chunk.op.num)
+        ctx[op.outputs[0].key] = actor.send(op.num)
 
     return run
 
@@ -84,8 +88,8 @@ class Test(unittest.TestCase):
     def testMockExecuteSize(self):
         import mars.tensor as mt
         from mars.graph import DAG
-        from mars.tensor.expressions.fetch import TensorFetch
-        from mars.tensor.expressions.arithmetic import TensorTreeAdd
+        from mars.tensor.fetch import TensorFetch
+        from mars.tensor.arithmetic import TensorTreeAdd
 
         graph_add = DAG()
         input_chunks = []
@@ -128,3 +132,35 @@ class Test(unittest.TestCase):
         # larger than maximal memory size in calc procedure
         self.assertGreaterEqual(res[0][0], 800)
         self.assertGreaterEqual(executor.mock_max_memory, 8000)
+
+    def testRegister(self):
+        from mars.graph import DAG
+
+        fake_result = np.random.rand(10, 10)
+        fake_size = (fake_result.nbytes * 2, fake_result.nbytes * 2)
+
+        def fake_execute(ctx, op):
+            ctx[op.outputs[0].key] = fake_result
+
+        def fake_estimate(ctx, op):
+            ctx[op.outputs[0].key] = fake_size
+
+        register(FakeOperand, fake_execute, fake_estimate)
+
+        graph = DAG()
+        chunk = FakeOperand().new_chunk(None, shape=(10, 10))
+        graph.add_node(chunk.data)
+
+        executor = Executor()
+        res = executor.execute_graph(graph, keys=[chunk.key])[0]
+        np.testing.assert_array_equal(res, fake_result)
+        size = executor.execute_graph(graph, keys=[chunk.key], mock=True)[0]
+        self.assertEqual(size, fake_size)
+
+        graph = DAG()
+        chunk = SubFakeOperand().new_chunk(None, shape=(10, 10))
+        graph.add_node(chunk.data)
+
+        executor = Executor()
+        res = executor.execute_graph(graph, keys=[chunk.key])[0]
+        np.testing.assert_array_equal(res, fake_result)

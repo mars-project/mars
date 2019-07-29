@@ -195,8 +195,8 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor, uid='w:1:calc-a')
 
             import mars.tensor as mt
-            from mars.tensor.expressions.datasource import TensorOnes
-            from mars.tensor.expressions.fetch import TensorFetch
+            from mars.tensor.datasource import TensorOnes
+            from mars.tensor.fetch import TensorFetch
             arr = mt.ones((10, 8), chunk_size=10)
             arr_add = mt.ones((10, 8), chunk_size=10)
             arr2 = arr + arr_add
@@ -275,7 +275,7 @@ class Test(WorkerCase):
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
-            from mars.tensor.expressions.fetch import TensorFetch
+            from mars.tensor.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
@@ -328,7 +328,7 @@ class Test(WorkerCase):
             pool.actor_ref(ChunkHolderActor.default_uid())
 
             import mars.tensor as mt
-            from mars.tensor.expressions.fetch import TensorFetch
+            from mars.tensor.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
@@ -474,7 +474,7 @@ class Test(WorkerCase):
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
-            from mars.tensor.expressions.fetch import TensorFetch
+            from mars.tensor.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add

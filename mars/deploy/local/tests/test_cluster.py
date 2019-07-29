@@ -28,8 +28,8 @@ except ImportError:
     pd = None
 
 from mars import tensor as mt
-from mars.tensor.expressions.core import TensorOperand
-from mars.tensor.expressions.arithmetic.core import TensorElementWise
+from mars.tensor.operands import TensorOperand
+from mars.tensor.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
@@ -381,8 +381,8 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r4, r1)
 
     def testFetchDataFrame(self, *_):
-        from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-        from mars.dataframe.expressions.arithmetic import add
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.arithmetic import add
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
@@ -497,9 +497,9 @@ class Test(unittest.TestCase):
                 np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
             with new_session('http://' + cluster._web_endpoint).as_default():
-                from mars.dataframe.expressions.datasource.dataframe import from_pandas as from_pandas_df
-                from mars.dataframe.expressions.datasource.series import from_pandas as from_pandas_series
-                from mars.dataframe.expressions.arithmetic import add
+                from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+                from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+                from mars.dataframe.arithmetic import add
 
                 self.assertIsInstance(Session.default_or_local()._sess, WebSession)
 

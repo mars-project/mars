@@ -15,16 +15,16 @@
 # limitations under the License.
 
 
-from .expressions.datasource import tensor, array, asarray, scalar, \
+from .datasource import tensor, array, asarray, scalar, \
     empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, from_dataframe
-from .expressions.datastore import totiledb
-from .expressions.base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
+from .datastore import totiledb
+from .base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
     average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin
-from .expressions.arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
+from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
     absolute, fabs, absolute as abs, rint, sign, degrees, radians, conj, conjugate, exp, exp2, \
@@ -37,23 +37,32 @@ from .expressions.arithmetic import add, subtract, multiply, divide, truediv as 
     maximum, minimum, floor, ceil, trunc, remainder, fmax, fmin, isfinite, isinf, isnan, \
     signbit, copysign, nextafter, spacing, clip, isclose, ldexp, frexp, modf, angle, \
     isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num
-from .expressions.linalg.tensordot import tensordot
-from .expressions.linalg.dot import dot
-from .expressions.linalg.inner import inner, innerproduct
-from .expressions.linalg.vdot import vdot
-from .expressions.linalg.matmul import matmul
-from .expressions.reduction import sum, nansum, prod, prod as product, nanprod, \
+from .linalg.tensordot import tensordot
+from .linalg.dot import dot
+from .linalg.inner import inner, innerproduct
+from .linalg.vdot import vdot
+from .linalg.matmul import matmul
+from .reduction import sum, nansum, prod, prod as product, nanprod, \
     max, max as amax, nanmax, min, min as amin, nanmin, all, any, mean, nanmean, \
     argmax, nanargmax, argmin, nanargmin, cumsum, cumprod, \
     var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
-from .expressions.reshape import reshape
-from .expressions.merge import concatenate, stack, hstack, vstack, dstack, column_stack
-from .expressions.indexing import take, compress, extract, choose, unravel_index, nonzero, flatnonzero
-from .expressions import random
-from .expressions import fft
-from .expressions import linalg
-from .expressions import lib
-from .expressions.lib.index_tricks import mgrid, ogrid, ndindex
+from .reshape import reshape
+from .merge import concatenate, stack, hstack, vstack, dstack, column_stack
+from .rechunk import rechunk
+from .lib.index_tricks import mgrid, ogrid, ndindex
+
+from . import random
+from . import fft
+from . import linalg
+from . import lib
+
+from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+
+# register fuse op and fetch op
+from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
+from .fetch import TensorFetch, TensorFetchShuffle
+from . import ufunc
+del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle, ufunc
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

@@ -38,6 +38,7 @@ except ImportError:
     def flaky(*_, **__):
         def _wrapper(obj):
             return obj
+
         return _wrapper
 
 logger = logging.getLogger(__name__)
