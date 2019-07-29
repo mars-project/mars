@@ -21,8 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import Int32Field
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device, get_array_module
-from .core import TensorReduction, TensorReductionMixin
-from .utils import sum_, numel
+from .core import TensorReduction, TensorReductionMixin, numel
 
 
 def reduce_var_square(var_square, avg_diff, count, op, axis, sum_func):
@@ -67,16 +66,16 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
 
         with device(device_id):
-            chunk_count = sum_(_count, axis=axis, dtype=np.int64,
-                                   keepdims=True)
-            chunk_sum = sum_(_data, axis=axis, dtype=dtype, keepdims=True)
+            chunk_count = xp.sum(_count, axis=axis, dtype=np.int64,
+                                 keepdims=True)
+            chunk_sum = xp.sum(_data, axis=axis, dtype=dtype, keepdims=True)
             avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
             avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
-            var_square = reduce_var_square(_var_square, avg_diff, _count, op, axis, sum_)
+            var_square = reduce_var_square(_var_square, avg_diff, _count, op, axis, xp.sum)
 
             ctx[op.outputs[0].key] = xp.true_divide(
                 var_square,
-                sum_(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
+                xp.sum(chunk_count, axis=axis, dtype=dtype, keepdims=bool(op.keepdims)) - op.ddof,
                 dtype=dtype)
 
 
@@ -108,12 +107,12 @@ class TensorMomentMap(TensorReduction, TensorReductionMixin):
         with device(device_id):
             chunk_count = numel(in_chunk, axis=axis, dtype=np.int64,
                                      keepdims=bool(op.keepdims))
-            chunk_sum = sum_(in_chunk, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            chunk_sum = xp.sum(in_chunk, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
             avg = xp.true_divide(chunk_sum, chunk_count)
             var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
             for i in range(2, moment + 1):
-                var_square[..., i - 2] = sum_((in_chunk - avg) ** i, axis=axis, dtype=dtype,
-                                              keepdims=bool(op.keepdims))
+                var_square[..., i - 2] = xp.sum((in_chunk - avg) ** i, axis=axis, dtype=dtype,
+                                                keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 
 
@@ -143,14 +142,14 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
         empty = get_array_module(_data, nosparse=True).empty
 
         with device(device_id):
-            chunk_count = sum_(_count, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
-            chunk_sum = sum_(_data, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
+            chunk_count = xp.sum(_count, axis=axis, dtype=np.int64, keepdims=bool(op.keepdims))
+            chunk_sum = xp.sum(_data, axis=axis, dtype=dtype, keepdims=bool(op.keepdims))
             avg = xp.true_divide(chunk_sum, chunk_count, dtype=dtype)
             avg_diff = xp.true_divide(_data, _count, dtype=dtype) - avg
             var_square = empty(chunk_count.shape + (moment - 1,), dtype=dtype)
 
             for m in range(2, moment + 1):
-                var_square[..., m - 2] = reduce_var_square(_var_square, avg_diff, _count, op, axis, sum_)
+                var_square[..., m - 2] = reduce_var_square(_var_square, avg_diff, _count, op, axis, xp.sum)
 
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count, var_square)
 

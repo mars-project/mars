@@ -18,17 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
-from ..array_utils import get_array_module
 from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
-from .utils import keepdims_wrapper
-
-
-def _nanargmin(x, axis, **kwargs):
-    try:
-        return keepdims_wrapper(np.nanargmin)(x, axis, **kwargs)
-    except ValueError:
-        xp = get_array_module(x)
-        return keepdims_wrapper(np.nanargmin)(xp.where(xp.isnan(x), -np.inf, x), **kwargs)
 
 
 class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
@@ -37,10 +27,12 @@ class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
     _offset = Int64Field('offset')
     _total_shape = TupleField('total_shape')
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
-                 combine_size=None, offset=None, total_shape=None,**kw):
-        super(TensorNanArgminMap, self).__init__(_axis=axis, _dtype=dtype,
-                                                 _keepdims=keepdims, _combine_size=combine_size,
+    _func_name = 'nanargmin'
+    _agg_func_name = 'nanmin'
+
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
+                 offset=None, total_shape=None,**kw):
+        super(TensorNanArgminMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
                                                  _offset=offset, _total_shape=total_shape, **kw)
 
     @property
@@ -51,44 +43,29 @@ class TensorNanArgminMap(TensorReduction, TensorArgMapMixin):
     def total_shape(self):
         return getattr(self, '_total_shape', None)
 
-    @classmethod
-    def _get_op_func(cls):
-        return _nanargmin
-
-    @classmethod
-    def _get_reduction_func(cls):
-        return keepdims_wrapper(np.nanmin)
-
 
 class TensorNanArgminCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.NANARGMIN_COMBINE
+    _func_name = 'nanargmin'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorNanArgminCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorNanArgminCombine, self).__init__(_axis=axis, _dtype=dtype,
                                                      _combine_size=combine_size, **kw)
-
-    @classmethod
-    def _get_op_func(cls):
-        return _nanargmin
 
 
 class TensorNanArgmin(TensorReduction, TensorArgReductionMixin):
     _op_type_ = OperandDef.NANARGMIN
+    _func_name = 'nanargmin'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorNanArgmin, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                              _combine_size=combine_size, **kw)
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorNanArgmin, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():
         return TensorNanArgminMap, TensorNanArgmin, TensorNanArgminCombine
 
-    @classmethod
-    def _get_op_func(cls):
-        return _nanargmin
 
-
-def nanargmin(a, axis=None, out=None, keepdims=None, combine_size=None):
+def nanargmin(a, axis=None, out=None, combine_size=None):
     """
     Return the indices of the minimum values in the specified axis ignoring
     NaNs. For all-NaN slices ``ValueError`` is raised. Warning: the results
@@ -127,5 +104,5 @@ def nanargmin(a, axis=None, out=None, keepdims=None, combine_size=None):
     array([1, 0])
 
     """
-    op = TensorNanArgmin(axis=axis, dtype=np.dtype(int), keepdims=keepdims, combine_size=combine_size)
+    op = TensorNanArgmin(axis=axis, dtype=np.dtype(int), combine_size=combine_size)
     return op(a, out=out)

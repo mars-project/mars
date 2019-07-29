@@ -14,16 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
-from .utils import keepdims_wrapper
 from .core import TensorReduction, TensorReductionMixin
 
 
 class TensorNanMin(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMIN
+    _func_name = 'nanmin'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorNanMin, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
@@ -32,10 +30,6 @@ class TensorNanMin(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorNanMin, TensorNanMin, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.nanmin)
 
 
 def nanmin(a, axis=None, out=None, keepdims=None, combine_size=None):

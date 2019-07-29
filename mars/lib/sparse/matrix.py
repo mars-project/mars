@@ -175,9 +175,7 @@ class SparseMatrix(SparseArray):
         return get_array_module(x).asarray(x)
 
     def _reduction(self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw):
-        if not todense:
-            assert keepdims is None or keepdims is False
-
+        # TODO: support keepdims
         if isinstance(axis, tuple):
             if sorted(axis) != [0, 1]:
                 assert len(axis) == 1
@@ -199,6 +197,9 @@ class SparseMatrix(SparseArray):
                       if keepdims or i not in axis)
         m = get_array_module(x)
         if m.isscalar(x):
-            return m.array([x])[0]
+            if keepdims:
+                return m.array([x])[0].reshape((1,) * self.ndim)
+            else:
+                return m.array([x])[0]
         else:
             return m.asarray(x).reshape(shape)

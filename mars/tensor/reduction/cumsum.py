@@ -24,6 +24,7 @@ from .core import TensorCumReduction, TensorCumReductionMixin
 
 class TensorCumsum(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.CUMSUM
+    _func_name = 'cumsum'
 
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorCumsum, self).__init__(_axis=axis, _dtype=dtype, **kw)
@@ -31,10 +32,6 @@ class TensorCumsum(TensorCumReduction, TensorCumReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorCumsum, TensorTreeAdd
-
-    @classmethod
-    def _get_op_func(cls):
-        return np.cumsum
 
 
 def cumsum(a, axis=None, dtype=None, out=None):

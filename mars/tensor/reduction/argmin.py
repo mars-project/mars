@@ -19,7 +19,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
 from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
-from .utils import keepdims_wrapper
 
 
 class TensorArgminMap(TensorReduction, TensorArgMapMixin):
@@ -28,10 +27,11 @@ class TensorArgminMap(TensorReduction, TensorArgMapMixin):
     _offset = Int64Field('offset')
     _total_shape = TupleField('total_shape')
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
-                 combine_size=None, offset=None, total_shape=None,**kw):
-        super(TensorArgminMap, self).__init__(_axis=axis, _dtype=dtype,
-                                              _keepdims=keepdims, _combine_size=combine_size,
+    _func_name = 'argmin'
+    _agg_func_name = 'min'
+
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, offset=None, total_shape=None,**kw):
+        super(TensorArgminMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
                                               _offset=offset, _total_shape=total_shape, **kw)
 
     @property
@@ -42,44 +42,28 @@ class TensorArgminMap(TensorReduction, TensorArgMapMixin):
     def total_shape(self):
         return getattr(self, '_total_shape', None)
 
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmin)
-
-    @classmethod
-    def _get_reduction_func(cls):
-        return keepdims_wrapper(np.min)
-
 
 class TensorArgminCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.ARGMIN_COMBINE
+    _func_name = 'argmin'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorArgminCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                                  _combine_size=combine_size, **kw)
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmin)
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorArgminCombine, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
 
 class TensorArgmin(TensorReduction, TensorArgReductionMixin):
     _op_type_ = OperandDef.ARGMIN
+    _func_name = 'argmin'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorArgmin, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                           _combine_size=combine_size, **kw)
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorArgmin, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():
         return TensorArgminMap, TensorArgmin, TensorArgminCombine
 
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmin)
 
-
-def argmin(a, axis=None, out=None, keepdims=None, combine_size=None):
+def argmin(a, axis=None, out=None, combine_size=None):
     """
     Returns the indices of the minimum values along an axis.
 
@@ -93,16 +77,6 @@ def argmin(a, axis=None, out=None, keepdims=None, combine_size=None):
     out : Tensor, optional
         If provided, the result will be inserted into this tensor. It should
         be of the appropriate shape and dtype.
-    keepdims : bool, optional
-        If this is set to True, the axes which are reduced are left
-        in the result as dimensions with size one. With this option,
-        the result will broadcast correctly against the input tensor.
-
-        If the default value is passed, then `keepdims` will not be
-        passed through to the `mean` method of sub-classes of
-        `Tensor`, however any non-default value will be.  If the
-        sub-classes `sum` method does not implement `keepdims` any
-        exceptions will be raised.
     combine_size: int, optional
         The number of chunks to combine.
 
@@ -156,5 +130,5 @@ def argmin(a, axis=None, out=None, keepdims=None, combine_size=None):
     0
 
     """
-    op = TensorArgmin(axis=axis, dtype=np.dtype(int), keepdims=keepdims, combine_size=combine_size)
+    op = TensorArgmin(axis=axis, dtype=np.dtype(int), combine_size=combine_size)
     return op(a, out=out)

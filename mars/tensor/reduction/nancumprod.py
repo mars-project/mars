@@ -20,11 +20,11 @@ from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..arithmetic.multiply import TensorTreeMultiply
 from .core import TensorCumReduction, TensorCumReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorNanCumprod(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.NANCUMPROD
+    _func_name = 'nancumprod'
 
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorNanCumprod, self).__init__(_axis=axis, _dtype=dtype, **kw)
@@ -32,10 +32,6 @@ class TensorNanCumprod(TensorCumReduction, TensorCumReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorNanCumprod, TensorTreeMultiply
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.nancumprod)
 
 
 def nancumprod(a, axis=None, dtype=None, out=None):

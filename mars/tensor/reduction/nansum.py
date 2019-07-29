@@ -19,11 +19,11 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorNanSum(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANSUM
+    _func_name = 'nansum'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorNanSum, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
@@ -32,10 +32,6 @@ class TensorNanSum(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorNanSum, TensorNanSum, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.nansum)
 
 
 def nansum(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):

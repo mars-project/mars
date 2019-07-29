@@ -24,6 +24,7 @@ from .core import TensorCumReduction, TensorCumReductionMixin
 
 class TensorCumprod(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.CUMPROD
+    _func_name = 'cumprod'
 
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorCumprod, self).__init__(_axis=axis, _dtype=dtype, **kw)
@@ -31,10 +32,6 @@ class TensorCumprod(TensorCumReduction, TensorCumReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorCumprod, TensorTreeMultiply
-
-    @classmethod
-    def _get_op_func(cls):
-        return np.cumprod
 
 
 def cumprod(a, axis=None, dtype=None, out=None):

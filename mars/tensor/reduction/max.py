@@ -14,12 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorMax(TensorReduction, TensorReductionMixin):
@@ -33,10 +30,6 @@ class TensorMax(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorMax, TensorMax, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.max)
 
 
 def max(a, axis=None, out=None, keepdims=None, combine_size=None):

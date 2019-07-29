@@ -19,11 +19,11 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorAll(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.ALL
+    _func_name = 'all'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorAll, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
@@ -32,10 +32,6 @@ class TensorAll(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorAll, TensorAll, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.all)
 
 
 def all(a, axis=None, out=None, keepdims=None, combine_size=None):

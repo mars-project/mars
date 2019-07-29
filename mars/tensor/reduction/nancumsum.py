@@ -20,11 +20,11 @@ from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..arithmetic.add import TensorTreeAdd
 from .core import TensorCumReduction, TensorCumReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorNanCumsum(TensorCumReduction, TensorCumReductionMixin):
     _op_type_ = OperandDef.NANCUMSUM
+    _func_name = 'nancumsum'
 
     def __init__(self, axis=None, dtype=None, **kw):
         super(TensorNanCumsum, self).__init__(_axis=axis, _dtype=dtype, **kw)
@@ -32,10 +32,6 @@ class TensorNanCumsum(TensorCumReduction, TensorCumReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorNanCumsum, TensorTreeAdd
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.nancumsum)
 
 
 def nancumsum(a, axis=None, dtype=None, out=None):

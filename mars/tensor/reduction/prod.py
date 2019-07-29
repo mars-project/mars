@@ -19,11 +19,11 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorProd(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.PROD
+    _func_name = 'prod'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorProd, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
@@ -32,10 +32,6 @@ class TensorProd(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorProd, TensorProd, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.prod)
 
 
 def prod(a, axis=None, dtype=None, out=None, keepdims=None, combine_size=None):

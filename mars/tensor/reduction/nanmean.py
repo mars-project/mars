@@ -19,9 +19,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
-from .core import TensorReduction, TensorReductionMixin
+from .core import TensorReduction, TensorReductionMixin, nannumel
 from .mean import TensorMeanCombine
-from .utils import nannumel, nansum_, sum_
 
 
 class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
@@ -33,7 +32,7 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        (in_chunk,), device_id, _ = as_same_device(
+        (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         axis = cls.get_axis(op.axis)
@@ -41,8 +40,8 @@ class TensorNanMeanChunk(TensorReduction, TensorReductionMixin):
         with device(device_id):
             chunk_count = nannumel(in_chunk, axis=axis, dtype=np.int64,
                                    keepdims=bool(op.keepdims))
-            chunk_sum = nansum_(in_chunk, axis=axis, dtype=op.dtype,
-                                keepdims=bool(op.keepdims))
+            chunk_sum = xp.nansum(in_chunk, axis=axis, dtype=op.dtype,
+                                  keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
 
@@ -74,10 +73,10 @@ class TensorNanMean(TensorReduction, TensorReductionMixin):
                 a, device=op.device, ret_extra=True)
 
             with device(device_id):
-                chunk_count = sum_(_count, axis=axis, dtype=op.dtype,
+                chunk_count = xp.sum(_count, axis=axis, dtype=op.dtype,
+                                     keepdims=bool(op.keepdims))
+                chunk_sum = xp.sum(_data, axis=axis, dtype=op.dtype,
                                    keepdims=bool(op.keepdims))
-                chunk_sum = sum_(_data, axis=axis, dtype=op.dtype,
-                                 keepdims=bool(op.keepdims))
                 ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
                                                         dtype=op.dtype)
 

@@ -16,6 +16,7 @@
 
 import copy
 import itertools
+import operator
 from math import ceil, log
 try:
     from collections.abc import Iterable
@@ -24,14 +25,25 @@ except ImportError:  # pragma: no cover
 
 import numpy as np
 
-from ...compat import lrange, izip, irange, builtins, six, getargspec
+from ...compat import lrange, izip, irange, builtins, six, getargspec, reduce
 from ...config import options
 from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
 from ..core import Tensor
-from ..array_utils import as_same_device, device, cp
+from ..array_utils import get_array_module, as_same_device, device, cp
 from ..utils import check_out_param, validate_axis
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
+
+
+def numel(x, **kwargs):
+    xp = get_array_module(x)
+    return xp.sum(xp.ones_like(x), **kwargs)
+
+
+def nannumel(x, **kwargs):
+    x_size = reduce(operator.mul, x.shape)
+    xp = get_array_module(x)
+    return x_size - xp.sum(xp.isnan(x), **kwargs)
 
 
 class TensorReductionMixin(TensorOperandMixin):
@@ -123,10 +135,6 @@ class TensorReductionMixin(TensorOperandMixin):
 
     @staticmethod
     def _get_op_types():
-        raise NotImplementedError
-
-    @classmethod
-    def _get_op_func(cls):
         raise NotImplementedError
 
     @classmethod
@@ -237,7 +245,8 @@ class TensorReductionMixin(TensorOperandMixin):
         (input_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         axis = cls.get_axis(op.axis)
-        reduce_func = cls._get_op_func()
+        func_name = getattr(cls, '_func_name', None)
+        reduce_func = getattr(xp, func_name)
         with device(device_id):
             if "dtype" in getargspec(reduce_func).args:
                 ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
@@ -282,8 +291,8 @@ class TensorArgReductionMixin(TensorReductionMixin):
         chunks = []
         for c in in_tensor.chunks:
             offset = cls._get_offset(in_tensor, axis, c, ravel)
-            chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, keepdims=True,
-                                     offset=offset, total_shape=in_tensor.shape,
+            chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, offset=offset,
+                                     total_shape=in_tensor.shape,
                                      combine_size=op.combine_size)
             chunk = chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis), index=c.index)
             chunks.append(chunk)
@@ -294,20 +303,18 @@ class TensorArgReductionMixin(TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        from .nanargmax import _nanargmax
-        from .nanargmin import _nanargmin
-
-        arg_func = cls._get_op_func()
         axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (vals, arg), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
 
+        func_name = getattr(cls, '_func_name')
+        arg_func = getattr(xp, func_name)
+
         with device(device_id):
-            if xp.any(xp.isnan(vals)) and arg_func in [_nanargmin, _nanargmax]:
+            if xp.any(xp.isnan(vals)) and 'nan' in func_name:
                 raise ValueError("All NaN slice encountered")
-            keepdims = bool(op.keepdims)
             if axis is None:
-                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
+                local_args = arg_func(vals, axis=axis)
                 arg = arg.ravel()[local_args]
             else:
                 local_args = arg_func(vals, axis=axis)
@@ -316,8 +323,6 @@ class TensorArgReductionMixin(TensorReductionMixin):
                     inds = [xp.asarray(it) for it in inds]
                 inds.insert(axis, local_args)
                 arg = arg[tuple(inds)]
-                if keepdims:
-                    arg = xp.expand_dims(arg, axis)
             ctx[op.outputs[0].key] = arg
 
 
@@ -328,13 +333,21 @@ class TensorArgMapMixin(TensorArgReductionMixin):
         (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        arg_func = cls._get_op_func()
+        func_name = getattr(cls, '_func_name')
+        agg_func_name = getattr(cls, '_agg_func_name')
+        arg_func = getattr(xp, func_name)
+        agg_func_name = getattr(xp, agg_func_name)
 
         offset = op.offset
-        reduction_func = getattr(cls, '_get_reduction_func')()
+        chunk = op.outputs[0]
         with device(device_id):
-            vals = reduction_func(in_chunk, axis=arg_axis, keepdims=True)
-            arg = arg_func(in_chunk, axis=arg_axis, keepdims=True)
+            vals = agg_func_name(in_chunk, axis=arg_axis).reshape(chunk.shape)
+            try:
+                arg = arg_func(in_chunk, axis=arg_axis).reshape(chunk.shape)
+            except ValueError:
+                # handle all NaN
+                arg = arg_func(xp.where(xp.isnan(in_chunk), np.inf, in_chunk),
+                               axis=arg_axis).reshape(chunk.shape)
 
             if arg_axis is None:
                 if xp == cp:
@@ -361,15 +374,15 @@ class TensorArgMapMixin(TensorArgReductionMixin):
 class TensorArgCombineMixin(TensorArgReductionMixin):
     @classmethod
     def execute(cls, ctx, op):
-        arg_func = cls._get_op_func()
         axis = cls.get_arg_axis(op.axis, op.inputs[0].ndim)
         (vals, arg), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
-        keepdims = bool(op.keepdims)
 
+        func_name = getattr(cls, '_func_name')
+        arg_func = getattr(xp, func_name)
         with device(device_id):
             if axis is None:
-                local_args = arg_func(vals, axis=axis, keepdims=keepdims)
+                local_args = arg_func(vals, axis=axis).reshape(op.outputs[0].shape)
                 vals = vals.ravel()[local_args]
                 arg = arg.ravel()[local_args]
             else:
@@ -379,11 +392,8 @@ class TensorArgCombineMixin(TensorArgReductionMixin):
                     inds = [xp.asarray(it) for it in inds]
                 inds.insert(axis, local_args)
                 inds_tuple = tuple(inds)
-                vals = vals[inds_tuple]
-                arg = arg[inds_tuple]
-                if keepdims:
-                    vals = xp.expand_dims(vals, axis)
-                    arg = xp.expand_dims(arg, axis)
+                vals = vals[inds_tuple].reshape(op.outputs[0].shape)
+                arg = arg[inds_tuple].reshape(op.outputs[0].shape)
             ctx[op.outputs[0].key] = (vals, arg)
 
 
@@ -410,7 +420,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
         if axis is None:
             raise NotImplementedError
 
-        op_type, binop_type = getattr(op, '_get_op_types')()
+        op_type, bin_op_type = getattr(op, '_get_op_types')()
 
         chunks = []
         for c in in_tensor.chunks:
@@ -436,8 +446,8 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape=shape, index=to_cum_index)
                 to_cum_chunks.append(sliced_chunk)
 
-            binop = binop_type(dtype=chunk.dtype)
-            output_chunk = binop.new_chunk(to_cum_chunks, shape=chunk.shape, index=chunk.index)
+            bin_op = bin_op_type(dtype=chunk.dtype)
+            output_chunk = bin_op.new_chunk(to_cum_chunks, shape=chunk.shape, index=chunk.index)
             output_chunks.append(output_chunk)
 
         nsplits = tuple((builtins.sum(c),) if i == axis else c for i, c in enumerate(in_tensor.nsplits))
@@ -449,7 +459,8 @@ class TensorCumReductionMixin(TensorReductionMixin):
         (x,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        cum_func = cls._get_op_func()
+        func_name = getattr(cls, '_func_name')
+        cum_func = getattr(xp, func_name)
         if xp != np:
             func = getattr(xp, cum_func.__name__)
         else:

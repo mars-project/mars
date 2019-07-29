@@ -19,8 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
-from .core import TensorReduction, TensorReductionMixin
-from .utils import numel, sum_
+from .core import TensorReduction, TensorReductionMixin, numel
 
 
 class TensorMeanChunk(TensorReduction, TensorReductionMixin):
@@ -32,7 +31,7 @@ class TensorMeanChunk(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        (in_chunk,), device_id, _ = as_same_device(
+        (in_chunk,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         axis = cls.get_axis(op.axis)
@@ -40,8 +39,8 @@ class TensorMeanChunk(TensorReduction, TensorReductionMixin):
         with device(device_id):
             chunk_count = numel(in_chunk, axis=axis, dtype=np.int64,
                                 keepdims=bool(op.keepdims))
-            chunk_sum = sum_(in_chunk, axis=axis, dtype=op.dtype,
-                             keepdims=bool(op.keepdims))
+            chunk_sum = xp.sum(in_chunk, axis=axis, dtype=op.dtype,
+                               keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
 
@@ -55,14 +54,14 @@ class TensorMeanCombine(TensorReduction, TensorReductionMixin):
     @classmethod
     def execute(cls, ctx, op):
         axis = cls.get_axis(op.axis)
-        (_data, _count), device_id, _ = as_same_device(
+        (_data, _count), device_id, xp = as_same_device(
             ctx[op.inputs[0].key], device=op.device, ret_extra=True)
 
         with device(device_id):
-            chunk_count = sum_(_count, axis=axis, dtype=np.int64,
+            chunk_count = xp.sum(_count, axis=axis, dtype=np.int64,
+                                 keepdims=bool(op.keepdims))
+            chunk_sum = xp.sum(_data, axis=axis, dtype=op.dtype,
                                keepdims=bool(op.keepdims))
-            chunk_sum = sum_(_data, axis=axis, dtype=op.dtype,
-                             keepdims=bool(op.keepdims))
             ctx[op.outputs[0].key] = (chunk_sum, chunk_count)
 
 
@@ -94,10 +93,10 @@ class TensorMean(TensorReduction, TensorReductionMixin):
                 a, device=op.device, ret_extra=True)
 
             with device(device_id):
-                chunk_count = sum_(_count, axis=axis, dtype=op.dtype,
+                chunk_count = xp.sum(_count, axis=axis, dtype=op.dtype,
+                                     keepdims=bool(op.keepdims))
+                chunk_sum = xp.sum(_data, axis=axis, dtype=op.dtype,
                                    keepdims=bool(op.keepdims))
-                chunk_sum = sum_(_data, axis=axis, dtype=op.dtype,
-                                 keepdims=bool(op.keepdims))
                 ctx[op.outputs[0].key] = xp.true_divide(chunk_sum, chunk_count,
                                                         dtype=op.dtype)
 

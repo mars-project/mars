@@ -19,7 +19,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, TupleField
 from .core import TensorReduction, TensorArgReductionMixin, TensorArgMapMixin, TensorArgCombineMixin
-from .utils import keepdims_wrapper
 
 
 class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
@@ -28,10 +27,12 @@ class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
     _offset = Int64Field('offset')
     _total_shape = TupleField('total_shape')
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None,
+    _func_name = 'argmax'
+    _agg_func_name = 'max'
+
+    def __init__(self, axis=None, dtype=np.dtype(int),
                  combine_size=None, offset=None, total_shape=None, **kw):
-        super(TensorArgmaxMap, self).__init__(_axis=axis, _dtype=dtype,
-                                              _keepdims=keepdims, _combine_size=combine_size,
+        super(TensorArgmaxMap, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
                                               _offset=offset, _total_shape=total_shape, **kw)
 
     @property
@@ -42,44 +43,29 @@ class TensorArgmaxMap(TensorReduction, TensorArgMapMixin):
     def total_shape(self):
         return getattr(self, '_total_shape', None)
 
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmax)
-
-    @classmethod
-    def _get_reduction_func(cls):
-        return keepdims_wrapper(np.max)
-
 
 class TensorArgmaxCombine(TensorReduction, TensorArgCombineMixin):
     _op_type_ = OperandDef.ARGMAX_COMBINE
+    _func_name = 'argmax'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorArgmaxCombine, self).__init__(_axis=axis, _dtype=dtype,
                                                   _combine_size=combine_size, **kw)
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmax)
 
 
 class TensorArgmax(TensorReduction, TensorArgReductionMixin):
     _op_type_ = OperandDef.ARGMAX
+    _func_name = 'argmax'
 
-    def __init__(self, axis=None, dtype=np.dtype(int), keepdims=None, combine_size=None, **kw):
-        super(TensorArgmax, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                                           _combine_size=combine_size, **kw)
+    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None, **kw):
+        super(TensorArgmax, self).__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size, **kw)
 
     @staticmethod
     def _get_op_types():
         return TensorArgmaxMap, TensorArgmax, TensorArgmaxCombine
 
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.argmax)
 
-
-def argmax(a, axis=None, out=None, keepdims=None, combine_size=None):
+def argmax(a, axis=None, out=None, combine_size=None):
     """
     Returns the indices of the maximum values along an axis.
 
@@ -146,5 +132,5 @@ def argmax(a, axis=None, out=None, keepdims=None, combine_size=None):
     1
 
     """
-    op = TensorArgmax(axis=axis, dtype=np.dtype(int), keepdims=keepdims, combine_size=combine_size)
+    op = TensorArgmax(axis=axis, dtype=np.dtype(int), combine_size=combine_size)
     return op(a, out=out)

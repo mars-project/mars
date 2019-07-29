@@ -14,16 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
 from ... import opcodes as OperandDef
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
-from .utils import keepdims_wrapper
 
 
 class TensorMin(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.MIN
+    _func_name = 'min'
 
     def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None, **kw):
         super(TensorMin, self).__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
@@ -32,10 +30,6 @@ class TensorMin(TensorReduction, TensorReductionMixin):
     @staticmethod
     def _get_op_types():
         return TensorMin, TensorMin, None
-
-    @classmethod
-    def _get_op_func(cls):
-        return keepdims_wrapper(np.min)
 
 
 def min(a, axis=None, out=None, keepdims=None, combine_size=None):
