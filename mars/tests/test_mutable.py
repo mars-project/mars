@@ -263,7 +263,7 @@ class Test(unittest.TestCase):
 
             # check dtype and value
             self.assertEqual(np.dtype(arr.dtype), expected.dtype)
-            np.testing.assert_array_equal(session.fetch(arr), expected)
+            np.testing.assert_array_equal(session.fetch(arr).view(dtype=rec_type), expected)
 
         with new_session().as_default() as session:
             testWithGivenSession(session)
@@ -401,7 +401,7 @@ class Test(unittest.TestCase):
             expected = np.full((4, 5), fill_value=123.456, dtype=dtype)
             expected[1:4, 2] = (1, 2.)
             expected[2:4] = np.arange(10).reshape(2, 5)
-            np.testing.assert_array_equal(session.fetch(arr2), expected)
+            np.testing.assert_array_equal(session.fetch(arr2).view(dtype=dtype), expected)
 
         with new_session().as_default() as session:
             testWithGivenSession(session)

@@ -93,7 +93,7 @@ def _get_range_index_stop(pd_range_index):
 
 
 def _get_range_index_step(pd_range_index):
-    return getattr(pd_range_index, 'step', None) or getattr(pd_range_index, '_stop')
+    return getattr(pd_range_index, 'step', None) or getattr(pd_range_index, '_step')
 
 
 def is_pd_range_empty(pd_range_index):
@@ -184,8 +184,6 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
 
 
 def parse_index(index_value, store_data=False, key=None):
-    import pandas as pd
-
     def _extract_property(index, ret_data):
         kw = {
             '_is_monotonic_increasing': index.is_monotonic_increasing,
