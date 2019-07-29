@@ -414,6 +414,53 @@ class Test(unittest.TestCase):
             with new_session('http://' + cluster._web_endpoint).as_default() as session:
                 testWithGivenSession(session)
 
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testMutableTensorString(self):
+        def testWithGivenSession(session):
+            from mars.tensor.core import mutable_tensor
+
+            # simple dtype.
+            mut1 = mutable_tensor("test", (4, ), dtype='<U16', chunk_size=3)
+            mut1[0] = 'a'
+            mut1[1] = 'bb'
+            mut1[2] = 'cccc'
+            mut1[3] = 'dddddddd'
+            arr1 = mut1.seal()
+
+            expected = np.empty((4,), dtype='<U16')
+            expected[0] = 'a'
+            expected[1] = 'bb'
+            expected[2] = 'cccc'
+            expected[3] = 'dddddddd'
+            np.testing.assert_array_equal(session.fetch(arr1), expected)
+
+            # structured array that contains string
+            dtype = np.dtype([('x', np.int32), ('y', '<U16')])
+            mut2 = mutable_tensor("test", (4,), dtype=dtype, chunk_size=3)
+            mut2[0] = (0, 'a')
+            mut2[1] = (1, 'bb')
+            mut2[2] = (2, 'cccc')
+            mut2[3] = (3, 'dddddddd')
+            arr2 = mut2.seal()
+
+            expected = np.empty((4,), dtype=dtype)
+            expected[0] = (0, 'a')
+            expected[1] = (1, 'bb')
+            expected[2] = (2, 'cccc')
+            expected[3] = (3, 'dddddddd')
+            np.testing.assert_array_equal(session.fetch(arr2), expected)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default():
+                testWithGivenSession(session)
+
     def assertRecordsEqual(self, records, expected):
         np.testing.assert_array_equal(records['index'], expected[:,0])
         np.testing.assert_array_equal(records['value'], expected[:,1])

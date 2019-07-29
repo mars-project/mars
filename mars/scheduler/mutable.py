@@ -99,6 +99,7 @@ class MutableTensorActor(SchedulerActor):
             sealer_ref.seal_chunk(self._session_id, self._graph_key,
                                   chunk.key, self._chunk_map[chunk.key],
                                   chunk.shape, self._record_type, self._dtype, self._fill_value)
+            sealer_ref.destroy()
         # return the hex of self._graph_key since UUID is not json serializable.
         return self._graph_key.hex, self._tensor.key, self._tensor.id, self.tensor_meta()
 
