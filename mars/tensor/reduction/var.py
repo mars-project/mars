@@ -21,7 +21,7 @@ from ...serialize import Int32Field
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
 from .utils import sum_, numel, moment_chunk_execute, moment_execute, var_execute, \
-    moment_combine_execcute
+    moment_combine_execute
 
 
 class TensorMoment(TensorReduction, TensorReductionMixin):
@@ -86,7 +86,7 @@ class TensorMomentCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_combine_execcute(ctx, op, sum_)
+        moment_combine_execute(ctx, op, sum_)
 
 
 class TensorVar(TensorReduction, TensorReductionMixin):

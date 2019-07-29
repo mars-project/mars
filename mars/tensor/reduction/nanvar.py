@@ -21,7 +21,7 @@ from ...serialize import Int32Field
 from ..datasource import tensor as astensor
 from .core import TensorReduction, TensorReductionMixin
 from .utils import nansum_, nannumel, var_execute, moment_execute, moment_chunk_execute,\
-    moment_combine_execcute
+    moment_combine_execute
 
 
 class TensorNanMoment(TensorReduction, TensorReductionMixin):
@@ -86,7 +86,7 @@ class TensorNanMomentCombine(TensorReduction, TensorReductionMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        moment_combine_execcute(ctx, op, nansum_)
+        moment_combine_execute(ctx, op, nansum_)
 
 
 class TensorNanVar(TensorReduction, TensorReductionMixin):

@@ -373,7 +373,6 @@ class Test(unittest.TestCase):
             with new_session('http://' + cluster._web_endpoint).as_default():
                 testWithGivenSession(session)
 
-
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorFillValue(self):
         def testWithGivenSession(session):
@@ -412,7 +411,7 @@ class Test(unittest.TestCase):
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
-            with new_session('http://' + cluster._web_endpoint).as_default():
+            with new_session('http://' + cluster._web_endpoint).as_default() as session:
                 testWithGivenSession(session)
 
     def assertRecordsEqual(self, records, expected):

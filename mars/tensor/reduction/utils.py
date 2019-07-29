@@ -174,7 +174,7 @@ def _reduce_var_square(var_square, avg_diff, count, op, axis, sum_func):
     return reduced_var_square
 
 
-def moment_combine_execcute(ctx, op, sum_func):
+def moment_combine_execute(ctx, op, sum_func):
     axis = get_axis(op.axis)
     moment = op.moment
     dtype = op.dtype
