@@ -85,15 +85,15 @@ def get_fuse_op_cls():
 
 
 def _get_range_index_start(pd_range_index):
-    return getattr(pd_range_index, 'start', getattr(pd_range_index, '_start'))
+    return getattr(pd_range_index, 'start', None) or getattr(pd_range_index, '_start')
 
 
 def _get_range_index_stop(pd_range_index):
-    return getattr(pd_range_index, 'stop', getattr(pd_range_index, '_stop'))
+    return getattr(pd_range_index, 'stop', None) or getattr(pd_range_index, '_stop')
 
 
 def _get_range_index_step(pd_range_index):
-    return getattr(pd_range_index, 'step', getattr(pd_range_index, '_step'))
+    return getattr(pd_range_index, 'step', None) or getattr(pd_range_index, '_stop')
 
 
 def is_pd_range_empty(pd_range_index):

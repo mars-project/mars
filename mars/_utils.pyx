@@ -176,14 +176,9 @@ cdef h_numpy(ob):
 
 cdef h_pandas_index(ob):
     if isinstance(ob, pd.RangeIndex):
-        try:
-            start = ob.start
-            stop = ob.stop
-            step = ob.step
-        except AttributeError:
-            start = ob._start
-            stop = ob._stop
-            step = ob._step
+        start = getattr(ob, 'start', None) or getattr(ob, '_start')
+        stop = getattr(ob, 'stop', None) or getattr(ob, '_stop')
+        step = getattr(ob, 'step', None) or getattr(ob, '_step')
         # for range index, there is no need to get the values
         return h_iterative([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
