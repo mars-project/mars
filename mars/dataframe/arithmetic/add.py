@@ -16,10 +16,12 @@ import operator
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, Float64Field
+from ...serialize import AnyField, Float64Field, KeyField
 from ...utils import classproperty
 from ..operands import DataFrameOperand
-from .core import DataFrameBinOpMixin
+from ..utils import wrap_exception
+from .core import DataFrameBinOpMixin, DATAFRAME_TYPE
+
 
 class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _op_type_ = OperandDef.ADD
@@ -31,7 +33,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _rhs = KeyField('rhs')
     _func_name = 'add'
 
-    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, **kw):
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
         super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
                                            _fill_value=fill_value,
                                            _object_type=object_type, _lhs=lhs, _rhs=rhs,
@@ -54,10 +56,6 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
         return self._fill_value
 
     @property
-    def scalar_value(self):
-        return self._scalar_value
-
-    @property
     def lhs(self):
         return self._lhs
 
@@ -77,6 +75,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
                 self._rhs = self._inputs[0]
 
 
+@wrap_exception
 def add(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
@@ -85,9 +84,10 @@ def add(df, other, axis='columns', level=None, fill_value=None):
     return op(df, other)
 
 
+@wrap_exception
 def radd(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        raise NotImplementedError('Only support add with dataframe or scalar!')
+        return NotImplementedError('Only support add with dataframe or scalar!')
     return op.rcall(df, other)

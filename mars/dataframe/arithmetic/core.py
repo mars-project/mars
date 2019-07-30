@@ -665,10 +665,18 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
         func_name = getattr(cls, '_func_name')
-        ctx[op.outputs[0].key] = getattr(left, func_name)(right, axis=op.axis,
-                                                          level=op.level, fill_value=op.fill_value)
+        if len(op.inputs) == 2:
+            df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+        elif np.isscalar(op.lhs):
+            df = ctx[op.rhs.key]
+            other = op.lhs
+        else:
+            df = ctx[op.lhs.key]
+            other = op.rhs
+
+        ctx[op.outputs[0].key] = getattr(df, func_name)(other, axis=op.axis,
+                                                        level=op.level, fill_value=op.fill_value)
 
     @classproperty
     def _operator(self):
