@@ -269,10 +269,21 @@ class Test(TestBase):
         expected = pdf + 1
         result = self.executor.execute_dataframe(add(df, 1), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
+        result2 = self.executor.execute_dataframe(df + 1, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result2)
+        result3 = self.executor.execute_dataframe(df.add(1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result3)
 
         # test scalar + dataframe
-        result2 = self.executor.execute_dataframe(add(1, df), concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result2)
+        result4 = self.executor.execute_dataframe(add(1, df), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result4)
+
+        expected2 = 1 + pdf
+        result5 = self.executor.execute_dataframe(1 + df, concat=True)[0]
+        pd.testing.assert_frame_equal(expected2, result5)
+
+        result6 = self.executor.execute_dataframe(df.radd(1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected2, result6)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))

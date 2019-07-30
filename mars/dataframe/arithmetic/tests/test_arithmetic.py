@@ -662,9 +662,23 @@ class Test(TestBase):
         df = from_pandas(data, chunk_size=5)
         # test add with scalar
         result = add(df, 1)
+        result2 = df.add(1)
+
         # test radd with scalar
-        result2 = df.radd(1)
-        pd.testing.assert_index_equal(add(df, 1).columns.to_pandas(), data.columns)
+        result3 = df.radd(1)
+        result4 = df + 1
+        result5 = 1 + df
+        pd.testing.assert_index_equal(result.columns.to_pandas(), data.columns)
         self.assertIsInstance(result.index_value.value, IndexValue.Int64Index)
-        pd.testing.assert_index_equal(df.radd(1).columns.to_pandas(), data.columns)
+
+        pd.testing.assert_index_equal(result2.columns.to_pandas(), data.columns)
         self.assertIsInstance(result2.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result3.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result3.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result4.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result4.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result5.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result5.index_value.value, IndexValue.Int64Index)

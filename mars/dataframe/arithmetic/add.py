@@ -68,20 +68,20 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     def _set_inputs(self, inputs):
         super(DataFrameAdd, self)._set_inputs(inputs)
         if len(self._inputs) == 2:
-            self._lhs = inputs[0]
-            self._rhs = inputs[1]
+            self._lhs = self._inputs[0]
+            self._rhs = self._inputs[1]
         else:
             if isinstance(self._lhs, DATAFRAME_TYPE):
-                self._lhs = inputs[0]
+                self._lhs = self._inputs[0]
             elif np.isscalar(self._lhs):
-                self._rhs = inputs[0]
+                self._rhs = self._inputs[0]
 
 
 def add(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        raise NotImplementedError('Only support add with dataframe or scalar!')
+        return NotImplementedError('Only support add with dataframe or scalar!')
     return op(df, other)
 
 
