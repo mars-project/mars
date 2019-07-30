@@ -32,6 +32,8 @@ TIMELINE_APP_NAME = 'bk_worker_timeline'
 _TIMELINE_PALETTE = ['#0072B2', '#E69F00', '#F0E442', '#009E73', '#56B4E9',
                      '#D55E00', '#CC79A7', '#000000']
 
+_dtype_datetime64_us = np.datetime64(datetime.now(), 'us').dtype
+
 
 class WorkerListHandler(MarsRequestHandler):
     def get(self):
@@ -129,8 +131,8 @@ class EventUpdater(object):
 
         for ev_type in ProcedureEventType.__members__.values():
             df = event_dfs[ev_type] = pd.DataFrame(dict(
-                left=np.array(lefts[ev_type], dtype=np.datetime64),
-                right=np.array(rights[ev_type], dtype=np.datetime64),
+                left=np.array(lefts[ev_type], dtype=_dtype_datetime64_us),
+                right=np.array(rights[ev_type], dtype=_dtype_datetime64_us),
                 top=np.array(tops[ev_type], dtype=np.float32),
                 bottom=np.array(bottoms[ev_type], dtype=np.float32),
             ), columns=['left', 'right', 'top', 'bottom'])
