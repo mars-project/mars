@@ -67,12 +67,12 @@ class TensorElementWiseWithInputs(TensorElementWise):
     def _new_tileables(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
         return super(TensorElementWiseWithInputs, self)._new_tileables(
-                inputs, kws=kws, **kw)
+            inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         self._set_sparse(inputs)
         return super(TensorElementWiseWithInputs, self)._new_chunks(
-                inputs, kws=kws, **kw)
+            inputs, kws=kws, **kw)
 
 
 def _handle_out_dtype(val, dtype):

@@ -16,6 +16,7 @@ import itertools
 import unittest
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -353,7 +354,7 @@ class Test(TestBase):
         self.assertEqual(len(proxy_keys), 2)
 
         data4 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
-                            columns=[np.random.bytes(10) for _ in range(10)])
+                             columns=[np.random.bytes(10) for _ in range(10)])
         df4 = from_pandas(data4, chunk_size=3)
 
         data5 = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
@@ -654,3 +655,39 @@ class Test(TestBase):
             self.assertEqual(c2.index, c1.index)
             pd.testing.assert_index_equal(c2.columns.to_pandas(), c1.columns.to_pandas())
             pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
+
+    def testAddScalar(self):
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                            columns=np.arange(3, 13))
+        df = from_pandas(data, chunk_size=5)
+        # test add with scalar
+        result = add(df, 1)
+        result2 = df.add(1)
+
+        # test radd with scalar
+        result3 = df.radd(1)
+        result4 = df + 1
+        result5 = 1 + df
+        pd.testing.assert_index_equal(result.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result2.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result2.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result3.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result3.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result4.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result4.index_value.value, IndexValue.Int64Index)
+
+        pd.testing.assert_index_equal(result5.columns.to_pandas(), data.columns)
+        self.assertIsInstance(result5.index_value.value, IndexValue.Int64Index)
+
+        # test NotImplemented, use other's radd instead
+        class TestRadd:
+            def __radd__(self, other):
+                return 1
+
+        other = TestRadd()
+        ret = df + other
+        self.assertEqual(ret, 1)

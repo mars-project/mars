@@ -232,11 +232,17 @@ class Test(TestBase):
         df1 = from_pandas(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10))
         df2 = from_pandas(data2, chunk_size=6)
-        radd = getattr(df2, '__radd__')
-        df3 = radd(df1, df2)
+        df3 = df1.radd(df2)
         result = self.executor.execute_dataframe(df3, concat=True)[0]
         expected = data1 + data2
         pd.testing.assert_frame_equal(expected, result)
+
+        data3 = pd.DataFrame(np.random.rand(10, 10))
+        df4 = from_pandas(data3, chunk_size=5)
+        df5 = df4.radd(1)
+        result = self.executor.execute_dataframe(df5, concat=True)[0]
+        expected2 = data3 + 1
+        pd.testing.assert_frame_equal(expected2, result)
 
     def testAddWithMultiForms(self):
         # test multiple forms of add
@@ -255,6 +261,29 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected, result)
         result = self.executor.execute_dataframe(df1.radd(df2), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
+
+    def testAddScalar(self):
+        # test dataframe + scalar
+        pdf = pd.DataFrame(np.random.rand(10, 10))
+        df = from_pandas(pdf, chunk_size=2)
+        expected = pdf + 1
+        result = self.executor.execute_dataframe(add(df, 1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+        result2 = self.executor.execute_dataframe(df + 1, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result2)
+        result3 = self.executor.execute_dataframe(df.add(1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result3)
+
+        # test scalar + dataframe
+        result4 = self.executor.execute_dataframe(add(1, df), concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result4)
+
+        expected2 = 1 + pdf
+        result5 = self.executor.execute_dataframe(1 + df, concat=True)[0]
+        pd.testing.assert_frame_equal(expected2, result5)
+
+        result6 = self.executor.execute_dataframe(df.radd(1), concat=True)[0]
+        pd.testing.assert_frame_equal(expected2, result6)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))

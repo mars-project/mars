@@ -632,18 +632,51 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                      index_value=df.index_value, columns_value=df.columns)
 
     @classmethod
+    def _tile_scalar(cls, op):
+        new_op = op.copy()
+
+        if np.isscalar(op.lhs):
+            chunks = op.rhs.chunks
+            nsplits = op.rhs.nsplits
+        else:
+            chunks = op.lhs.chunks
+            nsplits = op.lhs.nsplits
+
+        df = op.outputs[0]
+        out_chunks = []
+        for chunk in chunks:
+            out_op = op.copy().reset_key()
+            out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index,
+                                         index_value=chunk.index_value,
+                                         columns_value=chunk.columns)
+
+            out_chunks.append(out_chunk)
+
+        return new_op.new_dataframes(op.inputs, df.shape, nsplits=nsplits, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns, chunks=out_chunks)
+
+    @classmethod
     def tile(cls, op):
         if all(isinstance(inp, DATAFRAME_TYPE) for inp in op.inputs):
             return cls._tile_both_dataframes(op)
-
+        elif any(np.isscalar(inp) for inp in op.inputs):
+            return cls._tile_scalar(op)
         raise NotImplementedError
 
     @classmethod
     def execute(cls, ctx, op):
-        left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
         func_name = getattr(cls, '_func_name')
-        ctx[op.outputs[0].key] = getattr(left, func_name)(right, axis=op.axis,
-                                                          level=op.level, fill_value=op.fill_value)
+        if len(op.inputs) == 2:
+            df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+        elif np.isscalar(op.lhs):
+            df = ctx[op.rhs.key]
+            other = op.lhs
+        else:
+            df = ctx[op.lhs.key]
+            other = op.rhs
+
+        ctx[op.outputs[0].key] = getattr(df, func_name)(other, axis=op.axis,
+                                                        level=op.level, fill_value=op.fill_value)
 
     @classproperty
     def _operator(self):
@@ -653,7 +686,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _calc_properties(cls, x1, x2):
         dtypes = columns = index = None
         index_shape = column_shape = np.nan
-
         if x1.columns.key == x2.columns.key:
             dtypes = x1.dtypes
             column_shape = len(dtypes)
@@ -680,7 +712,12 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 'columns_value': columns, 'index_value': index}
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        properties = self._calc_properties(*inputs)
+        if len(inputs) == 1:
+            properties = {'shape': inputs[0].shape, 'dtypes': inputs[0].dtypes, 'columns_value': inputs[0].columns,
+                          'index_value': inputs[0].index_value}
+        else:
+            properties = self._calc_properties(*inputs)
+
         shapes = [properties.pop('shape')]
         shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
         if 'shape' in kw:
@@ -700,14 +737,20 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             kw = self._calc_properties(x1, x2)
             shape = kw.pop('shape', None)
             return self.new_dataframe([x1, x2], shape, **kw)
-        else:
-            raise NotImplementedError('Only support add two dataframes for now')
+        elif np.isscalar(x1) or np.isscalar(x2):
+            setattr(self, '_object_type', ObjectType.dataframe)
+            df = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
+            kw = {'dtypes': df.dtypes,
+                  'columns_value': df.columns, 'index_value': df.index_value}
+            shape = df.shape
+            return self.new_dataframe([x1, x2], shape, **kw)
+        raise NotImplementedError('Only support add dataframe or scalar for now')
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)
 
     def rcall(self, x1, x2):
-        return self._call(x1, x2)
+        return self._call(x2, x1)
 
 
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):
