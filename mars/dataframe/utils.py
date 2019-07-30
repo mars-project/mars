@@ -143,7 +143,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     else:
         col_chunk_size = normalize_chunk_sizes((shape[1],), (chunk_size[1],))[0]
         acc = [0] + np.cumsum(col_chunk_size).tolist()
-        col_chunk_store = [average_memory_usage[acc[i]: acc[i+1]].sum()
+        col_chunk_store = [average_memory_usage[acc[i]: acc[i + 1]].sum()
                            for i in range(len(col_chunk_size))]
         col_left_size = 0
 
@@ -155,7 +155,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
             cs = min(col_left_size, dim_size)
             col_chunk_size.append(cs)
             start = int(np.sum(col_chunk_size[:-1]))
-            col_chunk_store.append(average_memory_usage[start: start+cs].sum())
+            col_chunk_store.append(average_memory_usage[start: start + cs].sum())
             col_left_size -= cs
         if row_left_size > 0:
             max_col_chunk_store = max(col_chunk_store)
@@ -431,3 +431,13 @@ def filter_index_value(index_value, min_max, store_data=False):
         f = f & (pd_index < max_val)
 
     return parse_index(pd_index[f], store_data=store_data)
+
+
+def wrap_notimplemented_exception(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except NotImplementedError:
+            return NotImplemented
+
+    return wrapper
