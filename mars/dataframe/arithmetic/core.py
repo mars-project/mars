@@ -683,7 +683,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError
 
     @classmethod
-    def _calc_properties(cls, x1, x2=None):
+    def _calc_properties(cls, x1, x2):
         dtypes = columns = index = None
         index_shape = column_shape = np.nan
         if x1.columns.key == x2.columns.key:
