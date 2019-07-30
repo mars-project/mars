@@ -80,7 +80,7 @@ def add(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        return NotImplementedError('Only support add with dataframe or scalar!')
+        raise NotImplementedError('Only support add with dataframe or scalar!')
     return op(df, other)
 
 
@@ -89,5 +89,5 @@ def radd(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        return NotImplementedError('Only support add with dataframe or scalar!')
+        raise NotImplementedError('Only support add with dataframe or scalar!')
     return op.rcall(df, other)
