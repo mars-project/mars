@@ -102,7 +102,7 @@ cdef class ProtobufSerializeProvider(Provider):
             return
         try:
             return np.dtype(obj.dtype)
-        except TypeError:
+        except (TypeError, ValueError):
             return np.dtype(pickle.loads(obj.dtype))
 
     cdef inline void _set_index(self, value, obj, tp=None) except *:
