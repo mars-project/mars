@@ -683,8 +683,11 @@ class Test(TestBase):
         pd.testing.assert_index_equal(result5.columns.to_pandas(), data.columns)
         self.assertIsInstance(result5.index_value.value, IndexValue.Int64Index)
 
-        # test NotImplemented
-        from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-        series = from_pandas_series(pd.Series([1, 2, 3]))
-        ret = df.add(series)
-        self.assertEqual(ret, NotImplemented)
+        # test NotImplemented, use other's radd instead
+        class TestRadd:
+            def __radd__(self, other):
+                return 1
+
+        other = TestRadd()
+        ret = df + other
+        self.assertEqual(ret, 1)
