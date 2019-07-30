@@ -433,7 +433,7 @@ def filter_index_value(index_value, min_max, store_data=False):
     return parse_index(pd_index[f], store_data=store_data)
 
 
-def wrap_exception(func):
+def wrap_notimplemented_exception(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

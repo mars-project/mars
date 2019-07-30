@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
 from .add import add, DataFrameAdd
 
@@ -20,8 +21,8 @@ def _install():
     from ..operands import DATAFRAME_TYPE
     from .add import add, radd
     for cls in DATAFRAME_TYPE:
-        setattr(cls, '__add__', add)
-        setattr(cls, '__radd__', radd)
+        setattr(cls, '__add__', wrap_notimplemented_exception(add))
+        setattr(cls, '__radd__', wrap_notimplemented_exception(radd))
         setattr(cls, 'add', add)
         setattr(cls, 'radd', radd)
 

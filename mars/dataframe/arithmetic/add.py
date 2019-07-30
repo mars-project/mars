@@ -19,7 +19,6 @@ from ... import opcodes as OperandDef
 from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..operands import DataFrameOperand
-from ..utils import wrap_exception
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE
 
 
@@ -75,7 +74,6 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
                 self._rhs = self._inputs[0]
 
 
-@wrap_exception
 def add(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
@@ -84,7 +82,6 @@ def add(df, other, axis='columns', level=None, fill_value=None):
     return op(df, other)
 
 
-@wrap_exception
 def radd(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
