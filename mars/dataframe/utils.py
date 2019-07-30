@@ -437,7 +437,7 @@ def wrap_exception(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except NotImplementedError as e:
-            print(e)
+        except NotImplementedError:
+            return NotImplemented
 
     return wrapper

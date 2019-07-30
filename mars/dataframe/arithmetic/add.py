@@ -16,7 +16,7 @@ import operator
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, Float64Field, KeyField
+from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..operands import DataFrameOperand
 from ..utils import wrap_exception
@@ -29,8 +29,8 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _axis = AnyField('axis')
     _level = AnyField('level')
     _fill_value = Float64Field('fill_value')
-    _lhs = KeyField('lhs')
-    _rhs = KeyField('rhs')
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
     _func_name = 'add'
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
