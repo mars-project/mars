@@ -92,6 +92,37 @@ class Test(unittest.TestCase):
         t.tiles()
         self.assertFalse(t.chunks[0].op.sparse)
 
+    def testAddOrder(self):
+        raw_a = np.random.rand(4, 2)
+        raw_b = np.asfortranarray(np.random.rand(4, 2))
+        t1 = tensor(raw_a)
+        t2 = tensor(raw_b)
+        out = tensor(raw_b)
+
+        # C + scalar
+        self.assertEqual((t1 + 1).flags['C_CONTIGUOUS'], (raw_a + 1).flags['C_CONTIGUOUS'])
+        self.assertEqual((t1 + 1).flags['F_CONTIGUOUS'], (raw_a + 1).flags['F_CONTIGUOUS'])
+        # C + C
+        self.assertEqual((t1 + t1).flags['C_CONTIGUOUS'], (raw_a + raw_a).flags['C_CONTIGUOUS'])
+        self.assertEqual((t1 + t1).flags['F_CONTIGUOUS'], (raw_a + raw_a).flags['F_CONTIGUOUS'])
+        # F + scalar
+        self.assertEqual((t2 + 1).flags['C_CONTIGUOUS'], (raw_b + 1).flags['C_CONTIGUOUS'])
+        self.assertEqual((t2 + 1).flags['F_CONTIGUOUS'], (raw_b + 1).flags['F_CONTIGUOUS'])
+        # F + F
+        self.assertEqual((t2 + t2).flags['C_CONTIGUOUS'], (raw_b + raw_b).flags['C_CONTIGUOUS'])
+        self.assertEqual((t2 + t2).flags['F_CONTIGUOUS'], (raw_b + raw_b).flags['F_CONTIGUOUS'])
+        # C + F
+        self.assertEqual((t1 + t2).flags['C_CONTIGUOUS'], (raw_a + raw_b).flags['C_CONTIGUOUS'])
+        self.assertEqual((t1 + t2).flags['F_CONTIGUOUS'], (raw_a + raw_b).flags['F_CONTIGUOUS'])
+        # C + C + out
+        self.assertEqual(add(t1, t1, out=out).flags['C_CONTIGUOUS'],
+                         np.add(raw_a, raw_a, out=np.empty((4, 2), order='F')).flags['C_CONTIGUOUS'])
+        self.assertEqual(add(t1, t1, out=out).flags['F_CONTIGUOUS'],
+                         np.add(raw_a, raw_a, out=np.empty((4, 2), order='F')).flags['F_CONTIGUOUS'])
+
+        with self.assertRaises(TypeError):
+            add(t1, 1, order='B')
+
     def testMultiply(self):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
@@ -347,6 +378,22 @@ class Test(unittest.TestCase):
         self.assertIsInstance(o1.inputs[0].op, op_type)
         self.assertIsNot(o2.inputs[0], t1)
 
+    def testFrexpOrder(self):
+        raw1 = np.asfortranarray(np.random.rand(2, 4))
+        t = tensor(raw1)
+        o1 = tensor(np.random.rand(2, 4))
+
+        o1, o2 = frexp(t, out1=o1)
+
+        self.assertEqual(o1.flags['C_CONTIGUOUS'],
+                         np.frexp(raw1, np.empty((2, 4)))[0].flags['C_CONTIGUOUS'])
+        self.assertEqual(o1.flags['F_CONTIGUOUS'],
+                         np.frexp(raw1, np.empty((2, 4)))[0].flags['F_CONTIGUOUS'])
+        self.assertEqual(o2.flags['C_CONTIGUOUS'],
+                         np.frexp(raw1)[1].flags['C_CONTIGUOUS'])
+        self.assertEqual(o2.flags['F_CONTIGUOUS'],
+                         np.frexp(raw1)[1].flags['F_CONTIGUOUS'])
+
     def testDtype(self):
         t1 = ones((2, 3), dtype='f4', chunk_size=2)
 
@@ -366,6 +413,34 @@ class Test(unittest.TestCase):
 
         t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
+
+    def testNegativeOrder(self):
+        raw1 = np.random.rand(4, 2)
+        raw2 = np.asfortranarray(np.random.rand(4, 2))
+        t1 = tensor(raw1)
+        t2 = tensor(raw2)
+        t3 = tensor(raw1)
+        t4 = tensor(raw2)
+
+        # C
+        self.assertEqual(negative(t1).flags['C_CONTIGUOUS'], np.negative(raw1).flags['C_CONTIGUOUS'])
+        self.assertEqual(negative(t1).flags['F_CONTIGUOUS'], np.negative(raw1).flags['F_CONTIGUOUS'])
+        # F
+        self.assertEqual(negative(t2).flags['C_CONTIGUOUS'], np.negative(raw2).flags['C_CONTIGUOUS'])
+        self.assertEqual(negative(t2).flags['F_CONTIGUOUS'], np.negative(raw2).flags['F_CONTIGUOUS'])
+        # C + out
+        self.assertEqual(negative(t1, out=t4).flags['C_CONTIGUOUS'],
+                         np.negative(raw1, out=np.empty((4, 2), order='F')).flags['C_CONTIGUOUS'])
+        self.assertEqual(negative(t1, out=t4).flags['F_CONTIGUOUS'],
+                         np.negative(raw1, out=np.empty((4, 2), order='F')).flags['F_CONTIGUOUS'])
+        # F + out
+        self.assertEqual(negative(t2, out=t3).flags['C_CONTIGUOUS'],
+                         np.negative(raw1, out=np.empty((4, 2), order='C')).flags['C_CONTIGUOUS'])
+        self.assertEqual(negative(t2, out=t3).flags['F_CONTIGUOUS'],
+                         np.negative(raw1, out=np.empty((4, 2), order='C')).flags['F_CONTIGUOUS'])
+
+        with self.assertRaises(TypeError):
+            negative(t1, order='B')
 
     def testCos(self):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()

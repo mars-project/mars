@@ -30,9 +30,17 @@ class TensorOperandMixin(TileableOperandMixin):
         dtype = kw.pop('dtype', None)
         return dtype[i] if isinstance(dtype, (list, tuple)) else dtype
 
-    @staticmethod
-    def _get_order(kw, i):
-        order = kw.pop('order', None) or TensorOrder.C_ORDER
+    def _get_order(self, kw, i):
+        inputs = self._inputs or []
+        order = kw.pop('order', None)
+        if order is None:
+            if len(inputs) == 0:
+                order = TensorOrder.C_ORDER
+            elif any(inp.order == TensorOrder.C_ORDER for inp in inputs):
+                order = TensorOrder.C_ORDER
+            else:
+                order = TensorOrder.F_ORDER
+
         return order[i] if isinstance(order, (list, tuple)) else order
 
     def _create_chunk(self, output_idx, index, **kw):

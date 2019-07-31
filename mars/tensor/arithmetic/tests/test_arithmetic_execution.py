@@ -22,7 +22,7 @@ import scipy.sparse as sps
 from mars.compat import six
 from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor, zeros
-from mars.tensor.arithmetic import add, truediv, frexp, \
+from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose
 from mars.config import option_context
 
@@ -53,6 +53,20 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr2)
 
         self.assertTrue((res[0] == data[:2, :2, :2] + 1).all())
+
+    def testBaseOrderExecution(self):
+        raw = np.asfortranarray(np.random.rand(5, 6))
+        arr = tensor(raw, chunk_size=3)
+
+        res = self.executor.execute_tensor(arr + 1, concat=True)[0]
+        np.testing.assert_array_equal(res, raw + 1)
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+
+        res2 = self.executor.execute_tensor(add(arr, 1, order='C'), concat=True)[0]
+        np.testing.assert_array_equal(res2, np.add(raw, 1, order='C'))
+        self.assertTrue(res2.flags['C_CONTIGUOUS'])
+        self.assertFalse(res2.flags['F_CONTIGUOUS'])
 
     @staticmethod
     def _get_func(op):
@@ -300,6 +314,20 @@ class Test(unittest.TestCase):
         expected = sum(np.frexp(data1.toarray()))
         np.testing.assert_equal(res.toarray(), expected)
 
+    def testFrexpOrderExecution(self):
+        data1 = np.random.random((5, 9))
+        t = tensor(data1, chunk_size=3)
+
+        o1, o2 = frexp(t, order='F')
+        res1, res2 = self.executor.execute_tileables([o1, o2])
+        expected1, expected2 = np.frexp(data1, order='F')
+        np.testing.assert_allclose(res1, expected1)
+        self.assertTrue(res1.flags['F_CONTIGUOUS'])
+        self.assertFalse(res1.flags['C_CONTIGUOUS'])
+        np.testing.assert_allclose(res2, expected2)
+        self.assertTrue(res2.flags['F_CONTIGUOUS'])
+        self.assertFalse(res2.flags['C_CONTIGUOUS'])
+
     def testModfExecution(self):
         data1 = np.random.random((5, 9))
 
@@ -332,6 +360,20 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(o, concat=True)[0]
         expected = sum(np.modf(data1.toarray()))
         np.testing.assert_equal(res.toarray(), expected)
+
+    def testModfOrderExecution(self):
+        data1 = np.random.random((5, 9))
+        t = tensor(data1, chunk_size=3)
+
+        o1, o2 = modf(t, order='F')
+        res1, res2 = self.executor.execute_tileables([o1, o2])
+        expected1, expected2 = np.modf(data1, order='F')
+        np.testing.assert_allclose(res1, expected1)
+        self.assertTrue(res1.flags['F_CONTIGUOUS'])
+        self.assertFalse(res1.flags['C_CONTIGUOUS'])
+        np.testing.assert_allclose(res2, expected2)
+        self.assertTrue(res2.flags['F_CONTIGUOUS'])
+        self.assertFalse(res2.flags['C_CONTIGUOUS'])
 
     def testClipExecution(self):
         a_data = np.arange(10)
@@ -403,6 +445,24 @@ class Test(unittest.TestCase):
         expected = np.around(data.toarray(), decimals=2)
 
         np.testing.assert_allclose(res.toarray(), expected)
+
+    def testCosOrderExecution(self):
+        data = np.asfortranarray(np.random.rand(3, 5))
+        x = tensor(data, chunk_size=2)
+
+        t = cos(x)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        np.testing.assert_allclose(res, np.cos(data))
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+
+        t2 = cos(x, order='C')
+
+        res2 = self.executor.execute_tensor(t2, concat=True)[0]
+        np.testing.assert_allclose(res2, np.cos(data, order='C'))
+        self.assertTrue(res2.flags['C_CONTIGUOUS'])
+        self.assertFalse(res2.flags['F_CONTIGUOUS'])
 
     def testIsCloseExecution(self):
         data = np.array([1.05, 1.0, 1.01, np.nan])

@@ -54,6 +54,7 @@ class TensorModf(TensorOutBinOp):
                 where = kw['where'] = next(inputs_iter)
             else:
                 where = None
+            kw['order'] = op.order
 
             try:
                 args = [input]
