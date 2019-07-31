@@ -133,7 +133,7 @@ class Test(unittest.TestCase):
             X = make_low_rank_matrix(n_samples=n_samples, n_features=n_features,
                                      effective_rank=rank, tail_strength=0.0,
                                      random_state=0).astype(dtype, copy=False)
-            self.assertEquals(X.shape, (n_samples, n_features))
+            self.assertEqual(X.shape, (n_samples, n_features))
             dtype = np.dtype(dtype)
             decimal = 5 if dtype == np.float32 else 7
 

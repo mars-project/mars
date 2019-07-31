@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchedulerService(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._cluster_info_ref = None
         self._session_manager_ref = None
         self._assigner_ref = None
@@ -41,6 +41,8 @@ class SchedulerService(object):
         self._kv_store_ref = None
         self._node_info_ref = None
         self._result_receiver_ref = None
+
+        self._advertise_addr = kwargs.pop('advertise_addr', None)
 
     def start(self, endpoint, schedulers, pool):
         """
@@ -64,7 +66,12 @@ class SchedulerService(object):
             # single scheduler
             logger.info('Mars Scheduler started in standalone mode.')
             service_discover_addr = None
-            all_schedulers = {endpoint}
+
+            advertise_endpoint = self._advertise_addr or endpoint
+            if ':' not in advertise_endpoint:
+                advertise_endpoint += ':' + endpoint.rsplit(':', 1)[-1]
+            all_schedulers = {advertise_endpoint}
+
             if isinstance(schedulers, six.string_types):
                 schedulers = schedulers.split(',')
             if schedulers:

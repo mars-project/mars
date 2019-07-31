@@ -30,6 +30,7 @@ inside it:
     cd mars
     conda create -n mars-dev --file conda-spec.txt python=3.7
     source activate mars-dev
+    conda install -c conda-forge pyarrow tiledb-py
     pip install -e .
 
 Change ``3.7`` into the version of Python you want to install, and ``mars-dev``

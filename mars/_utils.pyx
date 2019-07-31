@@ -174,11 +174,18 @@ cdef h_numpy(ob):
     return data, ob.dtype, ob.shape, ob.strides
 
 
+cdef inline _extract_range_index_attr(object range_index, str attr):
+    try:
+        return getattr(range_index, attr)
+    except AttributeError:  # pragma: no cover
+        return getattr(range_index, '_' + attr)
+
+
 cdef h_pandas_index(ob):
     if isinstance(ob, pd.RangeIndex):
-        start = getattr(ob, 'start', None) or getattr(ob, '_start')
-        stop = getattr(ob, 'stop', None) or getattr(ob, '_stop')
-        step = getattr(ob, 'step', None) or getattr(ob, '_step')
+        start = _extract_range_index_attr(ob, 'start')
+        stop = _extract_range_index_attr(ob, 'stop')
+        step = _extract_range_index_attr(ob, 'step')
         # for range index, there is no need to get the values
         return h_iterative([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
