@@ -52,12 +52,8 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
         super(TensorAstype, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def __call__(self, tensor, order=None, copy=True):
-        t = self.new_tensor([tensor], tensor.shape, order=order)
-        if copy:
-            return t
-        tensor.data = t.data
-        return tensor
+    def __call__(self, tensor, order=None):
+        return self.new_tensor([tensor], tensor.shape, order=order)
 
     @classmethod
     def tile(cls, op):
@@ -143,7 +139,10 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     >>> x.astype(int).execute()
     array([1, 2, 2])
     """
-    dtype = np.dtype(dtype)
+    if dtype is None:
+        dtype = tensor.dtype
+    else:
+        dtype = np.dtype(dtype)
 
     # check order
     if order in 'KA':
@@ -155,12 +154,11 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     else:
         raise TypeError('order not understood')
 
-    if tensor.dtype == dtype and tensor.order == tensor_order and not copy:
-        return tensor
+    if tensor.dtype == dtype and tensor.order == tensor_order:
+        return tensor if not copy else tensor.copy()
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
         raise TypeError('Cannot cast array from {0!r} to {1!r} '
-                        'according to the rule {2!s}'.format(
-            tensor.dtype, dtype, casting))
+                        'according to the rule {2!s}'.format(tensor.dtype, dtype, casting))
 
     op = TensorAstype(dtype=dtype, order=order, casting=casting, sparse=tensor.issparse())
-    return op(tensor, order=tensor_order, copy=copy)
+    return op(tensor, order=tensor_order)

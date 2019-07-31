@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from .array import tensor, array, asarray, ascontiguousarray, \
+from .array import tensor, array, asarray, ascontiguousarray, asfortranarray, \
     ArrayDataSource, CSRMatrixDataSource
 from .scalar import scalar, Scalar
 from .empty import empty, empty_like, TensorEmpty, TensorEmptyLike

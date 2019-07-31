@@ -144,17 +144,14 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 
 
 def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False):
+    order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
-        if dtype is None:
-            dtype = data.dtype
-        return data.astype(dtype, order=order)
+        return data.astype(dtype, order=order, copy=False)
     elif isinstance(data, (tuple, list)) and all(isinstance(d, TENSOR_TYPE) for d in data):
         from ..merge import stack
 
         data = stack(data)
-        if dtype is not None:
-            data = data.astype(dtype, order=order)
-        return data
+        return data.astype(dtype, order=order, copy=False)
     elif np.isscalar(data):
         return scalar(data, dtype=dtype)
     elif issparse(data):
@@ -196,6 +193,24 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
         only be made if __array__ returns a copy, if obj is a nested sequence,
         or if a copy is needed to satisfy any of the other requirements
         (`dtype`, `order`, etc.).
+    order : {'K', 'A', 'C', 'F'}, optional
+        Specify the memory layout of the array. If object is not an array, the
+        newly created array will be in C order (row major) unless 'F' is
+        specified, in which case it will be in Fortran order (column major).
+        If object is an array the following holds.
+
+        ===== ========= ===================================================
+        order  no copy                     copy=True
+        ===== ========= ===================================================
+        'K'   unchanged F & C order preserved, otherwise most similar order
+        'A'   unchanged F order if input is F and not C, otherwise C order
+        'C'   C order   C order
+        'F'   F order   F order
+        ===== ========= ===================================================
+
+        When ``copy=False`` and a copy is made for other reasons, the result is
+        the same as if ``copy=True``, with some exceptions for `A`, see the
+        Notes section. The default order is 'K'.
     ndmin : int, optional
         Specifies the minimum number of dimensions that the resulting
         array should have.  Ones will be pre-pended to the shape as
@@ -242,17 +257,20 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
 
     """
     raw_x = x
-    x = tensor(x, order=order, chunk_size=chunk_size)
-    if copy and x is raw_x:
-        x = x.copy()
+    x = tensor(x, dtype=dtype, order=order, chunk_size=chunk_size)
     while ndmin is not None and x.ndim < ndmin:
         x = x[np.newaxis, :]
-    if dtype is not None and x.dtype != dtype:
-        x = x.astype(dtype)
+
+    if copy and x is raw_x:
+        x = x.copy()
+    elif not copy and raw_x.dtype == x.dtype and \
+            raw_x.order == x.order and raw_x is not x:
+        raw_x.data = x.data
+
     return x
 
 
-def asarray(x, dtype=None):
+def asarray(x, dtype=None, order=None):
     """Convert the input to an array.
 
     Parameters
@@ -263,6 +281,9 @@ def asarray(x, dtype=None):
         of lists and tensors.
     dtype : data-type, optional
         By default, the data-type is inferred from the input data.
+    order : {'C', 'F'}, optional
+        Whether to use row-major (C-style) or
+        column-major (Fortran-style) memory representation.
 
     Returns
     -------
@@ -271,9 +292,15 @@ def asarray(x, dtype=None):
         is already an ndarray with matching dtype and order.  If `a` is a
         subclass of ndarray, a base class ndarray is returned.
 
+    See Also
+    --------
+    ascontiguousarray : Convert input to a contiguous tensor.
+    asfortranarray : Convert input to a tensor with column-major
+                     memory order.
+
     Examples
     --------
-    Convert a list into an array:
+    Convert a list into a tensor:
 
     >>> import mars.tensor as mt
 
@@ -295,7 +322,7 @@ def asarray(x, dtype=None):
     >>> mt.asarray(a, dtype=mt.float64) is a
     False
     """
-    return array(x, dtype=dtype, copy=False)
+    return array(x, dtype=dtype, copy=False, order=order)
 
 
 def ascontiguousarray(a, dtype=None):
@@ -307,7 +334,7 @@ def ascontiguousarray(a, dtype=None):
     a : array_like
         Input tensor.
     dtype : str or dtype object, optional
-        Data-type of returned array.
+        Data-type of returned tensor.
 
     Returns
     -------
@@ -325,15 +352,52 @@ def ascontiguousarray(a, dtype=None):
     --------
     >>> import mars.tensor as mt
     >>> x = mt.arange(6).reshape(2,3)
-    >>> mt.ascontiguousarray(x, dtype=np.float32)
+    >>> mt.ascontiguousarray(x, dtype=mt.float32)
     array([[ 0.,  1.,  2.],
            [ 3.,  4.,  5.]], dtype=float32)
     >>> x.flags['C_CONTIGUOUS']
     True
 
-    Note: This function returns an array with at least one-dimension (1-d)
-    so it will not preserve 0-d arrays.
+    Note: This function returns a tensor with at least one-dimension (1-d)
+    so it will not preserve 0-d tensors.
 
     """
 
     return array(a, dtype, copy=False, order='C', ndmin=1)
+
+
+def asfortranarray(a, dtype=None):
+    """
+    Return a tensor (ndim >= 1) laid out in Fortran order in memory.
+
+    Parameters
+    ----------
+    a : array_like
+        Input tensor.
+    dtype : str or dtype object, optional
+        By default, the data-type is inferred from the input data.
+
+    Returns
+    -------
+    out : Tensor
+        The input `a` in Fortran, or column-major, order.
+
+    See Also
+    --------
+    ascontiguousarray : Convert input to a contiguous (C order) tensor.
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> x = mt.arange(6).reshape(2,3)
+    >>> y = mt.asfortranarray(x)
+    >>> x.flags['F_CONTIGUOUS']
+    False
+    >>> y.flags['F_CONTIGUOUS']
+    True
+
+    Note: This function returns a tensor with at least one-dimension (1-d)
+    so it will not preserve 0-d tensors.
+
+    """
+    return array(a, dtype, copy=False, order='F', ndmin=1)

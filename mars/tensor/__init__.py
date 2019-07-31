@@ -15,8 +15,8 @@
 # limitations under the License.
 
 
-from .datasource import tensor, array, asarray, scalar, \
-    empty, empty_like, ones, ones_like, zeros, zeros_like, \
+from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarray, \
+    scalar, empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, from_dataframe
 from .datastore import totiledb
