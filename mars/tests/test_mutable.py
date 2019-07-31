@@ -65,85 +65,91 @@ class Test(unittest.TestCase):
 
                 # write [1:4, 2], and buffer is not full.
                 chunk_records = mut._do_write((slice(1, 4, None), 2), 8)
-                self.assertEqual(chunk_records, dict())
+                self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 0)].key]
+                result = chunk_records_map[mut.cix[(0, 0)].key]
                 expected = np.array([[5, 8.], [8, 8.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(1, 0)].key]
+                result = chunk_records_map[mut.cix[(1, 0)].key]
                 expected = np.array([[2, 8.]])
                 self.assertRecordsEqual(result, expected)
 
                 # write [2:4], and buffer is not full.
                 chunk_records = mut._do_write(slice(2, 4, None), np.arange(10).reshape((2, 5)))
-                self.assertEqual(chunk_records, dict())
+                self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 0)].key]
+                result = chunk_records_map[mut.cix[(0, 0)].key]
                 expected = np.array([[6, 0.], [7, 1.], [8, 2.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(0, 1)].key]
+                result = chunk_records_map[mut.cix[(0, 1)].key]
                 expected = np.array([[4, 3.], [5, 4.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(1, 0)].key]
+                result = chunk_records_map[mut.cix[(1, 0)].key]
                 expected = np.array([[0, 5.], [1, 6.], [2, 7.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(1, 1)].key]
+                result = chunk_records_map[mut.cix[(1, 1)].key]
                 expected = np.array([[0, 8.], [1, 9.]])
                 self.assertRecordsEqual(result, expected)
 
                 # write [1], and buffer is not full.
                 chunk_records = mut._do_write(1, np.arange(5))
-                self.assertEqual(chunk_records, dict())
+                self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 0)].key]
+                result = chunk_records_map[mut.cix[(0, 0)].key]
                 expected = np.array([[3, 0.], [4, 1.], [5, 2.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(0, 1)].key]
+                result = chunk_records_map[mut.cix[(0, 1)].key]
                 expected = np.array([[2, 3.], [3, 4.]])
                 self.assertRecordsEqual(result, expected)
 
                 # write [2, [0, 2, 4]] (fancy index), and buffer is not full.
                 chunk_records = mut._do_write((2, [0, 2, 4]), np.array([11, 22, 33]))
-                self.assertEqual(chunk_records, dict())
+                self.assertEqual(chunk_records, [])
                 chunk_records = mut._do_flush()
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 0)].key]
+                result = chunk_records_map[mut.cix[(0, 0)].key]
                 expected = np.array([[6, 11.], [8, 22.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(0, 1)].key]
+                result = chunk_records_map[mut.cix[(0, 1)].key]
                 expected = np.array([[5, 33.]])
                 self.assertRecordsEqual(result, expected)
 
                 # write [:], and the first buffer is full.
                 chunk_records = mut._do_write(slice(None, None, None), 999)
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 0)].key]
+                result = chunk_records_map[mut.cix[(0, 0)].key]
                 expected = np.array([[0, 999.], [1, 999.], [2, 999.], [3, 999.], [4, 999.],
                                      [5, 999.], [6, 999.], [7, 999.], [8, 999.]])
                 self.assertRecordsEqual(result, expected)
 
                 # check other chunks
                 chunk_records = mut._do_flush()
+                chunk_records_map = dict((k, v) for k, _, v in chunk_records)
 
-                result = chunk_records[mut.cix[(0, 1)].key]
+                result = chunk_records_map[mut.cix[(0, 1)].key]
                 expected = np.array([[0, 999.], [1, 999.], [2, 999.], [3, 999.], [4, 999.],
                                      [5, 999.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(1, 0)].key]
+                result = chunk_records_map[mut.cix[(1, 0)].key]
                 expected = np.array([[0, 999.], [1, 999.], [2, 999.]])
                 self.assertRecordsEqual(result, expected)
 
-                result = chunk_records[mut.cix[(1, 1)].key]
+                result = chunk_records_map[mut.cix[(1, 1)].key]
                 expected = np.array([[0, 999.], [1, 999.]])
                 self.assertRecordsEqual(result, expected)
 
@@ -370,7 +376,7 @@ class Test(unittest.TestCase):
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
-            with new_session('http://' + cluster._web_endpoint).as_default():
+            with new_session('http://' + cluster._web_endpoint).as_default() as session:
                 testWithGivenSession(session)
 
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)

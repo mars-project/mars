@@ -441,6 +441,7 @@ class MutableTensorData(TensorData):
     # required fields
     _name = StringField('name')
     _compression = BoolField("compression")
+    _chunk_eps = ListField('chunk_eps')
 
     @classmethod
     def cls(cls, provider):
@@ -465,6 +466,7 @@ class MutableTensorData(TensorData):
             'dtype': self.dtype,
             'name': self.name,
             'compression': self.compression,
+            "chunk_eps": self.chunk_eps,
         }
 
     @property
@@ -475,9 +477,13 @@ class MutableTensorData(TensorData):
     def compression(self):
         return getattr(self, '_compression', None)
 
+    @property
+    def chunk_eps(self):
+        return getattr(self, '_chunk_eps', None)
+
 
 class MutableTensor(Entity):
-    __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
+    __slots__ = ("_chunk_ep_map", "_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
     def __init__(self, *args, **kwargs):
@@ -490,12 +496,21 @@ class MutableTensor(Entity):
             # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
             self._buffer_size = 0
 
+        if self._data.chunk_eps is not None:
+            self._chunk_ep_map = dict((chunk.key, ep) for chunk, ep in zip(self.chunks, self._data.chunk_eps))
+        else:
+            self._chunk_ep_map = dict()
+
     def __len__(self):
         return len(self._data)
 
     @property
     def name(self):
         return self._data.name
+
+    @property
+    def chunk_ep_map(self):
+        return self._chunk_ep_map
 
     def __setitem__(self, index, value):
         from ..session import Session
@@ -551,9 +566,6 @@ class MutableTensor(Entity):
         affected_chunk_keys = []
 
         for output_chunk in output_chunks:
-            logger.debug("write: chunk idx = {}, output chunk idx = {}, chunk_shape = {}, chunk_index = {}".format(
-                output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
-
             records = self._chunk_buffers[output_chunk.op.input.key]
             records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
             affected_chunk_keys.append(output_chunk.op.input.key)
@@ -563,12 +575,13 @@ class MutableTensor(Entity):
 
     @log_unhandled
     def _do_flush(self, buffer_size_limit=1, affected_chunk_keys=None):
-        chunk_records_to_send = dict()
+        chunk_records_to_send = []
         affected_chunk_keys = affected_chunk_keys or self._chunk_buffers.keys()
         for chunk_key in affected_chunk_keys:
             records = self._chunk_buffers[chunk_key]
             if len(records) >= buffer_size_limit:
-                chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
+                chunk_records_to_send.append((chunk_key, self._chunk_ep_map[chunk_key],
+                                              np.array(records, dtype=self._record_type)))
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
 
