@@ -126,7 +126,7 @@ class FunctionActor(_FunctionActor):
 
 
 cpdef object create_actor_pool(str address=None, int n_process=0, object distributor=None,
-                               object parallel=None, str backend='gevent'):
+                               object parallel=None, str backend='gevent', str advertise_address=None):
     cdef bint standalone
     cdef ClusterInfo cluster_info
 
@@ -139,7 +139,11 @@ cpdef object create_actor_pool(str address=None, int n_process=0, object distrib
     if n_process <= 0:
         n_process = multiprocessing.cpu_count()
 
-    cluster_info = ClusterInfo(standalone, n_process, address=address)
+    if advertise_address is not None and ':' not in advertise_address:
+        advertise_address += ':' + address.rsplit(':', 1)[-1]
+
+    cluster_info = ClusterInfo(standalone, n_process, address=address,
+                               advertise_address=advertise_address)
     pool = ActorPool(cluster_info, distributor=distributor, parallel=parallel)
     pool.run()
 

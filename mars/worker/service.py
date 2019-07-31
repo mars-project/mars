@@ -66,7 +66,7 @@ class WorkerService(object):
         self._advertise_addr = kwargs.pop('advertise_addr', None)
 
         self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())
-        self._n_io_process = int(kwargs.pop('n_io_process', None) or '1')
+        self._n_net_process = int(kwargs.pop('n_net_process', None) or '1')
 
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
@@ -99,7 +99,7 @@ class WorkerService(object):
 
     @property
     def n_process(self):
-        return 1 + self._n_cpu_process + self._n_io_process + (1 if self._spill_dirs else 0)
+        return 1 + self._n_cpu_process + self._n_net_process + (1 if self._spill_dirs else 0)
 
     def _calc_memory_limits(self):
         def _calc_size_limit(limit_str, total_size):
@@ -169,9 +169,11 @@ class WorkerService(object):
                 WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
 
             # create StatusActor
-            port_str = endpoint.rsplit(':', 1)[-1]
+            if ':' not in self._advertise_addr:
+                self._advertise_addr += ':' + endpoint.rsplit(':', 1)[-1]
+
             self._status_ref = pool.create_actor(
-                StatusActor, self._advertise_addr + ':' + port_str, uid=StatusActor.default_uid())
+                StatusActor, self._advertise_addr, uid=StatusActor.default_uid())
         else:
             # create StatusActor
             self._status_ref = pool.create_actor(
@@ -211,13 +213,13 @@ class WorkerService(object):
 
         if distributed:
             # create SenderActor and ReceiverActor
-            for sender_id in range(self._n_io_process):
+            for sender_id in range(self._n_net_process):
                 uid = 'w:%d:mars-sender-%d-%d' % (start_pid + sender_id, os.getpid(), sender_id)
                 actor = actor_holder.create_actor(SenderActor, uid=uid)
                 self._sender_actors.append(actor)
 
         # Mutable requires ReceiverActor (with LocalClusterSession)
-        for receiver_id in range(2 * self._n_io_process):
+        for receiver_id in range(2 * self._n_net_process):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
             actor = actor_holder.create_actor(ReceiverActor, uid=uid)
             self._receiver_actors.append(actor)

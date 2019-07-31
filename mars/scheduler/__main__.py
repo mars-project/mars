@@ -34,7 +34,9 @@ class SchedulerApplication(BaseApplication):
         parser.add_argument('--nproc', help='number of processes')
 
     def create_pool(self, *args, **kwargs):
-        self._service = SchedulerService()
+        self._service = SchedulerService(
+            advertise_addr=self.args.advertise,
+        )
         self.n_process = int(self.args.nproc or resource.cpu_count())
         kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-01-18 09:50+0800\n"
+"POT-Creation-Date: 2019-07-23 15:25+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -92,18 +92,221 @@ msgstr "当所有 Mars 进程启动后，可启动一个 Python 命令行，执�
 
 #: ../../source/install.rst:111
 msgid ""
-"You can open a web browser and type ``http://<web_ip>:<ui_port>`` to open"
-" Mars UI to look up resource usage of workers and execution progress of "
-"the task submitted just now."
+"You can open a web browser and type ``http://<web_ip>:<web_port>`` to "
+"open Mars UI to look up resource usage of workers and execution progress "
+"of the task submitted just now."
 msgstr ""
-"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<ui_port>`` 来打开 Mars "
+"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<web_port>`` 来打开 Mars "
 "UI，查看 Worker 资源使用状况和刚才提交作业的执行进度。"
 
 #: ../../source/install.rst:116
+msgid "Using Command Lines"
+msgstr "使用命令行"
+
+#: ../../source/install.rst:117
+msgid ""
+"When running Mars with command line, you can specify arguments to control"
+" the behavior of Mars processes. All Mars services have common arguments "
+"listed below."
+msgstr ""
+"当使用命令行启动 Mars 时，你可以通过指定启动参数控制 Mars 各服务进程的"
+"行为。所有 Mars 服务均拥有下面的参数。"
+
+#: ../../source/install.rst:122 ../../source/install.rst:146
+#: ../../source/install.rst:156
+msgid "Argument"
+msgstr "参数"
+
+#: ../../source/install.rst:122 ../../source/install.rst:146
+#: ../../source/install.rst:156
+msgid "Description"
+msgstr "描述"
+
+#: ../../source/install.rst:124
+msgid "-a"
+msgstr ""
+
+#: ../../source/install.rst:124
+msgid ""
+"Advertise address exposed to other processes in the cluster, useful when "
+"the server has multiple IP addresses, or the service is deployed inside a"
+" VM or container"
+msgstr ""
+"对外服务地址，该地址对集群中的其他服务进程可见。当使用多穴主机及运行在"
+"虚拟机或容器中的服务时需要配置此参数"
+
+#: ../../source/install.rst:128
+msgid "-H"
+msgstr ""
+
+#: ../../source/install.rst:128
+msgid "Service IP binding, ``0.0.0.0`` by default"
+msgstr "服务 IP 绑定，默认为 ``0.0.0.0``"
+
+#: ../../source/install.rst:130
+msgid "-p"
+msgstr ""
+
+#: ../../source/install.rst:130
+msgid "Port of the service. If absent, a randomized port will be used"
+msgstr "服务端口。如果缺失，将使用随机端口"
+
+#: ../../source/install.rst:132
+msgid "-s"
+msgstr ""
+
+#: ../../source/install.rst:132
+msgid ""
+"List of scheduler endpoints, separated by commas. Useful for workers and "
+"webs to spot schedulers, or when you want to run more than one schedulers"
+msgstr ""
+"Scheduler Endpoint 列表，使用空格或逗号分隔。当为 Worker 或 Web 服务指定 "
+"Scheduler，或者当需要为 Scheduler 指定其他 Scheduler 时需要使用此参数"
+
+#: ../../source/install.rst:136
+msgid "--log-level"
+msgstr ""
+
+#: ../../source/install.rst:136
+msgid "Log level, can be ``debug``, ``info``, ``warning``, ``error``"
+msgstr "日志级别，可以使用 ``debug``，``info``，``warning``，``error``"
+
+#: ../../source/install.rst:138
+msgid "--log-format"
+msgstr ""
+
+#: ../../source/install.rst:138
+msgid "Log format, can be Python logging format"
+msgstr "日志格式，可以使用 Python logging 模块的日志格式"
+
+#: ../../source/install.rst:140
+msgid "--log-conf"
+msgstr ""
+
+#: ../../source/install.rst:140
+msgid "Python logging configuration file, ``logging.conf`` by default"
+msgstr "Python 日志配置文件的位置，默认为 ``logging.conf``"
+
+#: ../../source/install.rst:143
+msgid "Extra arguments for schedulers are listed below."
+msgstr "Scheduler 的额外参数在下面列出。"
+
+#: ../../source/install.rst:148
+msgid "--nproc"
+msgstr ""
+
+#: ../../source/install.rst:148
+msgid ""
+"Number of processes. If absent, the value will be the available number of"
+" cores"
+msgstr "服务进程数，默认为可用的核数"
+
+#: ../../source/install.rst:152
+msgid ""
+"Extra arguments for workers are listed below. Details about memory tuning"
+" can be found at the next section."
+msgstr "Worker 的额外参数在下面列出。关于内存调优的内容可以参见下一节。"
+
+#: ../../source/install.rst:158
+msgid "--cpu-procs"
+msgstr ""
+
+#: ../../source/install.rst:158
+msgid ""
+"Number of computation processes on CPUs. If absent, the value will be the"
+" available number of cores"
+msgstr "用于计算的 CPU 进程数，默认值为可用的核数"
+
+#: ../../source/install.rst:161
+msgid "--net-procs"
+msgstr ""
+
+#: ../../source/install.rst:161
+msgid "Number of processes for network transfer. 1 by default"
+msgstr "用于网络传输的进程数，默认为 1"
+
+#: ../../source/install.rst:163
+msgid "--phy-mem"
+msgstr ""
+
+#: ../../source/install.rst:163
+msgid ""
+"Limit of physical memory, can be percentages of total memory or multiple "
+"of bytes. For instance, ``4g`` or ``80%`` are both acceptable. If absent,"
+" the size of physical memory will be used"
+msgstr ""
+"物理内存限制，可以为总内存大小的百分比，也可以为实际值。例如，``4g``和``"
+"80%``均为合法的值。缺失值为当前物理内存大小"
+
+#: ../../source/install.rst:168
+msgid "--cache-mem"
+msgstr ""
+
+#: ../../source/install.rst:168
+#, python-format
+msgid ""
+"Size of shared memory, can be percentages of total memory or multiple of "
+"bytes. For instance, ``4g`` or ``80%`` are both acceptable. If absent, "
+"50% of free memory will be used"
+msgstr ""
+"共享内存限制，可以为总内存大小的百分比，也可以为实际值。例如，``4g``和``"
+"80%``均为合法的值。缺失值为当前未使用内存的 50%。"
+
+#: ../../source/install.rst:172
+msgid "--min-mem"
+msgstr ""
+
+#: ../../source/install.rst:172
+msgid ""
+"Minimal free memory to start worker, can be percentages of total memory "
+"or multiple of bytes. For instance, ``4g`` or ``80%`` are both "
+"acceptable. ``128m`` by default"
+msgstr ""
+"启动 Worker 所需的最小内存，可以为总内存大小的百分比，也可以为实际值。"
+"例如，``4g``和``80%``均为合法的值。缺失值为 ``128m``。"
+
+#: ../../source/install.rst:176
+msgid "--spill-dir"
+msgstr ""
+
+#: ../../source/install.rst:176
+msgid "Directories to spill to, separated by : in MacOS or Linux."
+msgstr "Spill 的目标路径，在 MacOS 或 Linux 下使用半角冒号（:）拆分。"
+
+#: ../../source/install.rst:179
+msgid ""
+"For instance, if you want to start a Mars cluster with two schedulers, "
+"two workers and one web service, you can run commands below (memory and "
+"CPU tunings are omitted):"
+msgstr ""
+"例如，如果你希望启动一个 Mars 集群，其中包含两个 Scheduler、两个 Worker "
+"及一个 Web 服务，你可以运行下面的命令（内存和 CPU 相关的细节已被忽略）。"
+
+#: ../../source/install.rst:183
+msgid "On Scheduler 1 (192.168.1.10):"
+msgstr "在 Scheduler 1（192.168.1.10）上"
+
+#: ../../source/install.rst:189
+msgid "On Scheduler 2 (192.168.1.11):"
+msgstr "在 Scheduler 2（192.168.1.11）上"
+
+#: ../../source/install.rst:195
+msgid "On Worker 1 (192.168.1.20):"
+msgstr "在 Worker 1（192.168.1.20）上"
+
+#: ../../source/install.rst:202
+msgid "On Worker 2 (192.168.1.21):"
+msgstr "在 Worker 2（192.168.1.21）上"
+
+#: ../../source/install.rst:209
+msgid "On the web server (192.168.1.30):"
+msgstr "在 Web 服务器（192.168.1.30）上"
+
+#: ../../source/install.rst:216
 msgid "Memory Tuning"
 msgstr "内存优化"
 
-#: ../../source/install.rst:117
+#: ../../source/install.rst:217
 #, python-format
 msgid ""
 "Mars worker manages two different parts of memory. The first is private "
@@ -128,11 +331,11 @@ msgstr ""
 "大小，使用 ``--phy-mem`` 参数配置总内存大小，软限制和硬限制将从这些数值"
 "计算。"
 
-#: ../../source/install.rst:129
+#: ../../source/install.rst:229
 msgid "For instance, by using"
 msgstr "例如，使用"
 
-#: ../../source/install.rst:135
+#: ../../source/install.rst:235
 #, python-format
 msgid ""
 "We limit the size of shared memory as 512MB and the worker can use up to "

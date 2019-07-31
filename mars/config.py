@@ -334,7 +334,6 @@ default_options.register_option('worker.prepare_data_timeout', 600, validator=is
 default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
-default_options.register_option('worker.advertise_addr', '127.0.0.1', validator=is_string)
 
 # optimization
 default_options.register_option('optimize.min_stats_count', 10, validator=is_integer)

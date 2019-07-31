@@ -15,7 +15,10 @@
 # limitations under the License.
 
 import numpy as np
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 from .core import issparse, get_array_module, cp, cps, \
     get_sparse_module, naked, sps, splinalg

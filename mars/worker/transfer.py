@@ -768,8 +768,9 @@ class ResultSenderActor(WorkerActor):
 
 
 def put_remote_chunk(session_id, chunk_key, data, receiver_ref):
-    '''Put a chunk to target machine using given receiver_ref.
-    '''
+    """
+    Put a chunk to target machine using given receiver_ref
+    """
     from .dataio import ArrowBufferIO
     buf = pyarrow.serialize(data).to_buffer()
     receiver_ref.create_data_writer(session_id, chunk_key, buf.size, None,

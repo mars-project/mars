@@ -85,15 +85,24 @@ def get_fuse_op_cls():
 
 
 def _get_range_index_start(pd_range_index):
-    return getattr(pd_range_index, 'start', None) or getattr(pd_range_index, '_start')
+    try:
+        return pd_range_index.start
+    except AttributeError:  # pragma: no cover
+        return pd_range_index._start
 
 
 def _get_range_index_stop(pd_range_index):
-    return getattr(pd_range_index, 'stop', None) or getattr(pd_range_index, '_stop')
+    try:
+        return pd_range_index.stop
+    except AttributeError:  # pragma: no cover
+        return pd_range_index._stop
 
 
 def _get_range_index_step(pd_range_index):
-    return getattr(pd_range_index, 'step', None) or getattr(pd_range_index, '_step')
+    try:
+        return pd_range_index.step
+    except AttributeError:  # pragma: no cover
+        return pd_range_index._step
 
 
 def is_pd_range_empty(pd_range_index):
