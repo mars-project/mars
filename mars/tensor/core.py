@@ -17,16 +17,27 @@
 
 from collections import Iterable, defaultdict
 from datetime import datetime
+from operator import attrgetter
+
 import numpy as np
+
 from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
+from ..compat import Enum
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+class TensorOrder(Enum):
+    # C order
+    C_ORDER = 'C'
+    # Fortran order
+    F_ORDER = 'F'
 
 
 class TensorChunkData(ChunkData):
@@ -35,6 +46,7 @@ class TensorChunkData(ChunkData):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
     # optional fields
     _dtype = DataTypeField('dtype')
 
@@ -51,6 +63,7 @@ class TensorChunkData(ChunkData):
         return {
             'shape': self.shape,
             'dtype': self.dtype,
+            'order': self.order,
             'index': self.index,
         }
 
@@ -79,6 +92,10 @@ class TensorChunkData(ChunkData):
         return getattr(self, '_dtype', None) or self.op.dtype
 
     @property
+    def order(self):
+        return getattr(self, '_order', None)
+
+    @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
 
@@ -95,6 +112,8 @@ class TensorData(TileableData):
     __slots__ = ()
 
     # required fields
+    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
+    # optional fields
     _dtype = DataTypeField('dtype')
     _chunks = ListField('chunks', ValueType.reference(TensorChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
@@ -128,7 +147,17 @@ class TensorData(TileableData):
         # params return the properties which useful to rebuild a new tileable object
         return {
             'shape': self.shape,
-            'dtype': self.dtype
+            'dtype': self.dtype,
+            'order': self.order
+        }
+
+    @property
+    def flags(self):
+        c_order = True if self.ndim <= 1 else self.order == TensorOrder.C_ORDER
+        f_order = True if self.ndim <= 1 else self.order == TensorOrder.F_ORDER
+        return {
+            'C_CONTIGUOUS': c_order,
+            'F_CONTIGUOUS': f_order
         }
 
     @property
@@ -144,6 +173,10 @@ class TensorData(TileableData):
     @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def order(self):
+        return getattr(self, '_order', None)
 
     @property
     def nbytes(self):
@@ -183,8 +216,13 @@ class TensorData(TileableData):
     def T(self):
         return self.transpose()
 
-    def reshape(self, shape, *shapes):
+    def reshape(self, shape, *shapes, **kw):
         from .reshape import reshape
+
+        order = kw.pop('order', 'C')
+        if kw:
+            raise TypeError(
+                "'{0}' is an invalid keyword argument for this function".format(tuple(kw)[0]))
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)
@@ -192,7 +230,7 @@ class TensorData(TileableData):
             shape = (shape,)
         shape += shapes
 
-        return reshape(self, shape)
+        return reshape(self, shape, order=order)
 
     def _equals(self, o):
         return self is o

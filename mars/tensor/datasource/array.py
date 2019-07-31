@@ -20,8 +20,8 @@ from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
 from ...lib.sparse import SparseNDArray
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ...serialize import ValueType, NDArrayField, TupleField
-from ..core import TENSOR_TYPE, Tensor
-from ..utils import get_chunk_slices
+from ..core import TENSOR_TYPE, Tensor, TensorOrder
+from ..utils import get_chunk_slices, normalize_shape
 from ..array_utils import array_module
 from .core import TensorNoInput
 from .scalar import scalar
@@ -53,6 +53,12 @@ class ArrayDataSource(TensorNoInput):
         chunk_op._data = self.data[get_chunk_slices(chunk_size, idx)]
 
         return chunk_op
+
+    def __call__(self, shape, chunk_size=None):
+        shape = normalize_shape(shape)
+        order = TensorOrder.C_ORDER \
+            if self._data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
+        return self.new_tensor(None, shape, order=order, raw_chunk_size=chunk_size)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -137,17 +143,17 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
     return op(spmatrix.shape, chunk_size=chunk_size)
 
 
-def tensor(data, dtype=None, chunk_size=None, gpu=None, sparse=False):
+def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False):
     if isinstance(data, TENSOR_TYPE):
-        if dtype is not None and data.dtype != dtype:
-            return data.astype(dtype)
-        return data
+        if dtype is None:
+            dtype = data.dtype
+        return data.astype(dtype, order=order)
     elif isinstance(data, (tuple, list)) and all(isinstance(d, TENSOR_TYPE) for d in data):
         from ..merge import stack
 
         data = stack(data)
         if dtype is not None:
-            data = data.astype(dtype)
+            data = data.astype(dtype, order=order)
         return data
     elif np.isscalar(data):
         return scalar(data, dtype=dtype)
@@ -155,7 +161,7 @@ def tensor(data, dtype=None, chunk_size=None, gpu=None, sparse=False):
         return _from_spmatrix(data, dtype=dtype, chunk_size=chunk_size, gpu=gpu)
     else:
         m = get_array_module(data)
-        data = m.asarray(data, dtype=dtype)
+        data = m.asarray(data, dtype=dtype, order=order)
         if gpu is None and cp is not None and m is cp:
             gpu = True
 
@@ -171,7 +177,7 @@ def tensor(data, dtype=None, chunk_size=None, gpu=None, sparse=False):
         raise ValueError('Cannot create tensor by given data: {0}'.format(data))
 
 
-def array(x, dtype=None, copy=True, ndmin=None, chunk_size=None):
+def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
     """
     Create a tensor.
 
@@ -236,9 +242,9 @@ def array(x, dtype=None, copy=True, ndmin=None, chunk_size=None):
 
     """
     raw_x = x
-    x = tensor(x, chunk_size=chunk_size)
+    x = tensor(x, order=order, chunk_size=chunk_size)
     if copy and x is raw_x:
-        x = Tensor(x.data)
+        x = x.copy()
     while ndmin is not None and x.ndim < ndmin:
         x = x[np.newaxis, :]
     if dtype is not None and x.dtype != dtype:
@@ -290,3 +296,44 @@ def asarray(x, dtype=None):
     False
     """
     return array(x, dtype=dtype, copy=False)
+
+
+def ascontiguousarray(a, dtype=None):
+    """
+    Return a contiguous tensor (ndim >= 1) in memory (C order).
+
+    Parameters
+    ----------
+    a : array_like
+        Input tensor.
+    dtype : str or dtype object, optional
+        Data-type of returned array.
+
+    Returns
+    -------
+    out : Tensor
+        Contiguous tensor of same shape and content as `a`, with type `dtype`
+        if specified.
+
+    See Also
+    --------
+    asfortranarray : Convert input to a tensor with column-major
+                     memory order.
+    Tensor.flags : Information about the memory layout of the tensor.
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> x = mt.arange(6).reshape(2,3)
+    >>> mt.ascontiguousarray(x, dtype=np.float32)
+    array([[ 0.,  1.,  2.],
+           [ 3.,  4.,  5.]], dtype=float32)
+    >>> x.flags['C_CONTIGUOUS']
+    True
+
+    Note: This function returns an array with at least one-dimension (1-d)
+    so it will not preserve 0-d arrays.
+
+    """
+
+    return array(a, dtype, copy=False, order='C', ndmin=1)

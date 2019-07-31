@@ -21,6 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, DataTypeField, StringField
 from ..array_utils import as_same_device, device
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..core import TensorOrder
 
 
 class TensorAstype(TensorHasInput, TensorOperandMixin):
@@ -28,15 +29,20 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
     _dtype = DataTypeField('dtype')
+    _order = StringField('order')
     _casting = StringField('casting')
 
-    def __init__(self, dtype=None, casting=None, sparse=False, **kw):
-        super(TensorAstype, self).__init__(_dtype=dtype, _casting=casting,
-                                           _sparse=sparse, **kw)
+    def __init__(self, dtype=None, order=None, casting=None, sparse=False, **kw):
+        super(TensorAstype, self).__init__(_dtype=dtype, _order=order,
+                                           _casting=casting, _sparse=sparse, **kw)
 
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def casting(self):
@@ -46,8 +52,8 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
         super(TensorAstype, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
-    def __call__(self, tensor, copy=True):
-        t = self.new_tensor([tensor], tensor.shape)
+    def __call__(self, tensor, order=None, copy=True):
+        t = self.new_tensor([tensor], tensor.shape, order=order)
         if copy:
             return t
         tensor.data = t.data
@@ -56,15 +62,17 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         in_tensor = op.input
+        out_tensor = op.outputs[0]
 
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index)
+            chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index,
+                                       order=out_tensor.order)
             out_chunks.append(chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, nsplits=in_tensor.nsplits,
+        return new_op.new_tensors(op.inputs, out_tensor.shape, nsplits=in_tensor.nsplits,
                                   chunks=out_chunks)
 
     @classmethod
@@ -77,10 +85,10 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
             if op.sparse:
                 ctx[chunk.key] = x.astype(op.dtype)
             else:
-                ctx[chunk.key] = x.astype(op.dtype, casting=op.casting)
+                ctx[chunk.key] = x.astype(op.dtype, order=op.order, casting=op.casting)
 
 
-def _astype(tensor, dtype, casting='unsafe', copy=True):
+def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     """
     Copy of the tensor, cast to a specified type.
     Parameters
@@ -96,6 +104,13 @@ def _astype(tensor, dtype, casting='unsafe', copy=True):
           * 'same_kind' means only safe casts or casts within a kind,
             like float64 to float32, are allowed.
           * 'unsafe' means any data conversions may be done.
+    order : {'C', 'F', 'A', 'K'}, optional
+        Controls the memory layout order of the result.
+        'C' means C order, 'F' means Fortran order, 'A'
+        means 'F' order if all the arrays are Fortran contiguous,
+        'C' order otherwise, and 'K' means as close to the
+        order the array elements appear in memory as possible.
+        Default is 'K'.
     copy : bool, optional
         By default, astype always returns a newly allocated array. If this
         is set to false, and the `dtype`, `order`, and `subok`
@@ -129,12 +144,23 @@ def _astype(tensor, dtype, casting='unsafe', copy=True):
     array([1, 2, 2])
     """
     dtype = np.dtype(dtype)
-    if tensor.dtype == dtype:
+
+    # check order
+    if order in 'KA':
+        tensor_order = tensor.order
+    elif order == 'C':
+        tensor_order = TensorOrder.C_ORDER
+    elif order == 'F':
+        tensor_order = TensorOrder.F_ORDER
+    else:
+        raise TypeError('order not understood')
+
+    if tensor.dtype == dtype and tensor.order == tensor_order and not copy:
         return tensor
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
         raise TypeError('Cannot cast array from {0!r} to {1!r} '
                         'according to the rule {2!s}'.format(
             tensor.dtype, dtype, casting))
 
-    op = TensorAstype(dtype=dtype, casting=casting, sparse=tensor.issparse())
-    return op(tensor, copy=copy)
+    op = TensorAstype(dtype=dtype, order=order, casting=casting, sparse=tensor.issparse())
+    return op(tensor, order=tensor_order, copy=copy)
