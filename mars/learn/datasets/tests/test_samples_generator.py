@@ -23,7 +23,7 @@ class Test(unittest.TestCase):
         X = make_low_rank_matrix(n_samples=50, n_features=25, effective_rank=5,
                                  tail_strength=0.01, random_state=0)
 
-        self.assertEquals(X.shape, (50, 25), "X shape mismatch")
+        self.assertEqual(X.shape, (50, 25), "X shape mismatch")
 
         _, s, _ = svd(X)
         self.assertLess((s.sum() - 5).execute(n_parallel=1), 0.1, "X rank is not approximately 5")

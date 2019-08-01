@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-03-13 11:41+0800\n"
+"POT-Creation-Date: 2019-07-23 13:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -180,7 +180,11 @@ msgid ":obj:`execute <mars.tensor.core.Tensor.execute>`\\ \\(\\[session\\]\\)"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ":obj:`Tensor.flatten <Tensor.flatten>`\\"
+msgid ":obj:`flatten <mars.tensor.core.Tensor.flatten>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
+msgid "Return a copy of the tensor collapsed into one dimension."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -268,7 +272,7 @@ msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid "Return a flattened tensor."
+msgid "Return a contiguous flattened array."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -288,13 +292,7 @@ msgid "Repeat elements of a tensor."
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid ""
-":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ \\(shape\\, "
-"\\*shapes\\)"
-msgstr ""
-
-#: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
-msgid "Returns a tensor containing the same data with a new shape."
+msgid ":obj:`Tensor.reshape <Tensor.reshape>`\\"
 msgstr ""
 
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:77:<autosummary>:1
@@ -482,237 +480,4 @@ msgstr ""
 #: ../../source/tensor/generated/mars.tensor.core.Tensor.rst:98:<autosummary>:1
 msgid ":obj:`Tensor.size <Tensor.size>`\\"
 msgstr ""
-
-#~ msgid ""
-#~ ":obj:`__init__ <mars.tensor.core.Tensor.__init__>`\\ "
-#~ "\\(\\*args\\, \\*\\*kwargs\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`build_graph <mars.tensor.core.Tensor.build_graph>`\\ "
-#~ "\\(\\[graph\\, cls\\, tiled\\, compose\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`cls <mars.tensor.core.Tensor.cls>`\\ \\(provider\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`conj <mars.tensor.core.Tensor.conj>`\\ \\(\\[out\\, where\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Return the complex conjugate, element-wise."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`conjugate <mars.tensor.core.Tensor.conjugate>`\\ "
-#~ "\\(\\[out\\, where\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`copy <mars.tensor.core.Tensor.copy>`\\ \\(\\*\\*kw\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`copy_from <mars.tensor.core.Tensor.copy_from>`\\ "
-#~ "\\(obj\\[\\, attrs\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`copy_to <mars.tensor.core.Tensor.copy_to>`\\ \\(obj\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`copyto <mars.tensor.core.Tensor.copyto>`\\ \\(obj\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`deserialize <mars.tensor.core.Tensor.deserialize>`\\ "
-#~ "\\(provider\\, obj\\[\\, callbacks\\, ...\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`dot <mars.tensor.core.Tensor.dot>`\\ \\(b\\[\\, "
-#~ "out\\, sparse\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Dot product of two arrays."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`execute <mars.tensor.core.Tensor.execute>`\\ "
-#~ "\\(\\[session\\, n\\_parallel\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`flatten <mars.tensor.core.Tensor.flatten>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid "Return a flattened tensor."
-#~ msgstr ""
-
-#~ msgid ":obj:`from_json <mars.tensor.core.Tensor.from_json>`\\ \\(obj\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`from_pb <mars.tensor.core.Tensor.from_pb>`\\ \\(obj\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`get_chunk_slices "
-#~ "<mars.tensor.core.Tensor.get_chunk_slices>`\\ \\(idx\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`is_coarse <mars.tensor.core.Tensor.is_coarse>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`is_scalar <mars.tensor.core.Tensor.is_scalar>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`is_sparse <mars.tensor.core.Tensor.is_sparse>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`isscalar <mars.tensor.core.Tensor.isscalar>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`issparse <mars.tensor.core.Tensor.issparse>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`ravel <mars.tensor.core.Tensor.ravel>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`rechunk <mars.tensor.core.Tensor.rechunk>`\\ "
-#~ "\\(chunks\\[\\, threshold\\, chunk\\_size\\_limit\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`repeat <mars.tensor.core.Tensor.repeat>`\\ "
-#~ "\\(repeats\\[\\, axis\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Repeat elements of a tensor."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`reshape <mars.tensor.core.Tensor.reshape>`\\ "
-#~ "\\(shape\\, \\*shapes\\)"
-#~ msgstr ""
-
-#~ msgid "Returns a tensor containing the same data with a new shape."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`round <mars.tensor.core.Tensor.round>`\\ "
-#~ "\\(\\[decimals\\, out\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Evenly round to the given number of decimals."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`serialize <mars.tensor.core.Tensor.serialize>`\\ "
-#~ "\\(provider\\[\\, obj\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`squeeze <mars.tensor.core.Tensor.squeeze>`\\ \\(\\[axis\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Remove single-dimensional entries from the shape of a tensor."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`swapaxes <mars.tensor.core.Tensor.swapaxes>`\\ "
-#~ "\\(axis1\\, axis2\\)"
-#~ msgstr ""
-
-#~ msgid "Interchange two axes of a tensor."
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`to_graph <mars.tensor.core.Tensor.to_graph>`\\ "
-#~ "\\(\\[graph\\, graph\\_cls\\, substitutes\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`to_json <mars.tensor.core.Tensor.to_json>`\\ \\(\\[obj\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`to_pb <mars.tensor.core.Tensor.to_pb>`\\ \\(\\[obj\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`todense <mars.tensor.core.Tensor.todense>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`tosparse <mars.tensor.core.Tensor.tosparse>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`transpose <mars.tensor.core.Tensor.transpose>`\\ \\(\\*axes\\)"
-#~ msgstr ""
-
-#~ msgid "Returns a view of the tensor with axes transposed."
-#~ msgstr ""
-
-#~ msgid ":obj:`update_key <mars.tensor.core.Tensor.update_key>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`visualize <mars.tensor.core.Tensor.visualize>`\\ "
-#~ "\\(\\[graph\\_attrs\\, node\\_attrs\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":obj:`chunk_shape <mars.tensor.core.Tensor.chunk_shape>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`chunks <mars.tensor.core.Tensor.chunks>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`cix <mars.tensor.core.Tensor.cix>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`dtype <mars.tensor.core.Tensor.dtype>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`id <mars.tensor.core.Tensor.id>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`inputs <mars.tensor.core.Tensor.inputs>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`key <mars.tensor.core.Tensor.key>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`nbytes <mars.tensor.core.Tensor.nbytes>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`ndim <mars.tensor.core.Tensor.ndim>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`nsplits <mars.tensor.core.Tensor.nsplits>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`op <mars.tensor.core.Tensor.op>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`params <mars.tensor.core.Tensor.params>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`size <mars.tensor.core.Tensor.size>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.conj <Tensor.conj>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.conjugate <Tensor.conjugate>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.dot <Tensor.dot>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.rechunk <Tensor.rechunk>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.repeat <Tensor.repeat>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.round <Tensor.round>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.squeeze <Tensor.squeeze>`\\"
-#~ msgstr ""
-
-#~ msgid ":obj:`Tensor.swapaxes <Tensor.swapaxes>`\\"
-#~ msgstr ""
 

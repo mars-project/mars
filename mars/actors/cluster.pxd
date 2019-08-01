@@ -19,6 +19,7 @@ cdef class ClusterInfo:
     cdef public bint standalone
     cdef public int n_process
     cdef public str address
+    cdef public str advertise_address
     cdef public str serialization
     cdef public str location
     cdef public int port

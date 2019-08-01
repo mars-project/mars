@@ -653,7 +653,8 @@ cdef class Communicator(AsyncHandler):
 
     cpdef _dispatch(self, local_func, redirect_func, remote_func, ActorRef actor_ref, args, kwargs):
         cdef int send_to_index
-        if actor_ref.address is None or actor_ref.address == self.cluster_info.address:
+        if actor_ref.address is None or actor_ref.address == self.cluster_info.address \
+                or actor_ref.address == self.cluster_info.advertise_address:
             if self.cluster_info.n_process == 1:
                 send_to_index = self.index
             else:
@@ -1111,7 +1112,8 @@ cdef class Dispatcher(AsyncHandler):
         }
 
     cdef inline bint _is_remote(self, ActorRef actor_ref):
-        if actor_ref.address is None or actor_ref.address == self.cluster_info.address:
+        if actor_ref.address is None or actor_ref.address == self.cluster_info.address \
+                or actor_ref.address == self.cluster_info.advertise_address:
             return False
         return True
 
@@ -1431,7 +1433,7 @@ def start_local_pool(int index, ClusterInfo cluster_info,
     # all these work in a single process
     # we start a local pool to handle messages
     # and a communicator to do the redirection of messages
-    local_pool = LocalActorPool(cluster_info.address, index)
+    local_pool = LocalActorPool(cluster_info.advertise_address or cluster_info.address, index)
     comm = Communicator(local_pool, cluster_info, pipe, distributor, parallel)
     local_pool.set_comm(comm)
     p = gevent.spawn(comm.run)
