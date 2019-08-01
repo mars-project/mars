@@ -281,7 +281,8 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
                 inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
             elif op.where:
                 inputs, kw['where'] = inputs[:-1], inputs[-1]
-            kw['order'] = op.order
+            if op.order != 'K':
+                kw['order'] = op.order
 
             with np.errstate(**op.err):
                 ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)

@@ -154,6 +154,14 @@ class Test(unittest.TestCase):
         with self.assertRaises(TypeError):
             arr.astype(np.int32, casting='safe')
 
+        arr3 = arr.astype(arr.dtype, order='F')
+        self.assertTrue(arr3.flags['F_CONTIGUOUS'])
+        self.assertFalse(arr3.flags['C_CONTIGUOUS'])
+
+        arr3.tiles()
+
+        self.assertEqual(arr3.chunks[0].order.value, 'F')
+
     def testTranspose(self):
         arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
 
@@ -272,6 +280,18 @@ class Test(unittest.TestCase):
         indices.tiles()
 
         self.assertEqual(indices.nsplits[1], (1, 1))
+
+    def testArgwhereOrder(self):
+        data = np.asfortranarray([[True, False], [False, True]])
+        cond = tensor(data, chunk_size=1)
+        indices = argwhere(cond)
+
+        self.assertTrue(indices.flags['F_CONTIGUOUS'])
+        self.assertFalse(indices.flags['C_CONTIGUOUS'])
+
+        indices.tiles()
+
+        self.assertEqual(indices.chunks[0].order.value, 'F')
 
     def testArraySplit(self):
         a = arange(8, chunk_size=2)

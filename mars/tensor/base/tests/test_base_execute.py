@@ -65,7 +65,7 @@ class Test(unittest.TestCase):
         arr2 = arr.astype('i8')
 
         res = self.executor.execute_tensor(arr2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw.astype('i8')))
+        np.testing.assert_array_equal(res[0], raw.astype('i8'))
 
         raw = sps.random(10, 5, density=.2)
         arr = tensor(raw, chunk_size=3)
@@ -73,6 +73,15 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
         self.assertTrue(np.array_equal(res[0].toarray(), raw.astype('i8').toarray()))
+
+        raw = np.asfortranarray(np.random.random((10, 5)))
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.astype('i8', order='C')
+
+        res = self.executor.execute_tensor(arr2, concat=True)
+        np.testing.assert_array_equal(res[0], raw.astype('i8'))
+        self.assertTrue(res.flags['C_CONTIGUOUS'])
+        self.assertFalse(res.flags['F_CONTIGUOUS'])
 
     def testTransposeExecution(self):
         raw = np.random.random((11, 8, 5))
@@ -322,7 +331,19 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.argwhere(np.arange(6).reshape(2, 3) > 1)
 
-        self.assertTrue(np.array_equal(res, expected))
+        np.testing.assert_array_equal(res, expected)
+
+        data = np.asfortranarray(np.random.rand(10, 20))
+        x = tensor(data, chunk_size=10)
+
+        t = argwhere(x > 0.5)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.argwhere(data > 0.5)
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
 
     def testArraySplitExecution(self):
         x = arange(48, chunk_size=3).reshape(2, 3, 8)

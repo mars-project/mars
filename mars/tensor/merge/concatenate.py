@@ -125,7 +125,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
 
     @staticmethod
     def _ensure_order(result, order):
-        return result.astype(None, order=order.value, copy=False)
+        return result.astype(result.dtype, order=order.value, copy=False)
 
     @classmethod
     def execute(cls, ctx, op):

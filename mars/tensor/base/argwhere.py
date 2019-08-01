@@ -49,6 +49,7 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
         from ..reshape.reshape import TensorReshape
 
         in_tensor = op.input
+        out_tensor = op.outputs[0]
 
         flattened = ravel(in_tensor).single_tiles()
         indices = arange(flattened.size, dtype=np.intp, chunks=flattened.nsplits)
@@ -63,11 +64,12 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
             dim_ind_chunk = dim_indices[out_index[1]].chunks[out_index[0]]
             chunk_shape = dim_ind_chunk.shape + (1,)
             chunk_op = TensorReshape(newshape=(-1, 1), dtype=dim_ind_chunk.dtype)
-            out_chunk = chunk_op.new_chunk([dim_ind_chunk], shape=chunk_shape, index=out_index)
+            out_chunk = chunk_op.new_chunk([dim_ind_chunk], shape=chunk_shape, index=out_index,
+                                           order=out_tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
 

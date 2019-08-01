@@ -139,10 +139,7 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     >>> x.astype(int).execute()
     array([1, 2, 2])
     """
-    if dtype is None:
-        dtype = tensor.dtype
-    else:
-        dtype = np.dtype(dtype)
+    dtype = np.dtype(dtype)
 
     # check order
     if order in 'KA':

@@ -49,11 +49,13 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
         for chunk_shape, chunk_idx in izip(itertools.product(*chunk_size),
                                            itertools.product(*chunk_size_idxes)):
             chunk_op = op.to_chunk_op(chunk_shape, chunk_idx, chunk_size)
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
+                                           order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=chunk_size)
+        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=chunk_size,
+                                  order=tensor.order)
 
 
 class TensorNoInput(TensorDataSource):
