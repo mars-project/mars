@@ -81,6 +81,10 @@ class SessionsApiHandler(MarsApiRequestHandler):
 
 
 class SessionApiHandler(MarsApiRequestHandler):
+    def head(self, session_id):
+        if not self.web_api.check_session(session_id):
+            raise web.HTTPError(404, 'Session doesn\'t not exists')
+
     def delete(self, session_id):
         self.web_api.delete_session(session_id)
 

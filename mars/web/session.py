@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 class Session(object):
-    def __init__(self, endpoint, req_session=None, args=None):
+    def __init__(self, endpoint, session_id=None, req_session=None, args=None):
         self._endpoint = endpoint
+        self._session_id = session_id
         self._args = args
         # dict structure: {ttileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
@@ -65,11 +66,18 @@ class Session(object):
         self._endpoint = url
 
     def _main(self):
-        resp = self._req_session.post(self._endpoint + '/api/session', self._args)
-        if resp.status_code >= 400:
-            raise SystemError('Failed to create mars session.')
-        content = json.loads(resp.text)
-        self._session_id = content['session_id']
+        if self._session_id is None:
+            resp = self._req_session.post(self._endpoint + '/api/session', self._args)
+            if resp.status_code >= 400:
+                raise SystemError('Failed to create mars session.')
+            content = json.loads(resp.text)
+            self._session_id = content['session_id']
+        else:
+            resp = self._req_session.head(self._endpoint + '/api/session/' + self._session_id)
+            if resp.status_code == 404:
+                raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
+            if resp.status_code >= 400:
+                raise SystemError('Failed to check mars session.')
 
     def _get_tileable_graph_key(self, tileable_key):
         return self._executed_tileables[tileable_key][0]

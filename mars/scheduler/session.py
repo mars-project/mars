@@ -227,6 +227,10 @@ class SessionManagerActor(SchedulerActor):
         return session_ref
 
     @log_unhandled
+    def check_session(self, session_id):
+        return session_id in self._session_refs
+
+    @log_unhandled
     def delete_session(self, session_id):
         if session_id in self._session_refs:
             session_ref = self._session_refs[session_id]
