@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fuse.ne import NUMEXPR_INSTALLED
+from ..tensor.fuse.ne import NUMEXPR_INSTALLED
 from .ne import NeOptimizer
 from .cp import CpOptimizer
 
