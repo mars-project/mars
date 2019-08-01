@@ -26,7 +26,6 @@ from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
 from ..operands import TensorOperand, TensorOperandMixin
 from ..indexing.slice import TensorSlice
-from ..core import TensorOrder
 
 
 def _get_index(chunk):
