@@ -425,6 +425,20 @@ class Test(unittest.TestCase):
             expected = np.clip(a_data.toarray(), b_data.toarray(), 4)
             self.assertTrue(np.array_equal(res.toarray(), expected))
 
+    def testClipOrderExecution(self):
+        a_data = np.asfortranarray(np.random.rand(4, 8))
+
+        a = tensor(a_data, chunk_size=3)
+
+        b = clip(a, 0.2, 0.8)
+
+        res = self.executor.execute_tensor(b, concat=True)[0]
+        expected = np.clip(a_data, 0.2, 0.8)
+
+        np.testing.assert_allclose(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+
     def testAroundExecution(self):
         data = np.random.randn(10, 20)
         x = tensor(data, chunk_size=3)
@@ -445,6 +459,19 @@ class Test(unittest.TestCase):
         expected = np.around(data.toarray(), decimals=2)
 
         np.testing.assert_allclose(res.toarray(), expected)
+
+    def testAroundOrderExecution(self):
+        data = np.asfortranarray(np.random.rand(10, 20))
+        x = tensor(data, chunk_size=3)
+
+        t = x.round(2)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.around(data, decimals=2)
+
+        np.testing.assert_allclose(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
 
     def testCosOrderExecution(self):
         data = np.asfortranarray(np.random.rand(3, 5))

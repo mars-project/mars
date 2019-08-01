@@ -123,6 +123,10 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   nsplits=out_nsplits, chunks=out_chunks)
 
+    @staticmethod
+    def _ensure_order(result, order):
+        return result.astype(None, order=order.value, copy=False)
+
     @classmethod
     def execute(cls, ctx, op):
         def _base_concatenate(chunk, inputs):
@@ -149,10 +153,11 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         inputs = [ctx[input.key] for input in op.inputs]
 
         if isinstance(inputs[0], tuple):
-            ctx[chunk.key] = tuple(_base_concatenate(chunk, [input[i] for input in inputs])
-                                   for i in range(len(inputs[0])))
+            ctx[chunk.key] = \
+                tuple(cls._ensure_order(_base_concatenate(chunk, [input[i] for input in inputs]), chunk.order)
+                      for i in range(len(inputs[0])))
         else:
-            ctx[chunk.key] = _base_concatenate(chunk, inputs)
+            ctx[chunk.key] = cls._ensure_order(_base_concatenate(chunk, inputs), chunk.order)
 
 
 def concatenate(tensors, axis=0):
