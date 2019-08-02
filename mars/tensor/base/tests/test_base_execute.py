@@ -78,8 +78,8 @@ class Test(unittest.TestCase):
         arr = tensor(raw, chunk_size=3)
         arr2 = arr.astype('i8', order='C')
 
-        res = self.executor.execute_tensor(arr2, concat=True)
-        np.testing.assert_array_equal(res[0], raw.astype('i8'))
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        np.testing.assert_array_equal(res, raw.astype('i8'))
         self.assertTrue(res.flags['C_CONTIGUOUS'])
         self.assertFalse(res.flags['F_CONTIGUOUS'])
 
