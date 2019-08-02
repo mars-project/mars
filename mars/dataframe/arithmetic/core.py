@@ -481,6 +481,28 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return out_chunks
 
     @classmethod
+    def _gen_out_chunks_without_shuffle2(cls, op, splits, out_shape, left, right):
+        out_chunks = []
+        for out_idx in itertools.product(*(range(s) for s in out_shape)):
+            # does not need shuffle
+            left_row_idx = splits.get_row_left_idx(out_idx[0])
+            # left_col_idx = splits.get_col_left_idx(out_idx[1])
+            left_chunk = left.cix[left_row_idx, 0]
+            left_out_chunk = left_chunk
+
+            right_row_idx = splits.get_row_right_idx(out_idx[0])
+            # right_col_idx = splits.get_col_right_idx(out_idx[1])
+            right_chunk = right.cix[right_row_idx,]
+            right_out_chunk = right_chunk
+
+            out_op = op.copy().reset_key()
+            out_chunks.append(
+                out_op.new_chunk([left_out_chunk, right_out_chunk], shape=(np.nan, np.nan),
+                                 index=out_idx))
+
+        return out_chunks
+
+    @classmethod
     def _gen_out_chunks_with_one_shuffle(cls, op, splits, out_shape, left, right):
         shuffle_axis = 0 if splits[0] is None else 1
         shuffle_size = out_shape[shuffle_axis]
@@ -698,6 +720,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         right_increase = right_chunk_index_min_max[1]
         splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
                                             right_splits, right_increase)
+        nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
 
         # ------- mock it -------
         left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
@@ -706,7 +729,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         # ------------------------
         out_shape = (1, 1)
-        out_chunks = cls._gen_out_chunks_with_one_shuffle(op, splits, out_shape, left, right)
+        out_chunks = cls._gen_out_chunks_without_shuffle2(op, splits, out_shape, left, right)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, df.shape,
@@ -747,6 +770,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _calc_properties(cls, x1, x2):
         dtypes = columns = index = None
         index_shape = column_shape = np.nan
+        if isinstance(x2, SERIES_CHUNK_TYPE):
+            return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+                    'columns_value': columns, 'index_value': index}
         if x1.columns.key == x2.columns.key:
             dtypes = x1.dtypes
             column_shape = len(dtypes)
