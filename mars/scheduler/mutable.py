@@ -77,7 +77,7 @@ class MutableTensorActor(SchedulerActor):
         else:
             dtype_descr = str(self._dtype)
         chunk_keys = list(self._chunk_ep_map.keys())
-        chunk_eps = list(self._chunk_ep_map.values())
+        chunk_eps = [self._chunk_ep_map[key] for key in chunk_keys]
         return self._shape, dtype_descr, self._chunk_size, chunk_keys, chunk_eps
 
     def tensor_key(self):
