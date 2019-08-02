@@ -31,7 +31,7 @@ class Test(WorkerCase):
 
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool:
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
+            pool.create_actor(WorkerClusterInfoActor, [local_pool_addr],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_uid())
 
@@ -174,7 +174,7 @@ class Test(WorkerCase):
         local_pool_addr = 'localhost:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=local_pool_addr) as pool, \
                 patch_method(resource.virtual_memory, new=lambda: mock_mem_stat):
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[local_pool_addr],
+            pool.create_actor(WorkerClusterInfoActor, [local_pool_addr],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(StatusActor, local_pool_addr, uid=StatusActor.default_uid())
 

@@ -594,7 +594,7 @@ class Test(unittest.TestCase):
             r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) + 1)
 
-    def test_fetch_slices(self, *_):
+    def testFetchSlices(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
             session = cluster.session

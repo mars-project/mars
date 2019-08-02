@@ -18,7 +18,6 @@ import json
 import logging
 
 from .. import kvstore
-from ..compat import six
 from ..config import options
 from .session import SessionManagerActor
 from .resource import ResourceActor
@@ -42,9 +41,7 @@ class SchedulerService(object):
         self._node_info_ref = None
         self._result_receiver_ref = None
 
-        self._advertise_addr = kwargs.pop('advertise_addr', None)
-
-    def start(self, endpoint, schedulers, pool):
+    def start(self, endpoint, discoverer, pool):
         """
         there are two way to start a scheduler
         1) if options.kv_store is specified as an etcd address, the endpoint will be written
@@ -58,30 +55,15 @@ class SchedulerService(object):
         if not isinstance(kv_store, kvstore.LocalKVStore):
             # set etcd as service discover
             logger.info('Mars Scheduler started with kv store %s.', options.kv_store)
-            service_discover_addr = options.kv_store
-            all_schedulers = None
             # create KVStoreActor when there is a distributed KV store
             self._kv_store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
         else:
             # single scheduler
             logger.info('Mars Scheduler started in standalone mode.')
-            service_discover_addr = None
-
-            advertise_endpoint = self._advertise_addr or endpoint
-            if ':' not in advertise_endpoint:
-                advertise_endpoint += ':' + endpoint.rsplit(':', 1)[-1]
-            all_schedulers = {advertise_endpoint}
-
-            if isinstance(schedulers, six.string_types):
-                schedulers = schedulers.split(',')
-            if schedulers:
-                all_schedulers.update(schedulers)
-            all_schedulers = list(all_schedulers)
 
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
-            SchedulerClusterInfoActor, all_schedulers, service_discover_addr,
-            uid=SchedulerClusterInfoActor.default_uid())
+            SchedulerClusterInfoActor, discoverer, uid=SchedulerClusterInfoActor.default_uid())
         # create ChunkMetaActor
         self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         # create SessionManagerActor

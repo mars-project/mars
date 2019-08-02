@@ -127,9 +127,9 @@ def start_transfer_test_pool(**kwargs):
     address = kwargs.pop('address')
     plasma_size = kwargs.pop('plasma_size')
     with create_actor_pool(n_process=1, backend='gevent', address=address, **kwargs) as pool:
-        pool.create_actor(SchedulerClusterInfoActor, schedulers=[address],
+        pool.create_actor(SchedulerClusterInfoActor, [address],
                           uid=SchedulerClusterInfoActor.default_uid())
-        pool.create_actor(WorkerClusterInfoActor, schedulers=[address],
+        pool.create_actor(WorkerClusterInfoActor, [address],
                           uid=WorkerClusterInfoActor.default_uid())
 
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())

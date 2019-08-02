@@ -144,23 +144,14 @@ class WorkerService(object):
         self._plasma_store = plasma.start_plasma_store(self._cache_mem_limit)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
-    def start(self, endpoint, pool, distributed=True, schedulers=None, process_start_index=0):
-        if schedulers:
-            if isinstance(schedulers, six.string_types):
-                schedulers = schedulers.split(',')
-            service_discover_addr = None
-        else:
-            schedulers = None
-            service_discover_addr = options.kv_store
-
+    def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
         # create plasma key mapper
         from .chunkstore import PlasmaKeyMapActor
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
 
         # create WorkerClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
-            WorkerClusterInfoActor, schedulers=schedulers, service_discover_addr=service_discover_addr,
-            uid=WorkerClusterInfoActor.default_uid())
+            WorkerClusterInfoActor, discoverer, uid=WorkerClusterInfoActor.default_uid())
 
         if distributed:
             # create process daemon

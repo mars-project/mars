@@ -118,7 +118,7 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+            pool.create_actor(WorkerClusterInfoActor, [pool_address],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
@@ -145,7 +145,7 @@ class Test(WorkerCase):
         pool_address = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[pool_address],
+            pool.create_actor(WorkerClusterInfoActor, [pool_address],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())
             pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())

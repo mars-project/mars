@@ -39,41 +39,71 @@ def get_scheduler(hash_ring, key, size=1):
     return tuple(it['nodename'] for it in hash_ring.range(key, size=size))
 
 
-class _ClusterInfoWatchActor(FunctionActor):
-    def __init__(self, service_discover_addr, cluster_info_ref):
-        self._client = kvstore.get(service_discover_addr)
-        self._cluster_info_ref = cluster_info_ref
+class StaticSchedulerDiscoverer(object):
+    dynamic = False
 
-        if isinstance(self._client, kvstore.LocalKVStore):
-            raise ValueError('etcd_addr should not be a local address, got {0}'.format(service_discover_addr))
+    def __init__(self, schedulers):
+        self._schedulers = schedulers
 
-    def _get_schedulers(self):
-        schedulers = [s.key.rsplit('/', 1)[1] for s in self._client.read(SCHEDULER_PATH).children]
-        logger.debug('Schedulers obtained. Results: %r', schedulers)
-        return [to_str(s) for s in schedulers]
+    def __reduce__(self):
+        return type(self), (self._schedulers,)
 
-    def get_schedulers(self):
-        try:
-            return self._get_schedulers()
-        except KeyError:
-            self._client.watch(SCHEDULER_PATH)
-            return self._get_schedulers()
+    def get(self):
+        return self._schedulers
 
     def watch(self):
-        for new_schedulers in self._client.eternal_watch(SCHEDULER_PATH):
-            self._cluster_info_ref.set_schedulers([to_str(s) for s in new_schedulers])
+        raise NotImplementedError
+
+
+class KVStoreSchedulerDiscoverer(object):
+    dynamic = True
+
+    def __init__(self, address):
+        self._address = address
+        self._client = kvstore.get(address)
+        if isinstance(self._client, kvstore.LocalKVStore):
+            raise ValueError('etcd_addr should not be a local address, got {0}'.format(address))
+
+    def __reduce__(self):
+        return type(self), (self._address,)
+
+    @staticmethod
+    def _resolve_schedulers(result):
+        return [to_str(s.key.rsplit('/', 1)[1]) for s in result.children]
+
+    def get(self):
+        try:
+            return self._resolve_schedulers(self._client.read(SCHEDULER_PATH))
+        except KeyError:
+            return next(self.watch())
+
+    def watch(self):
+        for result in self._client.eternal_watch(SCHEDULER_PATH):
+            yield self._resolve_schedulers(result)
+
+
+class _ClusterInfoWatchActor(FunctionActor):
+    def __init__(self, discoverer, cluster_info_ref):
+        self._discoverer = discoverer
+        self._cluster_info_ref = cluster_info_ref
+
+    def get_schedulers(self):
+        return self._discoverer.get()
+
+    def watch(self):
+        for schedulers in self._discoverer.watch():
+            self._cluster_info_ref.set_schedulers(schedulers)
 
 
 class ClusterInfoActor(FunctionActor):
-    def __init__(self, schedulers=None, service_discover_addr=None):
-        if (schedulers is None and service_discover_addr is None) or \
-                (schedulers is not None and service_discover_addr is not None):
-            raise ValueError('Either schedulers or etcd_addr should be provided')
+    def __init__(self, discoverer):
+        if isinstance(discoverer, list):
+            discoverer = StaticSchedulerDiscoverer(discoverer)
 
-        self._schedulers = schedulers
+        self._discoverer = discoverer
         self._hash_ring = None
-        self._service_discover_addr = service_discover_addr
         self._watcher = None
+        self._schedulers = []
         self._observer_refs = []
 
     @classmethod
@@ -83,16 +113,16 @@ class ClusterInfoActor(FunctionActor):
     def post_create(self):
         logger.debug('Actor %s running in process %d', self.uid, os.getpid())
 
-        if self._service_discover_addr:
+        if self._discoverer.dynamic:
             watcher = self._watcher = self.ctx.create_actor(
-                _ClusterInfoWatchActor, self._service_discover_addr, self.ref())
-            self._schedulers = watcher.get_schedulers()
+                _ClusterInfoWatchActor, self._discoverer, self.ref())
             watcher.watch(_tell=True)
+        self._schedulers = self._discoverer.get()
 
         self._hash_ring = create_hash_ring(self._schedulers)
 
     def pre_destroy(self):
-        if self._service_discover_addr:
+        if self._watcher:
             self.ctx.destroy_actor(self._watcher)
 
     def register_observer(self, observer, fun_name):

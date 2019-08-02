@@ -324,9 +324,9 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(self.executor.execute_tensor(nanmin(arr))[0]))
         self.assertTrue(np.isnan(self.executor.execute_tensor(nanmean(arr))[0]))
         with self.assertRaises(ValueError):
-            _ = self.executor.execute_tensor(nanargmin(arr))[0]
+            _ = self.executor.execute_tensor(nanargmin(arr))[0]  # noqa: F841
         with self.assertRaises(ValueError):
-            _ = self.executor.execute_tensor(nanargmax(arr))[0]
+            _ = self.executor.execute_tensor(nanargmax(arr))[0]  # noqa: F841
 
         raw = sps.random(10, 10, density=.1, format='csr')
         raw[:3, :3] = np.nan

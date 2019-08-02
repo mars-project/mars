@@ -24,6 +24,7 @@ import sys
 import time
 
 from ...actors import create_actor_pool
+from ...cluster_info import StaticSchedulerDiscoverer
 from ...compat import six, TimeoutError  # pylint: disable=W0622
 from ...config import options
 from ...lib import gipc
@@ -111,12 +112,14 @@ class LocalDistributedCluster(object):
         distributor = gen_distributor(self._scheduler_n_process, self._worker_n_process)
         self._pool = create_actor_pool(self._endpoint, n_process, distributor=distributor)
 
+        discoverer = StaticSchedulerDiscoverer([self._endpoint])
+
         # start scheduler first
-        self._scheduler_service.start(self._endpoint, None, self._pool)
+        self._scheduler_service.start(self._endpoint, discoverer, self._pool)
 
         # start worker next
         self._worker_service.start(self._endpoint, self._pool, distributed=False,
-                                   schedulers=[self._endpoint],
+                                   discoverer=discoverer,
                                    process_start_index=self._scheduler_n_process)
 
         # make sure scheduler is ready
