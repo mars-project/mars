@@ -16,30 +16,34 @@ import pandas as pd
 import numpy as np
 
 from mars.tests.core import TestBase
-from mars.dataframe.reduction import sum
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
 
 class Test(TestBase):
     def testSeriesSum(self):
-        data = pd.Series(np.random.rand(20), name='a')
-        sum_df = sum(from_pandas_series(data))
+        data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
+        sum_df = from_pandas_series(data).sum()
         self.assertEqual(data.sum(), sum_df.execute())
 
-        sum_df = sum(from_pandas_series(data, chunk_size=6))
+        sum_df = from_pandas_series(data, chunk_size=6).sum()
         self.assertAlmostEqual(data.sum(), sum_df.execute())
 
-        sum_df = sum(from_pandas_series(data, chunk_size=3))
+        sum_df = from_pandas_series(data, chunk_size=3).sum()
         self.assertAlmostEqual(data.sum(), sum_df.execute())
 
-        sum_df = sum(from_pandas_series(data, chunk_size=4), axis='index')
+        sum_df = from_pandas_series(data, chunk_size=4).sum(axis='index')
         self.assertAlmostEqual(data.sum(axis='index'), sum_df.execute())
 
         data = pd.Series(np.random.rand(20), name='a')
         data[data > 0.5] = np.nan
-        sum_df = sum(from_pandas_series(data, chunk_size=3))
+        sum_df = from_pandas_series(data, chunk_size=3).sum()
         self.assertAlmostEqual(data.sum(), sum_df.execute())
 
-        sum_df = sum(from_pandas_series(data, chunk_size=3), skipna=False)
+        sum_df = from_pandas_series(data, chunk_size=3).sum(skipna=False)
         self.assertTrue(np.isnan(sum_df.execute()))
 
+    def testDataFrameSum(self):
+        data = pd.DataFrame(np.random.rand(20, 10))
+        sum_df = from_pandas_df(data, chunk_size=3).sum()
+        pd.testing.assert_series_equal(data.sum(), sum_df.execute())

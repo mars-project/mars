@@ -12,4 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sum import SeriesSum, sum
+from .sum import sum_series, sum_dataframe, SeriesSum, DataFrameSum
+
+
+def _install():
+    from ..core import DataFrame, Series
+
+    setattr(DataFrame, 'sum', sum_dataframe)
+    setattr(Series, 'sum', sum_series)
+
+
+_install()
+del _install

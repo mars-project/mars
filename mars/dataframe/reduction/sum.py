@@ -13,53 +13,48 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
-from ..operands import DataFrameOperand, ObjectType
-from .core import SeriesReductionMixin
+from ...serialize import BoolField
+from ..operands import ObjectType
+from .core import DataFrameReductionOperand, SeriesReductionMixin, DataFrameReductionMixin
 
 
-class SeriesSum(DataFrameOperand, SeriesReductionMixin):
+class SeriesSum(DataFrameReductionOperand, SeriesReductionMixin):
     _op_type_ = OperandDef.SUM
-
-    _axis = AnyField('axis')
-    _skipna = BoolField('skipna')
-    _level = AnyField('level')
-    _dtype = DataTypeField('dtype')
-    _combine_size = Int32Field('combine_size')
-
     _func_name = 'sum'
 
-    def __init__(self, axis=None, skipna=None, level=None, dtype=None, gpu=None, sparse=None, **kw):
-        super(SeriesSum, self).__init__(_axis=axis, _skipna=skipna, _level=level, _dtype=dtype,
-                                        _gpu=gpu, _sparse=sparse, _object_type=ObjectType.series, **kw)
+    def __init__(self, **kw):
+        super(SeriesSum, self).__init__(_object_type=ObjectType.series, **kw)
+
+
+class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
+    _numeric_only = BoolField('numeric_only')
+
+    _op_type_ = OperandDef.SUM
+    _func_name = 'sum'
+
+    def __init__(self, numeric_only=None, **kw):
+        super(DataFrameSum, self).__init__(_numeric_only=numeric_only,
+                                           _object_type=ObjectType.dataframe, **kw)
 
     @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def skipna(self):
-        return self._skipna
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def combine_size(self):
-        return self._combine_size
+    def numeric_only(self):
+        return self._numeric_only
 
 
-def sum(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
+def sum_series(df, axis=None, skipna=None, level=None, combine_size=None):
     # TODO: enable specify level if we support groupby
     if level is not None:
         raise NotImplementedError('Not support specify level now')
     if axis is not None:
         assert axis == 0 or axis == 'index'
-    op = SeriesSum(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                   combine_size=combine_size)
+    op = SeriesSum(axis=axis, skipna=skipna, level=level, combine_size=combine_size)
+    return op(df)
+
+
+def sum_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
+    # TODO: enable specify level if we support groupby
+    if level is not None:
+        raise NotImplementedError('Not support specify level now')
+    op = DataFrameSum(axis=axis, skipna=skipna, level=level,
+                      numeric_only=numeric_only, combine_size=combine_size)
     return op(df)

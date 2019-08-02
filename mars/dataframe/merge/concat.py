@@ -86,20 +86,19 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         def _base_concat(chunk, inputs):
+            # auto generated concat when executing a DataFrame, Series or Index
+            if chunk.op.object_type == ObjectType.dataframe:
+                return _auto_concat_dataframe_chunks(chunk, inputs)
+            elif chunk.op.object_type == ObjectType.series:
+                return _auto_concat_series_chunks(chunk, inputs)
+            else:
+                raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
+                                'can be automatically concatenated')
+
+        def _auto_concat_dataframe_chunks(chunk, inputs):
             if chunk.op.axis is not None:
                 # TODO: remove this when we support concat on dataframe
                 raise NotImplementedError
-            else:
-                # auto generated concat when executing a DataFrame, Series or Index
-                if chunk.op.object_type == ObjectType.dataframe:
-                    return _auto_concat_dataframe_chunks(chunk, inputs)
-                elif chunk.op.object_type == ObjectType.series:
-                    return _auto_concat_series_chunks(chunk, inputs)
-                else:
-                    raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
-                                    'can be automatically concatenated')
-
-        def _auto_concat_dataframe_chunks(chunk, inputs):
             # auto generated concat when executing a DataFrame
             n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
             n_cols = int(len(inputs) // n_rows)
@@ -122,7 +121,10 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if all(np.isscalar(inp) for inp in inputs):
                 return pd.Series(inputs)
             else:
-                concat = pd.concat(inputs)
+                if chunk.op.axis is not None:
+                    concat = pd.concat(inputs, axis=chunk.op.axis)
+                else:
+                    concat = pd.concat(inputs)
                 if getattr(chunk.index_value, 'should_be_monotonic', False):
                     concat.sort_index(inplace=True)
                 return concat
