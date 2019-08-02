@@ -16,9 +16,10 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, Int32Field
-from ..utils import validate_axis
+from ..utils import validate_axis, reverse_order
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
 
 
 def _swap(it, axis1, axis2):
@@ -48,8 +49,13 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
         return self._axis2
 
     def __call__(self, a):
+        axis1, axis2 = self._axis1, self._axis2
+        if (axis1 == 0 and axis2 == a.ndim - 1) or (axis1 == a.ndim - 1 and axis2 == 0):
+            tensor_order = reverse_order(a.order)
+        else:
+            tensor_order = TensorOrder.C_ORDER
         shape = _swap(a.shape, self.axis1, self.axis2)
-        return self.new_tensor([a], shape)
+        return self.new_tensor([a], shape, order=tensor_order)
 
     def _set_inputs(self, inputs):
         super(TensorSwapAxes, self)._set_inputs(inputs)
@@ -68,18 +74,20 @@ class TensorSwapAxes(TensorHasInput, TensorOperandMixin):
     def tile(cls, op):
         axis1, axis2 = op.axis1, op.axis2
         in_tensor = op.inputs[0]
+        out_tensor = op.outputs[0]
 
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_shape = _swap(c.shape, axis1, axis2)
             chunk_idx = _swap(c.index, axis1, axis2)
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
+                                           index=chunk_idx, order=out_tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         nsplits = _swap(in_tensor.nsplits, axis1, axis2)
-        return new_op.new_tensors([in_tensor], op.outputs[0].shape,
+        return new_op.new_tensors([in_tensor], out_tensor.shape, order=out_tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

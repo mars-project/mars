@@ -264,7 +264,8 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
     if copy and x is raw_x:
         x = x.copy()
     elif not copy and raw_x.dtype == x.dtype and \
-            raw_x.order == x.order and raw_x is not x:
+            raw_x.order == x.order and raw_x.shape == x.shape and \
+            raw_x is not x:
         raw_x.data = x.data
 
     return x

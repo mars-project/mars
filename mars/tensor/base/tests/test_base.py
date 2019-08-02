@@ -345,6 +345,15 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[3].nsplits, ((2,),))
         self.assertEqual(splits[4].nsplits, ((0,),))
 
+        a = tensor(np.asfortranarray(np.random.rand(9, 10)), chunk_size=4)
+        splits = split(a, 3)
+        self.assertTrue(splits[0].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+        self.assertTrue(splits[1].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+        self.assertTrue(splits[2].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+
     def testSqueeze(self):
         data = np.array([[[0], [1], [2]]])
         x = tensor(data)

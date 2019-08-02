@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, DataTypeField, StringField
 from ..array_utils import as_same_device, device
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..core import TensorOrder
+from ..utils import get_order
 
 
 class TensorAstype(TensorHasInput, TensorOperandMixin):
@@ -140,19 +140,10 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     array([1, 2, 2])
     """
     dtype = np.dtype(dtype)
-
-    # check order
-    if order in 'KA':
-        tensor_order = tensor.order
-    elif order == 'C':
-        tensor_order = TensorOrder.C_ORDER
-    elif order == 'F':
-        tensor_order = TensorOrder.F_ORDER
-    else:
-        raise TypeError('order not understood')
+    tensor_order = get_order(order, tensor.order)
 
     if tensor.dtype == dtype and tensor.order == tensor_order:
-        return tensor if not copy else tensor.copy()
+        return tensor if not copy else tensor.copy(order=order)
     elif not np.can_cast(tensor.dtype, dtype, casting=casting):
         raise TypeError('Cannot cast array from {0!r} to {1!r} '
                         'according to the rule {2!s}'.format(tensor.dtype, dtype, casting))

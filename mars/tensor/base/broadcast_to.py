@@ -57,7 +57,8 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
         nsplits = [tuple(c.shape[i] for c in out_chunks if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                    for i in range(len(out_chunks[0].shape))]
         new_op = op.copy()
-        return new_op.new_tensors([in_tensor], tensor.shape, chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors([in_tensor], tensor.shape, order=tensor.order,
+                                  chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

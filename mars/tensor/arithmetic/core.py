@@ -23,7 +23,7 @@ from ...core import ExecutableTuple
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
-from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs
+from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
 from ..operands import TensorOperandMixin, TensorOperand
 from ..array_utils import device, as_same_device
 
@@ -128,8 +128,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
                                           _where=where, _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
-        elif self._order not in 'KACF':
-            raise TypeError('order not understood')
+        check_order(self._order)
 
     @property
     def lhs(self):
@@ -301,8 +300,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
                                             _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
-        elif self._order not in 'KACF':
-            raise TypeError('order not understood')
+        check_order(self._order)
 
     @property
     def input(self):
@@ -414,8 +412,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
                                              _order=order, **kwargs)
         if self._order is None:
             self._order = 'K'
-        elif self._order not in 'KACF':
-            raise TypeError('order not understood')
+        check_order(self._order)
 
     @property
     def output_limit(self):

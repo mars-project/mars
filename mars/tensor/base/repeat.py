@@ -21,12 +21,12 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field
-from ..core import Tensor, TENSOR_TYPE, CHUNK_TYPE
+from ..core import Tensor, TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
-from .ravel import ravel
 from ..array_utils import as_same_device, device
+from .ravel import ravel
 
 
 class TensorRepeat(TensorHasInput, TensorOperandMixin):
@@ -90,7 +90,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         else:
             self._repeats = repeats
 
-        return self.new_tensor(inputs, shape)
+        return self.new_tensor(inputs, shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -98,6 +98,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         repeats = op.repeats
         axis = op.axis
         ax = axis or 0
+        out = op.outputs[0]
 
         if isinstance(repeats, TENSOR_TYPE):
             a, repeats = unify_chunks(a, (repeats, (ax,)))
@@ -142,14 +143,15 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
             if len(chunk_inputs) < 2:
                 # repeats is not chunk
                 chunk_op._repeats = rp
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk_shape, index=out_idx)
+            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk_shape,
+                                           index=out_idx, order=out.order)
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
                          if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                    for i in range(len(out_chunks[0].shape))]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, out.shape, order=out.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

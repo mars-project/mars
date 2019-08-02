@@ -113,6 +113,6 @@ def argwhere(a):
            [1, 2]])
 
     """
-    a = astensor(a).astype(bool)
+    a = astensor(a).astype(bool, order='A')
     op = TensorArgwhere(np.dtype(np.intp))
     return op(a)

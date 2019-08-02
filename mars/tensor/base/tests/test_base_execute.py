@@ -59,6 +59,18 @@ class Test(unittest.TestCase):
 
         np.testing.assert_equal(res, expected)
 
+        a = ones((2, 3), chunk_size=1)
+        b = tensor(np.asfortranarray(np.random.rand(2, 3)), chunk_size=2)
+
+        copyto(b, a)
+
+        res = self.executor.execute_tensor(b, concat=True)[0]
+        expected = np.asfortranarray(np.ones((2, 3)))
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+
     def testAstypeExecution(self):
         raw = np.random.random((10, 5))
         arr = tensor(raw, chunk_size=3)
@@ -90,13 +102,13 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.T))
+        np.testing.assert_array_equal(res[0], raw.T)
 
         arr3 = transpose(arr, axes=(-2, -1, -3))
 
         res = self.executor.execute_tensor(arr3, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.transpose(1, 2, 0)))
+        np.testing.assert_array_equal(res[0], raw.transpose(1, 2, 0))
 
         raw = sps.random(11, 8)
         arr = tensor(raw, chunk_size=3)
@@ -106,7 +118,30 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0].toarray(), raw.T.toarray()))
+        np.testing.assert_array_equal(res[0].toarray(), raw.T.toarray())
+
+        # test order
+        raw = np.asfortranarray(np.random.random((11, 8, 5)))
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = transpose(arr)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = np.transpose(raw).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = transpose(arr, (1, 2, 0))
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = np.transpose(raw, (1, 2, 0)).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testSwapaxesExecution(self):
         raw = np.random.random((11, 8, 5))
@@ -115,7 +150,7 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.swapaxes(2, 0)))
+        np.testing.assert_array_equal(res[0], raw.swapaxes(2, 0))
 
         raw = sps.random(11, 8, density=.2)
         arr = tensor(raw, chunk_size=3)
@@ -123,7 +158,40 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0].toarray(), raw.toarray().swapaxes(1, 0)))
+        np.testing.assert_array_equal(res[0].toarray(), raw.toarray().swapaxes(1, 0))
+
+        # test order
+        raw = np.asfortranarray(np.random.rand(11, 8, 5))
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(2, 0)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(2, 0).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(0, 2)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(0, 2).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(1, 0)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(1, 0).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testMoveaxisExecution(self):
         x = zeros((3, 4, 5), chunk_size=2)

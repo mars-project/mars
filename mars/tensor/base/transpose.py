@@ -21,6 +21,8 @@ from ...serialize import ValueType, KeyField, ListField
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
+from ..utils import reverse_order
+from ..core import TensorOrder
 
 
 def _reorder(x, axes):
@@ -47,7 +49,12 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
 
     def __call__(self, a):
         shape = _reorder(a.shape, self._axes)
-        return self.new_tensor([a], shape)
+        if self._axes == list(reversed(range(a.ndim))):
+            # order reversed
+            tensor_order = reverse_order(a.order)
+        else:
+            tensor_order = TensorOrder.C_ORDER
+        return self.new_tensor([a], shape, order=tensor_order)
 
     def _set_inputs(self, inputs):
         super(TensorTranspose, self)._set_inputs(inputs)
@@ -63,17 +70,20 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        tensor = op.outputs[0]
+
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
             chunk_shape = _reorder(c.shape, op.axes)
             chunk_idx = _reorder(c.index, op.axes)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
+                                           index=chunk_idx, order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         nsplits = _reorder(op.inputs[0].nsplits, op.axes)
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

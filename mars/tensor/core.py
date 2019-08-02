@@ -401,6 +401,9 @@ class Tensor(TileableEntity):
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
+    def copy(self, order='C'):
+        return super(Tensor, self).copy().astype(self.dtype, order=order, copy=False)
+
     @property
     def flat(self):
         """
@@ -416,8 +419,8 @@ class Tensor(TileableEntity):
 
         See Also
         --------
-        ndarray.flat : Return a flat iterator over a tensor.
-        ndarray.flatten : Returns a flattened copy of a tensor.
+        Tensor.flat : Return a flat iterator over a tensor.
+        Tensor.flatten : Returns a flattened copy of a tensor.
 
         Examples
         --------
