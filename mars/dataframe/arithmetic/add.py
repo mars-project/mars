@@ -18,7 +18,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
-from ..operands import DataFrameOperand
+from ..operands import DataFrameOperand, SERIES_TYPE
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE
 
 
@@ -75,7 +75,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
 
 
 def add(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
+    if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other) or isinstance(other, SERIES_TYPE):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
         raise NotImplementedError('Only support add with dataframe or scalar!')

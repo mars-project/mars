@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
 from ...utils import classproperty, tokenize, get_shuffle_input_keys_idxes
-from ..core import DATAFRAME_TYPE
+from ..core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import hash_dtypes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameShuffleProxy, DataFrameShuffleReduce
@@ -133,6 +133,8 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                 kw['index_value'] = parse_index(inputs[0].index_value.to_pandas(),
                                                 key=tokenize(input_index_value.key,
                                                              type(self).__name__))
+        if isinstance(inputs[0], SERIES_CHUNK_TYPE):
+            return
         if kw.get('columns_value', None) is None and inputs[0].columns is not None:
             input_columns_value = inputs[0].columns
             input_dtypes = inputs[0].dtypes
@@ -223,6 +225,8 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 
     def _create_chunk(self, output_idx, index, **kw):
         inputs = self.inputs
+        if inputs[0].inputs[0] is None:
+            return
         if kw.get('index_value', None) is None and inputs[0].inputs[0].index_value is not None:
             index_align_map_chunks = inputs[0].inputs
             if index_align_map_chunks[0].op.index_min_max is not None:
@@ -400,7 +404,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         for i in range(df.chunk_shape[axis]):
             chunk_idx = [0, 0]
             chunk_idx[axis] = i
-            chunk = df.cix[tuple(chunk_idx)]
+            if isinstance(df, SERIES_TYPE):
+                chunk = df.cix[(i,)]
+            else:
+                chunk = df.cix[tuple(chunk_idx)]
             chunk_index = getattr(chunk, index_type)
             min_val = chunk_index.min_val
             min_val_close = chunk_index.min_val_close
@@ -554,12 +561,20 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _is_index_identical(cls, left, right, index_type, axis):
-        if left.chunk_shape[axis] != right.chunk_shape[axis]:
+        try:
+            if left.chunk_shape[axis] != right.chunk_shape[axis]:
+                return False
+        except IndexError:
             return False
 
         for i in range(left.chunk_shape[axis]):
             idx = [0, 0]
             idx[axis] = i
+            if isinstance(right, SERIES_TYPE):
+                s_idx = i
+            else:
+                s_idx = idx
+
             if getattr(left.cix[tuple(idx)], index_type).key != \
                     getattr(right.cix[tuple(idx)], index_type).key:
                 return False
@@ -656,11 +671,55 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                      index_value=df.index_value, columns_value=df.columns, chunks=out_chunks)
 
     @classmethod
+    def _tile_series(cls, op):
+        new_op = op.copy()
+        left, right = op.inputs
+        df = op.outputs[0]
+        index_type = 'index_value'
+        axis = 0
+        nsplits = [[], []]
+        splits = _MinMaxSplitInfo()
+
+        # for axis, index_type in enumerate(['index_value', 'columns']):
+        #     left_chunk_size = left.chunk_shape[axis]
+        #     if isinstance(right, SERIES_TYPE) and axis == 1:
+        #         out_chunks = left_chunk_size
+        #     else:
+        #         right_chunk_size = right.chunk_shape[axis]
+        #         out_chunk_size = max(left_chunk_size, right_chunk_size)
+        #     nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
+        left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
+        right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
+        left_splits, right_splits = \
+            [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
+        left_increase = left_chunk_index_min_max[1]
+        right_increase = right_chunk_index_min_max[1]
+        splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
+                                            right_splits, right_increase)
+
+        # ------- mock it -------
+        left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
+        # right_chunk_index_min_max = cls._get_chunk_index_min_max(right, 'columns', 1)
+        splits[1] = _AxisMinMaxSplitInfo(left_splits,True)
+
+        # ------------------------
+        out_shape = (1, 1)
+        out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left, right)
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, df.shape,
+                                     nsplits=tuple(tuple(ns) for ns in nsplits),
+                                     chunks=out_chunks, dtypes=df.dtypes,
+                                     index_value=df.index_value, columns_value=df.columns)
+
+    @classmethod
     def tile(cls, op):
         if all(isinstance(inp, DATAFRAME_TYPE) for inp in op.inputs):
             return cls._tile_both_dataframes(op)
         elif any(np.isscalar(inp) for inp in op.inputs):
             return cls._tile_scalar(op)
+        elif any(isinstance(inp, SERIES_TYPE) for inp in op.inputs):
+            return cls._tile_series(op)
         raise NotImplementedError
 
     @classmethod
@@ -744,6 +803,19 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                   'columns_value': df.columns, 'index_value': df.index_value}
             shape = df.shape
             return self.new_dataframe([x1, x2], shape, **kw)
+        elif isinstance(x1, SERIES_TYPE) or isinstance(x2, SERIES_TYPE):
+            setattr(self, '_object_type', ObjectType.dataframe)
+            import pandas as pd
+            dtypes = x1.dtypes.tolist()
+            dtypes.append(x2.dtype)
+            dtypes = pd.core.dtypes.cast.find_common_type(dtypes)
+            columns = index = None
+            shape = (np.nan, np.nan)
+            kw = {'dtypes': dtypes,
+                  'columns_value': columns, 'index_value': index}
+
+            return self.new_dataframe([x1, x2], shape, **kw)
+
         raise NotImplementedError('Only support add dataframe or scalar for now')
 
     def __call__(self, x1, x2):
