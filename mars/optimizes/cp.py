@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import lazy_import
-from .. import arithmetic
-from ..fuse import TensorCpFuseChunk
+from ..utils import lazy_import
+from ..tensor import arithmetic
+from ..tensor.fuse import TensorCpFuseChunk
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 CP_INSTALLED = cp is not None
@@ -76,7 +76,7 @@ class CpOptimizer(object):
             selected = [v]
             # add successors
             cur_node = graph.successors(v)[0]
-            while graph.count_predecessors(cur_node) == 1\
+            while graph.count_predecessors(cur_node) == 1 \
                     and type(cur_node.op) in CP_OP \
                     and cur_node.key not in keys:
                 selected.append(cur_node)

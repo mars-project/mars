@@ -21,7 +21,7 @@ from mars.executor import Executor
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
 from mars.graph import DirectedGraph
-from mars.tensor.optimizes.ne import NeOptimizer
+from mars.optimizes.ne import NeOptimizer
 
 
 class Test(unittest.TestCase):
