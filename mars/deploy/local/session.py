@@ -43,7 +43,7 @@ class LocalClusterSession(object):
         else:
             # Get the session actor ref using given session_id
             self._session_id = session_id
-            if not self._api.check_session(self._session_id):
+            if not self._api.has_session(self._session_id):
                 raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
 
         if kwargs:

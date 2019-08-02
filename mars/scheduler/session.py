@@ -227,7 +227,7 @@ class SessionManagerActor(SchedulerActor):
         return session_ref
 
     @log_unhandled
-    def check_session(self, session_id):
+    def has_session(self, session_id):
         return session_id in self._session_refs
 
     @log_unhandled

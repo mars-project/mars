@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import unittest
+import uuid
 
 import numpy as np
 try:
@@ -635,4 +636,45 @@ class Test(unittest.TestCase):
             r_slice5 = web_session.fetch(a[4])
             np.testing.assert_array_equal(r[4], r_slice5)
 
+    def testClusterSession(self):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            sess1 = cluster.session
+            sess2 = new_session(cluster.endpoint, session_id=sess1.session_id)
 
+            self.assertNotEqual(sess1, sess2)
+            self.assertEqual(sess1.session_id, sess2.session_id)
+
+            session_id = str(uuid.uuid4())
+            with self.assertRaises(ValueError) as cm:
+                new_session(cluster.endpoint, session_id=session_id)
+
+            expected_msg = "The session with id = %s doesn't exist" % session_id
+            self.assertEqual(cm.exception.args[0], expected_msg)
+
+            sess1.close()
+            with self.assertRaises(ValueError) as cm:
+                new_session(cluster.endpoint, session_id=sess1.session_id)
+
+            expected_msg = "The session with id = %s doesn't exist" % sess1.session_id
+            self.assertEqual(cm.exception.args[0], expected_msg)
+
+            web_sess1 = new_session('http://' + cluster._web_endpoint)
+            web_sess2 = new_session('http://' + cluster._web_endpoint, session_id=web_sess1.session_id)
+
+            self.assertNotEqual(web_sess1, web_sess2)
+            self.assertEqual(web_sess1.session_id, web_sess2.session_id)
+
+            session_id = str(uuid.uuid4())
+            with self.assertRaises(ValueError) as cm:
+                new_session('http://' + cluster._web_endpoint, session_id=session_id)
+
+            expected_msg = "The session with id = %s doesn't exist" % session_id
+            self.assertEqual(cm.exception.args[0], expected_msg)
+
+            web_sess1.close()
+            with self.assertRaises(ValueError) as cm:
+                new_session('http://' + cluster._web_endpoint, session_id=web_sess1.session_id)
+
+            expected_msg = "The session with id = %s doesn't exist" % web_sess1.session_id
+            self.assertEqual(cm.exception.args[0], expected_msg)
