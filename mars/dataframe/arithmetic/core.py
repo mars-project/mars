@@ -282,18 +282,21 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 
 
 class _AxisMinMaxSplitInfo(object):
-    def __init__(self, left_split, left_increase, right_split, right_increase):
+    def __init__(self, left_split, left_increase, right_split=None, right_increase=None):
         self._left_split = left_split
         self._right_split = right_split
 
         self._left_split_idx_to_origin_idx = \
             build_split_idx_to_origin_idx(self._left_split, left_increase)
-        self._right_split_idx_to_origin_idx = \
-            build_split_idx_to_origin_idx(self._right_split, right_increase)
+        if right_split is not None:
+            self._right_split_idx_to_origin_idx = \
+                build_split_idx_to_origin_idx(self._right_split, right_increase)
 
+    # get the origin chunk's index
     def get_origin_left_idx(self, idx):
         return self._left_split_idx_to_origin_idx[idx][0]
 
+    # get the origin ith split
     def get_origin_left_split(self, idx):
         left_idx, left_inner_idx = \
             self._left_split_idx_to_origin_idx[idx]
@@ -448,7 +451,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if cls._need_align_map(left_chunk, left_index_min_max, left_column_min_max):
                 left_align_op = DataFrameIndexAlignMap(
                     index_min_max=left_index_min_max, column_min_max=left_column_min_max,
-                    dtypes=filter_dtypes(left_chunk.dtypes, left_column_min_max),
+                    dtypes='int64',
                     sparse=left_chunk.issparse())
                 left_out_chunk = left_align_op.new_chunk([left_chunk], shape=(np.nan, np.nan),
                                                          index=out_idx)
@@ -672,7 +675,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
-        new_op = op.copy()
         left, right = op.inputs
         df = op.outputs[0]
         index_type = 'index_value'
@@ -700,11 +702,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         # ------- mock it -------
         left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
         # right_chunk_index_min_max = cls._get_chunk_index_min_max(right, 'columns', 1)
-        splits[1] = _AxisMinMaxSplitInfo(left_splits,True)
+        # splits[1] = _AxisMinMaxSplitInfo(left_splits, True)
 
         # ------------------------
         out_shape = (1, 1)
-        out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left, right)
+        out_chunks = cls._gen_out_chunks_with_one_shuffle(op, splits, out_shape, left, right)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, df.shape,
