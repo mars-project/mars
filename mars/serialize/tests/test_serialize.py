@@ -565,6 +565,13 @@ class Test(unittest.TestCase):
                 assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                     array, compress=dataserializer.CompressType.GZIP)))
 
+            # test structured arrays.
+            rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])
+            array = np.ones((100,), dtype=rec_dtype)
+            array_loaded = dataserializer.loads(dataserializer.dumps(array))
+            self.assertEqual(array.dtype, array_loaded.dtype)
+            assert_array_equal(array, array_loaded)
+
             fn = os.path.join(tempfile.gettempdir(), 'test_dump_file_%d.bin' % id(self))
             try:
                 array = np.random.rand(1000, 100).T  # test non c-contiguous
