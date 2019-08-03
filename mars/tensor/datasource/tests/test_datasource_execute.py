@@ -27,7 +27,7 @@ except (ImportError, OSError):  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, \
+from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, fromtiledb
 from mars.lib.sparse import SparseNDArray
@@ -132,6 +132,14 @@ class Test(TestBase):
 
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.full((2, 2), 1, dtype='f4', order='F')
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        t2 = full_like(t, 10, order='F')
+
+        res = self.executor.execute_tensor(t2, concat=True)[0]
+        expected = np.full((2, 2), 10, dtype='f4', order='F')
+        np.testing.assert_array_equal(res, expected)
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
