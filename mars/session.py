@@ -42,6 +42,10 @@ class LocalSession(object):
         return self._endpoint
 
     @property
+    def session_id(self):
+        return None
+
+    @property
     def executed_tileables(self):
         return self._executor.stored_tileables.keys()
 
@@ -192,6 +196,10 @@ class Session(object):
     @endpoint.setter
     def endpoint(self, endpoint):
         self._sess.endpoint = endpoint
+
+    @property
+    def session_id(self):
+        return self._sess.session_id
 
     def decref(self, *keys):
         if hasattr(self._sess, 'decref'):

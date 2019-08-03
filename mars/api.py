@@ -70,6 +70,12 @@ class MarsAPI(object):
     def delete_session(self, session_id):
         self.session_manager.delete_session(session_id)
 
+    def has_session(self, session_id):
+        '''
+        Check if the session with given session_id exists.
+        '''
+        return self.session_manager.has_session(session_id)
+
     def submit_graph(self, session_id, serialized_graph, graph_key, target,
                      compose=True, wait=True):
         session_uid = SessionActor.gen_uid(session_id)
