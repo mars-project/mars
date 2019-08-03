@@ -15,7 +15,6 @@
 import functools
 import json
 import logging
-import random
 import threading
 import os
 from collections import defaultdict
@@ -27,10 +26,8 @@ from bokeh.server.server import Server
 import jinja2
 from tornado import web, ioloop
 
-from .. import kvstore
 from ..compat import six
 from ..utils import get_next_port
-from ..config import options
 from ..scheduler import ResourceActor, SessionActor
 from ..api import MarsAPI
 
@@ -214,15 +211,6 @@ class MarsWeb(object):
 
     def start(self, event=None, block=False):
         self._configure_loop()
-
-        if self._scheduler_ip is None:
-            kv_store = kvstore.get(options.kv_store)
-            try:
-                schedulers = [s.key.rsplit('/', 1)[1] for s in kv_store.read('/schedulers').children]
-                self._scheduler_ip = random.choice(schedulers)
-            except KeyError:
-                raise KeyError('No scheduler is available')
-
         self._try_start_web_server()
 
         if not block:

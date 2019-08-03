@@ -160,9 +160,9 @@ class Test(WorkerCase):
                                with_status=True, with_resource=False):
         quota_size = quota_size or (1024 * 1024)
 
-        pool.create_actor(SchedulerClusterInfoActor, schedulers=[address],
+        pool.create_actor(SchedulerClusterInfoActor, [address],
                           uid=SchedulerClusterInfoActor.default_uid())
-        pool.create_actor(WorkerClusterInfoActor, schedulers=[address],
+        pool.create_actor(WorkerClusterInfoActor, [address],
                           uid=WorkerClusterInfoActor.default_uid())
 
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())

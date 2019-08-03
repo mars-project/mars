@@ -60,8 +60,6 @@ class WorkerApplication(BaseApplication):
                                  % (compress_types, options.worker.transfer_compression))
 
     def validate_arguments(self):
-        if not self.args.schedulers and not self.args.kv_store:
-            raise StartArgumentError('either schedulers or url of kv store is required.')
         if not self.args.advertise:
             raise StartArgumentError('advertise address is required.')
 
@@ -93,8 +91,13 @@ class WorkerApplication(BaseApplication):
         kwargs['distributor'] = MarsDistributor(self.n_process, 'w:0:')
         return super(WorkerApplication, self).create_pool(*args, **kwargs)
 
+    def create_scheduler_discoverer(self):
+        super(WorkerApplication, self).create_scheduler_discoverer()
+        if self.scheduler_discoverer is None:
+            raise StartArgumentError('either schedulers or url of kv store is required.')
+
     def start(self):
-        self._service.start(self.endpoint, self.pool, schedulers=self.args.schedulers)
+        self._service.start(self.endpoint, self.pool, discoverer=self.scheduler_discoverer)
 
     def handle_process_down(self, proc_indices):
         self._service.handle_process_down(self.pool, proc_indices)

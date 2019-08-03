@@ -21,7 +21,7 @@ from .actors import create_actor_pool
 from .config import options
 from .errors import StartArgumentError
 from .lib.tblib import pickling_support
-from .utils import get_next_port
+from .utils import get_next_port, to_str
 
 pickling_support.install()
 logger = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ class BaseApplication(object):
     def __init__(self):
         self.args = None
         self.endpoint = None
+        self.scheduler_discoverer = None
         self.pool = None
         self.n_process = None
 
@@ -82,9 +83,9 @@ class BaseApplication(object):
     def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
         parser.add_argument('-a', '--advertise', help='advertise ip exposed to other services')
+        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
         parser.add_argument('-k', '--kv-store', help='address of kv store service, '
                                                      'for instance, etcd://localhost:4001')
-        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
         parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, needed for workers '
                                                        'and webs when kv-store argument is not available, '
                                                        'or when you need to use multiple schedulers '
@@ -140,6 +141,8 @@ class BaseApplication(object):
             self.endpoint, self.pool = self._try_create_pool(
                 endpoint=endpoint, host=host, port=port, advertise_address=args.advertise)
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
+
+        self.create_scheduler_discoverer()
         self.main_loop()
 
     def config_logging(self):
@@ -171,6 +174,14 @@ class BaseApplication(object):
 
     def validate_arguments(self):
         pass
+
+    def create_scheduler_discoverer(self):
+        from .cluster_info import StaticSchedulerDiscoverer, KVStoreSchedulerDiscoverer
+        if self.args.kv_store:
+            self.scheduler_discoverer = KVStoreSchedulerDiscoverer(self.args.kv_store)
+        elif self.args.schedulers:
+            schedulers = to_str(self.args.schedulers).split(',')
+            self.scheduler_discoverer = StaticSchedulerDiscoverer(schedulers)
 
     def _try_create_pool(self, endpoint=None, host=None, port=None, advertise_address=None):
         pool = None
