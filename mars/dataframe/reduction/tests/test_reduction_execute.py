@@ -45,5 +45,33 @@ class Test(TestBase):
 
     def testDataFrameSum(self):
         data = pd.DataFrame(np.random.rand(20, 10))
+        sum_df = from_pandas_df(data).sum()
+        pd.testing.assert_series_equal(data.sum(), sum_df.execute())
+
         sum_df = from_pandas_df(data, chunk_size=3).sum()
         pd.testing.assert_series_equal(data.sum(), sum_df.execute())
+
+        sum_df = from_pandas_df(data, chunk_size=6).sum(axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df.execute())
+
+        sum_df = from_pandas_df(data, chunk_size=3).sum(axis=1)
+        pd.testing.assert_series_equal(data.sum(axis=1), sum_df.execute())
+
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        sum_df = from_pandas_df(data, chunk_size=2).sum()
+        pd.testing.assert_series_equal(data.sum(), sum_df.execute())
+
+        sum_df = from_pandas_df(data, chunk_size=6).sum(axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df.execute())
+
+        sum_df = from_pandas_df(data, chunk_size=3).sum(axis='columns')
+        pd.testing.assert_series_equal(data.sum(axis='columns'), sum_df.execute())
+
+        data_dict = dict((str(i), np.random.rand(10)) for i in range(10))
+        data_dict['string'] = [str(i) for i in range(10)]
+        data_dict['bool'] = np.random.choice([True, False], (10,))
+        data = pd.DataFrame(data_dict)
+        sum_df = from_pandas_df(data, chunk_size=3).sum(axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df.execute())
+

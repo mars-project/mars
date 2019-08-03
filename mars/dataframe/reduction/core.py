@@ -59,7 +59,7 @@ class DataFrameReductionOperand(DataFrameOperand):
 
 class ReductionMixin(DataFrameOperandMixin):
     @classmethod
-    def get_reduced_df(cls, in_df, axis, level):
+    def get_reduced_df(cls, in_df, **kw):
         raise NotImplementedError
 
     @classmethod
@@ -76,8 +76,8 @@ class ReductionMixin(DataFrameOperandMixin):
                                        index_value=index_value)
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunk.shape)
-        return new_op.new_dataframes(op.inputs, df.shape, nsplits=nsplits, chunks=[chunk],
-                                     index_value=df.index_value)
+        return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=[chunk],
+                                  index_value=df.index_value, object_type=ObjectType.series)
 
     @classmethod
     def convert_to_reduction_chunks(cls, op):
@@ -89,7 +89,8 @@ class ReductionMixin(DataFrameOperandMixin):
             if index_value is None:
                 index_value = pd.RangeIndex(0)
             index_value = parse_index(index_value)
-            chunks.append(new_chunk_op.new_chunk([c], shape=reduced_df.shape, index=c.index,
+            reduced_shape = (c.shape[0],) if op.axis == 1 or op.axis == 'columns' else reduced_df.shape
+            chunks.append(new_chunk_op.new_chunk([c], shape=reduced_shape, index=c.index,
                                                  dtype=reduced_df.dtype, index_value=index_value,
                                                  object_type=ObjectType.series))
         return chunks
@@ -97,6 +98,8 @@ class ReductionMixin(DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         kwargs = dict(axis=op.axis, level=op.level, skipna=op.skipna)
+        if getattr(op, 'numeric_only', None) is not None:
+            kwargs['numeric_only'] = op.numeric_only
         in_df = ctx[op.inputs[0].key]
         ctx[op.outputs[0].key] = getattr(in_df, getattr(cls, '_func_name'))(**kwargs)
 
@@ -118,31 +121,45 @@ class DataFrameReductionMixin(ReductionMixin):
             for col in range(n_cols):
                 chunks = [reduction_chunks[i * n_cols + col] for i in range(n_rows)]
                 out_chunks.append(cls.tree_reduction(chunks, op, combine_size, col))
-            new_op = op.copy()
-            nsplits = tuple((c.shape[0],) for c in out_chunks)
-            return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=out_chunks,
-                                      dtype=df.dtype, index_value=df.index_value,
-                                      object_type=ObjectType.series)
+        elif op.axis == 1 or op.axis == 'columns':
+            for row in range(n_rows):
+                chunks = reduction_chunks[row * n_cols: (row + 1) * n_cols]
+                out_chunks.append(cls.tree_reduction(chunks, op, combine_size, row))
+        new_op = op.copy()
+        nsplits = (tuple(c.shape[0] for c in out_chunks),)
+        return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=out_chunks,
+                                  dtype=df.dtype, index_value=df.index_value,
+                                  object_type=ObjectType.series)
 
     @classmethod
     def tree_reduction(cls, chunks, op, combine_size, idx):
-        while len(chunks) > 1:
+        while len(chunks) > combine_size:
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
                 chks = chunks[i: i + combine_size]
-                concat_op = DataFrameConcat(dtype=chks[0].dtype, axis=1, object_type=ObjectType.series)
+                concat_op = DataFrameConcat(dtype=chks[0].dtype, axis=1,
+                                            object_type=ObjectType.series)
                 chk = concat_op.new_chunk(chks, index=(i,), index_value=chks[0].index_value)
-                reduced_shape = (chks[0].shape[0], len(chks))
+                reduced_shape = (chks[0].shape[0],)
                 new_op = op.copy().reset_key()
                 new_op._axis = 'columns'
                 new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,),
                                                    index_value=chk.index_value,
                                                    object_type=ObjectType.series))
             chunks = new_chunks
-        return chunks[0]
+        concat_op = DataFrameConcat(dtype=chunks[0].dtype, axis=1, object_type=ObjectType.series)
+        chk = concat_op.new_chunk(chunks, index=(idx,), index_value=chunks[0].index_value)
+        reduced_shape = (chunks[0].shape[0],)
+        new_op = op.copy().reset_key()
+        new_op._axis = 'columns'
+        return new_op.new_chunk([chk], shape=reduced_shape, index=(idx,),
+                                index_value=chk.index_value,
+                                object_type=ObjectType.series)
 
     @classmethod
-    def get_reduced_df(cls, in_df, axis, level):
+    def get_reduced_df(cls, in_df, **kw):
+        axis = kw.get('axis', None)
+        level = kw.get('level', None)
         func_name = getattr(cls, '_func_name')
         empty_df = build_empty_df(in_df.dtypes)
         return getattr(empty_df, func_name)(axis=axis, level=level)
@@ -151,9 +168,10 @@ class DataFrameReductionMixin(ReductionMixin):
         axis = getattr(self, 'axis', None)
         level = getattr(self, 'level', None)
 
-        reduced_df = self.get_reduced_df(df, axis, level)
+        reduced_df = self.get_reduced_df(df, axis=axis, level=level)
+        reduced_shape = (df.shape[0],) if axis == 1 or axis == 'columns' else reduced_df.shape
         # TODO: return DataFrame if specify level
-        return self.new_series([df], shape=reduced_df.shape, dtype=reduced_df.dtype,
+        return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index), object_type=ObjectType.series)
 
 
@@ -177,7 +195,7 @@ class SeriesReductionMixin(ReductionMixin):
                 length = sum([c.shape[0] for c in chks if len(c.shape) > 0])
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,),
                                           index_value=parse_index(pd.RangeIndex(length)))
-                reduced_shape = cls.get_reduced_df(chk, op.axis, op.level).shape
+                reduced_shape = cls.get_reduced_df(chk, axis=op.axis, level=op.level).shape
                 new_op = op.copy().reset_key()
                 new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,),
                                                    index_value=parse_index(pd.RangeIndex(len(reduced_shape)))))
@@ -185,21 +203,25 @@ class SeriesReductionMixin(ReductionMixin):
 
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunks[0].shape)
-        return new_op.new_dataframes(op.inputs, df.shape,
-                                     nsplits=tuple(tuple(ns) for ns in nsplits),
-                                     chunks=chunks, dtype=df.dtype, index_value=df.index_value)
+        return new_op.new_seriess(op.inputs, df.shape,
+                                  nsplits=tuple(tuple(ns) for ns in nsplits),
+                                  chunks=chunks, dtype=df.dtype, index_value=df.index_value)
 
     @classmethod
-    def get_reduced_df(cls, series, axis, level):
+    def get_reduced_df(cls, series, **kw):
+        axis = kw.get('axis', None)
+        level = kw.get('level', None)
+        numeric_only = kw.get('numeric_only', None)
+
         index = series.index_value.to_pandas()
         func_name = getattr(cls, '_func_name')
         empty_series = pd.Series(index=index)
-        return getattr(empty_series, func_name)(axis=axis, level=level)
+        return getattr(empty_series, func_name)(axis=axis, level=level, numeric_only=numeric_only)
 
     def __call__(self, series):
         axis = getattr(self, 'axis', None)
         level = getattr(self, 'level', None)
 
-        reduced_shape = self.get_reduced_df(series, axis, level).shape
+        reduced_shape = self.get_reduced_df(series, axis=axis, level=level).shape
         return self.new_series([series], shape=reduced_shape, dtype=series.dtype,
                                index_value=parse_index(pd.RangeIndex(len(reduced_shape))), name=series.name)
