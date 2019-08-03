@@ -34,7 +34,7 @@ class TensorFuseChunkMixin(TensorOperandMixin):
         head_chunk = fuse_chunks[0]
         tail_chunk = fuse_chunks[-1]
         setattr(self, '_operands', [c.op for c in fuse_chunks])
-        return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape,
+        return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
                               _composed=fuse_chunks, _key=tail_chunk.key)
 
 

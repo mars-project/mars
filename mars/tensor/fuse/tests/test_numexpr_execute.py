@@ -160,3 +160,14 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor((arr > 3).sum())
         np.testing.assert_array_equal(res, (raw > 3).sum())
+
+    def testOrderExecution(self):
+        raw = np.asfortranarray(np.random.rand(4, 5, 6))
+        arr = tensor(raw, chunk_size=2)
+
+        res = self.executor.execute_tensor(arr * 3 + 1, concat=True)[0]
+        expected = raw * 3 + 1
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
