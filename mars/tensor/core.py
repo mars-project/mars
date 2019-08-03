@@ -497,7 +497,7 @@ class MutableTensor(Entity):
             self._buffer_size = 0
 
         if self._data.chunk_eps is not None:
-            self._chunk_ep_map = dict((chunk.key, ep) for chunk, ep in zip(self.chunks, self._data.chunk_eps))
+            self._chunk_ep_map = dict((c.key, ep) for c, ep in zip(self.chunks, self._data.chunk_eps))
         else:
             self._chunk_ep_map = dict()
 

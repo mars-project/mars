@@ -68,7 +68,7 @@ class MutableTensorActor(SchedulerActor):
         self._tensor = MutableTensor(data=MutableTensorData(
             _name=self._name, _op=None, _shape=self._shape, _dtype=tensor.dtype,
             _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks,
-            _chunk_eps=list(self._chunk_ep_map.values())))
+            _chunk_eps=[self._chunk_ep_map[c.key] for c in tensor.chunks]))
 
     def tensor_meta(self):
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -76,7 +76,7 @@ class MutableTensorActor(SchedulerActor):
             dtype_descr = self._dtype.descr
         else:
             dtype_descr = str(self._dtype)
-        chunk_keys = list(self._chunk_ep_map.keys())
+        chunk_keys = [c.key for c in self._tensor.chunks]
         chunk_eps = [self._chunk_ep_map[key] for key in chunk_keys]
         return self._shape, dtype_descr, self._chunk_size, chunk_keys, chunk_eps
 
