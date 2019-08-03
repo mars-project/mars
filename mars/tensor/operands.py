@@ -36,10 +36,11 @@ class TensorOperandMixin(TileableOperandMixin):
         if order is None:
             if len(inputs) == 0:
                 order = TensorOrder.C_ORDER
-            elif any(inp.order == TensorOrder.C_ORDER for inp in inputs):
-                order = TensorOrder.C_ORDER
-            else:
+            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
+                     for inp in inputs):
                 order = TensorOrder.F_ORDER
+            else:
+                order = TensorOrder.C_ORDER
 
         return order[i] if isinstance(order, (list, tuple)) else order
 
