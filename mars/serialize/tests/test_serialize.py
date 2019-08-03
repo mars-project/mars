@@ -308,6 +308,25 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node9.d3, d_node9.d3)
         self.assertEqual(node9.f, d_node9.f)
 
+        node_rec1 = Node9(f=np.dtype([('label', 'int32'),
+                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec2 = Node9(f=np.dtype([('label', 'int32'),
+                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+
+        serials = serializes(provider, [node_rec1])
+        d_node_rec1, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node_rec1, d_node_rec1)
+        self.assertEqual(node_rec1.f, d_node_rec1.f)
+
+        serials = serializes(provider, [node_rec2])
+        d_node_rec2, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node_rec2, d_node_rec2)
+        self.assertEqual(node_rec2.f, d_node_rec2.f)
+
     def testNumpyDtypeJSONSerialize(self):
         provider = JsonSerializeProvider()
 
@@ -332,6 +351,25 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node9.d2, d_node9.d2, places=4)
         self.assertAlmostEqual(node9.d3, d_node9.d3)
         self.assertEqual(node9.f, d_node9.f)
+
+        node_rec1 = Node9(f=np.dtype([('label', 'int32'),
+                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'),
+                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+        node_rec2 = Node9(f=np.dtype([('label', 'int32'),
+                                      ('s0', '<U16'), ('s1', 'int32'), ('s2', 'int32'), ('s3', '<U256'),
+                                      ('d0', '<U16'), ('d1', 'int32'), ('d2', 'int32'), ('d3', '<U256')]))
+
+        serials = serializes(provider, [node_rec1])
+        d_node_rec1, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node_rec1, d_node_rec1)
+        self.assertEqual(node_rec1.f, d_node_rec1.f)
+
+        serials = serializes(provider, [node_rec2])
+        d_node_rec2, = deserializes(provider, [Node9], serials)
+
+        self.assertIsNot(node_rec2, d_node_rec2)
+        self.assertEqual(node_rec2.f, d_node_rec2.f)
 
     def testAttributeAsDict(self):
         other_data = {}

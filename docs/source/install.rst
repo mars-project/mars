@@ -89,13 +89,13 @@ Web service can be started with the following command:
 
 .. code-block:: bash
 
-    mars-web -a <web_ip> -s <scheduler_endpoint> -p <web_port>
+    mars-web -a <web_ip> -p <web_port> -s <scheduler_ip>:<scheduler_port>
 
 Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_endpoint>
+    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>:<scheduler_port>
 
 After all Mars processes are started, you can open a Python console and run
 
@@ -103,14 +103,114 @@ After all Mars processes are started, you can open a Python console and run
 
     import mars.tensor as mt
     from mars.session import new_session
-    sess = new_session('http://<web_ip>:<ui_port>')
+    sess = new_session('http://<web_ip>:<web_port>')
     a = mt.ones((2000, 2000), chunk_size=200)
     b = mt.inner(a, a)
     sess.run(b)
 
-You can open a web browser and type ``http://<web_ip>:<ui_port>`` to open Mars
+You can open a web browser and type ``http://<web_ip>:<web_port>`` to open Mars
 UI to look up resource usage of workers and execution progress of the task
 submitted just now.
+
+Using Command Lines
+-------------------
+When running Mars with command line, you can specify arguments to control the
+behavior of Mars processes. All Mars services have common arguments listed
+below.
+
++---------------+----------------------------------------------------------------+
+| Argument      | Description                                                    |
++===============+================================================================+
+| -a            | Advertise address exposed to other processes in the cluster,   |
+|               | useful when the server has multiple IP addresses, or the       |
+|               | service is deployed inside a VM or container                   |
++---------------+----------------------------------------------------------------+
+| -H            | Service IP binding, ``0.0.0.0`` by default                     |
++---------------+----------------------------------------------------------------+
+| -p            | Port of the service. If absent, a randomized port will be used |
++---------------+----------------------------------------------------------------+
+| -s            | List of scheduler endpoints, separated by commas. Useful for   |
+|               | workers and webs to spot schedulers, or when you want to run   |
+|               | more than one schedulers                                       |
++---------------+----------------------------------------------------------------+
+| --log-level   | Log level, can be ``debug``, ``info``, ``warning``, ``error``  |
++---------------+----------------------------------------------------------------+
+| --log-format  | Log format, can be Python logging format                       |
++---------------+----------------------------------------------------------------+
+| --log-conf    | Python logging configuration file, ``logging.conf`` by default |
++---------------+----------------------------------------------------------------+
+
+Extra arguments for schedulers are listed below.
+
++---------------+----------------------------------------------------------------+
+| Argument      | Description                                                    |
++===============+================================================================+
+| --nproc       | Number of processes. If absent, the value will be the          |
+|               | available number of cores                                      |
++---------------+----------------------------------------------------------------+
+
+Extra arguments for workers are listed below. Details about memory tuning can
+be found at the next section.
+
++---------------+----------------------------------------------------------------+
+| Argument      | Description                                                    |
++===============+================================================================+
+| --cpu-procs   | Number of computation processes on CPUs. If absent, the value  |
+|               | will be the available number of cores                          |
++---------------+----------------------------------------------------------------+
+| --net-procs   | Number of processes for network transfer. 1 by default         |
++---------------+----------------------------------------------------------------+
+| --phy-mem     | Limit of physical memory, can be percentages of total memory   |
+|               | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
+|               | acceptable. If absent, the size of physical memory will be     |
+|               | used                                                           |
++---------------+----------------------------------------------------------------+
+| --cache-mem   | Size of shared memory, can be percentages of total memory or   |
+|               | multiple of bytes. For instance, ``4g`` or ``80%`` are both    |
+|               | acceptable. If absent, 50% of free memory will be used         |
++---------------+----------------------------------------------------------------+
+| --min-mem     | Minimal free memory to start worker, can be percentages of     |
+|               | total memory or multiple of bytes. For instance, ``4g`` or     |
+|               | ``80%`` are both acceptable. ``128m`` by default               |
++---------------+----------------------------------------------------------------+
+| --spill-dir   | Directories to spill to, separated by : in MacOS or Linux.     |
++---------------+----------------------------------------------------------------+
+
+For instance, if you want to start a Mars cluster with two schedulers, two
+workers and one web service, you can run commands below (memory and CPU tunings
+are omitted):
+
+On Scheduler 1 (192.168.1.10):
+
+.. code-block:: bash
+
+    mars-scheduler -a 192.168.1.10 -p 7001 -s 192.168.1.10:7001,192.168.1.11:7002
+
+On Scheduler 2 (192.168.1.11):
+
+.. code-block:: bash
+
+    mars-scheduler -a 192.168.1.11 -p 7002 -s 192.168.1.10:7001,192.168.1.11:7002
+
+On Worker 1 (192.168.1.20):
+
+.. code-block:: bash
+
+    mars-worker -a 192.168.1.20 -p 7003 -s 192.168.1.10:7001,192.168.1.11:7002 \
+        --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
+
+On Worker 2 (192.168.1.21):
+
+.. code-block:: bash
+
+    mars-worker -a 192.168.1.21 -p 7004 -s 192.168.1.10:7001,192.168.1.11:7002 \
+        --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
+
+On the web server (192.168.1.30):
+
+.. code-block:: bash
+
+    mars-web -p 7005 -s 192.168.1.10:7001,192.168.1.11:7002
 
 Memory Tuning
 -------------

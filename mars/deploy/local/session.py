@@ -29,20 +29,30 @@ from ...tensor.indexing import TensorIndex
 
 
 class LocalClusterSession(object):
-    def __init__(self, endpoint, **kwargs):
-        self._session_id = uuid.uuid4()
+    def __init__(self, endpoint, session_id=None, **kwargs):
         self._endpoint = endpoint
         # dict structure: {tileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tilable id
         self._executed_tileables = dict()
         self._api = MarsAPI(self._endpoint)
 
-        # create session on the cluster side
-        self._api.create_session(self._session_id)
+        if session_id is None:
+            # create session on the cluster side
+            self._session_id = uuid.uuid4()
+            self._api.create_session(self._session_id)
+        else:
+            # Get the session actor ref using given session_id
+            self._session_id = session_id
+            if not self._api.has_session(self._session_id):
+                raise ValueError('The session with id = %s doesn\'t exist' % self._session_id)
 
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError('Local cluster session got unexpected arguments: %s' % unexpected_keys)
+
+    @property
+    def session_id(self):
+        return self._session_id
 
     @property
     def endpoint(self):

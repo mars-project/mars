@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import arithmetic
-from .. import reduction
-from ..fuse import TensorNeFuseChunk
+from ..tensor import arithmetic
+from ..tensor import reduction
+from ..tensor.fuse import TensorNeFuseChunk
 
-# TODO: uncomment after refactor of reduction
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
 SUPPORT_OP = {
@@ -135,7 +134,7 @@ class NeOptimizer(object):
             selected = [v]
             # add successors
             cur_node = graph.successors(v)[0]
-            while graph.count_predecessors(cur_node) == 1\
+            while graph.count_predecessors(cur_node) == 1 \
                     and _support(cur_node) and cur_node.key not in keys:
                 selected.append(cur_node)
                 if graph.count_successors(cur_node) != 1 \

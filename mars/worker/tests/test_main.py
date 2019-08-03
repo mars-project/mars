@@ -103,7 +103,7 @@ class Test(unittest.TestCase):
         try:
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
-                pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
+                pool.create_actor(SchedulerClusterInfoActor, [mock_scheduler_addr],
                                   uid=SchedulerClusterInfoActor.default_uid())
 
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
@@ -144,7 +144,7 @@ class Test(unittest.TestCase):
         try:
             with create_actor_pool(n_process=1, backend='gevent',
                                    address=mock_scheduler_addr) as pool:
-                pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_scheduler_addr],
+                pool.create_actor(SchedulerClusterInfoActor, [mock_scheduler_addr],
                                   uid=SchedulerClusterInfoActor.default_uid())
 
                 pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())

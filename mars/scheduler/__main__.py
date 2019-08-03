@@ -39,8 +39,20 @@ class SchedulerApplication(BaseApplication):
         kwargs['distributor'] = MarsDistributor(self.n_process, 's:h1:')
         return super(SchedulerApplication, self).create_pool(*args, **kwargs)
 
+    def create_scheduler_discoverer(self):
+        advertise_endpoint = self.args.advertise or self.endpoint
+        if ':' not in advertise_endpoint:
+            advertise_endpoint += ':' + self.endpoint.rsplit(':', 1)[-1]
+        all_schedulers = {advertise_endpoint}
+
+        if self.args.schedulers:
+            all_schedulers.update(self.args.schedulers.split(','))
+        self.args.schedulers = ','.join(all_schedulers)
+
+        super(SchedulerApplication, self).create_scheduler_discoverer()
+
     def start(self):
-        self._service.start(self.endpoint, self.args.schedulers, self.pool)
+        self._service.start(self.endpoint, self.scheduler_discoverer, self.pool)
 
     def stop(self):
         self._service.stop(self.pool)

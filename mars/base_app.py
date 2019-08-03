@@ -21,7 +21,7 @@ from .actors import create_actor_pool
 from .config import options
 from .errors import StartArgumentError
 from .lib.tblib import pickling_support
-from .utils import get_next_port
+from .utils import get_next_port, to_str
 
 pickling_support.install()
 logger = logging.getLogger(__name__)
@@ -31,6 +31,15 @@ try:
     cleanup_on_sigterm()
 except ImportError:  # pragma: no cover
     pass
+
+
+def arg_deprecated_action(new_arg):  # pragma: no cover
+    class ArgDeprecated(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            logger.warning('Argument %s deprecated. Use %s instead',
+                           '|'.join(self.option_strings), new_arg)
+            setattr(namespace, self.dest, values)
+    return ArgDeprecated
 
 
 class BaseApplication(object):
@@ -43,6 +52,7 @@ class BaseApplication(object):
     def __init__(self):
         self.args = None
         self.endpoint = None
+        self.scheduler_discoverer = None
         self.pool = None
         self.n_process = None
 
@@ -72,20 +82,25 @@ class BaseApplication(object):
 
     def _main(self, argv=None):
         parser = argparse.ArgumentParser(description=self.service_description)
-        parser.add_argument('-a', '--advertise', help='advertise ip')
+        parser.add_argument('-a', '--advertise', help='advertise ip exposed to other services')
+        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
         parser.add_argument('-k', '--kv-store', help='address of kv store service, '
                                                      'for instance, etcd://localhost:4001')
-        parser.add_argument('-e', '--endpoint', help='endpoint of the service')
-        parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, when single scheduler '
-                                                       'and etcd is not available')
-        parser.add_argument('-H', '--host', help='host of the service, only available '
-                                                 'when `endpoint` is absent')
-        parser.add_argument('-p', '--port', help='port of the service, only available '
-                                                 'when `endpoint` is absent')
-        parser.add_argument('--level', help='log level')
-        parser.add_argument('--format', help='log format')
-        parser.add_argument('--log_conf', help='log config file')
-        parser.add_argument('--inspect', help='inspection endpoint')
+        parser.add_argument('-s', '--schedulers', help='endpoint of schedulers, needed for workers '
+                                                       'and webs when kv-store argument is not available, '
+                                                       'or when you need to use multiple schedulers '
+                                                       'without kv-store')
+        parser.add_argument('-H', '--host', help='host of the service, needed when `endpoint` is absent')
+        parser.add_argument('-p', '--port', help='port of the service, needed when `endpoint` is absent')
+        parser.add_argument('--log-level', help='log level')
+        parser.add_argument('--level', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-level'))
+        parser.add_argument('--log-format', help='log format')
+        parser.add_argument('--format', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-format'))
+        parser.add_argument('--log-conf', help='log config file, logging.conf by default')
+        parser.add_argument('--log_conf', help=argparse.SUPPRESS,
+                            action=arg_deprecated_action('--log-conf'))
         parser.add_argument('--load-modules', nargs='*', help='modules to import')
         self.config_args(parser)
         args = parser.parse_args(argv)
@@ -113,8 +128,7 @@ class BaseApplication(object):
         self.config_service()
         self.config_logging()
 
-        if not host:
-            host = args.advertise or '0.0.0.0'
+        host = host or '0.0.0.0'
         if not endpoint and port:
             endpoint = host + ':' + port
 
@@ -124,8 +138,11 @@ class BaseApplication(object):
             parser.error('Failed to start application: %s' % ex)
 
         if getattr(self, 'require_pool', True):
-            self.endpoint, self.pool = self._try_create_pool(endpoint=endpoint, host=host, port=port)
+            self.endpoint, self.pool = self._try_create_pool(
+                endpoint=endpoint, host=host, port=port, advertise_address=args.advertise)
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
+
+        self.create_scheduler_discoverer()
         self.main_loop()
 
     def config_logging(self):
@@ -146,20 +163,30 @@ class BaseApplication(object):
                 log_configured = True
 
         if not log_configured:
-            if not self.args.level:
+            log_level = self.args.log_level or self.args.level
+            log_format = self.args.log_format or self.args.format
+            if not log_level:
                 level = logging.INFO
             else:
-                level = getattr(logging, self.args.level.upper())
+                level = getattr(logging, log_level.upper())
             logging.getLogger('mars').setLevel(level)
-            logging.basicConfig(format=self.args.format)
+            logging.basicConfig(format=log_format)
 
     def validate_arguments(self):
         pass
 
-    def _try_create_pool(self, endpoint=None, host=None, port=None):
+    def create_scheduler_discoverer(self):
+        from .cluster_info import StaticSchedulerDiscoverer, KVStoreSchedulerDiscoverer
+        if self.args.kv_store:
+            self.scheduler_discoverer = KVStoreSchedulerDiscoverer(self.args.kv_store)
+        elif self.args.schedulers:
+            schedulers = to_str(self.args.schedulers).split(',')
+            self.scheduler_discoverer = StaticSchedulerDiscoverer(schedulers)
+
+    def _try_create_pool(self, endpoint=None, host=None, port=None, advertise_address=None):
         pool = None
         if endpoint:
-            pool = self.create_pool(address=endpoint)
+            pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
         else:
             use_port = None
             retrial = 5
@@ -167,7 +194,7 @@ class BaseApplication(object):
                 use_port = port or get_next_port()
                 try:
                     endpoint = '{0}:{1}'.format(host, use_port)
-                    pool = self.create_pool(address=endpoint)
+                    pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
                     break
                 except:
                     retrial -= 1

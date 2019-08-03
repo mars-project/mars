@@ -22,9 +22,8 @@ import logging   # noqa: E402
 import random    # noqa: E402
 import time      # noqa: E402
 
-from ..base_app import BaseApplication   # noqa: E402
-from ..compat import six                 # noqa: E402
-from ..errors import StartArgumentError  # noqa: E402
+from ..base_app import BaseApplication, arg_deprecated_action  # noqa: E402
+from ..errors import StartArgumentError                        # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class WebApplication(BaseApplication):
         self.require_pool = False
 
     def config_args(self, parser):
-        parser.add_argument('--ui-port', help=argparse.SUPPRESS)
+        parser.add_argument('--ui-port', help=argparse.SUPPRESS, action=arg_deprecated_action('-p'))
 
     def validate_arguments(self):
         if not self.args.schedulers and not self.args.kv_store:
@@ -58,10 +57,11 @@ class WebApplication(BaseApplication):
         else:
             port_arg = self.args.ui_port or self.args.port
             ui_port = int(port_arg) if port_arg else None
-            scheduler_ip = self.args.schedulers or None
-            if isinstance(scheduler_ip, six.string_types):
-                schedulers = scheduler_ip.split(',')
-                scheduler_ip = random.choice(schedulers)
+
+            schedulers = self.scheduler_discoverer.get()
+            if not schedulers:
+                raise KeyError('No scheduler is available')
+            scheduler_ip = random.choice(schedulers)
             self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ip)
             self.mars_web.start()
 

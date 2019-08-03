@@ -159,9 +159,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.proc_schedulers = [
             subprocess.Popen([sys.executable, '-m', 'mars.scheduler',
                               '-H', '127.0.0.1',
-                              '--level', 'debug' if log_scheduler else 'warning',
                               '-p', p,
-                              '--format', 'SCH%d %%(asctime)-15s %%(message)s' % idx,
+                              '--log-level', 'debug' if log_scheduler else 'warning',
+                              '--log-format', 'SCH%d %%(asctime)-15s %%(message)s' % idx,
                               '-Dscheduler.retry_delay=5',
                               '-Dscheduler.default_cpu_usage=0',
                               '-Dscheduler.status_timeout=10']
@@ -171,8 +171,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
                               '--cpu-procs', '1',
-                              '--level', 'debug' if log_worker else 'warning',
-                              '--format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
+                              '--log-level', 'debug' if log_worker else 'warning',
+                              '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
                               '-Dworker.prepare_data_timeout=30']
