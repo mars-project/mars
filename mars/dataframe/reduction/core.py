@@ -14,10 +14,7 @@
 
 import pandas as pd
 
-import itertools
-
 from ...config import options
-from ...compat import reduce
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..utils import parse_index, build_empty_df
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
@@ -168,9 +165,12 @@ class DataFrameReductionMixin(ReductionMixin):
         axis = getattr(self, 'axis', None)
         level = getattr(self, 'level', None)
 
+        # TODO: enable specify level if we support groupby
+        if level is not None:
+            raise NotImplementedError('Not support specify level now')
+
         reduced_df = self.get_reduced_df(df, axis=axis, level=level)
         reduced_shape = (df.shape[0],) if axis == 1 or axis == 'columns' else reduced_df.shape
-        # TODO: return DataFrame if specify level
         return self.new_series([df], shape=reduced_shape, dtype=reduced_df.dtype,
                                index_value=parse_index(reduced_df.index), object_type=ObjectType.series)
 
@@ -208,12 +208,12 @@ class SeriesReductionMixin(ReductionMixin):
                                   chunks=chunks, dtype=df.dtype, index_value=df.index_value)
 
     @classmethod
-    def get_reduced_df(cls, series, **kw):
+    def get_reduced_df(cls, in_df, **kw):
         axis = kw.get('axis', None)
         level = kw.get('level', None)
         numeric_only = kw.get('numeric_only', None)
 
-        index = series.index_value.to_pandas()
+        index = in_df.index_value.to_pandas()
         func_name = getattr(cls, '_func_name')
         empty_series = pd.Series(index=index)
         return getattr(empty_series, func_name)(axis=axis, level=level, numeric_only=numeric_only)
@@ -221,6 +221,10 @@ class SeriesReductionMixin(ReductionMixin):
     def __call__(self, series):
         axis = getattr(self, 'axis', None)
         level = getattr(self, 'level', None)
+
+        # TODO: enable specify level if we support groupby
+        if level is not None:
+            raise NotImplementedError('Not support specified level now')
 
         reduced_shape = self.get_reduced_df(series, axis=axis, level=level).shape
         return self.new_series([series], shape=reduced_shape, dtype=series.dtype,

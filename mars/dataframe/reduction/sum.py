@@ -42,19 +42,11 @@ class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
 
 
 def sum_series(df, axis=None, skipna=None, level=None, combine_size=None):
-    # TODO: enable specify level if we support groupby
-    if level is not None:
-        raise NotImplementedError('Not support specify level now')
-    if axis is not None:
-        assert axis == 0 or axis == 'index'
     op = SeriesSum(axis=axis, skipna=skipna, level=level, combine_size=combine_size)
     return op(df)
 
 
 def sum_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
-    # TODO: enable specify level if we support groupby
-    if level is not None:
-        raise NotImplementedError('Not support specify level now')
     op = DataFrameSum(axis=axis, skipna=skipna, level=level,
                       numeric_only=numeric_only, combine_size=combine_size)
     return op(df)
