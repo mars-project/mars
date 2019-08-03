@@ -22,14 +22,16 @@ from ...lib import sparse
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, Int32Field
 from ..array_utils import create_array
+from ..core import TensorOrder
 from .core import TensorHasInput
 from .zeros import TensorZeros
 from .array import tensor
 
 
 class TensorTri(TensorHasInput):
-    def __call__(self, m):
-        return self.new_tensor([m], shape=m.shape)
+    def __call__(self, m, order=None):
+        order = TensorOrder.C_ORDER if order is None else order
+        return self.new_tensor([m], shape=m.shape, order=order)
 
     def to_chunk_op(self, *args):
         k, = args
@@ -62,14 +64,16 @@ class TensorTri(TensorHasInput):
             if (is_triu and ld_fx > 0 and ru_fx > 0) or (not is_triu and ld_fx < 0 and ru_fx < 0):
                 # does not cross, fill with zeros
                 chunk_op = TensorZeros(dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
-                out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk(None, shape=chunk_shape,
+                                               index=out_idx, order=tensor.order)
             else:
                 lu_pos = ru_pos[0], ld_pos[1]
                 chunk_k = fx(*lu_pos)
 
                 input_chunk = m.cix[out_idx]
                 chunk_op = op.to_chunk_op(chunk_k)
-                out_chunk = chunk_op.new_chunk([input_chunk], shape=chunk_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([input_chunk], shape=chunk_shape,
+                                               index=out_idx, order=tensor.order)
 
             out_chunks.append(out_chunk)
 

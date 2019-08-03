@@ -20,6 +20,7 @@ import numpy as np
 from ...compat import izip
 from ...config import options
 from ..utils import normalize_shape, decide_chunk_sizes
+from ..core import TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 
 
@@ -78,9 +79,10 @@ class TensorNoInput(TensorDataSource):
         self.extra_params['shape'] = shape  # set shape to make the operand key different
         return super(TensorNoInput, self)._new_tileables(inputs, kws=kws, **kw)
 
-    def __call__(self, shape, chunk_size=None):
+    def __call__(self, shape, chunk_size=None, order=None):
         shape = normalize_shape(shape)
-        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
+        order = TensorOrder.C_ORDER if order is None else order
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size, order=order)
 
 
 class TensorHasInput(TensorDataSource):
@@ -103,17 +105,21 @@ class TensorHasInput(TensorDataSource):
 
     @classmethod
     def tile(cls, op):
+        output = op.outputs[0]
+
         out_chunks = []
         for c in op.input.chunks:
-            out_chunk = op.copy().reset_key().new_chunk([c], shape=c.shape, index=c.index)
+            out_chunk = op.copy().reset_key().new_chunk([c], shape=c.shape,
+                                                        index=c.index, order=output.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks,
-                                  nsplits=op.input.nsplits)
+        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
+                                  chunks=out_chunks, nsplits=op.input.nsplits)
 
-    def __call__(self, a):
-        return self.new_tensor([a], a.shape)
+    def __call__(self, a, order=None):
+        order = a.order if order is None else order
+        return self.new_tensor([a], a.shape, order=order)
 
 
 class TensorLike(TensorHasInput):

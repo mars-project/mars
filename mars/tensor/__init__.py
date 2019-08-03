@@ -17,7 +17,7 @@
 
 from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarray, \
     scalar, empty, empty_like, ones, ones_like, zeros, zeros_like, \
-    full, arange, diag, diagflat, eye, identity, linspace, \
+    full, full_like, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, from_dataframe
 from .datastore import totiledb
 from .base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
@@ -71,5 +71,5 @@ from numpy import dtype, number, inexact, floating, complexfloating, \
     integer, signedinteger, unsignedinteger, character, generic, flexible, \
     int_, bool_, float_, cfloat, bytes_, unicode_, void, object_, \
     intc, intp, int8, int16, int32, int64, uint8, uint16, uint32, uint64, uint, \
-    float16, float32, float64, complex64, complex128, datetime64, timedelta64
+    float16, float32, float64, double, complex64, complex128, datetime64, timedelta64
 from numpy import finfo

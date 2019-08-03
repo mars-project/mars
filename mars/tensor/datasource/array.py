@@ -21,7 +21,7 @@ from ...lib.sparse import SparseNDArray
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ...serialize import ValueType, NDArrayField, TupleField
 from ..core import TENSOR_TYPE, TensorOrder
-from ..utils import get_chunk_slices, normalize_shape
+from ..utils import get_chunk_slices
 from ..array_utils import array_module
 from .core import TensorNoInput
 from .scalar import scalar
@@ -53,12 +53,6 @@ class ArrayDataSource(TensorNoInput):
         chunk_op._data = self.data[get_chunk_slices(chunk_size, idx)]
 
         return chunk_op
-
-    def __call__(self, shape, chunk_size=None):
-        shape = normalize_shape(shape)
-        order = TensorOrder.C_ORDER \
-            if self._data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
-        return self.new_tensor(None, shape, order=order, raw_chunk_size=chunk_size)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -165,8 +159,10 @@ def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False)
     if isinstance(data, np.ndarray):
         if data.ndim == 0:
             return scalar(data.item(), dtype=dtype)
+        tensor_order = TensorOrder.C_ORDER \
+            if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
         op = ArrayDataSource(data, dtype=dtype, gpu=gpu)
-        t = op(data.shape, chunk_size=chunk_size)
+        t = op(data.shape, chunk_size=chunk_size, order=tensor_order)
         if sparse and not t.issparse():
             return t.tosparse()
         return t
