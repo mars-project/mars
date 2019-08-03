@@ -699,8 +699,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _tile_series(cls, op):
         left, right = op.inputs
         df = op.outputs[0]
-        index_type = 'index_value'
-        axis = 0
+        # index_type = 'index_value'
+        # axis = 0
+        #
+        # index_type = 'columns'
+        # axis = 1
         nsplits = [[], []]
         splits = _MinMaxSplitInfo()
 
@@ -712,23 +715,28 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         #         right_chunk_size = right.chunk_shape[axis]
         #         out_chunk_size = max(left_chunk_size, right_chunk_size)
         #     nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
-        left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
-        right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
-        left_splits, right_splits = \
-            [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
-        left_increase = left_chunk_index_min_max[1]
-        right_increase = right_chunk_index_min_max[1]
-        splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
-                                            right_splits, right_increase)
-        nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
+        for axis, index_type in enumerate(['index_value', 'columns']):
+            left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
+
+            if isinstance(right, SERIES_TYPE) and axis == 1:
+                right_chunk_index_min_max = [], False
+            else:
+                right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
+            left_splits, right_splits = \
+                [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
+            left_increase = left_chunk_index_min_max[1]
+            right_increase = right_chunk_index_min_max[1]
+            splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
+                                                right_splits, right_increase)
+            nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
 
         # ------- mock it -------
-        left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
+        # left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
         # right_chunk_index_min_max = cls._get_chunk_index_min_max(right, 'columns', 1)
         # splits[1] = _AxisMinMaxSplitInfo(left_splits, True)
 
         # ------------------------
-        out_shape = (1, 1)
+        out_shape = tuple(len(ns) for ns in nsplits)
         out_chunks = cls._gen_out_chunks_without_shuffle2(op, splits, out_shape, left, right)
 
         new_op = op.copy()
