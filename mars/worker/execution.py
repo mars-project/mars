@@ -260,7 +260,7 @@ class ExecutionActor(WorkerActor):
         from .dispatcher import DispatchActor
 
         if remote_addr in self._peer_blacklist:
-            raise DependencyMissing
+            raise DependencyMissing((session_id, graph_key))
 
         remote_disp_ref = self.promise_ref(uid=DispatchActor.default_uid(),
                                            address=remote_addr)
@@ -298,7 +298,7 @@ class ExecutionActor(WorkerActor):
         @log_unhandled
         def _fetch_step(sender_uid):
             if remote_addr in self._peer_blacklist:
-                raise DependencyMissing
+                raise DependencyMissing((session_id, chunk_key))
 
             if self._graph_records[(session_id, graph_key)].stop_requested:
                 remote_disp_ref.register_free_slot(sender_uid, 'sender', _tell=True)
