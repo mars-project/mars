@@ -38,18 +38,18 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
         self._input = self._inputs[0]
 
     def _get_order(self, kw, i):
-        input = self.input
-        if input.order == TensorOrder.C_ORDER:
+        inp = self.input
+        if inp.order == TensorOrder.C_ORDER:
             return TensorOrder.C_ORDER
 
-        for shape, slc in zip(input.shape, self._slices):
+        for shape, slc in zip(inp.shape, self._slices):
             s = slc.indices(shape)
             if s[0] == 0 and s[1] == shape and s[2] == 1:
                 continue
             else:
                 return TensorOrder.C_ORDER
 
-        return input.order
+        return inp.order
 
     @classmethod
     def execute(cls, ctx, op):
