@@ -18,9 +18,10 @@ import numpy as np
 
 from ..utils import validate_axis
 from ..datasource import tensor as astensor
+from ..core import Tensor
 
 
-def compress(condition, a, axis=None):
+def compress(condition, a, axis=None, out=None):
     """
     Return selected slices of a tensor along given axis.
 
@@ -102,7 +103,18 @@ def compress(condition, a, axis=None):
     try:
         if len(condition) < a.shape[axis]:
             a = a[(slice(None),) * axis + (slice(len(condition)),)]
-        return a[(slice(None),) * axis + (condition,)]
+        t = a[(slice(None),) * axis + (condition,)]
+        if out is None:
+            return t
+
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+        if not np.can_cast(out.dtype, t.dtype, 'safe'):
+            raise ValueError('Cannot cast array data from dtype(\'{0}\') to dtype(\'{1}\') '
+                             'according to the rule \'safe\''.format(out.dtype, t.dtype))
+        # skip shape check because out shape is unknown
+        out.data = t.astype(out.dtype, order=out.order.value).data
+        return out
     except IndexError:
         raise np.AxisError('axis {0} is out of bounds '
                            'for tensor of dimension 1'.format(len(condition)))

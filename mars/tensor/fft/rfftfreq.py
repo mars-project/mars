@@ -20,6 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import Int32Field, Float64Field
 from ..datasource import arange
 from ..operands import TensorOperand, TensorOperandMixin
+from ..core import TensorOrder
 
 
 class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
@@ -41,7 +42,8 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
 
     def __call__(self, chunk_size=None):
         shape = (self.n // 2 + 1,)
-        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size,
+                               order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -52,7 +54,7 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
         t.single_tiles()
 
         new_op = op.copy()
-        return new_op.new_tensors(None, tensor.shape,
+        return new_op.new_tensors(None, tensor.shape, order=tensor.order,
                                   chunks=t.chunks, nsplits=t.nsplits, **tensor.extra_params)
 
 

@@ -498,7 +498,6 @@ class TensorReduction(TensorHasInput):
 class TensorCumReduction(TensorHasInput):
     _input = KeyField('input')
     _axis = Int32Field('axis')
-    _out = KeyField('out')
 
     @property
     def axis(self):

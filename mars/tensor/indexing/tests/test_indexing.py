@@ -307,6 +307,12 @@ class Test(unittest.TestCase):
             self.assertIsInstance(a.chunks[0].op, type(a.op))
             self.assertEqual(len(a.chunks[0].inputs), 5)
 
+            with self.assertRaises(TypeError):
+                choose([2, 3, 1, 0], choices, out=1)
+
+            with self.assertRaises(ValueError):
+                choose([2, 3, 1, 0], choices, out=tensor(np.empty((1, 4))))
+
     def testUnravelIndex(self):
         indices = tensor([22, 41, 37], chunk_size=1)
         t = unravel_index(indices, (7, 6))
