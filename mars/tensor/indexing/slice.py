@@ -39,10 +39,12 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
 
     def _get_order(self, kw, i):
         inp = self.input
-        if inp.order == TensorOrder.C_ORDER:
+        if inp is None or inp.order == TensorOrder.C_ORDER:
             return TensorOrder.C_ORDER
 
         for shape, slc in zip(inp.shape, self._slices):
+            if slc is None:
+                continue
             s = slc.indices(shape)
             if s[0] == 0 and s[1] == shape and s[2] == 1:
                 continue
