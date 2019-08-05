@@ -113,7 +113,7 @@ class BaseOperandActor(SchedulerActor):
 
     @worker.setter
     def worker(self, value):
-        futures =[]
+        futures = []
         for graph_ref in self._graph_refs:
             futures.append(graph_ref.set_operand_worker(self._op_key, value, _tell=True, _wait=False))
         if self._kv_store_ref is not None:
