@@ -27,6 +27,7 @@ from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
 from ..array_utils import as_same_device, device
+from ..utils import get_order, recursive_tile
 from ..core import TensorOrder
 
 import logging
@@ -209,6 +210,14 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         in_tensor = op.input
         tensor = op.outputs[0]
 
+        if in_tensor.order != tensor.order and op.order == 'F':
+            # do transpose first, then do regular reshape, then transpose back
+            result = in_tensor.transpose().reshape(op.newshape[::-1])
+            if getattr(op, '_reshape_with_shuffle', True):
+                result.op.extra_params['_reshape_with_shuffle'] = True
+            result = result.transpose()
+            return [recursive_tile(result)]
+
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
                 in_tensor.shape, tensor.shape, in_tensor.nsplits)
@@ -234,8 +243,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1, order=tensor.op.order).single_tiles()
-                        .reshape(tensor.shape, order=tensor.op.order).single_tiles()]
+            return [in_tensor.reshape(-1, order=tensor.op.order).single_tiles().reshape(
+                tensor.shape, order=tensor.op.order).single_tiles()]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -500,14 +509,7 @@ def reshape(a, newshape, order='C'):
     if a.size != np.prod(newshape):
         raise ValueError('cannot reshape array of size {0} into shape {1}'.format(a.size, newshape))
 
-    if order == 'C':
-        tensor_order = TensorOrder.C_ORDER
-    elif order == 'F':
-        tensor_order = TensorOrder.F_ORDER
-    elif order == 'K':
-        tensor_order = a.order
-    else:
-        raise TypeError('order not understood')
+    tensor_order = get_order(order, a.order, available_options='CFA')
 
     if a.shape == newshape and tensor_order == a.order:
         # does not need to reshape
