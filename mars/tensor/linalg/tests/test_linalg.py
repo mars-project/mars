@@ -370,7 +370,7 @@ class Test(unittest.TestCase):
         self.assertFalse(t1.dot(t2, sparse=False).issparse())
         self.assertIs(type(t1.dot(t2, sparse=False)), Tensor)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             dot(t1, t2, out=1)
 
         with self.assertRaises(ValueError):

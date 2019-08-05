@@ -86,6 +86,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         from ..indexing.slice import TensorSlice
 
         inputs = op.inputs
+        output = op.outputs[0]
         axis = op.axis
 
         c = itertools.count(inputs[0].ndim)
@@ -115,12 +116,13 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             else:
                 chunk_op = TensorSlice(slices=[slice(None) for _ in range(in_chunk.ndim)],
                                        dtype=in_chunk.dtype, sparse=in_chunk.op.sparse)
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=in_chunk.shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([in_chunk], shape=in_chunk.shape,
+                                               index=out_idx, order=output.order)
 
                 out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
                                   nsplits=out_nsplits, chunks=out_chunks)
 
     @staticmethod
