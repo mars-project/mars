@@ -218,8 +218,9 @@ class MutableTensorHandler(MarsApiRequestHandler):
 
     def put(self, session_id, name):
         try:
+            payload_type = self.get_argument('payload_type', None)
             body = self.request.body
-            self.web_api.write_mutable_tensor(session_id, name, body)
+            self.web_api.write_mutable_tensor(session_id, name, payload_type, body)
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 

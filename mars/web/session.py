@@ -229,8 +229,9 @@ class Session(object):
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
-        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
-        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype), chunk_keys)
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+                                     chunk_keys, chunk_eps)
 
     def get_mutable_tensor(self, name):
         from ..tensor.utils import create_mutable_tensor
@@ -241,8 +242,9 @@ class Session(object):
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
-        shape, dtype, chunk_size, chunk_keys = json.loads(resp.text)
-        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype), chunk_keys)
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
+        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+                                     chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
         '''
@@ -288,7 +290,7 @@ class Session(object):
         self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
         # # Construct Tensor on the fly.
-        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
         return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                    tensor_key=tensor_key, chunk_keys=chunk_keys)
 
