@@ -28,7 +28,7 @@ import numpy as np
 from ...compat import lrange, izip, irange, builtins, six, getargspec, reduce
 from ...config import options
 from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
-from ..core import Tensor
+from ..core import Tensor, TensorOrder
 from ..array_utils import get_array_module, as_same_device, device, cp
 from ..utils import check_out_param, validate_axis
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -53,6 +53,10 @@ class TensorReductionMixin(TensorOperandMixin):
     def _is_cum(cls):
         return False
 
+    @classmethod
+    def _calc_order(cls, a, out):
+        return out.order if out is not None else a.order
+
     def _call(self, a, out):
         a = astensor(a)
         if out is not None and not isinstance(out, Tensor):
@@ -60,6 +64,7 @@ class TensorReductionMixin(TensorOperandMixin):
 
         axis = getattr(self, 'axis', None)
         keepdims = getattr(self, 'keepdims', None)
+        order = self._calc_order(a, out)
 
         if self._is_cum():
             if axis is None:
@@ -75,7 +80,7 @@ class TensorReductionMixin(TensorOperandMixin):
             shape = tuple(s if i not in axis else 1 for i, s in enumerate(a.shape)
                           if keepdims or i not in axis)
 
-        t = self.new_tensor([a], shape)
+        t = self.new_tensor([a], shape, order=order)
 
         if out is None:
             return t
@@ -184,7 +189,8 @@ class TensorReductionMixin(TensorOperandMixin):
             chks = [tensor.cix[idx] for idx in itertools.product(*combine_block)]
             if len(chks) > 1:
                 op = TensorConcatenate(axis=axes, dtype=chks[0].dtype)
-                chk = op.new_chunk(chks, shape=cls._concatenate_shape(tensor, combine_block))
+                chk = op.new_chunk(chks, shape=cls._concatenate_shape(tensor, combine_block),
+                                   order=tensor.order)
             else:
                 chk = chks[0]
             shape = tuple(s if i not in combine_size else 1
@@ -192,7 +198,8 @@ class TensorReductionMixin(TensorOperandMixin):
             agg_op = agg_op_type(axis=axis, dtype=dtype, keepdims=keepdims, **kw)
             chunk = agg_op.new_chunk([chk], shape=shape,
                                      index=tuple(idx for i, idx in enumerate(combine_block_idx)
-                                                 if keepdims or i not in combine_size))
+                                                 if keepdims or i not in combine_size),
+                                     order=tensor.order)
             chunks.append(chunk)
 
         nsplits = [
@@ -200,11 +207,13 @@ class TensorReductionMixin(TensorOperandMixin):
             for i in range(len(chunks[0].shape))]
         shape = tuple(builtins.sum(nsplit) for nsplit in nsplits)
         agg_op = agg_op_type(axis=axis, dtype=dtype, keepdims=keepdims, combine_size=combine_size, **kw)
-        return agg_op.new_tensors([tensor], shape, chunks=chunks, nsplits=nsplits)
+        return agg_op.new_tensors([tensor], shape, order=tensor.order,
+                                  chunks=chunks, nsplits=nsplits)
 
     @classmethod
     def tile(cls, op):
         in_tensor = op.inputs[0]
+        out_tensor = op.outputs[0]
         axis = tuple(range(in_tensor.ndim)) if op.axis is None else op.axis
         if isinstance(axis, six.integer_types):
             axis = (axis,)
@@ -223,8 +232,9 @@ class TensorReductionMixin(TensorOperandMixin):
             shape = tuple(s for s in shape if s is not None)
             nsplits = tuple(ns for ns in nsplits if ns is not None)
 
-            chunks = new_op.new_chunks([c], shape=shape, index=c.index)
-            return op.copy().new_tensors(op.inputs, op.outputs[0].shape, chunks=chunks, nsplits=nsplits)
+            chunks = new_op.new_chunks([c], shape=shape, index=c.index, order=out_tensor.order)
+            return op.copy().new_tensors(op.inputs, op.outputs[0].shape, order=out_tensor.order,
+                                         chunks=chunks, nsplits=nsplits)
 
         chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
 
@@ -233,10 +243,12 @@ class TensorReductionMixin(TensorOperandMixin):
         for c in in_tensor.chunks:
             chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, keepdims=True,
                                      combine_size=op.combine_size, **kw)
-            chunks.append(chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis), index=c.index))
+            chunks.append(chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis),
+                                             order=out_tensor.order, index=c.index))
 
         new_op = op.copy()
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
+                                   order=out_tensor.order,
                                    nsplits=cls._reduced_nsplits(in_tensor.nsplits, axis), chunks=chunks)
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
@@ -247,14 +259,17 @@ class TensorReductionMixin(TensorOperandMixin):
         axis = cls.get_axis(op.axis)
         func_name = getattr(cls, '_func_name', None)
         reduce_func = getattr(xp, func_name)
+        out = op.outputs[0]
         with device(device_id):
             if "dtype" in getargspec(reduce_func).args:
-                ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
-                                                     dtype=op.dtype,
-                                                     keepdims=bool(op.keepdims))
+                ret = reduce_func(input_chunk, axis=axis,
+                                  dtype=op.dtype,
+                                  keepdims=bool(op.keepdims))
             else:
-                ctx[op.outputs[0].key] = reduce_func(input_chunk, axis=axis,
-                                                     keepdims=bool(op.keepdims))
+                ret = reduce_func(input_chunk, axis=axis,
+                                  keepdims=bool(op.keepdims))
+
+            ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
 
 
 class TensorArgReductionMixin(TensorReductionMixin):
@@ -283,8 +298,13 @@ class TensorArgReductionMixin(TensorReductionMixin):
         return offset
 
     @classmethod
+    def _calc_order(cls, a, out):
+        return out.order if out is not None else TensorOrder.C_ORDER
+
+    @classmethod
     def tile(cls, op):
         in_tensor = op.inputs[0]
+        out_tensor = op.outputs[0]
         axis, ravel = cls._get_arg_axis(op.axis, in_tensor.ndim)
         chunk_op_type, agg_op_type, combine_op_type = getattr(op, '_get_op_types')()
 
@@ -294,10 +314,12 @@ class TensorArgReductionMixin(TensorReductionMixin):
             chunk_op = chunk_op_type(axis=axis, dtype=op.dtype, offset=offset,
                                      total_shape=in_tensor.shape,
                                      combine_size=op.combine_size)
-            chunk = chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis), index=c.index)
+            chunk = chunk_op.new_chunk([c], shape=cls._reduced_shape(c.shape, axis),
+                                       index=c.index, order=out_tensor.order)
             chunks.append(chunk)
         new_op = op.copy()
         tensor = new_op.new_tensor(op.inputs, cls._reduced_shape(in_tensor.shape, axis),
+                                   order=out_tensor.order,
                                    nsplits=cls._reduced_nsplits(in_tensor.nsplits, axis), chunks=chunks)
         return cls._tree_reduction(new_op, tensor, agg_op_type, axis, combine_op_type=combine_op_type)
 
@@ -413,6 +435,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
         from ..indexing.slice import TensorSlice
 
         in_tensor = op.inputs[0]
+        out_tensor = op.outputs[0]
         axis = op.axis
         if not isinstance(axis, six.integer_types):
             raise ValueError("axis must be a integer")
@@ -425,7 +448,8 @@ class TensorCumReductionMixin(TensorReductionMixin):
         chunks = []
         for c in in_tensor.chunks:
             chunk_op = op_type(axis=op.axis, dtype=op.dtype)
-            chunks.append(chunk_op.new_chunk([c], shape=c.shape, index=c.index))
+            chunks.append(chunk_op.new_chunk([c], shape=c.shape,
+                                             index=c.index, order=out_tensor.order))
         inter_tensor = copy.copy(in_tensor)
         inter_tensor._chunks = chunks
 
@@ -443,16 +467,19 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 shape = chunk.shape[:axis] + (1,) + chunk.shape[axis + 1:]
                 to_cum_chunk = inter_tensor.cix[to_cum_index]
                 slice_op = TensorSlice(slices=slc, dtype=chunk.dtype)
-                sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape=shape, index=to_cum_index)
+                sliced_chunk = slice_op.new_chunk([to_cum_chunk], shape=shape,
+                                                  index=to_cum_index, order=out_tensor.order)
                 to_cum_chunks.append(sliced_chunk)
 
             bin_op = bin_op_type(dtype=chunk.dtype)
-            output_chunk = bin_op.new_chunk(to_cum_chunks, shape=chunk.shape, index=chunk.index)
+            output_chunk = bin_op.new_chunk(to_cum_chunks, shape=chunk.shape,
+                                            index=chunk.index, order=out_tensor.order)
             output_chunks.append(output_chunk)
 
         nsplits = tuple((builtins.sum(c),) if i == axis else c for i, c in enumerate(in_tensor.nsplits))
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, in_tensor.shape, chunks=output_chunks, nsplits=nsplits)
+        return new_op.new_tensors(op.inputs, in_tensor.shape, order=out_tensor.order,
+                                  chunks=output_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
