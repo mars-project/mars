@@ -201,8 +201,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                                                       order=tensor.order, index=chunk_idx))
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, new_shape, chunks=shuffle_outputs,
-                                  nsplits=out_nsplits)
+        return new_op.new_tensors(op.inputs, new_shape, order=tensor.order,
+                                  chunks=shuffle_outputs, nsplits=out_nsplits)
 
     @classmethod
     def tile(cls, op):
@@ -226,7 +226,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, tensor.shape,
+            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                       chunks=out_chunks, nsplits=reshape_nsplits)
         except ValueError:
             # TODO: make this as default when shuffle is mature
@@ -234,7 +234,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1).single_tiles().reshape(tensor.shape).single_tiles()]
+            return [in_tensor.reshape(-1, order=tensor.op.order).single_tiles()
+                        .reshape(tensor.shape, order=tensor.op.order).single_tiles()]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -512,5 +513,6 @@ def reshape(a, newshape, order='C'):
         # does not need to reshape
         return a
 
-    op = TensorReshape(newshape, order, dtype=a.dtype, create_view=True)
+    op = TensorReshape(newshape, order, dtype=a.dtype,
+                       create_view=tensor_order == a.order)
     return op(a, tensor_order)
