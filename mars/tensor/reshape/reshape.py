@@ -28,7 +28,6 @@ from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
 from ..array_utils import as_same_device, device
 from ..utils import get_order, recursive_tile
-from ..core import TensorOrder
 
 import logging
 
