@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 from mars.tensor.base.broadcast_to import TensorBroadcastTo
-from mars.tensor.datasource import ones, tensor
+from mars.tensor.datasource import ones, tensor, array, empty
 from mars.tensor.datasource.ones import TensorOnes
-from mars.tensor.indexing import choose, unravel_index, nonzero
+from mars.tensor.indexing import choose, unravel_index, nonzero, compress
 from mars.tensor.indexing.setitem import TensorIndexSetValue
 from mars.tensor.merge.concatenate import TensorConcatenate
 from mars.config import option_context
@@ -158,6 +158,11 @@ class Test(unittest.TestCase):
         t2 = t[ones(100) < 2, ..., 20::101, 2]
         self.assertEqual(len(t2.shape), 3)
         self.assertTrue(np.isnan(t2.shape[0]))
+
+        t3 = ones((2, 3, 4, 5))
+        t4 = t3[1]
+        self.assertEqual(t4.flags['C_CONTIGUOUS'], np.ones((2, 3, 4, 5))[1].flags['C_CONTIGUOUS'])
+        self.assertEqual(t4.flags['F_CONTIGUOUS'], np.ones((2, 3, 4, 5))[1].flags['F_CONTIGUOUS'])
 
     def testBoolIndexingTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
@@ -324,6 +329,9 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t[0].chunks), 3)
         self.assertEqual(len(t[1].chunks), 3)
 
+        with self.assertRaises(TypeError):
+            unravel_index([22, 41, 37], (7, 6), order='B')
+
     def testNonzero(self):
         x = tensor([[1, 0, 0], [0, 2, 0], [1, 1, 0]], chunk_size=2)
         y = nonzero(x)
@@ -331,6 +339,16 @@ class Test(unittest.TestCase):
         self.assertEqual(len(y), 2)
 
         y[0].tiles()
+
+    def testCompress(self):
+        a = np.array([[1, 2], [3, 4], [5, 6]])
+
+        with self.assertRaises(TypeError):
+            compress([0, 1], a, axis=0, out=1)
+
+        with self.assertRaises(TypeError):
+            compress([0, 1], array([[1, 2], [3, 4], [5, 6]], dtype='i8'),
+                     axis=0, out=empty((1, 2), dtype='f8'))
 
     def testOperandKey(self):
         t = ones((10, 2), chunk_size=5)

@@ -141,7 +141,7 @@ def unravel_index(indices, dims, order='C'):
         dims = (dims,)
 
     if order not in 'CF':
-        raise ValueError("only 'C' or 'F' order is permitted")
+        raise TypeError("only 'C' or 'F' order is permitted")
 
     op = TensorUnravelIndex(dims=dims, dtype=np.dtype(np.intp), order=order)
     return op(indices)

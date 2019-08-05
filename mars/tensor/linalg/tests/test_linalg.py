@@ -24,6 +24,7 @@ import mars.tensor as mt
 from mars.tensor import ones, tensor, dot, empty
 from mars.graph import DirectedGraph
 from mars.tensor.core import SparseTensor, Tensor
+from mars.tensor.linalg import matmul
 
 
 class Test(unittest.TestCase):
@@ -381,3 +382,40 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             dot(t1, t2, empty((3, 3), order='F'))
+
+        t1.dot(t2, out=empty((2, 2), dtype=t1.dtype))
+
+    def testMatmul(self):
+        t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
+        t2 = t1.T
+
+        t3 = matmul(t1, t2, out=empty((2, 2), dtype=t1.dtype, order='F'))
+        self.assertEqual(t3.order.value, 'F')
+
+        with self.assertRaises(TypeError):
+            matmul(t1, t2, out=1)
+
+        with self.assertRaises(TypeError):
+            matmul(t1, t2, out=empty((2, 2), dtype='?'))
+
+        with self.assertRaises(ValueError):
+            matmul(t1, t2, out=empty((3, 2), dtype=t1.dtype))
+
+        raw1 = np.asfortranarray(np.random.rand(3, 3))
+        raw2 = np.asfortranarray(np.random.rand(3, 3))
+        raw3 = np.random.rand(3, 3)
+
+        self.assertEqual(matmul(tensor(raw1), tensor(raw2)).flags['C_CONTIGUOUS'],
+                         np.matmul(raw1, raw2).flags['C_CONTIGUOUS'])
+        self.assertEqual(matmul(tensor(raw1), tensor(raw2)).flags['F_CONTIGUOUS'],
+                         np.matmul(raw1, raw2).flags['F_CONTIGUOUS'])
+
+        self.assertEqual(matmul(tensor(raw1), tensor(raw2), order='A').flags['C_CONTIGUOUS'],
+                         np.matmul(raw1, raw2, order='A').flags['C_CONTIGUOUS'])
+        self.assertEqual(matmul(tensor(raw1), tensor(raw2), order='A').flags['F_CONTIGUOUS'],
+                         np.matmul(raw1, raw2, order='A').flags['F_CONTIGUOUS'])
+
+        self.assertEqual(matmul(tensor(raw1), tensor(raw3), order='A').flags['C_CONTIGUOUS'],
+                         np.matmul(raw1, raw3, order='A').flags['C_CONTIGUOUS'])
+        self.assertEqual(matmul(tensor(raw1), tensor(raw3), order='A').flags['F_CONTIGUOUS'],
+                         np.matmul(raw1, raw3, order='A').flags['F_CONTIGUOUS'])

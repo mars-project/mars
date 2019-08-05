@@ -86,6 +86,8 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
 
         if a.ndim == 0 or b.ndim == 0:
             raise ValueError("Scalar operands are not allowed, use '*' instead")
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('out must be a Tensor, got {0} instead'.format(type(out)))
 
         a_is_1d = False
         if a.ndim == 1:
@@ -117,8 +119,6 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             t = t[..., 0]
 
         if out is not None:
-            if not isinstance(out, Tensor):
-                raise ValueError('out must be a Tensor, got {0} instead'.format(type(out)))
             check_out_param(out, t, self._casting)
             t = broadcast_to(t, out.shape)
             out.data = t.data

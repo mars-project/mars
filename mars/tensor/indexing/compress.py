@@ -110,8 +110,8 @@ def compress(condition, a, axis=None, out=None):
         if out is not None and not isinstance(out, Tensor):
             raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
         if not np.can_cast(out.dtype, t.dtype, 'safe'):
-            raise ValueError('Cannot cast array data from dtype(\'{0}\') to dtype(\'{1}\') '
-                             'according to the rule \'safe\''.format(out.dtype, t.dtype))
+            raise TypeError('Cannot cast array data from dtype(\'{0}\') to dtype(\'{1}\') '
+                            'according to the rule \'safe\''.format(out.dtype, t.dtype))
         # skip shape check because out shape is unknown
         out.data = t.astype(out.dtype, order=out.order.value).data
         return out
