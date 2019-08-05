@@ -74,12 +74,13 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.scheduler_endpoints = []
         self.proc_schedulers = []
         self.proc_workers = []
-        self.state_files = []
+        self.state_files = dict()
         self.etcd_helper = None
         self.intentional_death_pids = set()
 
     def tearDown(self):
-        for fn in self.state_files:
+        for env, fn in self.state_files.items():
+            os.environ.pop(env)
             if os.path.exists(fn):
                 os.unlink(fn)
 
@@ -125,7 +126,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
     def add_state_file(self, environ):
         fn = os.environ[environ] = os.path.join(
             tempfile.gettempdir(), 'test-main-%s-%d-%d' % (environ.lower(), os.getpid(), id(self)))
-        self.state_files.append(fn)
+        self.state_files[environ] = fn
         return fn
 
     def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
