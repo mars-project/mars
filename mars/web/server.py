@@ -21,6 +21,7 @@ import os
 from collections import defaultdict
 
 import numpy as np
+import pyarrow
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
 from bokeh.server.server import Server
@@ -132,7 +133,7 @@ class MarsWebAPI(MarsAPI):
         ref = self.actor_client.actor_ref(EventsActor.default_uid(), address=endpoint)
         return ref.query_by_time(category, time_start=time_start, time_end=time_end)
 
-    def write_mutable_tensor(self, session_id, name, body):
+    def write_mutable_tensor(self, session_id, name, payload_type, body):
         from ..serialize import dataserializer
         from ..tensor.core import Indexes
         session_uid = SessionActor.gen_uid(session_id)
@@ -141,7 +142,23 @@ class MarsWebAPI(MarsAPI):
         index_json_size = np.asscalar(np.frombuffer(body[0:8], dtype=np.int64))
         index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
         index = Indexes.from_json(index_json).indexes
-        value = dataserializer.loads(body[8+index_json_size:], raw=False)
+        if payload_type is None:
+            value = dataserializer.loads(body[8+index_json_size:], raw=False)
+        elif payload_type == 'tensor':
+            tensor_chunk_offset = 8 + index_json_size
+            with pyarrow.BufferReader(body[tensor_chunk_offset:]) as reader:
+                value = pyarrow.read_tensor(reader).to_numpy()
+        elif payload_type == 'record_batch':
+            schema_size = np.asscalar(np.frombuffer(body[8+index_json_size:8+index_json_size+8], dtype=np.int64))
+            schema_offset = 8 + index_json_size + 8
+            with pyarrow.BufferReader(body[schema_offset:schema_offset+schema_size]) as reader:
+                schema = pyarrow.read_schema(reader)
+            record_batch_offset = schema_offset + schema_size
+            with pyarrow.BufferReader(body[record_batch_offset:]) as reader:
+                record_batch = pyarrow.read_record_batch(reader, schema)
+                value = record_batch.to_pandas().to_records(index=False)
+        else:
+            raise ValueError('Not supported payload type: %s' % payload_type)
         return session_ref.write_mutable_tensor(name, index, value)
 
 

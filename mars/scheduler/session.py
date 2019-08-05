@@ -136,7 +136,7 @@ class SessionActor(SchedulerActor):
             raise ValueError("The mutable tensor named '%s' doesn't exist, or has already been sealed." % name)
 
         graph_key_hex, tensor_key, tensor_id, tensor_meta = tensor_ref.seal()
-        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
         graph_key = uuid.UUID(graph_key_hex)
 
         # Create a GraphActor

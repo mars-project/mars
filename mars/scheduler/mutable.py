@@ -44,15 +44,32 @@ class MutableTensorActor(SchedulerActor):
         self._tensor = None
         self._sealed = False
         self._chunk_map = defaultdict(lambda: [])
-        self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self._dtype)])
+        self._chunk_to_endpoint = dict()
+        self._record_type = np.dtype([("index", np.uint32),
+                                      ("ts", np.dtype('datetime64[ns]')),
+                                      ("value", self._dtype)])
+        self._resource_ref = None
 
     @log_unhandled
     def post_create(self):
-        from ..tensor.utils import create_mutable_tensor
+        from .resource import ResourceActor
+        from ..tensor.core import MutableTensor, MutableTensorData
+        from ..tensor.utils import create_fetch_tensor
 
         super(MutableTensorActor, self).post_create()
         self.set_cluster_info_ref()
-        self._tensor = create_mutable_tensor(self._name, self._chunk_size, self._shape, self._dtype)
+        self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
+
+        tensor = create_fetch_tensor(self._chunk_size, self._shape, self._dtype)
+        endpoints = self._resource_ref.select_worker(size=len(tensor.chunks))
+
+        for chunk, endpoint in zip(tensor.chunks, endpoints):
+            self._chunk_to_endpoint[chunk.key] = endpoint
+
+        self._tensor = MutableTensor(data=MutableTensorData(
+            _name=self._name, _op=None, _shape=self._shape, _dtype=tensor.dtype,
+            _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks,
+            _chunk_eps=endpoints))
 
     def tensor_meta(self):
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -60,7 +77,9 @@ class MutableTensorActor(SchedulerActor):
             dtype_descr = self._dtype.descr
         else:
             dtype_descr = str(self._dtype)
-        return self._shape, dtype_descr, self._chunk_size, [c.key for c in self._tensor.chunks]
+        chunk_keys = [c.key for c in self._tensor.chunks]
+        chunk_eps = [self._chunk_to_endpoint[key] for key in chunk_keys]
+        return self._shape, dtype_descr, self._chunk_size, chunk_keys, chunk_eps
 
     def tensor_key(self):
         return self._tensor.key
@@ -93,12 +112,13 @@ class MutableTensorActor(SchedulerActor):
 
         # consolidate chunks
         for chunk in self._tensor.chunks:
-            ep = self.get_scheduler(chunk.key)
+            ep = self._chunk_to_endpoint[chunk.key]
             sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
             sealer_ref = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
             sealer_ref.seal_chunk(self._session_id, self._graph_key,
                                   chunk.key, self._chunk_map[chunk.key],
                                   chunk.shape, self._record_type, self._dtype, self._fill_value)
+            sealer_ref.destroy()
         # return the hex of self._graph_key since UUID is not json serializable.
         return self._graph_key.hex, self._tensor.key, self._tensor.id, self.tensor_meta()
 
@@ -108,9 +128,9 @@ class MutableTensorActor(SchedulerActor):
         from ..worker.transfer import put_remote_chunk
 
         chunk_records = []
-        for chunk_key, records in chunk_records_to_send.items():
+
+        for chunk_key, ep, records in chunk_records_to_send:
             record_chunk_key = tokenize(chunk_key, uuid.uuid4().hex)
-            ep = self.get_scheduler(chunk_key)
             # send record chunk
             dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid(), address=ep)
             receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)

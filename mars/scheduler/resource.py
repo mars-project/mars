@@ -18,6 +18,8 @@ import os
 import time
 from collections import defaultdict
 
+import numpy as np
+
 from .kvstore import KVStoreActor
 from .session import SessionManagerActor, SessionActor
 from .utils import SchedulerActor
@@ -134,6 +136,15 @@ class ResourceActor(SchedulerActor):
     def get_workers_meta(self):
         return dict((k, v) for k, v in self._meta_cache.items()
                     if k not in self._worker_blacklist)
+
+    def select_worker(self, size=None):
+        # NB: randomly choice the indices, rather than the worker list to avoid the `str` to `np.str_` casting.
+        available_workers = [k for k in self._meta_cache if k not in self._worker_blacklist]
+        idx = np.random.choice(range(len(available_workers)), size=size)
+        if size is None:
+            return available_workers[idx]
+        else:
+            return [available_workers[i] for i in idx]
 
     def set_worker_meta(self, worker, worker_meta):
         from ..worker.execution import ExecutionActor
