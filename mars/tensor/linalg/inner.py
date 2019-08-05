@@ -19,7 +19,7 @@ from ..datasource import tensor as astensor
 from .tensordot import tensordot
 
 
-def inner(a, b, out=None, sparse=None):
+def inner(a, b, sparse=None):
     """
     Returns the inner product of a and b for arrays of floating point types.
 
@@ -33,14 +33,7 @@ def inner(a, b, out=None, sparse=None):
     else:
         ret = tensordot(a, b, axes=(-1, -1), sparse=sparse)
 
-    if out is None:
-        return ret
-
-    # set to out
-    if not isinstance(out, Tensor):
-        raise ValueError('`out` must be a Tensor, got {0} instead'.format(type(out)))
-    out.data = ret.data
-    return out
+    return ret
 
 
 innerproduct = inner

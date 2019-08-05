@@ -51,7 +51,7 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
             chunk_idx = (0,) * new_dim + c.index
             chunk_op = op.copy().reset_key()
             chunk_op._shape = chunk_shape
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx, order=tensor.order)
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks if all(idx == 0 for j, idx in enumerate(c.index) if j != i))

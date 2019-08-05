@@ -16,7 +16,7 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ..core import Tensor
+from ..core import Tensor, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import device, as_same_device, is_sparse_module
@@ -153,5 +153,10 @@ def dot(a, b, out=None, sparse=None):
     # set to out
     if not isinstance(out, Tensor):
         raise ValueError('`out` must be a Tensor, got {0} instead'.format(type(out)))
+    if out.shape != ret.shape:
+        raise ValueError('output tensor has wrong dimensions')
+    if not (out.dtype == ret.dtype and out.ndim == ret.ndim and out.order == TensorOrder.C_ORDER):
+        raise ValueError('output tensor is not acceptable '
+                         '(must have the right datatype, number of dimensions and be a C-Tensor')
     out.data = ret.data
     return out

@@ -27,6 +27,7 @@ from ..array_utils import as_same_device, device, is_sparse_module
 from ..operands import TensorOperand, TensorOperandMixin
 from ..arithmetic.utils import tree_add
 from ..datasource import tensor as astensor
+from ..core import TensorOrder
 
 
 class TensorTensorDot(TensorOperand, TensorOperandMixin):
@@ -65,7 +66,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
     def __call__(self, a, b):
         shape = tuple(s for i, s in enumerate(a.shape) if i not in set(self._a_axes)) + \
             tuple(s for i, s in enumerate(b.shape) if i not in set(self._b_axes))
-        return self.new_tensor([a, b], shape)
+        return self.new_tensor([a, b], shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -75,6 +76,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         a_ax = tuple(a_axes.index(i) if i in a_axes else next(c) for i in range(a.ndim))
         b_ax = tuple(b_axes.index(i) if i in b_axes else next(c) for i in range(b.ndim))
         a, b = unify_chunks((a, a_ax), (b, b_ax))
+        out = op.outputs[0]
 
         a_output_indexes = [range(len(a.nsplits[i])) for i in range(a.ndim) if i not in a_axes]
         b_output_indexes = [range(len(b.nsplits[i])) for i in range(b.ndim) if i not in b_axes]
@@ -103,13 +105,14 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
 
                 tensordot_chunk_op = op.copy().reset_key()
                 tensordot_chunk = tensordot_chunk_op.new_chunk(
-                    [a.cix[tuple(a_indices)], b.cix[tuple(b_indices)]], shape=tensor_shape)
+                    [a.cix[tuple(a_indices)], b.cix[tuple(b_indices)]],
+                    shape=tensor_shape, order=out.order)
                 tensordot_chunks.append(tensordot_chunk)
 
             if len(tensordot_chunks) == 1:
                 c = tensordot_chunks[0]
                 chunk_op = c.op.copy()
-                chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx)
+                chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx, order=out.order)
             else:
                 chunk = tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
             out_chunks.append(chunk)
@@ -117,7 +120,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         get_nsplits = lambda t_idx, i: (a, b)[t_idx].nsplits[i]
         nsplits = [get_nsplits(*it) for it in output_axes]
         new_op = op.copy()
-        return new_op.new_tensors([a, b], op.outputs[0].shape,
+        return new_op.new_tensors([a, b], out.shape,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
@@ -131,7 +134,9 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
                 # tell sparse to do calculation on numpy or cupy dot
                 ctx[op.outputs[0].key] = xp.tensordot(a, b, axes, sparse=False)
             else:
-                ctx[op.outputs[0].key] = xp.tensordot(a, b, axes)
+                ret = xp.tensordot(a, b, axes)
+                out = op.outputs[0]
+                ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
 
 
 def tensordot(a, b, axes=2, sparse=None):
