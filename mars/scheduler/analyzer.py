@@ -20,6 +20,7 @@ from collections import defaultdict, OrderedDict
 import numpy as np
 
 from ..compat import reduce
+from ..operands import VirtualOperand
 from .operands import OperandState
 
 logger = logging.getLogger(__name__)
@@ -371,6 +372,15 @@ class GraphAnalyzer(object):
         lost_chunks = set(self._lost_chunks)
         op_states = self._op_states
 
+        # mark lost virtual nodes as lost when some preds are lost
+        for n in graph:
+            if not isinstance(n.op, VirtualOperand) \
+                    or op_states.get(n.op.key) == OperandState.UNSCHEDULED:
+                continue
+            if any(pred.key in lost_chunks for pred in graph.iter_predecessors(n)):
+                lost_chunks.add(n.key)
+
+        # collect operands with lost data
         op_key_to_chunks = defaultdict(list)
         lost_ops = set()
         for n in graph:
@@ -411,5 +421,6 @@ class GraphAnalyzer(object):
                 new_states[op_key] = OperandState.READY
             elif not can_be_ready and chunk_op_state != OperandState.UNSCHEDULED:
                 new_states[op_key] = OperandState.UNSCHEDULED
+
         op_states.update(new_states)
         return new_states
