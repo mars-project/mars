@@ -32,9 +32,9 @@ class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.SUM
     _func_name = 'sum'
 
-    def __init__(self, numeric_only=None, **kw):
+    def __init__(self, numeric_only=None, object_type=ObjectType.series, **kw):
         super(DataFrameSum, self).__init__(_numeric_only=numeric_only,
-                                           _object_type=ObjectType.dataframe, **kw)
+                                           _object_type=object_type, **kw)
 
     @property
     def numeric_only(self):

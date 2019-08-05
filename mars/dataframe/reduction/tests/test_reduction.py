@@ -17,7 +17,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from mars.tests.core import TestBase
-from mars.dataframe.core import IndexValue
+from mars.dataframe.core import IndexValue, Series
 from mars.dataframe.reduction import SeriesSum, DataFrameSum
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -67,6 +67,7 @@ class Test(TestBase):
         data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
         series = from_pandas_series(data, chunk_size=3).sum()
 
+        self.assertIsInstance(series, Series)
         self.assertEqual(series.name, data.name)
         self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(series.shape, ())
@@ -81,6 +82,7 @@ class Test(TestBase):
         data = pd.Series(np.random.rand(25), name='a')
         series = from_pandas_series(data, chunk_size=7).sum(axis='index', skipna=False)
 
+        self.assertIsInstance(series, Series)
         self.assertEqual(series.name, data.name)
         self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(series.shape, ())
@@ -135,6 +137,7 @@ class Test(TestBase):
                             index=[str(i) for i in range(20)])
         sum_df = from_pandas_df(data, chunk_size=3).sum()
 
+        self.assertIsInstance(sum_df, Series)
         self.assertIsInstance(sum_df.index_value._index_value, IndexValue.Index)
         self.assertEqual(sum_df.shape, (2,))
 
@@ -148,6 +151,7 @@ class Test(TestBase):
         data = pd.DataFrame(np.random.rand(20, 10))
         sum_df = from_pandas_df(data, chunk_size=3).sum()
 
+        self.assertIsInstance(sum_df, Series)
         self.assertIsInstance(sum_df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(sum_df.shape, (10,))
 
