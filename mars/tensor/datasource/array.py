@@ -50,7 +50,8 @@ class ArrayDataSource(TensorNoInput):
     def to_chunk_op(self, *args):
         _, idx, chunk_size = args
         chunk_op = self.copy().reset_key()
-        chunk_op._data = self.data[get_chunk_slices(chunk_size, idx)]
+        chunk_op._data = self.data[get_chunk_slices(chunk_size, idx)].astype(
+            chunk_op.dtype, order=self.outputs[0].order.value, copy=False)
 
         return chunk_op
 
@@ -259,7 +260,7 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
 
     if copy and x is raw_x:
         x = x.copy(order=order)
-    elif not copy and raw_x.dtype == x.dtype and \
+    elif not copy and isinstance(raw_x, TENSOR_TYPE) and raw_x.dtype == x.dtype and \
             raw_x.order == x.order and raw_x.shape == x.shape and \
             raw_x is not x:
         raw_x.data = x.data
@@ -267,7 +268,7 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
     return x
 
 
-def asarray(x, dtype=None, order=None):
+def asarray(x, dtype=None, order=None, chunk_size=None):
     """Convert the input to an array.
 
     Parameters
@@ -281,6 +282,8 @@ def asarray(x, dtype=None, order=None):
     order : {'C', 'F'}, optional
         Whether to use row-major (C-style) or
         column-major (Fortran-style) memory representation.
+    chunk_size: int, tuple, optional
+        Specifies chunk size for each dimension.
 
     Returns
     -------
@@ -319,10 +322,10 @@ def asarray(x, dtype=None, order=None):
     >>> mt.asarray(a, dtype=mt.float64) is a
     False
     """
-    return array(x, dtype=dtype, copy=False, order=order)
+    return array(x, dtype=dtype, copy=False, order=order, chunk_size=chunk_size)
 
 
-def ascontiguousarray(a, dtype=None):
+def ascontiguousarray(a, dtype=None, chunk_size=None):
     """
     Return a contiguous tensor (ndim >= 1) in memory (C order).
 
@@ -332,6 +335,8 @@ def ascontiguousarray(a, dtype=None):
         Input tensor.
     dtype : str or dtype object, optional
         Data-type of returned tensor.
+    chunk_size: int, tuple, optional
+        Specifies chunk size for each dimension.
 
     Returns
     -------
@@ -360,10 +365,10 @@ def ascontiguousarray(a, dtype=None):
 
     """
 
-    return array(a, dtype, copy=False, order='C', ndmin=1)
+    return array(a, dtype, copy=False, order='C', ndmin=1, chunk_size=chunk_size)
 
 
-def asfortranarray(a, dtype=None):
+def asfortranarray(a, dtype=None, chunk_size=None):
     """
     Return a tensor (ndim >= 1) laid out in Fortran order in memory.
 
@@ -373,6 +378,8 @@ def asfortranarray(a, dtype=None):
         Input tensor.
     dtype : str or dtype object, optional
         By default, the data-type is inferred from the input data.
+    chunk_size: int, tuple, optional
+        Specifies chunk size for each dimension.
 
     Returns
     -------
@@ -397,4 +404,4 @@ def asfortranarray(a, dtype=None):
     so it will not preserve 0-d tensors.
 
     """
-    return array(a, dtype, copy=False, order='F', ndmin=1)
+    return array(a, dtype, copy=False, order='F', ndmin=1, chunk_size=chunk_size)

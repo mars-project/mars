@@ -210,7 +210,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         in_tensor = op.input
         tensor = op.outputs[0]
 
-        if in_tensor.order != tensor.order and op.order == 'F':
+        if op.order == 'F':
             # do transpose first, then do regular reshape, then transpose back
             result = in_tensor.transpose().reshape(op.newshape[::-1])
             if getattr(op, '_reshape_with_shuffle', True):

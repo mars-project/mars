@@ -34,6 +34,15 @@ class Test(unittest.TestCase):
         self.assertTrue(res.flags['C_CONTIGUOUS'])
         self.assertFalse(res.flags['F_CONTIGUOUS'])
 
+        data2 = np.asfortranarray(np.random.rand(6, 4))
+        x3 = tensor(data2, chunk_size=2)
+        y3 = x3.reshape(3, 8, order='F')
+        res = self.executor.execute_tensor(y3, concat=True)[0]
+        expected = data2.reshape((3, 8), order='F')
+        np.testing.assert_array_equal(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+
     def testShuffleReshapeExecution(self):
         a = ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)
