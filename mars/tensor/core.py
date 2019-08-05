@@ -483,7 +483,7 @@ class MutableTensorData(TensorData):
 
 
 class MutableTensor(Entity):
-    __slots__ = ("_chunk_ep_map", "_chunk_buffers", "_record_type", "_buffer_size")
+    __slots__ = ("_chunk_to_endpoint", "_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
     def __init__(self, *args, **kwargs):
@@ -497,9 +497,9 @@ class MutableTensor(Entity):
             self._buffer_size = 0
 
         if self._data.chunk_eps is not None:
-            self._chunk_ep_map = dict((c.key, ep) for c, ep in zip(self.chunks, self._data.chunk_eps))
+            self._chunk_to_endpoint = dict((c.key, ep) for c, ep in zip(self.chunks, self._data.chunk_eps))
         else:
-            self._chunk_ep_map = dict()
+            self._chunk_to_endpoint = dict()
 
     def __len__(self):
         return len(self._data)
@@ -509,8 +509,8 @@ class MutableTensor(Entity):
         return self._data.name
 
     @property
-    def chunk_ep_map(self):
-        return self._chunk_ep_map
+    def chunk_to_endpoint(self):
+        return self._chunk_to_endpoint
 
     def __setitem__(self, index, value):
         from ..session import Session
@@ -580,7 +580,7 @@ class MutableTensor(Entity):
         for chunk_key in affected_chunk_keys:
             records = self._chunk_buffers[chunk_key]
             if len(records) >= buffer_size_limit:
-                chunk_records_to_send.append((chunk_key, self._chunk_ep_map[chunk_key],
+                chunk_records_to_send.append((chunk_key, self._chunk_to_endpoint[chunk_key],
                                               np.array(records, dtype=self._record_type)))
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send

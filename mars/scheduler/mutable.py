@@ -44,7 +44,7 @@ class MutableTensorActor(SchedulerActor):
         self._tensor = None
         self._sealed = False
         self._chunk_map = defaultdict(lambda: [])
-        self._chunk_ep_map = dict()
+        self._chunk_to_endpoint = dict()
         self._record_type = np.dtype([("index", np.uint32),
                                       ("ts", np.dtype('datetime64[ns]')),
                                       ("value", self._dtype)])
@@ -60,15 +60,16 @@ class MutableTensorActor(SchedulerActor):
         self.set_cluster_info_ref()
         self._resource_ref = self.ctx.actor_ref(ResourceActor.default_uid())
 
-        workers = [k for k in self._resource_ref.get_workers_meta()]
-
         tensor = create_fetch_tensor(self._chunk_size, self._shape, self._dtype)
-        self._chunk_ep_map = dict((c.key, str(np.random.choice(workers))) for c in tensor.chunks)
+        endpoints = self._resource_ref.select_worker(size=len(tensor.chunks))
+
+        for chunk, endpoint in zip(tensor.chunks, endpoints):
+            self._chunk_to_endpoint[chunk.key] = endpoint
 
         self._tensor = MutableTensor(data=MutableTensorData(
             _name=self._name, _op=None, _shape=self._shape, _dtype=tensor.dtype,
             _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks,
-            _chunk_eps=[self._chunk_ep_map[c.key] for c in tensor.chunks]))
+            _chunk_eps=endpoints))
 
     def tensor_meta(self):
         # avoid built-in scalar dtypes are made into one-field record type.
@@ -77,7 +78,7 @@ class MutableTensorActor(SchedulerActor):
         else:
             dtype_descr = str(self._dtype)
         chunk_keys = [c.key for c in self._tensor.chunks]
-        chunk_eps = [self._chunk_ep_map[key] for key in chunk_keys]
+        chunk_eps = [self._chunk_to_endpoint[key] for key in chunk_keys]
         return self._shape, dtype_descr, self._chunk_size, chunk_keys, chunk_eps
 
     def tensor_key(self):
@@ -111,7 +112,7 @@ class MutableTensorActor(SchedulerActor):
 
         # consolidate chunks
         for chunk in self._tensor.chunks:
-            ep = self._chunk_ep_map[chunk.key]
+            ep = self._chunk_to_endpoint[chunk.key]
             sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
             sealer_ref = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
             sealer_ref.seal_chunk(self._session_id, self._graph_key,
