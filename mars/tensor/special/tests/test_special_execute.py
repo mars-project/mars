@@ -25,7 +25,7 @@ try:
     import scipy.sparse as sps
     from scipy.special import gammaln as scipy_gammaln
 
-    from mars.tensor.special import gammaln, TensorGammaln
+    from mars.tensor.special import gammaln
 except ImportError:
     scipy = None
 
