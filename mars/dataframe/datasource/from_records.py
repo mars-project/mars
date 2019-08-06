@@ -68,10 +68,6 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
         return self.new_dataframe([data], (data.shape[0], len(data.dtype.names)), dtypes=dtypes,
                                   index_value=index_value, columns_value=columns_value)
 
-    def _new_chunks(self, inputs, kws=None, **kw):
-        self._extra_params = kw.pop('_extra_params', None)
-        return super(DataFrameFromRecords, self)._new_chunks(inputs, kws=kws, **kw)
-
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
@@ -97,10 +93,12 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
             #
             # Here, we construct new chunk with some unique `_extra_params` to make the `new_chunk` work as
             # expected.
-            out_chunk = op.copy().reset_key().new_chunk(
+            chunk_op = op.copy().reset_key()
+            chunk_op.extra_params['begin_index'] = begin_index
+            chunk_op.extra_params['end_index'] = end_index
+            out_chunk = chunk_op.new_chunk(
                 [chunk], shape=(chunk.shape[0], df.shape[1]), index=(chunk.index[0], 0), dtypes=df.dtypes,
-                index_value=chunk_index_value, columns_value=df.columns,
-                _extra_params={'begin_index': begin_index, 'end_index': end_index})
+                index_value=chunk_index_value, columns_value=df.columns)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

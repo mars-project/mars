@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from copy import deepcopy
 import weakref
 
 from .compat import six
@@ -176,7 +177,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     def copy(self):
         new_op = super(Operand, self).copy()
         new_op.outputs = []
-
+        new_op.extra_params = deepcopy(self.extra_params)
         return new_op
 
     def on_output_modify(self, new_output):
