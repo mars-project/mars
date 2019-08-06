@@ -171,7 +171,7 @@ class Test(TestBase):
         sum_df.tiles()
 
         self.assertEqual(len(sum_df.chunks), 5)
-        self.assertEqual(sum_df.nsplits, ((4, 4, 4, 4, 4),))
+        self.assertEqual(sum_df.nsplits, ((np.nan,) * 5,))
         self.assertIsInstance(sum_df.chunks[0].op, DataFrameSum)
         self.assertIsInstance(sum_df.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(sum_df.chunks[0].inputs[0].inputs), 2)

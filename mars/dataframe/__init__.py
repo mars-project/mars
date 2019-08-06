@@ -18,9 +18,11 @@ from .initializer import DataFrame, Series
 # do imports to register operands
 from .arithmetic import add
 from .datasource.from_tensor import from_tensor
-from . import reduction
+from .reduction import sum_series, sum_dataframe
+del sum_series, sum_dataframe
 
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import DataFrameConcat
+
 del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat
