@@ -241,6 +241,10 @@ def reciprocal(x, **kw):
     return _call_unary('reciprocal', x, **kw)
 
 
+def gammaln(x, **kw):
+    return _call_unary('gammaln', x, **kw)
+
+
 def equal(a, b, **_):
     try:
         return a == b

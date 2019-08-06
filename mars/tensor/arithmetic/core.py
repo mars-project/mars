@@ -227,13 +227,16 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
                 "Binary operand's inputs should less than or equal 3, got {0}".format(len(inputs)))
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _get_func(cls, xp):
         func_name = getattr(cls, '_func_name')
+        return getattr(xp, func_name)
+
+    @classmethod
+    def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        func = getattr(xp, func_name)
-
+        func = cls._get_func(xp)
         with device(device_id):
             kw = {'casting': op.casting} if op.out else {}
 
