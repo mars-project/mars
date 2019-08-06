@@ -581,6 +581,19 @@ class SparseArray(SparseNDArray):
     def reciprocal(self):
         return call_sparse_unary('reciprocal', self)
 
+    def gammaln(self):
+        spmatrix = self.spmatrix
+        xp = get_array_module(spmatrix)
+        if xp is np:
+            from scipy.special import gammaln
+        else:
+            from cupyx.scipy.special import gammaln
+
+        new_data = gammaln(spmatrix.data)
+        new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
+            (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
+        return SparseNDArray(new_spmatrix, shape=self.shape)
+
     def __eq__(self, other):
         try:
             naked_other = naked(other)
