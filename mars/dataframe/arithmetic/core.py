@@ -134,7 +134,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                                                 key=tokenize(input_index_value.key,
                                                              type(self).__name__))
         if isinstance(inputs[0], SERIES_CHUNK_TYPE):
-            return
+            return super(DataFrameIndexAlignMap, self)._create_chunk(output_idx, index, **kw)
         if kw.get('columns_value', None) is None and inputs[0].columns is not None:
             input_columns_value = inputs[0].columns
             input_dtypes = inputs[0].dtypes
@@ -179,6 +179,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
             comp_op = operator.le if op.column_max_close else operator.lt
             columns_cond = columns_cond & comp_op(df.columns, op.column_max)
             filters[1].append(columns_cond)
+
         else:
             # shuffle on columns
             shuffle_size = op.column_shuffle_size
@@ -198,6 +199,7 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
             for index_idx, index_filter in enumerate(filters[0]):
                 group_key = ','.join([str(index_idx), str(chunk.index[1])])
                 ctx[(chunk.key, group_key)] = df.loc[index_filter, filters[1][0]]
+
         else:
             # full shuffle
             shuffle_index_size = op.index_shuffle_size
@@ -208,6 +210,97 @@ class DataFrameIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                 index_filter, column_filter = out_index_column
                 group_key = ','.join(str(i) for i in out_idx)
                 ctx[(chunk.key, group_key)] = df.loc[index_filter, column_filter]
+
+
+class SeriesIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.SERIES_INDEX_ALIGN_MAP
+
+    _index_min = AnyField('index_min')
+    _index_min_close = BoolField('index_min_close')
+    _index_max = AnyField('index_max')
+    _index_max_close = BoolField('index_max_close')
+    _index_shuffle_size = Int32Field('index_shuffle_size')
+
+    def __init__(self, index_min_max=None, index_shuffle_size=None,
+                 sparse=None, dtype=None, gpu=None, **kw):
+        if index_min_max is not None:
+            kw.update(dict(_index_min=index_min_max[0], _index_min_close=index_min_max[1],
+                           _index_max=index_min_max[2], _index_max_close=index_min_max[3]))
+
+        super(SeriesIndexAlignMap, self).__init__(
+            _index_shuffle_size=index_shuffle_size, _sparse=sparse,
+            _dtype=dtype, _gpu=gpu, _object_type=ObjectType.dataframe, **kw)
+
+    @property
+    def index_min(self):
+        return self._index_min
+
+    @property
+    def index_min_close(self):
+        return self._index_min_close
+
+    @property
+    def index_max(self):
+        return self._index_max
+
+    @property
+    def index_max_close(self):
+        return self._index_max_close
+
+    @property
+    def index_min_max(self):
+        if getattr(self, '_index_min', None) is None:
+            return None
+        return self._index_min, self._index_min_close, \
+               self._index_max, self._index_max_close
+
+    @property
+    def index_shuffle_size(self):
+        return self._index_shuffle_size
+
+    def _create_chunk(self, output_idx, index, **kw):
+        inputs = self.inputs
+        if kw.get('index_value', None) is None and inputs[0].index_value is not None:
+            input_index_value = inputs[0].index_value
+            index_min_max = self.index_min_max
+            if index_min_max is not None:
+                kw['index_value'] = filter_index_value(input_index_value, index_min_max)
+            else:
+                kw['index_value'] = parse_index(inputs[0].index_value.to_pandas(),
+                                                key=tokenize(input_index_value.key,
+                                                             type(self).__name__))
+
+        return super(SeriesIndexAlignMap, self)._create_chunk(output_idx, index, **kw)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        # TODO(QIN): add GPU support here
+        df = ctx[op.inputs[0].key]
+
+        filters = [[], []]
+
+        chunk = op.outputs[0]
+        if op.index_shuffle_size is None:
+            # no shuffle on index
+            comp_op = operator.ge if op.index_min_close else operator.gt
+            index_cond = comp_op(df.index, op.index_min)
+            comp_op = operator.le if op.index_max_close else operator.lt
+            index_cond = index_cond & comp_op(df.index, op.index_max)
+            filters[0].append(index_cond)
+        else:
+            # shuffle on index
+            shuffle_size = op.index_shuffle_size
+            filters[0].extend(hash_index(df.index, shuffle_size))
+
+        if len(filters[0]) == 1:
+            # no shuffle
+            ctx[chunk.key] = df.loc[filters[0][0]]
+            return
+        else:
+            # shuffle on index
+            for index_idx, index_filter in enumerate(filters[0]):
+                group_key = ','.join([str(index_idx), str(chunk.index[1])])
+                ctx[(chunk.key, group_key)] = df.loc[index_filter]
 
 
 class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
@@ -225,8 +318,6 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 
     def _create_chunk(self, output_idx, index, **kw):
         inputs = self.inputs
-        if inputs[0].inputs[0] is None:
-            return
         if kw.get('index_value', None) is None and inputs[0].inputs[0].index_value is not None:
             index_align_map_chunks = inputs[0].inputs
             if index_align_map_chunks[0].op.index_min_max is not None:
@@ -429,6 +520,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _need_align_map(cls, input_chunk, index_min_max, column_min_max):
+        if isinstance(input_chunk, SERIES_CHUNK_TYPE):
+            if input_chunk.index_value.min_max != index_min_max:
+                return True
+            return False
         assert not pd.isnull(index_min_max[0]) and not pd.isnull(index_min_max[2])
         if input_chunk.index_value is None or input_chunk.columns is None:
             return True
@@ -451,7 +546,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if cls._need_align_map(left_chunk, left_index_min_max, left_column_min_max):
                 left_align_op = DataFrameIndexAlignMap(
                     index_min_max=left_index_min_max, column_min_max=left_column_min_max,
-                    dtypes='int64',
+                    dtypes=filter_dtypes(left.dtypes, left_column_min_max),
                     sparse=left_chunk.issparse())
                 left_out_chunk = left_align_op.new_chunk([left_chunk], shape=(np.nan, np.nan),
                                                          index=out_idx)
@@ -462,38 +557,25 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             right_col_idx = splits.get_col_right_idx(out_idx[1])
             right_index_min_max = splits.get_row_right_split(out_idx[0])
             right_column_min_max = splits.get_col_right_split(out_idx[1])
-            right_chunk = right.cix[right_row_idx, right_col_idx]
+
+            try:
+                right_chunk = right.cix[right_row_idx, right_col_idx]
+            except ValueError:
+                right_chunk = right.cix[right_row_idx,]
+
             if cls._need_align_map(right_chunk, right_index_min_max, right_column_min_max):
-                right_align_op = DataFrameIndexAlignMap(
-                    index_min_max=right_index_min_max, column_min_max=right_column_min_max,
-                    dtypes=filter_dtypes(right.dtypes, right_column_min_max),
-                    sparse=right_chunk.issparse())
+                if isinstance(right_chunk, SERIES_CHUNK_TYPE):
+                    right_align_op = SeriesIndexAlignMap(index_min_max=right_index_min_max, dtype=right_chunk.dtype,
+                                                         sparse=right_chunk.issparse())
+                else:
+                    right_align_op = DataFrameIndexAlignMap(
+                        index_min_max=right_index_min_max, column_min_max=right_column_min_max,
+                        dtypes=filter_dtypes(right.dtypes, right_column_min_max),
+                        sparse=right_chunk.issparse())
                 right_out_chunk = right_align_op.new_chunk([right_chunk], shape=(np.nan, np.nan),
                                                            index=out_idx)
             else:
                 right_out_chunk = right_chunk
-
-            out_op = op.copy().reset_key()
-            out_chunks.append(
-                out_op.new_chunk([left_out_chunk, right_out_chunk], shape=(np.nan, np.nan),
-                                 index=out_idx))
-
-        return out_chunks
-
-    @classmethod
-    def _gen_out_chunks_without_shuffle2(cls, op, splits, out_shape, left, right):
-        out_chunks = []
-        for out_idx in itertools.product(*(range(s) for s in out_shape)):
-            # does not need shuffle
-            left_row_idx = splits.get_row_left_idx(out_idx[0])
-            # left_col_idx = splits.get_col_left_idx(out_idx[1])
-            left_chunk = left.cix[left_row_idx, 0]
-            left_out_chunk = left_chunk
-
-            right_row_idx = splits.get_row_right_idx(out_idx[0])
-            # right_col_idx = splits.get_col_right_idx(out_idx[1])
-            right_chunk = right.cix[right_row_idx,]
-            right_out_chunk = right_chunk
 
             out_op = op.copy().reset_key()
             out_chunks.append(
@@ -533,6 +615,55 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     idx[align_axis] = align_axis_idx
                     idx[shuffle_axis] = j
                     map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx)))
+                proxy_chunk = DataFrameShuffleProxy(
+                    sparse=inp.issparse(), object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
+                for j in range(shuffle_size):
+                    reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
+                    reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
+                                                          shuffle_key=','.join(str(idx) for idx in reduce_idx))
+                    reduce_chunks[left_or_right].append(
+                        reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx))
+
+            assert len(reduce_chunks[0]) == len(reduce_chunks[1])
+            for left_chunk, right_chunk in zip(*reduce_chunks):
+                bin_op = op.copy().reset_key()
+                out_chunk = bin_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, np.nan),
+                                             index=left_chunk.index)
+                out_chunks.append(out_chunk)
+
+        return out_chunks
+
+    # this is the row shuffle method for series
+    @classmethod
+    def _gen_out_chunks_with_row_shuffle(cls, op, splits, out_shape, left, right):
+        shuffle_axis = 0
+        shuffle_size = out_shape[shuffle_axis]
+        align_axis = 1 - shuffle_axis
+
+        out_chunks = []
+        for align_axis_idx in range(out_shape[align_axis]):
+            reduce_chunks = [[], []]
+            for left_or_right in range(2):  # left and right
+                kw = {
+                    'index_shuffle_size': shuffle_size,
+                    'column_min_max': splits.get_axis_split(align_axis, 0, align_axis_idx)
+                }
+                input_idx = splits.get_axis_idx(align_axis, left_or_right, align_axis_idx)
+                inp = left if left_or_right == 0 else right
+
+                if isinstance(inp, SERIES_TYPE):
+                    input_chunks = inp.chunks
+                else:
+                    input_chunks = [c for c in inp.chunks if c.index[1] == input_idx]
+
+                map_chunks = []
+                for j, input_chunk in enumerate(input_chunks):
+                    map_op = DataFrameIndexAlignMap(sparse=input_chunks[0].issparse(), **kw)
+                    idx = [None, None]
+                    idx[align_axis] = align_axis_idx
+                    idx[shuffle_axis] = j
+                    map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx)))
+
                 proxy_chunk = DataFrameShuffleProxy(
                     sparse=inp.issparse(), object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
                 for j in range(shuffle_size):
@@ -595,14 +726,15 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         for i in range(left.chunk_shape[axis]):
             idx = [0, 0]
             idx[axis] = i
-            if isinstance(right, SERIES_TYPE):
-                s_idx = i
-            else:
-                s_idx = idx
 
-            if getattr(left.cix[tuple(idx)], index_type).key != \
-                    getattr(right.cix[tuple(idx)], index_type).key:
-                return False
+            if right.ndim == 1:
+                if getattr(left.cix[tuple(idx)], index_type).key != \
+                        getattr(right.cix[i,], index_type).key:
+                    return False
+            else:
+                if getattr(left.cix[tuple(idx)], index_type).key != \
+                        getattr(right.cix[tuple(idx)], index_type).key:
+                    return False
 
         return True
 
@@ -612,7 +744,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return False
 
         for df in (left, right):
-            index = getattr(df, index_type)
+            try:
+                index = getattr(df, index_type)
+            except AttributeError:
+                return False
             if not index.is_monotonic_increasing_or_decreasing and \
                     df.chunk_shape[axis] > 1:
                 return True
@@ -626,7 +761,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         df = op.outputs[0]
         nsplits = [[], []]
         splits = _MinMaxSplitInfo()
-
         # first, we decide the chunk size on each axis
         # we perform the same logic for both index and columns
         for axis, index_type in enumerate(['index_value', 'columns']):
@@ -697,47 +831,63 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
-        left, right = op.inputs
+        left_df, right_series = op.inputs
         df = op.outputs[0]
-        # index_type = 'index_value'
-        # axis = 0
-        #
-        # index_type = 'columns'
-        # axis = 1
         nsplits = [[], []]
         splits = _MinMaxSplitInfo()
 
-        # for axis, index_type in enumerate(['index_value', 'columns']):
-        #     left_chunk_size = left.chunk_shape[axis]
-        #     if isinstance(right, SERIES_TYPE) and axis == 1:
-        #         out_chunks = left_chunk_size
-        #     else:
-        #         right_chunk_size = right.chunk_shape[axis]
-        #         out_chunk_size = max(left_chunk_size, right_chunk_size)
-        #     nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
         for axis, index_type in enumerate(['index_value', 'columns']):
-            left_chunk_index_min_max = cls._get_chunk_index_min_max(left, index_type, axis)
+            if not cls._need_shuffle_on_axis(left_df, right_series, index_type, axis):
+                left_chunk_index_min_max = cls._get_chunk_index_min_max(left_df, index_type, axis)
+                left_increase = left_chunk_index_min_max[1]
 
-            if isinstance(right, SERIES_TYPE) and axis == 1:
-                right_chunk_index_min_max = [], False
+                if op.axis == 1 or op.axis == 'columns':
+                    axis = 1 - axis
+                    index_type = 'index_value' if axis == 0 else 'columns'
+                if axis == 1:
+                    left_splits, right_splits = split_monotonic_index_min_max(
+                        *(left_chunk_index_min_max + left_chunk_index_min_max))
+                    splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
+                                                        right_splits, True)
+                    nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
+                    continue
+
+                right_chunk_index_min_max = cls._get_chunk_index_min_max(right_series, index_type, axis)
+                if op.axis == 1 or op.axis == 'columns':
+                    axis = 1 - axis
+
+                # decide the left and right splits
+                if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
+                    # both left and right has only 1 chunk
+                    left_splits, right_splits = \
+                        [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
+                else:
+                    # left and right either has more than 1 chunk
+                    left_splits, right_splits = split_monotonic_index_min_max(
+                        *(left_chunk_index_min_max + right_chunk_index_min_max))
+
+                left_increase = left_chunk_index_min_max[1]
+                right_increase = right_chunk_index_min_max[1]
+                splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
+                                                    right_splits, right_increase)
+
+                nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
             else:
-                right_chunk_index_min_max = cls._get_chunk_index_min_max(right, index_type, axis)
-            left_splits, right_splits = \
-                [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
-            left_increase = left_chunk_index_min_max[1]
-            right_increase = right_chunk_index_min_max[1]
-            splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
-                                                right_splits, right_increase)
-            nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
+                left_chunk_size = left_df.chunk_shape[axis]
+                right_chunk_size = right_series.chunk_shape[axis]
+                out_chunk_size = max(left_chunk_size, right_chunk_size)
+                nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
 
-        # ------- mock it -------
-        # left_splits = cls._get_chunk_index_min_max(left, 'columns', 1)[0]
-        # right_chunk_index_min_max = cls._get_chunk_index_min_max(right, 'columns', 1)
-        # splits[1] = _AxisMinMaxSplitInfo(left_splits, True)
-
-        # ------------------------
         out_shape = tuple(len(ns) for ns in nsplits)
-        out_chunks = cls._gen_out_chunks_without_shuffle2(op, splits, out_shape, left, right)
+
+        out_chunks = []
+        # no shuffle
+        if splits.all_axes_can_split():
+            out_chunks = cls._gen_out_chunks_without_shuffle(op, splits, out_shape, left_df, right_series)
+
+        # shuffle on index
+        if splits.one_axis_can_split():
+            out_chunks = cls._gen_out_chunks_with_row_shuffle(op, splits, out_shape, left_df, right_series)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, df.shape,
@@ -766,9 +916,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         else:
             df = ctx[op.lhs.key]
             other = op.rhs
-
-        ctx[op.outputs[0].key] = getattr(df, func_name)(other, axis=op.axis,
-                                                        level=op.level, fill_value=op.fill_value)
+        axis = op.axis
+        tmp = getattr(df, func_name)(other, axis=axis, level=op.level, fill_value=op.fill_value)
+        ctx[op.outputs[0].key] = tmp
 
     @classproperty
     def _operator(self):
@@ -781,11 +931,16 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         if isinstance(x2, SERIES_CHUNK_TYPE):
             return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
                     'columns_value': columns, 'index_value': index}
+        if x2.columns is None:
+            return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+                    'columns_value': columns, 'index_value': index}
+
         if x1.columns.key == x2.columns.key:
             dtypes = x1.dtypes
             column_shape = len(dtypes)
             columns = copy.copy(x1.columns)
             columns.value.should_be_monotonic = True
+
         elif x1.dtypes is not None and x2.dtypes is not None:
             dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
             column_shape = len(dtypes)
@@ -841,7 +996,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return self.new_dataframe([x1, x2], shape, **kw)
         elif isinstance(x1, SERIES_TYPE) or isinstance(x2, SERIES_TYPE):
             setattr(self, '_object_type', ObjectType.dataframe)
-            import pandas as pd
             dtypes = x1.dtypes.tolist()
             dtypes.append(x2.dtype)
             dtypes = pd.core.dtypes.cast.find_common_type(dtypes)

@@ -105,7 +105,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
             concats = []
             for i in range(n_rows):
-                concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
+                concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns', sort=False)
                 concats.append(concat)
 
             # The `sort=False` is to suppress a `FutureWarning` of pandas, when the index or column of chunks to
