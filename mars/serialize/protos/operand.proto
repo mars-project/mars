@@ -189,6 +189,9 @@ message OperandDef {
         SET_REAL = 196;
         SET_IMAG = 197;
 
+        // special
+        GAMMALN = 200;
+
         // tree operand
         TREE_ADD = 251;
         TREE_MULTIPLY = 252;
