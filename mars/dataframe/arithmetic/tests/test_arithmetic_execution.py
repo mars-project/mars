@@ -303,7 +303,7 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected, result)
 
     def testAddSeries(self):
-        # # test both one chunk
+        # test both one chunk
         pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
         df = from_pandas(pdf)
         series = pd.Series([0, 1, 2], index=[1, 2, 3])
@@ -311,8 +311,8 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df.add(mars_series, axis=0), concat=True)[0]
         expected = pdf.add(series, axis=0)
         pd.testing.assert_frame_equal(expected, result)
-
-        # # test different number of chunks
+        #
+        # # # test different number of chunks
         pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
         df = from_pandas(pdf, chunk_size=1)
         series = pd.Series([0, 1, 2], index=[1, 2, 3])
@@ -320,42 +320,52 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df.add(mars_series, axis=0), concat=True)[0]
         expected = pdf.add(series, axis=0)
         pd.testing.assert_frame_equal(expected, result)
-
-        # test with row shuffle
-        pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
+        #
+        # # # test with row shuffle
+        pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[2, 1, 3])
         df = from_pandas(pdf, chunk_size=1)
         series = pd.Series([0, 1, 2], index=[3, 1, 2])
         mars_series = from_pandas_series(series)
         result = self.executor.execute_dataframe(df.add(mars_series, axis=0), concat=True)[0]
-        expected = pdf.add(series, axis=0)
+        expected = pdf.add(series, axis=0).reindex([3, 1, 2])
         pd.testing.assert_frame_equal(expected, result)
-
-        # #test with axis = 1
-        # pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
-        # df = from_pandas(pdf)
-        # series = pd.Series([0, 1, 2], index=[1, 2, 3])
-        # mars_series = from_pandas_series(series)
-        # result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
-        # expected = pdf.add(series, axis=1)
-        # pd.testing.assert_frame_equal(expected, result)
-
-        # test different number of chunks
-        # pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
-        # df = from_pandas(pdf, chunk_size=1)
-        # series = pd.Series([0, 1, 2], index=[1, 2, 3])
-        # mars_series = from_pandas_series(series)
-        # result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
-        # expected = pdf.add(series, axis=1)
-        # pd.testing.assert_frame_equal(expected, result)
+        #
+        # # #test with axis = 1
+        pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
+        expected = pdf.add(series, axis=1)
+        pd.testing.assert_frame_equal(expected, result)
+        #
+        # test different number of chunks(axis = 1)
+        pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
+        expected = pdf.add(series, axis=1)
+        pd.testing.assert_frame_equal(expected, result)
         #
         # # test with row shuffle
-        # pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
+        # pdf = pd.DataFrame({1: [1, 3, 2], 3: [1, 2, 3], 2: [360, 180, 2]}, index=['ra', 'rb', 'rc'])
         # df = from_pandas(pdf, chunk_size=1)
         # series = pd.Series([0, 1, 2], index=[3, 1, 2])
         # mars_series = from_pandas_series(series)
-        # result = self.executor.execute_dataframe(df.add(mars_series, axis=0), concat=True)[0]
-        # expected = pdf.add(series, axis=0)
+        # result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
+        # expected = pdf.add(series, axis=1)
         # pd.testing.assert_frame_equal(expected, result)
+
+    def testYufei(self):
+        # test with row shuffle
+        pdf = pd.DataFrame({1: [1, 3, 2], 3: [1, 2, 3], 2: [360, 180, 2]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[3, 1, 2])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.add(mars_series, axis=1), concat=True)[0]
+        expected = pdf.add(series, axis=1)
+        pd.testing.assert_frame_equal(expected, result)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
