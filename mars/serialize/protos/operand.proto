@@ -35,6 +35,7 @@ message OperandDef {
         // dataframe
         DATAFRAME_DATA_SOURCE = 17;
         DATAFRAME_FROM_TENSOR = 21;
+        DATAFRAME_FROM_RECORDS = 24;
         // series
         SERIES_DATA_SOURCE = 23;
 
