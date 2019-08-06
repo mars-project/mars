@@ -642,6 +642,11 @@ class DataFrameData(TileableData):
         from .datasource.from_tensor import from_tensor
         return from_tensor(in_tensor)
 
+    @staticmethod
+    def from_records(records, **kw):
+        from .datasource.from_records import from_records
+        return from_records(records, **kw)
+
 
 class DataFrame(TileableEntity):
     __slots__ = ()
@@ -652,6 +657,9 @@ class DataFrame(TileableEntity):
 
     def from_tensor(self, in_tensor):
         return self._data.from_tensor(in_tensor)
+
+    def from_records(self, records, **kw):
+        return self._data.from_records(records, **kw)
 
 
 INDEX_TYPE = (Index, IndexData)

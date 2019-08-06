@@ -29,6 +29,7 @@ from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import from_tensor
+from mars.dataframe.datasource.from_records import from_records
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -305,3 +306,37 @@ class Test(TestBase):
         np.testing.assert_equal(scalar.ndim, 0)
         with self.assertRaises(TypeError):
             from_tensor(scalar)
+
+    def testFromRecords(self):
+        dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
+
+        tensor = mt.ones((10,), dtype=dtype, chunk_size=3)
+        df = from_records(tensor)
+        df.tiles()
+
+        self.assertEqual(df.chunk_shape, (4, 1))
+        self.assertEqual(df.chunks[0].shape, (3, 3))
+        self.assertEqual(df.chunks[1].shape, (3, 3))
+        self.assertEqual(df.chunks[2].shape, (3, 3))
+        self.assertEqual(df.chunks[3].shape, (1, 3))
+
+        self.assertEqual(df.chunks[0].inputs[0].shape, (3,))
+        self.assertEqual(df.chunks[1].inputs[0].shape, (3,))
+        self.assertEqual(df.chunks[2].inputs[0].shape, (3,))
+        self.assertEqual(df.chunks[3].inputs[0].shape, (1,))
+
+        self.assertEqual(df.chunks[0].op.extra_params, {'begin_index': 0, 'end_index': 3})
+        self.assertEqual(df.chunks[1].op.extra_params, {'begin_index': 3, 'end_index': 6})
+        self.assertEqual(df.chunks[2].op.extra_params, {'begin_index': 6, 'end_index': 9})
+        self.assertEqual(df.chunks[3].op.extra_params, {'begin_index': 9, 'end_index': 10})
+
+        names = pd.Index(['x', 'y', 'z'])
+        dtypes = pd.Series({'x': np.dtype('int'), 'y': np.dtype('double'), 'z': np.dtype('<U16')})
+        for chunk in df.chunks:
+            pd.testing.assert_index_equal(chunk.columns.to_pandas(), names)
+            pd.testing.assert_series_equal(chunk.dtypes, dtypes)
+
+        pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 3))
+        pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6))
+        pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 9))
+        pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.RangeIndex(9, 10))
