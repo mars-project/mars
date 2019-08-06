@@ -268,22 +268,22 @@ class Test(unittest.TestCase):
         y = x.reshape(-1, 30)
 
         res = self.executor.execute_tensor(y, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 30)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1, 30))
 
         y2 = x.reshape(10, -1)
 
         res = self.executor.execute_tensor(y2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(10, -1)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(10, -1))
 
         y3 = x.reshape(-1)
 
         res = self.executor.execute_tensor(y3, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1))
 
         y4 = x.ravel()
 
         res = self.executor.execute_tensor(y4, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.ravel()))
+        np.testing.assert_array_equal(res[0], raw_data.ravel())
 
         raw_data = np.random.rand(30, 100, 20)
         x = tensor(raw_data, chunk_size=6)
@@ -291,17 +291,17 @@ class Test(unittest.TestCase):
         y = x.reshape(-1, 20, 5, 5, 4)
 
         res = self.executor.execute_tensor(y, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 20, 5, 5, 4)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1, 20, 5, 5, 4))
 
         y2 = x.reshape(3000, 10, 2)
 
         res = self.executor.execute_tensor(y2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(3000, 10, 2)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(3000, 10, 2))
 
         y3 = x.reshape(60, 25, 40)
 
         res = self.executor.execute_tensor(y3, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(60, 25, 40))
 
         y4 = x.reshape(60, 25, 40)
         y4.op.extra_params['_reshape_with_shuffle'] = True
@@ -310,6 +310,14 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(y4, concat=True)
         self.assertEqual(res[0].nbytes, sum(v[0] for v in size_res))
         self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+
+        y5 = x.ravel(order='F')
+
+        res = self.executor.execute_tensor(y5, concat=True)[0]
+        expected = raw_data.ravel(order='F')
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testExpandDimsExecution(self):
         raw_data = np.random.rand(10, 20, 30)
