@@ -62,11 +62,11 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
             nrows = data.shape[0]
         else:
             nrows = self.nrows
-        index_value = parse_index(pd.RangeIndex(start=0, stop=data.shape[0]))
+        index_value = parse_index(pd.RangeIndex(start=0, stop=nrows))
         dtypes = pd.Series(dict((k, np.dtype(v)) for k, v in data.dtype.descr))
         columns_value = parse_index(pd.Index(data.dtype.names), store_data=True)
         return self.new_dataframe([data], (data.shape[0], len(data.dtype.names)), dtypes=dtypes,
-                                  nrows=nrows, index_value=index_value, columns_value=columns_value)
+                                  index_value=index_value, columns_value=columns_value)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         self._extra_params = kw.pop('_extra_params', None)
