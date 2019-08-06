@@ -19,7 +19,7 @@ message OperandDef {
         TENSOR_EMPTY = 7;
         TENSOR_EMPTY_LIKE = 8;
         TENSOR_FULL = 9;
-        TENSOR_FULL_LIKE = 24;
+        TENSOR_FULL_LIKE = 25;
         TENSOR_ARANGE = 10;
         TENSOR_INDICES = 11;
         TENSOR_DIAG = 12;
