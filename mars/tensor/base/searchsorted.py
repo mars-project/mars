@@ -305,11 +305,13 @@ def searchsorted(a, v, side='left', sorter=None, combine_size=None):
 
     Examples
     --------
-    >>> np.searchsorted([1,2,3,4,5], 3)
+    >>> import mars.tensor as mt
+
+    >>> mt.searchsorted([1,2,3,4,5], 3).execute()
     2
-    >>> np.searchsorted([1,2,3,4,5], 3, side='right')
+    >>> mt.searchsorted([1,2,3,4,5], 3, side='right').execute()
     3
-    >>> np.searchsorted([1,2,3,4,5], [-10, 10, 2, 3])
+    >>> mt.searchsorted([1,2,3,4,5], [-10, 10, 2, 3]).execute()
     array([0, 5, 1, 2])
 
     """
