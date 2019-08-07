@@ -41,7 +41,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertEqual(oival.key, ival1.key)
         self.assertEqual(oival.key, ival2.key)
@@ -52,7 +52,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Int64Index)
         self.assertNotEqual(oival.key, ival1.key)
@@ -64,7 +64,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Int64Index)
         self.assertEqual(oival.key, ival1.key)
@@ -76,7 +76,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Int64Index)
         self.assertNotEqual(oival.key, ival1.key)
@@ -88,7 +88,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Int64Index)
         self.assertNotEqual(oival.key, ival1.key)
@@ -100,7 +100,7 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Float64Index)
         self.assertNotEqual(oival.key, ival1.key)
@@ -112,19 +112,19 @@ class Test(unittest.TestCase):
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
         self.assertIsInstance(oival.value, IndexValue.Float64Index)
         self.assertNotEqual(oival.key, ival1.key)
         self.assertNotEqual(oival.key, ival2.key)
 
-        index1 = pd.Int64Index([1, 2])
+        index1 = pd.DatetimeIndex([])
         index2 = pd.RangeIndex(2)
 
         ival1 = parse_index(index1)
         ival2 = parse_index(index2)
-        oival = infer_index_value(ival1, ival2, operator.add)
+        oival = infer_index_value(ival1, ival2)
 
-        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertIsInstance(oival.value, IndexValue.Index)
         self.assertNotEqual(oival.key, ival1.key)
         self.assertNotEqual(oival.key, ival2.key)
