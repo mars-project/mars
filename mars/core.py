@@ -198,9 +198,11 @@ def enter_build_mode(func):
     :param func: function
     :return: the result of function
     """
+
     def inner(*args, **kwargs):
         with build_mode():
             return func(*args, **kwargs)
+
     return inner
 
 
@@ -654,7 +656,7 @@ class ChunksIndexer(object):
 
                 s = self._tileable.chunk_shape
                 item = tuple(i if i >= 0 else i + s for i, s in zip(item, s))
-                idx = sum(idx * reduce(mul, s[i+1:], 1) for i, idx
+                idx = sum(idx * reduce(mul, s[i + 1:], 1) for i, idx
                           in zip(itertools.count(0), item))
                 return self._tileable._chunks[idx]
 
@@ -846,6 +848,7 @@ class _TileableSession(object):
             s = sess()
             if s:
                 s.decref(key)
+
         self._tensor = ref(tensor, cb)
 
 

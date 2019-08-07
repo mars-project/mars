@@ -91,7 +91,8 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
 
     @classmethod
-    def execute(cls, ctx, op, engine='numpy'):
+    def execute(cls, ctx, op, engine='numpy'):  # pylint: disable=W0221
+        # disable pylint before adding the engine parameter get approved
         func_name = getattr(cls, '_func_name')
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
@@ -281,7 +282,8 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
         return getattr(xp, func_name)
 
     @classmethod
-    def execute(cls, ctx, op, engine='numpy'):
+    def execute(cls, ctx, op, engine='numpy'):  # pylint: disable=W0221
+        # disable pylint before adding the engine parameter get approved
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 

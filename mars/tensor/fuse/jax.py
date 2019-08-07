@@ -3,6 +3,7 @@ try:
 
     JAX_INSTALLED = True
 except ImportError:
+    np = None
     JAX_INSTALLED = False
 
 from ...serialize import DataTypeField
