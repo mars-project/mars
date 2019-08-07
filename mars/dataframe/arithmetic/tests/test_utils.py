@@ -105,3 +105,26 @@ class Test(unittest.TestCase):
         self.assertIsInstance(oival.value, IndexValue.Float64Index)
         self.assertNotEqual(oival.key, ival1.key)
         self.assertNotEqual(oival.key, ival2.key)
+
+        # range index and other index
+        index1 = pd.RangeIndex(1, 4)
+        index2 = pd.Float64Index([2, 3, 4])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2, operator.add)
+
+        self.assertIsInstance(oival.value, IndexValue.Float64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        index1 = pd.Int64Index([1, 2])
+        index2 = pd.RangeIndex(2)
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2, operator.add)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)

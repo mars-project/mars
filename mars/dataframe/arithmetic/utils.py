@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
+import pandas as pd
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import operator
 
 from ..utils import build_empty_df, parse_index
 from ..core import IndexValue
@@ -46,7 +43,11 @@ def infer_index_value(left_index_value, right_index_value, operator):
         return left_index_value
 
     left_index = left_index_value.to_pandas()
+    if isinstance(left_index, pd.RangeIndex):
+        left_index = pd.RangeIndex(0)
     right_index = right_index_value.to_pandas()
+    if isinstance(right_index, pd.RangeIndex):
+        right_index = pd.RangeIndex(0)
     out_index = operator(left_index, right_index)
     key = tokenize(left_index_value.key, right_index_value.key, operator.__name__)
     return parse_index(out_index, key=key)
