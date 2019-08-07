@@ -702,7 +702,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             index.value.should_be_monotonic = True
             index_shape = x1.shape[0]
         elif x1.index_value is not None and x2.index_value is not None:
-            index = infer_index_value(x1.index_value, x2.index_value, cls._operator)
+            index = infer_index_value(x1.index_value, x2.index_value)
             index.value.should_be_monotonic = True
             if index.key == x1.index_value.key == x2.index_value.key and \
                     (not np.isnan(x1.shape[0]) or not np.isnan(x2.shape[0])):
