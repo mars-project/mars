@@ -96,6 +96,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                                 'can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
+            if chunk.op.axis is not None:
+                return pd.concat(inputs, axis=op.axis)
             # auto generated concat when executing a DataFrame
             n_rows = len(set(inp.index[0] for inp in chunk.inputs))
             n_cols = int(len(inputs) // n_rows)
@@ -103,7 +105,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
             concats = []
             for i in range(n_rows):
-                concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis=op.axis)
+                concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
                 concats.append(concat)
 
             ret = pd.concat(concats)
