@@ -86,6 +86,20 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
+        if isinstance(ctx[op.inputs[0].key], tuple):
+            length = len(ctx[op.inputs[0].key])
+            data = []
+            for c in op.inputs:
+                data.extend(ctx[c.key])
+
+            data, device_id, xp = as_same_device(data, device=op.device, ret_extra=True)
+            with device(device_id):
+                ret = []
+                for i in range(length):
+                    ret.append(xp.stack(data[i::length]))
+                ctx[op.outputs[0].key] = tuple(ret)
+                return
+
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 

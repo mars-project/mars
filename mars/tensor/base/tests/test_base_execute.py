@@ -25,7 +25,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
 
@@ -870,3 +870,87 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(flat_arr, concat=True)[0]
         self.assertEqual(len(res), 50)
         np.testing.assert_equal(res, np.ones(50))
+
+    def testSearchsortedExecution(self):
+        raw = np.sort(np.random.randint(100, size=(16,)))
+        arr = tensor(raw, chunk_size=3)
+
+        t1 = searchsorted(arr, 20)
+
+        res = self.executor.execute_tensor(t1, concat=True)[0]
+        expected = np.searchsorted(raw, 20)
+        np.testing.assert_array_equal(res, expected)
+
+        t2 = searchsorted(arr, 200)
+
+        res = self.executor.execute_tensor(t2, concat=True)[0]
+        expected = np.searchsorted(raw, 200)
+        np.testing.assert_array_equal(res, expected)
+
+        t3 = searchsorted(arr, raw[10], side='left')
+
+        res = self.executor.execute_tensor(t3, concat=True)[0]
+        expected = np.searchsorted(raw, raw[10], side='left')
+        np.testing.assert_array_equal(res, expected)
+
+        t4 = searchsorted(arr, raw[10], side='right')
+
+        res = self.executor.execute_tensor(t4, concat=True)[0]
+        expected = np.searchsorted(raw, raw[10], side='right')
+        np.testing.assert_array_equal(res, expected)
+
+        t5 = searchsorted(arr, raw[15], side='left')
+
+        res = self.executor.execute_tensor(t5, concat=True)[0]
+        expected = np.searchsorted(raw, raw[15], side='left')
+        np.testing.assert_array_equal(res, expected)
+
+        t6 = searchsorted(arr, raw[15], side='right')
+
+        res = self.executor.execute_tensor(t6, concat=True)[0]
+        expected = np.searchsorted(raw, raw[15], side='right')
+        np.testing.assert_array_equal(res, expected)
+
+        t7 = searchsorted(arr, raw[0], side='left')
+
+        res = self.executor.execute_tensor(t7, concat=True)[0]
+        expected = np.searchsorted(raw, raw[0], side='left')
+        np.testing.assert_array_equal(res, expected)
+
+        t8 = searchsorted(arr, raw[0], side='right')
+
+        res = self.executor.execute_tensor(t8, concat=True)[0]
+        expected = np.searchsorted(raw, raw[0], side='right')
+        np.testing.assert_array_equal(res, expected)
+
+        raw2 = np.random.randint(100, size=(3, 4))
+
+        t9 = searchsorted(arr, raw2, side='left')
+
+        res = self.executor.execute_tensor(t9, concat=True)[0]
+        expected = np.searchsorted(raw, raw2, side='left')
+        np.testing.assert_array_equal(res, expected)
+
+        t10 = searchsorted(arr, raw2, side='right')
+
+        res = self.executor.execute_tensor(t10, concat=True)[0]
+        expected = np.searchsorted(raw, raw2, side='right')
+        np.testing.assert_array_equal(res, expected)
+
+        arr = tensor(raw, chunk_size=16)
+
+        t11 = searchsorted(arr, 20)
+        res = self.executor.execute_tensor(t11, concat=True)[0]
+        expected = np.searchsorted(raw, 20)
+        np.testing.assert_array_equal(res, expected)
+
+        raw3 = np.random.randint(100, size=(16,))
+        arr = tensor(raw3, chunk_size=3)
+        order = np.argsort(raw3)
+        order_arr = tensor(order, chunk_size=4)
+
+        t12 = searchsorted(arr, 20, sorter=order_arr)
+
+        res = self.executor.execute_tensor(t12, concat=True)[0]
+        expected = np.searchsorted(raw3, 20, sorter=order)
+        np.testing.assert_array_equal(res, expected)

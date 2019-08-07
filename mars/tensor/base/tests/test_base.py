@@ -21,7 +21,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted
 
 
 class Test(unittest.TestCase):
@@ -504,3 +504,26 @@ class Test(unittest.TestCase):
         arr = ones((10, 5), chunk_size=2)
         flat_arr = ravel(arr)
         self.assertEqual(flat_arr.shape, (50,))
+
+    def testSearchsorted(self):
+        raw = np.sort(np.random.randint(100, size=(16,)))
+        arr = tensor(raw, chunk_size=3).cumsum()
+
+        t1 = searchsorted(arr, 10)
+
+        self.assertEqual(t1.shape, ())
+
+        t1.tiles()
+
+        self.assertEqual(t1.nsplits, ())
+        self.assertEqual(len(t1.chunks), 1)
+        self.assertEqual(t1.chunks[0].op.stage, 'reduce')
+
+        with self.assertRaises(ValueError):
+            searchsorted(np.random.randint(10, size=(14, 14)), 1)
+
+        with self.assertRaises(ValueError):
+            searchsorted(arr, 10, side='both')
+
+        with self.assertRaises(ValueError):
+            searchsorted(arr.tosparse(), 10)
