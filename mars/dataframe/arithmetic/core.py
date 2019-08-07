@@ -876,12 +876,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 series_axis = axis
                 series_index_type = index_type
 
-            if axis == 0:
-                left_chunk_size = left_df.chunk_shape[axis]
-                # right_chunk_size = right_series.chunk_shape[series_axis]
-                out_chunk_size = left_chunk_size
-                nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
-            else:
+            if not cls._need_shuffle_on_axis(left_df, right_series, index_type, axis):
                 left_chunk_index_min_max = cls._get_chunk_index_min_max(left_df, index_type, axis)
                 left_increase = left_chunk_index_min_max[1]
                 if series_axis == 1:
@@ -910,40 +905,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                                         right_splits, right_increase)
 
                     nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
-            # if not cls._need_shuffle_on_axis(left_df, right_series, index_type, axis):
-            #     left_chunk_index_min_max = cls._get_chunk_index_min_max(left_df, index_type, axis)
-            #     left_increase = left_chunk_index_min_max[1]
-            #     if series_axis == 1:
-            #         left_splits, right_splits = split_monotonic_index_min_max(
-            #             *(left_chunk_index_min_max + left_chunk_index_min_max))
-            #
-            #         splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
-            #                                             right_splits, True)
-            #         nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
-            #     else:
-            #         right_chunk_index_min_max = cls._get_chunk_index_min_max(right_series, series_index_type,
-            #                                                                  series_axis)
-            #         # decide the left and right splits
-            #         if len(left_chunk_index_min_max[0]) == 1 and len(right_chunk_index_min_max[0]) == 1:
-            #             # both left and right has only 1 chunk
-            #             left_splits, right_splits = \
-            #                 [left_chunk_index_min_max[0]], [right_chunk_index_min_max[0]]
-            #         else:
-            #             # left and right either has more than 1 chunk
-            #             left_splits, right_splits = split_monotonic_index_min_max(
-            #                 *(left_chunk_index_min_max + right_chunk_index_min_max))
-            #
-            #         left_increase = left_chunk_index_min_max[1]
-            #         right_increase = right_chunk_index_min_max[1]
-            #         splits[axis] = _AxisMinMaxSplitInfo(left_splits, left_increase,
-            #                                             right_splits, right_increase)
-            #
-            #         nsplits[axis].extend(np.nan for _ in itertools.chain(*left_splits))
-            # else:
-            #     left_chunk_size = left_df.chunk_shape[axis]
-            #     right_chunk_size = right_series.chunk_shape[series_axis]
-            #     out_chunk_size = max(left_chunk_size, right_chunk_size)
-            #     nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
+            else:
+                left_chunk_size = left_df.chunk_shape[axis]
+                right_chunk_size = right_series.chunk_shape[series_axis]
+                out_chunk_size = max(left_chunk_size, right_chunk_size)
+                nsplits[axis].extend(np.nan for _ in range(out_chunk_size))
 
         out_shape = tuple(len(ns) for ns in nsplits)
 
