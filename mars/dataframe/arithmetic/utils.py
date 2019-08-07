@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
+import pandas as pd
+from pandas.core.dtypes.cast import find_common_type
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import operator
 
 from ..utils import build_empty_df, parse_index
 from ..core import IndexValue
@@ -30,13 +28,12 @@ def infer_dtypes(left_dtypes, right_dtypes, operator):
     return operator(left, right).dtypes
 
 
-def infer_index_value(left_index_value, right_index_value, operator):
+def infer_index_value(left_index_value, right_index_value):
     if isinstance(left_index_value.value, IndexValue.RangeIndex) and \
             isinstance(right_index_value.value, IndexValue.RangeIndex):
         if left_index_value.value.slice == right_index_value.value.slice:
             return left_index_value
-        key = tokenize(left_index_value.key, right_index_value.key,
-                       operator.__name__)
+        key = tokenize(left_index_value.key, right_index_value.key)
         return parse_index(pd.Int64Index([]), key=key)
 
     # when left index and right index is identical, and both of them are elements unique,
@@ -47,8 +44,8 @@ def infer_index_value(left_index_value, right_index_value, operator):
 
     left_index = left_index_value.to_pandas()
     right_index = right_index_value.to_pandas()
-    out_index = operator(left_index, right_index)
-    key = tokenize(left_index_value.key, right_index_value.key, operator.__name__)
+    out_index = pd.Index([], dtype=find_common_type([left_index.dtype, right_index.dtype]))
+    key = tokenize(left_index_value.key, right_index_value.key)
     return parse_index(out_index, key=key)
 
 
