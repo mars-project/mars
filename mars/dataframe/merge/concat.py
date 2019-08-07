@@ -14,6 +14,10 @@
 
 import pandas as pd
 import numpy as np
+try:
+    import cudf
+except ImportError:  # pragma: no cover
+    cudf = None
 
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
@@ -103,16 +107,18 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             n_cols = int(len(inputs) // n_rows)
             assert n_rows * n_cols == len(inputs)
 
+            xdf = pd if isinstance(inputs[0], pd.DataFrame) else cudf
+
             concats = []
             for i in range(n_rows):
-                concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
+                concat = xdf.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis=1)
                 concats.append(concat)
 
             # The `sort=False` is to suppress a `FutureWarning` of pandas, when the index or column of chunks to
             # concatenate is not aligned, which may happens for certain ops.
             #
             # See also Note [Columns of Left Join] in test_merge_execution.py.
-            ret = pd.concat(concats, sort=False)
+            ret = xdf.concat(concats, sort=False)
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 ret.sort_index(inplace=True)
             if getattr(chunk.columns, 'should_be_monotonic', False):
@@ -124,10 +130,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if all(np.isscalar(inp) for inp in inputs):
                 return pd.Series(inputs)
             else:
+                xdf = pd if isinstance(inputs[0], pd.Series) else cudf
                 if chunk.op.axis is not None:
-                    concat = pd.concat(inputs, axis=chunk.op.axis)
+                    concat = xdf.concat(inputs, axis=chunk.op.axis)
                 else:
-                    concat = pd.concat(inputs)
+                    concat = xdf.concat(inputs)
                 if getattr(chunk.index_value, 'should_be_monotonic', False):
                     concat.sort_index(inplace=True)
                 return concat

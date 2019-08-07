@@ -30,6 +30,7 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import from_tensor
 from mars.dataframe.datasource.from_records import from_records
+from mars.dataframe.datasource.to_gpu import to_gpu
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -340,3 +341,19 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6))
         pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 9))
         pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.RangeIndex(9, 10))
+
+    def testToGPU(self):
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        df = from_pandas_df(data)
+        cdf = to_gpu(df)
+
+        self.assertEqual(df.index_value, cdf.index_value)
+        self.assertEqual(df.columns, cdf.columns)
+        pd.testing.assert_series_equal(df.dtypes, cdf.dtypes)
+
+        cdf.tiles()
+
+        self.assertEqual(df.chunks[0].index_value, cdf.chunks[0].index_value)
+        self.assertEqual(df.chunks[0].columns, cdf.chunks[0].columns)
+        pd.testing.assert_series_equal(df.chunks[0].dtypes, cdf.chunks[0].dtypes)
