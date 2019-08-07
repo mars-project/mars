@@ -119,3 +119,4 @@ class Test(TestBase):
 
         res = self.executor.execute_dataframe(cdf, concat=True)[0]
         self.assertIsInstance(res, cudf.DataFrame)
+        pd.testing.assert_frame_equal(res.to_pandas(), pdf)
