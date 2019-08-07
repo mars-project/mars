@@ -25,7 +25,8 @@ from .merge import DataFrameConcat, DataFrameShuffleMerge, DataFrameMergeAlignMa
 
 from . import arithmetic
 from . import reduction
-del reduction, arithmetic
+from . import indexing
+del reduction, arithmetic, indexing
 
 del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat, \
     DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce

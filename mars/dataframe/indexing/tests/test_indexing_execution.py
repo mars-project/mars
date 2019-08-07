@@ -1,0 +1,45 @@
+# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import numpy as np
+import pandas as pd
+
+from mars.tests.core import TestBase
+from mars.dataframe.datasource.dataframe import from_pandas
+
+
+class Test(TestBase):
+    def testGetitem(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = from_pandas(data, chunk_size=2)
+
+        series1 = df['c2']
+        pd.testing.assert_series_equal(series1.execute(), data['c2'])
+
+        series2 = df['c5']
+        pd.testing.assert_series_equal(series2.execute(), data['c5'])
+
+        df1 = df[['c1', 'c2', 'c3']]
+        pd.testing.assert_frame_equal(df1.execute(), data[['c1', 'c2', 'c3']])
+
+        df2 = df[['c3', 'c2', 'c1']]
+        pd.testing.assert_frame_equal(df2.execute(), data[['c3', 'c2', 'c1']])
+
+        df3 = df[['c1']]
+        pd.testing.assert_frame_equal(df3.execute(), data[['c1']])
+
+        df4 = df[['c3', 'c1', 'c2', 'c1']]
+        pd.testing.assert_frame_equal(df4.execute(), data[['c3', 'c1', 'c2', 'c1']])
+
+
