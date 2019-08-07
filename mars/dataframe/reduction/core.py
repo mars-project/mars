@@ -30,9 +30,10 @@ class DataFrameReductionOperand(DataFrameOperand):
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
-    def __init__(self, axis=None, skipna=None, level=None, dtype=None, gpu=None, sparse=None, **kw):
-        super(DataFrameReductionOperand, self).__init__(_axis=axis, _skipna=skipna, _level=level,
-                                                        _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+    def __init__(self, axis=None, skipna=None, level=None, dtype=None, combine_size=None,
+                 gpu=None, sparse=None, **kw):
+        super(DataFrameReductionOperand, self).__init__(_axis=axis, _skipna=skipna, _level=level, _dtype=dtype,
+                                                        _combine_size=combine_size, _gpu=gpu, _sparse=sparse, **kw)
 
     @property
     def axis(self):
@@ -111,7 +112,7 @@ class DataFrameReductionMixin(ReductionMixin):
     def tile(cls, op):
         df = op.outputs[0]
         in_df = op.inputs[0]
-        combine_size = options.tensor.combine_size
+        combine_size = op.combine_size or options.combine_size
 
         if len(in_df.chunks) == 1:
             return cls._tile_one_chunk(op)
@@ -202,7 +203,7 @@ class SeriesReductionMixin(ReductionMixin):
     def tile(cls, op):
         df = op.outputs[0]
         in_chunks = op.inputs[0].chunks
-        combine_size = options.tensor.combine_size
+        combine_size = op.combine_size or options.combine_size
 
         if len(in_chunks) == 1:
             return cls._tile_one_chunk(op)

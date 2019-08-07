@@ -94,7 +94,7 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
     """
     from .add import TensorTreeAdd
 
-    combine_size = options.tensor.combine_size
+    combine_size = options.combine_size
 
     while len(chunks) > combine_size:
         new_chunks = []
