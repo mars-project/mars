@@ -91,10 +91,14 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op, engine='numpy'):
         func_name = getattr(cls, '_func_name')
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+
+        # decide numpy engine:
+        if engine == 'jax':
+            import jax.numpy as xp
 
         func = getattr(xp, func_name)
 
@@ -110,8 +114,19 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 kw['where'] = next(inputs_iter)
             kw['order'] = op.order
 
-            with np.errstate(**op.err):
-                ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
+        with np.errstate(**op.err):
+            ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
+
+        # return the ctx because jax has function wrapper, we can't have the modified ctx argument
+        return ctx
+
+    @classmethod
+    def execute_jax(cls, ctx, op):
+        from jax import jit
+        jax_fun = jit(cls.execute, static_argnums=(1, 2))
+        results = jax_fun(ctx, op, 'jax')
+        for i in results:
+            ctx[i] = results[i]
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
@@ -266,10 +281,12 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
         return getattr(xp, func_name)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op, engine='numpy'):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
+        if engine == 'jax':
+            import jax.numpy as xp
         func = cls._get_func(xp)
         with device(device_id):
             kw = {'casting': op.casting} if op.out else {}
@@ -285,6 +302,15 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
             with np.errstate(**op.err):
                 ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
+        return ctx
+
+    @classmethod
+    def execute_jax(cls, ctx, op):
+        from jax import jit
+        jax_fun = jit(cls.execute, static_argnums=(1, 2))
+        results = jax_fun(ctx, op, 'jax')
+        for i in results:
+            ctx[i] = results[i]
 
 
 class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):

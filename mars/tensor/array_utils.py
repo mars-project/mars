@@ -81,8 +81,11 @@ def as_same_device(inputs, device=None, ret_extra=False):
 
     if device is None:
         try:
+            # jax wraps ndarray as JaxprTracer, which not have nbytes attribute
             device = _most_nbytes_device(
-                (i.device.id if hasattr(i, 'device') else -1, i.nbytes) for i in input_tensors)
+                (i.device.id if hasattr(i, 'device') else -1,
+                 i.nbytes if hasattr(i, 'nbytes') else np.prod(i.shape) * i.dtype.itemsize) for i in
+                input_tensors)
         except ValueError:
             device = -1
 

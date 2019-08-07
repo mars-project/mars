@@ -25,7 +25,7 @@ from mars.tensor.datasource import tensor
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor()
+        self.executor = Executor('numexpr')
 
     def testBaseExecution(self):
         executor_numpy = Executor('numpy')
@@ -46,8 +46,8 @@ class Test(unittest.TestCase):
         self.assertTrue(np.array_equal(res5[0], res5_cmp[0]))
 
     def testFuseSizeExecution(self):
-        executor_size = Executor()
-        executor_numpy = Executor()
+        executor_size = Executor('numexpr')
+        executor_numpy = Executor('numpy')
 
         raw1 = np.random.randint(10, size=(10, 10, 10))
         arr1 = tensor(raw1, chunk_size=3)
@@ -66,7 +66,7 @@ class Test(unittest.TestCase):
 
         _sp_unary_ufunc = {arccosh, invert, conj}
         _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)
-        executor_numexpr = Executor()
+        executor_numexpr = Executor('numexpr')
 
         def _normalize_by_sin(func1, func2, arr):
             return func1(abs(sin((func2(arr)))))
@@ -95,7 +95,7 @@ class Test(unittest.TestCase):
 
         _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
         _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
-        executor_numexpr = Executor()
+        executor_numexpr = Executor('numexpr')
 
         for i, j in itertools.permutations(range(len(_new_bin_ufunc)), 2):
             raw = np.random.random((9, 9, 9))

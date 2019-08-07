@@ -147,3 +147,4 @@ class NeOptimizer(object):
                 explored.update(selected)
                 composes.append(list(selected))
         return self._compose_graph(composes)
+

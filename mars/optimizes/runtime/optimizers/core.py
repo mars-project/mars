@@ -14,17 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ....tensor.fuse.ne import NUMEXPR_INSTALLED
+from ....tensor.fuse.jax import JAX_INSTALLED
 from .ne import NeOptimizer
 from .cp import CpOptimizer
-from ....tensor.fuse.ne import NUMEXPR_INSTALLED
+from .jax import JaxOptimizer
 
 
 class Optimizer(object):
     engine_dic = {'numexpr': NeOptimizer,
-                  'cupy': CpOptimizer}
+                  'cupy': CpOptimizer, 'jax': JaxOptimizer}
 
     def __init__(self, graph, engine=None):
         self._graph = graph
+
         if not engine:
             self._engine = 'numexpr' if NUMEXPR_INSTALLED else 'numpy'
         else:

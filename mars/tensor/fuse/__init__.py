@@ -17,3 +17,4 @@
 from .core import TensorFuseChunk
 from .ne import TensorNeFuseChunk
 from .cp import TensorCpFuseChunk
+from .jax import TensorJaxFuseChunk

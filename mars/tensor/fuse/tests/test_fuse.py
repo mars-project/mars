@@ -6,7 +6,7 @@ import mars.tensor as mt
 from mars.tensor.fuse.core import TensorFuseChunk
 from mars.tensor.datasource import CSRMatrixDataSource, SparseToDense
 from mars.tensor.random import TensorRand
-from mars.tensor.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv,\
+from mars.tensor.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv, \
     TensorDivide, TensorSubtract
 from mars.tensor.merge import TensorConcatenate
 from mars.tensor.reduction import TensorSum
