@@ -70,81 +70,14 @@ SUPPORT_OP = {
 }
 
 
-def _check_reduction_axis(node):
-    return len(node.op.axis) == 1 or len(node.op.axis) == node.ndim
-
-
-def _support(node):
-    op_type = type(node.op)
-    if op_type in REDUCTION_OP:
-        return _check_reduction_axis(node)
-    return op_type in SUPPORT_OP
-
-
-def _transfer_op(node):
-    op = node.op
-    if type(op) in REDUCTION_OP and not _check_reduction_axis(node):
-        return op
-    return op
-
-
 class NeOptimizer(object):
     def __init__(self, graph):
         self._graph = graph
 
+    @property
+    def graph(self):
+        return self._graph
+
     def optimize(self, keys=None):
-        self.compose(keys=keys)
-
-    def _compose_graph(self, composes):
-        graph = self._graph
-        composed_nodes = []
-
-        for c in composes:
-            head_node = c[0]
-            tail_node = c[-1]
-
-            op = TensorNeFuseChunk(dtype=tail_node.dtype)
-            composed_chunk = op(c).data
-            graph.add_node(composed_chunk)
-            for node in graph.iter_successors(tail_node):
-                graph.add_edge(composed_chunk, node)
-            for node in graph.iter_predecessors(head_node):
-                graph.add_edge(node, composed_chunk)
-            for node in c:
-                graph.remove_node(node)
-            composed_nodes.append(composed_chunk)
-
-        return composed_nodes
-
-    def compose(self, keys=None):
-        composes = []
-        explored = set()
-        keys = set(keys or [])
-
-        graph = self._graph
-        for v in graph.bfs():
-            if v.op.gpu or v.op.sparse:
-                # break out
-                return []
-            if type(v.op) not in SUPPORT_OP or v.key in keys:
-                continue
-            if v in explored or type(v.op) in REDUCTION_OP:  # TODO: check logic here
-                continue
-            if graph.count_successors(v) != 1:
-                continue
-            selected = [v]
-            # add successors
-            cur_node = graph.successors(v)[0]
-            while graph.count_predecessors(cur_node) == 1 \
-                    and _support(cur_node) and cur_node.key not in keys:
-                selected.append(cur_node)
-                if graph.count_successors(cur_node) != 1 \
-                        or type(cur_node.op) in REDUCTION_OP:
-                    break
-                else:
-                    cur_node = graph.successors(cur_node)[0]
-            if len(selected) > 1:
-                explored.update(selected)
-                composes.append(list(selected))
-        return self._compose_graph(composes)
-
+        from .utils import Composer
+        return Composer(self, keys).compose()

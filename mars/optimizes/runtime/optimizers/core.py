@@ -18,24 +18,37 @@ from ....tensor.fuse.ne import NUMEXPR_INSTALLED
 from ....tensor.fuse.jax import JAX_INSTALLED
 from .ne import NeOptimizer
 from .cp import CpOptimizer
-from .jax import JaxOptimizer
+from .jx import JaxOptimizer
 
 
 class Optimizer(object):
     engine_dic = {'numexpr': NeOptimizer,
                   'cupy': CpOptimizer, 'jax': JaxOptimizer}
 
-    def __init__(self, graph, engine=None):
+    def __init__(self, graph, engines=None):
         self._graph = graph
+        self._engines = []
+        if not engines:
+            # the sequence of optimize
+            if JAX_INSTALLED:
+                self._engines.append('jax')
+            if NUMEXPR_INSTALLED:
+                self._engines.append('numexpr')
 
-        if not engine:
-            self._engine = 'numexpr' if NUMEXPR_INSTALLED else 'numpy'
         else:
-            self._engine = engine
+            self._engines = engines
+            # just one selected engine
+            if isinstance(self._engines, str):
+                self._engines = [self._engines]
+
+            # filter numpy
+            self._engines = [e for e in self._engines if e != 'numpy']
 
     def optimize(self, keys=None):
         self._graph.decompose()
-        if self._engine == 'numpy':
+        # no optimization, only numpy
+        if len(self._engines) == 0:
             return
-        optimizer = self.engine_dic[self._engine](self._graph)
-        optimizer.optimize(keys=keys)
+        for engine in self._engines:
+            optimizer = self.engine_dic[engine](self._graph)
+            optimizer.optimize(keys=keys)

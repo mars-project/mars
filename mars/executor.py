@@ -406,9 +406,9 @@ class Executor(object):
         SyncProviderType.GEVENT: GeventExecutorSyncProvider,
     }
 
-    def __init__(self, engine=None, storage=None, prefetch=False,
+    def __init__(self, engines=None, storage=None, prefetch=False,
                  sync_provider_type=SyncProviderType.THREAD):
-        self._engine = engine
+        self._engines = engines
         self._chunk_result = storage if storage is not None else dict()
         self._prefetch = prefetch
 
@@ -436,7 +436,7 @@ class Executor(object):
         # TODO(xuye.qin): make an universal optimzier
         from .optimizes.runtime.optimizers.core import Optimizer
 
-        Optimizer(graph, self._engine).optimize(keys=keys)
+        Optimizer(graph, self._engines).optimize(keys=keys)
         return graph
 
     @classmethod
