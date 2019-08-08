@@ -1,13 +1,14 @@
-try:
-    import jax.numpy
-
-    JAX_INSTALLED = True
-except ImportError:
-    JAX_INSTALLED = False
+import importlib.util
 
 from ...serialize import DataTypeField
 from ..operands import TensorFuse
 from .core import TensorFuseChunkMixin, estimate_fuse_size
+
+spec = importlib.util.find_spec('jax')
+if spec is None:
+    JAX_INSTALLED = False
+else:
+    JAX_INSTALLED = False
 
 
 class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
