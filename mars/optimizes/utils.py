@@ -20,9 +20,9 @@ class Composer:
         op = node.op
 
         if self.engine == 'numexpr':
-            if type(op) not in SUPPORT_OP or node.key in self.keys:
+            if not isinstance(op, SUPPORT_OP) or node.key in self.keys:
                 return True
-            if node in self.explored or type(op) in REDUCTION_OP:
+            if node in self.explored or isinstance(op, REDUCTION_OP):
                 return True
             if self.graph.count_successors(node) != 1:
                 return True
@@ -39,7 +39,7 @@ class Composer:
 
     def _can_break(self, node):
         if self.engine == 'numexpr':
-            if self.graph.count_successors(node) != 1 and type(node.op) in REDUCTION_OP:
+            if self.graph.count_successors(node) != 1 and isinstance(node.op, REDUCTION_OP):
                 return True
         if self.engine == 'jax':
             if self.graph.count_successors(node) != 1:

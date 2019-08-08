@@ -18,10 +18,9 @@ from ....tensor import arithmetic
 from ....tensor import reduction
 from ....tensor.fuse import TensorNeFuseChunk
 
-REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
-                reduction.TensorMax, reduction.TensorMin}
-SUPPORT_OP = {
-    arithmetic.TensorAdd,
+REDUCTION_OP = (reduction.TensorSum, reduction.TensorProd,
+                reduction.TensorMax, reduction.TensorMin)
+SUPPORT_OP = (
     arithmetic.TensorSubtract,
     arithmetic.TensorMultiply,
     arithmetic.TensorDivide,
@@ -67,7 +66,7 @@ SUPPORT_OP = {
     reduction.TensorProd,
     reduction.TensorMax,
     reduction.TensorMin
-}
+)
 
 
 class NeOptimizer(object):
