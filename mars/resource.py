@@ -23,22 +23,25 @@ import psutil
 
 from .lib import nvutils
 
+CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
+
 _proc = psutil.Process()
 _timer = getattr(time, 'monotonic', time.time)
 
 _cpu_use_process_stat = bool(int(os.environ.get('MARS_CPU_USE_PROCESS_STAT', '0').strip('"')))
 _mem_use_process_stat = bool(int(os.environ.get('MARS_MEM_USE_PROCESS_STAT', '0').strip('"')))
+_mem_use_cgroup_stat = bool(int(os.environ.get('MARS_MEM_USE_CGROUP_STAT', '0').strip('"')))
 
 if 'MARS_USE_PROCESS_STAT' in os.environ:
     _cpu_use_process_stat = _mem_use_process_stat = \
         bool(int(os.environ['MARS_USE_PROCESS_STAT'].strip('"')))
 
-if 'MARS_CPU_TOTAL' in os.environ:
+if _cpu_use_process_stat and 'MARS_CPU_TOTAL' in os.environ:
     _cpu_total = int(os.environ['MARS_CPU_TOTAL'].strip('"'))
 else:
     _cpu_total = psutil.cpu_count(logical=True)
 
-if 'MARS_MEMORY_TOTAL' in os.environ:
+if _mem_use_process_stat and 'MARS_MEMORY_TOTAL' in os.environ:
     _mem_total = int(os.environ['MARS_MEMORY_TOTAL'].strip('"'))
 else:
     _mem_total = None
@@ -53,9 +56,28 @@ else:
     _shm_path = _shm_path[0]
 
 
+def _read_cgroup_stat_file():
+    with open(CGROUP_MEM_STAT_FILE, 'r') as cg_file:
+        contents = cg_file.read()
+    kvs = dict()
+    for l in contents.splitlines():
+        parts = l.split(' ')
+        if len(parts) == 2:
+            kvs[parts[0]] = int(parts[1])
+    return kvs
+
+
 def virtual_memory():
     sys_mem = psutil.virtual_memory()
-    if not _mem_use_process_stat:
+    if _mem_use_cgroup_stat:
+        # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
+        cgroup_mem_info = _read_cgroup_stat_file()
+        total = cgroup_mem_info['hierarchical_memory_limit']
+        used = cgroup_mem_info['cache'] + cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
+        available = free = total - used
+        percent = 100.0 * (total - available) / total
+        return _virt_memory_stat(total, available, percent, used, free)
+    elif not _mem_use_process_stat:
         total = sys_mem.total
         used = sys_mem.used + getattr(sys_mem, 'shared', 0)
         available = sys_mem.available
