@@ -512,6 +512,10 @@ class Test(unittest.TestCase):
         t1 = searchsorted(arr, 10)
 
         self.assertEqual(t1.shape, ())
+        self.assertEqual(t1.flags['C_CONTIGUOUS'],
+                         np.searchsorted(raw.cumsum(), 10).flags['C_CONTIGUOUS'])
+        self.assertEqual(t1.flags['F_CONTIGUOUS'],
+                         np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS'])
 
         t1.tiles()
 
@@ -527,3 +531,14 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             searchsorted(arr.tosparse(), 10)
+
+        raw2 = np.asfortranarray(np.sort(np.random.randint(100, size=(16,))))
+        arr = tensor(raw2, chunk_size=3)
+        to_search = np.asfortranarray([[1, 2], [3, 4]])
+
+        t1 = searchsorted(arr, to_search)
+        expected = np.searchsorted(raw2, to_search)
+
+        self.assertEqual(t1.shape, to_search.shape)
+        self.assertEqual(t1.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(t1.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])

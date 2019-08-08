@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
 from ...config import options
 from ..operands import TensorOperand, TensorOperandMixin
-from ..core import TENSOR_TYPE
+from ..core import TENSOR_TYPE, TensorOrder
 from ..datasource.array import tensor as astensor
 from ..array_utils import as_same_device, device
 
@@ -81,8 +81,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             shape = v.shape
         else:
             shape = ()
-        # TODO(xuye.qin): add order here
-        return self.new_tensor(inputs, shape=shape)
+        return self.new_tensor(inputs, shape=shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def _tile_one_chunk(cls, op, a, v, out):
@@ -90,7 +89,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         in_chunks = [a.chunks[0]]
         if len(op.inputs) == 2:
             in_chunks.append(v.chunks[0])
-        chunks = chunk_op.new_chunks(in_chunks, shape=out.shape)
+        chunks = chunk_op.new_chunks(in_chunks, shape=out.shape, order=out.order)
         new_op = op.copy().reset_key()
         return new_op.new_tensors(op.inputs, out.shape,
                                   chunks=chunks,
@@ -108,7 +107,8 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         in_chunks = [combine_chunk]
         if len(op.inputs) == 2:
             in_chunks.append(v.chunks[0])
-        return chunk_op.new_chunk(in_chunks, shape=v_shape, index=(idx,))
+        return chunk_op.new_chunk(in_chunks, shape=v_shape, index=(idx,),
+                                  order=op.outputs[0].order)
 
     @classmethod
     def _tile_tree_reduction(cls, op, a, v, out):
@@ -125,7 +125,8 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             in_chunks = [c]
             if input_len == 2:
                 in_chunks.append(v.chunks[0])
-            chunks.append(chunk_op.new_chunk(in_chunks, shape=v_shape, index=c.index))
+            chunks.append(chunk_op.new_chunk(in_chunks, shape=v_shape,
+                                             index=c.index, order=out.order))
 
         while len(chunks) > combine_size:
             new_chunks = []
