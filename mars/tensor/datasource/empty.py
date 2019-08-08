@@ -17,10 +17,11 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...serialize import KeyField, StringField
 from ...lib.sparse import SparseNDArray
-from ...lib.sparse.core import naked, get_array_module
+from ...lib.sparse.core import naked, get_array_module, get_sparse_module
 from ..array_utils import create_array
+from ..utils import get_order
 from .core import TensorNoInput, TensorLike
 from .array import tensor
 
@@ -47,17 +48,24 @@ class TensorEmpty(TensorEmptyBase, TensorNoInput):
     __slots__ = '_rand',
     _op_type_ = OperandDef.TENSOR_EMPTY
 
-    def __init__(self, dtype=None, gpu=None, **kw):
+    _order = StringField('order')
+
+    def __init__(self, dtype=None, gpu=None, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorEmpty, self).__init__(_dtype=dtype, _gpu=gpu, **kw)
+        super(TensorEmpty, self).__init__(_dtype=dtype, _gpu=gpu, _order=order, **kw)
+
+    @property
+    def order(self):
+        return self._order
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(op)('empty', chunk.shape, dtype=op.dtype)
+        ctx[chunk.key] = create_array(op)('empty', chunk.shape, dtype=op.dtype,
+                                          order=op.order)
 
 
-def empty(shape, dtype=None, chunk_size=None, gpu=False):
+def empty(shape, dtype=None, chunk_size=None, gpu=False, order='C'):
     """
     Return a new tensor of given shape and type, without initializing entries.
     Parameters
@@ -70,6 +78,11 @@ def empty(shape, dtype=None, chunk_size=None, gpu=False):
         Desired chunk size on each dimension
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    order : {'C', 'F'}, optional, default: 'C'
+        Whether to store multi-dimensional data in row-major
+        (C-style) or column-major (Fortran-style) order in
+        memory.
+
     Returns
     -------
     out : Tensor
@@ -94,8 +107,10 @@ def empty(shape, dtype=None, chunk_size=None, gpu=False):
     array([[-1073741821, -1067949133],
            [  496041986,    19249760]])                     #random
     """
-    op = TensorEmpty(dtype=dtype, gpu=gpu)
-    return op(shape, chunk_size=chunk_size)
+    tensor_order = get_order(order, None, available_options='CF',
+                             err_msg="only 'C' or 'F' order is permitted")
+    op = TensorEmpty(dtype=dtype, gpu=gpu, order=order)
+    return op(shape, chunk_size=chunk_size, order=tensor_order)
 
 
 class TensorEmptyLike(TensorEmptyBase, TensorLike):
@@ -103,18 +118,23 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
     _op_type_ = OperandDef.TENSOR_EMPTY_LIKE
 
     _input = KeyField('input')
+    _order = StringField('order')
 
-    def __init__(self, dtype=None, gpu=None, sparse=False, **kw):
+    def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
         super(TensorEmptyLike, self).__init__(_dtype=dtype, _gpu=gpu,
-                                              _sparse=sparse, **kw)
+                                              _order=order, _sparse=sparse, **kw)
+
+    @property
+    def order(self):
+        return self._order
 
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         if op.issparse():
             in_data = naked(ctx[op.inputs[0].key])
-            xps = get_array_module(in_data)
+            xps = get_sparse_module(in_data)
             xp = get_array_module(in_data)
             ctx[chunk.key] = SparseNDArray(xps.csr_matrix(
                 (xp.empty_like(in_data.data, dtype=op.dtype),
@@ -122,10 +142,10 @@ class TensorEmptyLike(TensorEmptyBase, TensorLike):
             ))
         else:
             ctx[chunk.key] = create_array(op)(
-                'empty_like', ctx[op.inputs[0].key], dtype=op.dtype)
+                'empty_like', ctx[op.inputs[0].key], dtype=op.dtype, order=op.order)
 
 
-def empty_like(a, dtype=None, gpu=None):
+def empty_like(a, dtype=None, gpu=None, order='K'):
     """
     Return a new tensor with the same shape and type as a given tensor.
     Parameters
@@ -137,6 +157,12 @@ def empty_like(a, dtype=None, gpu=None):
         Overrides the data type of the result.
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    order : {'C', 'F', 'A', or 'K'}, optional
+        Overrides the memory layout of the result. 'C' means C-order,
+        'F' means F-order, 'A' means 'F' if ``prototype`` is Fortran
+        contiguous, 'C' otherwise. 'K' means match the layout of ``prototype``
+        as closely as possible.
+
     Returns
     -------
     out : Tensor
@@ -167,5 +193,6 @@ def empty_like(a, dtype=None, gpu=None):
            [  4.38791518e-305,  -2.00000715e+000,   4.17269252e-309]])
     """
     a = tensor(a)
-    op = TensorEmptyLike(dtype=dtype, gpu=gpu, sparse=a.issparse())
-    return op(a)
+    tensor_order = get_order(order, a.order)
+    op = TensorEmptyLike(dtype=dtype, gpu=gpu, sparse=a.issparse(), order=order)
+    return op(a, order=tensor_order)

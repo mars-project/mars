@@ -18,9 +18,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, ListField, StringField
-from ..utils import broadcast_shape
+from ..utils import broadcast_shape, check_out_param
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import Tensor, TensorOrder
 from ..array_utils import as_same_device, device
 
 
@@ -57,10 +58,26 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         self._a = self._inputs[0]
         self._choices = self._inputs[1:]
 
-    def __call__(self, a, choices):
+    def __call__(self, a, choices, out=None):
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('out should be Tensor object, got {0} instead'.format(type(out)))
+
         inputs = [a] + choices
         shape = broadcast_shape(a.shape, *[c.shape for c in choices])
-        return self.new_tensor(inputs, shape)
+        order = TensorOrder.C_ORDER if out is None else out.order
+        t = self.new_tensor(inputs, shape, order=order)
+
+        if out is None:
+            return t
+
+        check_out_param(out, t, 'unsafe')
+        out_shape, out_dtype = out.shape, out.dtype
+        # if `out` is specified, use out's dtype and shape
+        if out_shape != t.shape:
+            raise ValueError('output shape should be {0}, got {1}'.format(t.shape, out_shape))
+        setattr(self, '_dtype', out_dtype)
+        out.data = t.data
+        return out
 
     @classmethod
     def tile(cls, op):
@@ -74,11 +91,13 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         a, choices = inputs[0], inputs[1:]
 
+        out = op.outputs[0]
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.choose(a, choices, mode=op.mode)
+            ctx[out.key] = xp.choose(a, choices, mode=op.mode).astype(
+                op.dtype, order=out.order.value, copy=False)
 
 
-def choose(a, choices, mode='raise'):
+def choose(a, choices, out=None, mode='raise'):
     """
     Construct a tensor from an index tensor and a set of tensors to choose from.
 
@@ -204,4 +223,4 @@ def choose(a, choices, mode='raise'):
 
     dtype = np.result_type(*[c.dtype for c in choices])
     op = TensorChoose(mode=mode, dtype=dtype)
-    return op(a, choices)
+    return op(a, choices, out=out)

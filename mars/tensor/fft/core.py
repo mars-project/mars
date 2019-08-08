@@ -40,6 +40,7 @@ class TensorFFTBaseMixin(TensorOperandMixin):
     @classmethod
     def _tile_fft(cls, op, axes):
         in_tensor = op.inputs[0]
+        out_tensor = op.outputs[0]
 
         if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
@@ -51,19 +52,21 @@ class TensorFFTBaseMixin(TensorOperandMixin):
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
             chunk_shape = cls._get_shape(op, c.shape)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
+                                           index=c.index, order=out_tensor.order)
             out_chunks.append(out_chunk)
 
         nsplits = [tuple(c.shape[i] for c in out_chunks
                          if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
                    for i in range(len(out_chunks[0].shape))]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
-    def __call__(self, a):
+    def __call__(self, a, order=None):
         shape = self._get_shape(self, a.shape)
-        return self.new_tensor([a], shape)
+        order = a.order if order is None else order
+        return self.new_tensor([a], shape, order=order)
 
 
 class TensorFFTMixin(TensorFFTBaseMixin):

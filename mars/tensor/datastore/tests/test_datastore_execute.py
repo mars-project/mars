@@ -80,3 +80,17 @@ class Test(TestBase):
                 np.testing.assert_allclose(expected.toarray(), result.toarray())
         finally:
             shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        try:
+            # store TileDB dense array
+            expected = np.asfortranarray(np.random.rand(8, 4, 3))
+            a = tensor(expected, chunk_size=(3, 3, 2))
+            save = totiledb(tempdir, a, ctx=ctx)
+            self.executor.execute_tensor(save)
+
+            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
+                np.testing.assert_allclose(expected, arr.read_direct())
+                self.assertEqual(arr.schema.cell_order, 'col-major')
+        finally:
+            shutil.rmtree(tempdir)

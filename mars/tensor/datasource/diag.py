@@ -23,11 +23,12 @@ from ...serialize import KeyField, Int32Field
 from ..core import TENSOR_TYPE
 from ...lib.sparse import diag as sparse_diag
 from ...lib.sparse.core import issparse, get_array_module, get_sparse_module
+from ...lib import sparse
+from ..core import TensorOrder
+from ..array_utils import create_array
 from .core import TensorHasInput
 from .zeros import TensorZeros
 from .array import tensor
-from ...lib import sparse
-from ..array_utils import create_array
 
 
 def _get_diag_shape(v_shape, k):
@@ -133,14 +134,15 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 
     def __call__(self, v, shape, chunk_size=None):
-        return self.new_tensor([v], shape, raw_chunk_size=chunk_size)
+        return self.new_tensor([v], shape, raw_chunk_size=chunk_size,
+                               order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
 
-        v = tensor.op.input
-        k = tensor.op.k
+        v = op.input
+        k = op.k
         idx = itertools.count(0)
         if v.ndim == 2:
             chunks = []
@@ -166,13 +168,14 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
                 chunk_shape = _get_diag_shape(c.shape, chunk_k)
                 chunk_idx = (next(idx),)
                 chunk_op = op.to_chunk_op(chunk_k)
-                chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
+                chunk = chunk_op.new_chunk([c], shape=chunk_shape,
+                                           index=chunk_idx, order=tensor.order)
                 nsplit.append(chunk_shape[0])
                 chunks.append(chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=chunks,
-                                      nsplits=(tuple(nsplit),))
+            return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
+                                      chunks=chunks, nsplits=(tuple(nsplit),))
         else:
             return super(TensorDiag, cls).tile(op)
 
