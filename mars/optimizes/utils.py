@@ -39,7 +39,7 @@ class Composer:
 
     def _can_break(self, node):
         if self.engine == 'numexpr':
-            if self.graph.count_successors(node) != 1 and isinstance(node.op, REDUCTION_OP):
+            if self.graph.count_successors(node) != 1 or isinstance(node.op, REDUCTION_OP):
                 return True
         if self.engine == 'jax':
             if self.graph.count_successors(node) != 1:
@@ -81,7 +81,7 @@ class Composer:
             while graph.count_predecessors(cur_node) == 1 \
                     and self._support(cur_node) and cur_node.key not in self.keys:
                 selected.append(cur_node)
-                if self._can_break(v):
+                if self._can_break(cur_node):
                     break
                 else:
                     cur_node = graph.successors(cur_node)[0]
