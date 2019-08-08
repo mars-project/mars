@@ -27,7 +27,7 @@ except (ImportError, OSError):  # pragma: no cover
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, \
+from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, fromtiledb
 from mars.lib.sparse import SparseNDArray
@@ -73,18 +73,24 @@ class Test(TestBase):
         t = zeros((20, 30), dtype='i8', chunk_size=5)
 
         res = self.executor.execute_tensor(t, concat=True)
-        self.assertTrue(np.array_equal(res[0], np.zeros((20, 30), dtype='i8')))
+        np.testing.assert_array_equal(res[0], np.zeros((20, 30), dtype='i8'))
         self.assertEqual(res[0].dtype, np.int64)
 
         t2 = zeros_like(t)
         res = self.executor.execute_tensor(t2, concat=True)
-        self.assertTrue(np.array_equal(res[0], np.zeros((20, 30), dtype='i8')))
+        np.testing.assert_array_equal(res[0], np.zeros((20, 30), dtype='i8'))
         self.assertEqual(res[0].dtype, np.int64)
 
         t = zeros((20, 30), dtype='i4', chunk_size=5, sparse=True)
         res = self.executor.execute_tensor(t, concat=True)
 
         self.assertEqual(res[0].nnz, 0)
+
+        t = zeros((20, 30), dtype='i8', chunk_size=6, order='F')
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.zeros((20, 30), dtype='i8', order='F')
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testEmptyExecution(self):
         t = empty((20, 30), dtype='i8', chunk_size=5)
@@ -104,16 +110,38 @@ class Test(TestBase):
         self.assertEqual(res[0].shape, (20, 30))
         self.assertEqual(res[0].dtype, np.float64)
 
+        t = empty((20, 30), dtype='i8', chunk_size=5, order='F')
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.empty((20, 30), dtype='i8', order='F')
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
     def testFullExecution(self):
         t = full((2, 2), 1, dtype='f4', chunk_size=1)
 
         res = self.executor.execute_tensor(t, concat=True)
-        self.assertTrue(np.array_equal(res[0], np.full((2, 2), 1, dtype='f4')))
+        np.testing.assert_array_equal(res[0], np.full((2, 2), 1, dtype='f4'))
 
         t = full((2, 2), [1, 2], dtype='f8', chunk_size=1)
 
         res = self.executor.execute_tensor(t, concat=True)
-        self.assertTrue(np.array_equal(res[0], np.full((2, 2), [1, 2], dtype='f8')))
+        np.testing.assert_array_equal(res[0], np.full((2, 2), [1, 2], dtype='f8'))
+
+        t = full((2, 2), 1, dtype='f4', chunk_size=1, order='F')
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.full((2, 2), 1, dtype='f4', order='F')
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        t2 = full_like(t, 10, order='F')
+
+        res = self.executor.execute_tensor(t2, concat=True)[0]
+        expected = np.full((2, 2), 10, dtype='f4', order='F')
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testArangeExecution(self):
         t = arange(1, 20, 3, chunk_size=2)
@@ -317,6 +345,8 @@ class Test(TestBase):
         res = self.executor.execute_tensor(d, concat=True)[0]
         expected = np.diag(np.arange(5))
         np.testing.assert_equal(res, expected)
+        self.assertTrue(res.flags['C_CONTIGUOUS'])
+        self.assertFalse(res.flags['F_CONTIGUOUS'])
 
         d = diag(a, k=1)
         res = self.executor.execute_tensor(d, concat=True)[0]
@@ -519,6 +549,12 @@ class Test(TestBase):
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res.toarray(), expected)
 
+        t = eye(5, M=9, k=-3, chunk_size=2, order='F')
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        self.assertTrue(res.flags['C_CONTIGUOUS'])
+        self.assertFalse(res.flags['F_CONTIGUOUS'])
+
     def testLinspaceExecution(self):
         a = linspace(2.0, 9.0, num=11, chunk_size=3)
 
@@ -684,6 +720,17 @@ class Test(TestBase):
         expected = np.triu(np.arange(12).reshape(3, 4), k=-2)
         self.assertIsInstance(res, SparseNDArray)
         np.testing.assert_equal(res, expected)
+
+        raw = np.asfortranarray(np.random.rand(10, 7))
+        a = tensor(raw, chunk_size=3)
+
+        t = triu(a, k=-2)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.triu(raw, k=-2)
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testTrilExecution(self):
         a = arange(24, chunk_size=2).reshape(2, 3, 4)
@@ -852,6 +899,32 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+        tempdir = tempfile.mkdtemp()
+        try:
+            # create TileDB dense array with column-major
+            dom = tiledb.Domain(
+                tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, domain=(0, 90), tile=22, dtype=np.int32),
+                tiledb.Dim(ctx=ctx, domain=(0, 9), tile=8, dtype=np.int32),
+                ctx=ctx,
+            )
+            schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=False, cell_order='F',
+                                        attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
+            tiledb.DenseArray.create(tempdir, schema)
+
+            expected = np.asfortranarray(np.random.rand(100, 91, 10))
+            with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+                arr.write_direct(expected)
+
+            a = fromtiledb(tempdir, ctx=ctx)
+            result = self.executor.execute_tensor(a, concat=True)[0]
+
+            np.testing.assert_allclose(expected, result)
+            self.assertTrue(result.flags['F_CONTIGUOUS'])
+            self.assertFalse(result.flags['C_CONTIGUOUS'])
+        finally:
+            shutil.rmtree(tempdir)
+
     def testFromDataFrameExecution(self):
         mdf = md.DataFrame({'angle': [0, 3, 4], 'degree': [360, 180, 360]},
                            index=['circle', 'triangle', 'rectangle'])
@@ -865,3 +938,10 @@ class Test(TestBase):
         np.testing.assert_equal(tensor_result2[0].dtype, np.dtype('float64'))
         tensor_expected2 = self.executor.execute_tensor(mt.tensor([[0.1, 1.0], [0.2, 2.0], [0.3, 3.0]]))
         np.testing.assert_equal(tensor_result2, tensor_expected2)
+
+        raw = [[0.1, 0.2, 0.4], [0.4, 0.7, 0.3]]
+        mdf3 = md.DataFrame(raw, columns=list('abc'), chunk_size=2)
+        tensor_result3 = self.executor.execute_tensor(from_dataframe(mdf3), concat=True)[0]
+        np.testing.assert_array_equal(tensor_result3, np.asarray(raw))
+        self.assertTrue(tensor_result3.flags['F_CONTIGUOUS'])
+        self.assertFalse(tensor_result3.flags['C_CONTIGUOUS'])

@@ -20,6 +20,8 @@ except (ImportError, OSError):  # pragma: no cover
 
 
 def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
+    from ..core import TensorOrder
+
     ctx = tiledb_ctx
 
     dims = []
@@ -30,8 +32,9 @@ def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
         dims.append(tiledb.Dim(name="", domain=domain, tile=tile, dtype=np.int64, ctx=ctx))
     dom = tiledb.Domain(*dims, **dict(ctx=ctx))
     att = tiledb.Attr(ctx=ctx, dtype=tensor.dtype)
+    cell_order = 'C' if tensor.order == TensorOrder.C_ORDER else 'F'
     return tiledb.ArraySchema(ctx=ctx, domain=dom, attrs=(att,),
-                              sparse=tensor.issparse(), **kw)
+                              sparse=tensor.issparse(), cell_order=cell_order, **kw)
 
 
 def check_tiledb_array_with_tensor(tensor, tiledb_array):

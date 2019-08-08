@@ -23,6 +23,7 @@ from ...core import ExecutableTuple
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..core import TensorOrder
 from .core import TSQR
 
 
@@ -72,6 +73,7 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
             s_shape = (x, )
             V_shape = (x, y)
         U, s, V = self.new_tensors([a],
+                                   order=TensorOrder.C_ORDER,
                                    kws=[
                                        {'side': 'U', 'dtype': tiny_U.dtype, 'shape': U_shape},
                                        {'side': 's', 'dtype': tiny_s.dtype, 'shape': s_shape},
@@ -92,13 +94,16 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
                                              kws=[
                                                  {'side': 'U', 'dtype': U_dtype,
                                                   'index': in_chunk.index,
-                                                  'shape': U_shape},
+                                                  'shape': U_shape,
+                                                  'order': U.order},
                                                  {'side': 's', 'dtype': s_dtype,
                                                   'index': in_chunk.index[1:],
-                                                  'shape': s_shape},
+                                                  'shape': s_shape,
+                                                  'order': s.order},
                                                  {'side': 'V', 'dtype': V_dtype,
                                                   'index': in_chunk.index,
-                                                  'shape': V_shape}
+                                                  'shape': V_shape,
+                                                  'order': V.order}
                                              ])
             U_chunk, s_chunk, V_chunk = svd_chunks
 

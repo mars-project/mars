@@ -186,7 +186,7 @@ class SparseArray(SparseNDArray):
 
         return super(SparseArray, self).__getattribute__(attr)
 
-    def astype(self, dtype):
+    def astype(self, dtype, **_):
         dtype = np.dtype(dtype)
         if self.dtype == dtype:
             return self

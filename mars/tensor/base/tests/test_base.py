@@ -17,7 +17,8 @@
 import unittest
 
 import numpy as np
-from mars.tensor.datasource import ones, tensor, arange, array, asarray
+from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
+    ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel
@@ -32,6 +33,68 @@ class Test(unittest.TestCase):
 
         c = asarray(a)
         self.assertIs(a, c)
+
+    def testAscontiguousarray(self):
+        # dtype different
+        raw_a = np.asfortranarray(np.random.rand(2, 4))
+        raw_b = np.ascontiguousarray(raw_a, dtype='f4')
+
+        a = tensor(raw_a, chunk_size=2)
+        b = ascontiguousarray(a, dtype='f4')
+
+        self.assertEqual(a.dtype, raw_a.dtype)
+        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
+        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+
+        self.assertEqual(b.dtype, raw_b.dtype)
+        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
+        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+
+        # no copy
+        raw_a = np.random.rand(2, 4)
+        raw_b = np.ascontiguousarray(raw_a)
+
+        a = tensor(raw_a, chunk_size=2)
+        b = ascontiguousarray(a)
+
+        self.assertEqual(a.dtype, raw_a.dtype)
+        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
+        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+
+        self.assertEqual(b.dtype, raw_b.dtype)
+        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
+        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+
+    def testAsfortranarray(self):
+        # dtype different
+        raw_a = np.random.rand(2, 4)
+        raw_b = np.asfortranarray(raw_a, dtype='f4')
+
+        a = tensor(raw_a, chunk_size=2)
+        b = asfortranarray(a, dtype='f4')
+
+        self.assertEqual(a.dtype, raw_a.dtype)
+        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
+        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+
+        self.assertEqual(b.dtype, raw_b.dtype)
+        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
+        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+
+        # no copy
+        raw_a = np.asfortranarray(np.random.rand(2, 4))
+        raw_b = np.asfortranarray(raw_a)
+
+        a = tensor(raw_a, chunk_size=2)
+        b = asfortranarray(a)
+
+        self.assertEqual(a.dtype, raw_a.dtype)
+        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
+        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+
+        self.assertEqual(b.dtype, raw_b.dtype)
+        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
+        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
 
     def testDir(self):
         a = tensor([0, 1, 2], chunk_size=2)
@@ -90,6 +153,14 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             arr.astype(np.int32, casting='safe')
+
+        arr3 = arr.astype(arr.dtype, order='F')
+        self.assertTrue(arr3.flags['F_CONTIGUOUS'])
+        self.assertFalse(arr3.flags['C_CONTIGUOUS'])
+
+        arr3.tiles()
+
+        self.assertEqual(arr3.chunks[0].order.value, 'F')
 
     def testTranspose(self):
         arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
@@ -210,6 +281,18 @@ class Test(unittest.TestCase):
 
         self.assertEqual(indices.nsplits[1], (1, 1))
 
+    def testArgwhereOrder(self):
+        data = np.asfortranarray([[True, False], [False, True]])
+        cond = tensor(data, chunk_size=1)
+        indices = argwhere(cond)
+
+        self.assertTrue(indices.flags['F_CONTIGUOUS'])
+        self.assertFalse(indices.flags['C_CONTIGUOUS'])
+
+        indices.tiles()
+
+        self.assertEqual(indices.chunks[0].order.value, 'F')
+
     def testArraySplit(self):
         a = arange(8, chunk_size=2)
 
@@ -261,6 +344,15 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[2].nsplits, ((1,),))
         self.assertEqual(splits[3].nsplits, ((2,),))
         self.assertEqual(splits[4].nsplits, ((0,),))
+
+        a = tensor(np.asfortranarray(np.random.rand(9, 10)), chunk_size=4)
+        splits = split(a, 3)
+        self.assertTrue(splits[0].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+        self.assertTrue(splits[1].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+        self.assertTrue(splits[2].flags['F_CONTIGUOUS'])
+        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
 
     def testSqueeze(self):
         data = np.array([[[0], [1], [2]]])

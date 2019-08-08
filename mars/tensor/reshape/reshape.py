@@ -17,15 +17,17 @@
 import itertools
 
 import numpy as np
+
 from ..utils import decide_chunk_sizes
 from ... import opcodes as OperandDef
 from ...compat import six, izip
-from ...serialize import KeyField, TupleField, ValueType
+from ...serialize import KeyField, TupleField, StringField, ValueType
+from ...utils import get_shuffle_input_keys_idxes
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
 from ..array_utils import as_same_device, device
-from ...utils import get_shuffle_input_keys_idxes
+from ..utils import get_order, recursive_tile
 
 import logging
 
@@ -37,14 +39,19 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
     _newshape = TupleField('newshape', ValueType.int64)
+    _order = StringField('order')
 
-    def __init__(self, newshape=None, dtype=None, create_view=None, **kw):
-        super(TensorReshape, self).__init__(_newshape=newshape, _dtype=dtype,
+    def __init__(self, newshape=None, order=None, dtype=None, create_view=None, **kw):
+        super(TensorReshape, self).__init__(_newshape=newshape, _order=order, _dtype=dtype,
                                             _create_view=create_view, **kw)
 
     @property
     def newshape(self):
         return self._newshape
+
+    @property
+    def order(self):
+        return self._order
 
     def _set_inputs(self, inputs):
         super(TensorReshape, self)._set_inputs(inputs)
@@ -57,8 +64,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         op = self.copy().reset_key()
         return op(new_input)
 
-    def __call__(self, a):
-        return self.new_tensor([a], self._newshape)
+    def __call__(self, a, order):
+        return self.new_tensor([a], self._newshape, order=order)
 
     @staticmethod
     def _gen_reshape_rechunk_nsplits(old_shape, new_shape, nsplits):
@@ -190,16 +197,25 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                                            itertools.product(*chunk_size_idxes)):
             shuffle_key = ','.join(str(o) for o in chunk_idx)
             chunk_op = TensorReshapeReduce(_dtype=tensor.dtype, _shuffle_key=shuffle_key)
-            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape, index=chunk_idx))
+            shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
+                                                      order=tensor.order, index=chunk_idx))
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, new_shape, chunks=shuffle_outputs,
-                                  nsplits=out_nsplits)
+        return new_op.new_tensors(op.inputs, new_shape, order=tensor.order,
+                                  chunks=shuffle_outputs, nsplits=out_nsplits)
 
     @classmethod
     def tile(cls, op):
         in_tensor = op.input
         tensor = op.outputs[0]
+
+        if op.order == 'F':
+            # do transpose first, then do regular reshape, then transpose back
+            result = in_tensor.transpose().reshape(op.newshape[::-1])
+            if getattr(op, '_reshape_with_shuffle', True):
+                result.op.extra_params['_reshape_with_shuffle'] = True
+            result = result.transpose()
+            return [recursive_tile(result)]
 
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
@@ -213,11 +229,12 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 in_chunk = rechunked_tensor.cix[input_idx]
                 chunk_op = op.copy().reset_key()
                 chunk_op._newshape = out_shape
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=out_shape, index=out_idx)
+                out_chunk = chunk_op.new_chunk([in_chunk], shape=out_shape,
+                                               order=tensor.order, index=out_idx)
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, tensor.shape,
+            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                       chunks=out_chunks, nsplits=reshape_nsplits)
         except ValueError:
             # TODO: make this as default when shuffle is mature
@@ -225,7 +242,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1).single_tiles().reshape(tensor.shape).single_tiles()]
+            return [in_tensor.reshape(-1, order=tensor.op.order).single_tiles().reshape(
+                tensor.shape, order=tensor.op.order).single_tiles()]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -233,7 +251,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            ctx[op.outputs[0].key] = x.reshape(op.newshape)
+            ctx[op.outputs[0].key] = x.reshape(op.newshape, order=op.order)
 
 
 class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
@@ -361,7 +379,8 @@ class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
         try:
             result_array = ctx[chunk.key]
         except KeyError:
-            result_array = np.zeros(chunk.shape, dtype=chunk.dtype)
+            result_array = np.zeros(chunk.shape, dtype=chunk.dtype,
+                                    order=chunk.order.value)
 
         in_chunk = chunk.inputs[0]
         input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
@@ -407,7 +426,7 @@ def calc_shape(size, newshape):
     return newshape
 
 
-def reshape(a, newshape):
+def reshape(a, newshape, order='C'):
     """
     Gives a new shape to a tensor without changing its data.
 
@@ -420,6 +439,19 @@ def reshape(a, newshape):
         an integer, then the result will be a 1-D tensor of that length.
         One shape dimension can be -1. In this case, the value is
         inferred from the length of the tensor and remaining dimensions.
+    order : {'C', 'F', 'A'}, optional
+        Read the elements of `a` using this index order, and place the
+        elements into the reshaped array using this index order.  'C'
+        means to read / write the elements using C-like index order,
+        with the last axis index changing fastest, back to the first
+        axis index changing slowest. 'F' means to read / write the
+        elements using Fortran-like index order, with the first index
+        changing fastest, and the last index changing slowest. Note that
+        the 'C' and 'F' options take no account of the memory layout of
+        the underlying array, and only refer to the order of indexing.
+        'A' means to read / write the elements in Fortran-like index
+        order if `a` is Fortran *contiguous* in memory, C-like order
+        otherwise.
 
     Returns
     -------
@@ -476,9 +508,12 @@ def reshape(a, newshape):
     if a.size != np.prod(newshape):
         raise ValueError('cannot reshape array of size {0} into shape {1}'.format(a.size, newshape))
 
-    if a.shape == newshape:
+    tensor_order = get_order(order, a.order, available_options='CFA')
+
+    if a.shape == newshape and tensor_order == a.order:
         # does not need to reshape
         return a
 
-    op = TensorReshape(newshape, dtype=a.dtype, create_view=True)
-    return op(a)
+    op = TensorReshape(newshape, order, dtype=a.dtype,
+                       create_view=tensor_order == a.order)
+    return op(a, tensor_order)

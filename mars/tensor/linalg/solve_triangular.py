@@ -22,6 +22,7 @@ from ...serialize import BoolField, KeyField
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import TensorOrder
 
 
 class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
@@ -54,7 +55,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
 
     def __call__(self, a, b):
         shape = (a.shape[1],) if len(b.shape) == 1 else (a.shape[1], b.shape[1])
-        return self.new_tensor([a, b], shape)
+        return self.new_tensor([a, b], shape, order=TensorOrder.F_ORDER)
 
     @property
     def strict(self):
@@ -113,7 +114,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
                     target_b = TensorSubtract(dtype=op.dtype, lhs=target_b, rhs=s).new_chunk(
                         [target_b, s], shape=target_b.shape)
                 out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
-                    [target_a, target_b], shape=_x_shape(target_a.shape, target_b.shape), index=idx)
+                    [target_a, target_b], shape=_x_shape(target_a.shape, target_b.shape),
+                    index=idx, order=op.outputs[0].order)
                 out_chunks[out_chunk.index] = out_chunk
 
         new_op = op.copy()

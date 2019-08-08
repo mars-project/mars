@@ -20,7 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.executor import Executor
-from mars.tensor.datasource import tensor
+from mars.tensor.datasource import tensor, empty
 from mars.tensor.merge import concatenate, stack, hstack, vstack, dstack, column_stack
 
 
@@ -70,6 +70,23 @@ class Test(unittest.TestCase):
         arr4 = stack(arrs, axis=2)
         res = self.executor.execute_tensor(arr4, concat=True)
         self.assertTrue(np.array_equal(res[0], np.stack(raw, axis=2)))
+
+        raw2 = [np.asfortranarray(np.random.randn(3, 4)) for _ in range(10)]
+        arr5 = [tensor(a, chunk_size=3) for a in raw2]
+
+        arr6 = stack(arr5)
+        res = self.executor.execute_tensor(arr6, concat=True)[0]
+        expected = np.stack(raw2).copy('A')
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr7 = stack(arr5, out=empty((10, 3, 4), order='F'))
+        res = self.executor.execute_tensor(arr7, concat=True)[0]
+        expected = np.stack(raw2, out=np.empty((10, 3, 4), order='F')).copy('A')
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testHStackExecution(self):
         a_data = np.random.rand(10)

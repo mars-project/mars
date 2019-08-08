@@ -20,16 +20,17 @@ class TensorDataStore(TensorHasInput, TensorOperandMixin):
         super(TensorDataStore, self)._set_inputs(inputs)
         self._input = inputs[0]
 
-    def __call__(self, a):
+    def __call__(self, a, order=None):
         shape = (0,) * a.ndim
-        return self.new_tensor([a], shape)
+        order = a.order if order is None else order
+        return self.new_tensor([a], shape, order=order)
 
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
         chunk_op = op.copy().reset_key()
         out_chunk_shape = (0,) * in_chunk.ndim
         return chunk_op.new_chunk([in_chunk], out_chunk_shape,
-                                  index=in_chunk.index)
+                                  index=in_chunk.index, order=op.outputs[0].oreder)
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):

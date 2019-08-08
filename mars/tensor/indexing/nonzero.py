@@ -18,10 +18,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ..utils import recursive_tile
 from ...core import ExecutableTuple
+from ..utils import recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import TensorOrder
 from .unravel_index import unravel_index
 
 
@@ -38,7 +39,9 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
         return float('inf')
 
     def __call__(self, a):
-        return ExecutableTuple(self.new_tensors([a], shape=(np.nan,), output_limit=a.ndim))
+        return ExecutableTuple(self.new_tensors([a], shape=(np.nan,),
+                                                order=TensorOrder.C_ORDER,
+                                                output_limit=a.ndim))
 
     @classmethod
     def tile(cls, op):

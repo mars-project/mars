@@ -21,6 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..core import TensorOrder
 
 
 class TensorInv(TensorHasInput, TensorOperandMixin):
@@ -33,7 +34,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
 
     def __call__(self, a):
         a = astensor(a)
-        return self.new_tensor([a], a.shape)
+        return self.new_tensor([a], a.shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
