@@ -1,9 +1,8 @@
 try:
-    import jax.numpy as np
+    import jax.numpy
 
     JAX_INSTALLED = True
 except ImportError:
-    np = None
     JAX_INSTALLED = False
 
 from ...serialize import DataTypeField
