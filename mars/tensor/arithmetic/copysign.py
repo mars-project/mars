@@ -27,6 +27,10 @@ class TensorCopysign(TensorBinOp):
     _op_type_ = OperandDef.COPYSIGN
     _func_name = 'copysign'
 
+    @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
 
 @infer_dtype(np.copysign)
 def copysign(x1, x2, out=None, where=None, **kwargs):

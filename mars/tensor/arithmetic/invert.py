@@ -27,6 +27,10 @@ class TensorInvert(TensorUnaryOp):
     _op_type_ = OperandDef.INVERT
     _func_name = 'invert'
 
+    @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
 
 @infer_dtype(np.invert)
 def invert(x, out=None, where=None, **kwargs):

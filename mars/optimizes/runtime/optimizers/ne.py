@@ -36,47 +36,12 @@ SUPPORT_OP = (
     arithmetic.TensorLog1p,
     arithmetic.TensorSqrt,
 
-    arithmetic.TensorEqual,
-    arithmetic.TensorNotEqual,
-    arithmetic.TensorLessThan,
-    arithmetic.TensorLessEqual,
-    arithmetic.TensorGreaterThan,
-    arithmetic.TensorGreaterEqual,
-
-    arithmetic.TensorSin,
-    arithmetic.TensorCos,
-    arithmetic.TensorTan,
-    arithmetic.TensorArcsin,
-    arithmetic.TensorArccos,
-    arithmetic.TensorArctan,
-    arithmetic.TensorSinh,
-    arithmetic.TensorCosh,
-    arithmetic.TensorTanh,
-    arithmetic.TensorArcsinh,
-    arithmetic.TensorArccosh,
-    arithmetic.TensorArctanh,
-
-    arithmetic.TensorLshift,
-    arithmetic.TensorRshift,
-
-    arithmetic.TensorTreeAdd,
-    arithmetic.TensorTreeMultiply,
-
-    reduction.TensorSum,
-    reduction.TensorProd,
-    reduction.TensorMax,
-    reduction.TensorMin
-)
+from .utils import Composer
 
 
-class NeOptimizer(object):
+class NeOptimizer(Composer):
     def __init__(self, graph):
-        self._graph = graph
-
-    @property
-    def graph(self):
-        return self._graph
+        super(NeOptimizer, self).__init__(graph, 'numexpr')
 
     def optimize(self, keys=None):
-        from .utils import Composer
-        return Composer(self, keys).compose()
+        self.compose(keys)

@@ -27,6 +27,10 @@ class TensorSpacing(TensorUnaryOp):
     _op_type_ = OperandDef.SPACING
     _func_name = 'spacing'
 
+    @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
 
 @infer_dtype(np.spacing)
 def spacing(x, out=None, where=None, **kwargs):

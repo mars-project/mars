@@ -28,6 +28,10 @@ class TensorFMax(TensorBinOp):
     _func_name = 'fmax'
 
     @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
+    @classmethod
     def _is_sparse(cls, x1, x2):
         if hasattr(x1, 'issparse') and x1.issparse() and np.isscalar(x2) and x2 <= 0:
             return True

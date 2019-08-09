@@ -1,11 +1,9 @@
-class JaxOptimizer(object):
-    def __init__(self, graph):
-        self._graph = graph
+from .utils import Composer
 
-    @property
-    def graph(self):
-        return self._graph
+
+class JaxOptimizer(Composer):
+    def __init__(self, graph):
+        super(JaxOptimizer, self).__init__(graph, 'numexpr')
 
     def optimize(self, keys=None):
-        from .utils import Composer
-        return Composer(self, keys).compose()
+        self.compose(keys)

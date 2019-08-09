@@ -29,6 +29,10 @@ class TensorI0(TensorUnaryOp):
     _func_name = 'i0'
 
     @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
+    @classmethod
     def execute(cls, ctx, op):
         x = ctx[op.inputs[0].key]
         xp = get_array_module(x)
@@ -36,6 +40,7 @@ class TensorI0(TensorUnaryOp):
         if not is_sparse_module(xp):
             res = res.reshape(op.outputs[0].shape)
         ctx[op.outputs[0].key] = res
+
 
 @infer_dtype(np.i0)
 def i0(x, **kwargs):

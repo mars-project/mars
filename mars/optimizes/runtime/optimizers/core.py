@@ -28,7 +28,7 @@ class Optimizer(object):
     def __init__(self, graph, engines=None):
         self._graph = graph
         self._engines = []
-        if not engines:
+        if engines is None:
             # the sequence of optimize
             if JAX_INSTALLED:
                 self._engines.append('jax')
@@ -36,13 +36,11 @@ class Optimizer(object):
                 self._engines.append('numexpr')
 
         else:
-            self._engines = engines
-            # just one selected engine
-            if isinstance(self._engines, str):
-                self._engines = [self._engines]
-
-            # filter numpy
-            self._engines = [e for e in self._engines if e != 'numpy']
+            if isinstance(engines, (tuple, list)):
+                self._engines = engines
+            else:
+                # just one selected engine
+                self._engines = [engines]
 
     def optimize(self, keys=None):
         self._graph.decompose()
@@ -50,5 +48,7 @@ class Optimizer(object):
         if len(self._engines) == 0:
             return
         for engine in self._engines:
+            if engine not in self.engine_dic:
+                continue
             optimizer = self.engine_dic[engine](self._graph)
             optimizer.optimize(keys=keys)

@@ -27,6 +27,10 @@ class TensorSignbit(TensorUnaryOp):
     _op_type_ = OperandDef.SIGNBIT
     _func_name = 'signbit'
 
+    @classmethod
+    def execute_jax(cls):
+        raise NotImplementedError
+
 
 @inject_dtype(np.bool_)
 def signbit(x, out=None, where=None, **kwargs):

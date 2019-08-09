@@ -1,5 +1,56 @@
-from .ne import SUPPORT_OP, REDUCTION_OP, NeOptimizer
-from .jax import JaxOptimizer
+# from .ne import SUPPORT_OP, REDUCTION_OP
+from ..tensor import arithmetic
+from ..tensor import reduction
+
+NE_REDUCTION_OP = (reduction.TensorSum, reduction.TensorProd,
+                   reduction.TensorMax, reduction.TensorMin)
+NE_SUPPORT_OP = (
+    arithmetic.TensorSubtract,
+    arithmetic.TensorMultiply,
+    arithmetic.TensorDivide,
+    arithmetic.TensorPower,
+    arithmetic.TensorMod,
+    arithmetic.TensorNegative,
+    arithmetic.TensorAbs,
+    arithmetic.TensorConj,
+    arithmetic.TensorExp,
+    arithmetic.TensorLog,
+    arithmetic.TensorLog10,
+    arithmetic.TensorExpm1,
+    arithmetic.TensorLog1p,
+    arithmetic.TensorSqrt,
+
+    arithmetic.TensorEqual,
+    arithmetic.TensorNotEqual,
+    arithmetic.TensorLessThan,
+    arithmetic.TensorLessEqual,
+    arithmetic.TensorGreaterThan,
+    arithmetic.TensorGreaterEqual,
+
+    arithmetic.TensorSin,
+    arithmetic.TensorCos,
+    arithmetic.TensorTan,
+    arithmetic.TensorArcsin,
+    arithmetic.TensorArccos,
+    arithmetic.TensorArctan,
+    arithmetic.TensorSinh,
+    arithmetic.TensorCosh,
+    arithmetic.TensorTanh,
+    arithmetic.TensorArcsinh,
+    arithmetic.TensorArccosh,
+    arithmetic.TensorArctanh,
+
+    arithmetic.TensorLshift,
+    arithmetic.TensorRshift,
+
+    arithmetic.TensorTreeAdd,
+    arithmetic.TensorTreeMultiply,
+
+    reduction.TensorSum,
+    reduction.TensorProd,
+    reduction.TensorMax,
+    reduction.TensorMin
+)
 
 
 def check_reduction_axis(node):
@@ -7,28 +58,34 @@ def check_reduction_axis(node):
 
 
 class Composer:
-    def __init__(self, optimizer, keys):
-        if isinstance(optimizer, NeOptimizer):
-            self.engine = 'numexpr'
-        if isinstance(optimizer, JaxOptimizer):
-            self.engine = 'jax'
+    def __init__(self, graph, engine):
+        self.engine = engine
         self.explored = set()
-        self.keys = set(keys or [])
-        self.graph = optimizer.graph
+        self.graph = graph
+        self.keys = []
+
+    def _jax_compat(self, op):
+        if hasattr(op, 'execute_jax'):
+            try:
+                op.execute_jax()
+            except NotImplementedError:
+                return False
+            return True
+        return False
 
     def _can_skip(self, node):
         op = node.op
 
         if self.engine == 'numexpr':
-            if not isinstance(op, SUPPORT_OP) or node.key in self.keys:
+            if not isinstance(op, NE_SUPPORT_OP) or node.key in self.keys:
                 return True
-            if node in self.explored or isinstance(op, REDUCTION_OP):
+            if node in self.explored or isinstance(op, NE_REDUCTION_OP):
                 return True
             if self.graph.count_successors(node) != 1:
                 return True
 
         if self.engine == 'jax':
-            if not hasattr(op, 'execute_jax') or node.key in self.keys:
+            if not self._jax_compat(node.op) or node.key in self.keys:
                 return True
             if node in self.explored:
                 return True
@@ -39,9 +96,12 @@ class Composer:
 
     def _can_break(self, node):
         if self.engine == 'numexpr':
-            if self.graph.count_successors(node) != 1 or isinstance(node.op, REDUCTION_OP):
+            if self.graph.count_successors(node) != 1 or isinstance(node.op, NE_REDUCTION_OP):
                 return True
         if self.engine == 'jax':
+            if not self._jax_compat(node.op):
+                return True
+
             if self.graph.count_successors(node) != 1:
                 return True
         return False
@@ -50,11 +110,13 @@ class Composer:
         op_type = type(node.op)
 
         if self.engine == 'numexpr':
-            if op_type in REDUCTION_OP:
+            if op_type in NE_REDUCTION_OP:
                 return check_reduction_axis(node)
-            return op_type in SUPPORT_OP
+            return op_type in NE_SUPPORT_OP
         if self.engine == 'jax':
-            return hasattr(node.op, 'execute_jax')
+            if self._jax_compat(node.op):
+                return True
+            return False
 
     def _get_fused_chunk(self, tail_node):
         if self.engine == 'numexpr':
@@ -65,9 +127,9 @@ class Composer:
             from ..tensor.fuse import TensorJaxFuseChunk
             return TensorJaxFuseChunk(dtype=tail_node.dtype)
 
-    def compose(self):
+    def compose(self, keys):
         composes = []
-
+        self.keys = set(keys or [])
         graph = self.graph
         for v in graph.bfs():
             if v.op.gpu or v.op.sparse:
