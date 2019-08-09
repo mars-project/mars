@@ -192,6 +192,7 @@ message OperandDef {
 
         // special
         GAMMALN = 200;
+        ERF = 201;
 
         // tree operand
         TREE_ADD = 251;

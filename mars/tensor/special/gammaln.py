@@ -19,26 +19,14 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ..arithmetic.utils import arithmetic_operand
-from ..arithmetic.core import TensorUnaryOp
-from ..array_utils import np, cp, sparse
 from ..utils import infer_dtype
+from .core import TensorSpecialOp
 
 
 @arithmetic_operand(sparse_mode='unary')
-class TensorGammaln(TensorUnaryOp):
+class TensorGammaln(TensorSpecialOp):
     _op_type_ = OperandDef.GAMMALN
-
-    @classmethod
-    def _get_func(cls, xp):
-        if xp is np:
-            from scipy.special import gammaln
-            return gammaln
-        elif cp is not None and xp is cp:
-            from cupyx.scipy.special import gammaln
-            return gammaln
-        else:
-            assert xp is sparse
-            return sparse.gammaln
+    _func_name = 'gammaln'
 
 
 if scipy_gammaln:

@@ -581,18 +581,24 @@ class SparseArray(SparseNDArray):
     def reciprocal(self):
         return call_sparse_unary('reciprocal', self)
 
-    def gammaln(self):
+    def _scipy_unary(self, func_name):
         spmatrix = self.spmatrix
         xp = get_array_module(spmatrix)
         if xp is np:
-            from scipy.special import gammaln
+            from scipy import special
         else:
-            from cupyx.scipy.special import gammaln
+            from cupyx.scipy import special
 
-        new_data = gammaln(spmatrix.data)
+        new_data = getattr(special, func_name)(spmatrix.data)
         new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
             (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
         return SparseNDArray(new_spmatrix, shape=self.shape)
+
+    def gammaln(self):
+        return self._scipy_unary('gammaln')
+
+    def erf(self):
+        return self._scipy_unary('erf')
 
     def __eq__(self, other):
         try:
