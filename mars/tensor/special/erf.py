@@ -14,7 +14,7 @@
 
 try:
     from scipy.special import erf as scipy_erf
-except ImportError:
+except ImportError:  # pragma: no cover
     scipy_erf = None
 
 from ... import opcodes as OperandDef
