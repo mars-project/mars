@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import pandas as pd
-from mars.lib.mmh3 import hash as mmh_hash
-
 import itertools
 import operator
 import functools
 
+import numpy as np
+import pandas as pd
+
+from ..compat import sbytes
+from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize
 from .core import IndexValue
@@ -27,17 +28,31 @@ from .core import IndexValue
 
 def hash_index(index, size):
     def func(x, size):
-        return mmh_hash(bytes(x)) % size
+        return mmh_hash(sbytes(x)) % size
 
     f = functools.partial(func, size=size)
-    idx_to_grouped = dict(index.groupby(index.map(f)).items())
+    idx_to_grouped = index.groupby(index.map(f))
     return [idx_to_grouped.get(i, list()) for i in range(size)]
+
+
+def hash_dataframe_on(df, on, size):
+    if on is None:
+        hashed_label = pd.util.hash_pandas_object(df.index, categorize=False)
+    else:
+        hashed_label = pd.util.hash_pandas_object(df[on], index=False, categorize=False)
+    idx_to_grouped = df.index.groupby(hashed_label % size)
+    return [idx_to_grouped.get(i, pd.Index([])).unique() for i in range(size)]
 
 
 def hash_dtypes(dtypes, size):
     hashed_indexes = hash_index(dtypes.index, size)
     return [dtypes[index] for index in hashed_indexes]
 
+
+def sort_dataframe_inplace(df, *axis):
+    for ax in axis:
+        df.sort_index(axis=ax, inplace=True)
+    return df
 
 def concat_tileable_chunks(df):
     from .merge.concat import DataFrameConcat
@@ -391,6 +406,44 @@ def build_empty_df(dtypes):
     for c, d in zip(columns, dtypes):
         df[c] = pd.Series(dtype=d)
     return df
+
+
+def concat_index_value(index_values, store_data=False):
+    result = pd.Index([])
+    if not isinstance(index_values, (list, tuple)):
+        index_values = [index_values]
+    for index_value in index_values:
+        if isinstance(index_value, pd.Index):
+            result = result.append(index_value)
+        else:
+            result = result.append(index_value.to_pandas())
+    return parse_index(result, store_data=store_data)
+
+
+def build_concated_rows_frame(df):
+    from .operands import ObjectType
+    from .merge.concat import DataFrameConcat
+
+    # When the df isn't splitted along the column axis, return the df directly.
+    if df.chunk_shape[1] == 1:
+        return df
+
+    columns = concat_index_value([df.cix[0, idx].columns for idx in range(df.chunk_shape[1])],
+                                 store_data=True)
+    columns_size = columns.to_pandas().size
+
+    out_chunks = []
+    for idx in range(df.chunk_shape[0]):
+        out_chunk = DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_chunk(
+            [df.cix[idx, k] for k in range(df.chunk_shape[1])], index=(idx, 0),
+            shape=(df.cix[idx, 0].shape[0], columns_size), dtypes=df.dtypes,
+            index_value=df.cix[idx, 0].index_value, columns_value=columns)
+        out_chunks.append(out_chunk)
+
+    return DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_dataframe(
+        [df], chunks=out_chunks, nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
+        shape=df.shape, dtypes=df.dtypes,
+        index_value=df.index_value, columns_value=df.columns)
 
 
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):

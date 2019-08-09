@@ -130,5 +130,5 @@ def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunk_size=None, g
         dtype = np.random.RandomState().noncentral_f(
             handle_array(dfnum), handle_array(dfden), handle_array(nonc), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNoncentralF(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorNoncentralF(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(dfnum, dfden, nonc, chunk_size=chunk_size)

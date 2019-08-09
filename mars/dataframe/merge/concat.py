@@ -88,18 +88,18 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         def _base_concat(chunk, inputs):
-            if chunk.op.axis is not None:
-                # TODO: remove this when we support concat on dataframe
-                raise NotImplementedError
-            else:
-                # auto generated concat when executing a DataFrame, Series or Index
-                if chunk.op.object_type == ObjectType.dataframe:
+            # auto generated concat when executing a DataFrame, Series or Index
+            if chunk.op.object_type == ObjectType.dataframe:
+                if chunk.op.axis == None:
                     return _auto_concat_dataframe_chunks(chunk, inputs)
-                elif chunk.op.object_type == ObjectType.series:
-                    return _auto_concat_series_chunks(chunk, inputs)
                 else:
-                    raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
-                                    'can be automatically concatenated')
+                    # The chunk's inputs should be 1-dimension
+                    return pd.concat(inputs, axis=chunk.op.axis, sort=False)
+            elif chunk.op.object_type == ObjectType.series:
+                return _auto_concat_series_chunks(chunk, inputs)
+            else:
+                raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
+                                'can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
             # auto generated concat when executing a DataFrame
@@ -112,7 +112,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
                 concats.append(concat)
 
-            ret = pd.concat(concats)
+            # The `sort=False` is to suppress a `FutureWarning` of pandas, when the index or column of chunks to
+            # concatenate is not aligned, which may happens for certain ops.
+            #
+            # See also Note [Columns of Left Join] in test_merge_execution.py.
+            ret = pd.concat(concats, sort=False)
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 ret.sort_index(inplace=True)
             if getattr(chunk.columns, 'should_be_monotonic', False):

@@ -76,7 +76,7 @@ def rand(random_state, *dn, **kw):
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
     chunk_size = kw.pop('chunk_size', None)
-    op = TensorRand(state=random_state._state, size=dn, **kw)
+    op = TensorRand(state=random_state.to_numpy(), size=dn, **kw)
 
     for key in op.extra_params:
         if not key.startswith('_'):

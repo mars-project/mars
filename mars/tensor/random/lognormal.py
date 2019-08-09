@@ -161,5 +161,5 @@ def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu
         dtype = np.random.RandomState().lognormal(
             handle_array(mean), handle_array(sigma), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLognormal(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorLognormal(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(mean, sigma, chunk_size=chunk_size)

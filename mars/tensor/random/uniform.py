@@ -133,5 +133,5 @@ def uniform(random_state, low=0.0, high=1.0, size=None, chunk_size=None, gpu=Non
         dtype = np.random.RandomState().uniform(
             handle_array(low), handle_array(high), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorUniform(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorUniform(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(low, high, chunk_size=chunk_size)

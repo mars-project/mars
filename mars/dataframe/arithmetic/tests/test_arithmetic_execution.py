@@ -285,6 +285,22 @@ class Test(TestBase):
         result6 = self.executor.execute_dataframe(df.radd(1), concat=True)[0]
         pd.testing.assert_frame_equal(expected2, result6)
 
+    def testAddWithShuffleOnStringIndex(self):
+        # no axis is monotonic, and the index values are strings.
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=[str(x) for x in [0, 10, 2, 3, 4, 5, 6, 7, 8, 9]],
+                                columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=5)
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=[str(x) for x in [11, 1, 2, 5, 7, 6, 8, 9, 10, 3]],
+                                columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+        df2 = from_pandas(data2, chunk_size=6)
+
+        df3 = add(df1, df2)
+
+        expected = data1 + data2
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
+
+        pd.testing.assert_frame_equal(expected, result)
+
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))
         df1 = from_pandas(data1, chunk_size=5)
