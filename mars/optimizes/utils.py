@@ -64,7 +64,8 @@ class Composer:
         self.graph = graph
         self.keys = []
 
-    def _jax_compat(self, op):
+    @staticmethod
+    def _jax_compat(op):
         if hasattr(op, 'execute_jax'):
             try:
                 op.execute_jax()
