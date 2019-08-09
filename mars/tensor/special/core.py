@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import scipy
+from ..arithmetic.core import TensorUnaryOp
+from ..array_utils import np, cp, sparse
 
-    from .gammaln import gammaln, TensorGammaln
-    from .erf import erf, TensorErf
-except ImportError:  # pragma: no cover
-    pass
+
+class TensorSpecialOp(TensorUnaryOp):
+
+    @classmethod
+    def _get_func(cls, xp):
+        if xp is np:
+            from scipy import special
+            return getattr(special, cls._func_name)
+        elif cp is not None and xp is cp:
+            from cupyx.scipy import special
+            return getattr(special, cls._func_name)
+        else:
+            assert xp is sparse
+            return getattr(sparse, cls._func_name)

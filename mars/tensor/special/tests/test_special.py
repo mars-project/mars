@@ -21,9 +21,10 @@ from mars.tensor import tensor
 
 try:
     import scipy
-    from scipy.special import gammaln as scipy_gammaln
+    from scipy.special import gammaln as scipy_gammaln, erf as scipy_erf
 
     from mars.tensor.special.gammaln import gammaln, TensorGammaln
+    from mars.tensor.special.erf import erf, TensorErf
 except ImportError:
     scipy = None
 
@@ -45,5 +46,23 @@ class Test(unittest.TestCase):
         self.assertEqual(r.nsplits, t.nsplits)
         for c in r.chunks:
             self.assertIsInstance(c.op, TensorGammaln)
+            self.assertEqual(c.index, c.inputs[0].index)
+            self.assertEqual(c.shape, c.inputs[0].shape)
+
+    def testElf(self):
+        raw = np.random.rand(10, 8, 5)
+        t = tensor(raw, chunk_size=3)
+
+        r = erf(t)
+        expect = scipy_erf(raw)
+
+        self.assertEqual(r.shape, raw.shape)
+        self.assertEqual(r.dtype, expect.dtype)
+
+        r.tiles()
+
+        self.assertEqual(r.nsplits, t.nsplits)
+        for c in r.chunks:
+            self.assertIsInstance(c.op, TensorErf)
             self.assertEqual(c.index, c.inputs[0].index)
             self.assertEqual(c.shape, c.inputs[0].shape)
