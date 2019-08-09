@@ -96,7 +96,7 @@ def lu_sparse_matrix(a):
     l = super_lu.L
     u = super_lu.U
     p = sps.lil_matrix(a.shape)
-    p[super_lu.perm_r, np.arange(a.shape[1])] = 1
+    p[super_lu.perm_r.copy(), np.arange(a.shape[1])] = 1
     return SparseMatrix(p), SparseMatrix(l), SparseMatrix(u),
 
 
