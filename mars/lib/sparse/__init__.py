@@ -249,6 +249,10 @@ def gammaln(x, **kw):
     return _call_unary('gammaln', x, **kw)
 
 
+def erf(x, **kw):
+    return _call_unary('erf', x, **kw)
+
+
 def equal(a, b, **_):
     try:
         return a == b

@@ -23,9 +23,9 @@ from mars.executor import Executor
 try:
     import scipy
     import scipy.sparse as sps
-    from scipy.special import gammaln as scipy_gammaln
+    from scipy.special import gammaln as scipy_gammaln, erf as scipy_erf
 
-    from mars.tensor.special import gammaln
+    from mars.tensor.special import gammaln, erf
 except ImportError:
     scipy = None
 
@@ -55,6 +55,30 @@ class Test(unittest.TestCase):
         result = self.executor.execute_tensor(r, concat=True)[0]
 
         data = scipy_gammaln(raw.data)
+        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
+
+        np.testing.assert_array_equal(result.toarray(), expected.toarray())
+
+    def testErfExecution(self):
+        raw = np.random.rand(10, 8, 6)
+        a = tensor(raw, chunk_size=3)
+
+        r = erf(a)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+        expected = scipy_erf(raw)
+
+        np.testing.assert_array_equal(result, expected)
+
+        # test sparse
+        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
+        a = tensor(raw, chunk_size=3)
+
+        r = erf(a)
+
+        result = self.executor.execute_tensor(r, concat=True)[0]
+
+        data = scipy_erf(raw.data)
         expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
 
         np.testing.assert_array_equal(result.toarray(), expected.toarray())
