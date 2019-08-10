@@ -17,9 +17,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field
+from ...serialize import Int32Field, StringField
 from ...config import options
-from ..utils import decide_chunk_sizes
+from ..utils import decide_chunk_sizes, get_order
 from .diag import TensorDiagBase
 from .core import TensorNoInput
 from ...lib import sparse
@@ -30,14 +30,20 @@ class TensorEye(TensorNoInput, TensorDiagBase):
     _op_type_ = OperandDef.TENSOR_EYE
 
     _k = Int32Field('k')
+    _order = StringField('order')
 
-    def __init__(self, k=None, dtype=None, gpu=None, sparse=False, **kw):
+    def __init__(self, k=None, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorEye, self).__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+        super(TensorEye, self).__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse,
+                                        _order=order, **kw)
 
     @property
     def k(self):
         return getattr(self, '_k', 0)
+
+    @property
+    def order(self):
+        return self._order
 
     @classmethod
     def _get_nsplits(cls, op):
@@ -62,10 +68,11 @@ class TensorEye(TensorNoInput, TensorDiagBase):
                                         dtype=op.dtype, gpu=op.gpu)
         else:
             ctx[chunk.key] = create_array(op)(
-                'eye', chunk.shape[0], M=chunk.shape[1], k=op.k, dtype=op.dtype)
+                'eye', chunk.shape[0], M=chunk.shape[1], k=op.k,
+                dtype=op.dtype, order=op.order)
 
 
-def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None):
+def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None, order='C'):
     """
     Return a 2-D tensor with ones on the diagonal and zeros elsewhere.
 
@@ -87,6 +94,9 @@ def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None):
         Allocate the tensor on GPU if True, False as default
     chunk_size : int or tuple of int or tuple of ints, optional
         Desired chunk size on each dimension
+    order : {'C', 'F'}, optional
+        Whether the output should be stored in row-major (C-style) or
+        column-major (Fortran-style) order in memory.
 
     Returns
     -------
@@ -116,5 +126,7 @@ def eye(N, M=None, k=0, dtype=None, sparse=False, gpu=False, chunk_size=None):
         M = N
 
     shape = (N, M)
-    op = TensorEye(k, dtype=dtype, gpu=gpu, sparse=sparse)
-    return op(shape, chunk_size=chunk_size)
+    tensor_order = get_order(order, None, available_options='CF',
+                             err_msg="only 'C' or 'F' order is permitted")
+    op = TensorEye(k, dtype=dtype, gpu=gpu, sparse=sparse, order=order)
+    return op(shape, chunk_size=chunk_size, order=tensor_order)

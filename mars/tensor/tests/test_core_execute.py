@@ -150,16 +150,29 @@ class Test(unittest.TestCase):
 
     def testViewDataOnReshape(self):
         data = np.random.random((3, 4, 5))
-        a = tensor(data, chunk_size=2)
+        a = tensor(data.copy(), chunk_size=2)
         b = a.reshape((5, 4, 3))
         b[:3] = 10
 
-        npa = data
+        npa = data.copy()
         npb = npa.reshape((5, 4, 3))
         npb[:3] = 10
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
+
+        data = np.random.random((4, 5))
+        a2 = tensor(data.copy(), chunk_size=2)
+        b2 = a2.reshape((5, 4), order='F')
+        b2[:3] = 10
+
+        npa = data.copy()
+        npb = npa.reshape((5, 4), order='F')
+        npb[:3] = 10
+
+        b2_result = b2.execute()
+        np.testing.assert_array_equal(b2_result, npb)
+        np.testing.assert_array_equal(a2.execute(), npa)
 
     def testViewDataOnRavel(self):
         # ravel creates a view

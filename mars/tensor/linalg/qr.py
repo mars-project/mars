@@ -23,6 +23,7 @@ from ...core import ExecutableTuple
 from ..array_utils import device, as_same_device
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..core import TensorOrder
 from .core import SFQR, TSQR
 
 
@@ -59,8 +60,10 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
         x, y = a.shape
         q_shape, r_shape = (a.shape, (y, y)) if x > y else ((x, x), a.shape)
         q, r = self.new_tensors([a],
-                                kws=[{'side': 'q', 'dtype': tiny_q.dtype, 'shape': q_shape},
-                                     {'side': 'r', 'dtype': tiny_r.dtype, 'shape': r_shape}])
+                                kws=[{'side': 'q', 'dtype': tiny_q.dtype,
+                                      'shape': q_shape, 'order': TensorOrder.C_ORDER},
+                                     {'side': 'r', 'dtype': tiny_r.dtype,
+                                      'shape': r_shape, 'order': TensorOrder.C_ORDER}])
         return ExecutableTuple([q, r])
 
     @classmethod
@@ -79,9 +82,9 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
             new_op = op.copy()
             kws = [
                 {'chunks': [q_chunk], 'nsplits': ((q_shape[0],), (q_shape[1],)),
-                 'dtype': q_dtype, 'shape': q_shape},
+                 'dtype': q_dtype, 'shape': q_shape, 'order': q.order},
                 {'chunks': [r_chunk], 'nsplits': ((r_shape[0],), (r_shape[1],)),
-                 'dtype': r_dtype, 'shape': r_shape}
+                 'dtype': r_dtype, 'shape': r_shape, 'order': r.order}
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':

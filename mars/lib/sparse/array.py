@@ -186,7 +186,7 @@ class SparseArray(SparseNDArray):
 
         return super(SparseArray, self).__getattribute__(attr)
 
-    def astype(self, dtype):
+    def astype(self, dtype, **_):
         dtype = np.dtype(dtype)
         if self.dtype == dtype:
             return self
@@ -580,6 +580,25 @@ class SparseArray(SparseNDArray):
 
     def reciprocal(self):
         return call_sparse_unary('reciprocal', self)
+
+    def _scipy_unary(self, func_name):
+        spmatrix = self.spmatrix
+        xp = get_array_module(spmatrix)
+        if xp is np:
+            from scipy import special
+        else:
+            from cupyx.scipy import special
+
+        new_data = getattr(special, func_name)(spmatrix.data)
+        new_spmatrix = get_sparse_module(spmatrix).csr_matrix(
+            (new_data, spmatrix.indices, spmatrix.indptr), spmatrix.shape)
+        return SparseNDArray(new_spmatrix, shape=self.shape)
+
+    def gammaln(self):
+        return self._scipy_unary('gammaln')
+
+    def erf(self):
+        return self._scipy_unary('erf')
 
     def __eq__(self, other):
         try:

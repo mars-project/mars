@@ -192,11 +192,12 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_op._size = size
             chunk_op._state = state
-            out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx)
+            out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx,
+                                           order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape,
+        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

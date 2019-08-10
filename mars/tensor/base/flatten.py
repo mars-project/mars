@@ -14,13 +14,23 @@
 
 import numpy as np
 
+from ..utils import get_order
 
-def flatten(a):
+
+def flatten(a, order='C'):
     """
     Return a copy of the tensor collapsed into one dimension.
 
     Parameters
     ----------
+    order : {'C', 'F', 'A', 'K'}, optional
+        'C' means to flatten in row-major (C-style) order.
+        'F' means to flatten in column-major (Fortran-
+        style) order. 'A' means to flatten in column-major
+        order if `a` is Fortran *contiguous* in memory,
+        row-major order otherwise. 'K' means to flatten
+        `a` in the order the elements occur in memory.
+        The default is 'C'.
 
     Returns
     -------
@@ -29,8 +39,8 @@ def flatten(a):
 
     See Also
     --------
-    ravel : Return a flattened array.
-    flat : A 1-D flat iterator over the array.
+    ravel : Return a flattened tensor.
+    flat : A 1-D flat iterator over the tensor.
 
     Examples
     --------
@@ -48,5 +58,6 @@ def flatten(a):
         raise ValueError('tensor shape is unknown, {0}'.format(a.shape))
 
     new_shape = calc_shape(a.size, -1)
+    tensor_order = get_order(order, a.order)
     op = TensorReshape(new_shape, dtype=a.dtype, create_view=False)
-    return op(a)
+    return op(a, order=tensor_order)

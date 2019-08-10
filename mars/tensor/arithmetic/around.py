@@ -49,7 +49,7 @@ class TensorAround(TensorUnaryOp):
             ctx[op.outputs[0].key] = xp.around(a, decimals=op.decimals)
 
 
-def around(a, decimals=0, out=None, **kwargs):
+def around(a, decimals=0, out=None):
     """
     Evenly round to the given number of decimals.
 
@@ -117,7 +117,7 @@ def around(a, decimals=0, out=None, **kwargs):
 
     """
     dtype = astensor(a).dtype
-    op = TensorAround(decimals=decimals, dtype=dtype, **kwargs)
+    op = TensorAround(decimals=decimals, dtype=dtype)
     return op(a, out=out)
 
 

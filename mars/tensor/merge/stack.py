@@ -20,10 +20,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
-from ..utils import unify_chunks
+from ..utils import unify_chunks, check_out_param
 from ..array_utils import as_same_device, device
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import Tensor, TensorOrder
 
 
 class TensorStack(TensorOperand, TensorOperandMixin):
@@ -39,15 +40,29 @@ class TensorStack(TensorOperand, TensorOperandMixin):
     def axis(self):
         return self._axis
 
-    def __call__(self, tensors):
+    def __call__(self, tensors, out=None):
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('`out` must be a Tensor, got {0} instead'.format(type(out)))
+
         shape = tensors[0].shape[:self._axis] + (len(tensors),) + tensors[0].shape[self._axis:]
-        return self.new_tensor(tensors, shape)
+        tensor_order = TensorOrder.C_ORDER if out is None else out.order
+        t = self.new_tensor(tensors, shape, order=tensor_order)
+
+        if out is None:
+            return t
+
+        if out.shape != t.shape:
+            raise ValueError('Output tensor has wrong dimensionality')
+        check_out_param(out, t, 'same_kind')
+        out.data = t.data
+        return out
 
     @classmethod
     def tile(cls, op):
         from ..indexing.slice import TensorSlice
 
         inputs = unify_chunks(*op.inputs)
+        output = op.outputs[0]
         axis = op.axis
 
         output_nsplits = inputs[0].nsplits[:axis] + ((1,) * len(inputs),) + \
@@ -62,11 +77,11 @@ class TensorStack(TensorOperand, TensorOperandMixin):
             slices = [slice(None)] * axis + [np.newaxis] + [slice(None)] * (len(input_idx) - axis)
             shape = input_chunk.shape[:axis] + (1,) + input_chunk.shape[axis:]
             chunk_op = TensorSlice(slices=slices, dtype=op.dtype, sparse=op.sparse)
-            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx)
+            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx, order=output.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, output.shape,
                                   chunks=out_chunks, nsplits=output_nsplits)
 
     @classmethod
@@ -76,10 +91,12 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
         axis = op.axis
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.stack(inputs, axis=axis)
+            out = op.outputs[0]
+            ret = xp.stack(inputs, axis=axis)
+            ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
 
 
-def stack(tensors, axis=0):
+def stack(tensors, axis=0, out=None):
     """
     Join a sequence of tensors along a new axis.
 
@@ -152,4 +169,4 @@ def stack(tensors, axis=0):
     sparse = all(t.issparse() for t in tensors)
 
     op = TensorStack(axis=axis, dtype=dtype, sparse=sparse)
-    return op(tensors)
+    return op(tensors, out=out)

@@ -1005,3 +1005,34 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(c, concat=True)[0]
         expected = np.matmul(data_a.toarray(), data_b.toarray())
         np.testing.assert_allclose(res.toarray(), expected)
+
+        # test order
+        data_a = np.asfortranarray(np.random.randn(10, 20))
+        data_b = np.asfortranarray(np.random.randn(20, 30))
+
+        a = tensor(data_a, chunk_size=12)
+        b = tensor(data_b, chunk_size=13)
+
+        c = matmul(a, b)
+        res = self.executor.execute_tensor(c, concat=True)[0]
+        expected = np.matmul(data_a, data_b)
+
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        c = matmul(a, b, order='A')
+        res = self.executor.execute_tensor(c, concat=True)[0]
+        expected = np.matmul(data_a, data_b, order='A')
+
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        c = matmul(a, b, order='C')
+        res = self.executor.execute_tensor(c, concat=True)[0]
+        expected = np.matmul(data_a, data_b, order='C')
+
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])

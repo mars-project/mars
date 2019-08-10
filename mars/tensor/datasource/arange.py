@@ -67,7 +67,7 @@ class TensorArange(TensorNoInput):
         chunk_length = tensor.extra_params.raw_chunk_size or options.tensor.chunk_size
         chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
 
-        start, stop, step = tensor.op.start, tensor.op.stop, tensor.op.step  # noqa: F841
+        start, stop, step = op.start, op.stop, op.step  # noqa: F841
 
         out_chunks = []
         n_elem = 0
@@ -85,8 +85,8 @@ class TensorArange(TensorNoInput):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks,
-                                  nsplits=chunk_length)
+        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
+                                  chunks=out_chunks, nsplits=chunk_length)
 
     @classmethod
     def execute(cls, ctx, op):

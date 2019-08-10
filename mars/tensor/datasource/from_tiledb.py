@@ -14,9 +14,10 @@
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, DictField, TupleField, StringField, Int64Field
-from .core import TensorNoInput
 from ...lib.sparse.core import sps
 from ...lib.sparse import SparseNDArray
+from ..core import TensorOrder
+from .core import TensorNoInput
 
 
 class TensorTileDBDataSource(TensorNoInput):
@@ -153,10 +154,12 @@ def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=None):
 
     dtype = tiledb_arr.attr(0).dtype
     tiledb_config = None if raw_ctx is None else ctx.config().dict()
+    tensor_order = TensorOrder.C_ORDER \
+        if tiledb_arr.schema.cell_order == 'row-major' else TensorOrder.F_ORDER
     op = TensorTileDBDataSource(tiledb_config=tiledb_config, tiledb_uri=uri,
                                 tiledb_key=key, tiledb_timstamp=timestamp,
                                 tiledb_dim_starts=tiledb_dim_starts,
                                 gpu=gpu, sparse=sparse, dtype=dtype)
     chunk_size = tuple(int(tiledb_arr.domain.dim(i).tile)
                        for i in range(tiledb_arr.domain.ndim))
-    return op(tiledb_arr.shape, chunk_size=chunk_size)
+    return op(tiledb_arr.shape, chunk_size=chunk_size, order=tensor_order)

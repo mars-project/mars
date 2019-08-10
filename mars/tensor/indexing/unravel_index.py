@@ -19,12 +19,13 @@ from collections import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, TupleField
+from ...serialize import ValueType, KeyField, TupleField, StringField
 from ...core import ExecutableTuple
+from ...compat import izip
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
-from ...compat import izip
+from ..core import TensorOrder
 
 
 class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
@@ -32,13 +33,21 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
     _dims = TupleField('dims', ValueType.int32)
+    _order = StringField('order')
 
-    def __init__(self, dims=None, dtype=None, **kw):
-        super(TensorUnravelIndex, self).__init__(_dims=dims, _dtype=dtype, **kw)
+    def __init__(self, dims=None, dtype=None, order=None, **kw):
+        super(TensorUnravelIndex, self).__init__(_dims=dims, _dtype=dtype,
+                                                 _order=order, **kw)
+        if self._order is None:
+            self._order = 'C'
 
     @property
     def dims(self):
         return self._dims
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def output_limit(self):
@@ -49,18 +58,21 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
         self._input = self._inputs[0]
 
     def __call__(self, indices):
-        kws = [{'pos': i} for i in range(len(self._dims))]
+        order = TensorOrder.C_ORDER if self._order == 'C' else TensorOrder.F_ORDER
+        kws = [{'pos': i, 'order': order} for i in range(len(self._dims))]
         return ExecutableTuple(self.new_tensors([indices], indices.shape, kws=kws, output_limit=len(kws)))
 
     @classmethod
     def tile(cls, op):
         indices = op.inputs[0]
         dims = op.dims
+        order = op.outputs[0].order
 
         out_chunks = [list() for _ in range(len(dims))]
         for in_chunk in indices.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_kws = [{'pos': i, 'index': in_chunk.index} for i in range(len(dims))]
+            chunk_kws = [{'pos': i, 'index': in_chunk.index, 'order': order}
+                         for i in range(len(dims))]
             chunks = chunk_op.new_chunks([in_chunk], shape=in_chunk.shape, kws=chunk_kws,
                                          output_limit=len(dims))
             for out_chunk, c in zip(out_chunks, chunks):
@@ -69,7 +81,7 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
         new_op = op.copy()
         kws = [{'chunks': out_chunk, 'nsplits': indices.nsplits, 'shape': o.shape}
                for out_chunk, o in zip(out_chunks, op.outputs)]
-        return new_op.new_tensors(op.inputs, kws=kws, output_limit=len(dims))
+        return new_op.new_tensors(op.inputs, kws=kws, output_limit=len(dims), order=order)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -78,12 +90,12 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
         indices = inputs[0]
 
         with device(device_id):
-            outputs = xp.unravel_index(indices, op.dims)
+            outputs = xp.unravel_index(indices, op.dims, order=op.order)
             for o, output in izip(op.outputs, outputs):
                 ctx[o.key] = output
 
 
-def unravel_index(indices, dims):
+def unravel_index(indices, dims, order='C'):
     """
     Converts a flat index or tensor of flat indices into a tuple
     of coordinate tensors.
@@ -95,6 +107,9 @@ def unravel_index(indices, dims):
         version of a tensor of dimensions ``dims``.
     dims : tuple of ints
         The shape of the tensor to use for unraveling ``indices``.
+    order : {'C', 'F'}, optional
+        Determines whether the indices should be viewed as indexing in
+        row-major (C-style) or column-major (Fortran-style) order.
 
     Returns
     -------
@@ -125,5 +140,8 @@ def unravel_index(indices, dims):
     else:
         dims = (dims,)
 
-    op = TensorUnravelIndex(dims=dims, dtype=np.dtype(np.intp))
+    if order not in 'CF':
+        raise TypeError("only 'C' or 'F' order is permitted")
+
+    op = TensorUnravelIndex(dims=dims, dtype=np.dtype(np.intp), order=order)
     return op(indices)

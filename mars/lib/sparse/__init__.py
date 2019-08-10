@@ -114,6 +114,8 @@ def _call_bin(method, a, b, **kwargs):
     from .core import get_array_module, cp, issparse
     from .array import call_sparse_binary_scalar
 
+    # order does not take effect for sparse
+    kwargs.pop('order', None)
     if hasattr(a, method):
         res = getattr(a, method)(b, **kwargs)
     elif get_array_module(a).isscalar(a):
@@ -138,6 +140,8 @@ def _call_bin(method, a, b, **kwargs):
 def _call_unary(method, x, *args, **kwargs):
     from .core import get_array_module
 
+    # order does not take effect for sparse
+    kwargs.pop('order', None)
     if hasattr(x, method):
         res = getattr(x, method)(*args, **kwargs)
     else:
@@ -239,6 +243,14 @@ def cbrt(x, **kw):
 
 def reciprocal(x, **kw):
     return _call_unary('reciprocal', x, **kw)
+
+
+def gammaln(x, **kw):
+    return _call_unary('gammaln', x, **kw)
+
+
+def erf(x, **kw):
+    return _call_unary('erf', x, **kw)
 
 
 def equal(a, b, **_):

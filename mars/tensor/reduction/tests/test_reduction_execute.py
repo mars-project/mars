@@ -46,6 +46,17 @@ class Test(unittest.TestCase):
 
         self.assertAlmostEqual(res, raw.sum())
 
+        # test order
+        raw = np.asfortranarray(np.random.rand(10, 20, 30))
+        arr = tensor(raw, chunk_size=13)
+        arr2 = arr.sum(axis=-1)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.sum(axis=-1)
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
     def testMaxMinExecution(self):
         raw = np.random.randint(10000, size=(10, 10, 10))
 
@@ -282,6 +293,17 @@ class Test(unittest.TestCase):
         self.assertEqual(raw.argmin(),
                          self.executor.execute_tensor(arr.argmin())[0])
 
+        # test order
+        raw = np.asfortranarray(np.random.rand(10, 20, 30))
+        arr = tensor(raw, chunk_size=13)
+        arr2 = arr.argmax(axis=-1)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.argmax(axis=-1)
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
     def testNanReduction(self):
         raw = np.random.choice(a=[0, 1, np.nan], size=(10, 10), p=[0.3, 0.4, 0.3])
 
@@ -367,6 +389,17 @@ class Test(unittest.TestCase):
         expected2 = raw.A.cumprod(axis=1)
         self.assertTrue(np.allclose(res1[0], expected1))
         self.assertTrue(np.allclose(res2[0], expected2))
+
+        # test order
+        raw = np.asfortranarray(np.random.rand(10, 20, 30))
+        arr = tensor(raw, chunk_size=13)
+        arr2 = arr.cumsum(axis=-1)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.cumsum(axis=-1)
+        np.testing.assert_allclose(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testNanCumReduction(self):
         raw = np.random.randint(5, size=(8, 8, 8))

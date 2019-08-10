@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-from mars.tensor.datasource import ones
+from mars.tensor.datasource import ones, empty
 from mars.tensor.merge import concatenate, stack
 
 
@@ -97,3 +97,9 @@ class Test(unittest.TestCase):
 
         with self.assertRaises(np.AxisError):
             stack(raw_arrs, axis=-4)
+
+        with self.assertRaises(TypeError):
+            stack(raw_arrs, out=1)
+
+        with self.assertRaises(ValueError):
+            stack(raw_arrs, empty((1, 10, 3, 4)))

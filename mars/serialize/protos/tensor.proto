@@ -12,6 +12,7 @@ message TensorChunkDef {
     Value dtype = 6;
     Value extra_params = 8;
     string id = 9;
+    string order = 10;
 }
 
 
@@ -24,4 +25,5 @@ message TensorDef {
     repeated TensorChunkDef chunks = 6;
     Value extra_params = 7;
     string id = 8;
+    string order = 9;
 }

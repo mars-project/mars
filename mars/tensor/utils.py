@@ -671,3 +671,32 @@ def to_numpy(pdf):
         return pdf.to_numpy()
     except AttributeError:  # pragma: no cover
         return pdf.values
+
+
+def check_order(order_str, available_options='KACF',
+                err_msg='order not understood'):
+    order_str = order_str.upper()
+    if order_str not in available_options:
+        raise TypeError(err_msg)
+
+
+def get_order(order_str, to_keep_order, available_options='KACF',
+              err_msg='order not understood'):
+    from .core import TensorOrder
+
+    check_order(order_str, available_options=available_options,
+                err_msg=err_msg)
+
+    if order_str in 'KA':
+        return to_keep_order
+    elif order_str == 'C':
+        return TensorOrder.C_ORDER
+    else:
+        return TensorOrder.F_ORDER
+
+
+def reverse_order(old_order):
+    from .core import TensorOrder
+
+    assert isinstance(old_order, TensorOrder)
+    return TensorOrder.C_ORDER if old_order == TensorOrder.F_ORDER else TensorOrder.F_ORDER

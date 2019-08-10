@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,26 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ..datasource import tensor as astensor
-from .tensordot import tensordot
-
-
-def inner(a, b, sparse=None):
-    """
-    Returns the inner product of a and b for arrays of floating point types.
-
-    Like the generic NumPy equivalent the product sum is over the last dimension
-    of a and b. The first argument is not conjugated.
-
-    """
-    a, b = astensor(a), astensor(b)
-    if a.isscalar() and b.isscalar():
-        ret = a * b
-    else:
-        ret = tensordot(a, b, axes=(-1, -1), sparse=sparse)
-
-    return ret
-
-
-innerproduct = inner

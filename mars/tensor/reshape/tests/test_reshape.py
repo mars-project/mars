@@ -43,6 +43,9 @@ class Test(unittest.TestCase):
 
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
 
+        with self.assertRaises(TypeError):
+            a.reshape((10, 30, 20), other_argument=True)
+
     def testShuffleReshape(self):
         a = ones((31, 27), chunk_size=10)
         b = a.reshape(27, 31)

@@ -21,6 +21,7 @@ from ...serialize import KeyField, BoolField
 from ... import opcodes as OperandDef
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import TensorOrder
 from ..array_utils import as_same_device, device
 
 
@@ -52,7 +53,7 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
         self._input = self._inputs[0]
 
     def __call__(self, a):
-        return self.new_tensor([a], a.shape)
+        return self.new_tensor([a], a.shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -74,9 +75,11 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
             for j in range(in_tensor.chunk_shape[1]):
                 if i < j:
                     lower_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]), index=(i, j))
+                        None, shape=(in_tensor.nsplits[0][i], in_tensor.nsplits[1][j]),
+                        index=(i, j), order=tensor.order)
                     upper_chunk = TensorZeros(dtype=tensor.dtype).new_chunk(
-                        None, shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]), index=(j, i))
+                        None, shape=(in_tensor.nsplits[1][j], in_tensor.nsplits[0][i]),
+                        index=(j, i), order=tensor.order)
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 elif i == j:
@@ -86,7 +89,7 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         for p in range(i):
                             a, b = lower_chunks[i, p], upper_chunks[p, j]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], shape=(a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
                             prev_chunks.append(prev_chunk)
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
@@ -94,9 +97,9 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
                         target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
-                            [target, s], shape=target.shape)
+                            [target, s], shape=target.shape, order=tensor.order)
                     lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
-                        [target], shape=target.shape, index=(i, j))
+                        [target], shape=target.shape, index=(i, j), order=tensor.order)
                     upper_chunk = _H(lower_chunk)
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
@@ -107,7 +110,7 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                         for p in range(j):
                             a, b = lower_chunks[j, p], upper_chunks[p, i]
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
-                                [a, b], shape=(a.shape[0], b.shape[1]))
+                                [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
                             prev_chunks.append(prev_chunk)
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
@@ -115,19 +118,20 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                             s = tree_add(prev_chunks[0].dtype, prev_chunks,
                                          None, prev_chunks[0].shape)
                         target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
-                            [target, s], shape=target.shape)
+                            [target, s], shape=target.shape, order=tensor.order)
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
-                        [lower_chunks[j, j], target], shape=target.shape, index=(j, i))
+                        [lower_chunks[j, j], target], shape=target.shape,
+                        index=(j, i), order=tensor.order)
                     lower_chunk = _H(upper_chunk)
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
 
         new_op = op.copy()
         if op.lower:
-            return new_op.new_tensors(op.inputs, tensor.shape,
+            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                       chunks=list(lower_chunks.values()), nsplits=in_tensor.nsplits)
         else:
-            return new_op.new_tensors(op.inputs, tensor.shape,
+            return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                       chunks=list(upper_chunks.values()), nsplits=in_tensor.nsplits)
 
     @classmethod

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,25 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..datasource import tensor as astensor
-from .tensordot import tensordot
+from ..arithmetic.core import TensorUnaryOp
+from ..array_utils import np, cp, sparse
 
 
-def inner(a, b, sparse=None):
-    """
-    Returns the inner product of a and b for arrays of floating point types.
+class TensorSpecialOp(TensorUnaryOp):
 
-    Like the generic NumPy equivalent the product sum is over the last dimension
-    of a and b. The first argument is not conjugated.
-
-    """
-    a, b = astensor(a), astensor(b)
-    if a.isscalar() and b.isscalar():
-        ret = a * b
-    else:
-        ret = tensordot(a, b, axes=(-1, -1), sparse=sparse)
-
-    return ret
-
-
-innerproduct = inner
+    @classmethod
+    def _get_func(cls, xp):
+        if xp is np:
+            from scipy import special
+            return getattr(special, cls._func_name)
+        elif cp is not None and xp is cp:
+            from cupyx.scipy import special
+            return getattr(special, cls._func_name)
+        else:
+            assert xp is sparse
+            return getattr(sparse, cls._func_name)
