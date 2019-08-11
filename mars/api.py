@@ -162,7 +162,12 @@ class MarsAPI(object):
                 idx_to_slices = slice_split(s, nsplits[axis])
                 indexes[axis] = idx_to_slices
             for chunk_index in itertools.product(*[v.keys() for v in indexes.values()]):
-                slice_obj = [indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index)]
+                # slice_obj: use tuple, since numpy complains
+                #
+                # FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use
+                # `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array
+                # index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+                slice_obj = tuple(indexes[axis][chunk_idx] for axis, chunk_idx in enumerate(chunk_index))
                 chunk_key = chunk_indexes[chunk_index]
                 chunk_results[chunk_index] = self.fetch_chunk_data(session_id, chunk_key, slice_obj)
 

@@ -487,7 +487,13 @@ class SeriesData(TileableData):
 
     @property
     def dtype(self):
-        return getattr(self, '_dtype', None) or self.op.dtype
+        # NB: don't use `getattr(self, '_dtype', None) or self.op.type`, since pd.Series has overloaded the
+        # operator `or`.
+        ty = getattr(self, '_dtype', None)
+        if ty is not None:
+            return ty
+        else:
+            return self.op.dtype
 
     @property
     def name(self):
@@ -633,6 +639,15 @@ class DataFrameData(TileableData):
     def columns(self):
         return self._columns_value
 
+    def _equal(self, o):
+        from ..core import build_mode
+        # FIXME We need to implemented a true `==` operator for DataFrame, current we just need
+        # to do `self is o` under build mode to make the `iloc.__setitem__` happy.
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
+
     def to_tensor(self):
         from ..tensor.datasource.from_dataframe import from_dataframe
         return from_dataframe(self)
@@ -647,10 +662,21 @@ class DataFrameData(TileableData):
         from .datasource.from_records import from_records
         return from_records(records, **kw)
 
+    def set_index(self, *args, **kwargs):
+        from .indexing.set_index import set_index
+        return set_index(self, *args, **kwargs)
+
 
 class DataFrame(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super(DataFrame, self).__hash__()
 
     def to_tensor(self):
         return self._data.to_tensor()
@@ -660,6 +686,11 @@ class DataFrame(TileableEntity):
 
     def from_records(self, records, **kw):
         return self._data.from_records(records, **kw)
+
+    @property
+    def iloc(self):
+        from .indexing.iloc import DataFrameIloc
+        return DataFrameIloc(self)
 
 
 INDEX_TYPE = (Index, IndexData)

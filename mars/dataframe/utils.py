@@ -442,6 +442,14 @@ def filter_index_value(index_value, min_max, store_data=False):
     return parse_index(pd_index[f], store_data=store_data)
 
 
+def indexing_index_value(index_value, indexes, store_data=False):
+    pd_index = index_value.to_pandas()
+    if pd_index.empty:
+        return index_value
+    else:
+        return parse_index(pd_index[indexes], store_data=store_data)
+
+
 def wrap_notimplemented_exception(func):
     def wrapper(*args, **kwargs):
         try:

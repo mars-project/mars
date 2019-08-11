@@ -565,13 +565,15 @@ class Executor(object):
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
+        from .dataframe.indexing import DataFrameIlocGetItem
 
         results = []
         to_concat_tileables = OrderedDict()
 
         tileable_indexes = []
         for i, tileable in enumerate(tileables):
-            if tileable.key not in self.stored_tileables and isinstance(tileable.op, TensorIndex):
+            if tileable.key not in self.stored_tileables and \
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
                 tileable = tileable.inputs[0]

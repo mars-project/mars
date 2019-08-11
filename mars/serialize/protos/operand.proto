@@ -334,6 +334,11 @@ message OperandDef {
         DATAFRAME_INDEX_ALIGN_MAP = 2004;
         DATAFRAME_INDEX_ALIGN_REDUCE = 2005;
 
+        // indexing
+        SET_INDEX = 2020;
+        ILOC_GETITEM = 2021;
+        ILOC_SETITEM = 2022;
+
         // fetches
         FETCH_SHUFFLE = 999998;
         FETCH = 999999;
