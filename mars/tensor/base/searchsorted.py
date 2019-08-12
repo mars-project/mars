@@ -85,15 +85,23 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_one_chunk(cls, op, a, v, out):
-        chunk_op = op.copy().reset_key()
-        in_chunks = [a.chunks[0]]
-        if len(op.inputs) == 2:
-            in_chunks.append(v.chunks[0])
-        chunks = chunk_op.new_chunks(in_chunks, shape=out.shape, order=out.order)
+        chunks = []
+        if len(op.inputs) == 1:
+            v_chunks = [v]
+        else:
+            v_chunks = v.chunks
+        for v_chunk in v_chunks:
+            chunk_op = op.copy().reset_key()
+            in_chunks = [a.chunks[0]]
+            if len(op.inputs) == 2:
+                in_chunks.append(v_chunk)
+            v_shape = v_chunk.shape if hasattr(v_chunk, 'shape') else ()
+            chunk = chunk_op.new_chunk(in_chunks, shape=v_shape, order=out.order)
+            chunks.append(chunk)
         new_op = op.copy().reset_key()
+        nsplits = ((s,) for s in out.shape) if len(op.inputs) == 1 else v.nsplits
         return new_op.new_tensors(op.inputs, out.shape,
-                                  chunks=chunks,
-                                  nsplits=((s,) for s in out.shape))
+                                  chunks=chunks, nsplits=nsplits)
 
     @classmethod
     def _combine_chunks(cls, to_combine, op, stage, v, idx):
@@ -106,46 +114,52 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         chunk_op._stage = stage
         in_chunks = [combine_chunk]
         if len(op.inputs) == 2:
-            in_chunks.append(v.chunks[0])
-        return chunk_op.new_chunk(in_chunks, shape=v_shape, index=(idx,),
+            in_chunks.append(v)
+        return chunk_op.new_chunk(in_chunks, shape=v_shape, index=idx,
                                   order=op.outputs[0].order)
 
     @classmethod
     def _tile_tree_reduction(cls, op, a, v, out):
         combine_size = op.combine_size or options.tensor.combine_size
         input_len = len(op.inputs)
-        v_shape = v.shape if hasattr(v, 'shape') else ()
+        v_chunks = [v] if input_len == 1 else v.chunks
 
-        chunks = []
-        offsets = [0] + np.cumsum(a.nsplits[0]).tolist()[:-1]
-        for i, c in enumerate(a.chunks):
-            chunk_op = op.copy().reset_key()
-            chunk_op._stage = _STAGES[0]
-            chunk_op._offset = offsets[i]
-            in_chunks = [c]
-            if input_len == 2:
-                in_chunks.append(v.chunks[0])
-            chunks.append(chunk_op.new_chunk(in_chunks, shape=v_shape,
-                                             index=c.index, order=out.order))
+        out_chunks = []
+        for v_chunk in v_chunks:
+            offsets = [0] + np.cumsum(a.nsplits[0]).tolist()[:-1]
+            v_shape = v_chunk.shape if hasattr(v_chunk, 'shape') else ()
+            v_index = v_chunk.index if hasattr(v_chunk, 'index') else 0
+            chunks = []
+            for i, c in enumerate(a.chunks):
+                chunk_op = op.copy().reset_key()
+                chunk_op._stage = _STAGES[0]
+                chunk_op._offset = offsets[i]
+                in_chunks = [c]
+                if input_len == 2:
+                    in_chunks.append(v_chunk)
+                chunks.append(chunk_op.new_chunk(in_chunks, shape=v_shape,
+                                                 index=c.index, order=out.order))
 
-        while len(chunks) > combine_size:
-            new_chunks = []
-            it = itertools.count(0)
-            while True:
-                j = next(it)
-                to_combine = chunks[j * combine_size: (j + 1) * combine_size]
-                if len(to_combine) == 0:
-                    break
+            while len(chunks) > combine_size:
+                new_chunks = []
+                it = itertools.count(0)
+                while True:
+                    j = next(it)
+                    to_combine = chunks[j * combine_size: (j + 1) * combine_size]
+                    if len(to_combine) == 0:
+                        break
 
-                new_chunks.append(
-                    cls._combine_chunks(to_combine, op, _STAGES[1], v, j))
-            chunks = new_chunks
+                    new_chunks.append(
+                        cls._combine_chunks(to_combine, op, _STAGES[1], v_chunk, (j,)))
+                chunks = new_chunks
 
-        chunks = [cls._combine_chunks(chunks, op, _STAGES[2], v, 0)]
+            chunk = cls._combine_chunks(chunks, op, _STAGES[2], v_chunk, v_index)
+            out_chunks.append(chunk)
 
         new_op = op.copy().reset_key()
+        nsplits = ((s,) for s in out.shape) if len(op.inputs) == 1 else v.nsplits
         return new_op.new_tensors(op.inputs, out.shape,
-                                  chunks=chunks, nsplits=((s,) for s in out.shape))
+                                  chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def tile(cls, op):
@@ -156,7 +170,6 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             v = op.values
         else:
             v = op.inputs[1]
-            v = v.reshape(v.shape).single_tiles()
 
         if len(a.chunks) == 1:
             return cls._tile_one_chunk(op, a, v, out)

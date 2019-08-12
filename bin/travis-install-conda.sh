@@ -18,6 +18,9 @@ fi
 
 curl -s -o miniconda.sh https://repo.continuum.io/miniconda/$CONDA_FILE
 bash miniconda.sh -b -p $HOME/miniconda && rm miniconda.sh
+if [[ "$PYTHON" == "3.7" ]]; then
+  PYTHON = "3.7.3"
+fi
 $HOME/miniconda/bin/conda create --quiet --yes -n test python=$PYTHON virtualenv gevent psutil \
     pyyaml nomkl libopenblas lz4
 export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"

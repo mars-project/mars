@@ -925,13 +925,13 @@ class Test(unittest.TestCase):
 
         raw2 = np.random.randint(100, size=(3, 4))
 
-        t9 = searchsorted(arr, raw2, side='left')
+        t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side='left')
 
         res = self.executor.execute_tensor(t9, concat=True)[0]
         expected = np.searchsorted(raw, raw2, side='left')
         np.testing.assert_array_equal(res, expected)
 
-        t10 = searchsorted(arr, raw2, side='right')
+        t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side='right')
 
         res = self.executor.execute_tensor(t10, concat=True)[0]
         expected = np.searchsorted(raw, raw2, side='right')
