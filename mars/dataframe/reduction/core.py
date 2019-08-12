@@ -67,62 +67,19 @@ class DataFrameReductionOperand(DataFrameOperand):
         return self._combine_size
 
 
-class ReductionMixin(DataFrameOperandMixin):
-    @classmethod
-    def _get_reduced_meta(cls, chunk, axis):
-        """
-        calculate meta information of reduced result.
-        :param chunk: chunk will be reduced
-        :param axis: axis
-        :return:
-        For series, return (shape, index, dtype).
-        For DataFrame, return (shape, index, dtypes).
-        """
-        if isinstance(chunk, SERIES_CHUNK_TYPE):
-            return (), parse_index(pd.RangeIndex(0)), chunk.dtype
-        if axis == 0:
-            return (1, chunk.shape[1]), parse_index(pd.RangeIndex(1)), chunk.dtypes
-        else:
-            emtpy_df = build_empty_df(chunk.dtypes)
-            func_name = getattr(cls, '_func_name')
-            reduced_dtypes = pd.Series(getattr(emtpy_df, func_name)(axis=axis).dtypes)
-            return (chunk.shape[0], 1), chunk.index_value, reduced_dtypes
-
+class DataFrameReductionMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_one_chunk(cls, op):
         df = op.outputs[0]
         chk = op.inputs[0].chunks[0]
         new_chunk_op = op.copy().reset_key()
-        reduced_shape, index_value, dtype = cls._get_reduced_meta(chk, axis=op.axis)
-        if op.object_type == ObjectType.dataframe:
-            reduced_shape = (reduced_shape[1],) if op.axis == 0 else (reduced_shape[0],)
-        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, shape=reduced_shape, index=chk.index,
-                                       index_value=index_value, dtype=dtype)
+        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, shape=df.shape, index=chk.index,
+                                       index_value=df.index_value, dtype=df.dtype)
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunk.shape)
         return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=[chunk],
                                   index_value=df.index_value, dtype=df.dtype)
 
-    @classmethod
-    def _build_reduction_chunks(cls, op):
-        chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
-        for c in op.inputs[0].chunks:
-            new_chunk_op = op.copy().reset_key()
-            if op.min_count > 0:
-                new_chunk_op._need_count = True
-            if isinstance(c, SERIES_CHUNK_TYPE):
-                reduced_shape, index_value, dtype = cls._get_reduced_meta(c, axis=op.axis)
-                chunks[c.index] = new_chunk_op.new_chunk([c], shape=reduced_shape, index=c.index,
-                                                         dtype=dtype, index_value=index_value)
-            else:
-                new_chunk_op._object_type = ObjectType.dataframe
-                reduced_shape, index_value, dtypes = cls._get_reduced_meta(c, axis=op.axis)
-                chunks[c.index] = new_chunk_op.new_chunk([c], shape=reduced_shape, index=c.index,
-                                                         dtypes=dtypes, index_value=index_value)
-        return chunks
-
-
-class DataFrameReductionMixin(ReductionMixin):
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
@@ -133,7 +90,36 @@ class DataFrameReductionMixin(ReductionMixin):
             return cls._tile_one_chunk(op)
 
         n_rows, n_cols = in_df.chunk_shape
-        reduction_chunks = cls._build_reduction_chunks(op)
+
+        chunk_dtypes = []
+        if op.numeric_only and op.axis == 0:
+            cum_nsplits = np.cumsum((0,) + in_df.nsplits[0])
+            for i in range(len(cum_nsplits) - 1):
+                chunk_dtypes.append(build_empty_df(
+                    in_df.dtypes[cum_nsplits[i]: cum_nsplits[i + 1]]).select_dtypes(np.number).dtypes)
+
+        # build reduction chunks
+        reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
+        for c in op.inputs[0].chunks:
+            new_chunk_op = op.copy().reset_key()
+            if op.min_count > 0:
+                new_chunk_op._need_count = True
+            new_chunk_op._object_type = ObjectType.dataframe
+            if op.axis == 0:
+                if op.numeric_only:
+                    dtypes = chunk_dtypes[c.index[1]]
+                else:
+                    dtypes = c.dtypes
+                reduced_shape = (1, len(dtypes))
+                index_value = parse_index(pd.RangeIndex(1))
+                dtypes = c.dtypes
+            else:
+                reduced_shape = (c.shape[0], 1)
+                index_value = c.index_value
+                dtypes = pd.Series(op.outputs[0].dtype)
+            reduction_chunks[c.index] = new_chunk_op.new_chunk([c], shape=reduced_shape,
+                                                               dtypes=dtypes, index_value=index_value)
+
         out_chunks = []
         if op.axis is None or op.axis == 0:
             for col in range(n_cols):
@@ -154,6 +140,8 @@ class DataFrameReductionMixin(ReductionMixin):
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
                 chks = chunks[i: i + combine_size]
+                for j, c in enumerate(chunks):
+                    c._index = (j,)
                 concat_op = DataFrameConcat(axis=op.axis, object_type=ObjectType.dataframe)
                 if op.axis == 0:
                     concat_index = parse_index(pd.RangeIndex(len(chks)))
@@ -165,7 +153,14 @@ class DataFrameReductionMixin(ReductionMixin):
                     concat_shape = (chks[0].shape[0], (sum([c.shape[1] for c in chks])))
                 chk = concat_op.new_chunk(chks, shape=concat_shape, index=(i,),
                                           dtypes=concat_dtypes, index_value=concat_index)
-                reduced_shape, index_value, dtypes = cls._get_reduced_meta(chk, axis=op.axis)
+                if op.axis == 0:
+                    reduced_shape = (1, chk.shape[1])
+                    index_value = parse_index(pd.RangeIndex(1))
+                    dtypes = chk.dtypes
+                else:
+                    reduced_shape = (chk.shape[0], 1)
+                    index_value = chk.index_value
+                    dtypes = pd.Series(op.outputs[0].dtype)
                 new_op = op.copy().reset_key()
                 new_op._object_type = ObjectType.dataframe
                 new_chunks.append(new_op.new_chunk([chk], shape=reduced_shape, index=(i,), dtypes=dtypes,
@@ -236,7 +231,19 @@ class DataFrameReductionMixin(ReductionMixin):
                                index_value=parse_index(reduced_df.index))
 
 
-class SeriesReductionMixin(ReductionMixin):
+class SeriesReductionMixin(DataFrameOperandMixin):
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        df = op.outputs[0]
+        chk = op.inputs[0].chunks[0]
+        new_chunk_op = op.copy().reset_key()
+        chunk = new_chunk_op.new_chunk(op.inputs[0].chunks, shape=df.shape, index=chk.index,
+                                       index_value=df.index_value, dtype=df.dtype)
+        new_op = op.copy()
+        nsplits = tuple((s,) for s in chunk.shape)
+        return new_op.new_seriess(op.inputs, df.shape, nsplits=nsplits, chunks=[chunk],
+                                  index_value=df.index_value, dtype=df.dtype)
+
     @classmethod
     def tile(cls, op):
         df = op.outputs[0]
@@ -246,7 +253,12 @@ class SeriesReductionMixin(ReductionMixin):
         if len(in_chunks) == 1:
             return cls._tile_one_chunk(op)
 
-        chunks = cls._build_reduction_chunks(op)
+        chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
+        for c in op.inputs[0].chunks:
+            new_chunk_op = op.copy().reset_key()
+            if op.min_count > 0:
+                new_chunk_op._need_count = True
+            chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype, index_value=df.index_value)
 
         while len(chunks) > 1:
             new_chunks = []

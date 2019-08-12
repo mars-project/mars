@@ -99,7 +99,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             if chunk.op.axis is not None:
                 return pd.concat(inputs, axis=op.axis)
             # auto generated concat when executing a DataFrame
-            n_rows = len(set(inp.index[0] for inp in chunk.inputs))
+            n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
             n_cols = int(len(inputs) // n_rows)
             assert n_rows * n_cols == len(inputs)
 
