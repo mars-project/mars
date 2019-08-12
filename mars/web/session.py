@@ -175,7 +175,7 @@ class Session(object):
 
     def fetch(self, *tileables, **kw):
         from ..tensor.indexing import TensorIndex
-        from ...dataframe.indexing import DataFrameIlocGetItem
+        from ..dataframe.indexing import DataFrameIlocGetItem
 
         timeout = kw.pop('timeout', None)
         if kw:
