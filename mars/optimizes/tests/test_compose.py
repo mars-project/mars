@@ -83,14 +83,14 @@ class Test(unittest.TestCase):
         self.assertIn(composed_nodes[0], graph.successors(chunks[0]))
         self.assertIn(composed_nodes[0], graph.successors(chunks[1]))
         # check composed's inputs
-        self.assertIn(chunks[0].data, composed_nodes[0].inputs)
-        self.assertIn(chunks[1].data, composed_nodes[0].inputs)
+        self.assertIn(chunks[0].key, [n.key for n in composed_nodes[0].inputs])
+        self.assertIn(chunks[1].key, [n.key for n in composed_nodes[0].inputs])
         # check composed's predecessors
         self.assertIn(chunks[0], graph.predecessors(composed_nodes[0]))
         self.assertIn(chunks[1], graph.predecessors(composed_nodes[0]))
         # check 4 and 5's inputs
-        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
-        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
+        self.assertIn(composed_nodes[0].key, [n.key for n in graph.successors(composed_nodes[0])[0].inputs])
+        self.assertIn(composed_nodes[0].key, [n.key for n in graph.successors(composed_nodes[0])[0].inputs])
         # check 4 and 5's predecessors
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[4]))
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[5]))
