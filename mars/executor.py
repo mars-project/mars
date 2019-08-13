@@ -543,8 +543,13 @@ class Executor(object):
             else:
                 concat_keys.append(tileable.chunks[0].key)
 
-            tileable.build_graph(graph=graph, tiled=True, compose=compose,
+            # Do not do compose here, because building graph has not finished yet
+            tileable.build_graph(graph=graph, tiled=True, compose=False,
                                  executed_keys=list(self._chunk_result.keys()))
+        if compose:
+            # finally do compose according to option
+            graph.compose(keys=list(itertools.chain(*[[c.key for c in t.chunks]
+                                                      for t in tileables])))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
                            print_progress=print_progress, mock=mock)
