@@ -14,7 +14,7 @@
 
 
 import itertools
-from collections import Iterable, namedtuple
+from collections import Iterable
 from contextlib import contextmanager
 
 import numpy as np
@@ -276,7 +276,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
 
 def _on_serialize_random_state(rs):
-    return rs.get_state()
+    return rs.get_state() if rs is not None else None
 
 
 def _on_deserialize_random_state(tup):
@@ -302,6 +302,12 @@ class TensorRandomOperand(TensorOperand):
     def args(self):
         return [slot for slot in self.__slots__
                 if slot not in set(TensorRandomOperand.__slots__)]
+
+    def _update_key(self):
+        args = tuple(getattr(self, k, None) for k in self._keys_)
+        if self.state is None:
+            args += (np.random.random(),)
+        self._key = tokenize(type(self), *args)
 
 
 class TensorDistribution(TensorRandomOperand):
