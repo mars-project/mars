@@ -616,6 +616,7 @@ class Executor(object):
         return calc_nsplits(chunk_idx_to_shape)
 
     def decref(self, *keys):
+        rs = set(self._chunk_result)
         for key in keys:
             tileable_key, tileable_id = key
             if key[0] not in self.stored_tileables:
@@ -626,9 +627,8 @@ class Executor(object):
                 # for those same key tileables, do decref only when all those tileables are garbage collected
                 if len(ids) != 0:
                     continue
-                for chunk_key in chunk_keys:
-                    if chunk_key in self.chunk_result:
-                        del self.chunk_result[chunk_key]
+                for chunk_key in (chunk_keys & rs):
+                    self._chunk_result.pop(chunk_key, None)
                 del self.stored_tileables[tileable_key]
 
 
