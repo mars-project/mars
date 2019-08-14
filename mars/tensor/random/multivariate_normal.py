@@ -22,9 +22,9 @@ from ... import opcodes as OperandDef
 from ...serialize import NDArrayField, StringField, Float64Field
 from ...config import options
 from ...compat import irange, izip
-from ..utils import decide_chunk_sizes, random_state_data
-from ..array_utils import array_module
-from .core import TensorRandomOperandMixin, TensorDistribution, State, CHUNK_TYPE
+from ..utils import decide_chunk_sizes, gen_random_seeds
+from ..array_utils import array_module, device
+from .core import TensorRandomOperandMixin, TensorDistribution, CHUNK_TYPE
 
 
 class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
@@ -82,14 +82,13 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
         cov_chunk = op.cov.chunks[0] if hasattr(op.cov, 'chunks') else op.cov
 
         idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
-        states = random_state_data(len(idxes), op.state.random_state) \
-            if op.state is not None else [None] * len(idxes)
+        seeds = gen_random_seeds(len(idxes), op.state)
 
         out_chunks = []
-        for state, out_idx, shape in izip(states, idxes, itertools.product(*nsplits)):
-            state = State(np.random.RandomState(state)) if state is not None else None
+        for seed, out_idx, shape in izip(seeds, idxes, itertools.product(*nsplits)):
             chunk_op = op.copy().reset_key()
-            chunk_op._state = state
+            chunk_op._state = None
+            chunk_op._seed = seed
             chunk_op._size = shape[:-1]
             out_chunk = chunk_op.new_chunk([mean_chunk, cov_chunk], shape=shape, index=out_idx)
             out_chunks.append(out_chunk)
@@ -101,43 +100,44 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         xp = array_module(op.gpu)
-        if op.state:
-            rs = op.state.random_state
+        if xp is np:
+            device_id = -1
         else:
-            rs = xp.random.RandomState()
+            device_id = op.device or 0
 
-        args = []
-        for k in op.args:
-            val = getattr(op, k, None)
-            if isinstance(val, CHUNK_TYPE):
-                args.append(ctx[val.key])
-            else:
-                args.append(val)
-        mean, cov = args[:2]
-        kw = {}
-        if args[2] is not None:
-            kw['size'] = args[2]
-        if args[3] is not None:
-            kw['check_valid'] = args[3]
-        if args[4] is not None:
-            kw['tol'] = args[4]
+        with device(device_id):
+            rs = xp.random.RandomState(op.seed)
 
-        try:
-            res = rs.multivariate_normal(mean, cov, **kw)
-            if xp != np:
-                with xp.cuda.Device(op.device or 0):
-                    ctx[op.outputs[0].key] = xp.asarray(res)
-            else:
-                ctx[op.outputs[0].key] = res
-        except AttributeError:
-            if xp != np:
-                if not op.state:
-                    rs = np.random.RandomState()
+            args = []
+            for k in op.args:
+                val = getattr(op, k, None)
+                if isinstance(val, CHUNK_TYPE):
+                    args.append(ctx[val.key])
+                else:
+                    args.append(val)
+            mean, cov = args[:2]
+            kw = {}
+            if args[2] is not None:
+                kw['size'] = args[2]
+            if args[3] is not None:
+                kw['check_valid'] = args[3]
+            if args[4] is not None:
+                kw['tol'] = args[4]
+
+            try:
                 res = rs.multivariate_normal(mean, cov, **kw)
-                with xp.cuda.Device(op.device or 0):
+                if xp is not np:
                     ctx[op.outputs[0].key] = xp.asarray(res)
-            else:
-                raise
+                else:
+                    ctx[op.outputs[0].key] = res
+            except AttributeError:
+                if xp is not np:
+                    # cupy cannot generate data, fallback to numpy first
+                    rs = np.random.RandomState(op.seed)
+                    res = rs.multivariate_normal(mean, cov, **kw)
+                    ctx[op.outputs[0].key] = xp.asarray(res)
+                else:
+                    raise
 
 
 def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, tol=None,
@@ -265,5 +265,5 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
 
     size = random_state._handle_size(size)
     op = TensorMultivariateNormal(mean=mean, cov=cov, size=size, check_valid=check_valid,
-                                  tol=tol, state=random_state._state, gpu=gpu, dtype=dtype)
+                                  tol=tol, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

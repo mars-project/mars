@@ -123,5 +123,5 @@ def triangular(random_state, left, mode, right, size=None, chunk_size=None, gpu=
         dtype = np.random.RandomState().triangular(
             handle_array(left), handle_array(mode), handle_array(right), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorTriangular(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorTriangular(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(left, mode, right, chunk_size=chunk_size)

@@ -173,6 +173,6 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
         raise ValueError("Cannot take a larger sample than population when 'replace=False'")
 
     size = random_state._handle_size(size)
-    op = TensorChoice(state=random_state._state, replace=replace,
+    op = TensorChoice(state=random_state.to_numpy(), replace=replace,
                       size=size, dtype=dtype, gpu=gpu)
     return op(a, p, chunk_size=chunk_size)

@@ -23,8 +23,8 @@ from ... import opcodes as OperandDef
 from ...serialize import TupleField
 from ...config import options
 from ...compat import irange, izip
-from ..utils import decide_chunk_sizes, random_state_data
-from .core import TensorRandomOperandMixin, TensorDistribution, State
+from ..utils import decide_chunk_sizes, gen_random_seeds
+from .core import TensorRandomOperandMixin, TensorDistribution
 
 
 class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
@@ -58,18 +58,16 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
         nsplits += ((len(op.alpha),),)
 
         idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
-        states = random_state_data(len(idxes), op.state.random_state) \
-            if op.state is not None else [None] * len(idxes)
+        seeds = gen_random_seeds(len(idxes), op.state)
 
         out_chunks = []
-        for state, idx, shape in izip(states, idxes, itertools.product(*nsplits)):
+        for seed, idx, shape in izip(seeds, idxes, itertools.product(*nsplits)):
             inputs = [inp.cix[idx] for inp in op.inputs]
-            state = State(np.random.RandomState(state)) \
-                if state is not None else None
             size = shape[:-1]
 
             chunk_op = op.copy().reset_key()
-            chunk_op._state = state
+            chunk_op._state = None
+            chunk_op._seed = seed
             chunk_op._size = size
             out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx)
             out_chunks.append(out_chunk)
@@ -158,5 +156,5 @@ def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, dtype=N
     if dtype is None:
         dtype = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorDirichlet(state=random_state._state, alpha=alpha, size=size, gpu=gpu, dtype=dtype)
+    op = TensorDirichlet(state=random_state.to_numpy(), alpha=alpha, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

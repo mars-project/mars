@@ -134,5 +134,5 @@ def noncentral_chisquare(random_state, df, nonc, size=None, chunk_size=None, gpu
         dtype = np.random.RandomState().noncentral_chisquare(
             handle_array(df), handle_array(nonc), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNoncentralChisquare(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorNoncentralChisquare(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(df, nonc, chunk_size=chunk_size)

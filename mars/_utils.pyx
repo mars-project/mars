@@ -127,6 +127,8 @@ cdef inline object h_non_iterative(object ob):
         return h_numpy(ob)
     elif isinstance(ob, (np.dtype, np.generic)):
         return repr(ob)
+    elif isinstance(ob, np.random.RandomState):
+        return h_iterative(ob.get_state())
     elif isinstance(ob, Enum):
         return h((type(ob), ob.name))
     elif pd is not None and isinstance(ob, pd.Index):

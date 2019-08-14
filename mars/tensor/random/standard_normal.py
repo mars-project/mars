@@ -73,5 +73,5 @@ def standard_normal(random_state, size=None, chunk_size=None, gpu=None, dtype=No
     if dtype is None:
         dtype = np.random.RandomState().standard_normal(size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorStandardNormal(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorStandardNormal(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

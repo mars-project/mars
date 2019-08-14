@@ -92,14 +92,9 @@ def get_chunk_slices(nsplits, idx):
                  for idx, nsplit in zip(idx, nsplits))
 
 
-def random_state_data(n, random_state=None):
-    if not isinstance(random_state, np.random.RandomState):
-        random_state = np.random.RandomState(random_state)
-
-    random_data = random_state.bytes(624 * n * 4)  # `n * 624` 32-bit integers
-    l = list(np.frombuffer(random_data, dtype=np.uint32).reshape((n, -1)))
-    assert len(l) == n
-    return l
+def gen_random_seeds(n, random_state):
+    assert isinstance(random_state, np.random.RandomState)
+    return np.frombuffer(random_state.bytes(n * 4), dtype=np.uint32)
 
 
 def validate_axis(ndim, axis):

@@ -115,5 +115,5 @@ def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, dtype=N
         dtype = np.random.RandomState().poisson(
             handle_array(lam), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorPoisson(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorPoisson(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(lam, chunk_size=chunk_size)
