@@ -126,13 +126,13 @@ def readable_size(size):
     if size < 1024:
         return size
     elif 1024 <= size < 1024 ** 2:
-        return '{0:.2f}K'.format(size / 1024)
+        return '{0:.2f}K'.format(size * 1.0 / 1024)
     elif 1024 ** 2 <= size < 1024 ** 3:
-        return '{0:.2f}M'.format(size / (1024 ** 2))
+        return '{0:.2f}M'.format(size * 1.0 / (1024 ** 2))
     elif 1024 ** 3 <= size < 1024 ** 4:
-        return '{0:.2f}G'.format(size / (1024 ** 3))
+        return '{0:.2f}G'.format(size * 1.0 / (1024 ** 3))
     else:
-        return '{0:.2f}T'.format(size / (1024 ** 4))
+        return '{0:.2f}T'.format(size * 1.0 / (1024 ** 4))
 
 
 _commit_hash, _commit_ref = None, None
