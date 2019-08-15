@@ -21,7 +21,8 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted
+from mars.tensor.base.searchsorted import Stage
 
 
 class Test(unittest.TestCase):
@@ -504,3 +505,41 @@ class Test(unittest.TestCase):
         arr = ones((10, 5), chunk_size=2)
         flat_arr = ravel(arr)
         self.assertEqual(flat_arr.shape, (50,))
+
+    def testSearchsorted(self):
+        raw = np.sort(np.random.randint(100, size=(16,)))
+        arr = tensor(raw, chunk_size=3).cumsum()
+
+        t1 = searchsorted(arr, 10)
+
+        self.assertEqual(t1.shape, ())
+        self.assertEqual(t1.flags['C_CONTIGUOUS'],
+                         np.searchsorted(raw.cumsum(), 10).flags['C_CONTIGUOUS'])
+        self.assertEqual(t1.flags['F_CONTIGUOUS'],
+                         np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS'])
+
+        t1.tiles()
+
+        self.assertEqual(t1.nsplits, ())
+        self.assertEqual(len(t1.chunks), 1)
+        self.assertEqual(t1.chunks[0].op.stage, Stage.reduce)
+
+        with self.assertRaises(ValueError):
+            searchsorted(np.random.randint(10, size=(14, 14)), 1)
+
+        with self.assertRaises(ValueError):
+            searchsorted(arr, 10, side='both')
+
+        with self.assertRaises(ValueError):
+            searchsorted(arr.tosparse(), 10)
+
+        raw2 = np.asfortranarray(np.sort(np.random.randint(100, size=(16,))))
+        arr = tensor(raw2, chunk_size=3)
+        to_search = np.asfortranarray([[1, 2], [3, 4]])
+
+        t1 = searchsorted(arr, to_search)
+        expected = np.searchsorted(raw2, to_search)
+
+        self.assertEqual(t1.shape, to_search.shape)
+        self.assertEqual(t1.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(t1.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])

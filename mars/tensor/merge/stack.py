@@ -86,14 +86,34 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
+        raw_inputs = [ctx[c.key] for c in op.inputs]
+        is_input_tuple = isinstance(raw_inputs[0], tuple)
+        input_tuple_len = len(raw_inputs[0]) if is_input_tuple else 1
+
+        if is_input_tuple:
+            # situation that stack is used during tiling, not created by user
+            inputs = list(itertools.chain.from_iterable(raw_inputs))
+        else:
+            inputs = raw_inputs
+        # move all the data to the same device
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            inputs, device=op.device, ret_extra=True)
+        if is_input_tuple:
+            inputs = [inputs[i * input_tuple_len: (i + 1) * input_tuple_len]
+                      for i in range(len(raw_inputs))]
+        else:
+            inputs = [[inp] for inp in inputs]
 
         axis = op.axis
+        out = op.outputs[0]
         with device(device_id):
-            out = op.outputs[0]
-            ret = xp.stack(inputs, axis=axis)
-            ctx[out.key] = ret.astype(ret.dtype, order=out.order.value, copy=False)
+            rets = []
+            for i in range(input_tuple_len):
+                ret = xp.stack([inp[i] for inp in inputs], axis=axis)
+                # make sure order is identical to out's order
+                ret = ret.astype(ret.dtype, order=out.order, copy=False)
+                rets.append(ret)
+            ctx[out.key] = rets if is_input_tuple else rets[0]
 
 
 def stack(tensors, axis=0, out=None):
