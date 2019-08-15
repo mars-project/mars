@@ -937,6 +937,7 @@ class Test(unittest.TestCase):
         expected = np.searchsorted(raw, raw2, side='right')
         np.testing.assert_array_equal(res, expected)
 
+        # test one chunk
         arr = tensor(raw, chunk_size=16)
 
         t11 = searchsorted(arr, 20)
@@ -944,13 +945,20 @@ class Test(unittest.TestCase):
         expected = np.searchsorted(raw, 20)
         np.testing.assert_array_equal(res, expected)
 
+        t12 = searchsorted(arr, tensor(raw2, chunk_size=2))
+
+        res = self.executor.execute_tensor(t12, concat=True)[0]
+        expected = np.searchsorted(raw, raw2)
+        np.testing.assert_array_equal(res, expected)
+
+        # test sorter
         raw3 = np.random.randint(100, size=(16,))
         arr = tensor(raw3, chunk_size=3)
         order = np.argsort(raw3)
         order_arr = tensor(order, chunk_size=4)
 
-        t12 = searchsorted(arr, 20, sorter=order_arr)
+        t13 = searchsorted(arr, 20, sorter=order_arr)
 
-        res = self.executor.execute_tensor(t12, concat=True)[0]
+        res = self.executor.execute_tensor(t13, concat=True)[0]
         expected = np.searchsorted(raw3, 20, sorter=order)
         np.testing.assert_array_equal(res, expected)

@@ -96,7 +96,9 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             if len(op.inputs) == 2:
                 in_chunks.append(v_chunk)
             v_shape = v_chunk.shape if hasattr(v_chunk, 'shape') else ()
-            chunk = chunk_op.new_chunk(in_chunks, shape=v_shape, order=out.order)
+            chunk_idx = v_chunk.index if len(op.inputs) == 2 else (0,)
+            chunk = chunk_op.new_chunk(in_chunks, shape=v_shape,
+                                       index=chunk_idx, order=out.order)
             chunks.append(chunk)
         new_op = op.copy().reset_key()
         nsplits = ((s,) for s in out.shape) if len(op.inputs) == 1 else v.nsplits
