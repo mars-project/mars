@@ -27,29 +27,17 @@ class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
-        # execute the fuse operands in jax
 
+        # execute the fuse operands in jax
         if JAX_INSTALLED:
             if len(inputs) == 1:
                 inputs = inputs[0]
             for operand in op.operands:
-                jax_function = operand.execute_jax()
-                # binary operator
-                from ..arithmetic.core import TensorBinOp
-                import numpy as np
-                if isinstance(operand, TensorBinOp):
-                    # if there is scalar
-                    other = None
-                    if np.isscalar(operand.lhs):
-                        other = operand.lhs
-                    if np.isscalar(operand.rhs):
-                        other = operand.rhs
-                    if other is None:
-                        inputs = jax_function(*inputs)
-                    else:
-                        inputs = jax_function(inputs, other)
-                else:
+                jax_function = operand.jax_function()
+                if len(operand.inputs) == 1:
                     inputs = jax_function(inputs)
+                else:
+                    inputs = jax_function(*inputs)
 
             ctx[chunk.key] = inputs
 

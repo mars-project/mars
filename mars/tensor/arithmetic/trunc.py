@@ -28,7 +28,7 @@ class TensorTrunc(TensorUnaryOp):
     _func_name = 'trunc'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
 

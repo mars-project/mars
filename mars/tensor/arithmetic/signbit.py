@@ -28,7 +28,7 @@ class TensorSignbit(TensorUnaryOp):
     _func_name = 'signbit'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
 

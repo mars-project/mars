@@ -1,4 +1,4 @@
-from .utils import Optimizer
+from .optimizer import Optimizer
 
 
 class JaxOptimizer(Optimizer):
@@ -34,3 +34,14 @@ class JaxOptimizer(Optimizer):
     def _get_fused_chunk(tail_node):
         from ..tensor.fuse import TensorJaxFuseChunk
         return TensorJaxFuseChunk(dtype=tail_node.dtype)
+
+    # this is method is used to be compatible with jax.numpy
+    @staticmethod
+    def _jax_compat(op):
+        if hasattr(op, 'jax_function'):
+            try:
+                op.jax_function()
+            except NotImplementedError:
+                return False
+            return True
+        return False

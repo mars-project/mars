@@ -28,7 +28,7 @@ class TensorCopysign(TensorBinOp):
     _func_name = 'copysign'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
 

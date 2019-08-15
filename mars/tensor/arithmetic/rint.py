@@ -28,7 +28,7 @@ class TensorRint(TensorUnaryOp):
     _func_name = 'rint'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
 

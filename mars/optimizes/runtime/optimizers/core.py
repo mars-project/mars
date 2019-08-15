@@ -20,35 +20,32 @@ from .ne import NeOptimizer
 from .cp import CpOptimizer
 from .jx import JaxOptimizer
 
+engine_dic = {'numexpr': NeOptimizer,
+              'cupy': CpOptimizer, 'jax': JaxOptimizer}
 
-class Optimizer(object):
-    engine_dic = {'numexpr': NeOptimizer,
-                  'cupy': CpOptimizer, 'jax': JaxOptimizer}
 
-    def __init__(self, graph, engines=None):
-        self._graph = graph
-        self._engines = []
-        if engines is None:
-            # the sequence of optimize
-            if JAX_INSTALLED:
-                self._engines.append('jax')
-            if NUMEXPR_INSTALLED:
-                self._engines.append('numexpr')
+def optimize(graph, engines, keys=None):
+    if engines is None:
+        # the sequence of optimize
+        engines = []
+        if JAX_INSTALLED:
+            engines.append('jax')
+        if NUMEXPR_INSTALLED:
+            engines.append('numexpr')
 
-        else:
-            if isinstance(engines, (tuple, list)):
-                self._engines = engines
-            else:
-                # just one selected engine
-                self._engines = [engines]
+    else:
+        if not isinstance(engines, (tuple, list)):
+            engines = [engines]
 
-    def optimize(self, keys=None):
-        self._graph.decompose()
-        # no optimization, only numpy
-        if len(self._engines) == 0:
-            return
-        for engine in self._engines:
-            if engine not in self.engine_dic:
-                continue
-            optimizer = self.engine_dic[engine](self._graph)
-            optimizer.optimize(keys=keys)
+    # decompose the graph
+    graph.decompose()
+    # no optimization, only numpy
+    if len(engines) == 0:
+        return
+    for engine in engines:
+        if engine not in engine_dic:
+            continue
+        optimizer = engine_dic[engine](graph)
+        optimizer.optimize(keys=keys)
+
+

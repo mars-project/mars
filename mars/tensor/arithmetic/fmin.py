@@ -28,7 +28,7 @@ class TensorFMin(TensorBinOp):
     _func_name = 'fmin'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
     @classmethod

@@ -113,12 +113,21 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
         with np.errstate(**op.err):
             ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
 
-    @classmethod
-    def execute_jax(cls):
+    def jax_function(self):
         import jax.numpy as jnp
-        func_name = getattr(cls, '_func_name')
+        func_name = getattr(self, '_func_name')
+        func = getattr(jnp, func_name)
+        from functools import partial
+        if len(self.inputs) == 1:
+            if np.isscalar(self.lhs):
+                left = self.lhs
+                return partial(func, left)
+            if np.isscalar(self.rhs):
+                right = self.rhs
+                return lambda x: func(x, right)
 
-        return getattr(jnp, func_name)
+        else:
+            return func
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
@@ -293,11 +302,10 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
             with np.errstate(**op.err):
                 ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
 
-    @classmethod
-    def execute_jax(cls):
+    def jax_function(self):
         import jax.numpy as jnp
 
-        func_name = getattr(cls, '_func_name')
+        func_name = getattr(self, '_func_name')
         return getattr(jnp, func_name)
 
 

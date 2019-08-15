@@ -28,7 +28,7 @@ class TensorFMax(TensorBinOp):
     _func_name = 'fmax'
 
     @classmethod
-    def execute_jax(cls):
+    def jax_function(cls):
         raise NotImplementedError
 
     @classmethod

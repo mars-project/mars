@@ -5,28 +5,17 @@ class Optimizer:
         self.graph = graph
         self.keys = []
 
-    # this is method is used to be compatible with jax.numpy
-    @staticmethod
-    def _jax_compat(op):
-        if hasattr(op, 'execute_jax'):
-            try:
-                op.execute_jax()
-            except NotImplementedError:
-                return False
-            return True
-        return False
-
     # in compose traverse, whether a node should be skipped
     def _can_skip(self, node):
-        pass
+        raise NotImplementedError
 
     # in compose traverse, whether a node should be break
     def _can_break(self, node):
-        pass
+        raise NotImplementedError
 
     # whether a node is supported for jax or numexpr optimization
     def _support(self, node):
-        pass
+        raise NotImplementedError
 
     def compose(self, keys):
         composes = []
