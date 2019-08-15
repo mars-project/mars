@@ -17,6 +17,7 @@ import pandas as pd
 from mars.lib.mmh3 import hash as mmh_hash
 
 import itertools
+from numbers import Integral
 import operator
 import functools
 
@@ -447,7 +448,10 @@ def indexing_index_value(index_value, indexes, store_data=False):
     if pd_index.empty:
         return index_value
     else:
-        return parse_index(pd_index[indexes], store_data=store_data)
+        if isinstance(indexes, Integral):
+            return parse_index(pd_index[[indexes]], store_data=store_data)
+        else:
+            return parse_index(pd_index[indexes], store_data=store_data)
 
 
 def wrap_notimplemented_exception(func):

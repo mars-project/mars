@@ -17,16 +17,14 @@
 import unittest
 
 import numpy as np
-
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session, Session
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 class Test(unittest.TestCase):
     def testSessionExecute(self):
@@ -349,3 +347,19 @@ class Test(unittest.TestCase):
 
         r3 = sess.fetch(arr1[0])
         np.testing.assert_array_equal(r3, r1[0])
+
+    def testFetchDataFrameSlices(self):
+        sess = new_session()
+
+        arr1 = mt.random.rand(10, 8, chunk_size=3)
+        df1 = md.DataFrame(arr1)
+        r1 = sess.run(df1)
+
+        r2 = sess.fetch(df1.iloc[:, :])
+        pd.testing.assert_frame_equal(r2, r1.iloc[:, :])
+
+        r3 = sess.fetch(df1.iloc[1])
+        pd.testing.assert_series_equal(r3, r1.iloc[1])
+
+        r4 = sess.fetch(df1.iloc[0, 2])
+        self.assertEqual(r4, r1.iloc[0, 2])

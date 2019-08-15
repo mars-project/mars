@@ -570,10 +570,11 @@ def merge_chunks(chunk_results):
 
         concats = []
         for i in range(n_rows):
-            concat = pd.concat([chunk_results[i * n_cols + j][1]
-                                for j in range(n_cols)], axis='columns')
-            concats.append(concat)
-
+            chunks = [chunk_results[i * n_cols + j][1] for j in range(n_cols)]
+            if isinstance(chunks[0], pd.Series):
+                concats.append(pd.concat(chunks, axis='index'))
+            else:
+                concats.append(pd.concat(chunks, axis='columns'))
         return pd.concat(concats)
 
 

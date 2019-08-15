@@ -95,7 +95,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 index_value = indexing_index_value(df.index_value, self.indexes[0])
             else:
                 shape = tensor1.shape
-                dtype = find_common_type(df.dtypes.iloc[self.indexes[1]])
+                dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
                 index_value = indexing_index_value(df.columns, self.indexes[1])
             self._object_type = ObjectType.series
             return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)

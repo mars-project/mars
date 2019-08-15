@@ -21,6 +21,8 @@ import weakref
 from collections import deque, defaultdict
 from numbers import Integral
 
+import pandas as pd
+
 try:
     import gevent
 except ImportError:  # pragma: no cover
@@ -607,9 +609,16 @@ class Executor(object):
             for j, concat_result in zip(to_concat_tileables, concat_results):
                 results[j] = concat_result
 
-        results = [result[indexes] if indexes else result for
-                   indexes, result in zip(tileable_indexes, results)]
-        return results
+        indexed_results = []
+        for indexes, result in zip(tileable_indexes, results):
+            if indexes:
+                if isinstance(result, (pd.DataFrame, pd.Series)):
+                    indexed_results.append(result.iloc[indexes])
+                else:
+                    indexed_results.append(result[indexes])
+            else:
+                indexed_results.append(result)
+        return indexed_results
 
     def get_tileable_nsplits(self, tileable):
         chunk_idx_to_shape = OrderedDict(
