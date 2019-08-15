@@ -1,69 +1,11 @@
-# from .ne import SUPPORT_OP, REDUCTION_OP
-from ..tensor import arithmetic
-from ..tensor import reduction
-
-NE_REDUCTION_OP = (reduction.TensorSum, reduction.TensorProd,
-                   reduction.TensorMax, reduction.TensorMin)
-NE_SUPPORT_OP = (
-    arithmetic.TensorSubtract,
-    arithmetic.TensorMultiply,
-    arithmetic.TensorDivide,
-    arithmetic.TensorPower,
-    arithmetic.TensorMod,
-    arithmetic.TensorNegative,
-    arithmetic.TensorAbs,
-    arithmetic.TensorConj,
-    arithmetic.TensorExp,
-    arithmetic.TensorLog,
-    arithmetic.TensorLog10,
-    arithmetic.TensorExpm1,
-    arithmetic.TensorLog1p,
-    arithmetic.TensorSqrt,
-
-    arithmetic.TensorEqual,
-    arithmetic.TensorNotEqual,
-    arithmetic.TensorLessThan,
-    arithmetic.TensorLessEqual,
-    arithmetic.TensorGreaterThan,
-    arithmetic.TensorGreaterEqual,
-
-    arithmetic.TensorSin,
-    arithmetic.TensorCos,
-    arithmetic.TensorTan,
-    arithmetic.TensorArcsin,
-    arithmetic.TensorArccos,
-    arithmetic.TensorArctan,
-    arithmetic.TensorSinh,
-    arithmetic.TensorCosh,
-    arithmetic.TensorTanh,
-    arithmetic.TensorArcsinh,
-    arithmetic.TensorArccosh,
-    arithmetic.TensorArctanh,
-
-    arithmetic.TensorLshift,
-    arithmetic.TensorRshift,
-
-    arithmetic.TensorTreeAdd,
-    arithmetic.TensorTreeMultiply,
-
-    reduction.TensorSum,
-    reduction.TensorProd,
-    reduction.TensorMax,
-    reduction.TensorMin
-)
-
-
-def check_reduction_axis(node):
-    return len(node.op.axis) == 1 or len(node.op.axis) == node.ndim
-
-
-class Composer:
+class Optimizer:
     def __init__(self, graph, engine):
         self.engine = engine
         self.explored = set()
         self.graph = graph
         self.keys = []
 
+    # this is method is used to be compatible with jax.numpy
     @staticmethod
     def _jax_compat(op):
         if hasattr(op, 'execute_jax'):
@@ -74,59 +16,17 @@ class Composer:
             return True
         return False
 
+    # in compose traverse, whether a node should be skipped
     def _can_skip(self, node):
-        op = node.op
+        pass
 
-        if self.engine == 'numexpr':
-            if not isinstance(op, NE_SUPPORT_OP) or node.key in self.keys:
-                return True
-            if node in self.explored or isinstance(op, NE_REDUCTION_OP):
-                return True
-            if self.graph.count_successors(node) != 1:
-                return True
-
-        if self.engine == 'jax':
-            if not self._jax_compat(node.op) or node.key in self.keys:
-                return True
-            if node in self.explored:
-                return True
-            if self.graph.count_successors(node) != 1:
-                return True
-
-        return False
-
+    # in compose traverse, whether a node should be break
     def _can_break(self, node):
-        if self.engine == 'numexpr':
-            if self.graph.count_successors(node) != 1 or isinstance(node.op, NE_REDUCTION_OP):
-                return True
-        if self.engine == 'jax':
-            if not self._jax_compat(node.op):
-                return True
+        pass
 
-            if self.graph.count_successors(node) != 1:
-                return True
-        return False
-
+    # whether a node is supported for jax or numexpr optimization
     def _support(self, node):
-        op_type = type(node.op)
-
-        if self.engine == 'numexpr':
-            if op_type in NE_REDUCTION_OP:
-                return check_reduction_axis(node)
-            return op_type in NE_SUPPORT_OP
-        if self.engine == 'jax':
-            if self._jax_compat(node.op):
-                return True
-            return False
-
-    def _get_fused_chunk(self, tail_node):
-        if self.engine == 'numexpr':
-            from ..tensor.fuse import TensorNeFuseChunk
-            return TensorNeFuseChunk(dtype=tail_node.dtype)
-
-        if self.engine == 'jax':
-            from ..tensor.fuse import TensorJaxFuseChunk
-            return TensorJaxFuseChunk(dtype=tail_node.dtype)
+        pass
 
     def compose(self, keys):
         composes = []

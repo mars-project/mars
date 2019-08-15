@@ -5,11 +5,11 @@ from ..operands import TensorFuse
 from ..array_utils import as_same_device
 from .core import TensorFuseChunkMixin, estimate_fuse_size
 
-spec = importlib.util.find_spec('jax')
-if spec is None:
+JAX_INSTALLED = True
+try:
+    import jax  # pylint: disable=unused-import
+except ImportError:  # pragma: no cover
     JAX_INSTALLED = False
-else:
-    JAX_INSTALLED = True
 
 
 class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
