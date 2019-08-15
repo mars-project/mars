@@ -4,11 +4,10 @@ from ..array_utils import as_same_device
 from .core import TensorFuseChunkMixin, estimate_fuse_size
 
 try:
-    import jax  # noqa: F401
+    import jax  # noqa # pylint: disable=unused-import
 
     JAX_INSTALLED = True
 except ImportError:  # pragma: no cover
-    jax = None
     JAX_INSTALLED = False
 
 
