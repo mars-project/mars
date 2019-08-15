@@ -87,12 +87,15 @@ class _ClusterInfoWatchActor(FunctionActor):
         self._discoverer = discoverer
         self._cluster_info_ref = cluster_info_ref
 
+    def post_create(self):
+        self._cluster_info_ref = self.ctx.actor_ref(self._cluster_info_ref)
+
     def get_schedulers(self):
         return self._discoverer.get()
 
     def watch(self):
         for schedulers in self._discoverer.watch():
-            self._cluster_info_ref.set_schedulers(schedulers)
+            self._cluster_info_ref.set_schedulers(schedulers, _tell=True)
 
 
 class ClusterInfoActor(FunctionActor):
@@ -132,12 +135,13 @@ class ClusterInfoActor(FunctionActor):
         return self._schedulers
 
     def set_schedulers(self, schedulers):
+        logger.debug('Setting schedulers %r', schedulers)
         self._schedulers = schedulers
         self._hash_ring = create_hash_ring(self._schedulers)
 
         for observer_ref, fun_name in self._observer_refs:
             # notify the observers to update the new scheduler list
-            getattr(observer_ref, fun_name)(schedulers)
+            getattr(observer_ref, fun_name)(schedulers, _tell=True)
 
     def get_scheduler(self, key, size=1):
         if len(self._schedulers) == 1 and size == 1:

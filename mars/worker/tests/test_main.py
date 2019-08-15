@@ -23,7 +23,7 @@ import uuid
 import gevent
 
 from mars.actors import create_actor_pool
-from mars.compat import TimeoutError
+from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.config import options
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph

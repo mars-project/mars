@@ -1,2 +1,0 @@
-#!/bin/bash
-docker build --build-arg MARS_VERSION=$SOURCE_BRANCH -f $DOCKERFILE_PATH -t $IMAGE_NAME .

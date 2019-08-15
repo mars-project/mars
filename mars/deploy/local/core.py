@@ -293,8 +293,7 @@ class LocalDistributedClusterClient(object):
 
 def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None,
                 open_browser=None, **kw):
-    if open_browser is None:
-        open_browser = options.deploy.open_browser
+    open_browser = open_browser if open_browser is not None else options.deploy.open_browser
     endpoint = gen_endpoint(address)
     web_endpoint = None
     if web is True:

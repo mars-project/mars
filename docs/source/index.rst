@@ -40,6 +40,7 @@ it's fairly simple to migrate from a single machine to a cluster due to the incr
    :hidden:
 
    install
+   kubernetes
 
 .. toctree::
    :maxdepth: 2

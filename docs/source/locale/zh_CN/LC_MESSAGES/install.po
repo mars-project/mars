@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-07-23 15:25+0800\n"
+"POT-Creation-Date: 2019-08-13 13:05+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.6.0\n"
+"Generated-By: Babel 2.7.0\n"
 
 #: ../../source/install.rst:2
 msgid "Standalone mode"
@@ -96,8 +96,8 @@ msgid ""
 "open Mars UI to look up resource usage of workers and execution progress "
 "of the task submitted just now."
 msgstr ""
-"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<web_port>`` 来打开 Mars "
-"UI，查看 Worker 资源使用状况和刚才提交作业的执行进度。"
+"你可以打开一个浏览器窗口，输入 ``http://<web_ip>:<web_port>`` 来打开 Mars"
+" UI，查看 Worker 资源使用状况和刚才提交作业的执行进度。"
 
 #: ../../source/install.rst:116
 msgid "Using Command Lines"
@@ -123,7 +123,7 @@ msgid "Description"
 msgstr "描述"
 
 #: ../../source/install.rst:124
-msgid "-a"
+msgid "``-a``"
 msgstr ""
 
 #: ../../source/install.rst:124
@@ -136,7 +136,7 @@ msgstr ""
 "虚拟机或容器中的服务时需要配置此参数"
 
 #: ../../source/install.rst:128
-msgid "-H"
+msgid "``-H``"
 msgstr ""
 
 #: ../../source/install.rst:128
@@ -144,7 +144,7 @@ msgid "Service IP binding, ``0.0.0.0`` by default"
 msgstr "服务 IP 绑定，默认为 ``0.0.0.0``"
 
 #: ../../source/install.rst:130
-msgid "-p"
+msgid "``-p``"
 msgstr ""
 
 #: ../../source/install.rst:130
@@ -152,7 +152,7 @@ msgid "Port of the service. If absent, a randomized port will be used"
 msgstr "服务端口。如果缺失，将使用随机端口"
 
 #: ../../source/install.rst:132
-msgid "-s"
+msgid "``-s``"
 msgstr ""
 
 #: ../../source/install.rst:132
@@ -164,7 +164,7 @@ msgstr ""
 "Scheduler，或者当需要为 Scheduler 指定其他 Scheduler 时需要使用此参数"
 
 #: ../../source/install.rst:136
-msgid "--log-level"
+msgid "``--log-level``"
 msgstr ""
 
 #: ../../source/install.rst:136
@@ -172,7 +172,7 @@ msgid "Log level, can be ``debug``, ``info``, ``warning``, ``error``"
 msgstr "日志级别，可以使用 ``debug``，``info``，``warning``，``error``"
 
 #: ../../source/install.rst:138
-msgid "--log-format"
+msgid "``--log-format``"
 msgstr ""
 
 #: ../../source/install.rst:138
@@ -180,7 +180,7 @@ msgid "Log format, can be Python logging format"
 msgstr "日志格式，可以使用 Python logging 模块的日志格式"
 
 #: ../../source/install.rst:140
-msgid "--log-conf"
+msgid "``--log-conf``"
 msgstr ""
 
 #: ../../source/install.rst:140
@@ -192,7 +192,7 @@ msgid "Extra arguments for schedulers are listed below."
 msgstr "Scheduler 的额外参数在下面列出。"
 
 #: ../../source/install.rst:148
-msgid "--nproc"
+msgid "``--nproc``"
 msgstr ""
 
 #: ../../source/install.rst:148
@@ -208,7 +208,7 @@ msgid ""
 msgstr "Worker 的额外参数在下面列出。关于内存调优的内容可以参见下一节。"
 
 #: ../../source/install.rst:158
-msgid "--cpu-procs"
+msgid "``--cpu-procs``"
 msgstr ""
 
 #: ../../source/install.rst:158
@@ -218,7 +218,7 @@ msgid ""
 msgstr "用于计算的 CPU 进程数，默认值为可用的核数"
 
 #: ../../source/install.rst:161
-msgid "--net-procs"
+msgid "``--net-procs``"
 msgstr ""
 
 #: ../../source/install.rst:161
@@ -226,7 +226,7 @@ msgid "Number of processes for network transfer. 1 by default"
 msgstr "用于网络传输的进程数，默认为 1"
 
 #: ../../source/install.rst:163
-msgid "--phy-mem"
+msgid "``--phy-mem``"
 msgstr ""
 
 #: ../../source/install.rst:163
@@ -239,7 +239,7 @@ msgstr ""
 "80%``均为合法的值。缺失值为当前物理内存大小"
 
 #: ../../source/install.rst:168
-msgid "--cache-mem"
+msgid "``--cache-mem``"
 msgstr ""
 
 #: ../../source/install.rst:168
@@ -253,7 +253,7 @@ msgstr ""
 "80%``均为合法的值。缺失值为当前未使用内存的 50%。"
 
 #: ../../source/install.rst:172
-msgid "--min-mem"
+msgid "``--min-mem``"
 msgstr ""
 
 #: ../../source/install.rst:172
@@ -266,7 +266,7 @@ msgstr ""
 "例如，``4g``和``80%``均为合法的值。缺失值为 ``128m``。"
 
 #: ../../source/install.rst:176
-msgid "--spill-dir"
+msgid "``--spill-dir``"
 msgstr ""
 
 #: ../../source/install.rst:176

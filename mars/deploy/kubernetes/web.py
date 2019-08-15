@@ -13,4 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .client import KubernetesClusterClient, new_cluster
+from ...web.__main__ import WebApplication
+from .core import K8SServiceMixin
+
+
+class K8SWebApplication(K8SServiceMixin, WebApplication):
+    def start(self):
+        self.write_pid_file()
+        self.wait_all_schedulers_ready()
+        super(K8SWebApplication, self).start()
+
+
+main = K8SWebApplication()
+
+if __name__ == '__main__':   # pragma: no branch
+    main()
