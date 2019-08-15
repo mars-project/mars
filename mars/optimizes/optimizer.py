@@ -1,4 +1,4 @@
-class Optimizer:
+class Optimizer(object):
     def __init__(self, graph):
         self.explored = set()
         self.graph = graph
