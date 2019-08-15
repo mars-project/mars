@@ -873,79 +873,82 @@ class Test(unittest.TestCase):
 
     def testSearchsortedExecution(self):
         raw = np.sort(np.random.randint(100, size=(16,)))
-        arr = tensor(raw, chunk_size=3)
 
-        # test scalar, with value in the middle
-        t1 = searchsorted(arr, 20)
+        # test different chunk_size, 3 will have combine, 6 will skip combine
+        for chunk_size in (3, 6):
+            arr = tensor(raw, chunk_size=chunk_size)
 
-        res = self.executor.execute_tensor(t1, concat=True)[0]
-        expected = np.searchsorted(raw, 20)
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, with value in the middle
+            t1 = searchsorted(arr, 20)
 
-        # test scalar, with value larger than 100
-        t2 = searchsorted(arr, 200)
+            res = self.executor.execute_tensor(t1, concat=True)[0]
+            expected = np.searchsorted(raw, 20)
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t2, concat=True)[0]
-        expected = np.searchsorted(raw, 200)
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, with value larger than 100
+            t2 = searchsorted(arr, 200)
 
-        # test scalar, side left, with value exact in the middle of the array
-        t3 = searchsorted(arr, raw[10], side='left')
+            res = self.executor.execute_tensor(t2, concat=True)[0]
+            expected = np.searchsorted(raw, 200)
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t3, concat=True)[0]
-        expected = np.searchsorted(raw, raw[10], side='left')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side left, with value exact in the middle of the array
+            t3 = searchsorted(arr, raw[10], side='left')
 
-        # test scalar, side right, with value exact in the middle of the array
-        t4 = searchsorted(arr, raw[10], side='right')
+            res = self.executor.execute_tensor(t3, concat=True)[0]
+            expected = np.searchsorted(raw, raw[10], side='left')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t4, concat=True)[0]
-        expected = np.searchsorted(raw, raw[10], side='right')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side right, with value exact in the middle of the array
+            t4 = searchsorted(arr, raw[10], side='right')
 
-        # test scalar, side left, with value exact in the end of the array
-        t5 = searchsorted(arr, raw[15], side='left')
+            res = self.executor.execute_tensor(t4, concat=True)[0]
+            expected = np.searchsorted(raw, raw[10], side='right')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t5, concat=True)[0]
-        expected = np.searchsorted(raw, raw[15], side='left')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side left, with value exact in the end of the array
+            t5 = searchsorted(arr, raw[15], side='left')
 
-        # test scalar, side right, with value exact in the end of the array
-        t6 = searchsorted(arr, raw[15], side='right')
+            res = self.executor.execute_tensor(t5, concat=True)[0]
+            expected = np.searchsorted(raw, raw[15], side='left')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t6, concat=True)[0]
-        expected = np.searchsorted(raw, raw[15], side='right')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side right, with value exact in the end of the array
+            t6 = searchsorted(arr, raw[15], side='right')
 
-        # test scalar, side left, with value exact in the start of the array
-        t7 = searchsorted(arr, raw[0], side='left')
+            res = self.executor.execute_tensor(t6, concat=True)[0]
+            expected = np.searchsorted(raw, raw[15], side='right')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t7, concat=True)[0]
-        expected = np.searchsorted(raw, raw[0], side='left')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side left, with value exact in the start of the array
+            t7 = searchsorted(arr, raw[0], side='left')
 
-        # test scalar, side right, with value exact in the start of the array
-        t8 = searchsorted(arr, raw[0], side='right')
+            res = self.executor.execute_tensor(t7, concat=True)[0]
+            expected = np.searchsorted(raw, raw[0], side='left')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t8, concat=True)[0]
-        expected = np.searchsorted(raw, raw[0], side='right')
-        np.testing.assert_array_equal(res, expected)
+            # test scalar, side right, with value exact in the start of the array
+            t8 = searchsorted(arr, raw[0], side='right')
 
-        raw2 = np.random.randint(100, size=(3, 4))
+            res = self.executor.execute_tensor(t8, concat=True)[0]
+            expected = np.searchsorted(raw, raw[0], side='right')
+            np.testing.assert_array_equal(res, expected)
 
-        # test tensor, side left
-        t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side='left')
+            raw2 = np.random.randint(100, size=(3, 4))
 
-        res = self.executor.execute_tensor(t9, concat=True)[0]
-        expected = np.searchsorted(raw, raw2, side='left')
-        np.testing.assert_array_equal(res, expected)
+            # test tensor, side left
+            t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side='left')
 
-        # test tensor, side right
-        t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side='right')
+            res = self.executor.execute_tensor(t9, concat=True)[0]
+            expected = np.searchsorted(raw, raw2, side='left')
+            np.testing.assert_array_equal(res, expected)
 
-        res = self.executor.execute_tensor(t10, concat=True)[0]
-        expected = np.searchsorted(raw, raw2, side='right')
-        np.testing.assert_array_equal(res, expected)
+            # test tensor, side right
+            t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side='right')
+
+            res = self.executor.execute_tensor(t10, concat=True)[0]
+            expected = np.searchsorted(raw, raw2, side='right')
+            np.testing.assert_array_equal(res, expected)
 
         # test one chunk
         arr = tensor(raw, chunk_size=16)
