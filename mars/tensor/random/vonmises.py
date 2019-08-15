@@ -135,5 +135,5 @@ def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, dtyp
             handle_array(mu), handle_array(kappa), size=(0,)).dtype
 
     size = random_state._handle_size(size)
-    op = TensorVonmises(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorVonmises(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(mu, kappa, chunk_size=chunk_size)

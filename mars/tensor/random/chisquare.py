@@ -114,5 +114,5 @@ def chisquare(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None
         dtype = np.random.RandomState().chisquare(
             handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorChisquare(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorChisquare(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(df, chunk_size=chunk_size)

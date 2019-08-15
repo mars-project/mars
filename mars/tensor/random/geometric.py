@@ -97,5 +97,5 @@ def geometric(random_state, p, size=None, chunk_size=None, gpu=None, dtype=None)
         dtype = np.random.RandomState().geometric(
             handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorGeometric(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorGeometric(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(p, chunk_size=chunk_size)

@@ -139,5 +139,5 @@ def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, dtype=Non
         dtype = np.random.RandomState().standard_t(
             handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorStandardT(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorStandardT(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(df, chunk_size=chunk_size)

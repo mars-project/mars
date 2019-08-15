@@ -127,5 +127,5 @@ def negative_binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, 
         dtype = np.random.RandomState().negative_binomial(
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNegativeBinomial(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorNegativeBinomial(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(n, p, chunk_size=chunk_size)
