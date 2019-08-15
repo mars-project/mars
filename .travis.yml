@@ -50,7 +50,7 @@ before_install:
   - if [[ "$PYTHON" =~ "2" ]]; then
       pip install --upgrade pip\<19 setuptools\<40.7 wheel coverage;
     else
-      pip install --upgrade pip\<19.2.2 setuptools wheel coverage;
+      pip install --upgrade pip setuptools wheel coverage;
     fi
 
 # command to install dependencies

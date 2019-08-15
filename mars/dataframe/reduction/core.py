@@ -18,7 +18,7 @@ import pandas as pd
 from ...config import options
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..utils import parse_index, build_empty_df
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType, SERIES_CHUNK_TYPE
+from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..merge import DataFrameConcat
 
 
