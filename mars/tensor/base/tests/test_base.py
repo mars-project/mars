@@ -22,6 +22,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted
+from mars.tensor.base.searchsorted import Stage
 
 
 class Test(unittest.TestCase):
@@ -521,7 +522,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(t1.nsplits, ())
         self.assertEqual(len(t1.chunks), 1)
-        self.assertEqual(t1.chunks[0].op.stage, 'reduce')
+        self.assertEqual(t1.chunks[0].op.stage, Stage.reduce)
 
         with self.assertRaises(ValueError):
             searchsorted(np.random.randint(10, size=(14, 14)), 1)
