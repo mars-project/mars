@@ -69,7 +69,7 @@ class TensorReductionMixin(TensorOperandMixin):
         if self._is_cum():
             if axis is None:
                 a, axis = a.ravel(), 0
-                setattr(self, 'axis', axis)
+                setattr(self, '_axis', axis)
             shape = a.shape
         else:
             axis = lrange(len(a.shape)) if axis is None else axis
@@ -476,10 +476,9 @@ class TensorCumReductionMixin(TensorReductionMixin):
                                             index=chunk.index, order=out_tensor.order)
             output_chunks.append(output_chunk)
 
-        nsplits = tuple((builtins.sum(c),) if i == axis else c for i, c in enumerate(in_tensor.nsplits))
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, in_tensor.shape, order=out_tensor.order,
-                                  chunks=output_chunks, nsplits=nsplits)
+                                  chunks=output_chunks, nsplits=in_tensor.nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
