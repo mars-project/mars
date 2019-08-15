@@ -4,12 +4,14 @@ import numpy as np
 
 from mars.executor import Executor
 import mars.tensor as mt
+from mars.tensor.fuse.jax import JAX_INSTALLED
 
 
+@unittest.skipIf(JAX_INSTALLED is False, 'jax not installed')
 class Test(unittest.TestCase):
     # test multiple engines execution
     def setUp(self):
-        self.executor = Executor(['jax','numexpr'])
+        self.executor = Executor(['jax', 'numexpr'])
 
     def testUnaryExecution(self):
         executor_numpy = Executor('numpy')

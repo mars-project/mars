@@ -8,6 +8,7 @@ try:
 
     JAX_INSTALLED = True
 except ImportError:  # pragma: no cover
+    jax = None
     JAX_INSTALLED = False
 
 
