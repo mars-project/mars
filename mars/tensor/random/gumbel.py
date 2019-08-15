@@ -169,5 +169,5 @@ def gumbel(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=Non
         dtype = np.random.RandomState().gumbel(
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorGumbel(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorGumbel(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(loc, scale, chunk_size=chunk_size)

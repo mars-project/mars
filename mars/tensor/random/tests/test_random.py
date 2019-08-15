@@ -33,8 +33,8 @@ class Test(TestBase):
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
         self.assertEqual(chunk.index, chunk2.index)
-        state, state2 = chunk.op.state, chunk2.op.state
-        self.assertTrue(np.array_equal(state.keys, state2.keys))
+        self.assertEqual(chunk.op.state, chunk2.op.state)
+        self.assertEqual(chunk.op.seed, chunk2.op.seed)
 
     def testRandom(self):
         arr = rand(2, 3)

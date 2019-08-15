@@ -61,10 +61,15 @@ class Test(unittest.TestCase):
 
         # test multiple outputs, but only execute 1
         data = np.random.randint(0, 10, (5, 5))
-        arr3 = mt.tensor(data)
+        arr3 = (mt.tensor(data) + 1) * 2
         arrs = mt.linalg.qr(arr3)
-        result = arrs[0].execute()
-        expected = np.linalg.qr(data)[0]
+        result = (arrs[0] + 1).execute()
+        expected = np.linalg.qr((data + 1) * 2)[0] + 1
+
+        np.testing.assert_array_almost_equal(result, expected)
+
+        result = (arrs[0] + 2).execute()
+        expected = np.linalg.qr((data + 1) * 2)[0] + 2
 
         np.testing.assert_array_almost_equal(result, expected)
 
@@ -335,7 +340,7 @@ class Test(unittest.TestCase):
         # test exception
         tensor = md.from_tensor(mt.array([1, 2, 3]))
         np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
-        
+
     def testFetchSlices(self):
         sess = new_session()
 

@@ -131,5 +131,5 @@ def logistic(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=N
         dtype = np.random.RandomState().logistic(
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLogistic(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorLogistic(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(loc, scale, chunk_size=chunk_size)

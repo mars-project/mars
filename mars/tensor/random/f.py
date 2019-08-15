@@ -139,5 +139,5 @@ def f(random_state, dfnum, dfden, size=None, chunk_size=None, gpu=None, dtype=No
         dtype = np.random.RandomState().f(
             handle_array(dfnum), handle_array(dfden), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorF(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorF(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(dfnum, dfden, chunk_size=chunk_size)

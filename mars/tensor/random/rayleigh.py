@@ -114,5 +114,5 @@ def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtyp
         dtype = np.random.RandomState().rayleigh(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorRayleigh(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorRayleigh(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(scale, chunk_size=chunk_size)

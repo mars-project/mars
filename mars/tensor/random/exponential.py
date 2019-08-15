@@ -94,5 +94,5 @@ def exponential(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, d
         dtype = np.random.RandomState().exponential(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorExponential(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorExponential(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(scale, chunk_size=chunk_size)

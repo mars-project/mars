@@ -45,8 +45,6 @@ class Fusion(object):
             self._graph.add_node(fuse_chunk)
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
-                # change inputs
-                node.inputs = [i if i is not tail_node else fuse_chunk for i in node.inputs]
             for node in self._graph.iter_predecessors(head_node):
                 self._graph.add_edge(node, fuse_chunk)
             # TODO:judge compose is independent?
