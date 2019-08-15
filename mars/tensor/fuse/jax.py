@@ -3,9 +3,10 @@ from ..operands import TensorFuse
 from ..array_utils import as_same_device
 from .core import TensorFuseChunkMixin, estimate_fuse_size
 
-JAX_INSTALLED = True
 try:
     import jax  # pylint: disable=unused-import
+
+    JAX_INSTALLED = True
 except ImportError:  # pragma: no cover
     JAX_INSTALLED = False
 
