@@ -27,9 +27,8 @@ class TensorTrunc(TensorUnaryOp):
     _op_type_ = OperandDef.TRUNC
     _func_name = 'trunc'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
 
 @infer_dtype(np.trunc)

@@ -125,7 +125,6 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
             if np.isscalar(self.rhs):
                 right = self.rhs
                 return lambda x: func(x, right)
-
         else:
             return func
 

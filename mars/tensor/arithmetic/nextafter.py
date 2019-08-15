@@ -27,9 +27,8 @@ class TensorNextafter(TensorBinOp):
     _op_type_ = OperandDef.NEXTAFTER
     _func_name = 'nextafter'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
 
 @infer_dtype(np.nextafter)

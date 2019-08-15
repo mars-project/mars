@@ -28,9 +28,8 @@ class TensorI0(TensorUnaryOp):
     _op_type_ = OperandDef.I0
     _func_name = 'i0'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
     @classmethod
     def execute(cls, ctx, op):

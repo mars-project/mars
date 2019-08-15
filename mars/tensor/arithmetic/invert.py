@@ -27,9 +27,8 @@ class TensorInvert(TensorUnaryOp):
     _op_type_ = OperandDef.INVERT
     _func_name = 'invert'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
 
 @infer_dtype(np.invert)

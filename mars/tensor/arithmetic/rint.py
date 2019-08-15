@@ -27,9 +27,8 @@ class TensorRint(TensorUnaryOp):
     _op_type_ = OperandDef.RINT
     _func_name = 'rint'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
 
 @infer_dtype(np.rint)

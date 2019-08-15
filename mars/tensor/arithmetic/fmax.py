@@ -27,9 +27,8 @@ class TensorFMax(TensorBinOp):
     _op_type_ = OperandDef.FMAX
     _func_name = 'fmax'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
     @classmethod
     def _is_sparse(cls, x1, x2):

@@ -1,6 +1,5 @@
 class Optimizer:
-    def __init__(self, graph, engine):
-        self.engine = engine
+    def __init__(self, graph):
         self.explored = set()
         self.graph = graph
         self.keys = []

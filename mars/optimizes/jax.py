@@ -3,7 +3,7 @@ from .optimizer import Optimizer
 
 class JaxOptimizer(Optimizer):
     def __init__(self, graph):
-        super(JaxOptimizer, self).__init__(graph, 'numexpr')
+        super(JaxOptimizer, self).__init__(graph)
 
     def optimize(self, keys=None):
         self.compose(keys)
@@ -38,10 +38,6 @@ class JaxOptimizer(Optimizer):
     # this is method is used to be compatible with jax.numpy
     @staticmethod
     def _jax_compat(op):
-        if hasattr(op, 'jax_function'):
-            try:
-                op.jax_function()
-            except NotImplementedError:
-                return False
+        if hasattr(op, 'jax_function') and op.jax_function() is not NotImplementedError:
             return True
         return False

@@ -27,9 +27,8 @@ class TensorSignbit(TensorUnaryOp):
     _op_type_ = OperandDef.SIGNBIT
     _func_name = 'signbit'
 
-    @classmethod
-    def jax_function(cls):
-        raise NotImplementedError
+    def jax_function(self):
+        return NotImplementedError
 
 
 @inject_dtype(np.bool_)
