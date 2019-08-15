@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 
 from mars.executor import Executor
-from mars.tensor.random.core import State
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.lib.sparse.core import issparse
 from mars import tensor
@@ -43,7 +42,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.randn(10, 20, chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).randn(5, 5)))
@@ -66,7 +65,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.random_integers(0, 10, size=(10, 20), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             np.testing.assert_equal(res, np.random.RandomState(0).random_integers(0, 10, size=(5, 5)))
@@ -77,7 +76,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.random_sample(size=(10, 20), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).random_sample(size=(5, 5))))
@@ -88,7 +87,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.random(size=(10, 20), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).random_sample(size=(5, 5))))
@@ -99,7 +98,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.ranf(size=(10, 20), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).random_sample(size=(5, 5))))
@@ -110,7 +109,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.sample(size=(10, 20), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).random_sample(size=(5, 5))))
@@ -121,7 +120,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.choice(5, size=(15,), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).choice(5, size=(5,))))
@@ -131,7 +130,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.choice([1, 4, 9], size=(15,), chunk_size=5).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).choice([1, 4, 9], size=(5,))))
@@ -144,7 +143,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.choice([1, 4, 9], size=(3,), replace=False, chunk_size=1).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(
@@ -155,7 +154,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.choice([1, 4, 9], size=(15,), chunk_size=5, p=[.2, .5, .3]).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(
@@ -178,12 +177,12 @@ class Test(unittest.TestCase):
 
     def testBetaExecute(self):
         arr = tensor.random.beta(1, 2, chunk_size=2).tiles()
-        arr.chunks[0].op._state = State(np.random.RandomState(0))
+        arr.chunks[0].op._seed = 0
 
         self.assertEqual(self.executor.execute_tensor(arr)[0], np.random.RandomState(0).beta(1, 2))
 
         arr = tensor.random.beta([1, 2], [3, 4], chunk_size=2).tiles()
-        arr.chunks[0].op._state = State(np.random.RandomState(0))
+        arr.chunks[0].op._seed = 0
 
         self.assertTrue(np.array_equal(self.executor.execute_tensor(arr)[0],
                                        np.random.RandomState(0).beta([1, 2], [3, 4])))
@@ -191,7 +190,7 @@ class Test(unittest.TestCase):
         arr = tensor.random.beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
                                  chunk_size=1, size=(3, 2, 2)).tiles()
         for c in arr.chunks:
-            c.op._state = State(np.random.RandomState(0))
+            c.op._seed = 0
 
         res = self.executor.execute_tensor(arr, concat=True)[0]
 
@@ -213,7 +212,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.binomial(10, .5, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).binomial(10, .5, 10)))
@@ -224,7 +223,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.chisquare(2, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).chisquare(2, 10)))
@@ -235,7 +234,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.dirichlet((10, 5, 3), 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).dirichlet((10, 5, 3), 10)))
@@ -246,7 +245,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.exponential(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).exponential(1.0, 10)))
@@ -257,7 +256,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.f(1.0, 2.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).f(1.0, 2.0, 10)))
@@ -268,7 +267,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.gamma(1.0, 2.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).gamma(1.0, 2.0, 10)))
@@ -279,7 +278,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.geometric(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).geometric(1.0, 10)))
@@ -290,7 +289,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.gumbel(.5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).gumbel(.5, 1.0, 10)))
@@ -301,7 +300,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.hypergeometric(10, 20, 15, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).hypergeometric(10, 20, 15, 10)))
@@ -312,7 +311,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.laplace(.5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).laplace(.5, 1.0, 10)))
@@ -323,7 +322,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.logistic(.5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             np.testing.assert_equal(res, np.random.RandomState(0).logistic(.5, 1.0, 10))
@@ -334,7 +333,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.lognormal(.5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).lognormal(.5, 1.0, 10)))
@@ -345,7 +344,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.logseries(.5, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).logseries(.5, 10)))
@@ -357,7 +356,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.multinomial(10, [.2, .5, .3], 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).multinomial(10, [.2, .5, .3], 10)))
@@ -368,7 +367,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.multivariate_normal([1, 2], [[1, 0], [0, 1]], 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).multivariate_normal(
@@ -380,7 +379,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.negative_binomial(5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).negative_binomial(5, 1.0, 10)))
@@ -391,7 +390,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.noncentral_chisquare(.5, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).noncentral_chisquare(.5, 1.0, 10)))
@@ -402,7 +401,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.noncentral_f(1.5, 1.0, 1.1, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).noncentral_f(1.5, 1.0, 1.1, 10)))
@@ -413,7 +412,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.normal(10, 1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).normal(10, 1.0, 10)))
@@ -424,7 +423,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.pareto(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).pareto(1.0, 10)))
@@ -435,7 +434,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.poisson(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).poisson(1.0, 10)))
@@ -446,7 +445,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.power(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).power(1.0, 10)))
@@ -457,7 +456,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.rayleigh(1.0, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).rayleigh(1.0, 10)))
@@ -468,7 +467,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.standard_cauchy(100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).standard_cauchy(10)))
@@ -479,7 +478,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.standard_exponential(100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).standard_exponential(10)))
@@ -490,7 +489,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.standard_gamma(.1, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).standard_gamma(.1, 10)))
@@ -501,7 +500,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.standard_normal(100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).standard_normal(10)))
@@ -512,7 +511,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.standard_t(.1, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).standard_t(.1, 10)))
@@ -523,7 +522,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.triangular(.1, .2, .3, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).triangular(.1, .2, .3, 10)))
@@ -534,7 +533,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.uniform(.1, .2, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).uniform(.1, .2, 10)))
@@ -545,7 +544,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.vonmises(.1, .2, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).vonmises(.1, .2, 10)))
@@ -556,7 +555,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.wald(.1, .2, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).wald(.1, .2, 10)))
@@ -567,7 +566,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.weibull(.1, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).weibull(.1, 10)))
@@ -578,7 +577,7 @@ class Test(unittest.TestCase):
 
         arr = tensor.random.zipf(1.1, 100, chunk_size=10).tiles()
         for chunk in arr.chunks:
-            chunk.op._state = State(np.random.RandomState(0))
+            chunk.op._seed = 0
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).zipf(1.1, 10)))

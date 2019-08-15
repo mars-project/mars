@@ -141,5 +141,5 @@ def binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=Non
         dtype = np.random.RandomState().binomial(
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorBinomial(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorBinomial(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(n, p, chunk_size=chunk_size)
