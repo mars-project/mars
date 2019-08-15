@@ -1,5 +1,3 @@
-import importlib.util
-
 from ...serialize import DataTypeField
 from ..operands import TensorFuse
 from ..array_utils import as_same_device

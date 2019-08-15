@@ -30,6 +30,7 @@ class JaxOptimizer(Optimizer):
             return True
         return False
 
-    def _get_fused_chunk(self, tail_node):
+    @staticmethod
+    def _get_fused_chunk(tail_node):
         from ..tensor.fuse import TensorJaxFuseChunk
         return TensorJaxFuseChunk(dtype=tail_node.dtype)
