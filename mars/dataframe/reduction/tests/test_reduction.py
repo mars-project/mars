@@ -15,7 +15,7 @@
 import pandas as pd
 import numpy as np
 
-from .... import opcodes as OperandDef
+from mars import opcodes as OperandDef
 from mars.tests.core import TestBase
 from mars.dataframe.core import IndexValue, Series
 from mars.dataframe.reduction import SeriesSum, DataFrameSum

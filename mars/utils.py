@@ -579,6 +579,8 @@ def merge_chunks(chunk_results):
         return pd.concat(concats)
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
+    else:
+        raise TypeError('unsupported type %s' % type(v))
 
 
 def calc_nsplits(chunk_idx_to_shape):
