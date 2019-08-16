@@ -29,13 +29,10 @@ class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
 
         def combine_functions(inputs):
-            # for f in functions:
-            #     inputs = f(inputs)
-            #     return inputs
             inputs = functions[0](*inputs)
             for f in functions[1:]:
                 inputs = f(inputs)
-                return inputs
+            return inputs
 
         # execute the fuse operands in jax
         functions = [operand.jax_function() for operand in op.operands]
