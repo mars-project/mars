@@ -246,14 +246,19 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         left, right = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+
+        def execute_merge(x, y):
+            return x.merge(y, how=op.how, on=op.on,
+                           left_on=op.left_on, right_on=op.right_on,
+                           left_index=op.left_index, right_index=op.right_index,
+                           sort=op.sort, suffixes=op.suffixes,
+                           copy=op.copy, indicator=op.indicator, validate=op.validate)
+
         # workaround for: https://github.com/pandas-dev/pandas/issues/27943
-        left = left.copy(deep=True)
-        right = right.copy(deep=True)
-        r = left.merge(right, how=op.how, on=op.on,
-                       left_on=op.left_on, right_on=op.right_on,
-                       left_index=op.left_index, right_index=op.right_index,
-                       sort=op.sort, suffixes=op.suffixes,
-                       copy=op.copy, indicator=op.indicator, validate=op.validate)
+        try:
+            r = execute_merge(left, right)
+        except ValueError:
+            r = execute_merge(left.copy(deep=True), right.copy(deep=True))
         ctx[chunk.key] = r
 
 
