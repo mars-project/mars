@@ -1371,18 +1371,18 @@ _OPERANDDEF_OPERANDTYPE.containing_type = _OPERANDDEF
 DESCRIPTOR.message_types_by_name['OperandDef'] = _OPERANDDEF
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-OperandDef = _reflection.GeneratedProtocolMessageType('OperandDef', (_message.Message,), {
+OperandDef = _reflection.GeneratedProtocolMessageType('OperandDef', (_message.Message,), dict(
 
-  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-    'DESCRIPTOR' : _OPERANDDEF_ATTRENTRY,
-    '__module__' : 'mars.serialize.protos.operand_pb2'
+  AttrEntry = _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), dict(
+    DESCRIPTOR = _OPERANDDEF_ATTRENTRY,
+    __module__ = 'mars.serialize.protos.operand_pb2'
     # @@protoc_insertion_point(class_scope:OperandDef.AttrEntry)
-    })
+    ))
   ,
-  'DESCRIPTOR' : _OPERANDDEF,
-  '__module__' : 'mars.serialize.protos.operand_pb2'
+  DESCRIPTOR = _OPERANDDEF,
+  __module__ = 'mars.serialize.protos.operand_pb2'
   # @@protoc_insertion_point(class_scope:OperandDef)
-  })
+  ))
 _sym_db.RegisterMessage(OperandDef)
 _sym_db.RegisterMessage(OperandDef.AttrEntry)
 
