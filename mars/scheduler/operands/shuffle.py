@@ -165,7 +165,7 @@ class ShuffleProxyActor(BaseOperandActor):
                 continue
             new_mapper_metas = dict()
             for pred_key, meta in self._reducer_to_mapper[op_key].items():
-                meta.workers = [w for w in meta.workers if w not in dead_workers]
+                meta.workers = tuple(w for w in meta.workers if w not in dead_workers)
                 if meta.workers:
                     new_mapper_metas[pred_key] = meta
             self._reducer_to_mapper[op_key] = new_mapper_metas

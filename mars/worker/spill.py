@@ -38,13 +38,13 @@ def parse_spill_dirs(dir_str):
 
     def _validate_dir(path):
         try:
-            os.makedirs(path, exist_ok=True)
+            if not os.path.isdir(path):
+                os.makedirs(path)
             touch_file = os.path.join(path, '.touch')
-            with open(touch_file, 'wb'):
-                pass
+            open(touch_file, 'wb').close()
             os.unlink(touch_file)
             return True
-        except OSError:
+        except OSError:  # pragma: no cover
             logger.exception('Fail to access directory %s', path)
             return False
 
