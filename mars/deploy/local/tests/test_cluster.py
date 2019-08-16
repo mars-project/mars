@@ -409,6 +409,11 @@ class Test(unittest.TestCase):
             r2 = session.fetch(df5)
             pd.testing.assert_frame_equal(r1, r2)
 
+            df6 = df5.sum()
+            r1 = session.run(df6, timeout=_exec_timeout)
+            r2 = session.fetch(df6)
+            pd.testing.assert_series_equal(r1, r2)
+
     def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:

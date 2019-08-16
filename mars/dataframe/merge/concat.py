@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
+import pandas as pd
+import numpy as np
 
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
@@ -88,20 +86,18 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         def _base_concat(chunk, inputs):
-            if chunk.op.axis is not None:
-                # TODO: remove this when we support concat on dataframe
-                raise NotImplementedError
+            # auto generated concat when executing a DataFrame, Series or Index
+            if chunk.op.object_type == ObjectType.dataframe:
+                return _auto_concat_dataframe_chunks(chunk, inputs)
+            elif chunk.op.object_type == ObjectType.series:
+                return _auto_concat_series_chunks(chunk, inputs)
             else:
-                # auto generated concat when executing a DataFrame, Series or Index
-                if chunk.op.object_type == ObjectType.dataframe:
-                    return _auto_concat_dataframe_chunks(chunk, inputs)
-                elif chunk.op.object_type == ObjectType.series:
-                    return _auto_concat_series_chunks(chunk, inputs)
-                else:
-                    raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
-                                    'can be automatically concatenated')
+                raise TypeError('Only DataFrameChunk, SeriesChunk and IndexChunk '
+                                'can be automatically concatenated')
 
         def _auto_concat_dataframe_chunks(chunk, inputs):
+            if chunk.op.axis is not None:
+                return pd.concat(inputs, axis=op.axis)
             # auto generated concat when executing a DataFrame
             n_rows = max(inp.index[0] for inp in chunk.inputs) + 1
             n_cols = int(len(inputs) // n_rows)
@@ -121,10 +117,16 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         def _auto_concat_series_chunks(chunk, inputs):
             # auto generated concat when executing a Series
-            concat = pd.concat(inputs)
-            if getattr(chunk.index_value, 'should_be_monotonic', False):
-                concat.sort_index(inplace=True)
-            return concat
+            if all(np.isscalar(inp) for inp in inputs):
+                return pd.Series(inputs)
+            else:
+                if chunk.op.axis is not None:
+                    concat = pd.concat(inputs, axis=chunk.op.axis)
+                else:
+                    concat = pd.concat(inputs)
+                if getattr(chunk.index_value, 'should_be_monotonic', False):
+                    concat.sort_index(inplace=True)
+                return concat
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]

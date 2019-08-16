@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series
-# do imports to register operands
-from .datasource.from_tensor import from_tensor
-from . import arithmetic
-from . import reduction
-del reduction, arithmetic
+from .sum import sum_series, sum_dataframe, SeriesSum, DataFrameSum
 
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
-from .fetch import DataFrameFetch, DataFrameFetchShuffle
-from .merge import DataFrameConcat
 
-del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat
+def _install():
+    from ..core import DataFrame, Series
+
+    setattr(DataFrame, 'sum', sum_dataframe)
+    setattr(Series, 'sum', sum_series)
+
+
+_install()
+del _install

@@ -45,6 +45,6 @@ class Series(_Series):
         if isinstance(data, SERIES_TYPE):
             series = data
         else:
-            pd_series = pd.Series(data, index=index, dtype=dtype, copy=copy)
+            pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
         super(Series, self).__init__(series.data)
