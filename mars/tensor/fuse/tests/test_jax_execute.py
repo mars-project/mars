@@ -21,11 +21,11 @@ import numpy as np
 
 from mars.executor import Executor
 from mars.tensor.datasource import tensor
-from mars.tensor.fuse.jax import JAX_INSTALLED
+from mars.tensor.fuse.jx import JAX_INSTALLED
 
 
 # This is a just-copy-replace class from test_numexpr_execute
-@unittest.skipIf(JAX_INSTALLED is False, 'jax not installed')
+@unittest.skipIf(not JAX_INSTALLED, 'jax not installed')
 class Test(unittest.TestCase):
     def setUp(self):
         self.executor = Executor('jax')
