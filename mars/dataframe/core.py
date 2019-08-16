@@ -647,6 +647,14 @@ class DataFrameData(TileableData):
         from .datasource.from_records import from_records
         return from_records(records, **kw)
 
+    def merge(self, objs, *args, **kwargs):
+        from .merge.merge import merge
+        return merge(self, objs, *args, **kwargs)
+
+    def join(self, other, *args, **kwargs):
+        from .merge.merge import join
+        return join(self, other, *args, **kwargs)
+
 
 class DataFrame(TileableEntity):
     __slots__ = ()

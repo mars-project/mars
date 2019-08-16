@@ -707,3 +707,36 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+
+    def testDataFrameShuffle(self, *_):
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.merge.merge import merge
+        from mars.dataframe.utils import sort_dataframe_inplace
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            data1 = pd.DataFrame(np.arange(20).reshape((4, 5)) + 1, columns=['a', 'b', 'c', 'd', 'e'])
+            data2 = pd.DataFrame(np.arange(20).reshape((5, 4)) + 1, columns=['a', 'b', 'x', 'y'])
+
+            df1 = from_pandas_df(data1, chunk_size=2)
+            df2 = from_pandas_df(data2, chunk_size=2)
+
+            r1 = data1.merge(data2)
+            r2 = session.run(merge(df1, df2), timeout=_exec_timeout)
+            pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
+
+            r1 = data1.merge(data2, how='inner', on=['a', 'b'])
+            r2 = session.run(merge(df1, df2, how='inner', on=['a', 'b']), timeout=_exec_timeout)
+            pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
+
+            web_session = new_session('http://' + cluster._web_endpoint)
+
+            r1 = data1.merge(data2)
+            r2 = web_session.run(merge(df1, df2), timeout=_exec_timeout)
+            pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
+
+            r1 = data1.merge(data2, how='inner', on=['a', 'b'])
+            r2 = web_session.run(merge(df1, df2, how='inner', on=['a', 'b']), timeout=_exec_timeout)
+            pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
