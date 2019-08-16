@@ -110,6 +110,21 @@ if six.PY3:
     TimeoutError = TimeoutError
 
     from itertools import accumulate
+
+    def sbytes(x):
+        # NB: bytes() in Python 3 has different semantic with Python 2, see: help(bytes)
+        from numbers import Number
+        if x is None or isinstance(x, Number):
+            return bytes(str(x), encoding='ascii')
+        elif isinstance(x, list):
+            return bytes('[' + ', '.join([str(k) for k in x]) + ']', encoding='utf-8')
+        elif isinstance(x, tuple):
+            return bytes('(' + ', '.join([str(k) for k in x]) + ')', encoding='utf-8')
+        elif isinstance(x, six.string_types):
+            return bytes(x, encoding='utf-8')
+        else:
+            return bytes(x)
+
 else:
     lrange = range
     lzip = zip
@@ -196,6 +211,8 @@ else:
         for element in it:
             total = func(total, element)
             yield total
+
+    sbytes = bytes
 
 if six.PY3:
     from contextlib import suppress
@@ -507,5 +524,5 @@ __all__ = ['PY27', 'sys', 'builtins', 'long_type', 'OrderedDict', 'dictconfig', 
            'Queue', 'PriorityQueue', 'Empty', 'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote',
            'quote', 'quote_plus', 'parse_qsl', 'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES',
            'FixedOffset', 'utc', 'finalize', 'functools32', 'zip_longest', 'OrderedDict3', 'BrokenPipeError',
-           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate',
+           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate', 'sbytes',
            'apply_pyarrow_serialization_patch']

@@ -112,7 +112,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 concat = pd.concat([inputs[i * n_cols + j] for j in range(n_cols)], axis='columns')
                 concats.append(concat)
 
-            ret = pd.concat(concats)
+            # The `sort=False` is to suppress a `FutureWarning` of pandas, when the index or column of chunks to
+            # concatenate is not aligned, which may happens for certain ops.
+            #
+            # See also Note [Columns of Left Join] in test_merge_execution.py.
+            ret = pd.concat(concats, sort=False)
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 ret.sort_index(inplace=True)
             if getattr(chunk.columns, 'should_be_monotonic', False):
