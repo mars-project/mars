@@ -52,8 +52,7 @@ class Test(unittest.TestCase):
 
         # test qr
         q, r = np.linalg.qr(a)
-        # np.allclose() will convert the input to ndarray, so the `execute()` is needless
-        self.assertTrue(np.allclose(np.dot(q, r), a))
+        self.assertTrue(np.allclose(np.dot(q, r), a).execute())
 
     def testViewDataOnSlice(self):
         data = np.random.rand(10, 20)
