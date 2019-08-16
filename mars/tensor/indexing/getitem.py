@@ -22,14 +22,14 @@ from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ...core import Base, Entity
 from ...compat import OrderedDict, Enum, reduce
-from ..core import TENSOR_TYPE
+from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
 from ..operands import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
-from .core import process_index, calc_shape
 from ...utils import get_shuffle_input_keys_idxes
 from ..array_utils import get_array_module
+from .core import process_index, calc_shape
 
 FANCY_INDEX_TYPES = TENSOR_TYPE + (np.ndarray,)
 
@@ -70,9 +70,9 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
             new_inputs = [new_input] + self.inputs[1:]
             return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
-    def __call__(self, a, index, shape):
+    def __call__(self, a, index, shape, order):
         self._indexes = index
-        return self.new_tensor(filter_inputs([a] + list(index)), shape)
+        return self.new_tensor(filter_inputs([a] + list(index)), shape, order=order)
 
     @classmethod
     def tile(cls, op):
@@ -84,7 +84,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         indexes = tuple(ctx[index.key] if hasattr(index, 'key') else index
                         for index in op.indexes)
         input_ = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = input_[indexes]
+        ctx[op.outputs[0].key] = input_[indexes].astype(
+            input_.dtype, order=op.outputs[0].order.value, copy=False)
 
     @classmethod
     def estimate_size(cls, ctx, op):
@@ -148,6 +149,14 @@ class IndexType(Enum):
     new_axis = 4
 
 
+def _is_bool_index(index_obj):
+    return isinstance(index_obj, TENSOR_TYPE) and index_obj.dtype == np.bool_
+
+
+def _is_fancy_index(index_obj):
+    return isinstance(index_obj, FANCY_INDEX_TYPES) and index_obj.dtype != np.bool_
+
+
 class TensorIndexTilesHandler(object):
     def __init__(self, op):
         self._op = op
@@ -159,19 +168,11 @@ class TensorIndexTilesHandler(object):
         self._nsplits = None
         self._chunk_shape = None
 
-    @classmethod
-    def _is_bool_index(cls, index_obj):
-        return isinstance(index_obj, TENSOR_TYPE) and index_obj.dtype == np.bool_
-
-    @classmethod
-    def _is_fancy_index(cls, index_obj):
-        return isinstance(index_obj, FANCY_INDEX_TYPES) and index_obj.dtype != np.bool_
-
     def _extract_indexes_info(self):
         in_axis = out_axis = 0
         fancy_index_out_axis = None
         for raw_index_obj in self._op.indexes:
-            if self._is_bool_index(raw_index_obj):
+            if _is_bool_index(raw_index_obj):
                 # bool indexing
                 # unify chunk first
                 index_obj_axes = (raw_index_obj,
@@ -182,7 +183,7 @@ class TensorIndexTilesHandler(object):
                                                    IndexType.bool_index, in_axis, out_axis))
                 in_axis += index_obj.ndim
                 out_axis += 1
-            elif self._is_fancy_index(raw_index_obj):
+            elif _is_fancy_index(raw_index_obj):
                 # fancy indexing
                 # because we need to unify all fancy indexes' chunks together later
                 # so here we don't do process any of them here
@@ -268,11 +269,12 @@ class TensorIndexTilesHandler(object):
         for chunk in concat_fancy_index.chunks:
             shuffle_map_op = FancyIndexingDistributeMap(
                 dest_nsplits=self._in_tensor.nsplits, axes=axes, dtype=chunk.dtype)
-            shuffle_map_chunk = shuffle_map_op.new_chunk([chunk], shape=(np.nan,), index=chunk.index)
+            shuffle_map_chunk = shuffle_map_op.new_chunk([chunk], shape=(np.nan,),
+                                                         index=chunk.index, order=TensorOrder.C_ORDER)
             shuffle_map_chunks.append(shuffle_map_chunk)
         # shuffle proxy
         proxy_chunk = TensorShuffleProxy(dtype=fancy_indexes[0].dtype, tensor_keys=[fancy_indexes[0].key]) \
-            .new_chunk(shuffle_map_chunks, shape=())
+            .new_chunk(shuffle_map_chunks, shape=(), order=TensorOrder.C_ORDER)
         chunk_index_to_fancy_indexes_chunks = OrderedDict()
         chunk_index_to_pos = OrderedDict()
         for idx in itertools.product(*(range(self._in_tensor.chunk_shape[axis]) for axis in axes)):
@@ -280,7 +282,8 @@ class TensorIndexTilesHandler(object):
             shuffle_reduce_op = FancyIndexingDistributeReduce(axes=axes, dtype=proxy_chunk.dtype,
                                                               _shuffle_key=shuffle_key)
             # chunks of fancy indexes on each axis
-            kws = [{'axis': ax, 'shape': (np.nan,), 'index': idx} for ax in axes]
+            kws = [{'axis': ax, 'shape': (np.nan,), 'index': idx, 'order': self._op.outputs[0].order}
+                   for ax in axes]
             kws.append({'pos': True, 'shape': (np.nan,), 'index': idx})
             shuffle_reduce_chunks = shuffle_reduce_op.new_chunks([proxy_chunk], kws=kws)
             chunk_index_to_fancy_indexes_chunks[idx] = shuffle_reduce_chunks[:-1]
@@ -367,7 +370,8 @@ class TensorIndexTilesHandler(object):
             chunk_op = self._op.copy().reset_key()
             chunk_op._indexes = chunk_index_objs
             out_chunk = chunk_op.new_chunk(filter_inputs([chunk] + chunk_index_objs),
-                                           shape=tuple(chunk_shape), index=tuple(chunk_index))
+                                           shape=tuple(chunk_shape), index=tuple(chunk_index),
+                                           order=self._op.outputs[0].order)
             self._out_chunks.append(out_chunk)
 
         self._out_chunks = sorted(self._out_chunks, key=operator.attrgetter('index'))
@@ -399,7 +403,7 @@ class TensorIndexTilesHandler(object):
             concat_op = TensorConcatenate(axis=concat_axis, dtype=to_concat_chunks[0].dtype,
                                           sparse=to_concat_chunks[0].issparse())
             concat_chunk = concat_op.new_chunk(to_concat_chunks, shape=tuple(concat_chunk_shape),
-                                               index=out_idx)
+                                               index=out_idx, order=TensorOrder.C_ORDER)
             select_pos = calc_pos(fancy_indexes[0].shape, self._fancy_index_info.chunk_index_to_pos)
             out_index_obj = [slice(None)] * concat_axis + [select_pos] + \
                             [slice(None)] * (len(self._nsplits) - concat_axis - 1)
@@ -410,7 +414,7 @@ class TensorIndexTilesHandler(object):
             pos_select_idx = out_idx[:concat_axis] + (0,) * fancy_indexes[0].ndim + \
                              out_idx[concat_axis + 1:]
             pos_select_chunk = out_chunk_op.new_chunk([concat_chunk], shape=pos_select_shape,
-                                                      index=pos_select_idx)
+                                                      index=pos_select_idx, order=TensorOrder.C_ORDER)
             out_chunks.append(pos_select_chunk)
 
         self._out_chunks = out_chunks
@@ -431,7 +435,7 @@ class TensorIndexTilesHandler(object):
                                                    sparse=c.issparse(), dtype=c.dtype)
             concat_map_chunk_shape = c.shape[:concat_axis] + (np.nan,) + c.shape[concat_axis + 1:]
             concat_map_chunk = concat_map_op.new_chunk([c, pos_chunk], shape=concat_map_chunk_shape,
-                                                       index=c.index)
+                                                       index=c.index, order=TensorOrder.C_ORDER)
             concat_idx_to_map_chunks[concat_map_chunk.index] = concat_map_chunk
         out_chunks = []
         no_shuffle_chunk_shape = chunk_shape[:concat_axis] + chunk_shape[concat_axis + 1:]
@@ -442,7 +446,7 @@ class TensorIndexTilesHandler(object):
                 to_shuffle_chunks.append(concat_idx_to_map_chunks[concat_idx])
             proxy_op = TensorShuffleProxy(dtype=to_shuffle_chunks[0].dtype,
                                           no_shuffle_idx=idx)
-            proxy_chunk = proxy_op.new_chunk(to_shuffle_chunks, shape=())
+            proxy_chunk = proxy_op.new_chunk(to_shuffle_chunks, shape=(), order=TensorOrder.C_ORDER)
             acc = itertools.count(0)
             for reduce_idx in itertools.product(*(range(s) for s in fancy_indexes[0].chunk_shape)):
                 fancy_index_chunk = fancy_indexes[0].cix[reduce_idx]
@@ -455,7 +459,8 @@ class TensorIndexTilesHandler(object):
                                      fancy_index_chunk.shape + no_shuffle_chunk_shape[concat_axis:]
                 reduce_chunk_idx = idx[:concat_axis] + fancy_index_chunk.index + idx[concat_axis:]
                 concat_reduce_chunk = concat_reduce_op.new_chunk([proxy_chunk], shape=reduce_chunk_shape,
-                                                                 index=reduce_chunk_idx)
+                                                                 index=reduce_chunk_idx,
+                                                                 order=TensorOrder.C_ORDER)
                 out_chunks.append(concat_reduce_chunk)
 
         self._out_chunks = out_chunks
@@ -482,6 +487,7 @@ class TensorIndexTilesHandler(object):
 
         new_op = self._op.copy()
         new_tensor = new_op.new_tensor(self._op.inputs, self._op.outputs[0].shape,
+                                       order=self._op.outputs[0].order,
                                        chunks=self._out_chunks, nsplits=self._nsplits)
         return [new_tensor]
 
@@ -678,6 +684,35 @@ def _is_create_view(index):
     return all(isinstance(ind, (slice, Integral)) or ind is None for ind in index)
 
 
+def _calc_order(a, index):
+    if a.order == TensorOrder.C_ORDER:
+        return TensorOrder.C_ORDER
+
+    in_axis = 0
+    for ind in index:
+        if _is_bool_index(ind):
+            in_axis += ind.ndim
+            return TensorOrder.C_ORDER
+        elif _is_fancy_index(ind):
+            in_axis += 1
+            return TensorOrder.C_ORDER
+        elif ind is None:
+            continue
+        elif isinstance(ind, slice):
+            shape = a.shape[in_axis]
+            slc = ind.indices(shape)
+            if slc[0] == 0 and slc[1] == shape and slc[2] == 1:
+                continue
+            else:
+                return TensorOrder.C_ORDER
+        else:
+            assert isinstance(ind, Integral)
+            in_axis += 1
+            return TensorOrder.C_ORDER
+
+    return TensorOrder.F_ORDER
+
+
 def _getitem(a, item):
     if isinstance(item, (list, tuple)) and \
             all(isinstance(it, slice) and it == slice(None) for it in item):
@@ -688,6 +723,7 @@ def _getitem(a, item):
 
     index = process_index(a, item)
     shape = calc_shape(a.shape, index)
+    tensor_order = _calc_order(a, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
                      create_view=_is_create_view(index))
-    return op(a, index, tuple(shape))
+    return op(a, index, tuple(shape), order=tensor_order)

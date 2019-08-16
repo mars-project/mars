@@ -113,12 +113,13 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         inps = [src, dst]
         if where is not None:
             inps.append(where)
-        ret = self.new_tensor(inps, dst.shape)
+        ret = self.new_tensor(inps, dst.shape, order=dst.order)
         dst.data = ret.data
 
     @classmethod
     def tile(cls, op):
         inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
+        output = op.outputs[0]
 
         chunk_shapes = [t.chunk_shape if hasattr(t, 'chunk_shape') else t
                         for t in inputs]
@@ -131,13 +132,15 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         for out_idx in itertools.product(*(map(range, out_chunk_shape))):
             in_chunks = [t.cix[get_index(out_idx[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
                          for t in inputs]
-            out_chunk = op.copy().reset_key().new_chunk(in_chunks, shape=in_chunks[1].shape, index=out_idx)
+            out_chunk = op.copy().reset_key().new_chunk(
+                in_chunks, shape=in_chunks[1].shape, order=output.order, index=out_idx)
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_idx, out_chunk.shape):
                 nsplits[i][idx] = s
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
+                                  chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -147,7 +150,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         with device(device_id):
             dst = inputs[1].copy()
             src = inputs[0]
-            where = inputs[2] if len(inputs) > 2 else None
+            where = inputs[2] if len(inputs) > 2 else True
 
             xp.copyto(dst, src, casting=op.casting, where=where)
             ctx[op.outputs[0].key] = dst

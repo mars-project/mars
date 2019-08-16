@@ -20,8 +20,9 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, BoolField
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
-from .ravel import ravel
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
+from .ravel import ravel
 
 
 class TensorIsIn(TensorOperand, TensorOperandMixin):
@@ -61,12 +62,13 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
     def __call__(self, element, test_elements):
         element, test_elements = astensor(element), ravel(astensor(test_elements))
 
-        return self.new_tensor([element, test_elements], element.shape)
+        return self.new_tensor([element, test_elements], element.shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
         in_tensor = op.element
         test_elements = op.test_elements
+        out_tensor = op.outputs[0]
 
         if len(test_elements.chunks) != 1:
             test_elements = test_elements.rechunk(len(test_elements)).single_tiles()
@@ -75,12 +77,14 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([c, test_elements_chunk], shape=c.shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c, test_elements_chunk], shape=c.shape,
+                                           index=c.index, order=out_tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors([in_tensor, test_elements], op.outputs[0].shape,
-                                  chunks=out_chunks, nsplits=in_tensor.nsplits)
+        return new_op.new_tensors([in_tensor, test_elements], out_tensor.shape,
+                                  order=out_tensor.order, chunks=out_chunks,
+                                  nsplits=in_tensor.nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

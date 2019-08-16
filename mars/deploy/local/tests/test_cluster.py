@@ -683,3 +683,27 @@ class Test(unittest.TestCase):
 
             expected_msg = "The session with id = %s doesn't exist" % web_sess1.session_id
             self.assertEqual(cm.exception.args[0], expected_msg)
+
+    def testTensorOrder(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            data = np.asfortranarray(np.random.rand(10, 7))
+            a = mt.asfortranarray(data, chunk_size=3)
+            b = (a + 1) * 2
+            res = session.run(b, timeout=_exec_timeout)
+            expected = (data + 1) * 2
+
+            np.testing.assert_array_equal(res, expected)
+            self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+            self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+            c = b.reshape(7, 10, order='F')
+            res = session.run(c, timeout=_exec_timeout)
+            expected = ((data + 1) * 2).reshape((7, 10), order='F')
+
+            np.testing.assert_array_equal(res, expected)
+            self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+            self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+

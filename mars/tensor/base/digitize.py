@@ -22,6 +22,7 @@ from ...lib.sparse.core import get_array_module
 from ..operands import TensorHasInput, TensorOperandMixin, Tensor
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
+from ..core import TensorOrder
 
 
 class TensorDigitize(TensorHasInput, TensorOperandMixin):
@@ -58,7 +59,7 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
             inputs.append(bins)
         self._dtype = np.digitize([0], np.empty(1, dtype=bins.dtype), right=self._right).dtype
 
-        return self.new_tensor(inputs, x.shape)
+        return self.new_tensor(inputs, x.shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -74,11 +75,12 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
             input_chunks = [c]
             if len(op.inputs) == 2:
                 input_chunks.append(bins)
-            out_chunk = op.copy().reset_key().new_chunk(input_chunks, shape=c.shape, index=c.index)
+            out_chunk = op.copy().reset_key().new_chunk(input_chunks, shape=c.shape,
+                                                        index=c.index, order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape,
+        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                   chunks=out_chunks, nsplits=in_tensor.nsplits)
 
     @classmethod

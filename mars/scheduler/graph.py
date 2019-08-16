@@ -35,7 +35,7 @@ from ..compat import functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
-from ..operands import Fetch, ShuffleProxy
+from ..operands import Fetch, ShuffleProxy, VirtualOperand
 from ..serialize import dataserializer
 from ..core import ChunkData
 from ..tiles import handler, DataNotReady
@@ -217,6 +217,7 @@ class GraphActor(SchedulerActor):
         self._assigned_workers = set()
         self._worker_adds = set()
         self._worker_removes = set()
+        self._lost_chunks = set()
 
         self._graph_analyze_pool = None
 
@@ -675,7 +676,6 @@ class GraphActor(SchedulerActor):
         Create operand actors for all operands
         """
         logger.debug('Creating operand actors for graph %s', self._graph_key)
-        from ..operands import VirtualOperand
 
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
@@ -980,6 +980,7 @@ class GraphActor(SchedulerActor):
             self._operand_free_paused = True
             self._worker_adds.update(adds)
             self._worker_removes.update(removes)
+            self._lost_chunks.update(lost_chunks)
             self.ref().handle_worker_change(adds, removes, lost_chunks,
                                             handle_later=False, _delay=0.5, _tell=True)
             return
@@ -990,6 +991,8 @@ class GraphActor(SchedulerActor):
         self._worker_adds = set()
         removes = self._worker_removes
         self._worker_removes = set()
+        lost_chunks = self._lost_chunks
+        self._lost_chunks = set()
         if not adds and not removes:
             return
 

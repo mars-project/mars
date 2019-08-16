@@ -18,6 +18,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...dataframe.utils import build_empty_df
 from ..utils import to_numpy
+from ..core import TensorOrder
 from .core import TensorHasInput
 
 
@@ -34,10 +35,10 @@ class TensorDataFrameDataSource(TensorHasInput):
     @classmethod
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = to_numpy(df)
+        ctx[op.outputs[0].key] = to_numpy(df).astype(op.outputs[0].dtype, order='F')
 
 
 def from_dataframe(in_df):
     empty_pdf = build_empty_df(in_df.dtypes)
     op = TensorDataFrameDataSource(dtype=empty_pdf.dtypes[0], gpu=in_df.op.gpu)
-    return op(in_df)
+    return op(in_df, order=TensorOrder.F_ORDER)  # return tensor with F-order always

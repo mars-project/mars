@@ -177,7 +177,6 @@ class Test(unittest.TestCase):
         self.assertNotIn(str(np.ones((10, 10))), str(a))
 
     def testReprDataFrame(self):
-        a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
         x = pd.DataFrame(np.ones((10, 10)))
 
         with option_context({'eager_mode': True}):
@@ -185,6 +184,7 @@ class Test(unittest.TestCase):
             self.assertIn(repr(x), repr(a))
             self.assertIn(str(x), str(a))
 
+        a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
         self.assertNotIn(repr(x), repr(a))
         self.assertNotIn(str(x), str(a))
 

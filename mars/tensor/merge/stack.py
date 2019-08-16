@@ -20,10 +20,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import Int32Field
-from ..utils import unify_chunks
+from ..utils import unify_chunks, check_out_param
 from ..array_utils import as_same_device, device
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..core import Tensor, TensorOrder
 
 
 class TensorStack(TensorOperand, TensorOperandMixin):
@@ -39,15 +40,29 @@ class TensorStack(TensorOperand, TensorOperandMixin):
     def axis(self):
         return self._axis
 
-    def __call__(self, tensors):
+    def __call__(self, tensors, out=None):
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('`out` must be a Tensor, got {0} instead'.format(type(out)))
+
         shape = tensors[0].shape[:self._axis] + (len(tensors),) + tensors[0].shape[self._axis:]
-        return self.new_tensor(tensors, shape)
+        tensor_order = TensorOrder.C_ORDER if out is None else out.order
+        t = self.new_tensor(tensors, shape, order=tensor_order)
+
+        if out is None:
+            return t
+
+        if out.shape != t.shape:
+            raise ValueError('Output tensor has wrong dimensionality')
+        check_out_param(out, t, 'same_kind')
+        out.data = t.data
+        return out
 
     @classmethod
     def tile(cls, op):
         from ..indexing.slice import TensorSlice
 
         inputs = unify_chunks(*op.inputs)
+        output = op.outputs[0]
         axis = op.axis
 
         output_nsplits = inputs[0].nsplits[:axis] + ((1,) * len(inputs),) + \
@@ -62,24 +77,46 @@ class TensorStack(TensorOperand, TensorOperandMixin):
             slices = [slice(None)] * axis + [np.newaxis] + [slice(None)] * (len(input_idx) - axis)
             shape = input_chunk.shape[:axis] + (1,) + input_chunk.shape[axis:]
             chunk_op = TensorSlice(slices=slices, dtype=op.dtype, sparse=op.sparse)
-            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx)
+            out_chunk = chunk_op.new_chunk([input_chunk], shape=shape, index=idx, order=output.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, output.shape,
                                   chunks=out_chunks, nsplits=output_nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
+        raw_inputs = [ctx[c.key] for c in op.inputs]
+        is_input_tuple = isinstance(raw_inputs[0], tuple)
+        input_tuple_len = len(raw_inputs[0]) if is_input_tuple else 1
+
+        if is_input_tuple:
+            # situation that stack is used during tiling, not created by user
+            inputs = list(itertools.chain.from_iterable(raw_inputs))
+        else:
+            inputs = raw_inputs
+        # move all the data to the same device
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            inputs, device=op.device, ret_extra=True)
+        if is_input_tuple:
+            inputs = [inputs[i * input_tuple_len: (i + 1) * input_tuple_len]
+                      for i in range(len(raw_inputs))]
+        else:
+            inputs = [[inp] for inp in inputs]
 
         axis = op.axis
+        out = op.outputs[0]
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.stack(inputs, axis=axis)
+            rets = []
+            for i in range(input_tuple_len):
+                ret = xp.stack([inp[i] for inp in inputs], axis=axis)
+                # make sure order is identical to out's order
+                ret = ret.astype(ret.dtype, order=out.order, copy=False)
+                rets.append(ret)
+            ctx[out.key] = rets if is_input_tuple else rets[0]
 
 
-def stack(tensors, axis=0):
+def stack(tensors, axis=0, out=None):
     """
     Join a sequence of tensors along a new axis.
 
@@ -152,4 +189,4 @@ def stack(tensors, axis=0):
     sparse = all(t.issparse() for t in tensors)
 
     op = TensorStack(axis=axis, dtype=dtype, sparse=sparse)
-    return op(tensors)
+    return op(tensors, out=out)

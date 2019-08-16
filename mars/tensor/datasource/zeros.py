@@ -18,10 +18,11 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...serialize import KeyField, StringField
 from ...lib import sparse
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ..array_utils import create_array
+from ..utils import get_order
 from .core import TensorNoInput, TensorLike
 from .array import tensor
 
@@ -29,9 +30,16 @@ from .array import tensor
 class TensorZeros(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ZEROS
 
-    def __init__(self, dtype=None, gpu=None, sparse=False, **kw):
+    _order = StringField('order')
+
+    def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super(TensorZeros, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+        super(TensorZeros, self).__init__(_dtype=dtype, _gpu=gpu,
+                                          _sparse=sparse, _order=order, **kw)
+
+    @property
+    def order(self):
+        return self._order
 
     @classmethod
     def execute(cls, ctx, op):
@@ -39,10 +47,11 @@ class TensorZeros(TensorNoInput):
         if op.sparse:
             ctx[chunk.key] = sparse.zeros(chunk.shape, dtype=op.dtype, gpu=op.gpu)
         else:
-            ctx[chunk.key] = create_array(op)('zeros', chunk.shape, dtype=op.dtype)
+            ctx[chunk.key] = create_array(op)('zeros', chunk.shape,
+                                              dtype=op.dtype, order=op.order)
 
 
-def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False):
+def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False, order='C'):
     """
     Return a new tensor of given shape and type, filled with zeros.
     Parameters
@@ -58,6 +67,11 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False):
         Allocate the tensor on GPU if True, False as default
     sparse: bool, optional
         Create sparse tensor if True, False as default
+    order : {'C', 'F'}, optional, default: 'C'
+        Whether to store multi-dimensional data in row-major
+        (C-style) or column-major (Fortran-style) order in
+        memory.
+
     Returns
     -------
     out : Tensor
@@ -87,19 +101,26 @@ def zeros(shape, dtype=None, chunk_size=None, gpu=False, sparse=False):
     array([(0, 0), (0, 0)],
           dtype=[('x', '<i4'), ('y', '<i4')])
     """
-    op = TensorZeros(dtype=dtype, gpu=gpu, sparse=sparse)
-    return op(shape, chunk_size=chunk_size)
+    tensor_order = get_order(order, None, available_options='CF',
+                             err_msg="only 'C' or 'F' order is permitted")
+    op = TensorZeros(dtype=dtype, gpu=gpu, sparse=sparse, order=order)
+    return op(shape, chunk_size=chunk_size, order=tensor_order)
 
 
 class TensorZerosLike(TensorLike):
     _op_type_ = OperandDef.TENSOR_ZEROS_LIKE
 
     _input = KeyField('input')
+    _order = StringField('order')
 
-    def __init__(self, dtype=None, gpu=None, sparse=False, **kw):
+    def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else None
         super(TensorZerosLike, self).__init__(_dtype=dtype, _gpu=gpu,
-                                              _sparse=sparse, **kw)
+                                              _sparse=sparse, _order=order, **kw)
+
+    @property
+    def order(self):
+        return self._order
 
     @classmethod
     def execute(cls, ctx, op):
@@ -114,10 +135,10 @@ class TensorZerosLike(TensorLike):
             ))
         else:
             ctx[chunk.key] = create_array(op)(
-                'zeros_like', ctx[op.inputs[0].key], dtype=op.dtype)
+                'zeros_like', ctx[op.inputs[0].key], dtype=op.dtype, order=op.order)
 
 
-def zeros_like(a, dtype=None, gpu=None):
+def zeros_like(a, dtype=None, gpu=None, order='K'):
     """
     Return a tensor of zeros with the same shape and type as a given tensor.
     Parameters
@@ -129,6 +150,12 @@ def zeros_like(a, dtype=None, gpu=None):
         Overrides the data type of the result.
     gpu : bool, optional
         Allocate the tensor on GPU if True, False as default
+    order : {'C', 'F', 'A', or 'K'}, optional
+        Overrides the memory layout of the result. 'C' means C-order,
+        'F' means F-order, 'A' means 'F' if `a` is Fortran contiguous,
+        'C' otherwise. 'K' means match the layout of `a` as closely
+        as possible.
+
     Returns
     -------
     out : Tensor
@@ -158,5 +185,6 @@ def zeros_like(a, dtype=None, gpu=None):
     array([ 0.,  0.,  0.])
     """
     a = tensor(a)
-    op = TensorZerosLike(dtype=dtype, gpu=gpu, sparse=a.issparse())
-    return op(a)
+    tensor_order = get_order(order, a.order)
+    op = TensorZerosLike(dtype=dtype, gpu=gpu, sparse=a.issparse(), order=order)
+    return op(a, order=tensor_order)

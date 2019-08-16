@@ -155,9 +155,20 @@ class ShuffleProxyActor(BaseOperandActor):
         if self.state not in from_states:
             return
 
+        dead_workers = set(dead_workers)
         for w in dead_workers:
             self._finish_preds.difference_update(self._worker_to_mappers[w])
             del self._worker_to_mappers[w]
+
+        for op_key in self._succ_keys:
+            if op_key not in self._reducer_to_mapper:
+                continue
+            new_mapper_metas = dict()
+            for pred_key, meta in self._reducer_to_mapper[op_key].items():
+                meta.workers = [w for w in meta.workers if w not in dead_workers]
+                if meta.workers:
+                    new_mapper_metas[pred_key] = meta
+            self._reducer_to_mapper[op_key] = new_mapper_metas
 
         missing_succs = []
         for op, w in self._reducer_workers.items():

@@ -19,10 +19,10 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...serialize import KeyField, StringField
 from ...compat import lrange
-from ..core import Tensor
-from ..utils import broadcast_shape, check_out_param, unify_chunks
+from ..core import Tensor, TensorOrder
+from ..utils import broadcast_shape, check_out_param, unify_chunks, check_order
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorOperand, TensorOperandMixin
 from ..arithmetic.utils import tree_add
@@ -34,9 +34,17 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
 
     _a = KeyField('a')
     _b = KeyField('b')
+    _casting = StringField('casting')
+    _order = StringField('order')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super(TensorMatmul, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, dtype=None, sparse=False, casting=None, order=None,  **kw):
+        super(TensorMatmul, self).__init__(_dtype=dtype, _sparse=sparse,
+                                           _casting=casting, _order=order, **kw)
+        if self._casting is None:
+            self._casting = 'same_kind'
+        if self._order is None:
+            self._order = 'K'
+        check_order(self._order)
 
     @property
     def a(self):
@@ -46,16 +54,40 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
     def b(self):
         return self._b
 
+    @property
+    def casting(self):
+        return self._casting
+
+    @property
+    def order(self):
+        return self._order
+
     def _set_inputs(self, inputs):
         super(TensorMatmul, self)._set_inputs(inputs)
         self._a = self._inputs[0]
         self._b = self._inputs[1]
+
+    def _calc_order(self, a, b, out):
+        if out is not None:
+            return out.order
+
+        if self._order in 'A':
+            if a.order == TensorOrder.C_ORDER or b.order == TensorOrder.C_ORDER:
+                return TensorOrder.C_ORDER
+            else:
+                return TensorOrder.F_ORDER
+        elif self._order in 'CK':
+            return TensorOrder.C_ORDER
+        else:
+            return TensorOrder.F_ORDER
 
     def __call__(self, a, b, out=None):
         from ..base import broadcast_to
 
         if a.ndim == 0 or b.ndim == 0:
             raise ValueError("Scalar operands are not allowed, use '*' instead")
+        if out is not None and not isinstance(out, Tensor):
+            raise TypeError('out must be a Tensor, got {0} instead'.format(type(out)))
 
         a_is_1d = False
         if a.ndim == 1:
@@ -78,7 +110,8 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             ))
 
         shape = broadcast_shape(a.shape[:-2], b.shape[:-2]) + (a.shape[-2], b.shape[-1])
-        t = self.new_tensor([a, b], shape)
+        order = self._calc_order(a, b, out)
+        t = self.new_tensor([a, b], shape, order=order)
 
         if a_is_1d:
             t = t[..., 0, :]
@@ -86,9 +119,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
             t = t[..., 0]
 
         if out is not None:
-            if not isinstance(out, Tensor):
-                raise ValueError('out must be a Tensor, got {0} instead'.format(type(out)))
-            check_out_param(out, t, 'same_kind')
+            check_out_param(out, t, self._casting)
             t = broadcast_to(t, out.shape)
             out.data = t.data
             return out
@@ -124,13 +155,14 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
                 b_idx = get_idx(b, out_idx[: b.ndim - 2] + (contract_idx,) + out_idx[-1:])
                 b_chunk = b.cix[b_idx]
                 chunk_op = op.copy().reset_key()
-                c = chunk_op.new_chunk([a_chunk, b_chunk], shape=shape)
+                c = chunk_op.new_chunk([a_chunk, b_chunk], shape=shape, order=tensor.order)
                 chunks.append(c)
 
             if len(chunks) == 1:
                 c = chunks[0]
                 out_chunk_op = c.op.copy()
-                out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, shape=c.shape, index=out_idx)
+                out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, shape=c.shape,
+                                                   index=out_idx, order=tensor.order)
             else:
                 out_chunk = tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
 
@@ -138,7 +170,8 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
 
         nsplits = tuple(get_nsplit(i) for i in range(a.ndim - 2)) + (a.nsplits[-2], b.nsplits[-1])
         new_op = op.copy()
-        return new_op.new_tensors([a, b], tensor.shape, chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors([a, b], tensor.shape, order=tensor.order,
+                                  chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -150,10 +183,15 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
                 # tell sparse to do calculation on numpy or cupy matmul
                 ctx[op.outputs[0].key] = xp.matmul(a, b, sparse=False)
             else:
-                ctx[op.outputs[0].key] = xp.matmul(a, b)
+                try:
+                    # `np.matmul` support `order` argument in version 1.16
+                    ctx[op.outputs[0].key] = xp.matmul(a, b, casting=op.casting, order=op.order)
+                except TypeError:  # pragma: no cover
+                    ctx[op.outputs[0].key] = xp.matmul(a, b).astype(dtype=op.dtype,
+                                                                    casting=op.casting, order=op.order)
 
 
-def matmul(a, b, sparse=None, out=None):
+def matmul(a, b, sparse=None, out=None, **kw):
     """
     Matrix product of two tensors.
 
@@ -179,11 +217,6 @@ def matmul(a, b, sparse=None, out=None):
     - Multiplication by scalars is not allowed.
     - Stacks of matrices are broadcast together as if the matrices
       were elements.
-
-    .. warning::
-       This function is preliminary and included in NumPy 1.10.0 for testing
-       and documentation. Its semantics will not change, but the number and
-       order of the optional arguments will.
 
     Parameters
     ----------
@@ -275,5 +308,5 @@ def matmul(a, b, sparse=None, out=None):
     b = astensor(b)
 
     sparse = sparse if sparse is not None else a.issparse() and b.issparse()
-    op = TensorMatmul(dtype=np.promote_types(a.dtype, b.dtype), sparse=sparse)
+    op = TensorMatmul(dtype=np.promote_types(a.dtype, b.dtype), sparse=sparse, **kw)
     return op(a, b, out=out)

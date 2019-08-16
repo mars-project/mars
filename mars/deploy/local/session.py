@@ -82,16 +82,16 @@ class LocalClusterSession(object):
 
     def create_mutable_tensor(self, name, shape, dtype, *args, **kwargs):
         from ...tensor.utils import create_mutable_tensor
-        shape, dtype, chunk_size, chunk_keys = \
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = \
                 self._api.create_mutable_tensor(self._session_id, name, shape,
                                                 dtype, *args, **kwargs)
-        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys, chunk_eps)
 
     def get_mutable_tensor(self, name):
         from ...tensor.utils import create_mutable_tensor
-        shape, dtype, chunk_size, chunk_keys = \
+        shape, dtype, chunk_size, chunk_keys, chunk_eps = \
                  self._api.get_mutable_tensor(self._session_id, name)
-        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys)
+        return create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
         chunk_records_to_send = tensor._do_write(index, value)
@@ -106,7 +106,7 @@ class LocalClusterSession(object):
         self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
         # Construct Tensor on the fly.
-        shape, dtype, chunk_size, chunk_keys = tensor_meta
+        shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
         return create_fetch_tensor(chunk_size, shape, dtype, tensor_key=tensor_key, chunk_keys=chunk_keys)
 
     def run(self, *tileables, **kw):

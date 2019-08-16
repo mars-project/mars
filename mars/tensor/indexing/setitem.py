@@ -57,7 +57,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         inputs = filter_inputs([a] + list(index) + [value])
         self._indexes = index
         self._value = value
-        return self.new_tensor(inputs, a.shape)
+        return self.new_tensor(inputs, a.shape, order=a.order)
 
     @classmethod
     def tile(cls, op):
@@ -88,11 +88,13 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
             chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
                                            indexes=index_chunk.op.indexes, value=value_chunk)
             chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape, index=chunk.index)
+            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
+                                           index=chunk.index, order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=op.input.nsplits)
+        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
+                                  chunks=out_chunks, nsplits=op.input.nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

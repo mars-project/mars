@@ -95,7 +95,8 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         else:
             self._indices_or_sections = indices_or_sections
 
-        kws = [{'i': i, 'shape': a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1:]} for i in range(nparts)]
+        kws = [{'i': i, 'shape': a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1:], 'order': a.order}
+               for i in range(nparts)]
         return ExecutableTuple(self.new_tensors(inputs, kws=kws, output_limit=nparts))
 
     @classmethod
@@ -115,6 +116,7 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
             out_kws[i]['chunks'] = new_s.chunks
             out_kws[i]['nsplits'] = new_s.nsplits
             out_kws[i]['shape'] = split.shape
+            out_kws[i]['order'] = op.outputs[i].order
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, kws=out_kws, output_limit=len(out_kws))

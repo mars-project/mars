@@ -66,11 +66,12 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
         return self._axis
 
     def __call__(self, a, shape):
-        return self.new_tensor([a], shape)
+        return self.new_tensor([a], shape, order=a.order)
 
     @classmethod
     def tile(cls, op):
         in_tensor = op.input
+        out_tensor = op.outputs[0]
         axis_set = set(op.axis)
 
         out_chunks = []
@@ -78,12 +79,13 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_shape = _get_squeeze_shape(c.shape, op.axis)[0]
             chunk_idx = tuple(idx for i, idx in enumerate(c.index) if i not in axis_set)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx)
+            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape, index=chunk_idx,
+                                           order=out_tensor.order)
             out_chunks.append(out_chunk)
         nsplits = [nsplit for i, nsplit in enumerate(in_tensor.nsplits) if i not in axis_set]
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
+        return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=out_tensor.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

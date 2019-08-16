@@ -25,7 +25,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
 
@@ -59,13 +59,25 @@ class Test(unittest.TestCase):
 
         np.testing.assert_equal(res, expected)
 
+        a = ones((2, 3), chunk_size=1)
+        b = tensor(np.asfortranarray(np.random.rand(2, 3)), chunk_size=2)
+
+        copyto(b, a)
+
+        res = self.executor.execute_tensor(b, concat=True)[0]
+        expected = np.asfortranarray(np.ones((2, 3)))
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
+
     def testAstypeExecution(self):
         raw = np.random.random((10, 5))
         arr = tensor(raw, chunk_size=3)
         arr2 = arr.astype('i8')
 
         res = self.executor.execute_tensor(arr2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw.astype('i8')))
+        np.testing.assert_array_equal(res[0], raw.astype('i8'))
 
         raw = sps.random(10, 5, density=.2)
         arr = tensor(raw, chunk_size=3)
@@ -74,6 +86,15 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr2, concat=True)
         self.assertTrue(np.array_equal(res[0].toarray(), raw.astype('i8').toarray()))
 
+        raw = np.asfortranarray(np.random.random((10, 5)))
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.astype('i8', order='C')
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        np.testing.assert_array_equal(res, raw.astype('i8'))
+        self.assertTrue(res.flags['C_CONTIGUOUS'])
+        self.assertFalse(res.flags['F_CONTIGUOUS'])
+
     def testTransposeExecution(self):
         raw = np.random.random((11, 8, 5))
         arr = tensor(raw, chunk_size=3)
@@ -81,13 +102,13 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.T))
+        np.testing.assert_array_equal(res[0], raw.T)
 
         arr3 = transpose(arr, axes=(-2, -1, -3))
 
         res = self.executor.execute_tensor(arr3, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.transpose(1, 2, 0)))
+        np.testing.assert_array_equal(res[0], raw.transpose(1, 2, 0))
 
         raw = sps.random(11, 8)
         arr = tensor(raw, chunk_size=3)
@@ -97,7 +118,30 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0].toarray(), raw.T.toarray()))
+        np.testing.assert_array_equal(res[0].toarray(), raw.T.toarray())
+
+        # test order
+        raw = np.asfortranarray(np.random.random((11, 8, 5)))
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = transpose(arr)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = np.transpose(raw).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = transpose(arr, (1, 2, 0))
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = np.transpose(raw, (1, 2, 0)).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testSwapaxesExecution(self):
         raw = np.random.random((11, 8, 5))
@@ -106,7 +150,7 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0], raw.swapaxes(2, 0)))
+        np.testing.assert_array_equal(res[0], raw.swapaxes(2, 0))
 
         raw = sps.random(11, 8, density=.2)
         arr = tensor(raw, chunk_size=3)
@@ -114,7 +158,40 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(arr2, concat=True)
 
-        self.assertTrue(np.array_equal(res[0].toarray(), raw.toarray().swapaxes(1, 0)))
+        np.testing.assert_array_equal(res[0].toarray(), raw.toarray().swapaxes(1, 0))
+
+        # test order
+        raw = np.asfortranarray(np.random.rand(11, 8, 5))
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(2, 0)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(2, 0).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(0, 2)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(0, 2).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        arr = tensor(raw, chunk_size=3)
+        arr2 = arr.swapaxes(1, 0)
+
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        expected = raw.swapaxes(1, 0).copy(order='A')
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testMoveaxisExecution(self):
         x = zeros((3, 4, 5), chunk_size=2)
@@ -191,22 +268,22 @@ class Test(unittest.TestCase):
         y = x.reshape(-1, 30)
 
         res = self.executor.execute_tensor(y, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 30)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1, 30))
 
         y2 = x.reshape(10, -1)
 
         res = self.executor.execute_tensor(y2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(10, -1)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(10, -1))
 
         y3 = x.reshape(-1)
 
         res = self.executor.execute_tensor(y3, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1))
 
         y4 = x.ravel()
 
         res = self.executor.execute_tensor(y4, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.ravel()))
+        np.testing.assert_array_equal(res[0], raw_data.ravel())
 
         raw_data = np.random.rand(30, 100, 20)
         x = tensor(raw_data, chunk_size=6)
@@ -214,17 +291,17 @@ class Test(unittest.TestCase):
         y = x.reshape(-1, 20, 5, 5, 4)
 
         res = self.executor.execute_tensor(y, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(-1, 20, 5, 5, 4)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(-1, 20, 5, 5, 4))
 
         y2 = x.reshape(3000, 10, 2)
 
         res = self.executor.execute_tensor(y2, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(3000, 10, 2)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(3000, 10, 2))
 
         y3 = x.reshape(60, 25, 40)
 
         res = self.executor.execute_tensor(y3, concat=True)
-        self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+        np.testing.assert_array_equal(res[0], raw_data.reshape(60, 25, 40))
 
         y4 = x.reshape(60, 25, 40)
         y4.op.extra_params['_reshape_with_shuffle'] = True
@@ -233,6 +310,14 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(y4, concat=True)
         self.assertEqual(res[0].nbytes, sum(v[0] for v in size_res))
         self.assertTrue(np.array_equal(res[0], raw_data.reshape(60, 25, 40)))
+
+        y5 = x.ravel(order='F')
+
+        res = self.executor.execute_tensor(y5, concat=True)[0]
+        expected = raw_data.ravel(order='F')
+        np.testing.assert_array_equal(res, expected)
+        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
+        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
     def testExpandDimsExecution(self):
         raw_data = np.random.rand(10, 20, 30)
@@ -322,7 +407,19 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.argwhere(np.arange(6).reshape(2, 3) > 1)
 
-        self.assertTrue(np.array_equal(res, expected))
+        np.testing.assert_array_equal(res, expected)
+
+        data = np.asfortranarray(np.random.rand(10, 20))
+        x = tensor(data, chunk_size=10)
+
+        t = argwhere(x > 0.5)
+
+        res = self.executor.execute_tensor(t, concat=True)[0]
+        expected = np.argwhere(data > 0.5)
+
+        np.testing.assert_array_equal(res, expected)
+        self.assertTrue(res.flags['F_CONTIGUOUS'])
+        self.assertFalse(res.flags['C_CONTIGUOUS'])
 
     def testArraySplitExecution(self):
         x = arange(48, chunk_size=3).reshape(2, 3, 8)
@@ -773,3 +870,117 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(flat_arr, concat=True)[0]
         self.assertEqual(len(res), 50)
         np.testing.assert_equal(res, np.ones(50))
+
+    def testSearchsortedExecution(self):
+        raw = np.sort(np.random.randint(100, size=(16,)))
+
+        # test different chunk_size, 3 will have combine, 6 will skip combine
+        for chunk_size in (3, 6):
+            arr = tensor(raw, chunk_size=chunk_size)
+
+            # test scalar, with value in the middle
+            t1 = searchsorted(arr, 20)
+
+            res = self.executor.execute_tensor(t1, concat=True)[0]
+            expected = np.searchsorted(raw, 20)
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, with value larger than 100
+            t2 = searchsorted(arr, 200)
+
+            res = self.executor.execute_tensor(t2, concat=True)[0]
+            expected = np.searchsorted(raw, 200)
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side left, with value exact in the middle of the array
+            t3 = searchsorted(arr, raw[10], side='left')
+
+            res = self.executor.execute_tensor(t3, concat=True)[0]
+            expected = np.searchsorted(raw, raw[10], side='left')
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side right, with value exact in the middle of the array
+            t4 = searchsorted(arr, raw[10], side='right')
+
+            res = self.executor.execute_tensor(t4, concat=True)[0]
+            expected = np.searchsorted(raw, raw[10], side='right')
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side left, with value exact in the end of the array
+            t5 = searchsorted(arr, raw[15], side='left')
+
+            res = self.executor.execute_tensor(t5, concat=True)[0]
+            expected = np.searchsorted(raw, raw[15], side='left')
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side right, with value exact in the end of the array
+            t6 = searchsorted(arr, raw[15], side='right')
+
+            res = self.executor.execute_tensor(t6, concat=True)[0]
+            expected = np.searchsorted(raw, raw[15], side='right')
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side left, with value exact in the start of the array
+            t7 = searchsorted(arr, raw[0], side='left')
+
+            res = self.executor.execute_tensor(t7, concat=True)[0]
+            expected = np.searchsorted(raw, raw[0], side='left')
+            np.testing.assert_array_equal(res, expected)
+
+            # test scalar, side right, with value exact in the start of the array
+            t8 = searchsorted(arr, raw[0], side='right')
+
+            res = self.executor.execute_tensor(t8, concat=True)[0]
+            expected = np.searchsorted(raw, raw[0], side='right')
+            np.testing.assert_array_equal(res, expected)
+
+            raw2 = np.random.randint(100, size=(3, 4))
+
+            # test tensor, side left
+            t9 = searchsorted(arr, tensor(raw2, chunk_size=2), side='left')
+
+            res = self.executor.execute_tensor(t9, concat=True)[0]
+            expected = np.searchsorted(raw, raw2, side='left')
+            np.testing.assert_array_equal(res, expected)
+
+            # test tensor, side right
+            t10 = searchsorted(arr, tensor(raw2, chunk_size=2), side='right')
+
+            res = self.executor.execute_tensor(t10, concat=True)[0]
+            expected = np.searchsorted(raw, raw2, side='right')
+            np.testing.assert_array_equal(res, expected)
+
+        # test one chunk
+        arr = tensor(raw, chunk_size=16)
+
+        # test scalar, tensor to search has 1 chunk
+        t11 = searchsorted(arr, 20)
+        res = self.executor.execute_tensor(t11, concat=True)[0]
+        expected = np.searchsorted(raw, 20)
+        np.testing.assert_array_equal(res, expected)
+
+        # test tensor with 1 chunk, tensor to search has 1 chunk
+        t12 = searchsorted(arr, tensor(raw2, chunk_size=4))
+
+        res = self.executor.execute_tensor(t12, concat=True)[0]
+        expected = np.searchsorted(raw, raw2)
+        np.testing.assert_array_equal(res, expected)
+
+        # test tensor with more than 1 chunk, tensor to search has 1 chunk
+        t13 = searchsorted(arr, tensor(raw2, chunk_size=2))
+
+        res = self.executor.execute_tensor(t13, concat=True)[0]
+        expected = np.searchsorted(raw, raw2)
+        np.testing.assert_array_equal(res, expected)
+
+        # test sorter
+        raw3 = np.random.randint(100, size=(16,))
+        arr = tensor(raw3, chunk_size=3)
+        order = np.argsort(raw3)
+        order_arr = tensor(order, chunk_size=4)
+
+        t14 = searchsorted(arr, 20, sorter=order_arr)
+
+        res = self.executor.execute_tensor(t14, concat=True)[0]
+        expected = np.searchsorted(raw3, 20, sorter=order)
+        np.testing.assert_array_equal(res, expected)

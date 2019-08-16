@@ -92,14 +92,9 @@ def get_chunk_slices(nsplits, idx):
                  for idx, nsplit in zip(idx, nsplits))
 
 
-def random_state_data(n, random_state=None):
-    if not isinstance(random_state, np.random.RandomState):
-        random_state = np.random.RandomState(random_state)
-
-    random_data = random_state.bytes(624 * n * 4)  # `n * 624` 32-bit integers
-    l = list(np.frombuffer(random_data, dtype=np.uint32).reshape((n, -1)))
-    assert len(l) == n
-    return l
+def gen_random_seeds(n, random_state):
+    assert isinstance(random_state, np.random.RandomState)
+    return np.frombuffer(random_state.bytes(n * 4), dtype=np.uint32)
 
 
 def validate_axis(ndim, axis):
@@ -566,7 +561,7 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
                                       chunks=chunks, _key=tensor_key, _id=tensor_id)
 
 
-def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
+def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None, chunk_eps=None):
     """
     Construct MutableTensor on the fly, using given name, chunk_size, shape, dtype,
     as well as possible chunk keys.
@@ -574,7 +569,8 @@ def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None):
     from .core import MutableTensor, MutableTensorData
     tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
     return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=tensor.dtype,
-                                                _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks))
+                                                _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks,
+                                                _chunk_eps=chunk_eps))
 
 
 def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
@@ -671,3 +667,32 @@ def to_numpy(pdf):
         return pdf.to_numpy()
     except AttributeError:  # pragma: no cover
         return pdf.values
+
+
+def check_order(order_str, available_options='KACF',
+                err_msg='order not understood'):
+    order_str = order_str.upper()
+    if order_str not in available_options:
+        raise TypeError(err_msg)
+
+
+def get_order(order_str, to_keep_order, available_options='KACF',
+              err_msg='order not understood'):
+    from .core import TensorOrder
+
+    check_order(order_str, available_options=available_options,
+                err_msg=err_msg)
+
+    if order_str in 'KA':
+        return to_keep_order
+    elif order_str == 'C':
+        return TensorOrder.C_ORDER
+    else:
+        return TensorOrder.F_ORDER
+
+
+def reverse_order(old_order):
+    from .core import TensorOrder
+
+    assert isinstance(old_order, TensorOrder)
+    return TensorOrder.C_ORDER if old_order == TensorOrder.F_ORDER else TensorOrder.F_ORDER

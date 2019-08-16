@@ -67,6 +67,7 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         chunk_shapes = [t.chunk_shape if isinstance(t, TENSOR_TYPE) else t
                         for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)
+        output = op.outputs[0]
 
         out_chunks = []
         nsplits = [[None] * shape for shape in out_chunk_shape]
@@ -75,13 +76,14 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
             in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
                          for t in inputs]
             chunk_shape = broadcast_shape(*(c.shape for c in in_chunks[1:]))
-            out_chunk = op.copy().reset_key().new_chunk(in_chunks, shape=chunk_shape, index=out_index)
+            out_chunk = op.copy().reset_key().new_chunk(in_chunks, shape=chunk_shape,
+                                                        index=out_index, order=output.order)
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_index, out_chunk.shape):
                 nsplits[i][idx] = s
 
         new_op = op.copy()
-        return new_op.new_tensors(inputs, op.outputs[0].shape,
+        return new_op.new_tensors(inputs, output.shape, order=output.order,
                                   chunks=out_chunks, nsplits=nsplits)
 
     @classmethod

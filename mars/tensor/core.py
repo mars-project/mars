@@ -17,16 +17,27 @@
 
 from collections import Iterable, defaultdict
 from datetime import datetime
+from operator import attrgetter
+
 import numpy as np
+
 from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
+from ..compat import Enum
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+class TensorOrder(Enum):
+    # C order
+    C_ORDER = 'C'
+    # Fortran order
+    F_ORDER = 'F'
 
 
 class TensorChunkData(ChunkData):
@@ -35,6 +46,7 @@ class TensorChunkData(ChunkData):
     # required fields
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
     # optional fields
     _dtype = DataTypeField('dtype')
 
@@ -51,6 +63,7 @@ class TensorChunkData(ChunkData):
         return {
             'shape': self.shape,
             'dtype': self.dtype,
+            'order': self.order,
             'index': self.index,
         }
 
@@ -79,6 +92,10 @@ class TensorChunkData(ChunkData):
         return getattr(self, '_dtype', None) or self.op.dtype
 
     @property
+    def order(self):
+        return getattr(self, '_order', None)
+
+    @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize
 
@@ -95,6 +112,8 @@ class TensorData(TileableData):
     __slots__ = ()
 
     # required fields
+    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
+    # optional fields
     _dtype = DataTypeField('dtype')
     _chunks = ListField('chunks', ValueType.reference(TensorChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
@@ -128,7 +147,17 @@ class TensorData(TileableData):
         # params return the properties which useful to rebuild a new tileable object
         return {
             'shape': self.shape,
-            'dtype': self.dtype
+            'dtype': self.dtype,
+            'order': self.order
+        }
+
+    @property
+    def flags(self):
+        c_order = True if self.ndim <= 1 else self.order == TensorOrder.C_ORDER
+        f_order = True if self.ndim <= 1 else self.order == TensorOrder.F_ORDER
+        return {
+            'C_CONTIGUOUS': c_order,
+            'F_CONTIGUOUS': f_order
         }
 
     @property
@@ -144,6 +173,10 @@ class TensorData(TileableData):
     @property
     def dtype(self):
         return getattr(self, '_dtype', None) or self.op.dtype
+
+    @property
+    def order(self):
+        return getattr(self, '_order', None)
 
     @property
     def nbytes(self):
@@ -183,8 +216,13 @@ class TensorData(TileableData):
     def T(self):
         return self.transpose()
 
-    def reshape(self, shape, *shapes):
+    def reshape(self, shape, *shapes, **kw):
         from .reshape import reshape
+
+        order = kw.pop('order', 'C')
+        if kw:
+            raise TypeError(
+                "'{0}' is an invalid keyword argument for this function".format(tuple(kw)[0]))
 
         if isinstance(shape, Iterable):
             shape = tuple(shape)
@@ -192,7 +230,7 @@ class TensorData(TileableData):
             shape = (shape,)
         shape += shapes
 
-        return reshape(self, shape)
+        return reshape(self, shape, order=order)
 
     def _equals(self, o):
         return self is o
@@ -363,6 +401,9 @@ class Tensor(TileableEntity):
     def totiledb(self, uri, ctx=None, key=None, timestamp=None):
         return self._data.totiledb(uri, ctx=ctx, key=key, timestamp=timestamp)
 
+    def copy(self, order='C'):
+        return super(Tensor, self).copy().astype(self.dtype, order=order, copy=False)
+
     @property
     def flat(self):
         """
@@ -378,8 +419,8 @@ class Tensor(TileableEntity):
 
         See Also
         --------
-        ndarray.flat : Return a flat iterator over a tensor.
-        ndarray.flatten : Returns a flattened copy of a tensor.
+        Tensor.flat : Return a flat iterator over a tensor.
+        Tensor.flatten : Returns a flattened copy of a tensor.
 
         Examples
         --------
@@ -441,6 +482,7 @@ class MutableTensorData(TensorData):
     # required fields
     _name = StringField('name')
     _compression = BoolField("compression")
+    _chunk_eps = ListField('chunk_eps')
 
     @classmethod
     def cls(cls, provider):
@@ -465,6 +507,7 @@ class MutableTensorData(TensorData):
             'dtype': self.dtype,
             'name': self.name,
             'compression': self.compression,
+            "chunk_eps": self.chunk_eps,
         }
 
     @property
@@ -475,9 +518,13 @@ class MutableTensorData(TensorData):
     def compression(self):
         return getattr(self, '_compression', None)
 
+    @property
+    def chunk_eps(self):
+        return getattr(self, '_chunk_eps', None)
+
 
 class MutableTensor(Entity):
-    __slots__ = ("_chunk_buffers", "_record_type", "_buffer_size")
+    __slots__ = ("_chunk_to_endpoint", "_chunk_buffers", "_record_type", "_buffer_size")
     _allow_data_type_ = (MutableTensorData,)
 
     def __init__(self, *args, **kwargs):
@@ -490,12 +537,21 @@ class MutableTensor(Entity):
             # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
             self._buffer_size = 0
 
+        if self._data.chunk_eps is not None:
+            self._chunk_to_endpoint = dict((c.key, ep) for c, ep in zip(self.chunks, self._data.chunk_eps))
+        else:
+            self._chunk_to_endpoint = dict()
+
     def __len__(self):
         return len(self._data)
 
     @property
     def name(self):
         return self._data.name
+
+    @property
+    def chunk_to_endpoint(self):
+        return self._chunk_to_endpoint
 
     def __setitem__(self, index, value):
         from ..session import Session
@@ -551,9 +607,6 @@ class MutableTensor(Entity):
         affected_chunk_keys = []
 
         for output_chunk in output_chunks:
-            logger.debug("write: chunk idx = {}, output chunk idx = {}, chunk_shape = {}, chunk_index = {}".format(
-                output_chunk.op.input.index, output_chunk.index, output_chunk.shape, output_chunk.op.indexes))
-
             records = self._chunk_buffers[output_chunk.op.input.key]
             records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
             affected_chunk_keys.append(output_chunk.op.input.key)
@@ -563,12 +616,13 @@ class MutableTensor(Entity):
 
     @log_unhandled
     def _do_flush(self, buffer_size_limit=1, affected_chunk_keys=None):
-        chunk_records_to_send = dict()
+        chunk_records_to_send = []
         affected_chunk_keys = affected_chunk_keys or self._chunk_buffers.keys()
         for chunk_key in affected_chunk_keys:
             records = self._chunk_buffers[chunk_key]
             if len(records) >= buffer_size_limit:
-                chunk_records_to_send[chunk_key] = np.array(records, dtype=self._record_type)
+                chunk_records_to_send.append((chunk_key, self._chunk_to_endpoint[chunk_key],
+                                              np.array(records, dtype=self._record_type)))
                 self._chunk_buffers[chunk_key] = []
         return chunk_records_to_send
 

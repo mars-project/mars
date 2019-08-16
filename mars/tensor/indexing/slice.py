@@ -16,6 +16,7 @@
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, ListField
 from ..operands import TensorHasInput, TensorOperandMixin
+from ..core import TensorOrder
 
 
 class TensorSlice(TensorHasInput, TensorOperandMixin):
@@ -36,6 +37,28 @@ class TensorSlice(TensorHasInput, TensorOperandMixin):
         super(TensorSlice, self)._set_inputs(inputs)
         self._input = self._inputs[0]
 
+    def _get_order(self, kw, i):
+        order = kw.pop('order', None)
+        if order is None:
+            inp = self.input
+            if inp is None or inp.order == TensorOrder.C_ORDER:
+                return TensorOrder.C_ORDER
+
+            for shape, slc in zip(inp.shape, self._slices):
+                if slc is None:
+                    continue
+                s = slc.indices(shape)
+                if s[0] == 0 and s[1] == shape and s[2] == 1:
+                    continue
+                else:
+                    return TensorOrder.C_ORDER
+
+            return inp.order
+
+        return order[i] if isinstance(order, (list, tuple)) else order
+
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = ctx[op.inputs[0].key][tuple(op.slices)]
+        x = ctx[op.inputs[0].key][tuple(op.slices)]
+        out = op.outputs[0]
+        ctx[out.key] = x.astype(x.dtype, order=out.order.value, copy=False)

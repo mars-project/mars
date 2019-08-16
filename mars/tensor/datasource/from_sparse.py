@@ -15,7 +15,8 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...serialize import KeyField, StringField
+from ..utils import get_order
 from .core import TensorHasInput
 from .array import tensor
 
@@ -24,20 +25,25 @@ class SparseToDense(TensorHasInput):
     _op_type_ = OperandDef.SPARSE_TO_DENSE
 
     _input = KeyField('_input')
+    _order = StringField('_order')
 
-    def __init__(self, dtype=None, gpu=None, **kw):
+    def __init__(self, dtype=None, gpu=None, order=None, **kw):
         super(SparseToDense, self).__init__(_dtype=dtype, _gpu=gpu,
-                                            _sparse=False, **kw)
+                                            _sparse=False, _order=order, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = ctx[op.inputs[0].key].toarray()
+        ctx[op.outputs[0].key] = \
+            ctx[op.inputs[0].key].toarray().astype(
+                op.outputs[0].dtype, order=op.order, copy=False)
 
 
-def fromsparse(a):
+def fromsparse(a, order='C'):
     a = tensor(a)
     if not a.issparse():
-        return a
+        return a.astype(a.dtype, order=order, copy=False)
 
-    op = SparseToDense(dtype=a.dtype, gpu=a.op.gpu)
-    return op(a)
+    tensor_order = get_order(order, None, available_options='CF',
+                             err_msg="only 'C' or 'F' order is permitted")
+    op = SparseToDense(dtype=a.dtype, gpu=a.op.gpu, order=order)
+    return op(a, order=tensor_order)

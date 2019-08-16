@@ -109,7 +109,7 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
         chunks = new_chunks
 
     op = TensorTreeAdd(dtype=dtype, sparse=sparse)
-    return op.new_chunk(chunks, shape=shape, index=idx)
+    return op.new_chunk(chunks, shape=shape, index=idx, order=chunks[0].order)
 
 
 def tree_op_estimate_size(ctx, op):

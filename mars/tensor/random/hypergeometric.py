@@ -149,5 +149,5 @@ def hypergeometric(random_state, ngood, nbad, nsample, size=None, chunk_size=Non
         dtype = np.random.RandomState().hypergeometric(
             handle_array(ngood), handle_array(nbad), handle_array(nsample), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorHypergeometric(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorHypergeometric(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(ngood, nbad, nsample, chunk_size=chunk_size)

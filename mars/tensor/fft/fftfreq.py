@@ -21,6 +21,7 @@ from ...tiles import NotSupportTile
 from ...serialize import Int32Field, Float64Field, KeyField
 from ..operands import TensorOperand, TensorHasInput, TensorOperandMixin
 from ..datasource import arange
+from ..core import TensorOrder
 
 
 class TensorFFTFreq(TensorOperand, TensorOperandMixin):
@@ -42,7 +43,8 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
 
     def __call__(self, chunk_size=None):
         shape = (self.n,)
-        return self.new_tensor(None, shape, raw_chunk_size=chunk_size)
+        return self.new_tensor(None, shape, raw_chunk_size=chunk_size,
+                               order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
@@ -53,11 +55,12 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = TensorFFTFreqChunk(n=op.n, d=op.d, dtype=op.dtype)
-            out_chunk = chunk_op.new_chunk([c], shape=c.shape, index=c.index)
+            out_chunk = chunk_op.new_chunk([c], shape=c.shape,
+                                           index=c.index, order=tensor.order)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape,
+        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
                                   chunks=out_chunks, nsplits=in_tensor.nsplits,
                                   **tensor.extra_params)
 

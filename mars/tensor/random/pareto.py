@@ -144,5 +144,5 @@ def pareto(random_state, a, size=None, chunk_size=None, gpu=None, dtype=None):
         dtype = np.random.RandomState().pareto(
             handle_array(a), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorPareto(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorPareto(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(a, chunk_size=chunk_size)

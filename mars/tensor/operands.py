@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from ..serialize import DataTypeField
 from ..core import TileableOperandMixin
 from ..operands import Operand, HasInput, ShuffleProxy, ShuffleMap, ShuffleReduce, Fuse
-from .core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk
+from .core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk, TensorOrder
 
 
 class TensorOperandMixin(TileableOperandMixin):
@@ -30,34 +30,51 @@ class TensorOperandMixin(TileableOperandMixin):
         dtype = kw.pop('dtype', None)
         return dtype[i] if isinstance(dtype, (list, tuple)) else dtype
 
+    def _get_order(self, kw, i):
+        inputs = self._inputs or []
+        order = kw.pop('order', None)
+        if order is None:
+            if len(inputs) == 0:
+                order = TensorOrder.C_ORDER
+            elif all(hasattr(inp, 'order') and inp.order == TensorOrder.F_ORDER
+                     for inp in inputs):
+                order = TensorOrder.F_ORDER
+            else:
+                order = TensorOrder.C_ORDER
+
+        return order[i] if isinstance(order, (list, tuple)) else order
+
     def _create_chunk(self, output_idx, index, **kw):
         dt = self._get_dtype(kw, output_idx)
+        order = self._get_order(kw, output_idx)
         shape = kw.pop('shape', None)
         data = TensorChunkData(_index=index, _shape=shape, _op=self,
-                               _dtype=dt, **kw)
+                               _dtype=dt, _order=order, **kw)
         return TensorChunk(data)
 
     def _create_tileable(self, output_idx, **kw):
         tensor_cls = SparseTensor if getattr(self, 'issparse')() else Tensor
         dt = self._get_dtype(kw, output_idx)
+        order = self._get_order(kw, output_idx)
         nsplits = kw.pop('nsplits', None)
         shape = kw.pop('shape', None)
         chunks = kw.pop('chunks', None)
         if nsplits is not None:
             kw['_nsplits'] = nsplits
-        data = TensorData(_shape=shape, _dtype=dt, _op=self, _chunks=chunks, **kw)
+        data = TensorData(_shape=shape, _dtype=dt, _order=order,
+                          _op=self, _chunks=chunks, **kw)
         return tensor_cls(data)
 
-    def new_tensors(self, inputs, shape=None, dtype=None, chunks=None, nsplits=None,
+    def new_tensors(self, inputs, shape=None, dtype=None, order=None, chunks=None, nsplits=None,
                     output_limit=None, kws=None, **kw):
         return self.new_tileables(inputs, shape=shape, chunks=chunks, nsplits=nsplits,
-                                  output_limit=output_limit, kws=kws, dtype=dtype, **kw)
+                                  output_limit=output_limit, kws=kws, dtype=dtype, order=order, **kw)
 
-    def new_tensor(self, inputs, shape, dtype=None, **kw):
+    def new_tensor(self, inputs, shape, dtype=None, order=None, **kw):
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new tensor with more than 1 outputs')
 
-        return self.new_tensors(inputs, shape=shape, dtype=dtype, **kw)[0]
+        return self.new_tensors(inputs, shape=shape, dtype=dtype, order=order, **kw)[0]
 
 
 class TensorOperand(Operand):

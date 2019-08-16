@@ -85,5 +85,5 @@ def random_sample(random_state, size=None, chunk_size=None, gpu=None, dtype=None
     if dtype is None:
         dtype = np.dtype('f8')
     size = random_state._handle_size(size)
-    op = TensorRandomSample(state=random_state._state, size=size, gpu=gpu, dtype=dtype)
+    op = TensorRandomSample(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

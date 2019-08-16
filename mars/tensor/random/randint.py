@@ -172,6 +172,6 @@ def randint(random_state, low, high=None, size=None, dtype='l', density=None,
     """
     sparse = bool(density)
     size = random_state._handle_size(size)
-    op = TensorRandint(state=random_state._state, low=low, high=high, size=size, dtype=dtype,
+    op = TensorRandint(state=random_state.to_numpy(), low=low, high=high, size=size, dtype=dtype,
                        gpu=gpu, sparse=sparse, density=density)
     return op(chunk_size=chunk_size)

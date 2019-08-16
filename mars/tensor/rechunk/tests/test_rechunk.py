@@ -68,3 +68,9 @@ class Test(unittest.TestCase):
 
         self.assertTrue(new_tensor.issparse())
         self.assertTrue(all(c.issparse() for c in new_tensor.chunks))
+
+    def testOrder(self):
+        tensor = ones((7, 12), chunk_size=4, order='F')
+        new_tensor = tensor.rechunk(5)
+
+        self.assertTrue(new_tensor.order.value, 'F')
