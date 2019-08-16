@@ -376,8 +376,8 @@ class Test(unittest.TestCase):
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
-            with new_session('http://' + cluster._web_endpoint).as_default() as session:
-                testWithGivenSession(session)
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
 
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorFillValue(self):
@@ -417,8 +417,8 @@ class Test(unittest.TestCase):
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
-            with new_session('http://' + cluster._web_endpoint).as_default() as session:
-                testWithGivenSession(session)
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
 
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorString(self):
@@ -464,8 +464,40 @@ class Test(unittest.TestCase):
             session = cluster.session.as_default()
             testWithGivenSession(session)
 
-            with new_session('http://' + cluster._web_endpoint).as_default():
-                testWithGivenSession(session)
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testIdenticalMutableTensor(self):
+        def testWithGivenSession(session):
+            from mars.tensor.core import mutable_tensor
+
+            # simple dtype.
+            mut1 = mutable_tensor("test1", (4, 5), dtype='int', chunk_size=3)
+            mut2 = mutable_tensor("test2", (4, 5), dtype='int', chunk_size=3)
+
+            mut1[:] = 111
+            mut2[:] = 222
+
+            arr1 = mut1.seal()
+            arr2 = mut2.seal()
+
+            expected1 = np.full((4, 5), 111, dtype='int')
+            expected2 = np.full((4, 5), 222, dtype='int')
+
+            np.testing.assert_array_equal(session.fetch(arr1), expected1)
+            np.testing.assert_array_equal(session.fetch(arr2), expected2)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                            shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
 
     def assertRecordsEqual(self, records, expected):
         np.testing.assert_array_equal(records['index'], expected[:,0])
