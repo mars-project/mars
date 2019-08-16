@@ -15,6 +15,22 @@
 import numpy as np
 
 
+def calc_svd_shapes(a):
+    """
+    Calculate output shapes of singular value decomposition.
+    Follow the behavior of `numpy`:
+    if a's shape is (6, 18), U's shape is (6, 6), s's shape is (6,), V's shape is (6, 18)
+    if a's shape is (18, 6), U's shape is (18, 6), s's shape is (6,), V's shape is (6, 6)
+    :param a: input tensor
+    :return: (U.shape, s.shape, V.shape)
+    """
+    x, y = a.shape
+    if x > y:
+        return (x, y), (y,), (y, y)
+    else:
+        return (x, x), (x,), (x, y)
+
+
 def svd_flip(u, v, u_based_decision=True):
     """
     Sign correction to ensure deterministic output from SVD.
