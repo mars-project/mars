@@ -19,6 +19,7 @@ import numpy as np
 from ...compat import izip
 from ..core import TensorOrder
 from ..utils import decide_chunk_sizes
+from .utils import calc_svd_shapes
 
 
 class SFQR(object):
@@ -166,9 +167,7 @@ class TSQR(object):
             U_shape, s_shape, V_shape = U.shape, s.shape, V.shape
 
             svd_op = TensorSVD()
-            u_shape = stage2_r_chunk.shape
-            s_shape = (stage2_r_chunk.shape[1],)
-            v_shape = (stage2_r_chunk.shape[1],) * 2
+            u_shape, s_shape, v_shape = calc_svd_shapes(stage2_r_chunk)
             stage2_usv_chunks = svd_op.new_chunks([stage2_r_chunk],
                                                   kws=[{'side': 'U', 'dtype': U_dtype,
                                                         'index': stage2_r_chunk.index,

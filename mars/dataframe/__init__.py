@@ -16,12 +16,16 @@
 
 from .initializer import DataFrame, Series
 # do imports to register operands
-from .arithmetic import add
 from .datasource.from_tensor import from_tensor
 from .datasource.from_records import from_records
 from .merge.merge import merge, join
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import DataFrameConcat, DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
+
+from . import arithmetic
+from . import reduction
+del reduction, arithmetic
+
 del DataFrameFetch, DataFrameFetchShuffle, DataFrameConcat, \
     DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce

@@ -254,6 +254,7 @@ MIT License
 - etcd-gevent:0.1.1.1
 - six:1.10.0
 - bootstrap:3.3.7
+- bootstrap-table:1.15.4
 - font-awesome:4.7.0 (CSS)
 - startbootstrap-sb-admin-2:3.3.7
 - moment.js:2.3.1

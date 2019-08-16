@@ -25,6 +25,7 @@ from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..core import TensorOrder
 from .core import TSQR
+from .utils import calc_svd_shapes
 
 
 class TensorSVD(TensorHasInput, TensorOperandMixin):
@@ -63,15 +64,7 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
 
         # if a's shape is (6, 18), U's shape is (6, 6), s's shape is (6,), V's shape is (6, 18)
         # if a's shape is (18, 6), U's shape is (18, 6), s's shape is (6,), V's shape is (6, 6)
-        x, y = a.shape
-        if x > y:
-            U_shape = (x, y)
-            s_shape = (y, )
-            V_shape = (y, y)
-        else:
-            U_shape = (x, x)
-            s_shape = (x, )
-            V_shape = (x, y)
+        U_shape, s_shape, V_shape = calc_svd_shapes(a)
         U, s, V = self.new_tensors([a],
                                    order=TensorOrder.C_ORDER,
                                    kws=[

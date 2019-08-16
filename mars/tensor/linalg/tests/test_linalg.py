@@ -107,8 +107,11 @@ class Test(unittest.TestCase):
 
         U.tiles()
         self.assertEqual(len(U.chunks), 3)
+        self.assertEqual(U.chunks[0].shape, (3, 6))
         self.assertEqual(len(s.chunks), 1)
+        self.assertEqual(s.chunks[0].shape, (6,))
         self.assertEqual(len(V.chunks), 1)
+        self.assertEqual(V.chunks[0].shape, (6, 6))
 
         self.assertEqual(s.ndim, 1)
         self.assertEqual(len(s.chunks[0].index), 1)
@@ -122,11 +125,29 @@ class Test(unittest.TestCase):
 
         U.tiles()
         self.assertEqual(len(U.chunks), 1)
+        self.assertEqual(U.chunks[0].shape, (9, 6))
         self.assertEqual(len(s.chunks), 1)
+        self.assertEqual(s.chunks[0].shape, (6,))
         self.assertEqual(len(V.chunks), 1)
+        self.assertEqual(V.chunks[0].shape, (6, 6))
 
         self.assertEqual(s.ndim, 1)
         self.assertEqual(len(s.chunks[0].index), 1)
+
+        a = mt.random.rand(6, 20, chunk_size=10)
+        U, s, V = mt.linalg.svd(a)
+
+        self.assertEqual(U.shape, (6, 6))
+        self.assertEqual(s.shape, (6,))
+        self.assertEqual(V.shape, (6, 20))
+
+        U.tiles()
+        self.assertEqual(len(U.chunks), 1)
+        self.assertEqual(U.chunks[0].shape, (6, 6))
+        self.assertEqual(len(s.chunks), 1)
+        self.assertEqual(s.chunks[0].shape, (6,))
+        self.assertEqual(len(V.chunks), 1)
+        self.assertEqual(V.chunks[0].shape, (6, 20))
 
         a = mt.random.rand(6, 9, chunk_size=(6, 9))
         U, s, V = mt.linalg.svd(a)

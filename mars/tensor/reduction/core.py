@@ -154,7 +154,7 @@ class TensorReductionMixin(TensorOperandMixin):
     def _tree_reduction(cls, op, tensor, agg_op_type, axis, combine_op_type=None):
         kw = getattr(op, '_get_op_kw')() or {}
         keepdims = op.keepdims
-        combine_size = op.combine_size or options.tensor.combine_size
+        combine_size = op.combine_size or options.combine_size
         if isinstance(combine_size, dict):
             combine_size = dict((ax, combine_size.get(ax)) for ax in axis)
         else:
