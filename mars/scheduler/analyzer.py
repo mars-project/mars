@@ -317,7 +317,7 @@ class GraphAnalyzer(object):
         else:
             for op_key, worker in self._iter_assignments_by_transfer_sizes(
                     pre_worker_quotas, input_chunk_metas):
-                if op_key in cur_assigns:
+                if op_key in cur_assigns or op_key not in op_keys:
                     continue
                 assigned_counts[worker] += 1
                 cur_assigns[op_key] = worker

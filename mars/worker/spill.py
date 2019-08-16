@@ -35,6 +35,19 @@ def parse_spill_dirs(dir_str):
     Parse paths from a:b to list while resolving asterisks in path
     """
     import glob
+
+    def _validate_dir(path):
+        try:
+            if not os.path.isdir(path):
+                os.makedirs(path)
+            touch_file = os.path.join(path, '.touch')
+            open(touch_file, 'wb').close()
+            os.unlink(touch_file)
+            return True
+        except OSError:  # pragma: no cover
+            logger.exception('Fail to access directory %s', path)
+            return False
+
     final_dirs = []
     for pattern in dir_str.split(os.path.pathsep):
         sub_patterns = pattern.split(os.path.sep)
@@ -49,7 +62,7 @@ def parse_spill_dirs(dir_str):
         left_pattern = os.path.sep.join(sub_patterns[:pos + 1])
         for match in glob.glob(left_pattern):
             final_dirs.append(os.path.sep.join([match] + sub_patterns[pos + 1:]))
-    return sorted(final_dirs)
+    return sorted(d for d in final_dirs if _validate_dir(d))
 
 
 def build_spill_file_name(data_key, dirs=None, writing=False):
