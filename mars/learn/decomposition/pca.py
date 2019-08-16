@@ -350,7 +350,7 @@ class PCA(_BasePCA):
         X_new : array-like, shape (n_samples, n_components)
 
         """
-        U, S, V = self._fit(X, session=session, run=False)
+        U, S, _ = self._fit(X, session=session, run=False)
         U = U[:, :self.n_components_]
 
         if self.whiten:

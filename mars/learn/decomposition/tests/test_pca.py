@@ -149,3 +149,46 @@ class Test(unittest.TestCase):
             # in that case the output components still have varying variances
             assert_almost_equal(X_unwhitened.std(axis=0).std().execute(), 74.1, 1)
             # we always center, so no test for non-centering.
+
+    def testExplainedVariance(self):
+        # Check that PCA output has unit-variance
+        rng = np.random.RandomState(0)
+        n_samples = 100
+        n_features = 80
+
+        X = mt.tensor(rng.randn(n_samples, n_features))
+
+        pca = PCA(n_components=2, svd_solver='full').fit(X)
+        rpca = PCA(n_components=2, svd_solver='randomized', random_state=42).fit(X)
+        assert_array_almost_equal(pca.explained_variance_.execute(),
+                                  rpca.explained_variance_.execute(), 1)
+        assert_array_almost_equal(pca.explained_variance_ratio_.execute(),
+                                  rpca.explained_variance_ratio_.execute(), 1)
+
+        # compare to empirical variances
+        expected_result = np.linalg.eig(np.cov(X.execute(), rowvar=False))[0]
+        expected_result = sorted(expected_result, reverse=True)[:2]
+
+        X_pca = pca.transform(X)
+        assert_array_almost_equal(pca.explained_variance_.execute(),
+                                  mt.var(X_pca, ddof=1, axis=0).execute())
+        assert_array_almost_equal(pca.explained_variance_.execute(), expected_result)
+
+        X_rpca = rpca.transform(X)
+        assert_array_almost_equal(rpca.explained_variance_.execute(),
+                                  mt.var(X_rpca, ddof=1, axis=0).execute(),
+                                  decimal=1)
+        assert_array_almost_equal(rpca.explained_variance_.execute(),
+                                  expected_result, decimal=1)
+
+        # Same with correlated data
+        X = datasets.make_classification(n_samples, n_features,
+                                         n_informative=n_features-2,
+                                         random_state=rng)[0]
+        X = mt.tensor(X)
+
+        pca = PCA(n_components=2).fit(X)
+        rpca = PCA(n_components=2, svd_solver='randomized',
+                   random_state=rng).fit(X)
+        assert_array_almost_equal(pca.explained_variance_ratio_.execute(),
+                                  rpca.explained_variance_ratio_.execute(), 5)

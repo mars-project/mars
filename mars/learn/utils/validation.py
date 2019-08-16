@@ -19,7 +19,6 @@ import numpy as np
 from numpy.core.numeric import ComplexWarning
 
 from ... import tensor as mt
-from ...dataframe.core import DATAFRAME_TYPE
 from ...lib.sparse import issparse
 
 
