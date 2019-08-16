@@ -9,24 +9,20 @@ class JaxOptimizer(Optimizer):
         self.compose(keys)
 
     def _can_break(self, node):
-        if not self._jax_compat(node.op):
+        if not self._support(node):
             return True
-
         if self.graph.count_successors(node) != 1:
             return True
         return False
 
     def _support(self, node):
-        if self._jax_compat(node.op):
+        op = node.op
+        if hasattr(op, 'jax_function') and op.jax_function() is not NotImplementedError:
             return True
         return False
 
     def _can_skip(self, node):
-        if not self._jax_compat(node.op) or node.key in self.keys:
-            return True
-        if node in self.explored:
-            return True
-        if self.graph.count_successors(node) != 1:
+        if super(JaxOptimizer, self)._can_skip(node):
             return True
         return False
 
@@ -34,10 +30,3 @@ class JaxOptimizer(Optimizer):
     def _get_fused_chunk(tail_node):
         from ..tensor.fuse import TensorJaxFuseChunk
         return TensorJaxFuseChunk(dtype=tail_node.dtype)
-
-    # this is method is used to be compatible with jax.numpy
-    @staticmethod
-    def _jax_compat(op):
-        if hasattr(op, 'jax_function') and op.jax_function() is not NotImplementedError:
-            return True
-        return False

@@ -74,7 +74,12 @@ class Test(unittest.TestCase):
         def _normalize_by_sin(func1, func2, arr):
             return func1(abs(sin((func2(arr)))))
 
+        # note: to decrease the time of ci, we only choose the top 10 ops to test
+        count = 0
         for i, j in itertools.permutations(range(len(_new_unary_ufunc)), 2):
+            if count > 10:
+                break
+            count += 1
             raw = np.random.random((8, 8, 8))
             arr1 = tensor(raw, chunk_size=4)
 
@@ -93,30 +98,30 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res[0], res_cmp[0]))
 
     def testBinExecution(self):
-        from mars.tensor.arithmetic import BIN_UFUNC, mod, fmod, \
-            bitand, bitor, bitxor, lshift, rshift, ldexp
+        from mars.tensor.arithmetic import add, multiply, subtract, fmax, fmin
 
-        _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
-        _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
+        # note: to decrease the time of ci, we only choose some op to test
+        _support_bin_ufunc = [add, multiply, subtract]
+        _unsupported_bin_ufunc = [fmax, fmin]
         executor_jax = Executor('jax')
 
-        for i, j in itertools.permutations(range(len(_new_bin_ufunc)), 2):
+        for i, j in itertools.permutations(range(len(_support_bin_ufunc)), 2):
             raw = np.random.random((9, 9, 9))
             arr1 = tensor(raw, chunk_size=5)
 
-            func1 = _new_bin_ufunc[i]
-            func2 = _new_bin_ufunc[j]
+            func1 = _support_bin_ufunc[i]
+            func2 = _support_bin_ufunc[j]
             arr2 = func1(1, func2(2, arr1))
             res = executor_jax.execute_tensor(arr2, concat=True)
             res_cmp = self.executor.execute_tensor(arr2, concat=True)
             self.assertTrue(np.allclose(res[0], res_cmp[0]))
 
-        for i, j in itertools.permutations(range(len(_sp_bin_ufunc)), 2):
+        for i, j in itertools.permutations(range(len(_unsupported_bin_ufunc)), 2):
             raw = np.random.randint(1, 100, size=(10, 10, 10))
             arr1 = tensor(raw, chunk_size=3)
 
-            func1 = _sp_bin_ufunc[i]
-            func2 = _sp_bin_ufunc[j]
+            func1 = _unsupported_bin_ufunc[i]
+            func2 = _unsupported_bin_ufunc[j]
             arr2 = func1(10, func2(arr1, 5))
             res = executor_jax.execute_tensor(arr2, concat=True)
             res_cmp = self.executor.execute_tensor(arr2, concat=True)

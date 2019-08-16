@@ -6,7 +6,10 @@ class Optimizer(object):
 
     # in compose traverse, whether a node should be skipped
     def _can_skip(self, node):
-        raise NotImplementedError
+        if self._can_break(node):
+            return True
+        if node.key in self.keys or node in self.explored:
+            return True
 
     # in compose traverse, whether a node should be break
     def _can_break(self, node):

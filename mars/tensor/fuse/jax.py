@@ -28,18 +28,20 @@ class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
 
-        # execute the fuse operands in jax
-        if JAX_INSTALLED:
-            if len(inputs) == 1:
-                inputs = inputs[0]
-            for operand in op.operands:
-                jax_function = operand.jax_function()
-                if len(operand.inputs) == 1:
-                    inputs = jax_function(inputs)
-                else:
-                    inputs = jax_function(*inputs)
+        def combine_functions(inputs):
+            # for f in functions:
+            #     inputs = f(inputs)
+            #     return inputs
+            inputs = functions[0](*inputs)
+            for f in functions[1:]:
+                inputs = f(inputs)
+                return inputs
 
-            ctx[chunk.key] = inputs
+        # execute the fuse operands in jax
+        functions = [operand.jax_function() for operand in op.operands]
+        jit_func = jax.jit(combine_functions)
+
+        ctx[chunk.key] = jit_func(inputs)
 
     @classmethod
     def estimate_size(cls, ctx, op):
