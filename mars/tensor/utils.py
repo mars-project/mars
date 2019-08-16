@@ -21,6 +21,7 @@ import operator
 import inspect
 import itertools
 from functools import wraps
+import uuid
 
 import numpy as np
 try:
@@ -555,10 +556,10 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
                                                   itertools.product(*chunk_size_idxes),
                                                   chunk_keys):
         chunk = fetch_op.copy().reset_key().new_chunk(None, shape=chunk_shape, index=chunk_idx,
-                                                      _key=chunk_key)
+                                                      _key=chunk_key, hex=uuid.uuid4().hex)
         chunks.append(chunk)
     return fetch_op.copy().new_tensor(None, shape=shape, dtype=dtype, nsplits=chunk_size,
-                                      chunks=chunks, _key=tensor_key, _id=tensor_id)
+                                      chunks=chunks, _key=tensor_key, _id=tensor_id, hex=uuid.uuid4().hex)
 
 
 def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None, chunk_eps=None):
