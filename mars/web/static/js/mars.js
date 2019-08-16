@@ -11,7 +11,42 @@ $(function() {
     resize_page();
     $(window).resize(resize_page);
 
+    // put pill tags into url hash to facilitate page reloading
+    $('a[data-toggle="pill"]').click(function () {
+        window.location.hash = $(this).attr('href');
+    });
     if (window.location.hash) {
-        $('a[href=\'' + location.hash + '\']').click();
+        $('a[href=\'' + window.location.hash + '\']').click();
+    }
+
+    // reload auto-refresh tables while preserving orders
+    var refresh_tables = function () {
+        var refreshs = $('.auto-refresh').map(function () {
+            var that = this;
+            var retInfo = { id: $(this).attr('id') };
+            $(that).find('th').each(function () {
+                if ($(this).find('.asc').length > 0 || $(this).find('.desc').length > 0)
+                    retInfo = { id: retInfo.id, sortName: $(this).data('field'),
+                        sortOrder: $(this).data('order') };
+            });
+            return retInfo;
+        });
+        $.get(document.URL, function(txt) {
+            var newDom = $(txt);
+            $.each(refreshs, function (i, refInfo) {
+                var tableDivObj = newDom.find('#' + refInfo.id);
+                if (refInfo.sortName !== undefined) {
+                    tableDivObj.find('table')
+                        .attr('data-sort-name', refInfo.sortName)
+                        .attr('data-sort-order', refInfo.sortOrder);
+                }
+                $('#' + refInfo.id).replaceWith(tableDivObj);
+                $('#' + refInfo.id + ' table').bootstrapTable();
+            });
+        }, 'text');
+        window.setTimeout(refresh_tables, 10000);
+    };
+    if ($('.auto-refresh').length > 0) {
+        window.setTimeout(refresh_tables, 10000);
     }
 });

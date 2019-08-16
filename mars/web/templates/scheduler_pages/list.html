@@ -1,29 +1,16 @@
 {% extends "base.html" %}
 {% set active_page = 'scheduler_list' %}
-{% block custom_head %}
-    <script type="text/javascript">
-        $(function() {
-            function reloader() {
-                $.get(document.URL, function(txt) {
-                    $('#scheduler-list').replaceWith($(txt).find('#scheduler-list'));
-                }, 'text');
-                window.setTimeout(reloader, 10000);
-            }
-            window.setTimeout(reloader, 10000);
-        });
-    </script>
-{% endblock %}
 {% block page_nav %}
     <h2>Scheduler List</h2>
 {% endblock %}
 {% block body %}
-    <div id="scheduler-list" class="row">
-        <table class="table sortable">
+    <div id="scheduler-list" class="row auto-refresh">
+        <table data-classes="table" data-toggle="table">
             <thead>
             <tr>
-                <th>Endpoint</th>
-                <th>CPU</th>
-                <th>Mem</th>
+                <th data-field="endpoint" data-sortable="true">Endpoint</th>
+                <th data-field="cpu" data-sortable="true">CPU</th>
+                <th data-field="mem" data-sortable="true">Mem</th>
                 <th>Update Time</th>
             </tr>
             </thead>
@@ -36,7 +23,6 @@
                         <td>{{ '%0.2f' % metrics['cpu_used'] }} / {{ metrics['cpu_total'] }}</td>
                         <td>{{ metrics['memory_used'] | readable_size }} / {{ metrics['memory_total'] | readable_size }}</td>
                         <td>{{ scheduler_metrics[endpoint]['update_time'] | format_ts }}</td>
-                        <td></td>
                     </tr>
                 {% endfor -%}
             {% else %}
