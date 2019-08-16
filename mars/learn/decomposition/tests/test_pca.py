@@ -47,23 +47,23 @@ class Test(unittest.TestCase):
             X_r = pca.fit(X).transform(X).fetch()
             np.testing.assert_equal(X_r.shape[1], n_comp)
 
-            X_r2 = pca.fit_transform(X)
+            X_r2 = pca.fit_transform(X).fetch()
             assert_array_almost_equal(X_r, X_r2)
 
-            X_r = pca.transform(X)
-            X_r2 = pca.fit_transform(X)
+            X_r = pca.transform(X).fetch()
+            X_r2 = pca.fit_transform(X).fetch()
             assert_array_almost_equal(X_r, X_r2)
 
             # Test get_covariance and get_precision
             cov = pca.get_covariance()
             precision = pca.get_precision()
             assert_array_almost_equal(mt.dot(cov, precision).execute(),
-                                      mt.eye(X.shape[1]).execute(), 12)
+                                      np.eye(X.shape[1]), 12)
 
         # test explained_variance_ratio_ == 1 with all components
         pca = PCA(svd_solver='full')
         pca.fit(X)
-        np.testing.assert_allclose(pca.explained_variance_ratio_.sum(), 1.0, 3)
+        np.testing.assert_allclose(pca.explained_variance_ratio_.sum().execute(), 1.0, 3)
 
     def testPCARandomizedSolver(self):
         # PCA on dense arrays
