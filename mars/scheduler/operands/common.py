@@ -362,7 +362,7 @@ class OperandActor(BaseOperandActor):
             else:
                 six.reraise(*exc_info)
 
-        logger.debug('Applying for resources for operand %r', self._info)
+        logger.debug('Applying for resources for operand %s: %r', self._op_key, self._info)
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0
         # Send resource application. Submit job when worker assigned

@@ -53,7 +53,7 @@ def _extend_indexes(indexes):
 
 
 class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.ILOC_GETITEM
+    _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _indexes = ListField('indexes')
 
@@ -178,7 +178,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
 
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.ILOC_SETITEM
+    _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
     _indexes = ListField('indexes')
     _value = AnyField('value')

@@ -296,6 +296,8 @@ def calc_data_size(dt):
         return sys.getsizeof(dt)
     if hasattr(dt, 'dtypes') and hasattr(dt, 'shape'):
         return dt.shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
+    if hasattr(dt, 'dtype') and hasattr(dt, 'shape'):
+        return dt.shape[0] * dt.dtype.itemsize
 
     raise ValueError('Cannot support calculating size of %s', type(dt))
 
@@ -563,7 +565,7 @@ def merge_chunks(chunk_results):
             chunk_results = new_chunks
         concat_result = xp.concatenate([c[1] for c in chunk_results])
         return concat_result
-    else:
+    elif isinstance(v, pd.DataFrame):
         # auto generated concat when executing a DataFrame
         n_rows = max([idx[0] for idx, _ in chunk_results]) + 1
         n_cols = int(len(chunk_results) // n_rows)
@@ -576,6 +578,10 @@ def merge_chunks(chunk_results):
             else:
                 concats.append(pd.concat(chunks, axis='columns'))
         return pd.concat(concats)
+    elif isinstance(v, pd.Series):
+        return pd.concat([c[1] for c in chunk_results])
+    else:
+        raise TypeError('unsupported type %s' % type(v))
 
 
 def calc_nsplits(chunk_idx_to_shape):

@@ -24,7 +24,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
-    _op_type_ = OperandDef.SET_INDEX
+    _op_type_ = OperandDef.DATAFRAME_SET_INDEX
 
     _keys = AnyField('keys')
     _drop = BoolField('drop')

@@ -666,6 +666,14 @@ class DataFrameData(TileableData):
         from .indexing.set_index import set_index
         return set_index(self, *args, **kwargs)
 
+    def merge(self, objs, *args, **kwargs):
+        from .merge.merge import merge
+        return merge(self, objs, *args, **kwargs)
+
+    def join(self, other, *args, **kwargs):
+        from .merge.merge import join
+        return join(self, other, *args, **kwargs)
+
 
 class DataFrame(TileableEntity):
     __slots__ = ()
