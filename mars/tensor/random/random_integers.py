@@ -130,6 +130,6 @@ def random_integers(random_state, low, high=None, size=None, chunk_size=None, gp
     >>> plt.show()
     """
     size = random_state._handle_size(size)
-    op = TensorRandomIntegers(state=random_state._state, size=size, dtype=np.dtype(int),
+    op = TensorRandomIntegers(state=random_state.to_numpy(), size=size, dtype=np.dtype(int),
                               low=low, high=high, gpu=gpu)
     return op(chunk_size=chunk_size)

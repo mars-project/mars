@@ -90,7 +90,7 @@ def randn(random_state, *dn, **kw):
         kw['dtype'] = np.dtype('f8')
     chunk_size = kw.pop('chunk_size', None)
 
-    op = TensorRandn(state=random_state._state, size=dn, **kw)
+    op = TensorRandn(state=random_state.to_numpy(), size=dn, **kw)
 
     for key in op.extra_params:
         if not key.startswith('_'):

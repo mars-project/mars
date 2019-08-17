@@ -49,6 +49,7 @@ from .fliplr import fliplr
 from .repeat import repeat, TensorRepeat
 from .tile import tile
 from .isin import isin, TensorIsIn
+from .searchsorted import searchsorted, TensorSearchsorted
 
 
 def _install():

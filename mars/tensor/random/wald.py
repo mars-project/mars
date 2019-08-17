@@ -118,5 +118,5 @@ def wald(random_state, mean, scale, size=None, chunk_size=None, gpu=None, dtype=
         dtype = np.random.RandomState().wald(
             handle_array(mean), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorWald(size=size, state=random_state._state, gpu=gpu, dtype=dtype)
+    op = TensorWald(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
     return op(mean, scale, chunk_size=chunk_size)

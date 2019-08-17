@@ -25,16 +25,6 @@ from ..core import TensorOrder
 from ..array_utils import as_same_device, device
 
 
-def _H(chunk):
-    from ..base.transpose import TensorTranspose
-    from ..arithmetic.conj import TensorConj
-
-    trans_op = TensorTranspose(dtype=chunk.dtype)
-    c = trans_op.new_chunk([chunk], shape=chunk.shape[::-1], index=chunk.index[::-1])
-    conj_op = TensorConj(dtype=c.dtype)
-    return conj_op.new_chunk([c], shape=c.shape, index=c.index)
-
-
 class TensorCholesky(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.CHOLESKY
 
@@ -60,6 +50,8 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
         from ..datasource.zeros import TensorZeros
         from ..arithmetic.subtract import TensorSubtract
         from ..arithmetic.utils import tree_add
+        from ..base import TensorTranspose
+        from ..utils import reverse_order
         from .dot import TensorDot
         from .solve_triangular import TensorSolveTriangular
 
@@ -100,7 +92,9 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                             [target, s], shape=target.shape, order=tensor.order)
                     lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
                         [target], shape=target.shape, index=(i, j), order=tensor.order)
-                    upper_chunk = _H(lower_chunk)
+                    upper_chunk = TensorTranspose(dtype=lower_chunk.dtype).new_chunk(
+                        [lower_chunk], shape=lower_chunk.shape[::-1],
+                        index=lower_chunk.index[::-1], order=reverse_order(lower_chunk.order))
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
                 else:
@@ -122,7 +116,9 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                     upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
                         [lower_chunks[j, j], target], shape=target.shape,
                         index=(j, i), order=tensor.order)
-                    lower_chunk = _H(upper_chunk)
+                    lower_chunk = TensorTranspose(dtype=upper_chunk.dtype).new_chunk(
+                        [upper_chunk], shape=upper_chunk.shape[::-1],
+                        index=upper_chunk.index[::-1], order=reverse_order(upper_chunk.order))
                     lower_chunks[lower_chunk.index] = lower_chunk
                     upper_chunks[upper_chunk.index] = upper_chunk
 

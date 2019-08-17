@@ -21,13 +21,7 @@ from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, ListField
 from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
-import numpy as np
 from ..array_utils import get_array_module
-
-try:
-    import scipy.fftpack as scifft
-except ImportError:  # pragma: no cover
-    scifft = None
 
 
 class TensorFFTBaseMixin(TensorOperandMixin):
@@ -246,23 +240,8 @@ class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
 
 
 def _get_fft_func(op, xp):
-    from .. import fft as fftop
-
     fun_name = type(op).__name__.lower()[6:]  # all op starts with tensor
-    if type(op) in (fftop.TensorFFT, fftop.TensorIFFT, fftop.TensorFFT2, fftop.TensorIFFT2,
-                    fftop.TensorFFTN, fftop.TensorIFFTN):
-        if xp is np and scifft and op.norm is None:
-            def f(*args, **kwargs):
-                kwargs.pop('norm', None)
-                if 's' in kwargs:
-                    kwargs['shape'] = kwargs.pop('s', None)
-                return getattr(scifft, fun_name)(*args, **kwargs)
-
-            return f
-        else:
-            return getattr(xp.fft, fun_name)
-    else:
-        return getattr(xp.fft, fun_name)
+    return getattr(xp.fft, fun_name)
 
 
 class TensorStandardFFT(TensorBaseSingleDimensionFFT):
