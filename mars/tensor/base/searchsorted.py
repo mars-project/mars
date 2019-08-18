@@ -129,7 +129,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_tree_reduction(cls, op, a, v, out):
-        combine_size = op.combine_size or options.tensor.combine_size
+        combine_size = op.combine_size or options.combine_size
         input_len = len(op.inputs)
         v_chunks = [v] if input_len == 1 else v.chunks
 

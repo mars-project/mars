@@ -294,6 +294,9 @@ default_options.register_option('tcp_timeout', 30, validator=is_integer)
 default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 
+# the number of combined chunks in tree reduction or tree add
+default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
+
 # deploy
 default_options.register_option('deploy.open_browser', True, validator=is_bool)
 
@@ -302,7 +305,6 @@ default_options.register_option('tensor.chunk_size', None, validator=any_validat
 default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
-default_options.register_option('tensor.combine_size', 4, validator=is_integer, serialize=True)
 
 # Scheduler
 default_options.register_option('scheduler.assign_chunk_workers', False, validator=is_bool, serialize=True)

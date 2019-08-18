@@ -27,6 +27,7 @@ from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import from_tensor
+from mars.dataframe.datasource.from_records import from_records
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -83,3 +84,21 @@ class Test(TestBase):
         result3 = self.executor.execute_dataframe(df3, concat=True)[0]
         pdf_expected = pd.DataFrame(np.array([1, 2, 3]))
         pd.testing.assert_frame_equal(pdf_expected, result3)
+
+    def testFromRecordsExecution(self):
+        dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
+
+
+        ndarr = np.ones((10,), dtype=dtype)
+        pdf_expected = pd.DataFrame.from_records(ndarr, index=pd.RangeIndex(10))
+
+        # from structured array of mars
+        tensor = mt.ones((10,), dtype=dtype, chunk_size=3)
+        df1 = from_records(tensor)
+        df1_result = self.executor.execute_dataframe(df1, concat=True)[0]
+        pd.testing.assert_frame_equal(df1_result, pdf_expected)
+
+        # from structured array of numpy
+        df2 = from_records(ndarr)
+        df2_result = self.executor.execute_dataframe(df2, concat=True)[0]
+        pd.testing.assert_frame_equal(df2_result, pdf_expected)
