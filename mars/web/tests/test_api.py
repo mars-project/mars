@@ -246,7 +246,6 @@ class Test(unittest.TestCase):
             for line in tb_lines:
                 first_line = line.splitlines(True)[0]
                 new_lines.append(first_line if '.pyx' in first_line else line)
-            print(new_lines)
             return new_lines
 
         service_ep = 'http://127.0.0.1:' + self.web_port
