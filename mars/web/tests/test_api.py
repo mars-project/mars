@@ -241,6 +241,13 @@ class Test(unittest.TestCase):
             self.assertEqual(res.status_code, 200)
 
     def testWebApiException(self):
+        def normalize_tbs(tb_lines):
+            new_lines = []
+            for line in tb_lines:
+                first_line = line.splitlines(True)[0]
+                new_lines.append(first_line if '.pyx' in first_line else line)
+            return new_lines
+
         service_ep = 'http://127.0.0.1:' + self.web_port
         with new_session(service_ep) as sess:
             # Stop non-existing graph should raise an exception
@@ -250,7 +257,8 @@ class Test(unittest.TestCase):
             resp_json = json.loads(res.text)
             typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))
             self.assertEqual(typ, ActorNotExist)
-            self.assertEqual(traceback.format_exception(typ, value, tb), resp_json['exc_info_text'])
+            self.assertEqual(normalize_tbs(traceback.format_exception(typ, value, tb)),
+                             normalize_tbs(resp_json['exc_info_text']))
 
             # get graph states of non-existing session should raise an exception
             res = requests.get('%s/api/session/%s/graph' % (service_ep, 'xxxx'))
@@ -258,7 +266,8 @@ class Test(unittest.TestCase):
             resp_json = json.loads(res.text)
             typ, value, tb = pickle.loads(base64.b64decode(resp_json['exc_info']))
             self.assertEqual(typ, KeyError)
-            self.assertEqual(traceback.format_exception(typ, value, tb), resp_json['exc_info_text'])
+            self.assertEqual(normalize_tbs(traceback.format_exception(typ, value, tb)),
+                             normalize_tbs(resp_json['exc_info_text']))
 
 
 class MockResponse:

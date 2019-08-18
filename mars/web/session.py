@@ -21,7 +21,6 @@ import pickle
 import uuid
 
 import numpy as np
-import requests
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
@@ -45,6 +44,7 @@ class Session(object):
         if req_session:
             self._req_session = req_session
         else:
+            import requests
             from requests.adapters import HTTPAdapter
 
             self._req_session = requests.Session()
@@ -83,6 +83,7 @@ class Session(object):
             self._executed_tileables[tileable_key] = graph_key, {tileable_id}
 
     def _check_response_finished(self, graph_url):
+        import requests
         try:
             resp = self._req_session.get(graph_url)
         except requests.ConnectionError as ex:
@@ -353,6 +354,7 @@ class Session(object):
             raise SystemError('Failed to close mars session.')
 
     def check_service_ready(self, timeout=1):
+        import requests
         try:
             resp = self._req_session.get(self._endpoint + '/api', timeout=timeout)
         except (requests.ConnectionError, requests.Timeout):

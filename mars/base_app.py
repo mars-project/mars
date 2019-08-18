@@ -111,12 +111,9 @@ class BaseApplication(object):
         options.kv_store = args.kv_store if args.kv_store else options.kv_store
 
         load_modules = []
-        for mod in args.load_modules or ():
-            load_modules.extend(mod.split(','))
-        if not args.load_modules:
-            load_module_str = os.environ.get('MARS_LOAD_MODULES')
-            if load_module_str:
-                load_modules = load_module_str.split(',')
+        for mods in tuple(args.load_modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
+            if mods:
+                load_modules.extend(mods.split(','))
         load_modules.append('mars.executor')
         for m in load_modules:
             __import__(m, globals(), locals(), [])
@@ -140,7 +137,11 @@ class BaseApplication(object):
             self.endpoint, self.pool = self._try_create_pool(
                 endpoint=endpoint, host=host, port=port, advertise_address=args.advertise)
             self.service_logger.info('%s started at %s.', self.service_description, self.endpoint)
-        self.main_loop()
+
+        try:
+            self.main_loop()
+        except KeyboardInterrupt:
+            pass
 
     def config_logging(self):
         import logging.config

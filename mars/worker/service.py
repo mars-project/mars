@@ -267,6 +267,7 @@ class WorkerService(object):
 
             for actor in (self._cpu_calc_actors + self._sender_actors
                           + self._receiver_actors + self._spill_actors + self._process_helper_actors):
-                actor.destroy(wait=False)
+                if actor and actor.ctx:
+                    actor.destroy(wait=False)
         finally:
             self._plasma_store.__exit__(None, None, None)
