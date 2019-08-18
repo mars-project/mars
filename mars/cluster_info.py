@@ -47,6 +47,9 @@ class _ClusterInfoWatchActor(FunctionActor):
         if isinstance(self._client, kvstore.LocalKVStore):
             raise ValueError('etcd_addr should not be a local address, got {0}'.format(service_discover_addr))
 
+    def post_create(self):
+        self._cluster_info_ref = self.ctx.actor_ref(self._cluster_info_ref)
+
     def _get_schedulers(self):
         schedulers = [s.key.rsplit('/', 1)[1] for s in self._client.read(SCHEDULER_PATH).children]
         logger.debug('Schedulers obtained. Results: %r', schedulers)
@@ -61,7 +64,7 @@ class _ClusterInfoWatchActor(FunctionActor):
 
     def watch(self):
         for new_schedulers in self._client.eternal_watch(SCHEDULER_PATH):
-            self._cluster_info_ref.set_schedulers([to_str(s) for s in new_schedulers])
+            self._cluster_info_ref.set_schedulers([to_str(s) for s in new_schedulers], _tell=True)
 
 
 class ClusterInfoActor(FunctionActor):
@@ -107,7 +110,7 @@ class ClusterInfoActor(FunctionActor):
 
         for observer_ref, fun_name in self._observer_refs:
             # notify the observers to update the new scheduler list
-            getattr(observer_ref, fun_name)(schedulers)
+            getattr(observer_ref, fun_name)(schedulers, _tell=True)
 
     def get_scheduler(self, key, size=1):
         if len(self._schedulers) == 1 and size == 1:

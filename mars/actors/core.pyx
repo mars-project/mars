@@ -33,7 +33,7 @@ cdef class ActorRef:
     def _set_ctx(self, ctx):
         self._ctx = ctx
 
-    ctx = property(None, _set_ctx)
+    ctx = property(lambda self: self._ctx, _set_ctx)
 
     cpdef object send(self, object message, bint wait=True, object callback=None):
         return self._ctx.send(self, message, wait=wait, callback=callback)
