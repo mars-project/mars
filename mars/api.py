@@ -101,16 +101,15 @@ class MarsAPI(object):
         session_ref = self.get_actor_ref(session_uid)
 
         chunk_records = []
-        for chunk_key, records in chunk_records_to_send.items():
+        for chunk_key, endpoint, records in chunk_records_to_send:
             record_chunk_key = tokenize(chunk_key, uuid.uuid4().hex)
-            ep = self.cluster_info.get_scheduler(chunk_key)
             # register quota
-            quota_ref = self.actor_client.actor_ref(MemQuotaActor.default_uid(), address=ep)
+            quota_ref = self.actor_client.actor_ref(MemQuotaActor.default_uid(), address=endpoint)
             quota_ref.request_batch_quota({record_chunk_key: records.nbytes})
             # send record chunk
-            dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=ep)
+            dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=endpoint)
             receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
-            receiver_ref = self.actor_client.actor_ref(receiver_uid, address=ep)
+            receiver_ref = self.actor_client.actor_ref(receiver_uid, address=endpoint)
             put_remote_chunk(session_id, record_chunk_key, records, receiver_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
