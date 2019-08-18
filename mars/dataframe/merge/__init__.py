@@ -13,4 +13,15 @@
 # limitations under the License.
 
 from .concat import DataFrameConcat
-from .merge import DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
+from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
+
+
+def _install():
+    from ..core import DataFrame
+
+    setattr(DataFrame, 'join', join)
+    setattr(DataFrame, 'merge', merge)
+
+
+_install()
+del _install

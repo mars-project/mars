@@ -12,5 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .iloc import DataFrameIlocGetItem, DataFrameIlocSetItem
-from .set_index import DataFrameSetIndex
+from .iloc import iloc, DataFrameIloc, DataFrameIlocGetItem, DataFrameIlocSetItem
+from .set_index import set_index, DataFrameSetIndex
+
+
+def _install():
+    from ..core import DataFrame
+
+    setattr(DataFrame, 'iloc', property(iloc))
+    setattr(DataFrame, 'set_index', set_index)
+
+
+_install()
+del _install

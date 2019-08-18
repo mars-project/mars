@@ -662,18 +662,6 @@ class DataFrameData(TileableData):
         from .datasource.from_records import from_records
         return from_records(records, **kw)
 
-    def set_index(self, *args, **kwargs):
-        from .indexing.set_index import set_index
-        return set_index(self, *args, **kwargs)
-
-    def merge(self, objs, *args, **kwargs):
-        from .merge.merge import merge
-        return merge(self, objs, *args, **kwargs)
-
-    def join(self, other, *args, **kwargs):
-        from .merge.merge import join
-        return join(self, other, *args, **kwargs)
-
 
 class DataFrame(TileableEntity):
     __slots__ = ()
@@ -694,11 +682,6 @@ class DataFrame(TileableEntity):
 
     def from_records(self, records, **kw):
         return self._data.from_records(records, **kw)
-
-    @property
-    def iloc(self):
-        from .indexing.iloc import DataFrameIloc
-        return DataFrameIloc(self)
 
 
 INDEX_TYPE = (Index, IndexData)

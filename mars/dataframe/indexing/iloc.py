@@ -104,11 +104,41 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                                       index_value=indexing_index_value(df.index_value, self.indexes[0]),
                                       columns_value=indexing_index_value(df.columns, self.indexes[1], store_data=True))
 
-    def on_output_modify(self, new_output):
-        a = self.inputs[0]
-        op = DataFrameIlocSetItem(indexes=self.indexes, value=new_output,
-                                  dtypes=a.dtypes, gpu=a.gpu, sparse=a.issparse(), object_type=self.object_type)
-        return op(a, self._indexes, new_output)
+    # FIXME The view behavior of DataFrame.iloc
+    #
+    # The pandas's iloc has complicated behavior about whether to create a view or not, it depends
+    # on the further operation on the view, as illustrated by the following example:
+    #
+    # >>> df = pd.DataFrame([[1,2], [3,4]])
+    # >>> x = df.iloc[:]
+    # >>> df
+    #    0  1
+    # 0  1  2
+    # 1  3  4
+    # >>> x
+    #    0  1
+    # 0  1  2
+    # 1  3  4
+    #
+    # >>> x.iloc[:] = 1000
+    # >>> x
+    #       0     1
+    # 0  1000  1000
+    # 1  1000  1000
+    # df
+    #       0     1
+    # 0  1000  1000
+    # 1  1000  1000
+    #
+    # >>> x.iloc[:] = 2000.0
+    # >>> x
+    #         0       1
+    # 0  2000.0  2000.0
+    # 1  2000.0  2000.0
+    # >>> df
+    #       0     1
+    # 0  1000  1000
+    # 1  1000  1000
 
     @classmethod
     def tile(cls, op):
@@ -242,3 +272,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         r = ctx[op.inputs[0].key].copy(deep=True)
         r.iloc[op.indexes] = op.value
         ctx[chunk.key] = r
+
+
+def iloc(df):
+    return DataFrameIloc(df)

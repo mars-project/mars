@@ -20,8 +20,6 @@ from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import build_empty_df, parse_index
 
-import logging
-logger = logging.getLogger(__name__)
 
 class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_SET_INDEX
