@@ -192,3 +192,53 @@ class Test(unittest.TestCase):
                    random_state=rng).fit(X)
         assert_array_almost_equal(pca.explained_variance_ratio_.execute(),
                                   rpca.explained_variance_ratio_.execute(), 5)
+
+    def test_singular_values(self):
+        # Check that the PCA output has the correct singular values
+
+        rng = np.random.RandomState(0)
+        n_samples = 100
+        n_features = 80
+
+        X = mt.tensor(rng.randn(n_samples, n_features))
+
+        pca = PCA(n_components=2, svd_solver='full',
+                  random_state=rng).fit(X)
+        rpca = PCA(n_components=2, svd_solver='randomized',
+                   random_state=rng).fit(X)
+        assert_array_almost_equal(pca.singular_values_.fetch(), rpca.singular_values_.fetch(), 1)
+
+        # Compare to the Frobenius norm
+        X_pca = pca.transform(X)
+        X_rpca = rpca.transform(X)
+        assert_array_almost_equal(mt.sum(pca.singular_values_**2.0).execute(),
+                                  (mt.linalg.norm(X_pca, "fro")**2.0).execute(), 12)
+        assert_array_almost_equal(mt.sum(rpca.singular_values_**2.0).execute(),
+                                  (mt.linalg.norm(X_rpca, "fro")**2.0).execute(), 0)
+
+        # Compare to the 2-norms of the score vectors
+        assert_array_almost_equal(pca.singular_values_.fetch(),
+                                  mt.sqrt(mt.sum(X_pca**2.0, axis=0)).execute(), 12)
+        assert_array_almost_equal(rpca.singular_values_.fetch(),
+                                  mt.sqrt(mt.sum(X_rpca**2.0, axis=0)).execute(), 2)
+
+        # Set the singular values and see what we get back
+        rng = np.random.RandomState(0)
+        n_samples = 100
+        n_features = 110
+
+        X = mt.tensor(rng.randn(n_samples, n_features))
+
+        pca = PCA(n_components=3, svd_solver='full', random_state=rng)
+        rpca = PCA(n_components=3, svd_solver='randomized', random_state=rng)
+        X_pca = pca.fit_transform(X)
+
+        X_pca /= np.sqrt(np.sum(X_pca**2.0, axis=0))
+        X_pca[:, 0] *= 3.142
+        X_pca[:, 1] *= 2.718
+
+        X_hat = mt.dot(X_pca, pca.components_)
+        pca.fit(X_hat)
+        rpca.fit(X_hat)
+        assert_array_almost_equal(pca.singular_values_.fetch(), [3.142, 2.718, 1.0], 14)
+        assert_array_almost_equal(rpca.singular_values_.fetch(), [3.142, 2.718, 1.0], 14)
