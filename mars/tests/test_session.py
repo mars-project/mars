@@ -23,8 +23,6 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session, Session
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
 
 class Test(unittest.TestCase):
     def testSessionExecute(self):
