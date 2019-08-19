@@ -118,7 +118,7 @@ cdef class Tokenizer:
             raise TypeError('Cannot generate token for %s, type: %s' % (obj, object_type))
 
 
-cdef iterative_tokenize(ob):
+cdef list iterative_tokenize(ob):
     nested = deque(ob)
     h_list = []
     dq = deque()
@@ -129,13 +129,13 @@ cdef iterative_tokenize(ob):
         elif isinstance(x, set):
             dq.extend(sorted(x, key=str))
         elif isinstance(x, dict):
-            dq.extend(sorted(list(ob.items()), key=str))
+            dq.extend(sorted(list(x.items()), key=str))
         else:
             h_list.append(tokenize_handler.tokenize(x))
     return h_list
 
 
-cdef tokenize_numpy(ob):
+cdef tuple tokenize_numpy(ob):
     cdef int offset
     cdef str data
 
@@ -175,7 +175,10 @@ cdef inline _extract_range_index_attr(object range_index, str attr):
         return getattr(range_index, '_' + attr)
 
 
-cdef tokenize_pandas_index(ob):
+cdef list tokenize_pandas_index(ob):
+    cdef int start
+    cdef int stop
+    cdef int end
     if isinstance(ob, pd.RangeIndex):
         start = _extract_range_index_attr(ob, 'start')
         stop = _extract_range_index_attr(ob, 'stop')
@@ -186,11 +189,11 @@ cdef tokenize_pandas_index(ob):
         return iterative_tokenize([ob.name, getattr(ob, 'names', None), ob.values])
 
 
-cdef tokenize_pandas_series(ob):
+cdef list tokenize_pandas_series(ob):
     return iterative_tokenize([ob.name, ob.dtype, ob.values, ob.index])
 
 
-cdef tokenize_pandas_dataframe(ob):
+cdef list tokenize_pandas_dataframe(ob):
     l = [block.values for block in ob._data.blocks]
     l.extend([ob.columns, ob.index])
     return iterative_tokenize(l)
