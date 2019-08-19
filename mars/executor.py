@@ -84,6 +84,7 @@ if gevent:
     import gevent.threadpool
     import gevent.event
 
+
     class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
         @staticmethod
         def _wrap_watch(fn):
@@ -434,7 +435,7 @@ class Executor(object):
 
     def _preprocess(self, graph, keys):
         # TODO(xuye.qin): make an universal optimzier
-        from .optimizes.core import Optimizer
+        from mars.optimizes.runtime.optimizers.core import Optimizer
 
         Optimizer(graph, self._engine).optimize(keys=keys)
         return graph
@@ -678,4 +679,5 @@ def register_default(op_cls):
 # import to register operands
 from . import tensor
 from . import dataframe
+
 del tensor, dataframe

@@ -24,6 +24,7 @@ from functools import wraps
 import uuid
 
 import numpy as np
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -89,7 +90,7 @@ def broadcast_shape(*shapes):
 
 
 def get_chunk_slices(nsplits, idx):
-    return tuple(slice(sum(nsplit[:idx]), sum(nsplit[:idx+1]))
+    return tuple(slice(sum(nsplit[:idx]), sum(nsplit[:idx + 1]))
                  for idx, nsplit in zip(idx, nsplits))
 
 
@@ -195,7 +196,7 @@ def replace_ellipsis(index, ndim):
 
     illipsis_index = all_illipsis[0]
     n_extra = ndim - sum([index_ndim(i) for i in index]) + 1
-    return index[:illipsis_index] + (slice(None),) * n_extra + index[illipsis_index+1:]
+    return index[:illipsis_index] + (slice(None),) * n_extra + index[illipsis_index + 1:]
 
 
 def calc_sliced_size(size, sliceobj):
@@ -307,7 +308,7 @@ def split_indexes_into_chunks(nsplits, indexes, ret_is_asc=True):
         cond = (chunk_idxes == np.array(idx).reshape((len(idx), 1))).all(axis=0)
         filtered = indexes[:, cond]
         for i in range(len(indexes)):
-            filtered[i] = filtered[i] - (cum_nsplits[i][idx[i]-1] if idx[i] > 0 else 0)
+            filtered[i] = filtered[i] - (cum_nsplits[i][idx[i] - 1] if idx[i] > 0 else 0)
         chunk_index_to_indexes[idx] = filtered
         chunk_index_to_poses[idx] = poses[cond]
 
@@ -604,7 +605,7 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
     else:
         chunk_value_slice = tuple(slice(nsplits_acc[i][output_chunk.index[i]],
                                         nsplits_acc[i][output_chunk.index[i] + 1])
-                                    for i in range(len(output_chunk.index)))
+                                  for i in range(len(output_chunk.index)))
         chunk_value = value[chunk_value_slice]
 
     input_chunk = output_chunk.op.input
@@ -636,7 +637,7 @@ def get_fetch_op_cls(op):
 
 
 def get_fuse_op_cls():
-    from .fuse import TensorFuseChunk
+    from mars.optimizes.runtime.fused_chunk import TensorFuseChunk
 
     return TensorFuseChunk
 

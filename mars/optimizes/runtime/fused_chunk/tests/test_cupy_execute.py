@@ -17,7 +17,7 @@
 import unittest
 
 from mars.executor import Executor
-from mars.tensor.fuse.cp import _evaluate
+from mars.optimizes.runtime.fused_chunk.cp import _evaluate
 from mars.tensor.datasource import ones
 from mars.tensor import sqrt
 

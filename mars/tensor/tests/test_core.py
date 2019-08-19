@@ -27,7 +27,7 @@ from mars.tensor.datasource.zeros import TensorZeros
 from mars.tensor.datasource.from_dense import DenseToSparse
 from mars.tensor.datasource.array import CSRMatrixDataSource
 from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
-from mars.tensor.fuse.core import TensorFuseChunk
+from mars.optimizes.runtime.fused_chunk.core import TensorFuseChunk
 from mars.tensor.core import Tensor, SparseTensor, TensorChunk
 from mars.core import build_mode
 from mars.graph import DAG
