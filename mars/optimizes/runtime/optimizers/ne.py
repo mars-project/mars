@@ -21,6 +21,7 @@ from ....optimizes.runtime.fused_chunk import TensorNeFuseChunk
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}
 SUPPORT_OP = {
+    arithmetic.TensorAdd,
     arithmetic.TensorSubtract,
     arithmetic.TensorMultiply,
     arithmetic.TensorDivide,

@@ -679,5 +679,6 @@ def register_default(op_cls):
 # import to register operands
 from . import tensor
 from . import dataframe
+from . import optimizes
 
-del tensor, dataframe
+del tensor, dataframe, optimizes
