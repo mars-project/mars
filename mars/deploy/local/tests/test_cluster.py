@@ -660,8 +660,11 @@ class Test(unittest.TestCase):
             r_slice4 = session.fetch(df.iloc[:, -5:])
             pd.testing.assert_frame_equal(r.iloc[:, -5:], r_slice4)
 
-            r_slice5 = session.fetch(df.iloc[0])
-            pd.testing.assert_series_equal(r.iloc[0], r_slice5)
+            r_slice5 = session.fetch(df.iloc[4])
+            pd.testing.assert_series_equal(r.iloc[4], r_slice5)
+
+            r_slice6 = session.fetch(df.iloc[6:9])
+            pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
 
             web_session = new_session('http://' + cluster._web_endpoint)
             r = web_session.run(df)
@@ -680,6 +683,9 @@ class Test(unittest.TestCase):
 
             r_slice5 = web_session.fetch(df.iloc[4])
             pd.testing.assert_series_equal(r.iloc[4], r_slice5)
+
+            r_slice6 = web_session.fetch(df.iloc[6:9])
+            pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
 
     def testClusterSession(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,

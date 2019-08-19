@@ -566,18 +566,10 @@ def merge_chunks(chunk_results):
         concat_result = xp.concatenate([c[1] for c in chunk_results])
         return concat_result
     elif isinstance(v, pd.DataFrame):
-        # auto generated concat when executing a DataFrame
-        n_rows = max([idx[0] for idx, _ in chunk_results]) + 1
-        n_cols = int(len(chunk_results) // n_rows)
-
         concats = []
-        for i in range(n_rows):
-            chunks = [chunk_results[i * n_cols + j][1] for j in range(n_cols)]
-            if isinstance(chunks[0], pd.Series):
-                concats.append(pd.concat(chunks, axis='index'))
-            else:
-                concats.append(pd.concat(chunks, axis='columns'))
-        return pd.concat(concats)
+        for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
+            concats.append(pd.concat([c[1] for c in cs], axis='columns'))
+        return pd.concat(concats, axis='index')
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
     else:
