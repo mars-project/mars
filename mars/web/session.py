@@ -18,6 +18,7 @@ import time
 import logging
 from numbers import Integral
 import pickle
+import sys
 import uuid
 
 import numpy as np
@@ -37,7 +38,7 @@ class Session(object):
     def __init__(self, endpoint, session_id=None, req_session=None, args=None):
         self._endpoint = endpoint
         self._session_id = session_id
-        self._args = args
+        self._args = args or dict()
         # dict structure: {ttileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
@@ -67,9 +68,12 @@ class Session(object):
 
     def _main(self):
         if self._session_id is None:
-            resp = self._req_session.post(self._endpoint + '/api/session', self._args)
+            args = self._args.copy()
+            args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
+            resp = self._req_session.post(self._endpoint + '/api/session', args)
+
             if resp.status_code >= 400:
-                raise SystemError('Failed to create mars session.')
+                raise SystemError('Failed to create mars session: ' + resp.reason)
             content = json.loads(resp.text)
             self._session_id = content['session_id']
         else:
@@ -248,7 +252,7 @@ class Session(object):
                                      chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
-        '''
+        """
         How to serialize index and value:
 
         1. process_index and serialize it as json
@@ -257,7 +261,7 @@ class Session(object):
             * a int64 value indicate the size of index json
             * ascii-encoded bytes of index json
             * pyarrow serialized bytes of `value`
-        '''
+        """
         from ..tensor.core import Indexes
         from ..compat import BytesIO
         from ..serialize import dataserializer

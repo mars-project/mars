@@ -153,7 +153,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     # don't use multiple with-statement as we need the options be forked
     with plasma.start_plasma_store(plasma_size) as store_args:
         options.worker.plasma_socket = plasma_socket = store_args[0]
-        plasma_client = plasma.connect(plasma_socket, '', 0)
+        plasma_client = plasma.connect(plasma_socket)
 
         with start_transfer_test_pool(address=pool_address, plasma_size=plasma_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_uid())
@@ -557,7 +557,7 @@ class Test(WorkerCase):
                             DispatchActor.default_uid(), address=remote_pool_addr)
                         remote_mapper_ref = pool.actor_ref(
                             PlasmaKeyMapActor.default_uid(), address=remote_pool_addr)
-                        remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
+                        remote_plasma_client = plasma.connect(remote_plasma_socket)
                         remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):
