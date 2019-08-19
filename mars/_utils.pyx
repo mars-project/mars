@@ -112,10 +112,10 @@ cdef class Tokenizer:
             if hasattr(obj, '__mars_tokenize__'):
                 return self.tokenize(obj.__mars_tokenize__())
 
-            for clz in self._handlers.keys():
-                if issubclass(object_type, clz):
+            for clz in object_type.__mro__:
+                if clz in self._handlers:
                     self._handlers[object_type] = self._handlers[clz]
-                    return self._handlers[object_type](obj)
+                    return self._handlers[clz](obj)
             raise TypeError('Cannot generate token for %s, type: %s' % (obj, object_type))
 
 
