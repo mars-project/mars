@@ -60,7 +60,10 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
         from .chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
 
         mapper_ref = self.ctx.actor_ref(uid=PlasmaKeyMapActor.default_uid())
-        self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
+        try:
+            self._plasma_client = plasma.connect(options.worker.plasma_socket)
+        except TypeError:  # pragma: no cover
+            self._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         self._chunk_store = PlasmaChunkStore(self._plasma_client, mapper_ref)
 
     def get_meta_client(self):

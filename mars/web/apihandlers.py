@@ -75,6 +75,15 @@ class ApiEntryHandler(MarsApiRequestHandler):
 class SessionsApiHandler(MarsApiRequestHandler):
     def post(self):
         args = {k: self.get_argument(k) for k in self.request.arguments}
+
+        try:
+            python_version = tuple(int(p) for p in args.pop('pyver').split('.')) \
+                if 'pyver' in args else sys.version_info
+        except ValueError as ex:
+            raise web.HTTPError(400, reason='Invalid version data: %s' % ex)
+        if python_version[0] != sys.version_info[0]:
+            raise web.HTTPError(400, reason='Python version not consistent')
+
         session_id = str(uuid.uuid1())
         self.web_api.create_session(session_id, **args)
         self.write(json.dumps(dict(session_id=session_id)))
@@ -105,7 +114,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
             compose = bool(int(self.get_argument('compose', '1')))
         except web.MissingArgumentError as ex:
             self.write(json.dumps(dict(msg=str(ex))))
-            raise web.HTTPError(400, 'Argument missing')
+            raise web.HTTPError(400, reason='Argument missing')
 
         try:
             graph_key = str(uuid.uuid4())
@@ -212,7 +221,7 @@ class MutableTensorHandler(MarsApiRequestHandler):
                 info = self.web_api.seal(session_id, name)
                 self.write(json.dumps(info))
             else:
-                raise web.HTTPError(400, 'Invalid argument')
+                raise web.HTTPError(400, reason='Invalid argument')
         except:  # noqa: E722
             self._dump_exception(sys.exc_info())
 
