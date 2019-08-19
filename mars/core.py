@@ -516,7 +516,9 @@ class TileableData(SerializableWithKey, Tileable):
             node = nodes.pop()
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
-            if node.key in executed_keys:
+            # when all outputs of the op have been executed
+            op = node.op
+            if all(n.key in executed_keys for n in op.outputs):
                 node = build_fetch(node, coarse=True).data
 
             visited.add(node)
