@@ -512,13 +512,13 @@ class TileableData(SerializableWithKey, Tileable):
             nodes = list(self.op.outputs)
 
         is_op_executed = \
-            lambda operand: not tiled and all(o.key in executed_keys for o in operand.outputs)
+            lambda operand: all(o.key in executed_keys for o in operand.outputs)
         node_to_fetch = dict()
 
         def _generate_fetch_node(n):
             if n in node_to_fetch:
                 return node_to_fetch[n]
-            fn = build_fetch(node, coarse=True).data
+            fn = build_fetch(n, coarse=True).data
             node_to_fetch[n] = fn
             return fn
 
