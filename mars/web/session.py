@@ -18,10 +18,10 @@ import time
 import logging
 from numbers import Integral
 import pickle
+import sys
 import uuid
 
 import numpy as np
-import requests
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
@@ -38,7 +38,7 @@ class Session(object):
     def __init__(self, endpoint, session_id=None, req_session=None, args=None):
         self._endpoint = endpoint
         self._session_id = session_id
-        self._args = args
+        self._args = args or dict()
         # dict structure: {ttileable_key -> graph_key, tileable_ids}
         # dict value is a tuple object which records graph key and tileable id
         self._executed_tileables = dict()
@@ -46,6 +46,7 @@ class Session(object):
         if req_session:
             self._req_session = req_session
         else:
+            import requests
             from requests.adapters import HTTPAdapter
 
             self._req_session = requests.Session()
@@ -67,9 +68,12 @@ class Session(object):
 
     def _main(self):
         if self._session_id is None:
-            resp = self._req_session.post(self._endpoint + '/api/session', self._args)
+            args = self._args.copy()
+            args['pyver'] = '.'.join(str(v) for v in sys.version_info[:3])
+            resp = self._req_session.post(self._endpoint + '/api/session', args)
+
             if resp.status_code >= 400:
-                raise SystemError('Failed to create mars session.')
+                raise SystemError('Failed to create mars session: ' + resp.reason)
             content = json.loads(resp.text)
             self._session_id = content['session_id']
         else:
@@ -91,6 +95,7 @@ class Session(object):
             self._executed_tileables[tileable_key] = graph_key, {tileable_id}
 
     def _check_response_finished(self, graph_url):
+        import requests
         try:
             resp = self._req_session.get(graph_url)
         except requests.ConnectionError as ex:
@@ -247,7 +252,7 @@ class Session(object):
                                      chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
-        '''
+        """
         How to serialize index and value:
 
         1. process_index and serialize it as json
@@ -256,7 +261,7 @@ class Session(object):
             * a int64 value indicate the size of index json
             * ascii-encoded bytes of index json
             * pyarrow serialized bytes of `value`
-        '''
+        """
         from ..tensor.core import Indexes
         from ..compat import BytesIO
         from ..serialize import dataserializer
@@ -363,6 +368,7 @@ class Session(object):
             raise SystemError('Failed to close mars session.')
 
     def check_service_ready(self, timeout=1):
+        import requests
         try:
             resp = self._req_session.get(self._endpoint + '/api', timeout=timeout)
         except (requests.ConnectionError, requests.Timeout):

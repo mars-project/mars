@@ -72,7 +72,7 @@ class WorkerCase(unittest.TestCase):
 
         options.worker.spill_directory = cls.spill_dir
 
-        cls._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
+        cls._plasma_client = plasma.connect(options.worker.plasma_socket)
         cls._kv_store = kvstore.get(options.kv_store)
 
     @classmethod
