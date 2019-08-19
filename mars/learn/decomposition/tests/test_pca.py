@@ -233,7 +233,7 @@ class Test(unittest.TestCase):
         rpca = PCA(n_components=3, svd_solver='randomized', random_state=rng)
         X_pca = pca.fit_transform(X)
 
-        X_pca /= np.sqrt(np.sum(X_pca**2.0, axis=0))
+        X_pca /= mt.sqrt(mt.sum(X_pca**2.0, axis=0))
         X_pca[:, 0] *= 3.142
         X_pca[:, 1] *= 2.718
 
