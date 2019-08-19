@@ -16,6 +16,7 @@ import itertools
 from numbers import Integral
 
 import numpy as np
+import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
 from ...serialize import AnyField, ListField
@@ -168,15 +169,13 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 if isinstance(op.indexes[1], Integral):
                     shape = index_chunk.shape
                     index = index_chunk.index
-                    dtype = in_chunk.dtypes.iloc[column_chunk.op.indexes[0]]
                     index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
                 else:
                     shape = column_chunk.shape
                     index = column_chunk.index
-                    dtype = find_common_type(in_chunk.dtypes.iloc[column_chunk.op.indexes[0]])
                     index_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0])
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
-                                               dtype=dtype, index_value=index_value)
+                                               dtype=out_val.dtype, index_value=index_value)
             else:
                 index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
                 columns_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0], store_data=True)
@@ -204,7 +203,10 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = ctx[op.inputs[0].key].iloc[op.indexes]
+        r = ctx[op.inputs[0].key].iloc[op.indexes]
+        if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
+            r = r.astype(chunk.dtype)
+        ctx[chunk.key] = r
 
 
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):

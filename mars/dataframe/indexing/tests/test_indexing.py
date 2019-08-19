@@ -131,6 +131,7 @@ class Test(TestBase):
         self.assertIsInstance(df7, Series)
         self.assertIsInstance(df7.op, DataFrameIlocGetItem)
         self.assertEqual(df7.chunk_shape, ())
+        self.assertEqual(df7.chunks[0].dtype, df7.dtype)
         self.assertEqual(df7.chunks[0].shape, ())
         self.assertEqual(df7.chunks[0].op.indexes, (1, 0))
         self.assertEqual(df7.chunks[0].inputs[0].index, (0, 1))
