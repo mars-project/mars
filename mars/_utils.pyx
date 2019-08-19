@@ -108,7 +108,7 @@ cdef class Tokenizer:
             return handler(obj)
         except KeyError:
             if hasattr(obj, '_key'):
-                return getattr(obj, '_key')
+                return obj._key
             if hasattr(obj, '__mars_tokenize__'):
                 return self.tokenize(obj.__mars_tokenize__())
 
@@ -120,17 +120,16 @@ cdef class Tokenizer:
 
 
 cdef inline list iterative_tokenize(object ob):
-    nested = deque(ob)
+    dq = deque(ob)
     h_list = []
-    dq = deque()
-    while nested or dq:
-        x = dq.pop() if dq else nested.popleft()
+    while dq:
+        x = dq.pop()
         if isinstance(x, (list, tuple)):
             dq.extend(x)
         elif isinstance(x, set):
-            dq.extend(sorted(x, key=str))
+            dq.extend(sorted(x))
         elif isinstance(x, dict):
-            dq.extend(sorted(list(x.items()), key=str))
+            dq.extend(sorted(list(x.items())))
         else:
             h_list.append(tokenize_handler.tokenize(x))
     return h_list
@@ -210,12 +209,12 @@ for t in base_types:
 for t in (np.dtype, np.generic):
     tokenize_handler.register(t, lambda ob: repr(ob))
 
-for t in (list, tuple):
+for t in (list, tuple, dict, set):
     tokenize_handler.register(t, iterative_tokenize)
 
 tokenize_handler.register(np.ndarray, tokenize_numpy)
-tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(list(ob.items()), key=str)))
-tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob, key=str)))
+tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(list(ob.items()))))
+tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
 tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
 tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name)))
 tokenize_handler.register(pd.Index, tokenize_pandas_index)
