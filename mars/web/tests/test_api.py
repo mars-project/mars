@@ -249,6 +249,14 @@ class Test(unittest.TestCase):
             return new_lines
 
         service_ep = 'http://127.0.0.1:' + self.web_port
+
+        # raise on malicious python version
+        res = requests.post('%s/api/session' % service_ep, dict(pyver='mal.version'))
+        self.assertEqual(res.status_code, 400)
+        wrong_version = '3.7.4' if sys.version_info[0] < 3 else '2.7.4'
+        res = requests.post('%s/api/session' % service_ep, dict(pyver=wrong_version))
+        self.assertEqual(res.status_code, 400)
+
         with new_session(service_ep) as sess:
             # Stop non-existing graph should raise an exception
             graph_key = str(uuid.uuid4())
