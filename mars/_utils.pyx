@@ -101,16 +101,17 @@ cdef class Tokenizer:
     def register(self, cls, handler):
         self._handlers[cls] = handler
 
-    def tokenize(self, obj):
-        if hasattr(obj, 'key'):
-            return obj.key
-        if hasattr(obj, '__mars_tokenize__'):
-            return self.tokenize(obj.__mars_tokenize__())
+    cdef inline tokenize(self, object obj):
         object_type = type(obj)
         try:
             handler = self._handlers[object_type]
             return handler(obj)
         except KeyError:
+            if hasattr(obj, '_key'):
+                return getattr(obj, '_key')
+            if hasattr(obj, '__mars_tokenize__'):
+                return self.tokenize(obj.__mars_tokenize__())
+
             for clz in self._handlers.keys():
                 if issubclass(object_type, clz):
                     self._handlers[object_type] = self._handlers[clz]
@@ -118,7 +119,7 @@ cdef class Tokenizer:
             raise TypeError('Cannot generate token for %s, type: %s' % (obj, object_type))
 
 
-cdef list iterative_tokenize(ob):
+cdef inline list iterative_tokenize(object ob):
     nested = deque(ob)
     h_list = []
     dq = deque()
@@ -135,7 +136,7 @@ cdef list iterative_tokenize(ob):
     return h_list
 
 
-cdef tuple tokenize_numpy(ob):
+cdef inline tuple tokenize_numpy(ob):
     cdef int offset
     cdef str data
 
@@ -199,7 +200,7 @@ cdef list tokenize_pandas_dataframe(ob):
     return iterative_tokenize(l)
 
 
-tokenize_handler = Tokenizer()
+cdef Tokenizer tokenize_handler = Tokenizer()
 
 base_types = (int, long, float, str, unicode, bytes, complex,
               type(None), type, slice, date, datetime, timedelta)
