@@ -96,13 +96,10 @@ class Fusion(object):
                 return n.composed[-1]
             return n
 
-        observed = set()
-
         composed_nodes = node.composed
         nodes_set = set(composed_nodes)
         tail_node = composed_nodes[-1]
         self._graph.add_node(tail_node)
-        observed.add(tail_node)
         q = deque()
         q.append(tail_node)
         while len(q) > 0:
@@ -117,9 +114,6 @@ class Fusion(object):
                     self._graph.add_edge(pre, cur_node)
                 if pre in nodes_set:
                     q.appendleft(pre)
-                    observed.add(pre)
-        if len(observed) != len(nodes_set):
-            raise InvalidComposedNodeError("Invalid composed node data")
         for n in self._graph.iter_successors(node):
             self._graph.add_edge(composed_nodes[-1], n)
         self._graph.remove_node(node)
