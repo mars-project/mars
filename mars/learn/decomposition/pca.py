@@ -563,7 +563,7 @@ class PCA(_BasePCA):
         X = check_array(X)
         Xr = X - self.mean_
         n_features = X.shape[1]
-        precision = self.get_precision()
+        precision = self.get_precision().fetch()
         log_like = -.5 * (Xr * (mt.dot(Xr, precision))).sum(axis=1)
         log_like -= .5 * (n_features * log(2. * mt.pi) -
                           fast_logdet(precision))
