@@ -14,11 +14,13 @@
 
 
 def _install():
-    from .getitem import _getitem
-    from ..operands import DATAFRAME_TYPE
+    from .getitem import dataframe_getitem, series_getitem
+    from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, '__getitem__', _getitem)
+        setattr(cls, '__getitem__', dataframe_getitem)
+    for cls in SERIES_TYPE:
+        setattr(cls, '__getitem__', series_getitem)
 
 
 _install()

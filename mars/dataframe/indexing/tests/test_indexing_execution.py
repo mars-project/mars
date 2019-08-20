@@ -16,13 +16,13 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase
-from mars.dataframe.datasource.dataframe import from_pandas
+import mars.dataframe as mdf
 
 
 class Test(TestBase):
-    def testGetitem(self):
+    def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
-        df = from_pandas(data, chunk_size=2)
+        df = mdf.DataFrame(data, chunk_size=2)
 
         series1 = df['c2']
         pd.testing.assert_series_equal(series1.execute(), data['c2'])
@@ -42,4 +42,11 @@ class Test(TestBase):
         df4 = df[['c3', 'c1', 'c2', 'c1']]
         pd.testing.assert_frame_equal(df4.execute(), data[['c3', 'c1', 'c2', 'c1']])
 
+    def testSeriesGetitem(self):
+        data = pd.Series(np.random.rand(10), name='a')
+        series = mdf.Series(data, chunk_size=3)
+
+        for i in range(10):
+            series1 = series[i]
+            self.assertEqual(series1.execute(), data[i])
 
