@@ -480,15 +480,15 @@ class Test(unittest.TestCase):
         for solver in self.solver_list:
             pca = PCA(n_components=2, svd_solver=solver)
             pca.fit(X)
-            ll1 = pca.score(X).execute()
-            ll2 = pca.score(mt.tensor(rng.randn(n, p) * .2) + mt.array([3, 4, 5])).execute()
-            self.assertGreater(ll1, ll2)
+            ll1 = pca.score(X)
+            ll2 = pca.score(mt.tensor(rng.randn(n, p) * .2) + mt.array([3, 4, 5]))
+            self.assertGreater(ll1.fetch(), ll2.fetch())
 
             # Test that it gives different scores if whiten=True
             pca = PCA(n_components=2, whiten=True, svd_solver=solver)
             pca.fit(X)
-            ll2 = pca.score(X).execute()
-            assert ll1 > ll2
+            ll2 = pca.score(X)
+            assert ll1.fetch() > ll2.fetch()
 
     def test_pca_score3(self):
         # Check that probabilistic PCA selects the right model
