@@ -17,12 +17,12 @@ from math import log, sqrt
 import numbers
 
 import numpy as np
+from scipy.special import gammaln
 from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.extmath import fast_logdet
 
 from ... import tensor as mt
 from ...tensor.core import TENSOR_TYPE
-from ...tensor.special import gammaln
 from ...tensor.utils import check_random_state
 from ...tensor.linalg import randomized_svd
 from ...tensor.linalg.randomized_svd import svd_flip
@@ -86,11 +86,10 @@ def _assess_dimension_(spectrum, rank, n_samples, n_features):
     spectrum_[rank:n_features] = v
     for i in range(rank):
         for j in range(i + 1, len(spectrum)):
-            pa += log((spectrum[i] - spectrum[j]) *
-                      (1. / spectrum_[j] - 1. / spectrum_[i])) + log(n_samples)
+            pa += mt.log((spectrum[i] - spectrum[j]) *
+                         (1. / spectrum_[j] - 1. / spectrum_[i])) + log(n_samples)
 
     ll = pu + pl + pv + pp - pa / 2. - rank * log(n_samples) / 2.
-
     return ll
 
 
@@ -409,7 +408,7 @@ class PCA(_BasePCA):
 
         # Call different fits for either full or truncated SVD
         if self._fit_svd_solver == 'full':
-            ret = self._fit_full(X, n_components)
+            ret = self._fit_full(X, n_components, session=session)
         elif self._fit_svd_solver in ['arpack', 'randomized']:
             ret = self._fit_truncated(X, n_components, self._fit_svd_solver)
         else:
@@ -420,7 +419,7 @@ class PCA(_BasePCA):
             self._run(ret, session=session)
         return ret
 
-    def _fit_full(self, X, n_components):
+    def _fit_full(self, X, n_components, session=None):
         """Fit the model by computing full SVD on X"""
         n_samples, n_features = X.shape
 
@@ -459,7 +458,8 @@ class PCA(_BasePCA):
         # Postprocess the number of components required
         if n_components == 'mle':
             n_components = \
-                _infer_dimension_(explained_variance_, n_samples, n_features)
+                _infer_dimension_(explained_variance_, n_samples, n_features)\
+                    .execute(session=session)
         elif 0 < n_components < 1.0:
             # number of components for which the cumulated explained
             # variance percentage is superior to the desired threshold

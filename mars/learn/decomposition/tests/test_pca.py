@@ -23,9 +23,10 @@ from mars.session import new_session
 try:
     import sklearn
     from sklearn import datasets
-    from sklearn.utils.testing import assert_array_almost_equal, assert_almost_equal
+    from sklearn.utils.testing import assert_array_almost_equal, \
+        assert_almost_equal, assert_raises_regex, assert_raise_message
 
-    from ..pca import PCA
+    from ..pca import PCA, _assess_dimension_
 except ImportError:
     sklearn = None
 
@@ -242,3 +243,175 @@ class Test(unittest.TestCase):
         rpca.fit(X_hat)
         assert_array_almost_equal(pca.singular_values_.fetch(), [3.142, 2.718, 1.0], 14)
         assert_array_almost_equal(rpca.singular_values_.fetch(), [3.142, 2.718, 1.0], 14)
+
+    def test_pca_check_projection(self):
+        # Test that the projection of data is correct
+        rng = np.random.RandomState(0)
+        n, p = 100, 3
+        X = mt.tensor(rng.randn(n, p) * .1)
+        X[:10] += mt.array([3, 4, 5])
+        Xt = 0.1 * mt.tensor(rng.randn(1, p)) + mt.array([3, 4, 5])
+
+        for solver in self.solver_list:
+            Yt = PCA(n_components=2, svd_solver=solver).fit(X).transform(Xt)
+            Yt /= mt.sqrt((Yt ** 2).sum())
+
+            assert_almost_equal(mt.abs(Yt[0][0]).execute(), 1., 1)
+
+    def test_pca_inverse(self):
+        # Test that the projection of data can be inverted
+        rng = np.random.RandomState(0)
+        n, p = 50, 3
+        X = mt.tensor(rng.randn(n, p))  # spherical data
+        X[:, 1] *= .00001  # make middle component relatively small
+        X += [5, 4, 3]  # make a large mean
+
+        # same check that we can find the original data from the transformed
+        # signal (since the data is almost of rank n_components)
+        pca = PCA(n_components=2, svd_solver='full').fit(X)
+        Y = pca.transform(X)
+        Y_inverse = pca.inverse_transform(Y)
+        assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=3)
+
+        # same as above with whitening (approximate reconstruction)
+        for solver in self.solver_list:
+            pca = PCA(n_components=2, whiten=True, svd_solver=solver)
+            pca.fit(X)
+            Y = pca.transform(X)
+            Y_inverse = pca.inverse_transform(Y)
+            assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=3)
+
+    def test_pca_validation(self):
+        for solver in self.solver_list:
+            # Ensures that solver-specific extreme inputs for the n_components
+            # parameter raise errors
+            X = mt.array([[0, 1, 0], [1, 0, 0]])
+            smallest_d = 2  # The smallest dimension
+            lower_limit = {'randomized': 1, 'full': 0, 'auto': 0}
+
+            # We conduct the same test on X.T so that it is invariant to axis.
+            for data in [X, X.T]:
+                for n_components in [-1, 3]:
+
+                    if solver == 'auto':
+                        solver_reported = 'full'
+                    else:
+                        solver_reported = solver
+
+                    assert_raises_regex(ValueError,
+                                        "n_components={}L? must be between "
+                                        r"{}L? and min\(n_samples, n_features\)="
+                                        "{}L? with svd_solver=\'{}\'"
+                                        .format(n_components,
+                                                lower_limit[solver],
+                                                smallest_d,
+                                                solver_reported),
+                                        PCA(n_components,
+                                            svd_solver=solver).fit, data)
+
+            n_components = 1.0
+            type_ncom = type(n_components)
+            assert_raise_message(ValueError,
+                                 "n_components={} must be of type int "
+                                 "when greater than or equal to 1, was of type={}"
+                                 .format(n_components, type_ncom),
+                                 PCA(n_components, svd_solver=solver).fit, data)
+
+    def test_n_components_none(self):
+        for solver in self.solver_list:
+            # Ensures that n_components == None is handled correctly
+            X = self.iris
+            # We conduct the same test on X.T so that it is invariant to axis.
+            for data in [X, X.T]:
+                pca = PCA(svd_solver=solver)
+                pca.fit(data)
+                self.assertEqual(pca.n_components_, min(data.shape))
+
+    def test_randomized_pca_check_projection(self):
+        # Test that the projection by randomized PCA on dense data is correct
+        rng = np.random.RandomState(0)
+        n, p = 100, 3
+        X = mt.tensor(rng.randn(n, p) * .1)
+        X[:10] += mt.array([3, 4, 5])
+        Xt = 0.1 * mt.tensor(rng.randn(1, p)) + mt.array([3, 4, 5])
+
+        Yt = PCA(n_components=2, svd_solver='randomized',
+                 random_state=0).fit(X).transform(Xt)
+        Yt /= np.sqrt((Yt ** 2).sum())
+
+        assert_almost_equal(mt.abs(Yt[0][0]).execute(), 1., 1)
+
+    def test_randomized_pca_check_list(self):
+        # Test that the projection by randomized PCA on list data is correct
+        X = mt.tensor([[1.0, 0.0], [0.0, 1.0]])
+        X_transformed = PCA(n_components=1, svd_solver='randomized',
+                            random_state=0).fit(X).transform(X)
+        self.assertEqual(X_transformed.shape, (2, 1))
+        assert_almost_equal(X_transformed.mean().execute(), 0.00, 2)
+        assert_almost_equal(X_transformed.std().execute(), 0.71, 2)
+
+    def test_randomized_pca_inverse(self):
+        # Test that randomized PCA is inversible on dense data
+        rng = np.random.RandomState(0)
+        n, p = 50, 3
+        X = mt.tensor(rng.randn(n, p))  # spherical data
+        X[:, 1] *= .00001  # make middle component relatively small
+        X += [5, 4, 3]  # make a large mean
+
+        # same check that we can find the original data from the transformed signal
+        # (since the data is almost of rank n_components)
+        pca = PCA(n_components=2, svd_solver='randomized', random_state=0).fit(X)
+        Y = pca.transform(X)
+        Y_inverse = pca.inverse_transform(Y)
+        assert_almost_equal(X.execute(), Y_inverse.execute(), decimal=2)
+
+        # same as above with whitening (approximate reconstruction)
+        pca = PCA(n_components=2, whiten=True, svd_solver='randomized',
+                  random_state=0).fit(X)
+        Y = pca.transform(X)
+        Y_inverse = pca.inverse_transform(Y)
+        relative_max_delta = (mt.abs(X - Y_inverse) / mt.abs(X).mean()).max()
+        self.assertLess(relative_max_delta.execute(), 1e-5)
+
+    def test_n_components_mle(self):
+        # Ensure that n_components == 'mle' doesn't raise error for auto/full
+        # svd_solver and raises error for arpack/randomized svd_solver
+        rng = np.random.RandomState(0)
+        n_samples = 600
+        n_features = 10
+        X = mt.tensor(rng.randn(n_samples, n_features))
+        n_components_dict = {}
+        for solver in self.solver_list:
+            pca = PCA(n_components='mle', svd_solver=solver)
+            if solver in ['auto', 'full']:
+                pca.fit(X)
+                n_components_dict[solver] = pca.n_components_
+            else:  # arpack/randomized solver
+                error_message = ("n_components='mle' cannot be a string with "
+                                 "svd_solver='{}'".format(solver))
+                assert_raise_message(ValueError, error_message, pca.fit, X)
+        self.assertEqual(n_components_dict['auto'], n_components_dict['full'])
+
+    def test_pca_dim(self):
+        # Check automated dimensionality setting
+        rng = np.random.RandomState(0)
+        n, p = 100, 5
+        X = mt.tensor(rng.randn(n, p) * .1)
+        X[:10] += mt.array([3, 4, 5, 1, 2])
+        pca = PCA(n_components='mle', svd_solver='full').fit(X)
+        self.assertEqual(pca.n_components, 'mle')
+        self.assertEqual(pca.n_components_, 1)
+
+    def test_infer_dim_1(self):
+        # TODO: explain what this is testing
+        # Or at least use explicit variable names...
+        n, p = 1000, 5
+        rng = np.random.RandomState(0)
+        X = (mt.tensor(rng.randn(n, p)) * .1 + mt.tensor(rng.randn(n, 1)) * mt.array([3, 4, 5, 1, 2]) +
+             mt.array([1, 0, 7, 4, 6]))
+        pca = PCA(n_components=p, svd_solver='full')
+        pca.fit(X)
+        spect = pca.explained_variance_
+        ll = mt.array([_assess_dimension_(spect, k, n, p) for k in range(p)]).execute()
+        self.assertGreater(ll[1], ll.max() - .01 * n)
+
