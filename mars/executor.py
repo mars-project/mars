@@ -439,7 +439,7 @@ class Executor(object):
 
     @classmethod
     def handle(cls, op, results, mock=False):
-        method_name, mapper = ('execute', cls._op_runners) if not mock else\
+        method_name, mapper = ('execute', cls._op_runners) if not mock else \
             ('estimate_size', cls._op_size_estimators)
         try:
             runner = mapper[type(op)]
@@ -642,13 +642,19 @@ def ignore(*_):
 
 
 Executor._op_runners[Fetch] = ignore
-Executor._op_runners[ShuffleProxy] =ignore
+Executor._op_runners[ShuffleProxy] = ignore
 
 
-def register(op, handler, size_estimator=None):
-    Executor._op_runners[op] = handler
+def register(op_cls, handler=None, size_estimator=None):
+    if handler:
+        Executor._op_runners[op_cls] = handler
     if size_estimator:
-        Executor._op_size_estimators[op] = size_estimator
+        Executor._op_size_estimators[op_cls] = size_estimator
+
+
+def register_default(op_cls):
+    Executor._op_runners.pop(op_cls, None)
+    Executor._op_size_estimators.pop(op_cls, None)
 
 
 # import to register operands
