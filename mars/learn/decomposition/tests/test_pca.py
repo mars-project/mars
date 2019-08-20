@@ -21,12 +21,13 @@ import mars.tensor as mt
 from mars.session import new_session
 
 try:
+    import scipy as sp
     import sklearn
     from sklearn import datasets
     from sklearn.utils.testing import assert_array_almost_equal, \
-        assert_almost_equal, assert_raises_regex, assert_raise_message
+        assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
-    from ..pca import PCA, _assess_dimension_
+    from ..pca import PCA, _assess_dimension_, _infer_dimension_
 except ImportError:
     sklearn = None
 
@@ -415,3 +416,238 @@ class Test(unittest.TestCase):
         ll = mt.array([_assess_dimension_(spect, k, n, p) for k in range(p)]).execute()
         self.assertGreater(ll[1], ll.max() - .01 * n)
 
+    def test_infer_dim_2(self):
+        # TODO: explain what this is testing
+        # Or at least use explicit variable names...
+        n, p = 1000, 5
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.randn(n, p) * .1)
+        X[:10] += mt.array([3, 4, 5, 1, 2])
+        X[10:20] += mt.array([6, 0, 7, 2, -1])
+        pca = PCA(n_components=p, svd_solver='full')
+        pca.fit(X)
+        spect = pca.explained_variance_
+        self.assertGreater(_infer_dimension_(spect, n, p).execute(), 1)
+
+    def test_infer_dim_3(self):
+        n, p = 100, 5
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.randn(n, p) * .1)
+        X[:10] += mt.array([3, 4, 5, 1, 2])
+        X[10:20] += mt.array([6, 0, 7, 2, -1])
+        X[30:40] += 2 * mt.array([-1, 1, -1, 1, -1])
+        pca = PCA(n_components=p, svd_solver='full')
+        pca.fit(X)
+        spect = pca.explained_variance_
+        self.assertGreater(_infer_dimension_(spect, n, p).execute(), 2)
+
+    def test_infer_dim_by_explained_variance(self):
+        X = self.iris
+        pca = PCA(n_components=0.95, svd_solver='full')
+        pca.fit(X)
+        self.assertEqual(pca.n_components, 0.95)
+        self.assertEqual(pca.n_components_, 2)
+
+        pca = PCA(n_components=0.01, svd_solver='full')
+        pca.fit(X)
+        self.assertEqual(pca.n_components, 0.01)
+        self.assertEqual(pca.n_components_, 1)
+
+        rng = np.random.RandomState(0)
+        # more features than samples
+        X = mt.tensor(rng.rand(5, 20))
+        pca = PCA(n_components=.5, svd_solver='full').fit(X)
+        self.assertEqual(pca.n_components, 0.5)
+        self.assertEqual(pca.n_components_, 2)
+
+    def test_pca_score(self):
+        # Test that probabilistic PCA scoring yields a reasonable score
+        n, p = 1000, 3
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.randn(n, p) * .1) + mt.array([3, 4, 5])
+        for solver in self.solver_list:
+            pca = PCA(n_components=2, svd_solver=solver)
+            pca.fit(X)
+            ll1 = pca.score(X)
+            h = -0.5 * mt.log(2 * mt.pi * mt.exp(1) * 0.1 ** 2) * p
+            np.testing.assert_almost_equal((ll1 / h).execute(), 1, 0)
+
+    def test_pca_score2(self):
+        # Test that probabilistic PCA correctly separated different datasets
+        n, p = 100, 3
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.randn(n, p) * .1) + mt.array([3, 4, 5])
+        for solver in self.solver_list:
+            pca = PCA(n_components=2, svd_solver=solver)
+            pca.fit(X)
+            ll1 = pca.score(X).execute()
+            ll2 = pca.score(mt.tensor(rng.randn(n, p) * .2) + mt.array([3, 4, 5])).execute()
+            self.assertGreater(ll1, ll2)
+
+            # Test that it gives different scores if whiten=True
+            pca = PCA(n_components=2, whiten=True, svd_solver=solver)
+            pca.fit(X)
+            ll2 = pca.score(X).execute()
+            assert ll1 > ll2
+
+    def test_pca_score3(self):
+        # Check that probabilistic PCA selects the right model
+        n, p = 200, 3
+        rng = np.random.RandomState(0)
+        Xl = mt.tensor(rng.randn(n, p) + rng.randn(n, 1) * np.array([3, 4, 5]) +
+                       np.array([1, 0, 7]))
+        Xt = mt.tensor(rng.randn(n, p) + rng.randn(n, 1) * np.array([3, 4, 5]) +
+                       np.array([1, 0, 7]))
+        ll = mt.zeros(p)
+        for k in range(p):
+            pca = PCA(n_components=k, svd_solver='full')
+            pca.fit(Xl)
+            ll[k] = pca.score(Xt)
+
+        assert ll.argmax().execute() == 1
+
+    def test_pca_score_with_different_solvers(self):
+        digits = datasets.load_digits()
+        X_digits = mt.tensor(digits.data)
+
+        pca_dict = {svd_solver: PCA(n_components=30, svd_solver=svd_solver,
+                                    random_state=0)
+                    for svd_solver in self.solver_list}
+
+        for pca in pca_dict.values():
+            pca.fit(X_digits)
+            # Sanity check for the noise_variance_. For more details see
+            # https://github.com/scikit-learn/scikit-learn/issues/7568
+            # https://github.com/scikit-learn/scikit-learn/issues/8541
+            # https://github.com/scikit-learn/scikit-learn/issues/8544
+            assert mt.all((pca.explained_variance_ - pca.noise_variance_) >= 0).execute()
+
+        # Compare scores with different svd_solvers
+        score_dict = {svd_solver: pca.score(X_digits).execute()
+                      for svd_solver, pca in pca_dict.items()}
+        assert_almost_equal(score_dict['full'], score_dict['randomized'],
+                            decimal=3)
+
+    def test_pca_zero_noise_variance_edge_cases(self):
+        # ensure that noise_variance_ is 0 in edge cases
+        # when n_components == min(n_samples, n_features)
+        n, p = 100, 3
+
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.randn(n, p) * .1) + mt.array([3, 4, 5])
+        # arpack raises ValueError for n_components == min(n_samples,
+        # n_features)
+        svd_solvers = ['full', 'randomized']
+
+        for svd_solver in svd_solvers:
+            pca = PCA(svd_solver=svd_solver, n_components=p)
+            pca.fit(X)
+            self.assertEqual(pca.noise_variance_, 0)
+
+            pca.fit(X.T)
+            self.assertEqual(pca.noise_variance_, 0)
+
+    def test_svd_solver_auto(self):
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.uniform(size=(1000, 50)))
+
+        # case: n_components in (0,1) => 'full'
+        pca = PCA(n_components=.5)
+        pca.fit(X)
+        pca_test = PCA(n_components=.5, svd_solver='full')
+        pca_test.fit(X)
+        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+
+        # case: max(X.shape) <= 500 => 'full'
+        pca = PCA(n_components=5, random_state=0)
+        Y = X[:10, :]
+        pca.fit(Y)
+        pca_test = PCA(n_components=5, svd_solver='full', random_state=0)
+        pca_test.fit(Y)
+        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+
+        # case: n_components >= .8 * min(X.shape) => 'full'
+        pca = PCA(n_components=50)
+        pca.fit(X)
+        pca_test = PCA(n_components=50, svd_solver='full')
+        pca_test.fit(X)
+        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+
+        # n_components >= 1 and n_components < .8 * min(X.shape) => 'randomized'
+        pca = PCA(n_components=10, random_state=0)
+        pca.fit(X)
+        pca_test = PCA(n_components=10, svd_solver='randomized', random_state=0)
+        pca_test.fit(X)
+        assert_array_almost_equal(pca.components_.execute(), pca_test.components_.execute())
+
+    def test_pca_sparse_input(self):
+        for svd_solver in self.solver_list:
+            X = np.random.RandomState(0).rand(5, 4)
+            X = mt.tensor(sp.sparse.csr_matrix(X))
+            self.assertTrue(X.issparse())
+
+            pca = PCA(n_components=3, svd_solver=svd_solver)
+
+            assert_raises(TypeError, pca.fit, X)
+
+    def test_pca_bad_solver(self):
+        X = mt.tensor(np.random.RandomState(0).rand(5, 4))
+        pca = PCA(n_components=3, svd_solver='bad_argument')
+        with self.assertRaises(ValueError):
+            pca.fit(X)
+
+    def test_pca_dtype_preservation(self):
+        for svd_solver in self.solver_list:
+            self._check_pca_float_dtype_preservation(svd_solver)
+            self._check_pca_int_dtype_upcast_to_double(svd_solver)
+
+    def _check_pca_float_dtype_preservation(self, svd_solver):
+        # Ensure that PCA does not upscale the dtype when input is float32
+        X_64 = mt.tensor(np.random.RandomState(0).rand(1000, 4).astype(np.float64,
+                                                                       copy=False))
+        X_32 = X_64.astype(np.float32)
+
+        pca_64 = PCA(n_components=3, svd_solver=svd_solver,
+                     random_state=0).fit(X_64)
+        pca_32 = PCA(n_components=3, svd_solver=svd_solver,
+                     random_state=0).fit(X_32)
+
+        self.assertEqual(pca_64.components_.dtype, np.float64)
+        self.assertEqual(pca_32.components_.dtype, np.float32)
+        self.assertEqual(pca_64.transform(X_64).dtype, np.float64)
+        self.assertEqual(pca_32.transform(X_32).dtype, np.float32)
+
+        # decimal=5 fails on mac with scipy = 1.1.0
+        assert_array_almost_equal(pca_64.components_.execute(), pca_32.components_.execute(),
+                                  decimal=4)
+
+    def _check_pca_int_dtype_upcast_to_double(self, svd_solver):
+        # Ensure that all int types will be upcast to float64
+        X_i64 = mt.tensor(np.random.RandomState(0).randint(0, 1000, (1000, 4)))
+        X_i64 = X_i64.astype(np.int64, copy=False)
+        X_i32 = X_i64.astype(np.int32, copy=False)
+
+        pca_64 = PCA(n_components=3, svd_solver=svd_solver,
+                     random_state=0).fit(X_i64)
+        pca_32 = PCA(n_components=3, svd_solver=svd_solver,
+                     random_state=0).fit(X_i32)
+
+        self.assertEqual(pca_64.components_.dtype, np.float64)
+        self.assertEqual(pca_32.components_.dtype, np.float64)
+        self.assertEqual(pca_64.transform(X_i64).dtype, np.float64)
+        self.assertEqual(pca_32.transform(X_i32).dtype, np.float64)
+
+        assert_array_almost_equal(pca_64.components_.execute(), pca_32.components_.execute(),
+                                  decimal=5)
+
+    def test_pca_deterministic_output(self):
+        rng = np.random.RandomState(0)
+        X = mt.tensor(rng.rand(10, 10))
+
+        for solver in self.solver_list:
+            transformed_X = mt.zeros((20, 2))
+            for i in range(20):
+                pca = PCA(n_components=2, svd_solver=solver, random_state=rng)
+                transformed_X[i, :] = pca.fit_transform(X)[0]
+            np.testing.assert_allclose(
+                transformed_X.execute(), mt.tile(transformed_X[0, :], 20).reshape(20, 2).execute())

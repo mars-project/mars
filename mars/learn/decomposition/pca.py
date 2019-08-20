@@ -465,7 +465,8 @@ class PCA(_BasePCA):
             # variance percentage is superior to the desired threshold
             # ratio_cumsum = stable_cumsum(explained_variance_ratio_)
             ratio_cumsum = explained_variance_ratio_.cumsum()
-            n_components = mt.searchsorted(ratio_cumsum, n_components) + 1
+            n_components = (mt.searchsorted(ratio_cumsum, n_components) + 1)\
+                .execute(session=session)
 
         # Compute noise covariance using Probabilistic PCA model
         # The sigma2 maximum likelihood (cf. eq. 12.46)
