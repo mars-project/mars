@@ -27,7 +27,7 @@ try:
     from sklearn.utils.testing import assert_array_almost_equal, \
         assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
-    from ..pca import PCA, _assess_dimension_, _infer_dimension_
+    from mars.learn.decomposition.pca import PCA, _assess_dimension_, _infer_dimension_
 except ImportError:
     sklearn = None
 
