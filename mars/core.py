@@ -604,6 +604,9 @@ class TileableEntity(Entity):
 
     def copy(self):
         new_op = self.op.copy().reset_key()
+        if new_op.create_view:
+            # set create_view to False
+            new_op._create_view = False
         new_outs = new_op.new_tileables(self.op.inputs, kws=[t.params for t in self.op.outputs],
                                         output_limit=len(self.op.outputs),
                                         **self._data.extra_params)
