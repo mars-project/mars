@@ -106,7 +106,10 @@ class Fusion(object):
             cur_node = q.pop()
             if not cur_node.inputs:
                 continue
-            for pre in cur_node.inputs:
+            is_first = cur_node is composed_nodes[0]
+            inputs = cur_node.inputs if not is_first else \
+                self._graph.predecessors(node)
+            for pre in inputs:
                 pre = get_node(pre)
                 if pre in nodes_set:
                     self._graph.add_node(pre)

@@ -23,6 +23,7 @@ try:
     import sklearn
     from sklearn.utils.testing import assert_raise_message
     from sklearn.utils.estimator_checks import NotAnArray
+    import pytest
 
     from mars.learn.utils.validation import check_array
 except ImportError:
@@ -145,11 +146,11 @@ class Test(unittest.TestCase):
         expected_warn_regex = r"converted to decimal numbers if dtype='numeric'"
         X_str = [['11', '12'], ['13', 'xx']]
         for X in [X_str, mt.array(X_str, dtype='U'), mt.array(X_str, dtype='S')]:
-            with self.assertWarnsRegex(FutureWarning, expected_warn_regex):
+            with pytest.warns(FutureWarning, match=expected_warn_regex):
                 check_array(X, dtype="numeric")
 
         # deprecation warning if byte-like array with dtype="numeric"
         X_bytes = [[b'a', b'b'], [b'c', b'd']]
         for X in [X_bytes, mt.array(X_bytes, dtype='V1')]:
-            with self.assertWarnsRegex(FutureWarning, expected_warn_regex):
+            with pytest.warns(FutureWarning, match=expected_warn_regex):
                 check_array(X, dtype="numeric")
