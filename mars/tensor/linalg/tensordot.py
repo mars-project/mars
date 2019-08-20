@@ -69,6 +69,22 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         return self.new_tensor([a, b], shape, order=TensorOrder.C_ORDER)
 
     @classmethod
+    def estimate_size(cls, ctx, op):
+        chunk = op.outputs[0]
+        if chunk.is_sparse():
+            return super(TensorTensorDot, cls).estimate_size(ctx, op)
+
+        # empirical value in real environments
+        calc_usage = chunk.nbytes
+
+        # add input sizes when sparse-to-dense is needed
+        for inp in chunk.inputs:
+            if inp.is_sparse():
+                calc_usage += inp.nbytes
+
+        ctx[chunk.key] = (chunk.nbytes, calc_usage)
+
+    @classmethod
     def tile(cls, op):
         a, b, a_axes, b_axes = op.a, op.b, op.a_axes, op.b_axes
 
