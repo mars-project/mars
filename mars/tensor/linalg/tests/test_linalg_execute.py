@@ -820,9 +820,11 @@ class Test(unittest.TestCase):
         axes = ([1, 0], [0, 1])
         c = tensordot(a, b, axes=axes)
         size_res = size_executor.execute_tensor(c, mock=True)
+        self.assertEqual(sum(s[0] for s in size_res), c.nbytes)
+        self.assertEqual(sum(s[1] for s in size_res), c.nbytes)
+
         res = self.executor.execute_tensor(c)
         expected = np.tensordot(a_data, b_data, axes=axes)
-        self.assertEqual(sum(s[0] for s in size_res), c.nbytes)
         self.assertTrue(np.array_equal(res[0], expected[:2, :]))
         self.assertTrue(np.array_equal(res[1], expected[2:4, :]))
         self.assertTrue(np.array_equal(res[2], expected[4:, :]))
@@ -874,8 +876,37 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(c, concat=True)[0]
         np.testing.assert_array_equal(res, np.ones((100, 100)) * 100)
 
-    def testSparseDotExecution(self):
-        size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
+    def testSparseDotSizeExecution(self):
+        from mars.tensor.linalg.tensordot import TensorTensorDot
+        from mars.executor import register, register_default
+        chunk_sizes = dict()
+        chunk_nbytes = dict()
+        chunk_input_sizes = dict()
+        chunk_input_nbytes = dict()
+
+        def execute_size(t):
+            def _tensordot_size_recorder(ctx, op):
+                TensorTensorDot.estimate_size(ctx, op)
+
+                chunk_key = op.outputs[0].key
+                chunk_sizes[chunk_key] = ctx[chunk_key]
+                chunk_nbytes[chunk_key] = op.outputs[0].nbytes
+
+                input_sizes = dict((inp.op.key, ctx[inp.key][0]) for inp in op.inputs)
+                chunk_input_sizes[chunk_key] = sum(input_sizes.values())
+                input_nbytes = dict((inp.op.key, inp.nbytes) for inp in op.inputs)
+                chunk_input_nbytes[chunk_key] = sum(input_nbytes.values())
+
+            size_executor = Executor(sync_provider_type=Executor.SyncProviderType.MOCK)
+            try:
+                chunk_sizes.clear()
+                chunk_nbytes.clear()
+                chunk_input_sizes.clear()
+                chunk_input_nbytes.clear()
+                register(TensorTensorDot, size_estimator=_tensordot_size_recorder)
+                size_executor.execute_tensor(t, mock=True)
+            finally:
+                register_default(TensorTensorDot)
 
         a_data = sps.random(5, 9, density=.1)
         b_data = sps.random(9, 10, density=.2)
@@ -883,19 +914,33 @@ class Test(unittest.TestCase):
         b = tensor(b_data, chunk_size=3)
 
         c = dot(a, b)
+        execute_size(c)
 
-        size_res = size_executor.execute_tensor(c, mock=True)
+        for key in chunk_input_sizes.keys():
+            self.assertGreaterEqual(chunk_sizes[key][1], chunk_input_sizes[key])
+
+        c2 = dot(a, b, sparse=False)
+        execute_size(c2)
+
+        for key in chunk_input_sizes.keys():
+            self.assertEqual(chunk_sizes[key][0], chunk_nbytes[key])
+            self.assertEqual(chunk_sizes[key][1], chunk_input_nbytes[key] + chunk_nbytes[key])
+
+    def testSparseDotExecution(self):
+        a_data = sps.random(5, 9, density=.1)
+        b_data = sps.random(9, 10, density=.2)
+        a = tensor(a_data, chunk_size=2)
+        b = tensor(b_data, chunk_size=3)
+
+        c = dot(a, b)
+
         res = self.executor.execute_tensor(c, concat=True)[0]
-        self.assertEqual(sum(s[0] for s in size_res), 0)
-        self.assertGreaterEqual(sum(s[1] for s in size_res), 0)
         self.assertTrue(issparse(res))
         np.testing.assert_allclose(res.toarray(), a_data.dot(b_data).toarray())
 
         c2 = dot(a, b, sparse=False)
 
-        size_res = size_executor.execute_tensor(c2, mock=True)
         res = self.executor.execute_tensor(c2, concat=True)[0]
-        self.assertEqual(sum(s[0] for s in size_res), c2.nbytes)
         self.assertFalse(issparse(res))
         np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
