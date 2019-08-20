@@ -75,7 +75,7 @@ cpdef unicode to_text(s, encoding='utf-8'):
 cdef inline build_canonical_bytes(tuple args, kwargs):
     if kwargs:
         args = args + (kwargs,)
-    return str([h(arg) for arg in args]).encode('utf-8')
+    return str([tokenize_handler.tokenize(arg) for arg in args]).encode('utf-8')
 
 
 def tokenize(*args, **kwargs):
@@ -93,57 +93,49 @@ cdef inline to_hex(bytes s):
         return hexlify(s)
 
 
-cdef inline object h(object ob):
-    if isinstance(ob, dict):
-        return h_iterative(sorted(list(ob.items()), key=str))
-    elif isinstance(ob, set):
-        return h_iterative(sorted(ob, key=str))
-    elif isinstance(ob, (tuple, list)):
-        return h_iterative(ob)
-    return h_non_iterative(ob)
+cdef class Tokenizer:
+    cdef dict _handlers
+    def __init__(self):
+        self._handlers = dict()
+
+    def register(self, cls, handler):
+        self._handlers[cls] = handler
+
+    cdef inline tokenize(self, object obj):
+        object_type = type(obj)
+        try:
+            handler = self._handlers[object_type]
+            return handler(obj)
+        except KeyError:
+            if hasattr(obj, '_key'):
+                return obj._key
+            if hasattr(obj, '__mars_tokenize__'):
+                return self.tokenize(obj.__mars_tokenize__())
+
+            for clz in object_type.__mro__:
+                if clz in self._handlers:
+                    self._handlers[object_type] = self._handlers[clz]
+                    return self._handlers[clz](obj)
+            raise TypeError('Cannot generate token for %s, type: %s' % (obj, object_type))
 
 
-cdef inline list h_iterative(object ob):
-    nested = deque(ob)
+cdef inline list iterative_tokenize(object ob):
+    dq = deque(ob)
     h_list = []
-    dq = deque()
-    while nested or dq:
-        x = dq.pop() if dq else nested.popleft()
+    while dq:
+        x = dq.pop()
         if isinstance(x, (list, tuple)):
-            dq.extend(reversed(x))
+            dq.extend(x)
+        elif isinstance(x, set):
+            dq.extend(sorted(x))
+        elif isinstance(x, dict):
+            dq.extend(sorted(list(x.items())))
         else:
-            h_list.append(h_non_iterative(x))
+            h_list.append(tokenize_handler.tokenize(x))
     return h_list
 
 
-cdef inline object h_non_iterative(object ob):
-    if isinstance(ob, (int, long, float, str, unicode, bytes, complex,
-                       type(None), type, slice, date, datetime, timedelta)):
-        return ob
-    if hasattr(ob, 'key'):
-        return ob.key
-    # numpy relative
-    if isinstance(ob, np.ndarray):
-        return h_numpy(ob)
-    elif isinstance(ob, (np.dtype, np.generic)):
-        return repr(ob)
-    elif isinstance(ob, np.random.RandomState):
-        return h_iterative(ob.get_state())
-    elif isinstance(ob, Enum):
-        return h((type(ob), ob.name))
-    elif pd is not None and isinstance(ob, pd.Index):
-        return h_pandas_index(ob)
-    elif pd is not None and isinstance(ob, pd.Series):
-        return h_pandas_series(ob)
-    elif pd is not None and isinstance(ob, pd.DataFrame):
-        return h_pandas_dataframe(ob)
-    elif hasattr(ob, '__mars_tokenize__'):
-        return h(ob.__mars_tokenize__())
-
-    raise TypeError('Cannot generate token for %s, type: %s' % (ob, type(ob)))
-
-
-cdef h_numpy(ob):
+cdef inline tuple tokenize_numpy(ob):
     cdef int offset
     cdef str data
 
@@ -183,25 +175,50 @@ cdef inline _extract_range_index_attr(object range_index, str attr):
         return getattr(range_index, '_' + attr)
 
 
-cdef h_pandas_index(ob):
+cdef list tokenize_pandas_index(ob):
+    cdef int start
+    cdef int stop
+    cdef int end
     if isinstance(ob, pd.RangeIndex):
         start = _extract_range_index_attr(ob, 'start')
         stop = _extract_range_index_attr(ob, 'stop')
         step = _extract_range_index_attr(ob, 'step')
         # for range index, there is no need to get the values
-        return h_iterative([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
+        return iterative_tokenize([ob.name, getattr(ob, 'names', None), slice(start, stop, step)])
     else:
-        return h_iterative([ob.name, getattr(ob, 'names', None), ob.values])
+        return iterative_tokenize([ob.name, getattr(ob, 'names', None), ob.values])
 
 
-cdef h_pandas_series(ob):
-    return h_iterative([ob.name, ob.dtype, ob.values, ob.index])
+cdef list tokenize_pandas_series(ob):
+    return iterative_tokenize([ob.name, ob.dtype, ob.values, ob.index])
 
 
-cdef h_pandas_dataframe(ob):
+cdef list tokenize_pandas_dataframe(ob):
     l = [block.values for block in ob._data.blocks]
     l.extend([ob.columns, ob.index])
-    return h_iterative(l)
+    return iterative_tokenize(l)
 
+
+cdef Tokenizer tokenize_handler = Tokenizer()
+
+base_types = (int, long, float, str, unicode, bytes, complex,
+              type(None), type, slice, date, datetime, timedelta)
+for t in base_types:
+    tokenize_handler.register(t, lambda ob: ob)
+
+for t in (np.dtype, np.generic):
+    tokenize_handler.register(t, lambda ob: repr(ob))
+
+for t in (list, tuple, dict, set):
+    tokenize_handler.register(t, iterative_tokenize)
+
+tokenize_handler.register(np.ndarray, tokenize_numpy)
+tokenize_handler.register(dict, lambda ob: iterative_tokenize(sorted(list(ob.items()))))
+tokenize_handler.register(set, lambda ob: iterative_tokenize(sorted(ob)))
+tokenize_handler.register(np.random.RandomState, lambda ob: iterative_tokenize(ob.get_state()))
+tokenize_handler.register(Enum, lambda ob: iterative_tokenize((type(ob), ob.name)))
+tokenize_handler.register(pd.Index, tokenize_pandas_index)
+tokenize_handler.register(pd.Series, tokenize_pandas_series)
+tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 
 __all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int']
