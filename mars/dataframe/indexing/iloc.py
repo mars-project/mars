@@ -22,6 +22,7 @@ from pandas.core.dtypes.cast import find_common_type
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.getitem import _getitem
+from ...tensor.indexing.core import calc_shape, process_index
 from ...serialize import AnyField, ListField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -33,27 +34,16 @@ class DataFrameIloc(object):
         self._obj = obj
 
     def __getitem__(self, indexes):
-        op = DataFrameIlocGetItem(indexes=_extend_indexes(indexes), object_type=ObjectType.dataframe)
+        op = DataFrameIlocGetItem(indexes=process_index(self._obj.ndim, indexes), object_type=ObjectType.dataframe)
         return op(self._obj)
 
     def __setitem__(self, indexes, value):
         if not np.isscalar(value):
             raise NotImplementedError('Only scalar value is supported to set by iloc')
 
-        op = DataFrameIlocSetItem(indexes=_extend_indexes(indexes), value=value, object_type=ObjectType.dataframe)
+        op = DataFrameIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value, object_type=ObjectType.dataframe)
         ret = op(self._obj)
         self._obj.data = ret.data
-
-
-def _extend_indexes(indexes):
-    # Extend the indexes to a 2-D indexes
-    if isinstance(indexes, tuple):
-        if len(indexes) == 1:
-            return indexes + (slice(None, None, None),)
-        else:
-            return indexes
-    else:
-        return (indexes, slice(None, None, None))
 
 
 class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
@@ -88,24 +78,24 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
             raise NotImplementedError('The index value cannot be unexecuted mars tensor')
 
-        tensor0 = _getitem(empty(df.shape[0]), self.indexes[0])
-        tensor1 = _getitem(empty(df.shape[1]), self.indexes[1])
+        shape0 = tuple(calc_shape((df.shape[0],), (self.indexes[0],)))
+        shape1 = tuple(calc_shape((df.shape[1],), (self.indexes[1],)))
 
         # NB: pandas only compresses the result to series when index on one of axis is integral
         if isinstance(self.indexes[1], Integral):
-            shape = tensor0.shape
+            shape = shape0
             dtype = df.dtypes.iloc[self.indexes[1]]
             index_value = indexing_index_value(df.index_value, self.indexes[0])
             self._object_type = ObjectType.series
             return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
         elif isinstance(self.indexes[0], Integral):
-            shape = tensor1.shape
+            shape = shape1
             dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
             index_value = indexing_index_value(df.columns, self.indexes[1])
             self._object_type = ObjectType.series
             return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
         else:
-            return self.new_dataframe([df], shape=tensor0.shape + tensor1.shape, dtypes=df.dtypes.iloc[self.indexes[1]],
+            return self.new_dataframe([df], shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
                                       index_value=indexing_index_value(df.index_value, self.indexes[0]),
                                       columns_value=indexing_index_value(df.columns, self.indexes[1], store_data=True))
 

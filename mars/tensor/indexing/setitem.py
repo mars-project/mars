@@ -111,7 +111,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 def _setitem(a, item, value):
     from ..base import broadcast_to
 
-    index = process_index(a, item)
+    index = process_index(a.ndim, item)
     shape = calc_shape(a.shape, index)
 
     for ix in index:
