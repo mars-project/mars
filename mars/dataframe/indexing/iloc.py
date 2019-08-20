@@ -19,6 +19,9 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
+from ...tensor.core import TENSOR_TYPE
+from ...tensor.datasource.empty import empty
+from ...tensor.indexing.getitem import _getitem
 from ...serialize import AnyField, ListField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -68,9 +71,6 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         return self._indexes
 
     def __call__(self, df):
-        from ...tensor.indexing.getitem import _getitem
-        from ...tensor.datasource.empty import empty
-
         # Note [Fancy Index of Numpy and Pandas]
         #
         # The numpy and pandas.iloc have different semantic when processing fancy index:
@@ -85,19 +85,23 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         #
         # Thus, we processing the index along two axis of DataFrame seperately.
 
+        if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
+            raise NotImplementedError('The index value cannot be unexecuted mars tensor')
+
         tensor0 = _getitem(empty(df.shape[0]), self.indexes[0])
         tensor1 = _getitem(empty(df.shape[1]), self.indexes[1])
 
-        if isinstance(self.indexes[0], Integral) or isinstance(self.indexes[1], Integral):
-            # NB: pandas only compresses the result to series when index on one of axis is integral
-            if isinstance(self.indexes[1], Integral):
-                shape = tensor0.shape
-                dtype = df.dtypes.iloc[self.indexes[1]]
-                index_value = indexing_index_value(df.index_value, self.indexes[0])
-            else:
-                shape = tensor1.shape
-                dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
-                index_value = indexing_index_value(df.columns, self.indexes[1])
+        # NB: pandas only compresses the result to series when index on one of axis is integral
+        if isinstance(self.indexes[1], Integral):
+            shape = tensor0.shape
+            dtype = df.dtypes.iloc[self.indexes[1]]
+            index_value = indexing_index_value(df.index_value, self.indexes[0])
+            self._object_type = ObjectType.series
+            return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
+        elif isinstance(self.indexes[0], Integral):
+            shape = tensor1.shape
+            dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
+            index_value = indexing_index_value(df.columns, self.indexes[1])
             self._object_type = ObjectType.series
             return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
         else:
@@ -146,34 +150,30 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_val = op.outputs[0]
 
-        from ...tensor.indexing.getitem import TensorIndex, _getitem
-        from ...tensor.datasource.empty import empty
-
         # See Note [Fancy Index of Numpy and Pandas]
         tensor0 = _getitem(empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],)).tiles(), op.indexes[0]).single_tiles()
         tensor1 = _getitem(empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],)).tiles(), op.indexes[1]).single_tiles()
 
+        integral_index_on_index = isinstance(op.indexes[0], Integral)
+        integral_index_on_column = isinstance(op.indexes[1], Integral)
+
         out_chunks = []
         for index_chunk, column_chunk in itertools.product(tensor0.chunks, tensor1.chunks):
-            # The indexes itself cannot be a Tensor of mars, that requires more complicate logic
-            if not isinstance(index_chunk.op, TensorIndex) or not isinstance(column_chunk.op, TensorIndex):
-                raise NotImplementedError('The index value cannot be unexecuted mars tensor')
-
             in_chunk = in_df.cix[index_chunk.inputs[0].index + column_chunk.inputs[0].index]
 
             chunk_op = op.copy().reset_key()
             chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
 
-            if isinstance(op.indexes[0], Integral) or isinstance(op.indexes[1], Integral):
-                # NB: pandas only compresses the result to series when index on one of axis is integral
-                if isinstance(op.indexes[1], Integral):
-                    shape = index_chunk.shape
-                    index = index_chunk.index
-                    index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
-                else:
-                    shape = column_chunk.shape
-                    index = column_chunk.index
-                    index_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0])
+            if integral_index_on_column:
+                shape = index_chunk.shape
+                index = index_chunk.index
+                index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
+                out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
+                                               dtype=out_val.dtype, index_value=index_value)
+            elif integral_index_on_index:
+                shape = column_chunk.shape
+                index = column_chunk.index
+                index_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0])
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
                                                dtype=out_val.dtype, index_value=index_value)
             else:
@@ -187,8 +187,8 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        if isinstance(op.indexes[0], Integral) or isinstance(op.indexes[1], Integral):
-            if isinstance(op.indexes[1], Integral):
+        if integral_index_on_column or integral_index_on_index:
+            if integral_index_on_column:
                 nsplits = tensor0.nsplits
             else:
                 nsplits = tensor1.nsplits
@@ -229,6 +229,8 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         return self._value
 
     def __call__(self, df):
+        if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
+            raise NotImplementedError('The index value cannot be unexecuted mars tensor')
         return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
                                   index_value=df.index_value, columns_value=df.columns)
 
@@ -236,9 +238,6 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
-
-        from ...tensor.indexing.getitem import TensorIndex, _getitem
-        from ...tensor.datasource.empty import empty
 
         # See Note [Fancy Index of Numpy and Pandas]
         tensor0 = _getitem(empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],)).tiles(), op.indexes[0]).single_tiles()
@@ -254,8 +253,6 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op = op.copy().reset_key()
                 index_chunk, column_chunk = chunk_mapping[chunk.index]
-                if not isinstance(index_chunk.op, TensorIndex) or not isinstance(column_chunk.op, TensorIndex):
-                    raise NotImplementedError('The index value cannot be unexecuted mars tensor')
                 chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk],

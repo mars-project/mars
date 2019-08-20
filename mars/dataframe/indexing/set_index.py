@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pandas as pd
 import six
 
@@ -74,14 +75,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         except KeyError:
             raise NotImplementedError('The new index label must be a column of the original dataframe')
 
-        acc = 0
-        for idx, k in enumerate(in_df.nsplits[1]):
-            acc += k
-            if acc > column_index:
-                chunk_index = idx
-                break
-        else:
-            chunk_index = -1
+        chunk_index = np.searchsorted(np.cumsum(in_df.nsplits[1]), column_index + 1)
 
         for row_idx in range(in_df.chunk_shape[0]):
             index_chunk = in_df.cix[row_idx, chunk_index]

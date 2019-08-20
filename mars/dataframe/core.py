@@ -487,13 +487,7 @@ class SeriesData(TileableData):
 
     @property
     def dtype(self):
-        # NB: don't use `getattr(self, '_dtype', None) or self.op.type`, since pd.Series has overloaded the
-        # operator `or`.
-        ty = getattr(self, '_dtype', None)
-        if ty is not None:
-            return ty
-        else:
-            return self.op.dtype
+        return getattr(self, '_dtype', None) or self.op.dtype
 
     @property
     def name(self):
