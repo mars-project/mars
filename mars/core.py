@@ -525,7 +525,6 @@ class TileableData(SerializableWithKey, Tileable):
             node = nodes.pop()
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
-            # when all outputs of the op have been executed
             if node.key in executed_keys:
                 node = _generate_fetch_node(node)
 
