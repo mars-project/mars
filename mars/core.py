@@ -511,8 +511,6 @@ class TileableData(SerializableWithKey, Tileable):
         else:
             nodes = list(self.op.outputs)
 
-        is_op_executed = \
-            lambda operand: all(o.key in executed_keys for o in operand.outputs)
         node_to_fetch = dict()
 
         def _generate_fetch_node(n):
@@ -528,7 +526,7 @@ class TileableData(SerializableWithKey, Tileable):
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             # when all outputs of the op have been executed
-            if is_op_executed(node.op):
+            if node.key in executed_keys:
                 node = _generate_fetch_node(node)
 
             visited.add(node)
@@ -536,7 +534,7 @@ class TileableData(SerializableWithKey, Tileable):
                 graph.add_node(node)
             children = node.inputs or []
             for c in children:
-                if is_op_executed(c.op):
+                if c.key in executed_keys:
                     visited.add(c)
                     c = _generate_fetch_node(c)
                 if not graph.contains(c):
