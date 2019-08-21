@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import pandas as pd
+import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...config import options
+from ...serialize import AnyField, Int32Field, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..core import IndexValue
 from ..utils import parse_index
 from .utils import calc_columns_index
 
@@ -27,15 +28,27 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
     _labels = AnyField('labels')
 
-    def __init__(self, labels=None, **kw):
-        super(SeriesIndex, self).__init__(_labels=labels, _object_type=ObjectType.series, **kw)
+    _combine_size = Int32Field('combine_size')
+    _is_terminal = BoolField('is_terminal')
+
+    def __init__(self, labels=None, combine_size=None, is_terminal=None, **kw):
+        super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size, _is_terminal=is_terminal,
+                                          _object_type=ObjectType.series, **kw)
 
     @property
     def labels(self):
         return self._labels
 
+    @property
+    def combine_size(self):
+        return self._combine_size
+
+    @property
+    def is_terminal(self):
+        return self._is_terminal
+
     def __call__(self, series):
-        if isinstance(self._labels, (tuple, list)):
+        if isinstance(self._labels, (list, np.ndarray)):
             shape = (len(self._labels),)
             index_value = parse_index(pd.Index(self._labels))
         else:
@@ -51,33 +64,62 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         raise TypeError("label %s doesn't exist" % label)
 
     @classmethod
+    def _tree_getitem(cls, op):
+        """
+        DataFrame doesn't store the index value except RangeIndex or specify `store=True` in `parse_index`,
+        So we build a tree structure to avoid too much dependence for getitem node.
+        """
+        out_series = op.outputs[0]
+        combine_size = options.combine_size
+        chunks = op.inputs[0].chunks
+        while len(chunks) > 1:
+            new_chunks = []
+            for i in range(0, len(chunks), combine_size):
+                chks = chunks[i: i + combine_size]
+                if len(chks) == 1:
+                    chk = chks[0]
+                else:
+                    chk_op = SeriesIndex(labels=op.labels, tree_node=True)
+                    chk = chk_op.new_chunk(chks, shape=(np.nan,), dtype=chks[0].dtype,
+                                           index_value=parse_index(pd.RangeIndex(0)))
+                new_chunks.append(chk)
+            chunks = new_chunks
+
+        setattr(chunks[0].op, '_is_terminal', True)
+        new_op = op.copy()
+        return new_op.new_seriess(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
+                                  index_value=out_series.index_value, nsplits=((1,),), chunks=chunks)
+
+    @classmethod
     def tile(cls, op):
         in_series = op.inputs[0]
         out_series = op.outputs[0]
-        if not isinstance(in_series.index_value._index_value, IndexValue.RangeIndex):
-            raise NotImplementedError
+        if in_series.index_value.to_pandas().empty:
+            return cls._tree_getitem(op)
         chunk_indexes = [c.index_value.to_pandas() for c in in_series.chunks]
         if not isinstance(op.labels, (tuple, list)):
             selected_chunk = in_series.chunks[cls._calc_chunk_index(op.labels, chunk_indexes)]
             index_op = op.copy().reset_key()
+            index_op._is_terminal = True
             out_chunk = index_op.new_chunk([selected_chunk], shape=(), dtype=selected_chunk.dtype,
-                                         index_value=parse_index(pd.RangeIndex(0)))
+                                           index_value=parse_index(pd.RangeIndex(0)))
             new_op = op.copy()
             return new_op.new_seriess(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
                                       index_value=out_series.index_value, nsplits=(), chunks=[out_chunk])
         else:
+            # When input series's index is RangeIndex(5), chunk_size is 3, and labels is [4, 2, 3, 4],
+            # Combine the labels in the same chunk, so the splits will be [[4], [2], [3, 4]],
+            # the corresponding chunk index is [1, 0, 1].
             selected_index = [cls._calc_chunk_index(label, chunk_indexes) for label in op.labels]
-            splits = []
-            start = 0
-            for i in range(len(selected_index)):
-                if i == len(selected_index) - 1 or selected_index[i] != selected_index[i + 1]:
-                    splits.append((op.labels[slice(start, i + 1)], selected_index[start]))
-                    start = i + 1
+            condition = np.where(np.diff(selected_index))[0] + 1
+            column_splits = np.split(op.labels, condition)
+            column_indexes = np.split(selected_index, condition)
+
             out_chunks = []
             nsplits = []
-            for i, (labels, idx) in enumerate(splits):
-                index_op = SeriesIndex(labels=labels)
-                c = in_series.chunks[idx]
+            for i, (labels, idx) in enumerate(zip(column_splits, column_indexes)):
+                index_op = SeriesIndex(labels=list(labels), is_terminal=True)
+                c = in_series.chunks[idx[0]]
                 nsplits.append(len(labels))
                 out_chunks.append(index_op.new_chunk([c], shape=(len(labels),), dtype=c.dtype,
                                                      index_value=parse_index(pd.RangeIndex(len(labels))),
@@ -89,8 +131,18 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        df = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = df[op.labels]
+        inputs = [ctx[inp.key] for inp in op.inputs]
+        series = pd.concat(inputs)
+        if isinstance(op.labels, (list, np.ndarray)):
+            if op.is_terminal:
+                ctx[op.outputs[0].key] = series[op.labels]
+            else:
+                ctx[op.outputs[0].key] = series[[label for label in set(op.labels) if label in series]]
+        else:
+            if op.is_terminal:
+                ctx[op.outputs[0].key] = series[op.labels]
+            else:
+                ctx[op.outputs[0].key] = series[[op.labels]] if op.labels in series else series[[]]
 
 
 class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
@@ -107,7 +159,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df):
         # if col_names is a tuple or list, return a DataFrame, else return a Series
-        if isinstance(self._col_names, (list, tuple)):
+        if isinstance(self._col_names, (list, np.ndarray)):
             dtypes = df.dtypes[self._col_names]
             columns = parse_index(pd.Index(self._col_names), store_data=True)
             return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
@@ -136,27 +188,23 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                       index_value=out_df.index_value, name=out_df.name,
                                       nsplits=(in_df.nsplits[0],), chunks=out_chunks)
         else:
-            selected_index = []
-            for col_name in col_names:
-                column_index = calc_columns_index(col_name, in_df)
-                selected_index.append(column_index)
-
-            # combine columns in one chunk and keep the columns order at the same time.
-            column_splits = []
-            start = 0
-            for i in range(len(selected_index)):
-                if i == len(selected_index) - 1 or selected_index[i] != selected_index[i + 1]:
-                    column_splits.append((col_names[slice(start, i + 1)], selected_index[start]))
-                    start = i + 1
+            # combine columns into one chunk and keep the columns order at the same time.
+            # When chunk columns are ['c1', 'c2', 'c3'], ['c4', 'c5'],
+            # selected columns are ['c2', 'c3', 'c4', 'c2'], `column_splits` will be
+            # [(['c2', 'c3'], 0), ('c4', 1), ('c2', 0)].
+            selected_index = [calc_columns_index(col, in_df) for col in col_names]
+            condition = np.where(np.diff(selected_index))[0] + 1
+            column_splits = np.split(col_names, condition)
+            column_indexes = np.split(selected_index, condition)
 
             out_chunks = [[] for _ in range(in_df.chunk_shape[0])]
             column_nsplits = []
-            for i, (columns, column_idx) in enumerate(column_splits):
+            for i, (columns, column_idx) in enumerate(zip(column_splits, column_indexes)):
                 dtypes = in_df.dtypes[columns]
                 column_nsplits.append(len(columns))
                 for j in range(in_df.chunk_shape[0]):
-                    c = in_df.cix[(j, column_idx)]
-                    index_op = DataFrameIndex(col_names=columns, object_type=ObjectType.dataframe)
+                    c = in_df.cix[(j, column_idx[0])]
+                    index_op = DataFrameIndex(col_names=list(columns), object_type=ObjectType.dataframe)
                     out_chunk = index_op.new_chunk([c], shape=(c.shape[0], len(columns)), index=(j, i),
                                                    dtypes=dtypes, index_value=c.index_value,
                                                    columns_value=parse_index(pd.Index(columns),
@@ -190,6 +238,6 @@ def dataframe_getitem(df, item):
     return op(df)
 
 
-def series_getitem(series, labels):
+def series_getitem(series, labels, combine_size=None):
     op = SeriesIndex(labels=labels)
     return op(series)

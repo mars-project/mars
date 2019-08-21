@@ -47,7 +47,7 @@ class Test(TestBase):
 
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10), name='a')
-        series = md.Series(data, chunk_size=3)
+        series = md.Series(data, chunk_size=4)
 
         for i in range(10):
             series1 = series[i]
@@ -61,4 +61,30 @@ class Test(TestBase):
 
         series4 = series[[1, 2, 3, 2, 1, 0]]
         pd.testing.assert_series_equal(series4.execute(), data[[1, 2, 3, 2, 1, 0]])
+        #
+        index = ['i' + str(i) for i in range(20)]
+        data = pd.Series(np.random.rand(20), index=index, name='a')
+        series = md.Series(data, chunk_size=3)
+
+        for idx in index:
+            series1 = series[idx]
+            self.assertEqual(series1.execute(), data[idx])
+
+        selected = ['i1', 'i2', 'i3', 'i4', 'i5']
+        series2 = series[selected]
+        pd.testing.assert_series_equal(series2.execute(), data[selected])
+
+        selected = ['i4', 'i7', 'i0', 'i1', 'i5']
+        series3 = series[selected]
+        pd.testing.assert_series_equal(series3.execute(), data[selected])
+
+        selected = ['i0', 'i1', 'i5', 'i4', 'i0', 'i1']
+        series4 = series[selected]
+        pd.testing.assert_series_equal(series4.execute(), data[selected])
+
+        selected = ['i0']
+        series5 = series[selected]
+        pd.testing.assert_series_equal(series5.execute(), data[selected])
+
+
 
