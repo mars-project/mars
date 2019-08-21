@@ -16,13 +16,13 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase
-import mars.dataframe as mdf
+import mars.dataframe as md
 
 
 class Test(TestBase):
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
-        df = mdf.DataFrame(data, chunk_size=2)
+        df = md.DataFrame(data, chunk_size=2)
 
         series1 = df['c2']
         pd.testing.assert_series_equal(series1.execute(), data['c2'])
@@ -42,11 +42,23 @@ class Test(TestBase):
         df4 = df[['c3', 'c1', 'c2', 'c1']]
         pd.testing.assert_frame_equal(df4.execute(), data[['c3', 'c1', 'c2', 'c1']])
 
+        series3 = df['c1'][0]
+        self.assertEqual(series3.execute(), data['c1'][0])
+
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10), name='a')
-        series = mdf.Series(data, chunk_size=3)
+        series = md.Series(data, chunk_size=3)
 
         for i in range(10):
             series1 = series[i]
             self.assertEqual(series1.execute(), data[i])
+
+        series2 = series[[0, 1, 2, 3, 4]]
+        pd.testing.assert_series_equal(series2.execute(), data[[0, 1, 2, 3, 4]])
+
+        series3 = series[[4, 3, 2, 1, 0]]
+        pd.testing.assert_series_equal(series3.execute(), data[[4, 3, 2, 1, 0]])
+
+        series4 = series[[1, 2, 3, 2, 1, 0]]
+        pd.testing.assert_series_equal(series4.execute(), data[[1, 2, 3, 2, 1, 0]])
 

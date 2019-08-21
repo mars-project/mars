@@ -19,7 +19,6 @@ from .core import DataFrameReductionOperand, SeriesReductionMixin, DataFrameRedu
 
 
 class SeriesSum(DataFrameReductionOperand, SeriesReductionMixin):
-    _op_module_ = 'series'
     _op_type_ = OperandDef.SUM
     _func_name = 'sum'
 

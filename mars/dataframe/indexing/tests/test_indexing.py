@@ -15,15 +15,15 @@
 import numpy as np
 import pandas as pd
 
+import mars.dataframe as md
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.datasource.dataframe import from_pandas
 
 
 class Test(TestBase):
-    def testGetitem(self):
+    def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
-        df = from_pandas(data, chunk_size=2)
+        df = md.DataFrame(data, chunk_size=2)
 
         series = df['c3']
         self.assertIsInstance(series, Series)
@@ -58,4 +58,27 @@ class Test(TestBase):
             self.assertIsInstance(c, DATAFRAME_CHUNK_TYPE)
             self.assertEqual(c.index, (i, 1))
             self.assertEqual(c.shape, (2, 1))
+
+    def testSeriesGetitem(self):
+        data = pd.Series(np.random.rand(10,), name='a')
+        series = md.Series(data, chunk_size=3)
+
+        result1 = series[2]
+        self.assertEqual(result1.shape, ())
+
+        result1.tiles()
+        self.assertEqual(result1.nsplits, ())
+        self.assertEqual(len(result1.chunks), 1)
+        self.assertEqual(result1.chunks[0].shape, ())
+        self.assertEqual(result1.chunks[0].dtype, data.dtype)
+
+        result2 = series[[4, 5, 1, 2, 3]]
+        self.assertEqual(result2.shape, (5,))
+
+        result2.tiles()
+        self.assertEqual(result2.nsplits, ((2, 2, 1),))
+        self.assertEqual(len(result2.chunks), 3)
+        self.assertEqual(result2.chunks[0].op.labels, [4, 5])
+        self.assertEqual(result2.chunks[1].op.labels, [1, 2])
+        self.assertEqual(result2.chunks[2].op.labels, [3])
 
