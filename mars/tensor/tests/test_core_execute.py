@@ -215,7 +215,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(a.execute(), npa)
 
         data = np.random.rand(10, 20)
-        a = tensor(data, chunk_size=6)
+        a = tensor(data.copy(), chunk_size=6)
         b = a.copy()
         b[:5] = 10
 
@@ -224,6 +224,19 @@ class Test(unittest.TestCase):
         npb[:5] = 10
 
         np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+        a = tensor(data.copy(), chunk_size=6)
+        b = a[:5, :4]
+        c = b.copy()
+        c[0, 0] = 10
+
+        npa = data.copy()
+        npb = npa[:5, :4]
+        npc = npb.copy()
+        npc[0, 0] =10
+
+        np.testing.assert_array_equal(c.execute(), npc)
         np.testing.assert_array_equal(a.execute(), npa)
 
     def testFlat(self):
