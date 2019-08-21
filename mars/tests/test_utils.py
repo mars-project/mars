@@ -125,6 +125,9 @@ class Test(unittest.TestCase):
         v = dict(x='abcd', y=98765)
         self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
 
+        v = dict(x=dict(a=1, b=[1, 2, 3]), y=12345)
+        self.assertEqual(utils.tokenize(v), utils.tokenize(copy.deepcopy(v)))
+
         # pandas relative
         if pd is not None:
             df = pd.DataFrame([[utils.to_binary('测试'), utils.to_text('数据')]],

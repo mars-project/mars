@@ -217,6 +217,7 @@ class MarsWeb(object):
                     handlers, allow_websocket_origin=['*'],
                     address='0.0.0.0', port=use_port,
                     extra_patterns=extra_patterns,
+                    http_server_kwargs={'max_buffer_size': 2 ** 32},
                 )
                 self._server.start()
                 self._port = use_port
