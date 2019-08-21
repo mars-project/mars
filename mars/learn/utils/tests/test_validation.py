@@ -16,13 +16,15 @@ from itertools import product
 import unittest
 
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.tensor.core import Tensor
 
 try:
     import scipy.sparse as sp
     import sklearn
-    from sklearn.utils.testing import assert_raise_message
     from sklearn.utils.estimator_checks import NotAnArray
+    from sklearn.utils.mocking import MockDataFrame
+    from sklearn.utils.testing import assert_raise_message, assert_raises_regex
     import pytest
 
     from mars.learn.utils.validation import check_array
@@ -32,6 +34,20 @@ except ImportError:
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
 class Test(unittest.TestCase):
+    def test_ordering(self):
+        # Check that ordering is enforced correctly by validation utilities.
+        # We need to check each validation utility, because a 'copy' without
+        # 'order=K' will kill the ordering.
+        X = mt.ones((10, 5))
+        for A in X, X.T:
+            for copy in (True, False):
+                B = check_array(A, order='C', copy=copy)
+                self.assertTrue(B.flags['C_CONTIGUOUS'])
+                B = check_array(A, order='F', copy=copy)
+                self.assertTrue(B.flags['F_CONTIGUOUS'])
+                if copy:
+                    self.assertIsNot(A, B)
+
     def test_check_array(self):
         # accept_sparse == False
         # raise error on sparse inputs
@@ -154,3 +170,97 @@ class Test(unittest.TestCase):
         for X in [X_bytes, mt.array(X_bytes, dtype='V1')]:
             with pytest.warns(FutureWarning, match=expected_warn_regex):
                 check_array(X, dtype="numeric")
+
+    def test_check_array_pandas_dtype_object_conversion(self):
+        # test that data-frame like objects with dtype object
+        # get converted
+        X = mt.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=mt.object)
+        X_df = MockDataFrame(X)
+        self.assertEqual(check_array(X_df).dtype.kind, "f")
+        self.assertEqual(check_array(X_df, ensure_2d=False).dtype.kind, "f")
+        # smoke-test against dataframes with column named "dtype"
+        X_df.dtype = "Hans"
+        self.assertEqual(check_array(X_df, ensure_2d=False).dtype.kind, "f")
+
+    def test_check_array_from_dataframe(self):
+        X = md.DataFrame({'a': [1.0, 2.0, 3.0]})
+        self.assertEqual(check_array(X).dtype.kind, 'f')
+
+    def test_check_array_accept_sparse_type_exception(self):
+        X = [[1, 2], [3, 4]]
+        X_csr = sp.csr_matrix(X)
+
+        msg = ("A sparse tensor was passed, but dense data is required. "
+               "Use X.todense() to convert to a dense tensor.")
+        assert_raise_message(TypeError, msg,
+                             check_array, X_csr, accept_sparse=False)
+
+        msg = ("When providing 'accept_sparse' as a tuple or list, "
+               "it must contain at least one string value.")
+        assert_raise_message(ValueError, msg.format([]),
+                             check_array, X_csr, accept_sparse=[])
+        assert_raise_message(ValueError, msg.format(()),
+                             check_array, X_csr, accept_sparse=())
+
+        with self.assertRaises(ValueError):
+            check_array(X_csr, accept_sparse=object)
+
+    def test_check_array_accept_sparse_no_exception(self):
+        X = [[1, 2], [3, 4]]
+        X_csr = sp.csr_matrix(X)
+
+        array = check_array(X_csr, accept_sparse=True)
+        self.assertIsInstance(array, Tensor)
+        self.assertTrue(array.issparse())
+
+    def test_check_array_min_samples_and_features_messages(_):
+        # empty list is considered 2D by default:
+        msg = "0 feature(s) (shape=(1, 0)) while a minimum of 1 is required."
+        assert_raise_message(ValueError, msg, check_array, [[]])
+
+        # If considered a 1D collection when ensure_2d=False, then the minimum
+        # number of samples will break:
+        msg = "0 sample(s) (shape=(0,)) while a minimum of 1 is required."
+        assert_raise_message(ValueError, msg, check_array, [], ensure_2d=False)
+
+        # Invalid edge case when checking the default minimum sample of a scalar
+        msg = "Singleton array array(42) cannot be considered a valid collection."
+        assert_raise_message(TypeError, msg, check_array, 42, ensure_2d=False)
+
+    def test_check_array_complex_data_error(_):
+        X = mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]])
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # list of lists
+        X = [[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]]
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # tuple of tuples
+        X = ((1 + 2j, 3 + 4j, 5 + 7j), (2 + 3j, 4 + 5j, 6 + 7j))
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # list of np arrays
+        X = [mt.array([1 + 2j, 3 + 4j, 5 + 7j]),
+             mt.array([2 + 3j, 4 + 5j, 6 + 7j])]
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # tuple of np arrays
+        X = (mt.array([1 + 2j, 3 + 4j, 5 + 7j]),
+             mt.array([2 + 3j, 4 + 5j, 6 + 7j]))
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # dataframe
+        X = MockDataFrame(
+            mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]]))
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)
+
+        # sparse matrix
+        X = sp.coo_matrix([[0, 1 + 2j], [0, 0]])
+        assert_raises_regex(
+            ValueError, "Complex data not supported", check_array, X)

@@ -41,6 +41,8 @@ def _num_samples(x):
                             type(x))
     if hasattr(x, 'shape'):
         if len(x.shape) == 0:
+            if x.op.data is not None:
+                x = np.asarray(x.op.data)
             raise TypeError("Singleton array %r cannot be considered"
                             " a valid collection." % x)
         # Check that shape is returning an integer or default to len
@@ -114,9 +116,9 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
     # _check_large_sparse(spmatrix, accept_large_sparse)
 
     if accept_sparse is False:
-        raise TypeError('A sparse matrix was passed, but dense '
-                        'data is required. Use X.toarray() to '
-                        'convert to a dense numpy array.')
+        raise TypeError('A sparse tensor was passed, but dense '
+                        'data is required. Use X.todense() to '
+                        'convert to a dense tensor.')
     elif isinstance(accept_sparse, (list, tuple)):
         if len(accept_sparse) == 0:
             raise ValueError("When providing 'accept_sparse' "
@@ -150,7 +152,7 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
     #         _assert_all_finite(spmatrix.data,
     #                            allow_nan=force_all_finite == 'allow-nan')
 
-    return mt.array(spmatrix)
+    return spmatrix
 
 
 def check_array(array, accept_sparse=False, accept_large_sparse=True,
@@ -274,6 +276,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
 
     if (hasattr(array, 'issparse') and array.issparse()) or issparse(array):
         _ensure_no_complex_data(array)
+        array = mt.asarray(array)
         array = _ensure_sparse_format(array, accept_sparse=accept_sparse,
                                       dtype=dtype, copy=copy,
                                       force_all_finite=force_all_finite,
