@@ -19,10 +19,6 @@ from collections import deque
 from .operands import Fuse, VirtualOperand
 
 
-class InvalidComposedNodeError(Exception):
-    pass
-
-
 class Fusion(object):
     def __init__(self, graph):
         self._graph = graph

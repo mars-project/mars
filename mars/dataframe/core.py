@@ -669,8 +669,8 @@ class DataFrame(TileableEntity):
     def from_records(self, records, **kw):
         return self._data.from_records(records, **kw)
 
-    def __mars_tensor__(self, dtype=None):
-        return self._data.to_tensor().astype(dtype=dtype, copy=False)
+    def __mars_tensor__(self, dtype=None, order='K'):
+        return self._data.to_tensor().astype(dtype=dtype, order=order, copy=False)
 
 
 INDEX_TYPE = (Index, IndexData)

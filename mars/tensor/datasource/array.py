@@ -153,8 +153,7 @@ def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False)
     elif issparse(data):
         return _from_spmatrix(data, dtype=dtype, chunk_size=chunk_size, gpu=gpu)
     elif hasattr(data, '__mars_tensor__'):
-        data = data.__mars_tensor__(dtype=dtype)
-        return data.astype(data.dtype, order=order, copy=False)
+        return data.__mars_tensor__(dtype=dtype, order=order)
     else:
         m = get_array_module(data)
         try:
