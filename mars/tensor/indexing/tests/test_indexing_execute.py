@@ -189,15 +189,34 @@ class Test(unittest.TestCase):
 
         np.testing.assert_array_equal(res[0], raw_a[raw_a.argmax(axis=0), np.arange(30)])
 
+        # test one chunk
+        arr = tensor(raw, chunk_size=20)
+
+        raw_index = [8, 10, 3, 1, 9, 10]
+        index = tensor(raw_index, chunk_size=20)
+        arr9 = arr[index]
+
+        res = self.executor.execute_tensor(arr9, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[raw_index])
+
+        raw_index1 = [[1, 3], [3, 7], [7, 7]]
+        raw_index2 = [1, 9]
+        index1 = tensor(raw_index1)
+        index2 = tensor(raw_index2)
+        arr10 = arr[0, index1, :, index2]
+
+        res = self.executor.execute_tensor(arr10, concat=True)[0]
+        np.testing.assert_array_equal(res, raw[0, raw_index1, :, raw_index2])
+
         # test order
         raw = np.asfortranarray(np.random.random((11, 8, 12, 14)))
         arr = tensor(raw, chunk_size=(2, 3, 2, 3))
 
         raw_index = [8, 10, 3, 1, 9, 10]
         index = tensor(raw_index, chunk_size=4)
-        arr2 = arr[index]
+        arr11 = arr[index]
 
-        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        res = self.executor.execute_tensor(arr11, concat=True)[0]
         expected = raw[raw_index].copy('A')
         np.testing.assert_array_equal(res, expected)
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])

@@ -259,6 +259,15 @@ class TensorIndexTilesHandler(object):
 
         axes = tuple(info.in_axis for info in self._fancy_index_infos)
 
+        if len(self._in_tensor.chunks) == 1 and \
+                all(len(idx.chunks) == 1 for idx in fancy_indexes):
+            # only 1 chunk for input tensor and fancy indexing tensors,
+            # thus no need to do shuffle
+            chunks = [info.raw_index_obj.chunks[0] for info in self._fancy_index_infos]
+            for fancy_index_info in self._fancy_index_infos:
+                fancy_index_info.index_obj = {(0,) * len(axes): chunks}
+            return
+
         # stack fancy indexes into one
         concat_fancy_index = recursive_tile(stack(fancy_indexes))
         concat_fancy_index = concat_fancy_index.rechunk({0: len(fancy_indexes)}).single_tiles()

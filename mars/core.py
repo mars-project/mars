@@ -498,7 +498,7 @@ class TileableData(SerializableWithKey, Tileable):
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
         from .utils import build_fetch
 
-        executed_keys = executed_keys or []
+        executed_keys = set(executed_keys or [])
         if tiled and self.is_coarse():
             self.tiles()
 
@@ -511,13 +511,22 @@ class TileableData(SerializableWithKey, Tileable):
         else:
             nodes = list(self.op.outputs)
 
+        node_to_fetch = dict()
+
+        def _generate_fetch_node(n):
+            if n in node_to_fetch:
+                return node_to_fetch[n]
+            fn = build_fetch(n, coarse=True).data
+            node_to_fetch[n] = fn
+            return fn
+
         visited = set()
         while len(nodes) > 0:
             node = nodes.pop()
 
             # replace executed tensor/chunk by tensor/chunk with fetch op
             if node.key in executed_keys:
-                node = build_fetch(node, coarse=True).data
+                node = _generate_fetch_node(node)
 
             visited.add(node)
             if not graph.contains(node):
@@ -525,7 +534,8 @@ class TileableData(SerializableWithKey, Tileable):
             children = node.inputs or []
             for c in children:
                 if c.key in executed_keys:
-                    continue
+                    visited.add(c)
+                    c = _generate_fetch_node(c)
                 if not graph.contains(c):
                     graph.add_node(c)
                 if not graph.has_successor(c, node):
@@ -605,7 +615,7 @@ class TileableEntity(Entity):
     def copy(self):
         new_op = self.op.copy().reset_key()
         if new_op.create_view:
-            # set create_view to False
+            # if the operand is a view, make it a copy
             new_op._create_view = False
         new_outs = new_op.new_tileables(self.op.inputs, kws=[t.params for t in self.op.outputs],
                                         output_limit=len(self.op.outputs),

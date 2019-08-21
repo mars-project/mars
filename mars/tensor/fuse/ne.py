@@ -51,6 +51,8 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
         expr = _evaluate(chunk)
         res = ne.evaluate(expr)
         res = _maybe_keepdims(chunk, res)
+        if chunk.ndim == 0 and res.ndim == 1 and res.size == 0:
+            res = res.dtype.type(0)
         ctx[chunk.key] = res
 
     @classmethod
