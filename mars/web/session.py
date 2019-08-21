@@ -28,7 +28,6 @@ from ..serialize import dataserializer
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
 from ..tensor.core import Indexes
-from ..tensor.indexing import TensorIndex
 from ..utils import build_graph, sort_dataframe_result, numpy_dtype_from_descr_json
 
 logger = logging.getLogger(__name__)
@@ -180,13 +179,17 @@ class Session(object):
             return self.fetch(*tileables)
 
     def fetch(self, *tileables, **kw):
+        from ..tensor.indexing import TensorIndex
+        from ..dataframe.indexing import DataFrameIlocGetItem
+
         timeout = kw.pop('timeout', None)
         if kw:
             raise TypeError('fetch got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
         results = list()
         for tileable in tileables:
-            if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
+            if tileable.key not in self._executed_tileables and \
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
                 if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
