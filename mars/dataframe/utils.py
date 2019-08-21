@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from numbers import Integral
 import operator
 import functools
 
@@ -493,6 +494,17 @@ def filter_index_value(index_value, min_max, store_data=False):
         f = f & (pd_index < max_val)
 
     return parse_index(pd_index[f], store_data=store_data)
+
+
+def indexing_index_value(index_value, indexes, store_data=False):
+    pd_index = index_value.to_pandas()
+    if pd_index.empty:
+        return index_value
+    else:
+        if isinstance(indexes, Integral):
+            return parse_index(pd_index[[indexes]], store_data=store_data)
+        else:
+            return parse_index(pd_index[indexes], store_data=store_data)
 
 
 def wrap_notimplemented_exception(func):

@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .concat import DataFrameConcat
-from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
+from .iloc import iloc, DataFrameIloc, DataFrameIlocGetItem, DataFrameIlocSetItem
+from .set_index import set_index, DataFrameSetIndex
 
 
 def _install():
     from ..core import DataFrame
 
-    setattr(DataFrame, 'join', join)
-    setattr(DataFrame, 'merge', merge)
+    setattr(DataFrame, 'iloc', property(iloc))
+    setattr(DataFrame, 'set_index', set_index)
 
 
 _install()
