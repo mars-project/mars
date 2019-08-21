@@ -456,7 +456,8 @@ class Executor(object):
             raise KeyError('No handler found for op: %s' % op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False, no_intermediate=False, compose=True, retval=True):
+                      mock=False, no_intermediate=False, compose=True, retval=True,
+                      chunk_result=None):
         """
         :param graph: graph to execute
         :param keys: result keys
@@ -466,6 +467,7 @@ class Executor(object):
         :param mock: if True, only estimate data sizes without execution
         :param no_intermediate: exclude intermediate data sizes when estimating memory size
         :param retval: if True, keys specified in argument keys is returned
+        :param chunk_result: dict to put chunk key to chunk data, if None, use self.chunk_result
         :return: execution result
         """
         optimized_graph = self._preprocess(graph, keys) if compose else graph
@@ -481,7 +483,8 @@ class Executor(object):
                 fetch_keys.update(inp.key for inp in c.inputs or ())
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
-        graph_execution = GraphExecution(self._chunk_result, optimized_graph,
+        chunk_result = self._chunk_result if chunk_result is None else chunk_result
+        graph_execution = GraphExecution(chunk_result, optimized_graph,
                                          keys, executed_keys, self._sync_provider,
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
@@ -516,6 +519,8 @@ class Executor(object):
                           print_progress=False, mock=False, compose=True):
         graph = DirectedGraph()
 
+        # shallow copy, prevent from any chunk key decref
+        chunk_result = self._chunk_result.copy()
         result_keys = []
         to_release_keys = []
         concat_keys = []
@@ -545,15 +550,17 @@ class Executor(object):
 
             # Do not do compose here, because building graph has not finished yet
             tileable.build_graph(graph=graph, tiled=True, compose=False,
-                                 executed_keys=list(self._chunk_result.keys()))
+                                 executed_keys=list(chunk_result.keys()))
         if compose:
             # finally do compose according to option
             graph.compose(keys=list(itertools.chain(*[[c.key for c in t.chunks]
                                                       for t in tileables])))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
-                           print_progress=print_progress, mock=mock)
+                           print_progress=print_progress, mock=mock,
+                           chunk_result=chunk_result)
 
+        self._chunk_result.update(chunk_result)
         results = self._chunk_result
         try:
             if fetch:

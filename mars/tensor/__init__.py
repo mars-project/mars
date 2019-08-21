@@ -67,9 +67,9 @@ del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFe
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr
 # import numpy types
-from numpy import dtype, number, inexact, floating, complexfloating, \
+from numpy import dtype, object, number, inexact, floating, complexfloating, \
     integer, signedinteger, unsignedinteger, character, generic, flexible, \
-    int_, bool_, float_, cfloat, bytes_, unicode_, void, object_, \
+    int, int_, bool, bool_, float_, cfloat, bytes_, unicode_, void, object_, \
     intc, intp, int8, int16, int32, int64, uint8, uint16, uint32, uint64, uint, \
-    float16, float32, float64, double, complex64, complex128, datetime64, timedelta64
+    float, float16, float32, float64, double, complex64, complex128, datetime64, timedelta64
 from numpy import finfo

@@ -184,7 +184,7 @@ class Test(unittest.TestCase):
         self.assertNotIn(b.data, graph)
         self.assertTrue(any(isinstance(n.op, TensorFetch) for n in graph))
         self.assertEqual(graph.count_successors(c.data), 0)
-        self.assertEqual(graph.count_predecessors(c.data), 1)
+        self.assertEqual(graph.count_predecessors(c.data), 2)
 
         executed_keys = [(a + 1).key]
         graph = utils.build_graph([c], executed_keys=executed_keys)

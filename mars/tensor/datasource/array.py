@@ -142,7 +142,8 @@ def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False)
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
         return data.astype(dtype or data.dtype, order=order, copy=False)
-    elif isinstance(data, (tuple, list)) and all(isinstance(d, TENSOR_TYPE) for d in data):
+    elif isinstance(data, (tuple, list)) and len(data) > 0 and \
+            all(isinstance(d, TENSOR_TYPE) for d in data):
         from ..merge import stack
 
         data = stack(data)
@@ -151,9 +152,17 @@ def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False)
         return scalar(data, dtype=dtype)
     elif issparse(data):
         return _from_spmatrix(data, dtype=dtype, chunk_size=chunk_size, gpu=gpu)
+    elif hasattr(data, '__mars_tensor__'):
+        return data.__mars_tensor__(dtype=dtype, order=order)
     else:
         m = get_array_module(data)
-        data = m.asarray(data, dtype=dtype, order=order)
+        try:
+            data = m.asarray(data, dtype=dtype, order=order)
+        except ValueError:
+            arr = data.__array__(dtype=dtype)
+            if isinstance(arr, TENSOR_TYPE):
+                return arr.astype(arr.dtype, order=order, copy=False)
+            raise
         if gpu is None and cp is not None and m is cp:
             gpu = True
 
@@ -254,6 +263,7 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
 
     """
     raw_x = x
+    order = order or 'K'
     x = tensor(x, dtype=dtype, order=order, chunk_size=chunk_size)
     while ndmin is not None and x.ndim < ndmin:
         x = x[np.newaxis, :]
