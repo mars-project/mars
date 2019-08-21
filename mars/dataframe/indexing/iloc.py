@@ -21,7 +21,6 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource.empty import empty
-from ...tensor.indexing.getitem import _getitem
 from ...tensor.indexing.core import calc_shape, process_index
 from ...serialize import AnyField, ListField
 from ... import opcodes as OperandDef
@@ -141,8 +140,8 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         out_val = op.outputs[0]
 
         # See Note [Fancy Index of Numpy and Pandas]
-        tensor0 = _getitem(empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],)).tiles(), op.indexes[0]).single_tiles()
-        tensor1 = _getitem(empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],)).tiles(), op.indexes[1]).single_tiles()
+        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]].tiles()
+        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]].tiles()
 
         integral_index_on_index = isinstance(op.indexes[0], Integral)
         integral_index_on_column = isinstance(op.indexes[1], Integral)
@@ -230,8 +229,8 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         # See Note [Fancy Index of Numpy and Pandas]
-        tensor0 = _getitem(empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],)).tiles(), op.indexes[0]).single_tiles()
-        tensor1 = _getitem(empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],)).tiles(), op.indexes[1]).single_tiles()
+        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]].tiles()
+        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]].tiles()
 
         chunk_mapping = {c0.inputs[0].index + c1.inputs[0].index: (c0, c1)
                          for c0, c1 in itertools.product(tensor0.chunks, tensor1.chunks)}
