@@ -498,7 +498,7 @@ class TileableData(SerializableWithKey, Tileable):
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
         from .utils import build_fetch
 
-        executed_keys = executed_keys or []
+        executed_keys = set(executed_keys or [])
         if tiled and self.is_coarse():
             self.tiles()
 
