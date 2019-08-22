@@ -50,6 +50,10 @@ class TensorChunkData(ChunkData):
     # optional fields
     _dtype = DataTypeField('dtype')
 
+    def __init__(self, op=None, index=None, shape=None, dtype=None, order=None, **kw):
+        super(TensorChunkData, self).__init__(_op=op, _index=index, _shape=shape,
+                                              _dtype=dtype, _order=order, **kw)
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -118,6 +122,10 @@ class TensorData(TileableData):
     _chunks = ListField('chunks', ValueType.reference(TensorChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, shape=None, dtype=None, order=None, nsplits=None, chunks=None, **kw):
+        super(TensorData, self).__init__(_op=op, _shape=shape, _dtype=dtype, _order=order,
+                                         _nsplits=nsplits, _chunks=chunks, **kw)
 
     @classmethod
     def cls(cls, provider):

@@ -70,7 +70,7 @@ class SeriesDataSource(DataFrameOperand, DataFrameOperandMixin):
             slc = get_chunk_slices(chunk_size, chunk_idx)
             chunk_op._data = raw_series.iloc[slc]
             chunk_op._dtype = chunk_op._data.dtype
-            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
+            out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, dtype=op.dtype, index=chunk_idx,
                                            index_value=parse_index(chunk_op.data.index),
                                            name=series.name)
             out_chunks.append(out_chunk)

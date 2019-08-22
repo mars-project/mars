@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
+from mars.tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
 from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem
@@ -291,6 +292,7 @@ class Test(TestBase):
         result1.tiles()
         self.assertEqual(result1.nsplits, ())
         self.assertEqual(len(result1.chunks), 1)
+        self.assertIsInstance(result1.chunks[0], TENSOR_CHUNK_TYPE)
         self.assertEqual(result1.chunks[0].shape, ())
         self.assertEqual(result1.chunks[0].dtype, data.dtype)
 
