@@ -182,10 +182,10 @@ class MarsAPI(object):
         future = sender_ref.fetch_data(session_id, chunk_key, index_obj, _wait=False)
         return future
 
-    def delete_data(self, session_id, graph_key, tileable_key):
+    def delete_data(self, session_id, graph_key, tileable_key, wait=False):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
-        graph_ref.free_tileable_data(tileable_key, _tell=True)
+        graph_ref.free_tileable_data(tileable_key, wait=wait, _tell=not wait)
 
     def get_tileable_nsplits(self, session_id, graph_key, tileable_key):
         # nsplits is essential for operator like `reshape` and shape can be calculated by nsplits
