@@ -240,6 +240,13 @@ class Test(unittest.TestCase):
                                % (service_ep, TIMELINE_APP_NAME, self.worker_port))
             self.assertEqual(res.status_code, 200)
 
+        # make sure all chunks freed when session quits
+        from mars.worker.chunkholder import ChunkHolderActor
+        actor_client = new_client()
+        holder_ref = actor_client.actor_ref(ChunkHolderActor.default_uid(),
+                                            address='127.0.0.1:' + str(self.worker_port))
+        self.assertFalse(bool(holder_ref.dump_keys()))
+
     def testWebApiException(self):
         def normalize_tbs(tb_lines):
             new_lines = []

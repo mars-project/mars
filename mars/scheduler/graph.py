@@ -854,10 +854,13 @@ class GraphActor(SchedulerActor):
         return self._tileable_key_opid_to_tiled[(key, tid)][-1]
 
     @log_unhandled
-    def free_tileable_data(self, tileable_key):
+    def free_tileable_data(self, tileable_key, wait=False):
         tileable = self._get_tileable_by_key(tileable_key)
+        futures = []
         for chunk in tileable.chunks:
-            self._get_operand_ref(chunk.op.key).free_data(_tell=True)
+            futures.append(self._get_operand_ref(chunk.op.key).free_data(
+                check=False, _tell=not wait, _wait=False))
+        [f.result() for f in futures]
 
     def get_tileable_meta(self, tileable_key):
         """
