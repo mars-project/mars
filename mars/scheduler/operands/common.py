@@ -257,17 +257,19 @@ class OperandActor(BaseOperandActor):
 
         super(OperandActor, self).move_failover_state(from_states, state, new_target, dead_workers)
 
-    def free_data(self, state=OperandState.FREED):
+    def free_data(self, state=OperandState.FREED, check=True):
         """
         Free output data of current operand
         :param state: target state
+        :param check: ask GraphActor if we can free the data, useful when failover
         """
-        can_be_freed, deterministic = self.check_can_be_freed(state)
-        if not deterministic:
-            self.ref().free_data(state, _delay=1, _tell=True)
-            return
-        elif not can_be_freed:
-            return
+        if check:
+            can_be_freed, deterministic = self.check_can_be_freed(state)
+            if not deterministic:
+                self.ref().free_data(state, _delay=1, _tell=True)
+                return
+            elif not can_be_freed:
+                return
 
         self.start_operand(state)
 

@@ -157,18 +157,17 @@ class GraphApiHandler(MarsApiRequestHandler):
 class GraphDataHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tileable_key):
-        type_arg = self.request.arguments.get('type')
+        data_type = self.get_argument('type', None)
         try:
-            compressions_arg = self.request.arguments.get('compressions')
+            compressions_arg = self.get_argument('compressions', None)
             if compressions_arg:
-                compressions_arg = [CompressType(s) for s in to_str(compressions_arg[0]).split(',') if s]
+                compressions_arg = [CompressType(s) for s in compressions_arg.split(',') if s]
             slices_arg = self.request.arguments.get('slices')
             if slices_arg:
                 slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
-        if type_arg:
-            data_type = to_str(type_arg[0])
+        if data_type:
             if data_type == 'nsplits':
                 nsplits = self.web_api.get_tileable_nsplits(session_id, graph_key, tileable_key)
                 self.write(json.dumps(nsplits))
@@ -186,7 +185,8 @@ class GraphDataHandler(MarsApiRequestHandler):
             self.write(data)
 
     def delete(self, session_id, graph_key, tileable_key):
-        self.web_api.delete_data(session_id, graph_key, tileable_key)
+        wait = int(self.get_argument('wait', '0'))
+        self.web_api.delete_data(session_id, graph_key, tileable_key, wait=wait)
 
 
 class WorkersApiHandler(MarsApiRequestHandler):
@@ -205,9 +205,7 @@ class MutableTensorHandler(MarsApiRequestHandler):
 
     def post(self, session_id, name):
         try:
-            action = self.request.arguments.get('action')
-            if action:
-                action = to_str(action[0])
+            action = self.get_argument('action', None)
             if action == 'create':
                 req_json = json.loads(self.request.body.decode('ascii'))
                 shape = req_json['shape']
