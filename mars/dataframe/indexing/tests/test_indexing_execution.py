@@ -15,8 +15,10 @@
 import numpy as np
 import pandas as pd
 
-from mars.tests.core import TestBase
 import mars.dataframe as md
+from mars.executor import Executor
+from mars.tests.core import TestBase
+from mars.dataframe.datasource.dataframe import from_pandas
 
 
 class Test(TestBase):
@@ -25,7 +27,7 @@ class Test(TestBase):
         self.executor = Executor()
 
     def testSetIndex(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
         df2 = from_pandas(df1, chunk_size=2)
 
@@ -40,7 +42,7 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected, result)
 
     def testILocGetItem(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
         df2 = from_pandas(df1, chunk_size=2)
 
@@ -179,4 +181,3 @@ class Test(TestBase):
         selected = ['i0']
         series5 = series[selected]
         pd.testing.assert_series_equal(series5.execute(), data[selected])
-
