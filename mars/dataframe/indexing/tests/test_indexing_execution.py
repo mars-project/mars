@@ -16,101 +16,83 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.executor import Executor
 from mars.tests.core import TestBase
-from mars.dataframe.datasource.dataframe import from_pandas
 
 
 class Test(TestBase):
-    def setUp(self):
-        super(Test, self).setUp()
-        self.executor = Executor()
-
     def testSetIndex(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df2 = md.DataFrame(df1, chunk_size=2)
 
         expected = df1.set_index('y', drop=True)
         df3 = df2.set_index('y', drop=True)
-        result = self.executor.execute_dataframe(df3, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df3.execute())
 
         expected = df1.set_index('y', drop=False)
         df4 = df2.set_index('y', drop=False)
-        result = self.executor.execute_dataframe(df4, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df4.execute())
 
     def testILocGetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df2 = md.DataFrame(df1, chunk_size=2)
 
         # plain index
         expected = df1.iloc[1]
         df3 = df2.iloc[1]
-        result = self.executor.execute_dataframe(df3, concat=True)[0]
-        pd.testing.assert_series_equal(expected, result)
+        pd.testing.assert_series_equal(expected, df3.execute())
 
         # slice index
         expected = df1.iloc[:, 2:4]
         df4 = df2.iloc[:, 2:4]
-        result = self.executor.execute_dataframe(df4, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df4.execute())
 
         # plain fancy index
         expected = df1.iloc[[0], [0, 1, 2]]
         df5 = df2.iloc[[0], [0, 1, 2]]
-        result = self.executor.execute_dataframe(df5, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df5.execute())
 
         # fancy index
         expected = df1.iloc[[1, 2], [0, 1, 2]]
         df6 = df2.iloc[[1, 2], [0, 1, 2]]
-        result = self.executor.execute_dataframe(df6, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df6.execute())
 
         # plain index
         expected = df1.iloc[1, 2]
         df7 = df2.iloc[1, 2]
-        result = self.executor.execute_dataframe(df7, concat=True)[0]
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, df7.execute())
 
     def testILocSetItem(self):
-        df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
-                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
+                           index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
+        df2 = md.DataFrame(df1, chunk_size=2)
 
         # plain index
         expected = df1
         expected.iloc[1] = 100
         df2.iloc[1] = 100
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df2.execute())
 
         # slice index
         expected.iloc[:, 2:4] = 1111
         df2.iloc[:, 2:4] = 1111
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df2.execute())
 
         # plain fancy index
         expected.iloc[[0], [0, 1, 2]] = 2222
         df2.iloc[[0], [0, 1, 2]] = 2222
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df2.execute())
 
         # fancy index
         expected.iloc[[1, 2], [0, 1, 2]] = 3333
         df2.iloc[[1, 2], [0, 1, 2]] = 3333
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df2.execute())
 
         # plain index
         expected.iloc[1, 2] = 4444
         df2.iloc[1, 2] = 4444
-        result = self.executor.execute_dataframe(df2, concat=True)[0]
-        pd.testing.assert_frame_equal(expected, result)
+        pd.testing.assert_frame_equal(expected, df2.execute())
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])

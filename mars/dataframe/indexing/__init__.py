@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .iloc import iloc, DataFrameIloc, DataFrameIlocGetItem, DataFrameIlocSetItem
+from .set_index import set_index, DataFrameSetIndex
+
 
 def _install():
-    from .iloc import iloc, DataFrameIloc, DataFrameIlocGetItem, DataFrameIlocSetItem
-    from .set_index import set_index, DataFrameSetIndex
     from .getitem import dataframe_getitem, series_getitem
     from ..operands import DATAFRAME_TYPE, SERIES_TYPE
 

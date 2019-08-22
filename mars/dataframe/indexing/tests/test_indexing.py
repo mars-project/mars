@@ -16,22 +16,16 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.core import SERIES_CHUNK_TYPE, Series, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem
 
 
 class Test(TestBase):
-    def setUp(self):
-        super(Test, self).setUp()
-        self.executor = Executor()
-
     def testSetIndex(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df2 = md.DataFrame(df1, chunk_size=2)
 
         df3 = df2.set_index('y', drop=True)
         df3.tiles()
@@ -48,7 +42,7 @@ class Test(TestBase):
     def testILocGetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df2 = md.DataFrame(df1, chunk_size=2)
 
         # plain index
         df3 = df2.iloc[1]
@@ -144,11 +138,11 @@ class Test(TestBase):
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
                             index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
-        df2 = from_pandas(df1, chunk_size=2)
+        df2 = md.DataFrame(df1, chunk_size=2)
         df2.tiles()
 
         # plain index
-        df3 = from_pandas(df1, chunk_size=2)
+        df3 = md.DataFrame(df1, chunk_size=2)
         df3.iloc[1] = 100
         df3.tiles()
         self.assertIsInstance(df3.op, DataFrameIlocSetItem)
@@ -167,7 +161,7 @@ class Test(TestBase):
         self.assertEqual(df3.chunks[1].op.indexes, (1, slice(None, None, None)))
 
         # # slice index
-        df4 = from_pandas(df1, chunk_size=2)
+        df4 = md.DataFrame(df1, chunk_size=2)
         df4.iloc[:, 2:4] = 1111
         df4.tiles()
         self.assertIsInstance(df4.op, DataFrameIlocSetItem)
@@ -186,7 +180,7 @@ class Test(TestBase):
         self.assertEqual(df4.chunks[3].op.indexes, (slice(None, None, None), slice(None, None, None)))
 
         # plain fancy index
-        df5 = from_pandas(df1, chunk_size=2)
+        df5 = md.DataFrame(df1, chunk_size=2)
         df5.iloc[[0], [0, 1, 2]] = 2222
         df5.tiles()
         self.assertIsInstance(df5.op, DataFrameIlocSetItem)
@@ -207,7 +201,7 @@ class Test(TestBase):
         np.testing.assert_array_equal(df5.chunks[1].op.indexes[1], [0])
 
         # fancy index
-        df6 = from_pandas(df1, chunk_size=2)
+        df6 = md.DataFrame(df1, chunk_size=2)
         df6.iloc[[1, 2], [0, 1, 2]] = 3333
         df6.tiles()
         self.assertIsInstance(df6.op, DataFrameIlocSetItem)
@@ -232,7 +226,7 @@ class Test(TestBase):
         np.testing.assert_array_equal(df6.chunks[3].op.indexes[1], [0])
 
         # plain index
-        df7 = from_pandas(df1, chunk_size=2)
+        df7 = md.DataFrame(df1, chunk_size=2)
         df7.iloc[1, 2] = 4444
         df7.tiles()
         self.assertIsInstance(df7.op, DataFrameIlocSetItem)
