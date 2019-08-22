@@ -85,8 +85,8 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 new_chunks.append(chk)
             chunks = new_chunks
 
-        setattr(chunks[0].op, '_is_terminal', True)
-        setattr(chunks[0], '_shape', (len(op.labels),) if isinstance(op.labels, list) else ())
+        chunks[0].op._is_terminal = True
+        chunks[0]._shape = (len(op.labels),) if isinstance(op.labels, list) else ()
         new_op = op.copy()
         nsplits = tuple((s,) for s in chunks[0].shape)
         return new_op.new_seriess(op.inputs, shape=out_series.shape, chunks=chunks, dtype=out_series.dtype,
