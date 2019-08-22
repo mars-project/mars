@@ -32,11 +32,8 @@ import zlib
 import threading
 import itertools
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
 import numpy as np
+import pandas as pd
 
 from .compat import irange, functools32, getargspec
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int
@@ -566,17 +563,10 @@ def merge_chunks(chunk_results):
         concat_result = xp.concatenate([c[1] for c in chunk_results])
         return concat_result
     elif isinstance(v, pd.DataFrame):
-        # auto generated concat when executing a DataFrame
-        n_rows = max([idx[0] for idx, _ in chunk_results]) + 1
-        n_cols = int(len(chunk_results) // n_rows)
-
         concats = []
-        for i in range(n_rows):
-            concat = pd.concat([chunk_results[i * n_cols + j][1]
-                                for j in range(n_cols)], axis='columns')
-            concats.append(concat)
-
-        return pd.concat(concats)
+        for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
+            concats.append(pd.concat([c[1] for c in cs], axis='columns'))
+        return pd.concat(concats, axis='index')
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
     else:

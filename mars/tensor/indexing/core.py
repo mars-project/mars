@@ -119,7 +119,7 @@ def preprocess_index(index):
     return tuple(inds)
 
 
-def process_index(tensor, item):
+def process_index(tensor_ndim, item):
     if isinstance(item, list):
         arr = np.array(item)
         if arr.dtype == np.object_:
@@ -132,8 +132,8 @@ def process_index(tensor, item):
         item = (item,)
 
     index = preprocess_index(item)
-    index = replace_ellipsis(index, tensor.ndim)
-    missing = tensor.ndim - sum(index_ndim(i) for i in index)
+    index = replace_ellipsis(index, tensor_ndim)
+    missing = tensor_ndim - sum(index_ndim(i) for i in index)
     if missing < 0:
         raise IndexError('too many indices for tensor')
     return index + (slice(None),) * missing

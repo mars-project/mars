@@ -17,9 +17,11 @@ import logging
 import os
 import sys
 import time
-import pyarrow
 import zlib
 from collections import defaultdict
+
+import pandas as pd
+import pyarrow
 
 from .. import promise
 from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
@@ -742,7 +744,10 @@ class ResultSenderActor(WorkerActor):
                         dataserializer.dumps, buf, compression_type, raw=True).result()
                 else:
                     value = self._chunk_store.get(session_id, chunk_key)
-                    sliced_value = value[index_obj]
+                    if isinstance(value, (pd.DataFrame, pd.Series)):
+                        sliced_value = value.iloc[index_obj]
+                    else:
+                        sliced_value = value[index_obj]
                     compressed = self._serialize_pool.submit(
                         dataserializer.dumps, sliced_value, compression_type).result()
             else:
@@ -756,7 +761,10 @@ class ResultSenderActor(WorkerActor):
                     # TODO: may have potential memory issue
                     def get_data_slices_from_file(file_name, index_obj, compression_type):
                         value = read_spill_file(file_name)
-                        sliced_value = value[index_obj]
+                        if isinstance(value, (pd.DataFrame, pd.Series)):
+                            sliced_value = value.iloc[index_obj]
+                        else:
+                            sliced_value = value[index_obj]
                         return dataserializer.dumps(sliced_value, compression_type)
 
                     compressed = self._serialize_pool.submit(

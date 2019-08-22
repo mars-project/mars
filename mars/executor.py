@@ -21,6 +21,8 @@ import weakref
 from collections import deque, defaultdict
 from numbers import Integral
 
+import pandas as pd
+
 try:
     import gevent
 except ImportError:  # pragma: no cover
@@ -456,7 +458,8 @@ class Executor(object):
             raise KeyError('No handler found for op: %s' % op)
 
     def execute_graph(self, graph, keys, n_parallel=None, print_progress=False,
-                      mock=False, no_intermediate=False, compose=True, retval=True):
+                      mock=False, no_intermediate=False, compose=True, retval=True,
+                      chunk_result=None):
         """
         :param graph: graph to execute
         :param keys: result keys
@@ -466,6 +469,7 @@ class Executor(object):
         :param mock: if True, only estimate data sizes without execution
         :param no_intermediate: exclude intermediate data sizes when estimating memory size
         :param retval: if True, keys specified in argument keys is returned
+        :param chunk_result: dict to put chunk key to chunk data, if None, use self.chunk_result
         :return: execution result
         """
         optimized_graph = self._preprocess(graph, keys) if compose else graph
@@ -481,7 +485,8 @@ class Executor(object):
                 fetch_keys.update(inp.key for inp in c.inputs or ())
 
         executed_keys = list(itertools.chain(*[v[1] for v in self.stored_tileables.values()]))
-        graph_execution = GraphExecution(self._chunk_result, optimized_graph,
+        chunk_result = self._chunk_result if chunk_result is None else chunk_result
+        graph_execution = GraphExecution(chunk_result, optimized_graph,
                                          keys, executed_keys, self._sync_provider,
                                          n_parallel=n_parallel, prefetch=self._prefetch,
                                          print_progress=print_progress, mock=mock,
@@ -516,6 +521,8 @@ class Executor(object):
                           print_progress=False, mock=False, compose=True):
         graph = DirectedGraph()
 
+        # shallow copy, prevent from any chunk key decref
+        chunk_result = self._chunk_result.copy()
         result_keys = []
         to_release_keys = []
         concat_keys = []
@@ -545,15 +552,17 @@ class Executor(object):
 
             # Do not do compose here, because building graph has not finished yet
             tileable.build_graph(graph=graph, tiled=True, compose=False,
-                                 executed_keys=list(self._chunk_result.keys()))
+                                 executed_keys=list(chunk_result.keys()))
         if compose:
             # finally do compose according to option
             graph.compose(keys=list(itertools.chain(*[[c.key for c in t.chunks]
                                                       for t in tileables])))
 
         self.execute_graph(graph, result_keys, n_parallel=n_parallel or n_thread,
-                           print_progress=print_progress, mock=mock)
+                           print_progress=print_progress, mock=mock,
+                           chunk_result=chunk_result)
 
+        self._chunk_result.update(chunk_result)
         results = self._chunk_result
         try:
             if fetch:
@@ -570,13 +579,15 @@ class Executor(object):
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
+        from .dataframe.indexing import DataFrameIlocGetItem
 
         results = []
         to_concat_tileables = OrderedDict()
 
         tileable_indexes = []
         for i, tileable in enumerate(tileables):
-            if tileable.key not in self.stored_tileables and isinstance(tileable.op, TensorIndex):
+            if tileable.key not in self.stored_tileables and \
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
                 tileable = tileable.inputs[0]
@@ -610,9 +621,16 @@ class Executor(object):
             for j, concat_result in zip(to_concat_tileables, concat_results):
                 results[j] = concat_result
 
-        results = [result[indexes] if indexes else result for
-                   indexes, result in zip(tileable_indexes, results)]
-        return results
+        indexed_results = []
+        for indexes, result in zip(tileable_indexes, results):
+            if indexes:
+                if isinstance(result, (pd.DataFrame, pd.Series)):
+                    indexed_results.append(result.iloc[indexes])
+                else:
+                    indexed_results.append(result[indexes])
+            else:
+                indexed_results.append(result)
+        return indexed_results
 
     def get_tileable_nsplits(self, tileable):
         chunk_idx_to_shape = OrderedDict(

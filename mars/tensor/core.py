@@ -587,7 +587,7 @@ class MutableTensor(Entity):
         from .indexing.setitem import TensorIndex
         from .utils import setitem_as_records
 
-        tensor_index = process_index(self, tensor_index)
+        tensor_index = process_index(self.ndim, tensor_index)
         output_shape = calc_shape(self.shape, tensor_index)
 
         index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=tensor_index)

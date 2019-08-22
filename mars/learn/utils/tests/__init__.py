@@ -11,17 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .concat import DataFrameConcat
-from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
-
-
-def _install():
-    from ..core import DataFrame
-
-    setattr(DataFrame, 'join', join)
-    setattr(DataFrame, 'merge', merge)
-
-
-_install()
-del _install
