@@ -46,6 +46,10 @@ class Test(TestBase):
         self.assertEqual(series3.execute(), data['c1'][0])
 
     def testSeriesGetitem(self):
+        data = pd.Series(np.random.rand(10))
+        series = md.Series(data)
+        self.assertEqual(series[1].execute(), data[1])
+
         data = pd.Series(np.random.rand(10), name='a')
         series = md.Series(data, chunk_size=4)
 

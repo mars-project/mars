@@ -82,3 +82,23 @@ class Test(TestBase):
         self.assertEqual(result2.chunks[1].op.labels, [1, 2])
         self.assertEqual(result2.chunks[2].op.labels, [3])
 
+        data = pd.Series(np.random.rand(10), index=['i' + str(i) for i in range(10)])
+        series = md.Series(data, chunk_size=3)
+
+        result1 = series['i2']
+        self.assertEqual(result1.shape, ())
+
+        result1.tiles()
+        self.assertEqual(result1.nsplits, ())
+        self.assertEqual(result1.chunks[0].dtype, data.dtype)
+        self.assertTrue(result1.chunks[0].op.is_terminal)
+        self.assertTrue(result1.chunks[0].op.labels, ['i2'])
+
+        result2 = series[['i2', 'i4']]
+        self.assertEqual(result2.shape, (2,))
+
+        result2.tiles()
+        self.assertEqual(result2.nsplits, ((2,),))
+        self.assertEqual(result2.chunks[0].dtype, data.dtype)
+        self.assertTrue(result2.chunks[0].op.is_terminal)
+        self.assertTrue(result2.chunks[0].op.labels, [['i2', 'i4']])

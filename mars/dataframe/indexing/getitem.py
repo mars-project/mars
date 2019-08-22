@@ -48,7 +48,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._is_terminal
 
     def __call__(self, series):
-        if isinstance(self._labels, (list, np.ndarray)):
+        if isinstance(self._labels, list):
             shape = (len(self._labels),)
             index_value = parse_index(pd.Index(self._labels))
         else:
@@ -86,14 +86,25 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
             chunks = new_chunks
 
         setattr(chunks[0].op, '_is_terminal', True)
+        setattr(chunks[0], '_shape', (len(op.labels),) if isinstance(op.labels, list) else ())
         new_op = op.copy()
-        return new_op.new_seriess(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
-                                  index_value=out_series.index_value, nsplits=((1,),), chunks=chunks)
+        nsplits = tuple((s,) for s in chunks[0].shape)
+        return new_op.new_seriess(op.inputs, shape=out_series.shape, chunks=chunks, dtype=out_series.dtype,
+                                  index_value=out_series.index_value, nsplits=nsplits)
 
     @classmethod
     def tile(cls, op):
         in_series = op.inputs[0]
         out_series = op.outputs[0]
+        if len(in_series.chunks) == 1:
+            index_op = SeriesIndex(labels=op.labels, is_terminal=True)
+            index_chunk = index_op.new_chunk(in_series.chunks, shape=out_series.shape, dtype=out_series.dtype,
+                                             index_value=out_series.index_value)
+            new_op = op.copy()
+            nsplits = tuple((s,) for s in out_series.shape)
+            return new_op.new_seriess(op.inputs, shape=out_series.shape, chunks=[index_chunk],
+                                      dtype=out_series.dtype, index_value=out_series.index_value, nsplits=nsplits)
+
         if in_series.index_value.to_pandas().empty:
             return cls._tree_getitem(op)
         chunk_indexes = [c.index_value.to_pandas() for c in in_series.chunks]
@@ -133,7 +144,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         inputs = [ctx[inp.key] for inp in op.inputs]
         series = pd.concat(inputs)
-        if isinstance(op.labels, (list, np.ndarray)):
+        if isinstance(op.labels, list):
             if op.is_terminal:
                 ctx[op.outputs[0].key] = series[op.labels]
             else:
@@ -159,7 +170,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df):
         # if col_names is a tuple or list, return a DataFrame, else return a Series
-        if isinstance(self._col_names, (list, np.ndarray)):
+        if isinstance(self._col_names, list):
             dtypes = df.dtypes[self._col_names]
             columns = parse_index(pd.Index(self._col_names), store_data=True)
             return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
