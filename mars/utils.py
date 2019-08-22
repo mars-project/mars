@@ -32,11 +32,8 @@ import zlib
 import threading
 import itertools
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pass
 import numpy as np
+import pandas as pd
 
 from .compat import irange, functools32, getargspec
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int
