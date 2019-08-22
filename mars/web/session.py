@@ -309,10 +309,7 @@ class Session(object):
         tileable._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tileable.nsplits = new_nsplits
 
-    def decref(self, *keys, **kwargs):
-        session_url = self._endpoint + '/api/session/' + self._session_id
-        force = kwargs.pop('force', False)
-        wait = kwargs.pop('wait', False)
+    def decref(self, *keys):
         for tileable_key, tileable_id in keys:
             if tileable_key not in self._executed_tileables:
                 continue
@@ -321,11 +318,18 @@ class Session(object):
             if tileable_id in ids:
                 ids.remove(tileable_id)
                 # for those same key tileables, do decref only when all those tileables are garbage collected
-                if len(ids) != 0 and not force:
+                if len(ids) != 0:
                     continue
-                data_url = session_url + '/graph/%s/data/%s?wait=%d' % (graph_key, tileable_key, 1 if wait else 0)
-                self._req_session.delete(data_url)
-                del self._executed_tileables[tileable_key]
+                self.delete_data(tileable_key)
+
+    def delete_data(self, tileable_key, wait=False):
+        if tileable_key not in self._executed_tileables:
+            return
+        graph_key, _ids = self._executed_tileables[tileable_key]
+        data_url = '%s/api/session/%s/graph/%s/data/%s?wait=%d' % \
+                   (self._endpoint, self._session_id, graph_key, tileable_key, 1 if wait else 0)
+        self._req_session.delete(data_url)
+        del self._executed_tileables[tileable_key]
 
     def stop(self, graph_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
@@ -360,11 +364,8 @@ class Session(object):
         return resp_json
 
     def close(self):
-        executed_keys = []
-        for key, value in self._executed_tileables.items():
-            for tid in value[1]:
-                executed_keys.append((key, tid))
-        self.decref(*executed_keys, **dict(force=True, wait=True))
+        for key in list(self._executed_tileables.keys()):
+            self.delete_data(key, wait=True)
         resp = self._req_session.delete(self._endpoint + '/api/session/' + self._session_id)
         if resp.status_code >= 400:
             raise SystemError('Failed to close mars session.')
