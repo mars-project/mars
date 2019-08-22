@@ -56,7 +56,7 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=chunk_size,
-                                  order=tensor.order)
+                                  order=tensor.order, **tensor.extra_params)
 
 
 class TensorNoInput(TensorDataSource):
