@@ -30,7 +30,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _labels = AnyField('labels')
 
     _combine_size = Int32Field('combine_size')
-    _is_intermediate = BoolField('is_terminal')
+    _is_intermediate = BoolField('is_intermediate')
 
     def __init__(self, labels=None, combine_size=None, is_intermediate=None, object_type=None, **kw):
         super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size,
