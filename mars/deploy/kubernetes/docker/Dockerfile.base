@@ -23,4 +23,4 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     pyarrow \
     tiledb-py \
     python-kubernetes \
-  && /opt/conda/bin/conda clean -tipsy
+  && /opt/conda/bin/conda clean --all -f -y

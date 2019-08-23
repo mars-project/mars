@@ -1,11 +1,11 @@
 ARG BASE_CONTAINER=marsproject/mars-base
 FROM ${BASE_CONTAINER}
 
-ARG MARS_VERSION
+COPY . /opt/mars/
 
 RUN apt-get -yq update \
   && apt-get -yq install gcc g++ \
-  && /opt/conda/bin/pip install git+https://github.com/mars-project/mars.git@${MARS_VERSION} \
+  && /opt/conda/bin/pip install -e /opt/mars \
   && apt-get -yq remove gcc g++ \
   && apt-get -yq autoremove \
   && apt-get -yq clean \
@@ -13,7 +13,8 @@ RUN apt-get -yq update \
 RUN mkdir -p /srv
 WORKDIR /srv
 
-COPY docker-logging.conf /srv/logging.conf
-COPY entrypoint.sh /srv/entrypoint.sh
+RUN cp /opt/mars/mars/deploy/kubernetes/docker/docker-logging.conf /srv/logging.conf \
+  && cp /opt/mars/mars/deploy/kubernetes/docker/entrypoint.sh /srv/entrypoint.sh \
+  && chmod a+x /srv/*.sh
 
 ENTRYPOINT [ "/srv/entrypoint.sh" ]

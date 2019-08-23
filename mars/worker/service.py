@@ -253,7 +253,8 @@ class WorkerService(object):
         try:
             for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
                           + self._receiver_actors + self._spill_actors + self._process_helper_actors):
-                actor.destroy(wait=False)
+                if actor and actor.ctx:
+                    actor.destroy(wait=False)
 
             if self._result_sender_ref:
                 self._result_sender_ref.destroy(wait=False)

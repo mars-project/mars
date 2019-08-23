@@ -3,6 +3,8 @@ set -e -x
 
 if [ -z "$TRAVIS_TAG" ]; then
   echo "Not on a tag, won't deploy to pypi"
+elif [ -n "$NO_DEPLOY" ]; then
+  echo "Not on a build config, won't deploy to pypi"
 else
   git clean -f -x
 
@@ -13,7 +15,7 @@ else
     pyvers=$(echo $PYVER | tr ":" "\n")
     for pyver in $pyvers
     do
-      docker run --rm -e "PYVER=$pyver" -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/bin/travis-build-wheels.sh
+      docker run --rm -e "PYVER=$pyver" -v `pwd`:/io $DOCKER_IMAGE $PRE_CMD /io/bin/ci/travis-build-wheels.sh
     done
 
   else

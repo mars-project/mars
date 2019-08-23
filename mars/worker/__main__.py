@@ -14,6 +14,7 @@
 
 import argparse
 import logging
+import os
 
 from ..base_app import BaseApplication, arg_deprecated_action
 from ..distributor import MarsDistributor
@@ -76,9 +77,9 @@ class WorkerApplication(BaseApplication):
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
             n_net_process=self.args.net_procs or self.args.io_procs,
-            spill_dirs=self.args.spill_dir,
+            spill_dirs=self.args.spill_dir or os.environ.get('MARS_SPILL_DIRS'),
             total_mem=self.args.phy_mem,
-            cache_mem_limit=self.args.cache_mem,
+            cache_mem_limit=self.args.cache_mem or os.environ.get('MARS_CACHE_MEM_SIZE'),
             ignore_avail_mem=self.args.ignore_avail_mem,
             min_mem_size=self.args.min_mem,
             disk_compression=self.args.disk_compression.lower(),

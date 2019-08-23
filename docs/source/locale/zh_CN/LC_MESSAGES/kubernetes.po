@@ -1,0 +1,334 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2014-2018, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.3.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-08-13 16:56+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/kubernetes.rst:2
+msgid "Run on Kubernetes"
+msgstr "在 Kubernetes 中部署"
+
+#: ../../source/kubernetes.rst:6
+msgid ""
+"Support for kubernetes is experimental. APIs may change in future "
+"releases."
+msgstr "对 Kubernetes 的支持目前仅为试验性，相关 API 可能在未来的版本中更改。"
+
+#: ../../source/kubernetes.rst:8
+msgid ""
+"Mars can run in clusters managed by `Kubernetes "
+"<https://kubernetes.io>`_. You can use ``mars.deploy.kubernetes`` to set "
+"up a Mars cluster."
+msgstr ""
+"Mars 支持在 `Kubernetes <https://kubernetes.io>`_ 管理的集群中执行。你"
+"可以使用 ``mars.deploy.kubernetes`` 模块配置一个 Mars 集群。"
+
+#: ../../source/kubernetes.rst:12
+msgid "Basic steps"
+msgstr "基本步骤"
+
+#: ../../source/kubernetes.rst:13
+msgid ""
+"Mars uses image repository ``marsproject/mars`` by default. Each released"
+" version of Mars has its image since v0.3.0. For instance, the image for "
+"version 0.3.0 is ``marsproject/mars:v0.3.0``.  If you need to build an "
+"image from source, you may run the command below:"
+msgstr ""
+"Mars 默认会使用 ``marsproject/mars`` 中的镜像。自 v0.3.0 起，每个 Mars 的"
+"发布版本均会包含一个镜像，例如 v0.3.0 对应的镜像是 ``marsproject/mars:"
+"v0.3.0``。如果你希望从源码制作一个镜像，可以使用下面的命令："
+
+#: ../../source/kubernetes.rst:22
+msgid "A docker image with Mars tagged with the current version will be built."
+msgstr "一个使用当前版本号作为标签的 Docker 镜像将被制作出来。"
+
+#: ../../source/kubernetes.rst:24
+msgid ""
+"Then you need to make sure if you have correct client configurations for "
+"Kubernetes by running"
+msgstr "接下来，你需要运行下面的命令来保证 Kubernetes 的客户端配置是正确的："
+
+#: ../../source/kubernetes.rst:31
+msgid ""
+"If it reports an error, please consult documentations for kubernetes or "
+"your cluster maintainer for more information."
+msgstr "如果上述命令报错，请参考 Kubernetes 相关文档或者咨询集群维护人员。"
+
+#: ../../source/kubernetes.rst:34
+msgid ""
+"As Mars uses Python to operate on Kubernetes, you also need to install "
+"Kubernetes client for Python locally. It can be installed with ``pip`` or"
+" ``conda``:"
+msgstr ""
+"由于 Mars 使用 Python 操作 Kubernetes，你需要在本地使用 ``pip`` 或者 ``"
+"conda`` 安装 Python 上的 Kubernetes 客户端："
+
+#: ../../source/kubernetes.rst:45
+msgid ""
+"After all these steps we can create a Mars cluster with one scheduler, "
+"one worker and one web service with kubernetes and run some jobs on it:"
+msgstr ""
+"在完成上述所有步骤后，我们可以创建一个拥有单一 Scheduler，单一 Worker 和"
+"单一 Web Service 的 Kubernetes 集群实例，并在上面执行一些作业："
+
+#: ../../source/kubernetes.rst:64
+msgid ""
+"When you want to use this cluster elsewhere, you can obtain ``namespace``"
+" and ``endpoint`` from the custer object and create another "
+"``KubernetesClusterClient``:"
+msgstr ""
+"如果你需要在其他地方使用刚创建的集群，你可以从 cluster 对象获取 ``"
+"namespace`` 和 ``endpoint`` 参数，此后创建另一个 ``"
+"KubernetesClusterClient``："
+
+#: ../../source/kubernetes.rst:81
+msgid "Customizing cluster"
+msgstr "定制集群"
+
+#: ../../source/kubernetes.rst:82
+msgid ""
+"``new_cluster`` function provides several keyword arguments for users to "
+"define the cluster. You may use the argument ``image`` to specify the "
+"image for all Mars pods, and the argument ``timeout`` to specify timeout "
+"of cluster creation. Arguments for scaling up and out of the cluster are "
+"also available."
+msgstr ""
+"``new_cluster`` 函数提供若干可用于定制集群的参数。你可以使用 ``image`` "
+"参数定义所有 Pod 使用的镜像，``timeout`` 参数定义创建集群的超时时间。同时"
+"，该函数还提供调整集群规模的功能。"
+
+#: ../../source/kubernetes.rst:87
+msgid "Arguments for schedulers:"
+msgstr "Scheduler 相关参数："
+
+#: ../../source/kubernetes.rst:90 ../../source/kubernetes.rst:103
+#: ../../source/kubernetes.rst:125
+msgid "Argument"
+msgstr "参数"
+
+#: ../../source/kubernetes.rst:90 ../../source/kubernetes.rst:103
+#: ../../source/kubernetes.rst:125
+msgid "Description"
+msgstr "描述"
+
+#: ../../source/kubernetes.rst:92
+msgid "scheduler_num"
+msgstr ""
+
+#: ../../source/kubernetes.rst:92
+msgid "Number of schedulers in the cluster, 1 by default"
+msgstr "集群中 Scheduler 的数目，默认为 1"
+
+#: ../../source/kubernetes.rst:94
+msgid "scheduler_cpu"
+msgstr ""
+
+#: ../../source/kubernetes.rst:94
+msgid "Number of CPUs for every scheduler"
+msgstr "每个 Scheduler 的 CPU 数目"
+
+#: ../../source/kubernetes.rst:96
+msgid "scheduler_mem"
+msgstr ""
+
+#: ../../source/kubernetes.rst:96
+msgid ""
+"Memory size for schedulers in the cluster, in bytes or size units like "
+"``1g``"
+msgstr "每个 Scheduler 的内存大小，可使用字节数或带单位的大小，例如``1g``"
+
+#: ../../source/kubernetes.rst:100
+msgid "Arguments for workers:"
+msgstr "Worker 相关参数："
+
+#: ../../source/kubernetes.rst:105
+msgid "worker_num"
+msgstr ""
+
+#: ../../source/kubernetes.rst:105
+msgid "Number of workers in the cluster, 1 by default"
+msgstr "集群中 Worker 的数目，默认为 1"
+
+#: ../../source/kubernetes.rst:107
+msgid "worker_cpu"
+msgstr ""
+
+#: ../../source/kubernetes.rst:107
+msgid "Number of CPUs for every worker"
+msgstr "每个 Worker 的 CPU 数目"
+
+#: ../../source/kubernetes.rst:109
+msgid "worker_mem"
+msgstr ""
+
+#: ../../source/kubernetes.rst:109
+msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
+msgstr "每个 Worker 的内存大小，可使用字节数或带单位的大小，例如``1g``"
+
+#: ../../source/kubernetes.rst:112
+msgid "worker_spill_paths"
+msgstr ""
+
+#: ../../source/kubernetes.rst:112
+msgid "List of spill paths for worker pods on hosts"
+msgstr "在宿主机上用于 Worker spill 的路径列表"
+
+#: ../../source/kubernetes.rst:114
+msgid "worker_cache_mem"
+msgstr ""
+
+#: ../../source/kubernetes.rst:114
+msgid ""
+"Size or ratio of shared memory for every worker. Details about memory "
+"management of Mars workers can be found in :ref:`memory tuning "
+"<worker_memory_tuning>` section."
+msgstr ""
+"Worker 中共享内存的大小或者占比。关于 Mars Worker 中的内存管理细节可以"
+"参考 :ref:`内存调优 <worker_memory_tuning>` 章节。"
+
+#: ../../source/kubernetes.rst:118
+msgid "min_worker_num"
+msgstr ""
+
+#: ../../source/kubernetes.rst:118
+msgid ""
+"Minimal number of ready workers for ``new_cluster`` to return, "
+"``worker_num`` by default"
+msgstr ""
+"``new_cluster``结束执行时所需的最小可用 Worker 个数，默认为 ``worker_num`"
+"`。"
+
+#: ../../source/kubernetes.rst:122
+msgid "Arguments for web services:"
+msgstr "Web 服务相关参数："
+
+#: ../../source/kubernetes.rst:127
+msgid "web_num"
+msgstr ""
+
+#: ../../source/kubernetes.rst:127
+msgid "Number of web services in the cluster, 1 by default"
+msgstr "每个 Web 服务的 CPU 数目"
+
+#: ../../source/kubernetes.rst:129
+msgid "web_cpu"
+msgstr ""
+
+#: ../../source/kubernetes.rst:129
+msgid "Number of CPUs for every web service"
+msgstr "每个 Web 服务的 CPU 数目"
+
+#: ../../source/kubernetes.rst:131
+msgid "web_mem"
+msgstr ""
+
+#: ../../source/kubernetes.rst:131
+msgid ""
+"Memory size for web services in the cluster, in bytes or size units like "
+"``1g``"
+msgstr "每个 Web 服务的内存大小，可使用字节数或带单位的大小，例如``1g``"
+
+#: ../../source/kubernetes.rst:135
+msgid ""
+"For instance, if you want to create a Mars cluster with 1 scheduler, 1 "
+"web service and 100 workers, each worker has 4 cores and 16GB memory, and"
+" stop waiting when 95 workers are ready, we can use the code below:"
+msgstr ""
+"例如，如果你需要创建一个包含单个 Scheduler、单个 Web 服务以及 100 个 "
+"Worker 的 Mars 集群，每个 Worker 拥有 4 核 16GB 内存，当 95 个 Worker "
+"可用时认为整个集群可用，我们可以使用下面的代码："
+
+#: ../../source/kubernetes.rst:149
+msgid "Implementation details"
+msgstr "实现细节"
+
+#: ../../source/kubernetes.rst:150
+msgid ""
+"When ``new_cluster`` is called, it will create an independent `namespace "
+"<https://kubernetes.io/docs/concepts/overview/working-with-"
+"objects/namespaces/>`_ for all objects including roles, role bindings, "
+"pods and services. When the user destroys the service, the whole "
+"namespace will be destroyed."
+msgstr ""
+"当调用 ``new_cluster`` 时，该方法会为此后使用的每个 Kubernetes 对象，包括"
+" Pod、Role等创建一个单独的 `名称空间 <https://kubernetes.io/docs/concepts"
+"/overview/working-with-objects/namespaces/>_。当用户停止服务时，整个 "
+"Namespace 都会被删除。"
+
+#: ../../source/kubernetes.rst:155
+msgid ""
+"Schedulers, workers and web services are created with `replication "
+"controllers "
+"<https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/>`_."
+" Services discover schedulers by directly accessing Kubernetes API via "
+"the default `service account <https://kubernetes.io/docs/tasks/configure-"
+"pod-container/configure-service-account/>`_. Pod addresses and their "
+"readiness are read by workers and web services to decide whether to "
+"start. Meanwhile the client read statuses of all pods and check if all "
+"schedulers, web services and at least ``min_worker_num`` workers are "
+"ready."
+msgstr ""
+"Scheduler、Worker 和 Web 服务使用 `Replication Controller <https://"
+"kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/>"
+"`_创建。各种服务通过默认的`服务账户 <https://kubernetes.io/docs/tasks/"
+"configure-pod-container/configure-service-account/>`_使用 Kubernetes API "
+"发现 Scheduler。Worker 和 Web 服务读取 Pod 的地址和可用度来决定是否启动。"
+"与此同时，客户端通过读取所有 Pod 的可用度并确认所有 Scheduler、Web 服务"
+"以及至少 ``min_worker_num`` 个 Worker 可用。"
+
+#: ../../source/kubernetes.rst:165
+msgid ""
+"The readiness of Mars services are decided by `readiness probes "
+"<https://kubernetes.io/docs/tasks/configure-pod-container/configure-"
+"liveness-readiness-probes/>`_ whose result can be obtained via Pod "
+"statuses. For schedulers and workers, when the service starts, a "
+"``ReadinessActor`` will be created in the service and the probe can "
+"detect it. For web services, the web port is detected."
+msgstr ""
+"Mars 服务的可用度由`可用度检测器 <https://kubernetes.io/docs/tasks/"
+"configure-pod-container/configure-liveness-readiness-probes/>`_确定，检测"
+"结果可从 Pod 状态中获取。对于 Scheduler 和 Worker 而言，当服务启动时，"
+"一个 ``ReadinessActor`` 将会在服务中被创建，检测器将检测该 Actor 是否存在"
+"。对于 Web 服务，检测器将直接检测 Web 端口是否被创建。"
+
+#: ../../source/kubernetes.rst:171
+msgid ""
+"As the default service account does not have privilege to read pods in "
+"Kubernetes API, we create `roles <https://kubernetes.io/docs/reference"
+"/access-authn-authz/rbac/>`_ with capability to read and watch pods using"
+" RBAC API, and then bind them to default service accounts within the "
+"namespace before creating replication controllers. This enables Mars "
+"containers to detect the status of other containers."
+msgstr ""
+"由于默认的服务账号不具备在 Kubernetes API 中读取 Pod 的权限，我们在创建"
+"集群 Replication Controller 前，在名称空间内使用 RBAC API 创建了一个具备"
+"读取和监视 Pod 状态的`角色 <https://kubernetes.io/docs/reference/access-"
+"authn-authz/rbac/>`_，此后将其绑定到默认账户中。这使得 Mars 容器可以检测"
+"其他容器的状态。"
+
+#: ../../source/kubernetes.rst:178
+msgid ""
+"Mars uses `Kubernetes services <https://kubernetes.io/docs/concepts"
+"/services-networking/service/>`_ to expose its service. Currently only "
+"``NodePort`` mode is supported, and Mars looks for the host hosting the "
+"pod of a web service as its endpoint. ``LoadBalancer`` mode is not "
+"supported yet."
+msgstr ""
+"Mars 使用 `Kubernetes 服务 <https://kubernetes.io/docs/concepts/services-"
+"networking/service/>`_对外暴露服务，目前仅支持 ``NodePort`` 模式。在此"
+"模式下，Mars 将查找持有 Web 服务的主机，并将其地址作为 Endpoint。``"
+"LoadBalancer`` 模式尚未被支持。"
+

@@ -37,8 +37,9 @@ class WebApplication(BaseApplication):
     def config_args(self, parser):
         parser.add_argument('--ui-port', help=argparse.SUPPRESS, action=arg_deprecated_action('-p'))
 
-    def validate_arguments(self):
-        if not self.args.schedulers and not self.args.kv_store:
+    def create_scheduler_discoverer(self):
+        super(WebApplication, self).create_scheduler_discoverer()
+        if self.scheduler_discoverer is None:
             raise StartArgumentError('Either schedulers or url of kv store is required.')
 
     def main_loop(self):
@@ -59,10 +60,11 @@ class WebApplication(BaseApplication):
             ui_port = int(port_arg) if port_arg else None
 
             schedulers = self.scheduler_discoverer.get()
+            logger.debug('Obtained schedulers: %r', schedulers)
             if not schedulers:
                 raise KeyError('No scheduler is available')
-            scheduler_ip = random.choice(schedulers)
-            self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ip)
+            scheduler_ep = random.choice(schedulers)
+            self.mars_web = MarsWeb(port=ui_port, scheduler_ip=scheduler_ep)
             self.mars_web.start()
 
     def stop(self):

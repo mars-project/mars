@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class SchedulerService(object):
-    def __init__(self, **kwargs):
+    def __init__(self):
         self._cluster_info_ref = None
         self._session_manager_ref = None
         self._assigner_ref = None

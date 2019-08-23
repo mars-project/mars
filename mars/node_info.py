@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 import platform
 import socket
 import sys
@@ -54,6 +55,7 @@ def gather_node_info():
         'memory_used': mem_stats.used,
         'memory_total': mem_stats.total,
         'update_time': time.time(),
+        'k8s_pod_name': os.environ.get('MARS_K8S_POD_NAME'),
     }
 
     cuda_info = resource.cuda_info()

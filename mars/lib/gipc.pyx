@@ -74,7 +74,17 @@ except ImportError:
 try:
     from pytest_cov.embed import cleanup_on_sigterm
 except ImportError:  # pragma: no cover
-    cleanup_on_sigterm = lambda: None
+    try:
+        from coverage import process_startup as cov_process_startup
+    except ImportError:
+        cov_process_startup = None
+
+    def _sigterm_handler(signum, frame):
+        if hasattr(cov_process_startup, 'coverage'):
+            cov_process_startup.coverage.stop()
+
+    def cleanup_on_sigterm():
+        signal.signal(signal.SIGTERM, _sigterm_handler)
 
 cdef:
     bint WINDOWS, PY2
