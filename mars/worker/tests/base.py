@@ -19,10 +19,12 @@ import unittest
 
 import gevent.event
 
+from mars import promise
+from mars.actors import create_actor_pool
 from mars.config import options
-from mars.compat import six
+from mars.compat import six, TimeoutError  # pylint: disable=W0622
 from mars.utils import classproperty
-from mars.worker.utils import WorkerActor
+from mars.worker.utils import WorkerActor, parse_spill_dirs
 
 
 class WorkerTestActor(WorkerActor):
@@ -50,6 +52,23 @@ class WorkerTestActor(WorkerActor):
     def set_result(self, result, accept=True):
         self.test_obj._result_store = (result, accept)
         self.test_obj._result_event.set()
+
+
+class StorageClientActor(WorkerActor):
+    def __getattr__(self, item):
+        if item.startswith('_'):
+            return object.__getattribute__(self, item)
+
+        def _wrapped_call(*args, **kwargs):
+            callback = kwargs.pop('callback', None)
+            ret = getattr(self.storage_client, item)(*args, **kwargs)
+            if isinstance(ret, promise.Promise):
+                if callback:
+                    ret.then(lambda *a, **k: self.tell_promise(callback, *a, **k))
+            else:
+                return ret
+
+        return _wrapped_call
 
 
 class WorkerCase(unittest.TestCase):
@@ -81,7 +100,6 @@ class WorkerCase(unittest.TestCase):
         cls._plasma_store.__exit__(None, None, None)
 
         cls.rm_spill_dirs(cls.spill_dir)
-        cls.rm_spill_dirs(options.worker.spill_directory)
 
         if os.path.exists(cls.plasma_socket):
             os.unlink(cls.plasma_socket)
@@ -89,6 +107,7 @@ class WorkerCase(unittest.TestCase):
     def setUp(self):
         super(WorkerCase, self).setUp()
         self._test_pool = None
+        self._test_actor = None
         self._test_actor_ref = None
         self._result_store = None
         self._result_event = gevent.event.Event()
@@ -100,7 +119,8 @@ class WorkerCase(unittest.TestCase):
         self._test_actor_ref.set_test_object(self)
         gen = self._test_actor_ref.run_test()
         try:
-            yield next(gen)
+            self._test_actor = next(gen)
+            yield self._test_actor
         except:
             self._result_store = (sys.exc_info(), False)
             self._result_event.set()
@@ -108,8 +128,19 @@ class WorkerCase(unittest.TestCase):
         finally:
             gen.send(None)
 
+    def waitp(self, *promises, **kw):
+        timeout = kw.pop('timeout', 10)
+        if len(promises) > 1:
+            p = promise.all_(promises)
+        else:
+            p = promises[0]
+        p.then(lambda *s: self._test_actor_ref.set_result(s, _tell=True),
+               lambda *exc: self._test_actor_ref.set_result(exc, accept=False, _tell=True))
+        self.get_result(timeout)
+
     def get_result(self, timeout=None):
-        self._result_event.wait(timeout)
+        if not self._result_event.wait(timeout):
+            raise TimeoutError
         self._result_event.clear()
         r, accept = self._result_store
         if accept:
@@ -118,10 +149,24 @@ class WorkerCase(unittest.TestCase):
             six.reraise(*r)
 
     @staticmethod
-    def rm_spill_dirs(spill_dirs):
+    def rm_spill_dirs(spill_dirs=None):
         import shutil
         spill_dirs = spill_dirs or []
         if not isinstance(spill_dirs, list):
             spill_dirs = [spill_dirs]
+        option_dirs = parse_spill_dirs(options.worker.spill_directory or '')
+        spill_dirs = list(set(spill_dirs + option_dirs))
         for d in spill_dirs:
             shutil.rmtree(d, ignore_errors=True)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def create_pool(*args, **kwargs):
+        from mars.worker import SharedHolderActor
+
+        pool = create_actor_pool(*args, **kwargs)
+        yield pool
+
+        shared_ref = pool.actor_ref(SharedHolderActor.default_uid())
+        if pool.has_actor(shared_ref):
+            shared_ref.destroy()

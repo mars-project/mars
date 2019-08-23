@@ -46,7 +46,7 @@ class TaskActor(PromiseActor):
 
 
 class Test(WorkerCase):
-    @patch_method(DispatchActor._init_chunk_store)
+    @patch_method(DispatchActor._init_shared_store)
     def testDispatch(self, *_):
         call_records = dict()
         group_size = 4

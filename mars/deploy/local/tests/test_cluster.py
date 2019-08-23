@@ -641,7 +641,7 @@ class Test(unittest.TestCase):
 
     def testFetchDataFrameSlices(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                            shared_memory='20M', web=True) as cluster:
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session
             a = mt.random.rand(10, 10, chunk_size=3)
             df = md.DataFrame(a)
@@ -752,7 +752,6 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(res, expected)
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
-
 
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df

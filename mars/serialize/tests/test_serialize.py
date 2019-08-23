@@ -636,23 +636,20 @@ class Test(unittest.TestCase):
         except ImportError:
             sps = None
 
-        from mars.serialize.dataserializer import mars_serialize_context
-        context = mars_serialize_context()
-
         if np:
             array = np.random.rand(1000, 100)
-            assert_array_equal(array, pyarrow.deserialize(pyarrow.serialize(array, context).to_buffer(), context))
+            assert_array_equal(array, dataserializer.deserialize(dataserializer.serialize(array).to_buffer()))
 
         if sps:
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
-            des_mat = pyarrow.deserialize(pyarrow.serialize(mat, context).to_buffer(), context)
+            des_mat = dataserializer.deserialize(dataserializer.serialize(mat).to_buffer())
             self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
 
         if np and sps:
             array = np.random.rand(1000, 100)
             mat = sparse.SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
             tp = (array, mat)
-            des_tp = pyarrow.deserialize(pyarrow.serialize(tp, context).to_buffer(), context)
+            des_tp = dataserializer.deserialize(dataserializer.serialize(tp).to_buffer())
             assert_array_equal(tp[0], des_tp[0])
             self.assertTrue((tp[1].spmatrix != des_tp[1].spmatrix).nnz == 0)
 

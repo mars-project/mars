@@ -31,7 +31,9 @@ class WorkerDaemonActor(WorkerActor):
         self._proc_actors = defaultdict(dict)
         self._proc_pids = dict()
         self._killed_pids = set()
-        self._callbacks = []
+
+        self._actor_callbacks = []
+        self._proc_callbacks = []
 
     def create_actor(self, *args, **kwargs):
         """
@@ -55,13 +57,25 @@ class WorkerDaemonActor(WorkerActor):
         proc_idx = self.ctx.distributor.distribute(actor_ref.uid)
         self._proc_pids[proc_idx] = pid
 
-    def register_callback(self, actor_ref, func):
+    def register_actor_callback(self, actor_ref, func):
         """
-        Register a callback on an actor for handling process down
+        Register a callback on an actor for handling process down,
+        dead actors will be passed
+
         :param actor_ref: ActorRef to handle the callback
         :param func: function name of the callback
         """
-        self._callbacks.append((actor_ref.uid, actor_ref.address, func))
+        self._actor_callbacks.append((actor_ref.uid, actor_ref.address, func))
+
+    def register_process_callback(self, actor_ref, func):
+        """
+        Register a callback on an actor for handling process down,
+        indices of dead processes will be passed
+
+        :param actor_ref: ActorRef to handle the callback
+        :param func: function name of the callback
+        """
+        self._proc_callbacks.append((actor_ref.uid, actor_ref.address, func))
 
     def kill_actor_process(self, actor_ref):
         """
@@ -95,6 +109,12 @@ class WorkerDaemonActor(WorkerActor):
         When process down is detected,
         :param proc_indices: indices of processes in Mars Worker
         """
+        # invoke registered callbacks for processes
+        for cb in self._proc_callbacks:
+            uid, addr, func = cb
+            ref = self.ctx.actor_ref(uid, address=addr)
+            getattr(ref, func)(proc_indices, _tell=True)
+
         # recreate actors given previous records
         refs = set()
         for proc_idx in proc_indices:
@@ -104,8 +124,8 @@ class WorkerDaemonActor(WorkerActor):
                 if not is_child:
                     self.ctx.create_actor(*args, **kw)
 
-        # invoke registered callbacks
-        for cb in self._callbacks:
+        # invoke registered callbacks for actors
+        for cb in self._actor_callbacks:
             uid, addr, func = cb
             ref = self.ctx.actor_ref(uid, address=addr)
             clean_refs = [self.ctx.actor_ref(u, address=None) for u, _ in refs] \

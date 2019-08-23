@@ -524,5 +524,5 @@ __all__ = ['PY27', 'sys', 'builtins', 'long_type', 'OrderedDict', 'dictconfig', 
            'Queue', 'PriorityQueue', 'Empty', 'urlretrieve', 'pickle', 'urlencode', 'urlparse', 'unquote',
            'quote', 'quote_plus', 'parse_qsl', 'Enum', 'ConfigParser', 'decimal', 'Decimal', 'DECIMAL_TYPES',
            'FixedOffset', 'utc', 'finalize', 'functools32', 'zip_longest', 'OrderedDict3', 'BrokenPipeError',
-           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate', 'sbytes',
-           'apply_pyarrow_serialization_patch']
+           'TimeoutError', 'ConnectionResetError', 'ConnectionRefusedError', 'izip', 'accumulate', 'BytesIO',
+           'sbytes', 'apply_pyarrow_serialization_patch']

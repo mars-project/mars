@@ -24,11 +24,13 @@ from collections import defaultdict
 
 import numpy as np
 from numpy.testing import assert_array_equal
+from pyarrow import plasma
 
+from mars import promise
 from mars.actors import create_actor_pool
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
-from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
+from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull,\
     SpillNotConfigured, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
@@ -36,13 +38,13 @@ from mars.serialize import dataserializer
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
 from mars.worker import SenderActor, ReceiverActor, DispatchActor, QuotaActor, \
-    MemQuotaActor, ChunkHolderActor, SpillActor, StatusActor
-from mars.worker.chunkstore import PlasmaChunkStore, PlasmaKeyMapActor
-from mars.worker.spill import build_spill_file_name, write_spill_file
-from mars.worker.tests.base import WorkerCase
+    MemQuotaActor, StorageManagerActor, IORunnerActor, StatusActor, \
+    SharedHolderActor, InProcHolderActor
+from mars.worker.storage import DataStorageDevice
+from mars.worker.storage.sharedstore import PlasmaSharedStore, PlasmaKeyMapActor
+from mars.worker.tests.base import WorkerCase, StorageClientActor
 from mars.worker.transfer import ReceiveStatus, ReceiverDataMeta
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
-from pyarrow import plasma
 
 
 class MockReceiverActor(WorkerActor):
@@ -133,17 +135,20 @@ def start_transfer_test_pool(**kwargs):
                           uid=WorkerClusterInfoActor.default_uid())
 
         pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+        pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
         pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         pool.create_actor(QuotaActor, 1024 * 1024 * 20, uid=MemQuotaActor.default_uid())
-        chunk_holder_ref = pool.create_actor(ChunkHolderActor,
-                                             plasma_size, uid=ChunkHolderActor.default_uid())
-        pool.create_actor(SpillActor)
+        shared_holder_ref = pool.create_actor(SharedHolderActor,
+                                              plasma_size, uid=SharedHolderActor.default_uid())
         pool.create_actor(StatusActor, address, uid=StatusActor.default_uid())
+        pool.create_actor(IORunnerActor)
+        pool.create_actor(StorageClientActor, uid=StorageClientActor.default_uid())
+        pool.create_actor(InProcHolderActor)
 
         yield pool
 
-        chunk_holder_ref.destroy()
+        shared_holder_ref.destroy()
 
 
 def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_queue):
@@ -153,12 +158,9 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     # don't use multiple with-statement as we need the options be forked
     with plasma.start_plasma_store(plasma_size) as store_args:
         options.worker.plasma_socket = plasma_socket = store_args[0]
-        plasma_client = plasma.connect(plasma_socket)
 
         with start_transfer_test_pool(address=pool_address, plasma_size=plasma_size) as pool:
-            chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_uid())
-            mapper_ref = pool.actor_ref(PlasmaKeyMapActor.default_uid())
-            plasma_store = PlasmaChunkStore(plasma_client, mapper_ref)
+            storage_client_ref = pool.create_actor(StorageClientActor)
 
             for _ in range(2):
                 pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
@@ -166,11 +168,20 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
 
             for idx in range(0, len(chunk_keys) - 7):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
-                write_spill_file(chunk_keys[idx], data)
+                storage_client_ref.put_object(session_id, chunk_keys[idx], data, [DataStorageDevice.PROC_MEMORY])
             for idx in range(len(chunk_keys) - 7, len(chunk_keys)):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
-                plasma_store.put(session_id, chunk_keys[idx], data)
-                chunk_holder_ref.register_chunk(session_id, chunk_keys[idx])
+                storage_client_ref.put_object(session_id, chunk_keys[idx], data, [DataStorageDevice.SHARED_MEMORY])
+
+            while not all(storage_client_ref.get_data_locations(session_id, k) for k in chunk_keys):
+                pool.sleep(0.1)
+
+            for idx in range(0, len(chunk_keys) - 7):
+                storage_client_ref.copy_to(session_id, chunk_keys[idx], [DataStorageDevice.DISK])
+
+            while not all((0, DataStorageDevice.DISK) in storage_client_ref.get_data_locations(session_id, k)
+                          for k in chunk_keys[:-7]):
+                pool.sleep(0.1)
 
             msg_queue.put(plasma_socket)
             t = time.time()
@@ -217,14 +228,12 @@ class Test(WorkerCase):
                     yield sp, rp
 
         with start_send_recv_pool() as (send_pool, recv_pool):
-            chunk_holder_ref = send_pool.actor_ref(ChunkHolderActor.default_uid())
             sender_ref = send_pool.actor_ref(SenderActor.default_uid())
             receiver_ref = recv_pool.actor_ref(ReceiverActor.default_uid())
 
-            sender_mapper_ref = send_pool.actor_ref(PlasmaKeyMapActor.default_uid())
-            store = PlasmaChunkStore(self._plasma_client, sender_mapper_ref)
-
             with self.run_actor_test(send_pool) as test_actor:
+                storage_client = test_actor.storage_client
+
                 # send when data missing
                 sender_ref_p = test_actor.promise_ref(sender_ref)
                 sender_ref_p.send_data(session_id, str(uuid.uuid4()), recv_pool_addr, _promise=True) \
@@ -234,18 +243,25 @@ class Test(WorkerCase):
                     self.get_result(5)
 
                 # send data in spill
-                write_spill_file(chunk_key1, mock_data)
+                serialized = dataserializer.serialize(mock_data)
+                self.waitp(
+                    storage_client.create_writer(session_id, chunk_key1, serialized.total_bytes,
+                                                 [DataStorageDevice.DISK])
+                        .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized))
+                              .then(lambda *_: writer.close()))
+                )
 
                 sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
-                os.unlink(build_spill_file_name(chunk_key1))
+                storage_client.delete(session_id, chunk_key1)
 
                 # send data in plasma store
-                store.put(session_id, chunk_key1, mock_data)
-                chunk_holder_ref.register_chunk(session_id, chunk_key1)
+                self.waitp(
+                    storage_client.put_object(session_id, chunk_key1, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                )
 
                 sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \
@@ -269,8 +285,9 @@ class Test(WorkerCase):
                     assert_array_equal(mock_data, recv_ref2.get_result_data(session_id, chunk_key1))
 
                 # send data to non-exist endpoint which causes error
-                store.put(session_id, chunk_key2, mock_data)
-                chunk_holder_ref.register_chunk(session_id, chunk_key2)
+                self.waitp(
+                    storage_client.put_object(session_id, chunk_key2, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                )
 
                 sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr2, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \
@@ -294,8 +311,10 @@ class Test(WorkerCase):
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
-        serialized_mock_data = dataserializer.dumps(mock_data)
-        serialized_crc32 = zlib.crc32(serialized_mock_data)
+        serialized_arrow_data = dataserializer.serialize(mock_data)
+        data_size = serialized_arrow_data.total_bytes
+        serialized_mock_data = serialized_arrow_data.to_buffer()
+        serialized_crc32 = zlib.crc32(serialized_arrow_data.to_buffer())
 
         chunk_key1 = str(uuid.uuid4())
         chunk_key2 = str(uuid.uuid4())
@@ -307,29 +326,32 @@ class Test(WorkerCase):
         chunk_key8 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
-            chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_uid())
-            mapper_ref = pool.actor_ref(PlasmaKeyMapActor.default_uid())
             receiver_ref = pool.create_actor(ReceiverActor, uid=str(uuid.uuid4()))
 
-            store = PlasmaChunkStore(self._plasma_client, mapper_ref)
-
-            # check_status on receiving and received
-            self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                             ReceiveStatus.NOT_STARTED)
-
-            write_spill_file(chunk_key1, mock_data)
-            self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                             ReceiveStatus.RECEIVED)
-            os.unlink(build_spill_file_name(chunk_key1))
-
-            ref = store.put(session_id, chunk_key1, mock_data)
-            data_size = store.get_actual_size(session_id, chunk_key1)
-            chunk_holder_ref.register_chunk(session_id, chunk_key1)
-            del ref
-            self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                             ReceiveStatus.RECEIVED)
-
             with self.run_actor_test(pool) as test_actor:
+                storage_client = test_actor.storage_client
+
+                # check_status on receiving and received
+                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
+                                 ReceiveStatus.NOT_STARTED)
+
+                self.waitp(
+                    storage_client.create_writer(session_id, chunk_key1, serialized_arrow_data.total_bytes,
+                                                 [DataStorageDevice.DISK])
+                        .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized_arrow_data))
+                              .then(lambda *_: writer.close()))
+                )
+                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
+                                 ReceiveStatus.RECEIVED)
+                storage_client.delete(session_id, chunk_key1)
+
+                self.waitp(
+                    storage_client.put_object(session_id, chunk_key1, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                )
+
+                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
+                                 ReceiveStatus.RECEIVED)
+
                 receiver_ref_p = test_actor.promise_ref(receiver_ref)
 
                 # cancel on an un-run / missing result will result in nothing
@@ -429,13 +451,12 @@ class Test(WorkerCase):
 
                 # test transfer in spill file
                 def mocked_store_create(*_):
-                    raise StoreFull
+                    raise StorageFull
 
-                with patch_method(PlasmaChunkStore.create, new=mocked_store_create):
-                    with self.assertRaises(StoreFull):
+                with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
+                    with self.assertRaises(StorageFull):
                         receiver_ref_p.create_data_writer(session_id, chunk_key4, data_size, test_actor,
                                                           ensure_cached=True, use_promise=False)
-
                     # test receive aborted
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
@@ -471,7 +492,7 @@ class Test(WorkerCase):
                 def mocked_store_create(*_):
                     raise SpillNotConfigured
 
-                with patch_method(PlasmaChunkStore.create, new=mocked_store_create):
+                with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
                     receiver_ref_p.create_data_writer(
                         session_id, chunk_key5, data_size, test_actor, ensure_cached=False, _promise=True) \
                         .then(lambda *s: test_actor.set_result(s),
@@ -555,30 +576,21 @@ class Test(WorkerCase):
                     with self.run_actor_test(pool) as test_actor:
                         remote_dispatch_ref = test_actor.promise_ref(
                             DispatchActor.default_uid(), address=remote_pool_addr)
-                        remote_mapper_ref = pool.actor_ref(
-                            PlasmaKeyMapActor.default_uid(), address=remote_pool_addr)
-                        remote_plasma_client = plasma.connect(remote_plasma_socket)
-                        remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):
                             sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)
                             return sender_ref.send_data(session_id, chunk_key, local_pool_addr, _promise=True)
 
                         def _test_data_exist(*_):
-                            try:
-                                local_data = test_actor._chunk_store.get(session_id, chunk_key)
-                            except KeyError:
-                                with open(build_spill_file_name(chunk_key), 'rb') as spill_file:
-                                    local_data = dataserializer.load(spill_file)
+                            local_client_ref = test_actor.promise_ref(StorageClientActor.default_uid())
+                            remote_client_ref = test_actor.promise_ref(StorageClientActor.default_uid(),
+                                                                       address=remote_pool_addr)
 
-                            try:
-                                remote_data = remote_store.get(session_id, chunk_key)
-                            except KeyError:
-                                with open(build_spill_file_name(chunk_key, remote_spill_dir), 'rb') as spill_file:
-                                    remote_data = dataserializer.load(spill_file)
-                            assert_array_equal(local_data, remote_data)
-
-                            del local_data, remote_data
+                            targets = [DataStorageDevice.PROC_MEMORY]
+                            return local_client_ref.get_object(session_id, chunk_key, targets, _promise=True) \
+                                .then(lambda local_data: remote_client_ref.get_object(
+                                    session_id, chunk_key, targets, _promise=True)
+                                      .then(lambda remote_data: assert_array_equal(local_data, remote_data))) \
 
                         remote_dispatch_ref.get_free_slot('sender', _promise=True) \
                             .then(_call_send_data) \
@@ -587,7 +599,7 @@ class Test(WorkerCase):
                             lambda *_: test_actor.set_result(chunk_key),
                             lambda *exc: test_actor.set_result(exc, False),
                         )
-                    self.assertEqual(self.get_result(60), chunk_key)
+                        self.assertEqual(self.get_result(60), chunk_key)
 
                 msg_queue.put(1)
             finally:

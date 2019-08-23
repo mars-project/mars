@@ -14,9 +14,9 @@
 
 import logging
 
-from ..actors import FunctionActor
-from ..errors import StoreFull, StoreKeyExists
-from ..utils import calc_data_size
+from ...actors import FunctionActor
+from ...errors import StorageFull, StorageDataExists
+from ...utils import calc_data_size
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class PlasmaKeyMapActor(FunctionActor):
     def put(self, session_id, chunk_key, obj_id):
         session_chunk_key = (session_id, chunk_key)
         if session_chunk_key in self._mapping:
-            raise StoreKeyExists(session_chunk_key)
+            raise StorageDataExists(session_chunk_key)
         self._mapping[session_chunk_key] = obj_id
 
     def get(self, session_id, chunk_key):
@@ -46,12 +46,12 @@ class PlasmaKeyMapActor(FunctionActor):
             pass
 
 
-class PlasmaChunkStore(object):
+class PlasmaSharedStore(object):
     """
     Wrapper of plasma client for Mars objects
     """
     def __init__(self, plasma_client, mapper_ref):
-        from ..serialize.dataserializer import mars_serialize_context
+        from ...serialize.dataserializer import mars_serialize_context
 
         self._plasma_client = plasma_client
         self._actual_size = None
@@ -92,7 +92,7 @@ class PlasmaChunkStore(object):
             self._actual_size = total_size
         return self._actual_size
 
-    def _new_object_id(self, session_id, chunk_key):
+    def _new_object_id(self, session_id, data_key):
         """
         Calc unique object id for chunks
         """
@@ -101,18 +101,18 @@ class PlasmaChunkStore(object):
             new_id = ObjectID.from_random()
             if not self._plasma_client.contains(new_id):
                 break
-        self._mapper_ref.put(session_id, chunk_key, new_id)
+        self._mapper_ref.put(session_id, data_key, new_id)
         return new_id
 
-    def _get_object_id(self, session_id, chunk_key):
-        obj_id = self._mapper_ref.get(session_id, chunk_key)
+    def _get_object_id(self, session_id, data_key):
+        obj_id = self._mapper_ref.get(session_id, data_key)
         if obj_id is None:
-            raise KeyError((session_id, chunk_key))
+            raise KeyError((session_id, data_key))
         return obj_id
 
-    def create(self, session_id, chunk_key, size):
+    def create(self, session_id, data_key, size):
         from pyarrow.lib import PlasmaStoreFull
-        obj_id = self._new_object_id(session_id, chunk_key)
+        obj_id = self._new_object_id(session_id, data_key)
 
         try:
             self._plasma_client.evict(size)
@@ -120,66 +120,69 @@ class PlasmaChunkStore(object):
             return buffer
         except PlasmaStoreFull:
             exc_type = PlasmaStoreFull
-            self._mapper_ref.delete(session_id, chunk_key)
-            logger.warning('Chunk %s(%d) failed to store to plasma due to StoreFullError',
-                           chunk_key, size)
-        except:  # noqa: E722  # pragma: no cover
-            self._mapper_ref.delete(session_id, chunk_key)
+            self._mapper_ref.delete(session_id, data_key)
+            logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
+                           data_key, size)
+        except:  # noqa: E722
+            self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc_type is PlasmaStoreFull:
-            raise StoreFull
+            raise StorageFull(request_size=size, total_size=self._actual_size)
 
-    def seal(self, session_id, chunk_key):
+    def seal(self, session_id, data_key):
         from pyarrow.lib import PlasmaObjectNonexistent
-        obj_id = self._get_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, data_key)
         try:
             self._plasma_client.seal(obj_id)
         except PlasmaObjectNonexistent:
-            raise KeyError((session_id, chunk_key))
+            self._mapper_ref.delete(session_id, data_key)
+            raise KeyError((session_id, data_key))
 
-    def get(self, session_id, chunk_key):
+    def get(self, session_id, data_key):
         """
         Get deserialized Mars object from plasma store
         """
         from pyarrow.plasma import ObjectNotAvailable
 
-        obj_id = self._get_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, data_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
         if obj is ObjectNotAvailable:
-            raise KeyError((session_id, chunk_key))
+            self._mapper_ref.delete(session_id, data_key)
+            raise KeyError((session_id, data_key))
         return obj
 
-    def get_buffer(self, session_id, chunk_key):
+    def get_buffer(self, session_id, data_key):
         """
         Get raw buffer from plasma store
         """
-        obj_id = self._get_object_id(session_id, chunk_key)
+        obj_id = self._get_object_id(session_id, data_key)
         [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
         if buf is None:
-            raise KeyError((session_id, chunk_key))
+            self._mapper_ref.delete(session_id, data_key)
+            raise KeyError((session_id, data_key))
         return buf
 
-    def get_actual_size(self, session_id, chunk_key):
+    def get_actual_size(self, session_id, data_key):
         """
         Get actual size of Mars object from plasma store
         """
         buf = None
         try:
-            obj_id = self._get_object_id(session_id, chunk_key)
+            obj_id = self._get_object_id(session_id, data_key)
             [buf] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
             if buf is None:
-                raise KeyError((session_id, chunk_key))
-            size = buf.size
+                self._mapper_ref.delete(session_id, data_key)
+                raise KeyError((session_id, data_key))
+            return buf.size
         finally:
             del buf
-        return size
 
-    def put(self, session_id, chunk_key, value):
+    def put(self, session_id, data_key, value):
         """
         Put a Mars object into plasma store
         :param session_id: session id
-        :param chunk_key: chunk key
+        :param data_key: chunk key
         :param value: Mars object to be put
         """
         import pyarrow
@@ -188,20 +191,23 @@ class PlasmaChunkStore(object):
         data_size = calc_data_size(value)
 
         try:
-            obj_id = self._new_object_id(session_id, chunk_key)
-        except StoreKeyExists:
-            obj_id = self._get_object_id(session_id, chunk_key)
+            obj_id = self._new_object_id(session_id, data_key)
+        except StorageDataExists:
+            obj_id = self._get_object_id(session_id, data_key)
             if self._plasma_client.contains(obj_id):
-                logger.debug('Chunk %s already exists, returning existing', chunk_key)
+                logger.debug('Data %s already exists, returning existing', data_key)
                 [buffer] = self._plasma_client.get_buffers([obj_id], timeout_ms=10)
+                del value
                 return buffer
             else:
-                logger.warning('Chunk %s registered but no data found, reconstructed', chunk_key)
-                self.delete(session_id, chunk_key)
-                obj_id = self._new_object_id(session_id, chunk_key)
+                logger.warning('Data %s registered but no data found, reconstructed', data_key)
+                self._mapper_ref.delete(session_id, data_key)
+                obj_id = self._new_object_id(session_id, data_key)
 
         try:
             serialized = pyarrow.serialize(value, self._serialize_context)
+            del value
+            data_size = serialized.total_bytes
             try:
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)
                 stream = pyarrow.FixedSizeBufferWriter(buffer)
@@ -212,26 +218,30 @@ class PlasmaChunkStore(object):
                 del serialized
             return buffer
         except PlasmaStoreFull:
-            self._mapper_ref.delete(session_id, chunk_key)
-            logger.warning('Chunk %s(%d) failed to store to plasma due to StoreFullError',
-                           chunk_key, data_size)
+            self._mapper_ref.delete(session_id, data_key)
+            logger.warning('Data %s(%d) failed to store to plasma due to StorageFull',
+                           data_key, data_size)
             exc = PlasmaStoreFull
-        except:  # noqa: E722  # pragma: no cover
-            self._mapper_ref.delete(session_id, chunk_key)
+        except:  # noqa: E722
+            self._mapper_ref.delete(session_id, data_key)
             raise
 
         if exc is PlasmaStoreFull:
-            raise StoreFull
+            raise StorageFull(request_size=data_size, total_size=self._actual_size)
 
-    def contains(self, session_id, chunk_key):
+    def contains(self, session_id, data_key):
         """
         Check if given chunk key exists in current plasma store
         """
         try:
-            obj_id = self._get_object_id(session_id, chunk_key)
-            return self._plasma_client.contains(obj_id)
+            obj_id = self._get_object_id(session_id, data_key)
+            if self._plasma_client.contains(obj_id):
+                return True
+            else:
+                self._mapper_ref.delete(session_id, data_key)
+                return False
         except KeyError:
             return False
 
-    def delete(self, session_id, chunk_key):
-        self._mapper_ref.delete(session_id, chunk_key)
+    def delete(self, session_id, data_key):
+        self._mapper_ref.delete(session_id, data_key)

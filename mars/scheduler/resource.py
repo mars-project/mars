@@ -154,6 +154,9 @@ class ResourceActor(SchedulerActor):
 
         is_new = worker not in self._meta_cache
 
+        if worker_meta.get('update_time', 0) < self._meta_cache.get(worker, {}).get('update_time', 0):
+            return
+
         self._meta_cache[worker] = worker_meta
         if self._kv_store_ref is not None:
             self._kv_store_ref.write('/workers/meta/%s' % worker, json.dumps(worker_meta),
