@@ -31,7 +31,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _combine_size = Int32Field('combine_size')
     _is_terminal = BoolField('is_terminal')
 
-    def __init__(self, labels=None, combine_size=None, is_terminal=None, object_type=ObjectType.series, **kw):
+    def __init__(self, labels=None, combine_size=None, is_terminal=None, object_type=None, **kw):
         super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size, _is_terminal=is_terminal,
                                           _object_type=object_type, **kw)
 
@@ -48,12 +48,42 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._is_terminal
 
     def __call__(self, series):
-        if isinstance(self._labels, list):
-            shape = (len(self._labels),)
-            index_value = parse_index(pd.Index(self._labels))
-            return self.new_series([series], shape=shape, dtype=series.dtype, index_value=index_value)
-        else:
-            return self.new_scalar([series], dtype=series.dtype)
+        return self.new_tileable([series], dtype=series.dtype)
+
+    def _new_tileables(self, inputs, kws=None, **kw):
+        # Override this method to automatically decide the output type,
+        # when `labels` is a list, we will set `object_type` as series,
+        # otherwise it will be a scalar.
+        object_type = getattr(self, '_object_type', None)
+        shape = kw.pop('shape', None)
+        is_scalar = not isinstance(self._labels, list)
+        if object_type is None:
+            object_type = ObjectType.scalar if is_scalar else ObjectType.series
+            self._object_type = object_type
+        if shape is None:
+            shape = () if is_scalar else ((len(self._labels)),)
+            kw['shape'] = shape
+        if not is_scalar:
+            index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
+            kw['index_value'] = index_value
+        return super(SeriesIndex, self)._new_tileables(inputs, kws=kws, **kw)
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        # Override this method to automatically decide the output type,
+        # when `labels` is a list, we will set `object_type` as series,
+        # otherwise it will be a scalar.
+        object_type = getattr(self, '_object_type', None)
+        is_scalar = not isinstance(self._labels, list)
+        if object_type is None:
+            object_type = ObjectType.scalar if is_scalar else ObjectType.series
+            self._object_type = object_type
+        if kw.get('shape', None) is None:
+            shape = () if is_scalar else ((len(self._labels)),)
+            kw['shape'] = shape
+        if not is_scalar:
+            index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
+            kw['index_value'] = index_value
+        return super(SeriesIndex, self)._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
     def _calc_chunk_index(cls, label, chunk_indexes):
@@ -84,18 +114,11 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 new_chunks.append(chk)
             chunks = new_chunks
 
-        if isinstance(op.labels, list):
-            index_op = SeriesIndex(labels=op.labels, is_terminal=True)
-            chunk = index_op.new_chunk(chunks, shape=(len(op.labels),), dtype=chunks[0].dtype,
-                                       index_value=parse_index(pd.Index(op.labels)))
-            new_op = op.copy()
-            return new_op.new_seriess(op.inputs, shape=out_series.shape, chunks=[chunk], dtype=out_series.dtype,
-                                      index_value=out_series.index_value, nsplits=((len(op.labels),),))
-        else:
-            index_op = SeriesIndex(labels=op.labels, is_terminal=True, object_type=ObjectType.scalar)
-            chunk = index_op.new_chunk(chunks, shape=(), dtype=chunks[0].dtype)
-            new_op = op.copy()
-            return new_op.new_scalars(op.inputs, dtype=out_series.dtype, chunks=[chunk])
+        index_op = SeriesIndex(labels=op.labels, is_terminal=True)
+        chunk = index_op.new_chunk(chunks, dtype=chunks[0].dtype)
+        new_op = op.copy()
+        nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
+        return new_op.new_tileables(op.inputs, dtype=out_series.dtype, chunks=[chunk], nsplits=nsplits)
 
     @classmethod
     def tile(cls, op):
@@ -103,17 +126,11 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         out_series = op.outputs[0]
         if len(in_series.chunks) == 1:
             index_op = SeriesIndex(labels=op.labels, is_terminal=True)
-            if isinstance(op.labels, list):
-                index_chunk = index_op.new_chunk(in_series.chunks, shape=out_series.shape, dtype=out_series.dtype,
-                                                 index_value=out_series.index_value)
-                new_op = op.copy()
-                nsplits = ((len(op.labels),),)
-                return new_op.new_seriess(op.inputs, shape=out_series.shape, chunks=[index_chunk],
-                                          dtype=out_series.dtype, index_value=out_series.index_value, nsplits=nsplits)
-            else:
-                index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype)
-                new_op = op.copy()
-                return new_op.new_scalars(op.inputs, chunks=[index_chunk], dtype=out_series.dtype)
+            index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype)
+            new_op = op.copy()
+            nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
+            return new_op.new_tileables(op.inputs, chunks=[index_chunk], nsplits=nsplits,
+                                        dtype=out_series.dtype)
 
         if not in_series.index_value.has_value():
             return cls._tree_getitem(op)
@@ -123,8 +140,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
             selected_chunk = in_series.chunks[cls._calc_chunk_index(op.labels, chunk_indexes)]
             index_op = op.copy().reset_key()
             index_op._is_terminal = True
-            out_chunk = index_op.new_chunk([selected_chunk], shape=(), dtype=selected_chunk.dtype,
-                                           index_value=parse_index(pd.RangeIndex(0)))
+            out_chunk = index_op.new_chunk([selected_chunk], shape=(), dtype=selected_chunk.dtype)
             new_op = op.copy()
             return new_op.new_scalars(op.inputs, dtype=out_series.dtype, chunks=[out_chunk])
         else:
@@ -260,8 +276,5 @@ def dataframe_getitem(df, item):
 
 
 def series_getitem(series, labels, combine_size=None):
-    if isinstance(labels, list):
-        op = SeriesIndex(labels=labels, combine_size=combine_size)
-    else:
-        op = SeriesIndex(labels=labels, combine_size=combine_size, object_type=ObjectType.scalar)
+    op = SeriesIndex(labels=labels, combine_size=combine_size)
     return op(series)
