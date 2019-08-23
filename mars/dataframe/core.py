@@ -250,6 +250,13 @@ class IndexValue(Serializable):
         return self._index_value.min_val, self._index_value.min_val_close, \
                self._index_value.max_val, self._index_value.max_val_close
 
+    def has_value(self):
+        if isinstance(self._index_value, self.RangeIndex):
+            return True
+        elif getattr(self, '_data', None) is not None:
+            return True
+        return False
+
     def to_pandas(self):
         return self._index_value.to_pandas()
 
