@@ -85,6 +85,13 @@ class Test(TestBase):
         pdf_expected = pd.DataFrame(np.array([1, 2, 3]))
         pd.testing.assert_frame_equal(pdf_expected, result3)
 
+        # test converted from identical chunks
+        tensor4 = mt.ones((10, 10), chunk_size=3)
+        df4 = from_tensor(tensor4)
+        result4 = self.executor.execute_dataframe(df4, concat=True)[0]
+        pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor4, concat=True)[0])
+        pd.testing.assert_frame_equal(pdf_expected, result4)
+
     def testFromRecordsExecution(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
 
