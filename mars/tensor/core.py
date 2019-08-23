@@ -492,6 +492,11 @@ class MutableTensorData(TensorData):
     _compression = BoolField("compression")
     _chunk_eps = ListField('chunk_eps')
 
+    def __init__(self, name=None, op=None, shape=None, dtype=None, key=None, chunk_eps=None,
+                 nsplits=None, chunks=None, **kw):
+        super(MutableTensorData, self).__init__(op=op, shape=shape, dtype=dtype, nsplits=nsplits,
+                                                chunks=chunks, _name=name, _key=key, _chunk_eps=chunk_eps, **kw)
+
     @classmethod
     def cls(cls, provider):
         return super(MutableTensorData, cls).cls(provider)
