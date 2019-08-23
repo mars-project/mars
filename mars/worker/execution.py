@@ -560,20 +560,15 @@ class ExecutionActor(WorkerActor):
 
             if chunk_meta is None or not chunk_meta.workers:
                 raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
-            worker_results = chunk_meta.workers
-
-            worker_priorities = []
-            for worker_ip in worker_results:
-                # todo sort workers by speed of network and other possible factors
-                worker_priorities.append((worker_ip, (0, )))
+            worker_results = list(chunk_meta.workers)
+            random.shuffle(worker_results)
 
             transfer_keys.append(input_key)
 
             # fetch data from other workers, if one fails, try another
-            sorted_workers = sorted(worker_priorities, key=lambda pr: pr[1])
             p = promise.finished(_accept=False)
-            for wp in sorted_workers:
-                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, input_key, wp[0],
+            for worker in worker_results:
+                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, input_key, worker,
                                               ensure_cached=input_key in shared_input_chunks))
             prepare_promises.append(p)
 

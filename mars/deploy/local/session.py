@@ -182,11 +182,19 @@ class LocalClusterSession(object):
                 # for those same key tileables, do decref only when all those tileables are garbage collected
                 if len(ids) != 0:
                     continue
-                self._api.delete_data(self._session_id, graph_key, tileable_key)
-                del self._executed_tileables[tileable_key]
+                self.delete_data(tileable_key)
+
+    def delete_data(self, tileable_key, wait=False):
+        if tileable_key not in self._executed_tileables:
+            return
+        graph_key, _ids = self._executed_tileables[tileable_key]
+        self._api.delete_data(self._session_id, graph_key, tileable_key, wait=wait)
+        del self._executed_tileables[tileable_key]
 
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
+        for key in list(self._executed_tileables.keys()):
+            self.delete_data(key, wait=True)
         self._api.delete_session(self._session_id)

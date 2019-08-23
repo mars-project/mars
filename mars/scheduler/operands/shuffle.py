@@ -183,7 +183,7 @@ class ShuffleProxyActor(BaseOperandActor):
         super(ShuffleProxyActor, self).move_failover_state(
             from_states, state, new_target, dead_workers)
 
-    def free_data(self, state=OperandState.FREED):
+    def free_data(self, state=OperandState.FREED, check=True):
         pass
 
 

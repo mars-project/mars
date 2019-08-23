@@ -20,8 +20,8 @@ from bokeh.plotting import figure
 
 from .server import MarsWebAPI, MarsRequestHandler, get_jinja_env, \
     register_bokeh_app, register_web_handler
+from ..actors import new_client, ActorNotExist
 from ..scheduler import OperandState
-from ..actors import new_client
 from ..utils import to_str
 
 
@@ -87,7 +87,12 @@ class TaskHandler(MarsRequestHandler):
         doc.add_root(p)
 
         def _refresher():
-            _, new_stats, new_progress = web_api.get_task_detail(session_id, task_id)
+            try:
+                _, new_stats, new_progress = web_api.get_task_detail(session_id, task_id)
+            except ActorNotExist:  # pragma: no cover
+                doc.remove_periodic_callback(cb)
+                p.title.text = "Graph not found, session may be stopped"
+                return
             p.title.text = "Total Progress: %0.2f%%" % new_progress
             source.data = new_stats
 
