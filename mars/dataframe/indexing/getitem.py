@@ -19,7 +19,8 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import AnyField, Int32Field, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..utils import parse_index
+from ..merge import DataFrameConcat
+from ..utils import parse_index, in_range_index
 from .utils import calc_columns_index
 
 
@@ -29,11 +30,11 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     _labels = AnyField('labels')
 
     _combine_size = Int32Field('combine_size')
-    _is_terminal = BoolField('is_terminal')
+    _is_intermediate = BoolField('is_terminal')
 
-    def __init__(self, labels=None, combine_size=None, is_terminal=None, object_type=None, **kw):
-        super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size, _is_terminal=is_terminal,
-                                          _object_type=object_type, **kw)
+    def __init__(self, labels=None, combine_size=None, is_intermediate=None, object_type=None, **kw):
+        super(SeriesIndex, self).__init__(_labels=labels, _combine_size=combine_size,
+                                          _is_intermediate=is_intermediate, _object_type=object_type, **kw)
 
     @property
     def labels(self):
@@ -44,8 +45,8 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._combine_size
 
     @property
-    def is_terminal(self):
-        return self._is_terminal
+    def is_intermediate(self):
+        return self._is_intermediate
 
     def __call__(self, series):
         return self.new_tileable([series], dtype=series.dtype)
@@ -88,9 +89,23 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _calc_chunk_index(cls, label, chunk_indexes):
         for i, index in enumerate(chunk_indexes):
-            if label in index:
+            if isinstance(index, pd.RangeIndex) and in_range_index(label, index):
+                return i
+            elif label in index:
                 return i
         raise TypeError("label %s doesn't exist" % label)
+
+    @classmethod
+    def _tile_one_chunk(cls, op):
+        in_series = op.inputs[0]
+        out_series = op.outputs[0]
+
+        index_op = SeriesIndex(labels=op.labels)
+        index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype)
+        new_op = op.copy()
+        nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
+        return new_op.new_tileables(op.inputs, chunks=[index_chunk], nsplits=nsplits,
+                                    dtype=out_series.dtype)
 
     @classmethod
     def _tree_getitem(cls, op):
@@ -108,14 +123,18 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
-                    chk_op = SeriesIndex(labels=op.labels)
-                    chk = chk_op.new_chunk(chks, shape=(np.nan,), dtype=chks[0].dtype,
-                                           index_value=parse_index(pd.RangeIndex(0)))
+                    concat_op = DataFrameConcat(object_type=ObjectType.series)
+                    chk = concat_op.new_chunk(chks, dtype=chks[0].dtype)
+                chk_op = SeriesIndex(labels=op.labels, is_intermediate=True)
+                chk = chk_op.new_chunk([chk], shape=(np.nan,), dtype=chk.dtype,
+                                       index_value=parse_index(pd.RangeIndex(0)))
                 new_chunks.append(chk)
             chunks = new_chunks
 
-        index_op = SeriesIndex(labels=op.labels, is_terminal=True)
-        chunk = index_op.new_chunk(chunks, dtype=chunks[0].dtype)
+        concat_op = DataFrameConcat(object_type=ObjectType.series)
+        chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype)
+        index_op = SeriesIndex(labels=op.labels)
+        chunk = index_op.new_chunk([chk], dtype=chk.dtype)
         new_op = op.copy()
         nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
         return new_op.new_tileables(op.inputs, dtype=out_series.dtype, chunks=[chunk], nsplits=nsplits)
@@ -124,14 +143,9 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         in_series = op.inputs[0]
         out_series = op.outputs[0]
-        if len(in_series.chunks) == 1:
-            index_op = SeriesIndex(labels=op.labels, is_terminal=True)
-            index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype)
-            new_op = op.copy()
-            nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
-            return new_op.new_tileables(op.inputs, chunks=[index_chunk], nsplits=nsplits,
-                                        dtype=out_series.dtype)
 
+        if len(in_series.chunks) == 1:
+            return cls._tile_one_chunk(op)
         if not in_series.index_value.has_value():
             return cls._tree_getitem(op)
 
@@ -139,7 +153,6 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         if not isinstance(op.labels, list):
             selected_chunk = in_series.chunks[cls._calc_chunk_index(op.labels, chunk_indexes)]
             index_op = op.copy().reset_key()
-            index_op._is_terminal = True
             out_chunk = index_op.new_chunk([selected_chunk], shape=(), dtype=selected_chunk.dtype)
             new_op = op.copy()
             return new_op.new_scalars(op.inputs, dtype=out_series.dtype, chunks=[out_chunk])
@@ -155,7 +168,7 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
             out_chunks = []
             nsplits = []
             for i, (labels, idx) in enumerate(zip(column_splits, column_indexes)):
-                index_op = SeriesIndex(labels=list(labels), is_terminal=True)
+                index_op = SeriesIndex(labels=list(labels))
                 c = in_series.chunks[idx[0]]
                 nsplits.append(len(labels))
                 out_chunks.append(index_op.new_chunk([c], shape=(len(labels),), dtype=c.dtype,
@@ -168,18 +181,13 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        inputs = [ctx[inp.key] for inp in op.inputs]
-        series = pd.concat(inputs)
-        if isinstance(op.labels, list):
-            if op.is_terminal:
-                ctx[op.outputs[0].key] = series[op.labels]
-            else:
-                ctx[op.outputs[0].key] = series[[label for label in set(op.labels) if label in series]]
-        else:
-            if op.is_terminal:
-                ctx[op.outputs[0].key] = series[op.labels]
-            else:
-                ctx[op.outputs[0].key] = series[[op.labels]] if op.labels in series else series[[]]
+        series = ctx[op.inputs[0].key]
+        labels = op.labels
+        if op.is_intermediate:
+            # for intermediate result, it is always a series even if labels is a scalar.
+            labels = labels if isinstance(labels, list) else [labels]
+            labels = [label for label in set(labels) if label in series]
+        ctx[op.outputs[0].key] = series[labels]
 
 
 class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
@@ -195,7 +203,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         return self._col_names
 
     def __call__(self, df):
-        # if col_names is a tuple or list, return a DataFrame, else return a Series
+        # if col_names is a list, return a DataFrame, else return a Series
         if isinstance(self._col_names, list):
             dtypes = df.dtypes[self._col_names]
             columns = parse_index(pd.Index(self._col_names), store_data=True)
@@ -268,13 +276,18 @@ def dataframe_getitem(df, item):
             if col_name not in columns:
                 raise KeyError('%s not in columns' % col_name)
         op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
-    else:
+    elif np.isscalar(item):
         if item not in columns:
             raise KeyError('%s not in columns' % item)
         op = DataFrameIndex(col_names=item)
+    else:
+        raise NotImplementedError('type %s is not support for getitem' % type(item))
     return op(df)
 
 
 def series_getitem(series, labels, combine_size=None):
-    op = SeriesIndex(labels=labels, combine_size=combine_size)
-    return op(series)
+    if isinstance(labels, list) or np.isscalar(labels):
+        op = SeriesIndex(labels=labels, combine_size=combine_size)
+        return op(series)
+    else:
+        raise NotImplementedError('type %s is not support for getitem' % type(labels))

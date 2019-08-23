@@ -315,7 +315,6 @@ class Test(TestBase):
         result1.tiles()
         self.assertEqual(result1.nsplits, ())
         self.assertEqual(result1.chunks[0].dtype, data.dtype)
-        self.assertTrue(result1.chunks[0].op.is_terminal)
         self.assertTrue(result1.chunks[0].op.labels, ['i2'])
 
         result2 = series[['i2', 'i4']]
@@ -324,5 +323,4 @@ class Test(TestBase):
         result2.tiles()
         self.assertEqual(result2.nsplits, ((2,),))
         self.assertEqual(result2.chunks[0].dtype, data.dtype)
-        self.assertTrue(result2.chunks[0].op.is_terminal)
         self.assertTrue(result2.chunks[0].op.labels, [['i2', 'i4']])
