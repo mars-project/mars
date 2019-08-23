@@ -110,14 +110,21 @@ class MutableTensorActor(SchedulerActor):
         chunk_records_to_send = self._tensor._do_flush()
         self._send_chunk_records(chunk_records_to_send)
 
+        endpoint_to_sealer = dict()
+
         # consolidate chunks
         for chunk in self._tensor.chunks:
             ep = self._chunk_to_endpoint[chunk.key]
-            sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
-            sealer_ref = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
+            if ep in endpoint_to_sealer:
+                sealer_ref = endpoint_to_sealer[ep]
+            else:
+                sealer_uid = SealActor.gen_uid(self._session_id, chunk.key)
+                sealer_ref = endpoint_to_sealer[ep] = self.ctx.create_actor(SealActor, uid=sealer_uid, address=ep)
             sealer_ref.seal_chunk(self._session_id, self._graph_key,
                                   chunk.key, self._chunk_map[chunk.key],
                                   chunk.shape, self._record_type, self._dtype, self._fill_value)
+
+        for sealer_ref in endpoint_to_sealer.values():
             sealer_ref.destroy()
         # return the hex of self._graph_key since UUID is not json serializable.
         return self._graph_key.hex, self._tensor.key, self._tensor.id, self.tensor_meta()
