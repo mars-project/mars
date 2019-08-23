@@ -25,6 +25,6 @@ from . import arithmetic
 from . import indexing
 from . import merge
 from . import reduction
-del arithmetic, indexing, merge, reduction
+del reduction, arithmetic, indexing, merge
 
 del DataFrameFetch, DataFrameFetchShuffle

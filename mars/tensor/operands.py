@@ -48,8 +48,7 @@ class TensorOperandMixin(TileableOperandMixin):
         dt = self._get_dtype(kw, output_idx)
         order = self._get_order(kw, output_idx)
         shape = kw.pop('shape', None)
-        data = TensorChunkData(_index=index, _shape=shape, _op=self,
-                               _dtype=dt, _order=order, **kw)
+        data = TensorChunkData(shape=shape, index=index, op=self, dtype=dt, order=order, **kw)
         return TensorChunk(data)
 
     def _create_tileable(self, output_idx, **kw):
@@ -60,9 +59,9 @@ class TensorOperandMixin(TileableOperandMixin):
         shape = kw.pop('shape', None)
         chunks = kw.pop('chunks', None)
         if nsplits is not None:
-            kw['_nsplits'] = nsplits
-        data = TensorData(_shape=shape, _dtype=dt, _order=order,
-                          _op=self, _chunks=chunks, **kw)
+            kw['nsplits'] = nsplits
+        data = TensorData(shape=shape, dtype=dt, order=order,
+                          op=self, chunks=chunks, **kw)
         return tensor_cls(data)
 
     def new_tensors(self, inputs, shape=None, dtype=None, order=None, chunks=None, nsplits=None,

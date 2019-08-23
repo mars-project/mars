@@ -21,6 +21,7 @@ from ..serialize import Int8Field
 from ..operands import ShuffleProxy
 from ..core import TileableOperandMixin, FuseChunkData, FuseChunk
 from ..operands import Operand, ShuffleMap, ShuffleReduce, Fuse
+from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 
@@ -29,6 +30,7 @@ class ObjectType(Enum):
     dataframe = 1
     series = 2
     index = 3
+    scalar = 4
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -38,13 +40,15 @@ class DataFrameOperandMixin(TileableOperandMixin):
     _OBJECT_TYPE_TO_CHUNK_TYPES = {
         ObjectType.dataframe: DATAFRAME_CHUNK_TYPE,
         ObjectType.series: SERIES_CHUNK_TYPE,
-        ObjectType.index: INDEX_CHUNK_TYPE
+        ObjectType.index: INDEX_CHUNK_TYPE,
+        ObjectType.scalar: TENSOR_CHUNK_TYPE
     }
 
     _OBJECT_TYPE_TO_TILEABLE_TYPES = {
         ObjectType.dataframe: DATAFRAME_TYPE,
         ObjectType.series: SERIES_TYPE,
-        ObjectType.index: INDEX_TYPE
+        ObjectType.index: INDEX_TYPE,
+        ObjectType.scalar: TENSOR_TYPE
     }
 
     @classmethod
@@ -99,6 +103,16 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
         return self.new_seriess(inputs, shape=shape, dtype=dtype,
                                 index_value=index_value, name=name, **kw)[0]
+
+    def new_scalars(self, inputs, dtype=None, chunks=None, output_limit=None, kws=None, **kw):
+        return self.new_tileables(inputs, shape=(), dtype=dtype, chunks=chunks, nsplits=(),
+                                  output_limit=output_limit, kws=kws, **kw)
+
+    def new_scalar(self, inputs, dtype=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new tensor with more than 1 outputs')
+
+        return self.new_scalars(inputs, dtype=dtype, **kw)[0]
 
     @staticmethod
     def _merge_shape(*shapes):
