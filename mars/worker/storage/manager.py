@@ -143,3 +143,6 @@ class StorageManagerActor(WorkerActor):
                     del self._data_attrs[k]
                 except KeyError:
                     pass
+
+    def dump_keys(self):
+        return list(self._data_attrs.keys())

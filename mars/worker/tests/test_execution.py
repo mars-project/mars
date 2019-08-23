@@ -241,6 +241,7 @@ class Test(WorkerCase):
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
             pool.create_actor(CpuCalcActor)
+            pool.create_actor(InProcHolderActor)
             cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
             chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 

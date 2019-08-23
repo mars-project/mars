@@ -35,7 +35,7 @@ class Test(unittest.TestCase):
         with plasma.start_plasma_store(store_size) as (sckt, _), \
                 create_actor_pool(n_process=1, address=test_addr) as pool:
             km_ref = pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
-            plasma_client = plasma.connect(sckt, '', 0)
+            plasma_client = plasma.connect(sckt)
             store = PlasmaSharedStore(plasma_client, km_ref)
 
             self.assertGreater(store.get_actual_capacity(store_size), store_size / 2)

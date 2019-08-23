@@ -24,7 +24,7 @@ from mars.errors import StorageDataExists
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method
 from mars.utils import get_next_port
-from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor, StatusActor
+from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor, StatusActor, EventsActor
 from mars.worker.storage import *
 from mars.worker.tests.base import WorkerCase
 from mars.worker.utils import WorkerClusterInfoActor
@@ -139,9 +139,10 @@ class Test(WorkerCase):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[test_addr],
+            pool.create_actor(WorkerClusterInfoActor, [test_addr],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(StatusActor, test_addr, uid=StatusActor.default_uid())
+            pool.create_actor(EventsActor, uid=EventsActor.default_uid())
 
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             storage_manager_ref = pool.create_actor(

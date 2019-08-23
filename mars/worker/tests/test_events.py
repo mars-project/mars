@@ -14,17 +14,16 @@
 
 import pickle
 import time
-import unittest
 
 from mars.actors import create_actor_pool
 from mars.config import options
-from mars.tests.core import patch_method
 from mars.utils import get_next_port
+from mars.worker.tests.base import WorkerCase
 from mars.worker.events import EventsActor, EventContext, EventCategory,\
     EventLevel, ResourceEventType, ProcedureEventType
 
 
-class Test(unittest.TestCase):
+class Test(WorkerCase):
     def setUp(self):
         self._old_event_preserve_time = options.worker.event_preserve_time
         options.worker.event_preserve_time = 0.5
@@ -32,7 +31,6 @@ class Test(unittest.TestCase):
     def tearDown(self):
         options.worker.event_preserve_time = self._old_event_preserve_time
 
-    @patch_method(EventsActor._init_chunk_store)
     def testEvents(self, *_):
         mock_scheduler_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, backend='gevent',

@@ -89,7 +89,7 @@ class Test(WorkerCase):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[test_addr],
+            pool.create_actor(WorkerClusterInfoActor, [test_addr],
                               uid=WorkerClusterInfoActor.default_uid())
             pool.create_actor(StatusActor, test_addr, uid=StatusActor.default_uid())
 

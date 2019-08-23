@@ -489,7 +489,7 @@ class ExecutionActor(WorkerActor):
         else:
             try:
                 quota_request = self._prepare_quota_request(session_id, graph_key)
-            except PinChunkFailed:
+            except PinDataKeyFailed:
                 logger.debug('Failed to pin chunk for graph %s', graph_key)
 
                 # cannot pin input chunks: retry later

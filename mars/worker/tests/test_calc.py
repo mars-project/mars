@@ -38,9 +38,9 @@ class Test(WorkerCase):
     def _start_calc_pool(self):
         mock_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, backend='gevent', address=mock_addr) as pool:
-            pool.create_actor(SchedulerClusterInfoActor, schedulers=[mock_addr],
+            pool.create_actor(SchedulerClusterInfoActor, [mock_addr],
                               uid=SchedulerClusterInfoActor.default_uid())
-            pool.create_actor(WorkerClusterInfoActor, schedulers=[mock_addr],
+            pool.create_actor(WorkerClusterInfoActor, [mock_addr],
                               uid=WorkerClusterInfoActor.default_uid())
 
             pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
@@ -65,8 +65,8 @@ class Test(WorkerCase):
 
     @staticmethod
     def _build_test_graph(data_list):
-        from mars.tensor.expressions.fetch import TensorFetch
-        from mars.tensor.expressions.arithmetic import TensorTreeAdd
+        from mars.tensor.fetch import TensorFetch
+        from mars.tensor.arithmetic import TensorTreeAdd
 
         inputs = []
         for idx, d in enumerate(data_list):

@@ -22,6 +22,7 @@ from ...serialize import dataserializer
 from ...errors import SpillNotConfigured, StorageDataExists
 from ...utils import mod_hash
 from ..dataio import FileBufferIO
+from ..events import EventsActor, EventCategory, EventLevel, ProcedureEventType
 from ..status import StatusActor
 from ..utils import parse_spill_dirs
 from .core import StorageHandler, BytesStorageMixin, BytesStorageIO, \
@@ -57,7 +58,7 @@ class DiskIO(BytesStorageIO):
     storage_type = DataStorageDevice.DISK
 
     def __init__(self, session_id, data_key, mode='r', nbytes=None, compress=None,
-                 packed=False, handler=None, status_ref=None):
+                 packed=False, handler=None):
         super(DiskIO, self).__init__(session_id, data_key, mode=mode,
                                      handler=handler)
         block_size = options.worker.copy_block_size
@@ -69,7 +70,7 @@ class DiskIO(BytesStorageIO):
         self._nbytes = nbytes
         self._compress = compress or dataserializer.CompressType.NONE
         self._total_time = 0
-        self._status_ref = status_ref
+        self._event_id = None
 
         filename = self._dest_filename = self._filename = _build_file_name(session_id, data_key)
         if self.is_writable:
@@ -110,6 +111,11 @@ class DiskIO(BytesStorageIO):
                 self._total_bytes = self._nbytes
         else:  # pragma: no cover
             raise NotImplementedError('Mode %r not supported' % mode)
+        if self._handler.events_ref:
+            self._event_id = self._handler.events_ref.add_open_event(
+                EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.DISK_IO,
+                self._handler.storage_ctx.host_actor.uid
+            )
 
     @property
     def nbytes(self):
@@ -160,8 +166,10 @@ class DiskIO(BytesStorageIO):
         else:
             status_key = 'disk_read_speed'
 
-        if self._status_ref and transfer_speed is not None:
-            self._status_ref.update_mean_stats(status_key, transfer_speed, _tell=True, _wait=False)
+        if self._handler.status_ref and transfer_speed is not None:
+            self._handler.status_ref.update_mean_stats(status_key, transfer_speed, _tell=True, _wait=False)
+        if self._event_id:
+            self._handler.events_ref.close_event(self._event_id, _tell=True)
 
         super(DiskIO, self).close(finished=finished)
 
@@ -172,21 +180,33 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
     def __init__(self, storage_ctx):
         super(DiskHandler, self).__init__(storage_ctx)
         self._compress = dataserializer.CompressType(options.worker.disk_compression)
+
         self._status_ref = self._storage_ctx.actor_ref(StatusActor.default_uid())
         if not self._storage_ctx.has_actor(self._status_ref):
             self._status_ref = None
 
+        self._events_ref = self._storage_ctx.actor_ref(EventsActor.default_uid())
+        if not self._storage_ctx.has_actor(self._events_ref):
+            self._events_ref = None
+
+    @property
+    def status_ref(self):
+        return self._status_ref
+
+    @property
+    def events_ref(self):
+        return self._events_ref
+
     @wrap_promised
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
                             _promise=False):
-        return DiskIO(session_id, data_key, 'r', packed=packed, compress=packed_compression,
-                      handler=self, status_ref=self._status_ref)
+        return DiskIO(session_id, data_key, 'r', packed=packed, compress=packed_compression, handler=self)
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
                             packed_compression=None, _promise=False):
         return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
-                      packed=packed, handler=self, status_ref=self._status_ref)
+                      packed=packed, handler=self)
 
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         def _fallback(*_):

@@ -163,16 +163,15 @@ class StorageClient(object):
                 continue
             handler = self.get_storage_handler(src_dev)
             try:
-                return handler.get_object(session_id, data_key, serialized=serialized, _promise=True)
+                return handler.get_object(session_id, data_key, serialized=serialized, _promise=_promise)
             except AttributeError:  # pragma: no cover
                 raise IOError('Device %r does not support direct reading.' % src_dev)
 
         if _promise:
             return self.copy_to(session_id, data_key, source_devices) \
-                .then(lambda *_: self.get_object(session_id, data_key, source_devices,
-                                                 serialized=serialized))
+                .then(lambda *_: self.get_object(session_id, data_key, source_devices, serialized=serialized))
         else:
-            raise ValueError('Cannot return a non-promise result')
+            raise IOError('Getting object without promise not supported')
 
     def put_object(self, session_id, data_key, obj, device_order, serialized=False):
         data_size = self._manager_ref.get_data_size(session_id, data_key) or calc_data_size(obj)

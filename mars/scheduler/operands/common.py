@@ -351,7 +351,7 @@ class OperandActor(BaseOperandActor):
             except WorkerDead:
                 logger.debug('Worker %s dead when submitting operand %s into queue',
                              worker, self._op_key)
-            self._resource_ref.detach_dead_workers([worker], _tell=True)
+                self._resource_ref.detach_dead_workers([worker], _tell=True)
             else:
                 self.start_operand(OperandState.RUNNING)
 

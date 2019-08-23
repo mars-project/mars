@@ -69,7 +69,7 @@ class Test(WorkerCase):
     def testProcMemLoad(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, address=test_addr) as pool, \
-                self.run_actor_test(pool) as test_actor :
+                self.run_actor_test(pool) as test_actor:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             storage_manager_ref = pool.create_actor(
                 StorageManagerActor, uid=StorageManagerActor.default_uid())

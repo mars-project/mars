@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-import pyarrow
 
-from ..config import options
-from ..errors import SpillNotConfigured
-from ..serialize import dataserializer
 from ..utils import log_unhandled
-from .spill import build_spill_file_name
+from .storage import DataStorageDevice
 from .utils import WorkerActor
 
 
@@ -33,19 +29,15 @@ class SealActor(WorkerActor):
 
     def __init__(self):
         super(SealActor, self).__init__()
-        self._chunk_holder_ref = None
         self._mem_quota_ref = None
 
     def post_create(self):
-        from .chunkholder import ChunkHolderActor
         from .quota import MemQuotaActor
         super(SealActor, self).post_create()
-        self._chunk_holder_ref = self.promise_ref(ChunkHolderActor.default_uid())
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
 
     @log_unhandled
     def seal_chunk(self, session_id, graph_key, chunk_key, keys, shape, record_type, dtype, fill_value):
-        from ..serialize.dataserializer import decompressors, mars_serialize_context
         chunk_bytes_size = np.prod(shape) * dtype.itemsize
         self._mem_quota_ref.request_batch_quota({chunk_key: chunk_bytes_size})
         if fill_value is None:
@@ -56,35 +48,26 @@ class SealActor(WorkerActor):
 
         # consolidate
         for key in keys:
+            buffer = None
             try:
-                if self._chunk_store.contains(session_id, key):
-                    buf = self._chunk_store.get_buffer(session_id, key)
-                else:
-                    file_name = build_spill_file_name(key)
-                    # The `disk_compression` is used in `_create_writer`
-                    disk_compression = dataserializer.CompressType(options.worker.disk_compression)
-                    if not file_name:
-                        raise SpillNotConfigured('Spill not configured')
-                    with open(file_name, 'rb') as inf:
-                        buf = decompressors[disk_compression](inf.read())
-                buffer = pyarrow.deserialize(memoryview(buf), mars_serialize_context())
-                record_view = np.asarray(memoryview(buffer)).view(dtype=record_type, type=np.recarray)
+                # todo potential memory quota issue must be dealt with
+                obj = self.storage_client.get_object(
+                    session_id, key, [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK], _promise=False)
+                record_view = obj.view(dtype=record_type, type=np.recarray)
 
                 for record in record_view:
                     idx = np.unravel_index(record.index, shape)
                     if record.ts > ndarr_ts[idx]:
                         ndarr[idx] = record.value
             finally:
-                del buf
+                del buffer
 
             # clean up
-            self._chunk_holder_ref.unregister_chunk(session_id, key)
+            self.storage_client.delete(session_id, key)
             self.get_meta_client().delete_meta(session_id, key, False)
             self._mem_quota_ref.release_quota(key)
 
-        # Hold the reference of the chunk before register_chunk
-        chunk_ref = self._chunk_store.put(session_id, chunk_key, ndarr)
+        self.storage_client.put_object(
+            session_id, chunk_key, ndarr, [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])
         self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
                                               shape=shape, workers=(self.address,))
-        self._chunk_holder_ref.register_chunk(session_id, chunk_key)
-        del chunk_ref

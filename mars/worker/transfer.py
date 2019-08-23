@@ -20,7 +20,6 @@ import zlib
 from collections import defaultdict
 
 import pandas as pd
-import pyarrow
 
 from .. import promise
 from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
@@ -629,7 +628,7 @@ class ResultSenderActor(WorkerActor):
             try:
                 value = self.storage_client.get_object(
                     session_id, chunk_key, [DataStorageDevice.SHARED_MEMORY], _promise=False)
-            except ValueError:
+            except IOError:
                 reader = self.storage_client.create_reader(
                     session_id, chunk_key, [DataStorageDevice.DISK], packed=False, _promise=False)
                 with reader:
