@@ -36,7 +36,7 @@ from mars.deploy.local.session import LocalClusterSession
 from mars.scheduler import SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.worker.dispatcher import DispatchActor
-from mars.errors import ExecutionFailed
+from mars.errors import ExecutionFailed, GraphNotExists
 from mars.config import options, option_context
 from mars.web.session import Session as WebSession
 from mars.tests.core import mock
@@ -411,6 +411,54 @@ class Test(unittest.TestCase):
             r1 = session.run(df6, timeout=_exec_timeout)
             r2 = session.fetch(df6)
             pd.testing.assert_series_equal(r1, r2)
+
+    def testFetchWithKey(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            a1 = mt.ones((10, 20), chunk_size=8) + 1
+            r1 = session.run(a1, timeout=_exec_timeout)
+
+            r2 = session.fetch(a1.key)
+            np.testing.assert_array_equal(r1, r2)
+
+            r3 = session.fetch(a1.key, indexes=(slice(6, 9, None), 4))
+            np.testing.assert_array_equal(r1[6:9, 4], r3)
+
+            a2 = md.DataFrame(mt.random.rand(10, 20, chunk_size=8))
+            r4 = session.run(a2, timeout=_exec_timeout)
+
+            r5 = session.fetch(a2.key)
+            np.testing.assert_array_equal(r4, r5)
+
+            r5 = session.fetch(a2.key, indexes=(slice(6, 9, None), 4))
+            pd.testing.assert_series_equal(r4.iloc[6:9, 4], r5)
+
+            with self.assertRaises(GraphNotExists):
+                session.fetch('xxxxxx')
+
+            with new_session('http://' + cluster._web_endpoint) as session:
+                a3 = mt.ones((10, 20), chunk_size=8) + 1
+                r7 = session.run(a3, timeout=_exec_timeout)
+
+                r8 = session.fetch(a3.key)
+                np.testing.assert_array_equal(r7, r8)
+
+                r9 = session.fetch(a3.key, indexes=(slice(6, 9, None), 4))
+                np.testing.assert_array_equal(r7[6:9, 4], r9)
+
+                a4 = md.DataFrame(mt.random.rand(10, 20, chunk_size=8))
+                r10 = session.run(a4, timeout=_exec_timeout)
+
+                r11 = session.fetch(a4.key)
+                np.testing.assert_array_equal(r10, r11)
+
+                r12 = session.fetch(a4.key, indexes=(slice(6, 9, None), 4))
+                pd.testing.assert_series_equal(r10.iloc[6:9, 4], r12)
+
+                with self.assertRaises(GraphNotExists):
+                    session.fetch('xxxxxx')
 
     def testMultiSessionDecref(self, *_):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,

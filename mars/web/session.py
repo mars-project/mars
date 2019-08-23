@@ -184,6 +184,7 @@ class Session(object):
         from ..dataframe.indexing import DataFrameIlocGetItem
 
         timeout = kw.pop('timeout', None)
+        fetch_indexes = kw.pop('indexes', ())
         if kw:
             raise TypeError('fetch got unexpected key arguments {0}'.format(', '.join(kw.keys())))
 
@@ -191,8 +192,8 @@ class Session(object):
         for tileable in tileables:
             if isinstance(tileable, six.string_types):
                 key = tileable
-                indexes = kw.pop('indexes', ())
                 graph_key = None
+                indexes = fetch_indexes
             else:
                 if tileable.key not in self._executed_tileables and \
                         isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
@@ -217,8 +218,9 @@ class Session(object):
             data_url = session_url + '/graph/%s/data/%s' % (graph_key, key)
             resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
-                raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
-                                 (resp.status_code, resp.reason, resp.text))
+                resp_json = json.loads(resp.text)
+                exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+                six.reraise(*exc_info)
             result_data = dataserializer.loads(resp.content)
             results.append(sort_dataframe_result(tileable, result_data))
         return results

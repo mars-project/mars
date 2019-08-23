@@ -154,12 +154,14 @@ class LocalClusterSession(object):
         from ...tensor.indexing import TensorIndex
         from ...dataframe.indexing import DataFrameIlocGetItem
 
+        fetch_indexes = kw.pop('indexes', ())
+
         tileable_results = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
             if isinstance(tileable, six.string_types):
                 key = tileable
-                indexes = kw.pop('indexes', None)
+                indexes = fetch_indexes
                 graph_key = None
             else:
                 if tileable.key not in self._executed_tileables and \
