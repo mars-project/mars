@@ -182,7 +182,10 @@ class GraphDataHandler(MarsApiRequestHandler):
                                           compressions=compressions_arg)
 
             data = yield executor.submit(_fetch_fun)
-            self.write(data)
+            if data is None:
+                raise web.HTTPError(404, 'Tileable doesn\'t not exists')
+            else:
+                self.write(data)
 
     def delete(self, session_id, graph_key, tileable_key):
         wait = int(self.get_argument('wait', '0'))

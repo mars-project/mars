@@ -148,6 +148,14 @@ class MarsAPI(object):
         return state
 
     def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
+        if graph_key is None:
+            session_uid = SessionActor.gen_uid(session_id)
+            session_ref = self.get_actor_ref(session_uid)
+            graph_key = session_ref.get_graph_key(tileable_key)
+        # We still cannot find the GraphActor for the given tileable key.
+        if graph_key is None:
+            return None
+
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)
         nsplits, chunk_indexes = graph_ref.get_tileable_meta(tileable_key)

@@ -22,6 +22,7 @@ import sys
 import uuid
 
 import numpy as np
+import six
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..serialize import dataserializer
@@ -188,25 +189,32 @@ class Session(object):
 
         results = list()
         for tileable in tileables:
-            if tileable.key not in self._executed_tileables and \
-                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
-                key = tileable.inputs[0].key
-                indexes = tileable.op.indexes
-                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
-                    raise ValueError('Only support fetch data slices')
+            if isinstance(tileable, six.string_types):
+                key = tileable
+                indexes = kw.pop('indexes', ())
+                graph_key = None
             else:
-                key = tileable.key
-                indexes = []
+                if tileable.key not in self._executed_tileables and \
+                        isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
+                    key = tileable.inputs[0].key
+                    indexes = tileable.op.indexes
+                    if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
+                        raise ValueError('Only support fetch data slices')
+                else:
+                    key = tileable.key
+                    indexes = ()
 
-            if key not in self._executed_tileables:
-                raise ValueError('Cannot fetch the unexecuted tileable')
+                if key not in self._executed_tileables:
+                    raise ValueError('Cannot fetch the unexecuted tileable')
+
+                graph_key = self._get_tileable_graph_key(key)
 
             indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
 
             session_url = self._endpoint + '/api/session/' + self._session_id
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
             params = dict(compressions=compression_str, slices=indexes_str)
-            data_url = session_url + '/graph/%s/data/%s' % (self._get_tileable_graph_key(key), key)
+            data_url = session_url + '/graph/%s/data/%s' % (graph_key, key)
             resp = self._req_session.get(data_url, params=params, timeout=timeout)
             if resp.status_code >= 400:
                 raise ValueError('Failed to fetch data from server. Code: %d, Reason: %s, Content:\n%s' %
@@ -258,7 +266,7 @@ class Session(object):
         """
         How to serialize index and value:
 
-        1. process_index and serialize it as json
+        1. process index and serialize it as json
         2. the payload of POST request:
 
             * a int64 value indicate the size of index json

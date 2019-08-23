@@ -164,6 +164,13 @@ class SessionActor(SchedulerActor):
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()
 
+    def get_graph_key(self, tileable_key):
+        graph_ref = self._tileable_to_graph.get(tileable_key, None)
+        if graph_ref is not None:
+            return graph_ref.graph_key()
+        else:
+            return None
+
     def fetch_result(self, graph_key, tileable_key):
         # TODO just for test, should move to web handler
         graph_ref = self._graph_refs[graph_key]

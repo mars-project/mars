@@ -19,6 +19,8 @@ import json
 import time
 from numbers import Integral
 
+import six
+
 from ...api import MarsAPI
 from ...compat import TimeoutError  # pylint: disable=W0622
 from ...scheduler.graph import GraphState
@@ -148,26 +150,32 @@ class LocalClusterSession(object):
         else:
             return self.fetch(*tileables)
 
-    def fetch(self, *tileables):
+    def fetch(self, *tileables, **kw):
         from ...tensor.indexing import TensorIndex
         from ...dataframe.indexing import DataFrameIlocGetItem
 
         tileable_results = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
-            if tileable.key not in self._executed_tileables and \
-                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
-                key = tileable.inputs[0].key
-                indexes = tileable.op.indexes
-                if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
-                    raise ValueError('Only support fetch data slices')
+            if isinstance(tileable, six.string_types):
+                key = tileable
+                indexes = kw.pop('indexes', None)
+                graph_key = None
             else:
-                key = tileable.key
-                indexes = None
-            if key not in self._executed_tileables:
-                raise ValueError('Cannot fetch the unexecuted tileable')
+                if tileable.key not in self._executed_tileables and \
+                        isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
+                    key = tileable.inputs[0].key
+                    indexes = tileable.op.indexes
+                    if not all(isinstance(ind, (slice, Integral)) for ind in indexes):
+                        raise ValueError('Only support fetch data slices')
+                else:
+                    key = tileable.key
+                    indexes = None
+                if key not in self._executed_tileables:
+                    raise ValueError('Cannot fetch the unexecuted tileable')
 
-            graph_key = self._get_tileable_graph_key(key)
+                graph_key = self._get_tileable_graph_key(key)
+
             compressions = dataserializer.get_supported_compressions()
             result = self._api.fetch_data(self._session_id, graph_key, key, index_obj=indexes,
                                           compressions=compressions)

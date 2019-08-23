@@ -263,6 +263,12 @@ class GraphActor(SchedulerActor):
         """
         return self._state
 
+    def graph_key(self):
+        '''
+        The graph_key property of GraphActor.
+        '''
+        return self._graph_key
+
     @state.setter
     def state(self, value):
         if value != self._state:
