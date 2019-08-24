@@ -250,6 +250,13 @@ class IndexValue(Serializable):
         return self._index_value.min_val, self._index_value.min_val_close, \
                self._index_value.max_val, self._index_value.max_val_close
 
+    def has_value(self):
+        if isinstance(self._index_value, self.RangeIndex):
+            return True
+        elif getattr(self, '_data', None) is not None:
+            return True
+        return False
+
     def to_pandas(self):
         return self._index_value.to_pandas()
 
@@ -633,6 +640,15 @@ class DataFrameData(TileableData):
     def columns(self):
         return self._columns_value
 
+    def _equal(self, o):
+        from ..core import build_mode
+        # FIXME We need to implemented a true `==` operator for DataFrame, current we just need
+        # to do `self is o` under build mode to make the `iloc.__setitem__` happy.
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
+
     def to_tensor(self):
         from ..tensor.datasource.from_dataframe import from_dataframe
         return from_dataframe(self)
@@ -647,18 +663,17 @@ class DataFrameData(TileableData):
         from .datasource.from_records import from_records
         return from_records(records, **kw)
 
-    def merge(self, objs, *args, **kwargs):
-        from .merge.merge import merge
-        return merge(self, objs, *args, **kwargs)
-
-    def join(self, other, *args, **kwargs):
-        from .merge.merge import join
-        return join(self, other, *args, **kwargs)
-
 
 class DataFrame(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameData,)
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super(DataFrame, self).__hash__()
 
     def to_tensor(self):
         return self._data.to_tensor()

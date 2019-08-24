@@ -23,12 +23,10 @@ import unittest
 import uuid
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:
-    pd = None
+import pandas as pd
 
 from mars import tensor as mt
+from mars import dataframe as md
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
@@ -640,6 +638,54 @@ class Test(unittest.TestCase):
 
             r_slice5 = web_session.fetch(a[4])
             np.testing.assert_array_equal(r[4], r_slice5)
+
+    def testFetchDataFrameSlices(self, *_):
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                            shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+            a = mt.random.rand(10, 10, chunk_size=3)
+            df = md.DataFrame(a)
+
+            r = session.run(df)
+
+            r_slice1 = session.fetch(df.iloc[:2])
+            pd.testing.assert_frame_equal(r.iloc[:2], r_slice1)
+
+            r_slice2 = session.fetch(df.iloc[2:8, 2:8])
+            pd.testing.assert_frame_equal(r.iloc[2:8, 2:8], r_slice2)
+
+            r_slice3 = session.fetch(df.iloc[:, 2:])
+            pd.testing.assert_frame_equal(r.iloc[:, 2:], r_slice3)
+
+            r_slice4 = session.fetch(df.iloc[:, -5:])
+            pd.testing.assert_frame_equal(r.iloc[:, -5:], r_slice4)
+
+            r_slice5 = session.fetch(df.iloc[4])
+            pd.testing.assert_series_equal(r.iloc[4], r_slice5)
+
+            r_slice6 = session.fetch(df.iloc[6:9])
+            pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
+
+            web_session = new_session('http://' + cluster._web_endpoint)
+            r = web_session.run(df)
+
+            r_slice1 = web_session.fetch(df.iloc[:2])
+            pd.testing.assert_frame_equal(r.iloc[:2], r_slice1)
+
+            r_slice2 = web_session.fetch(df.iloc[2:8, 2:8])
+            pd.testing.assert_frame_equal(r.iloc[2:8, 2:8], r_slice2)
+
+            r_slice3 = web_session.fetch(df.iloc[:, 2:])
+            pd.testing.assert_frame_equal(r.iloc[:, 2:], r_slice3)
+
+            r_slice4 = web_session.fetch(df.iloc[:, -5:])
+            pd.testing.assert_frame_equal(r.iloc[:, -5:], r_slice4)
+
+            r_slice5 = web_session.fetch(df.iloc[4])
+            pd.testing.assert_series_equal(r.iloc[4], r_slice5)
+
+            r_slice6 = web_session.fetch(df.iloc[6:9])
+            pd.testing.assert_frame_equal(r.iloc[6:9], r_slice6)
 
     def testClusterSession(self):
         with new_cluster(scheduler_n_process=2, worker_n_process=2,

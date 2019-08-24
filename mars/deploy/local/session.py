@@ -25,7 +25,6 @@ from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
 from ...errors import ExecutionFailed
 from ...utils import build_graph, sort_dataframe_result
-from ...tensor.indexing import TensorIndex
 
 
 class LocalClusterSession(object):
@@ -150,10 +149,14 @@ class LocalClusterSession(object):
             return self.fetch(*tileables)
 
     def fetch(self, *tileables):
+        from ...tensor.indexing import TensorIndex
+        from ...dataframe.indexing import DataFrameIlocGetItem
+
         tileable_results = []
         for tileable in tileables:
             # TODO: support DataFrame getitem
-            if tileable.key not in self._executed_tileables and isinstance(tileable.op, TensorIndex):
+            if tileable.key not in self._executed_tileables and \
+                    isinstance(tileable.op, (TensorIndex, DataFrameIlocGetItem)):
                 key = tileable.inputs[0].key
                 indexes = tileable.op.indexes
                 if not all(isinstance(ind, (slice, Integral)) for ind in indexes):

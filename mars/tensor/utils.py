@@ -569,9 +569,9 @@ def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None, chunk
     """
     from .core import MutableTensor, MutableTensorData
     tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-    return MutableTensor(data=MutableTensorData(_name=name, _op=None, _shape=shape, _dtype=tensor.dtype,
-                                                _nsplits=tensor.nsplits, _key=tensor.key, _chunks=tensor.chunks,
-                                                _chunk_eps=chunk_eps))
+    return MutableTensor(data=MutableTensorData(name=name, op=None, shape=shape, dtype=tensor.dtype,
+                                                nsplits=tensor.nsplits, key=tensor.key, chunks=tensor.chunks,
+                                                chunk_eps=chunk_eps))
 
 
 def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):

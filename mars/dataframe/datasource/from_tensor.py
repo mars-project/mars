@@ -88,6 +88,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             if in_chunk.ndim == 1:
                 i, = in_chunk.index
+                column_stop = 1
                 index = (in_chunk.index[0], 0)
                 columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
             else:
@@ -104,9 +105,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             else:
                 index_value = parse_index(pd.RangeIndex(start=index_stop - in_chunk.shape[0], stop=index_stop))
 
+            out_op.extra_params['index_stop'] = index_stop
+            out_op.extra_params['column_stop'] = column_stop
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=index,
-                                         index_value=index_value,
-                                         columns_value=columns_value)
+                                         index_value=index_value, columns_value=columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

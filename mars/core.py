@@ -769,6 +769,12 @@ class TileableOperandMixin(object):
             ExecutableTuple(tileables).execute(fetch=False)
         return tileables
 
+    def new_tileable(self, inputs, kws=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new chunk with more than 1 outputs')
+
+        return self.new_tileables(inputs, kws=kws, **kw)[0]
+
     @classmethod
     def execute(cls, ctx, op):
         raise NotImplementedError

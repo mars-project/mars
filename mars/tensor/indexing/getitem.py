@@ -730,7 +730,7 @@ def _getitem(a, item):
 
     # TODO(jisheng): field access, e.g. t['a'], t[['a', 'b']]
 
-    index = process_index(a, item)
+    index = process_index(a.ndim, item)
     shape = calc_shape(a.shape, index)
     tensor_order = _calc_order(a, index)
     op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,

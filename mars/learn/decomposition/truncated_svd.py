@@ -199,11 +199,8 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         self.explained_variance_ratio_ = exp_var / full_var
         self.singular_values_ = Sigma  # Store the singular values.
 
-        to_run_tensors = list([X_transformed])
-        to_run_tensors.append(self.components_)
-        to_run_tensors.append(self.explained_variance_)
-        to_run_tensors.append(self.explained_variance_ratio_)
-        to_run_tensors.append(self.singular_values_)
+        to_run_tensors = [X_transformed, self.components_, self.explained_variance_,
+                          self.explained_variance_ratio_, self.singular_values_]
 
         ExecutableTuple(to_run_tensors).execute(session=session, fetch=False)
         return X_transformed
