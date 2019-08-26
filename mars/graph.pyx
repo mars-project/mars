@@ -24,7 +24,6 @@ from .serialize.core cimport ValueType, ProviderType, \
 
 logger = logging.getLogger(__name__)
 
-
 cdef class DirectedGraph:
     cdef:
         dict _nodes
@@ -451,12 +450,12 @@ cdef class DirectedGraph:
         return cls.deserialize(SerializableGraph.from_json(json_obj))
 
     def compose(self, list keys=None):
-        from .fuse import Fusion
+        from .optimizes.chunk_graph.fuse import Fusion
 
         return Fusion(self).compose(keys=keys)
 
     def decompose(self, nodes=None):
-        from .fuse import Fusion
+        from .optimizes.chunk_graph.fuse import Fusion
 
         Fusion(self).decompose(nodes=nodes)
 

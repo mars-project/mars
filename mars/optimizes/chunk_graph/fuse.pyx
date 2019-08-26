@@ -16,7 +16,7 @@
 
 from collections import deque
 
-from .operands import Fuse, VirtualOperand
+from ...operands import Fuse, VirtualOperand
 
 
 class Fusion(object):
@@ -31,7 +31,7 @@ class Fusion(object):
         cdef:
             list composed_nodes = []
 
-        from .utils import build_fuse_chunk
+        from ...utils import build_fuse_chunk
         composed_nodes = []
 
         for c in composes:

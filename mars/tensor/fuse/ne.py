@@ -107,12 +107,10 @@ NE_BINOP_TO_STRING = {
     arithmetic.TensorGreaterEqual: '>=',
 }
 
-
 NE_TREE_OP_TO_STRING = {
     arithmetic.TensorTreeAdd: '+',
     arithmetic.TensorTreeMultiply: '*',
 }
-
 
 NE_REDUCTION_TO_STRING = {
     reduction.TensorSum: 'sum',
