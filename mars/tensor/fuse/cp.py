@@ -16,9 +16,9 @@
 
 from string import ascii_letters
 
-from ....utils import tokenize
-from ....tensor.operands import TensorFuse
-from ....tensor import arithmetic
+from ...utils import tokenize
+from ..operands import TensorFuse
+from .. import arithmetic
 from .core import TensorFuseChunkMixin, estimate_fuse_size
 
 

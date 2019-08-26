@@ -16,7 +16,7 @@
 
 from ....utils import lazy_import
 from ....tensor import arithmetic
-from ....optimizes.runtime.fused_chunk import TensorCpFuseChunk
+from ....tensor.fuse import TensorCpFuseChunk
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 CP_INSTALLED = cp is not None

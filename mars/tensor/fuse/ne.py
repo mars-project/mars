@@ -16,18 +16,17 @@
 
 try:
     import numexpr as ne
-
     NUMEXPR_INSTALLED = True
 except ImportError:
     ne = None
     NUMEXPR_INSTALLED = False
 import numpy as np
 
-from ....compat import six, izip
-from ....serialize import DataTypeField
-from ....tensor.operands import TensorFuse
-from ....tensor import arithmetic, reduction
-from ....tensor.array_utils import as_same_device
+from ...compat import six, izip
+from ...serialize import DataTypeField
+from ..operands import TensorFuse
+from .. import arithmetic, reduction
+from ..array_utils import as_same_device
 from .core import TensorFuseChunkMixin, estimate_fuse_size
 
 
@@ -88,6 +87,7 @@ NE_UNARYOP_TO_STRING = {
     arithmetic.TensorArccosh: 'arccosh',
     arithmetic.TensorArctanh: 'arctanh'
 }
+
 
 NE_BINOP_TO_STRING = {
     arithmetic.TensorAdd: '+',

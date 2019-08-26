@@ -16,7 +16,7 @@
 
 from .ne import NeOptimizer
 from .cp import CpOptimizer
-from ....optimizes.runtime.fused_chunk.ne import NUMEXPR_INSTALLED
+from ....tensor.fuse.ne import NUMEXPR_INSTALLED
 
 
 class Optimizer(object):

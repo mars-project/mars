@@ -16,7 +16,7 @@
 
 from ....tensor import arithmetic
 from ....tensor import reduction
-from ....optimizes.runtime.fused_chunk import TensorNeFuseChunk
+from ....tensor.fuse import TensorNeFuseChunk
 
 REDUCTION_OP = {reduction.TensorSum, reduction.TensorProd,
                 reduction.TensorMax, reduction.TensorMin}

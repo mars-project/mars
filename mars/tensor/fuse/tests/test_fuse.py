@@ -3,7 +3,7 @@ import unittest
 import scipy.sparse as sps
 
 import mars.tensor as mt
-from mars.optimizes.runtime.fused_chunk.core import TensorFuseChunk
+from mars.tensor.fuse.core import TensorFuseChunk
 from mars.tensor.datasource import CSRMatrixDataSource, SparseToDense
 from mars.tensor.random import TensorRand
 from mars.tensor.arithmetic import TensorAdd, TensorMultiply, TensorTrueDiv,\

@@ -24,7 +24,6 @@ from functools import wraps
 import uuid
 
 import numpy as np
-
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -637,7 +636,7 @@ def get_fetch_op_cls(op):
 
 
 def get_fuse_op_cls():
-    from mars.optimizes.runtime.fused_chunk import TensorFuseChunk
+    from .fuse import TensorFuseChunk
 
     return TensorFuseChunk
 

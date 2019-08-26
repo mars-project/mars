@@ -133,7 +133,7 @@ class Test(unittest.TestCase):
             pass
 
     def testFusePreparation(self, *_):
-        from mars.optimizes.runtime.fused_chunk.core import TensorFuseChunk
+        from mars.tensor.fuse.core import TensorFuseChunk
         arr = mt.ones((5, 5), chunk_size=3)
         arr2 = (arr + 5) * 2
         with self.prepare_graph_in_pool(arr2, compose=True) as (pool, graph_ref):

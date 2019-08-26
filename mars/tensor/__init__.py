@@ -59,11 +59,11 @@ from . import special
 
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 
-# register fetch op
+# register fuse op and fetch op
+from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk
 from .fetch import TensorFetch, TensorFetchShuffle
 from . import ufunc
-
-del TensorFetch, TensorFetchShuffle, ufunc
+del TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk, TensorFetch, TensorFetchShuffle, ufunc
 
 from numpy import newaxis, AxisError, inf, Inf, NINF, nan, NAN, NaN, pi, e, \
     errstate, geterr, seterr

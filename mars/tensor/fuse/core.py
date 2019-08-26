@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ....tiles import NotSupportTile
-from ....core import FuseChunkData, FuseChunk
-from ....tensor.operands import TensorFuse, TensorOperandMixin
+from ...tiles import NotSupportTile
+from ...core import FuseChunkData, FuseChunk
+from ..operands import TensorFuse, TensorOperandMixin
 
 
 class TensorFuseChunkMixin(TensorOperandMixin):
@@ -48,8 +48,8 @@ class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
 
 def estimate_fuse_size(ctx, op):
-    from ....graph import DAG
-    from ....executor import Executor
+    from ...graph import DAG
+    from ...executor import Executor
 
     chunk = op.outputs[0]
     dag = DAG()
