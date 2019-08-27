@@ -17,6 +17,7 @@ from ...serialize import DataTypeField
 from ..operands import TensorFuse
 from ..array_utils import as_same_device
 from .core import TensorFuseChunkMixin, estimate_fuse_size
+import numpy as np
 
 try:
     import jax  # noqa # pylint: disable=unused-import
@@ -52,8 +53,7 @@ class TensorJaxFuseChunk(TensorFuse, TensorFuseChunkMixin):
         # execute the fuse operands in jax
         functions = [operand.jax_function() for operand in op.operands]
         jit_func = jax.jit(combine_functions)
-
-        ctx[chunk.key] = jit_func(inputs)
+        ctx[chunk.key] = np.asarray(jit_func(inputs))
 
     @classmethod
     def estimate_size(cls, ctx, op):
