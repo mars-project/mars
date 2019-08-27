@@ -120,7 +120,7 @@ class Test(unittest.TestCase):
         graph.add_edge(chunk_slice, chunks[4])
         graph.add_edge(chunk_slice, chunks[5])
         optimizer = NeOptimizer(graph)
-        composed_nodes = optimizer.optimize()
+        composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[2:4])
 
         r"""
@@ -138,7 +138,7 @@ class Test(unittest.TestCase):
         graph.add_edge(chunks[1], chunk_slice)
         graph.add_edge(chunk_slice, chunks[2])
         optimizer = NeOptimizer(graph)
-        composed_nodes = optimizer.optimize()
+        composed_nodes = optimizer.compose()
         self.assertTrue(composed_nodes[0].composed == chunks[:2])
         self.assertTrue(len(composed_nodes) == 1)
 
@@ -158,6 +158,6 @@ class Test(unittest.TestCase):
         graph.add_edge(chunk_slice, chunks[2])
         graph.add_edge(chunks[2], chunks[3])
         optimizer = NeOptimizer(graph)
-        composed_nodes = optimizer.optimize()
-        # self.assertTrue(composed_nodes[0].composed == chunks[:2])
-        # self.assertTrue(composed_nodes[1].composed == chunks[2:4])
+        composed_nodes = optimizer.compose()
+        self.assertTrue(composed_nodes[0].composed == chunks[:2])
+        self.assertTrue(composed_nodes[1].composed == chunks[2:4])

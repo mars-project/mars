@@ -350,6 +350,7 @@ def log_unhandled(func):
                 err_msg += ' ' + ' '.join(messages)
             mod_logger.exception(err_msg)
             raise
+
     return _wrapped
 
 

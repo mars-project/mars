@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .optimizer import Optimizer
+from .base_optimizer import Optimizer
 
 
 class JaxOptimizer(Optimizer):
@@ -43,5 +43,5 @@ class JaxOptimizer(Optimizer):
 
     @staticmethod
     def _get_fused_chunk(tail_node):
-        from ..tensor.fuse import TensorJaxFuseChunk
+        from ....tensor.fuse import TensorJaxFuseChunk
         return TensorJaxFuseChunk(dtype=tail_node.dtype)

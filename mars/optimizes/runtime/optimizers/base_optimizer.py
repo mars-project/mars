@@ -36,7 +36,7 @@ class Optimizer(object):
     def _support(self, node):
         raise NotImplementedError
 
-    def compose(self, keys):
+    def compose(self, keys=None):
         composes = []
         self.keys = set(keys or [])
         graph = self.graph
