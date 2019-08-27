@@ -48,11 +48,11 @@ class Test(unittest.TestCase):
         a = ones((10, 20), chunk_size=5)
 
         # test sum
-        self.assertEqual(np.sum(a).execute('numpy'), 200)
+        self.assertEqual(np.sum(a).execute(session=self.session), 200)
 
         # test qr
         q, r = np.linalg.qr(a)
-        self.assertTrue(np.allclose(np.dot(q, r), a).execute('numpy'))
+        self.assertTrue(np.allclose(np.dot(q, r), a).execute(session=self.session))
 
     def testViewDataOnSlice(self):
         data = np.random.rand(10, 20)
