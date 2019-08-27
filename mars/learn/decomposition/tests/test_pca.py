@@ -18,7 +18,8 @@ from itertools import product
 import numpy as np
 
 import mars.tensor as mt
-from mars.session import new_session
+from mars.session import new_session, LocalSession, Session
+from mars.executor import Executor
 
 try:
     import scipy as sp
@@ -39,6 +40,11 @@ class Test(unittest.TestCase):
         # solver_list not includes arpack
         self.solver_list = ['full', 'randomized', 'auto']
         self.session = new_session().as_default()
+        self.executor = Executor('numpy')
+        local_session = LocalSession()
+        local_session._executor = self.executor
+        self.numpy_sess = Session()
+        self.numpy_sess._sess = local_session
 
     def testPCA(self):
         X = self.iris
@@ -59,13 +65,13 @@ class Test(unittest.TestCase):
             # Test get_covariance and get_precision
             cov = pca.get_covariance()
             precision = pca.get_precision()
-            assert_array_almost_equal(mt.dot(cov, precision).execute(),
+            assert_array_almost_equal(mt.dot(cov, precision).execute(self.numpy_sess),
                                       np.eye(X.shape[1]), 12)
 
         # test explained_variance_ratio_ == 1 with all components
         pca = PCA(svd_solver='full')
         pca.fit(X)
-        np.testing.assert_allclose(pca.explained_variance_ratio_.sum().execute(), 1.0, 3)
+        np.testing.assert_allclose(pca.explained_variance_ratio_.sum().execute(self.numpy_sess), 1.0, 3)
 
     def testPCARandomizedSolver(self):
         # PCA on dense arrays
@@ -87,8 +93,8 @@ class Test(unittest.TestCase):
             # Test get_covariance and get_precision
             cov = pca.get_covariance()
             precision = pca.get_precision()
-            assert_array_almost_equal(mt.dot(cov, precision).execute(),
-                                      mt.eye(X.shape[1]).execute(), 12)
+            assert_array_almost_equal(mt.dot(cov, precision).execute(self.numpy_sess),
+                                      mt.eye(X.shape[1]).execute(self.numpy_sess), 12)
 
         pca = PCA(n_components=0, svd_solver='randomized', random_state=0)
         with self.assertRaises(ValueError):
@@ -185,7 +191,7 @@ class Test(unittest.TestCase):
 
         # Same with correlated data
         X = datasets.make_classification(n_samples, n_features,
-                                         n_informative=n_features-2,
+                                         n_informative=n_features - 2,
                                          random_state=rng)[0]
         X = mt.tensor(X)
 
@@ -213,16 +219,16 @@ class Test(unittest.TestCase):
         # Compare to the Frobenius norm
         X_pca = pca.transform(X)
         X_rpca = rpca.transform(X)
-        assert_array_almost_equal(mt.sum(pca.singular_values_**2.0).execute(),
-                                  (mt.linalg.norm(X_pca, "fro")**2.0).execute(), 12)
-        assert_array_almost_equal(mt.sum(rpca.singular_values_**2.0).execute(),
-                                  (mt.linalg.norm(X_rpca, "fro")**2.0).execute(), 0)
+        assert_array_almost_equal(mt.sum(pca.singular_values_ ** 2.0).execute(),
+                                  (mt.linalg.norm(X_pca, "fro") ** 2.0).execute(), 12)
+        assert_array_almost_equal(mt.sum(rpca.singular_values_ ** 2.0).execute(),
+                                  (mt.linalg.norm(X_rpca, "fro") ** 2.0).execute(), 0)
 
         # Compare to the 2-norms of the score vectors
         assert_array_almost_equal(pca.singular_values_.fetch(),
-                                  mt.sqrt(mt.sum(X_pca**2.0, axis=0)).execute(), 12)
+                                  mt.sqrt(mt.sum(X_pca ** 2.0, axis=0)).execute(), 12)
         assert_array_almost_equal(rpca.singular_values_.fetch(),
-                                  mt.sqrt(mt.sum(X_rpca**2.0, axis=0)).execute(), 2)
+                                  mt.sqrt(mt.sum(X_rpca ** 2.0, axis=0)).execute(), 2)
 
         # Set the singular values and see what we get back
         rng = np.random.RandomState(0)
@@ -235,7 +241,7 @@ class Test(unittest.TestCase):
         rpca = PCA(n_components=3, svd_solver='randomized', random_state=rng)
         X_pca = pca.fit_transform(X)
 
-        X_pca /= mt.sqrt(mt.sum(X_pca**2.0, axis=0))
+        X_pca /= mt.sqrt(mt.sum(X_pca ** 2.0, axis=0))
         X_pca[:, 0] *= 3.142
         X_pca[:, 1] *= 2.718
 
