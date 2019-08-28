@@ -722,65 +722,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         return out_chunks
 
-    # this is the row shuffle method for series
-    @classmethod
-    def _gen_out_chunks_with_row_shuffle(cls, op, splits, out_shape, left, right):
-        shuffle_axis = 0 if splits[0] is None else 1
-        shuffle_size = out_shape[shuffle_axis]
-        align_axis = 1 - shuffle_axis
-        out_chunks = []
-        for align_axis_idx in range(out_shape[align_axis]):
-            reduce_chunks = [[], []]
-            for left_or_right in range(2):  # left and right
-                if align_axis == 0:
-                    kw = {
-                        'column_shuffle_size': shuffle_size,
-                        'index_min_max': splits.get_axis_split(align_axis, 0, align_axis_idx)
-                    }
-                else:
-                    kw = {
-                        'index_shuffle_size': shuffle_size,
-                        'column_min_max': splits.get_axis_split(align_axis, 0, align_axis_idx)
-                    }
-
-                input_idx = splits.get_axis_idx(align_axis, left_or_right, align_axis_idx)
-                inp = left if left_or_right == 0 else right
-
-                if isinstance(inp, SERIES_TYPE):
-                    input_chunks = inp.chunks
-                else:
-                    input_chunks = [c for c in inp.chunks if c.index[1] == input_idx]
-
-                map_chunks = []
-                for j, input_chunk in enumerate(input_chunks):
-                    if isinstance(input_chunk, SERIES_CHUNK_TYPE):
-                        map_op = SeriesIndexAlignMap(sparse=input_chunks[0].issparse(), **kw)
-                    else:
-                        map_op = DataFrameIndexAlignMap(sparse=input_chunks[0].issparse(), **kw)
-
-                    idx = [None, None]
-                    idx[align_axis] = align_axis_idx
-                    idx[shuffle_axis] = j
-                    map_chunks.append(map_op.new_chunk([input_chunk], shape=(np.nan, np.nan), index=tuple(idx)))
-
-                proxy_chunk = DataFrameShuffleProxy(
-                    sparse=inp.issparse(), object_type=ObjectType.dataframe).new_chunk(map_chunks, shape=())
-                for j in range(shuffle_size):
-                    reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
-                    reduce_op = DataFrameIndexAlignReduce(i=j, sparse=proxy_chunk.issparse(),
-                                                          shuffle_key=','.join(str(idx) for idx in reduce_idx))
-                    reduce_chunks[left_or_right].append(
-                        reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx))
-
-            assert len(reduce_chunks[0]) == len(reduce_chunks[1])
-            for left_chunk, right_chunk in zip(*reduce_chunks):
-                bin_op = op.copy().reset_key()
-                out_chunk = bin_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, np.nan),
-                                             index=left_chunk.index)
-                out_chunks.append(out_chunk)
-
-        return out_chunks
-
     @classmethod
     def _gen_out_chunks_with_all_shuffle(cls, op, out_shape, left, right):
         out_chunks = []
