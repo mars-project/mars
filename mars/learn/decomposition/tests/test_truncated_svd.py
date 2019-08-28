@@ -13,19 +13,18 @@
 # limitations under the License.
 
 import unittest
-
 import mars.tensor as mt
 
-import numpy as np
 try:
     import sklearn
     import scipy.sparse as sp
-    from sklearn.utils import  check_random_state
+    from sklearn.utils import check_random_state
     from sklearn.utils.testing import assert_array_almost_equal, assert_array_less
 
     from mars.learn.decomposition.truncated_svd import TruncatedSVD
 except ImportError:
     sklearn = None
+import numpy as np
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
@@ -91,7 +90,7 @@ class Test(unittest.TestCase):
         X_trans_r_20_de = svd_r_20_de.fit_transform(self.X.toarray())
 
         # helper arrays for tests below
-        svds = (svd_r_10_sp, svd_r_20_sp,  svd_r_10_de, svd_r_20_de)
+        svds = (svd_r_10_sp, svd_r_20_sp, svd_r_10_de, svd_r_20_de)
         svds_trans = (
             (svd_r_10_sp, X_trans_r_10_sp),
             (svd_r_20_sp, X_trans_r_20_sp),
@@ -160,7 +159,7 @@ class Test(unittest.TestCase):
                             random_state=rng)
         X_rpca = rpca.fit_transform(X)
 
-        X_rpca /= mt.sqrt(mt.sum(X_rpca**2.0, axis=0))
+        X_rpca /= mt.sqrt(mt.sum(X_rpca ** 2.0, axis=0))
         X_rpca[:, 0] *= 3.142
         X_rpca[:, 1] *= 2.718
 
