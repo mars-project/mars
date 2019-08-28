@@ -289,10 +289,10 @@ class Test(TestBase):
     def testAddWithShuffleOnStringIndex(self):
         # no axis is monotonic, and the index values are strings.
         data1 = pd.DataFrame(np.random.rand(10, 10), index=[str(x) for x in [0, 10, 2, 3, 4, 5, 6, 7, 8, 9]],
-                                columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
         df1 = from_pandas(data1, chunk_size=5)
         data2 = pd.DataFrame(np.random.rand(10, 10), index=[str(x) for x in [11, 1, 2, 5, 7, 6, 8, 9, 10, 3]],
-                                columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+                             columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
         df2 = from_pandas(data2, chunk_size=6)
 
         df3 = add(df1, df2)
@@ -328,6 +328,8 @@ class Test(TestBase):
         mars_series = from_pandas_series(series)
         result = self.executor.execute_dataframe(df.add(mars_series, axis=0), concat=True)[0]
         expected = pdf.add(series, axis=0).reindex([3, 1, 2])
+        # modify the order of rows
+        result = result.reindex(index=[3, 1, 2])
         pd.testing.assert_frame_equal(expected, result)
 
         # test both one chunk, axis=1

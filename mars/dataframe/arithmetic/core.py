@@ -374,7 +374,7 @@ class DataFrameIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 
 
 class SeriesIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
-    _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN_REDUCE
+    _op_type_ = OperandDef.SERIES_INDEX_ALIGN_REDUCE
 
     _input = KeyField('input')
 
