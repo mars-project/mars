@@ -15,6 +15,8 @@
 import unittest
 from itertools import product
 
+import numpy as np
+
 import mars.tensor as mt
 from mars.session import new_session, LocalSession, Session
 from mars.executor import Executor
@@ -29,7 +31,6 @@ try:
     from mars.learn.decomposition.pca import PCA, _assess_dimension_, _infer_dimension_
 except ImportError:
     sklearn = None
-import numpy as np
 
 
 @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
