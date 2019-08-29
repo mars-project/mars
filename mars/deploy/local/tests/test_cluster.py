@@ -98,7 +98,7 @@ class Test(unittest.TestCase):
             cluster_proc = psutil.Process(cluster._cluster_process.pid)
             web_proc = psutil.Process(cluster._web_process.pid)
             processes = list(cluster_proc.children(recursive=True)) + \
-                list(web_proc.children(recursive=True))
+                        list(web_proc.children(recursive=True))
 
             with cluster.session as session:
                 t = mt.ones((3, 3), chunk_size=2)
@@ -755,9 +755,10 @@ class Test(unittest.TestCase):
 
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+        from mars.dataframe.datasource.series import from_pandas as from_pandas_series
         from mars.dataframe.merge.merge import merge
         from mars.dataframe.utils import sort_dataframe_inplace
-
+        from mars.dataframe.arithmetic import add
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=True) as cluster:
             session = cluster.session
@@ -785,3 +786,25 @@ class Test(unittest.TestCase):
             r1 = data1.merge(data2, how='inner', on=['a', 'b'])
             r2 = web_session.run(merge(df1, df2, how='inner', on=['a', 'b']), timeout=_exec_timeout)
             pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
+
+            # test dataframe + series, shuffle on axis 0
+            pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[2, 1, 3])
+            df = from_pandas_df(pdf, chunk_size=1)
+            series = pd.Series([0, 1, 2], index=[3, 1, 2])
+            mars_series = from_pandas_series(series)
+            expected = pdf.add(series, axis=0).reindex([3, 1, 2])
+            result = session.run(add(df, mars_series, axis=0), timeout=_exec_timeout)
+            # modify the order of rows
+            result = result.reindex(index=[3, 1, 2])
+            pd.testing.assert_frame_equal(expected, result)
+
+            # test dataframe + series, shuffle on axis 1
+            pdf = pd.DataFrame({1: [1, 3, 2], 3: [1, 2, 3], 2: [360, 180, 2]}, index=['ra', 'rb', 'rc'])
+            df = from_pandas_df(pdf, chunk_size=1)
+            series = pd.Series([0, 1, 2], index=[3, 1, 2])
+            mars_series = from_pandas_series(series)
+            result = session.run(add(df, mars_series, axis=1), timeout=_exec_timeout)
+            expected = pdf.add(series, axis=1)
+            # modify the order of columns
+            result = result[[1, 2, 3]]
+            pd.testing.assert_frame_equal(expected, result)

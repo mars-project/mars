@@ -216,7 +216,7 @@ class SeriesIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
     _index_max = AnyField('index_max')
     _index_max_close = BoolField('index_max_close')
     _index_shuffle_size = Int32Field('index_shuffle_size')
-    _shuffle_axis = Int32Field('index_shuffle_size')
+    _shuffle_axis = Int32Field('shuffle_axis')
 
     def __init__(self, index_min_max=None, index_shuffle_size=None,
                  shuffle_axis=0, sparse=None, dtype=None, gpu=None, **kw):
@@ -225,7 +225,7 @@ class SeriesIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                            _index_max=index_min_max[2], _index_max_close=index_min_max[3]))
         super(SeriesIndexAlignMap, self).__init__(
             _index_shuffle_size=index_shuffle_size, _sparse=sparse, _shuffle_axis=shuffle_axis,
-            _dtype=dtype, _gpu=gpu, _object_type=ObjectType.dataframe, **kw)
+            _dtype=dtype, _gpu=gpu, _object_type=ObjectType.series, **kw)
 
     @property
     def shuffle_axis(self):
@@ -269,7 +269,7 @@ class SeriesIndexAlignMap(DataFrameOperand, DataFrameOperandMixin):
                 kw['index_value'] = parse_index(inputs[0].index_value.to_pandas(),
                                                 key=tokenize(input_index_value.key,
                                                              type(self).__name__))
-
+            kw['dtype'] = inputs[0].dtype
         return super(SeriesIndexAlignMap, self)._create_chunk(output_idx, index, **kw)
 
     @classmethod
@@ -378,9 +378,9 @@ class SeriesIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
 
     _input = KeyField('input')
 
-    def __init__(self, shuffle_key=None, sparse=None, **kw):
-        super(SeriesIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse,
-                                                     _object_type=ObjectType.dataframe, **kw)
+    def __init__(self, shuffle_key=None, sparse=None, dtype=None, **kw):
+        super(SeriesIndexAlignReduce, self).__init__(_shuffle_key=shuffle_key, _sparse=sparse, _dtype=dtype,
+                                                     _object_type=ObjectType.series, **kw)
 
     def _set_inputs(self, inputs):
         super(SeriesIndexAlignReduce, self)._set_inputs(inputs)
@@ -391,17 +391,11 @@ class SeriesIndexAlignReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
         if kw.get('index_value', None) is None and inputs[0].inputs[0].index_value is not None:
             index_align_map_chunks = inputs[0].inputs
             # shuffle on index
-            kw['index_value'] = parse_index(index_align_map_chunks[0].index_value.to_pandas(),
-                                            key=tokenize([c.key for c in index_align_map_chunks],
-                                                         type(self).__name__))
-        if kw.get('columns_value', None) is None and inputs[0].inputs[0].columns is not None:
-            index_align_map_chunks = inputs[0].inputs
-            # shuffle on index
-            kw['columns_value'] = filter_index_value(index_align_map_chunks[0].columns,
-                                                     index_align_map_chunks[0].op.column_min_max,
-                                                     store_data=True)
-            kw['dtypes'] = index_align_map_chunks[0].dtypes[kw['columns_value'].to_pandas()]
-
+            index_value = parse_index(index_align_map_chunks[0].index_value.to_pandas(),
+                                      key=tokenize([c.key for c in index_align_map_chunks],
+                                                   type(self).__name__))
+            kw['index_value'] = index_value
+            kw['dtype'] = index_value.to_pandas().dtype
         return super(SeriesIndexAlignReduce, self)._create_chunk(output_idx, index, **kw)
 
     @classmethod
@@ -663,13 +657,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     kw = {
                         'index_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx),
                         'column_shuffle_size': shuffle_size,
-                        # 'shuffle_axis': shuffle_axis,
-                        # 'index_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx)
                     }
                 else:
                     kw = {
                         'index_shuffle_size': shuffle_size,
-                        # 'shuffle_axis': shuffle_axis,
                         'column_min_max': splits.get_axis_split(align_axis, left_or_right, align_axis_idx)
                     }
                 inp = left if left_or_right == 0 else right
@@ -970,10 +961,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         dtypes = columns = index = None
         index_shape = column_shape = np.nan
         if isinstance(x2, SERIES_CHUNK_TYPE):
-            return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+            return {'shape': (index_shape, column_shape), 'dtypes': x1.dtypes,
                     'columns_value': columns, 'index_value': index}
         if x2.columns is None:
-            return {'shape': (index_shape, column_shape), 'dtypes': dtypes,
+            return {'shape': (index_shape, column_shape), 'dtypes': x1.dtypes,
                     'columns_value': columns, 'index_value': index}
 
         if x1.columns.key == x2.columns.key:
@@ -1037,9 +1028,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return self.new_dataframe([x1, x2], shape, **kw)
         elif isinstance(x1, SERIES_TYPE) or isinstance(x2, SERIES_TYPE):
             setattr(self, '_object_type', ObjectType.dataframe)
-            dtypes = x1.dtypes.tolist()
-            dtypes.append(x2.dtype)
-            dtypes = pd.core.dtypes.cast.find_common_type(dtypes)
+            df = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
+            dtypes = df.dtypes
             columns = index = None
             shape = (np.nan, np.nan)
             kw = {'dtypes': dtypes,
@@ -1047,7 +1037,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
             return self.new_dataframe([x1, x2], shape, **kw)
 
-        raise NotImplementedError('Only support add dataframe or scalar for now')
+        raise NotImplementedError('Only support add dataframe, series or scalar for now')
 
     def __call__(self, x1, x2):
         return self._call(x1, x2)
