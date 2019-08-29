@@ -28,7 +28,7 @@ import numpy as np
 from mars import compat
 from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
-     JsonSerializeProvider
+    ProtobufSerializeProvider, JsonSerializeProvider
 
 if compat.PY27:
     try:
