@@ -26,6 +26,7 @@ matrix:
       env: PYTHON=3.5
     - os: linux
       language: generic
+      dist: xenial
       services:
         - docker
       env: PYTHON=3.6 DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64 PYVER=cp36-cp36m
