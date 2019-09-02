@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2018 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series
-# do imports to register operands
-from .datasource.from_tensor import from_tensor
-from .datasource.from_records import from_records
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
-from .fetch import DataFrameFetch, DataFrameFetchShuffle
+import numpy as np
+import pandas as pd
 
-from . import arithmetic
-from . import indexing
-from . import merge
-from . import reduction
-from . import groupby
-del reduction, arithmetic, indexing, merge, groupby
+import mars.dataframe as md
+from mars.tests.core import TestBase
 
-del DataFrameFetch, DataFrameFetchShuffle
+
+class Test(TestBase):
+    def testSetIndex(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')})
+        mdf = md.DataFrame(df1, chunk_size=3)
+        grouped = mdf.groupby('b')
+        r = grouped.execute()
+        expected = df1.groupby('b')
+        for key, group in r:
+            pd.testing.assert_frame_equal(group, expected.get_group(key))
