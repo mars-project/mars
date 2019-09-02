@@ -26,6 +26,8 @@ matrix:
       env: PYTHON=3.5
     - os: linux
       language: generic
+      # update to 16(xenial) to avoid `ImportError: dlopen: cannot load any more object with static TLS`
+      # https://github.com/pytorch/pytorch/issues/2575
       dist: xenial
       services:
         - docker

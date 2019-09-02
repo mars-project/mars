@@ -22,8 +22,6 @@ class ActorPoolNotStarted(Exception):
 class ActorNotExist(Exception):
     pass
 
-    def optimize(self, keys=None):
-        return self.compose(keys)
 
 class ActorAlreadyExist(Exception):
     pass
