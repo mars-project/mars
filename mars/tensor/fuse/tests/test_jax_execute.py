@@ -98,10 +98,10 @@ class Test(unittest.TestCase):
         self.assertTrue(np.allclose(res[0], res_cmp[0]))
 
     def testBinExecution(self):
-        from mars.tensor.arithmetic import add, multiply, subtract, fmax, fmin
+        from mars.tensor.arithmetic import add, multiply, subtract, fmax, fmin, truediv, power
 
-        # note: to decrease the time of ci, we only choose some op to test
-        _support_bin_ufunc = [add, multiply, subtract]
+        # Note: to decrease the time of ci, we only choose some op to test
+        _support_bin_ufunc = [add, multiply, subtract, truediv, power]
         _unsupported_bin_ufunc = [fmax, fmin]
         executor_jax = Executor('jax')
 
