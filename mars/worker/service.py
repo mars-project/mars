@@ -91,6 +91,9 @@ class WorkerService(object):
         self._ignore_avail_mem = kwargs.pop('ignore_avail_mem', None) or False
         self._min_mem_size = kwargs.pop('min_mem_size', None) or 128 * 1024 ** 2
 
+        self._plasma_dir = kwargs.pop('plasma_dir', None)
+        self._use_ext_plasma_dir = kwargs.pop('use_ext_plasma_dir', None) or False
+
         self._soft_quota_limit = self._soft_mem_limit
 
         self._calc_memory_limits()
@@ -133,7 +136,8 @@ class WorkerService(object):
         if self._ignore_avail_mem:
             self._soft_quota_limit = self._soft_mem_limit
         else:
-            self._soft_quota_limit = self._soft_mem_limit - self._cache_mem_limit - actual_used
+            used_cache_size = 0 if self._use_ext_plasma_dir else self._cache_mem_limit
+            self._soft_quota_limit = self._soft_mem_limit - used_cache_size - actual_used
             if self._soft_quota_limit < self._min_mem_size:
                 raise MemoryError('Memory not enough. soft_limit=%s, cache_limit=%s, used=%s' %
                                   tuple(readable_size(k) for k in (
@@ -142,7 +146,8 @@ class WorkerService(object):
         logger.info('Setting soft limit to %s.', readable_size(self._soft_quota_limit))
 
     def start_plasma(self):
-        self._plasma_store = plasma.start_plasma_store(self._cache_mem_limit)
+        self._plasma_store = plasma.start_plasma_store(
+            self._cache_mem_limit, plasma_directory=self._plasma_dir)
         options.worker.plasma_socket, _ = self._plasma_store.__enter__()
 
     def start(self, endpoint, pool, distributed=True, discoverer=None, process_start_index=0):
