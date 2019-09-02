@@ -175,6 +175,9 @@ be found at the next section.
 +------------------+----------------------------------------------------------------+
 | ``--spill-dir``  | Directories to spill to, separated by : in MacOS or Linux.     |
 +------------------+----------------------------------------------------------------+
+| ``--plasma-dir`` | Directory of plasma store. When specified, the size of plasma  |
+|                  | store will not be considered in memory management.             |
++------------------+----------------------------------------------------------------+
 
 For instance, if you want to start a Mars cluster with two schedulers, two
 workers and one web service, you can run commands below (memory and CPU tunings

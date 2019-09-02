@@ -46,6 +46,9 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--cache-mem', help='cache memory size limit')
         parser.add_argument('--min-mem', help='minimal free memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
+        parser.add_argument('--plasma-dir', help='path of plasma directory. When specified, the size '
+                                                 'of plasma store will not be taken into account when '
+                                                 'managing host memory')
 
         compress_types = ', '.join(v.value for v in CompressType.__members__.values())
         parser.add_argument('--disk-compression',
@@ -74,6 +77,8 @@ class WorkerApplication(BaseApplication):
     def create_pool(self, *args, **kwargs):
         # here we create necessary actors on worker
         # and distribute them over processes
+
+        plasma_dir = self.args.plasma_dir or os.environ.get('MARS_PLASMA_DIRS')
         self._service = WorkerService(
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
@@ -85,6 +90,8 @@ class WorkerApplication(BaseApplication):
             min_mem_size=self.args.min_mem,
             disk_compression=self.args.disk_compression.lower(),
             transfer_compression=self.args.transfer_compression.lower(),
+            plasma_dir=plasma_dir,
+            use_ext_plasma_dir=bool(plasma_dir),
         )
         # start plasma
         self._service.start_plasma()
