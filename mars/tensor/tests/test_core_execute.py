@@ -48,11 +48,11 @@ class Test(unittest.TestCase):
         a = ones((10, 20), chunk_size=5)
 
         # test sum
-        self.assertEqual(np.sum(a).execute(session=self.session), 200)
+        self.assertEqual(np.sum(a).execute(), 200)
 
         # test qr
         q, r = np.linalg.qr(a)
-        self.assertTrue(np.allclose(np.dot(q, r), a).execute(session=self.session))
+        self.assertTrue(np.allclose(np.dot(q, r), a).execute())
 
     def testViewDataOnSlice(self):
         data = np.random.rand(10, 20)
@@ -234,7 +234,7 @@ class Test(unittest.TestCase):
         npa = data.copy()
         npb = npa[:5, :4]
         npc = npb.copy()
-        npc[0, 0] =10
+        npc[0, 0] = 10
 
         np.testing.assert_array_equal(c.execute(), npc)
         np.testing.assert_array_equal(a.execute(), npa)

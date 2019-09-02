@@ -67,6 +67,9 @@ class TensorIsclose(TensorBinOp):
             ctx[op.outputs[0].key] = xp.isclose(a, b, atol=op.atol, rtol=op.rtol,
                                                 equal_nan=op.equal_nan)
 
+    def jax_function(self):
+        return NotImplementedError
+
 
 def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
     """
