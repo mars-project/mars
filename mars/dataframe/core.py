@@ -698,6 +698,11 @@ class DataFrameGroupByData(TileableData):
     def __init__(self, op=None, shape=None, chunks=None, **kw):
         super(DataFrameGroupByData, self).__init__(_op=op, _shape=shape, _chunks=chunks, **kw)
 
+    def get_group(self, name):
+        if name not in self.columns:
+            pass
+        return None
+
 
 class DataFrameGroupBy(TileableEntity):
     __slots__ = ()

@@ -30,3 +30,14 @@ class Test(TestBase):
         expected = df1.groupby('b')
         for key, group in r:
             pd.testing.assert_frame_equal(group, expected.get_group(key))
+
+        df2 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce')},
+                           index=['i' + str(i) for i in range(9)])
+        mdf = md.DataFrame(df2, chunk_size=3)
+        grouped = mdf.groupby('b')
+        r = grouped.execute()
+        expected = df2.groupby('b')
+        for key, group in r:
+            pd.testing.assert_frame_equal(group, expected.get_group(key))
