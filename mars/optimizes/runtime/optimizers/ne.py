@@ -16,7 +16,7 @@
 
 from ....tensor import arithmetic
 from ....tensor import reduction
-from .base_optimizer import Optimizer
+from .base import Optimizer
 
 NE_REDUCTION_OP = (reduction.TensorSum, reduction.TensorProd,
                    reduction.TensorMax, reduction.TensorMin)
