@@ -191,8 +191,11 @@ class GraphDataHandler(MarsApiRequestHandler):
 
 class WorkersApiHandler(MarsApiRequestHandler):
     def get(self):
-        workers_num = self.web_api.count_workers()
-        self.write(json.dumps(workers_num))
+        action = self.get_argument('action', None)
+        if action == 'count':
+            self.write(json.dumps(self.web_api.count_workers()))
+        else:
+            self.write(json.dumps(self.web_api.get_workers_meta()))
 
 
 class MutableTensorHandler(MarsApiRequestHandler):

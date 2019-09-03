@@ -384,7 +384,7 @@ class Session(object):
         return True
 
     def count_workers(self):
-        resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
+        resp = self._req_session.get(self._endpoint + '/api/worker?action=count', timeout=1)
         return json.loads(resp.text)
 
     def get_task_count(self):

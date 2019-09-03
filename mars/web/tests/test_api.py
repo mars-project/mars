@@ -257,6 +257,14 @@ class Test(unittest.TestCase):
 
         service_ep = 'http://127.0.0.1:' + self.web_port
 
+        # query worker info
+        res = requests.get('%s/api/worker' % service_ep)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(json.loads(res.text)), 1)
+        res = requests.get('%s/api/worker?action=count' % service_ep)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(int(res.text), 1)
+
         # raise on malicious python version
         res = requests.post('%s/api/session' % service_ep, dict(pyver='mal.version'))
         self.assertEqual(res.status_code, 400)
