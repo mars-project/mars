@@ -127,15 +127,17 @@ class LocalClusterSession(object):
                                graph_key, targets, compose=compose)
 
         exec_start_time = time.time()
-        while timeout <= 0 or time.time() - exec_start_time <= timeout:
-            time.sleep(0.1)
-
+        time_elapsed = 0
+        while timeout <= 0 or time_elapsed < timeout:
+            timeout_val = min(5, timeout - time_elapsed) if timeout > 0 else 5
+            self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
             graph_state = self._api.get_graph_state(self._session_id, graph_key)
             if graph_state == GraphState.SUCCEEDED:
                 break
             if graph_state == GraphState.FAILED:
                 # TODO(qin): add traceback
                 raise ExecutionFailed('Graph execution failed with unknown reason')
+            time_elapsed = time.time() - exec_start_time
 
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError

@@ -327,7 +327,7 @@ class MockedServer(object):
     @staticmethod
     def mocked_requests_get(*arg, **_):
         url = arg[0]
-        if url.endswith('worker'):
+        if '/worker' in url:
             return MockResponse(200, json_text=1)
         if url.split('/')[-2] == 'graph':
             return MockResponse(200, json_text={"state": 'success'})
