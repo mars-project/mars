@@ -186,6 +186,10 @@ cdef class ActorContext:
                                wait=wait, callback=callback)
 
     @staticmethod
+    def event():
+        return gevent.event.Event()
+
+    @staticmethod
     def sleep(seconds):
         gevent.sleep(seconds)
 
@@ -1654,6 +1658,10 @@ cdef class ActorClient:
         if ref.address is None:
             raise ValueError('address must be provided')
         return ref
+
+    @staticmethod
+    def event():
+        return gevent.event.Event()
 
     @staticmethod
     def sleep(seconds):

@@ -93,10 +93,10 @@ class Session(object):
         else:
             self._executed_tileables[tileable_key] = graph_key, {tileable_id}
 
-    def _check_response_finished(self, graph_url):
+    def _check_response_finished(self, graph_url, timeout=None):
         import requests
         try:
-            resp = self._req_session.get(graph_url)
+            resp = self._req_session.get(graph_url, params={'wait_timeout': timeout})
         except requests.ConnectionError as ex:
             err_msg = str(ex)
             if 'ConnectionResetError' in err_msg or 'Connection refused' in err_msg:
@@ -153,16 +153,17 @@ class Session(object):
 
         resp_json = self._submit_graph(graph_json, targets_join, compose=compose)
         graph_key = resp_json['graph_key']
-        graph_url = session_url + '/graph/' + graph_key
+        graph_url = '%s/graph/%s' % (session_url, graph_key)
 
         for t in tileables:
             self._set_tileable_graph_key(t, graph_key)
 
         exec_start_time = time.time()
-        while timeout <= 0 or time.time() - exec_start_time <= timeout:
+        time_elapsed = 0
+        while timeout <= 0 or time_elapsed < timeout:
+            timeout_val = min(5, timeout - time_elapsed) if timeout > 0 else 5
             try:
-                time.sleep(1)
-                if self._check_response_finished(graph_url):
+                if self._check_response_finished(graph_url, timeout_val):
                     break
             except KeyboardInterrupt:
                 resp = self._req_session.delete(graph_url)
@@ -170,9 +171,12 @@ class Session(object):
                     raise ExecutionNotStopped(
                         'Failed to stop graph execution. Code: %d, Reason: %s, Content:\n%s' %
                         (resp.status_code, resp.reason, resp.text))
+            finally:
+                time_elapsed = time.time() - exec_start_time
 
         if 0 < timeout < time.time() - exec_start_time:
             raise TimeoutError
+
         if not fetch:
             return
         else:
@@ -384,7 +388,7 @@ class Session(object):
         return True
 
     def count_workers(self):
-        resp = self._req_session.get(self._endpoint + '/api/worker', timeout=1)
+        resp = self._req_session.get(self._endpoint + '/api/worker?action=count', timeout=1)
         return json.loads(resp.text)
 
     def get_task_count(self):

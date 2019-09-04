@@ -147,6 +147,10 @@ class MarsAPI(object):
         state = GraphState(state.lower())
         return state
 
+    def wait_graph_finish(self, session_id, graph_key, timeout=None):
+        graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
+        self.actor_client.actor_ref(graph_meta_ref.get_wait_ref()).wait(timeout)
+
     def fetch_data(self, session_id, graph_key, tileable_key, index_obj=None, compressions=None):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_ref = self.get_actor_ref(graph_uid)

@@ -128,8 +128,20 @@ class GraphApiHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
+        wait_timeout = int(self.get_argument('wait_timeout', None))
 
         try:
+            if wait_timeout:
+                executor = futures.ThreadPoolExecutor(1)
+                if wait_timeout <= 0:
+                    wait_timeout = None
+
+                def _wait_fun():
+                    web_api = MarsWebAPI(self._scheduler)
+                    return web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
+
+                _ = yield executor.submit(_wait_fun)
+
             state = self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:
             raise web.HTTPError(404, 'Graph not exists')
@@ -154,7 +166,7 @@ class GraphApiHandler(MarsApiRequestHandler):
             self._dump_exception(sys.exc_info(), 404)
 
 
-class GraphDataHandler(MarsApiRequestHandler):
+class GraphDataApiHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key, tileable_key):
         data_type = self.get_argument('type', None)
@@ -191,11 +203,14 @@ class GraphDataHandler(MarsApiRequestHandler):
 
 class WorkersApiHandler(MarsApiRequestHandler):
     def get(self):
-        workers_num = self.web_api.count_workers()
-        self.write(json.dumps(workers_num))
+        action = self.get_argument('action', None)
+        if action == 'count':
+            self.write(json.dumps(self.web_api.count_workers()))
+        else:
+            self.write(json.dumps(self.web_api.get_workers_meta()))
 
 
-class MutableTensorHandler(MarsApiRequestHandler):
+class MutableTensorApiHandler(MarsApiRequestHandler):
     def get(self, session_id, name):
         try:
             meta = self.web_api.get_mutable_tensor(session_id, name)
@@ -239,5 +254,5 @@ register_web_handler('/api/session/(?P<session_id>[^/]+)', SessionApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph', GraphsApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)', GraphApiHandler)
 register_web_handler('/api/session/(?P<session_id>[^/]+)/graph/(?P<graph_key>[^/]+)/data/(?P<tileable_key>[^/]+)',
-                     GraphDataHandler)
-register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorHandler)
+                     GraphDataApiHandler)
+register_web_handler('/api/session/(?P<session_id>[^/]+)/mutable-tensor/(?P<name>[^/]+)', MutableTensorApiHandler)
