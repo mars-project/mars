@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import numpy as np
-
 import pandas as pd
-try:
-    import cudf
-except ImportError:  # pragma: no cover
-    cudf = None
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -29,7 +23,6 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import from_tensor
 from mars.dataframe.datasource.from_records import from_records
-from mars.dataframe.datasource.to_gpu import to_gpu
 
 
 class Test(TestBase):
@@ -110,13 +103,3 @@ class Test(TestBase):
         df2 = from_records(ndarr)
         df2_result = self.executor.execute_dataframe(df2, concat=True)[0]
         pd.testing.assert_frame_equal(df2_result, pdf_expected)
-
-    @unittest.skipIf(cudf is None, 'cudf not installed')
-    def testToGPUExecution(self):
-        pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
-        df = from_pandas_df(pdf, chunk_size=(13, 21))
-        cdf = to_gpu(df)
-
-        res = self.executor.execute_dataframe(cdf, concat=True)[0]
-        self.assertIsInstance(res, cudf.DataFrame)
-        pd.testing.assert_frame_equal(res.to_pandas(), pdf)
