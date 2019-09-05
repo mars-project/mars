@@ -17,7 +17,7 @@ import logging
 import random
 import uuid
 
-from .actors import new_client
+from .actors import new_client, ActorNotExist
 from .errors import GraphNotExists
 from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, \
     SessionManagerActor, ChunkMetaClient
@@ -33,24 +33,42 @@ logger = logging.getLogger(__name__)
 
 class MarsAPI(object):
     def __init__(self, scheduler_ip):
+        self.__schedulers_cache = None
+        self._session_manager = None
         self.actor_client = new_client()
         self.cluster_info = self.actor_client.actor_ref(
             SchedulerClusterInfoActor.default_uid(), address=scheduler_ip)
-        self.session_manager = self.get_actor_ref(SessionManagerActor.default_uid())
         self.chunk_meta_client = ChunkMetaClient(self.actor_client, self.cluster_info)
 
+    @property
+    def session_manager(self):
+        if self._session_manager is None:
+            self._session_manager = self.get_actor_ref(SessionManagerActor.default_uid())
+        return self._session_manager
+
+    def get_schedulers(self):
+        if not self.__schedulers_cache:
+            self.__schedulers_cache = self.cluster_info.get_schedulers()
+        return self.__schedulers_cache
+
+    def get_scheduler(self, uid):
+        schedulers = self.get_schedulers()
+        if len(schedulers) == 1:
+            return schedulers[0]
+        else:
+            return self.cluster_info.get_scheduler(uid)
+
     def get_actor_ref(self, uid):
-        actor_address = self.cluster_info.get_scheduler(uid)
-        return self.actor_client.actor_ref(uid, address=actor_address)
+        return self.actor_client.actor_ref(uid, address=self.get_scheduler(uid))
 
     def get_graph_meta_ref(self, session_id, graph_key):
         graph_uid = GraphActor.gen_uid(session_id, graph_key)
         graph_meta_uid = GraphMetaActor.gen_uid(session_id, graph_key)
-        graph_addr = self.cluster_info.get_scheduler(graph_uid)
+        graph_addr = self.get_scheduler(graph_uid)
         return self.actor_client.actor_ref(graph_meta_uid, address=graph_addr)
 
     def get_schedulers_info(self):
-        schedulers = self.cluster_info.get_schedulers()
+        schedulers = self.get_schedulers()
         infos = dict()
         for scheduler in schedulers:
             info_ref = self.actor_client.actor_ref(NodeInfoActor.default_uid(), address=scheduler)
@@ -139,10 +157,10 @@ class MarsAPI(object):
         from .scheduler import GraphState
 
         graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
-        if self.actor_client.has_actor(graph_meta_ref):
+        try:
             state_obj = graph_meta_ref.get_state()
             state = state_obj.value if state_obj else 'preparing'
-        else:
+        except ActorNotExist:
             raise GraphNotExists
         state = GraphState(state.lower())
         return state
