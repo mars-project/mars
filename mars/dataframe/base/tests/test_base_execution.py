@@ -25,6 +25,7 @@ from mars.tests.core import TestBase
 from mars.executor import Executor
 from mars.dataframe.base import to_gpu, to_cpu
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 
 
 class Test(TestBase):
@@ -42,6 +43,14 @@ class Test(TestBase):
         self.assertIsInstance(res, cudf.DataFrame)
         pd.testing.assert_frame_equal(res.to_pandas(), pdf)
 
+        pseries = pdf.iloc[:, 0]
+        series = from_pandas_series(pseries)
+        cseries = series.to_gpu()
+
+        res = self.executor.execute_dataframe(cseries, concat=True)[0]
+        self.assertIsInstance(res, cudf.Series)
+        pd.testing.assert_series_equal(res.to_pandas(), pseries)
+
     @unittest.skipIf(cudf is None, 'cudf not installed')
     def testToCPUExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
@@ -52,3 +61,12 @@ class Test(TestBase):
         res = self.executor.execute_dataframe(df2, concat=True)[0]
         self.assertIsInstance(res, pd.DataFrame)
         pd.testing.assert_frame_equal(res, pdf)
+
+        pseries = pdf.iloc[:, 0]
+        series = from_pandas_series(pseries, chunk_size=(13, 21))
+        cseries = to_gpu(series)
+        series2 = to_cpu(cseries)
+
+        res = self.executor.execute_dataframe(series2, concat=True)[0]
+        self.assertIsInstance(res, pd.Series)
+        pd.testing.assert_series_equal(res, pseries)

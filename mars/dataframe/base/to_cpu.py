@@ -35,5 +35,5 @@ def to_cpu(df_or_series):
         # if op.gpu is None, means unknown
         return df_or_series
 
-    op = DataFrameToCPU(dtypes=df_or_series.dtypes)
+    op = DataFrameToCPU()
     return op(df_or_series)

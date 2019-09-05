@@ -21,6 +21,10 @@ def _install():
 
     DataFrameData.to_gpu = to_gpu
     DataFrame.to_gpu = to_gpu
+    DataFrameData.to_cpu = to_cpu
+    DataFrame.to_cpu = to_cpu
+    SeriesData.to_gpu = to_gpu
+    Series.to_gpu = to_gpu
     SeriesData.to_cpu = to_cpu
     Series.to_cpu = to_cpu
 
