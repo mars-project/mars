@@ -538,7 +538,7 @@ cdef inline object _pack_send_message(INT32_t from_index, INT32_t to_index, Acto
     return [message_id, buf] + m
 
 
-cdef inline object _unpack_send_message(bytes binary, send=True):
+cdef inline object _unpack_send_message(bytes binary, bint send=True):
     cdef object message_type
     cdef bytes message_id
     cdef INT32_t from_index
@@ -549,7 +549,7 @@ cdef inline object _unpack_send_message(bytes binary, send=True):
     cdef const char *binary_ptr = binary
 
     _unpack_message_type_value(binary_ptr, &pos)
-    message_type = MessageType.send_all if send else MessageType.tell_all
+    message_type = SEND_ALL if send else TELL_ALL
     message_id = _unpack_message_id(binary_ptr, &pos)
     from_index = _unpack_index(binary_ptr, &pos)
     to_index = _unpack_index(binary_ptr, &pos)
@@ -642,7 +642,7 @@ cpdef object unpack_create_actor_message(bytes binary):
     cdef const char *binary_ptr = binary
 
     _unpack_message_type_value(binary_ptr, &pos)
-    message_type = MessageType.create_actor
+    message_type = CREATE_ACTOR
     message_id = _unpack_message_id(binary_ptr, &pos)
     from_index = _unpack_index(binary_ptr, &pos)
     to_index = _unpack_index(binary_ptr, &pos)
