@@ -80,8 +80,13 @@ class MarsRequestHandler(web.RequestHandler):
 
 
 class MarsWebAPI(MarsAPI):
-    def __init__(self, scheduler_ip):
-        super(MarsWebAPI, self).__init__(scheduler_ip)
+    _schedulers_cache = None
+
+    def get_schedulers(self):
+        cls = type(self)
+        if not cls._schedulers_cache:
+            cls._schedulers_cache = self.cluster_info.get_schedulers()
+        return cls._schedulers_cache
 
     def get_tasks_info(self, select_session_id=None):
         from ..scheduler import GraphState
@@ -139,7 +144,7 @@ class MarsWebAPI(MarsAPI):
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
 
-        index_json_size = np.asscalar(np.frombuffer(body[0:8], dtype=np.int64))
+        index_json_size = np.frombuffer(body[0:8], dtype=np.int64).item()
         index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
         index = Indexes.from_json(index_json).indexes
         if payload_type is None:
@@ -149,7 +154,7 @@ class MarsWebAPI(MarsAPI):
             with pyarrow.BufferReader(body[tensor_chunk_offset:]) as reader:
                 value = pyarrow.read_tensor(reader).to_numpy()
         elif payload_type == 'record_batch':
-            schema_size = np.asscalar(np.frombuffer(body[8+index_json_size:8+index_json_size+8], dtype=np.int64))
+            schema_size = np.frombuffer(body[8+index_json_size:8+index_json_size+8], dtype=np.int64).item()
             schema_offset = 8 + index_json_size + 8
             with pyarrow.BufferReader(body[schema_offset:schema_offset+schema_size]) as reader:
                 schema = pyarrow.read_schema(reader)

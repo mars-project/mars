@@ -28,7 +28,7 @@ from ..compat import six, futures
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
-from ..utils import to_str, numpy_dtype_from_descr_json
+from ..utils import to_str, tokenize, numpy_dtype_from_descr_json
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -84,7 +84,7 @@ class SessionsApiHandler(MarsApiRequestHandler):
         if python_version[0] != sys.version_info[0]:
             raise web.HTTPError(400, reason='Python version not consistent')
 
-        session_id = str(uuid.uuid1())
+        session_id = tokenize(str(uuid.uuid1()))
         self.web_api.create_session(session_id, **args)
         self.write(json.dumps(dict(session_id=session_id)))
 
@@ -117,7 +117,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
             raise web.HTTPError(400, reason='Argument missing')
 
         try:
-            graph_key = str(uuid.uuid4())
+            graph_key = tokenize(str(uuid.uuid4()))
             self.web_api.submit_graph(session_id, graph, graph_key, target, compose)
             self.write(json.dumps(dict(graph_key=graph_key)))
         except:  # noqa: E722
