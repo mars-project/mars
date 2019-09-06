@@ -33,6 +33,7 @@ class Test(unittest.TestCase):
         t2 = ones(4, chunk_size=2)
         t3 = t1 + t2
         k1 = t3.key
+        self.assertFalse(t3.op.gpu)
         t3.tiles()
         self.assertNotEqual(t3.key, k1)
         self.assertEqual(t3.shape, (3, 4))
@@ -57,14 +58,26 @@ class Test(unittest.TestCase):
         self.assertEqual(t4.chunks[3].inputs, [t1.chunks[3].data])
         self.assertEqual(t4.chunks[3].op.rhs, 1)
 
-        # sparse tests
         t5 = add([1, 2, 3, 4], 1)
         t5.tiles()
         self.assertEqual(t4.chunks[0].inputs, [t1.chunks[0].data])
 
+        t6 = ones((3, 4), chunk_size=2, gpu=True)
+        t7 = ones(4, chunk_size=2, gpu=True)
+        t8 = t6 + t7
+        self.assertTrue(t8.op.gpu)
+        t8.tiles()
+        self.assertTrue(t8.chunks[0].op.gpu)
+        t9 = t6 + t2
+        self.assertIsNone(t9.op.gpu)
+        t9.tiles()
+        self.assertIsNone(t9.chunks[0].op.gpu)
+
+        # sparse tests
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
         t = t1 + 1
+        self.assertFalse(t.op.gpu)
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
@@ -352,6 +365,7 @@ class Test(unittest.TestCase):
         t1 = tensor([[0, 1, 0], [1, 0, 0]], chunk_size=2).tosparse()
 
         t = negative(t1)
+        self.assertFalse(t.op.gpu)
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 

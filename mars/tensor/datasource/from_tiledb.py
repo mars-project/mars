@@ -127,7 +127,7 @@ class TensorTileDBDataSource(TensorNoInput):
                     ctx[chunk.key] = SparseNDArray(spmatrix, shape=chunk.shape)
 
 
-def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=None):
+def fromtiledb(uri, ctx=None, key=None, timestamp=None, gpu=False):
     import tiledb
 
     raw_ctx = ctx
