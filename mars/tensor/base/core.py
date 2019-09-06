@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from ...serialize import KeyField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
-from ..core import DATAFRAME_TYPE, SERIES_TYPE
+from ..operands import TensorOperand, TensorOperandMixin
 
 
-class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
+class TensorDeviceConversionBase(TensorOperand, TensorOperandMixin):
     _input = KeyField('input')
 
     @property
@@ -25,20 +24,12 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
         return self._input
 
     def _set_inputs(self, inputs):
-        super(DataFrameDeviceConversionBase, self)._set_inputs(inputs)
+        super(TensorDeviceConversionBase, self)._set_inputs(inputs)
         self._input = inputs[0]
 
-    def __call__(self, obj):
-        if isinstance(obj, DATAFRAME_TYPE):
-            self._object_type = ObjectType.dataframe
-            return self.new_dataframe([obj], shape=obj.shape, dtypes=obj.dtypes,
-                                      index_value=obj.index_value,
-                                      columns_value=obj.columns)
-        else:
-            assert isinstance(obj, SERIES_TYPE)
-            self._object_type = ObjectType.series
-            return self.new_series([obj], shape=obj.shape, dtype=obj.dtype,
-                                   index_value=obj.index_value, name=obj.name)
+    def __call__(self, tensor):
+        return self.new_tensor([tensor], shape=tensor.shape, dtype=tensor.dtype,
+                               order=tensor.order)
 
     @classmethod
     def tile(cls, op):
@@ -50,6 +41,5 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy().reset_key()
         out = op.outputs[0]
-        return new_op.new_dataframes(op.inputs, chunks=out_chunks,
-                                     nsplits=op.inputs[0].nsplits,
-                                     **out.params)
+        return new_op.new_tensors(op.inputs, nsplits=op.input.nsplits,
+                                  chunks=out_chunks, **out.params)

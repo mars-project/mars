@@ -13,27 +13,28 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from .core import DataFrameDeviceConversionBase
+from ..datasource import tensor as astensor
+from .core import TensorDeviceConversionBase
 
 
-class DataFrameToCPU(DataFrameDeviceConversionBase):
+class TensorToCPU(TensorDeviceConversionBase):
     _op_type_ = OperandDef.TO_CPU
 
-    def __init__(self, dtypes=None, gpu=None, sparse=None, object_type=None, **kw):
-        super(DataFrameToCPU, self).__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
-                                             _object_type=object_type, **kw)
+    def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
+        super(TensorToCPU, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
         if self._gpu or self._gpu is None:
             self._gpu = False
 
     @classmethod
     def execute(cls, ctx, op):
-        ctx[op.outputs[0].key] = ctx[op.inputs[0].key].to_pandas()
+        ctx[op.outputs[0].key] = ctx[op.input.key].get()
 
 
-def to_cpu(df_or_series):
-    if df_or_series.op.gpu is False:
-        # if op.gpu is None, means unknown
-        return df_or_series
+def to_cpu(x):
+    x = astensor(x)
 
-    op = DataFrameToCPU()
-    return op(df_or_series)
+    if x.op.gpu is False:
+        return x
+
+    op = TensorToCPU(dtype=x.dtype)
+    return op(x)

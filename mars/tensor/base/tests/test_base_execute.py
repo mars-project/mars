@@ -25,9 +25,10 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
+from mars.tensor.array_utils import cp
 
 
 class Test(unittest.TestCase):
@@ -984,3 +985,23 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t14, concat=True)[0]
         expected = np.searchsorted(raw3, 20, sorter=order)
         np.testing.assert_array_equal(res, expected)
+
+    @unittest.skipIf(cp is None, 'cupy not installed')
+    def testToGPUExecution(self):
+        raw = np.random.rand(10, 10)
+        x = tensor(raw, chunk_size=3)
+
+        gx = to_gpu(x)
+
+        res = self.executor.execute_tensor(gx, concat=True)[0]
+        np.testing.assert_array_equal(res.get(), raw)
+
+    @unittest.skipIf(cp is None, 'cupy not installed')
+    def testToCPUExecution(self):
+        raw = np.random.rand(10, 10)
+        x = tensor(raw, chunk_size=3, gpu=True)
+
+        cx = to_cpu(x)
+
+        res = self.executor.execute_tensor(cx, concat=True)[0]
+        np.testing.assert_array_equal(res, raw)

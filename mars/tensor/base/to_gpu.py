@@ -13,32 +13,30 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ..operands import ObjectType
-from .core import DataFrameDeviceConversionBase
+from ..array_utils import move_to_device
+from ..datasource import tensor as astensor
+from .core import TensorDeviceConversionBase
 
 
-class DataFrameToGPU(DataFrameDeviceConversionBase):
+class TensorToGPU(TensorDeviceConversionBase):
     _op_type_ = OperandDef.TO_GPU
 
-    def __init__(self, dtypes=None, gpu=None, sparse=None, object_type=None, **kw):
-        super(DataFrameToGPU, self).__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse,
-                                             _object_type=object_type, **kw)
+    def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
+        super(TensorToGPU, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
         if not self._gpu:
             self._gpu = True
 
     @classmethod
     def execute(cls, ctx, op):
-        import cudf
-
-        if op.object_type == ObjectType.dataframe:
-            ctx[op.outputs[0].key] = cudf.DataFrame.from_pandas(ctx[op.inputs[0].key])
-        else:
-            ctx[op.outputs[0].key] = cudf.Series.from_pandas(ctx[op.inputs[0].key])
+        device = op.device or 0
+        ctx[op.outputs[0].key] = move_to_device(ctx[op.input.key], device)
 
 
-def to_gpu(df_or_series):
-    if df_or_series.op.gpu:
-        return df_or_series
+def to_gpu(x):
+    x = astensor(x)
 
-    op = DataFrameToGPU()
-    return op(df_or_series)
+    if x.op.gpu:
+        return x
+
+    op = TensorToGPU(dtype=x.dtype)
+    return op(x)

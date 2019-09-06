@@ -42,6 +42,8 @@ class Test(TestBase):
         self.assertTrue(cdf.chunks[0].op.gpu)
         pd.testing.assert_series_equal(df.chunks[0].dtypes, cdf.chunks[0].dtypes)
 
+        self.assertIs(cdf, to_gpu(cdf))
+
         # test series
         sdata = data.iloc[:, 0]
         series = from_pandas_series(sdata)
@@ -55,6 +57,8 @@ class Test(TestBase):
         self.assertEqual(series.nsplits, cseries.nsplits)
         self.assertEqual(series.chunks[0].index_value, cseries.chunks[0].index_value)
         self.assertTrue(cseries.chunks[0].op.gpu)
+
+        self.assertIs(cseries, to_gpu(cseries))
 
     def testToCPU(self):
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
@@ -75,3 +79,5 @@ class Test(TestBase):
         self.assertEqual(df.chunks[0].columns, df2.chunks[0].columns)
         self.assertFalse(df2.chunks[0].op.gpu)
         pd.testing.assert_series_equal(df.chunks[0].dtypes, df2.chunks[0].dtypes)
+
+        self.assertIs(df2, to_cpu(df2))
