@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import contextlib
 import itertools
 import logging
@@ -302,7 +303,7 @@ class GraphActor(SchedulerActor):
         if value != self._state:
             logger.debug('Graph %s state from %s to %s.', self._graph_key, self._state, value)
         self._state = value
-        self._graph_meta_ref.set_state(value, _tell=True)
+        self._graph_meta_ref.set_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def reload_state(self):
@@ -319,7 +320,7 @@ class GraphActor(SchedulerActor):
     @final_state.setter
     def final_state(self, value):
         self._final_state = value
-        self._graph_meta_ref.set_final_state(value, _tell=True)
+        self._graph_meta_ref.set_final_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def execute_graph(self, compose=True):
@@ -332,11 +333,11 @@ class GraphActor(SchedulerActor):
                 if callback:
                     callback()
                 else:
-                    self._graph_meta_ref.set_graph_end(_tell=True)
+                    self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
                     self.state = GraphState.CANCELLED
                 raise ExecutionInterrupted
 
-        self._graph_meta_ref.set_graph_start(_tell=True)
+        self._graph_meta_ref.set_graph_start(_tell=True, _wait=False)
         self.state = GraphState.PREPARING
 
         try:
@@ -363,12 +364,12 @@ class GraphActor(SchedulerActor):
             logger.exception('Failed to start graph execution.')
             self.stop_graph()
             self.state = GraphState.FAILED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             raise
 
         if len(self._chunk_graph_cache) == 0:
             self.state = GraphState.SUCCEEDED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def stop_graph(self):
@@ -400,7 +401,7 @@ class GraphActor(SchedulerActor):
                 ref.stop_operand(_tell=True)
         if not has_stopping:
             self.state = GraphState.CANCELLED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def reload_chunk_graph(self):
@@ -412,7 +413,7 @@ class GraphActor(SchedulerActor):
                                                       % (self._session_id, self._graph_key)).value
         else:
             raise GraphNotExists
-        self._chunk_graph_cache = deserialize_graph(chunk_graph_ser, graph_cls=DAG)
+        self._chunk_graph_cache = deserialize_graph(base64.b64decode(chunk_graph_ser), graph_cls=DAG)
 
         op_key_to_chunk = defaultdict(list)
         for n in self._chunk_graph_cache:
@@ -554,7 +555,8 @@ class GraphActor(SchedulerActor):
         if self._kv_store_ref is not None:
             graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
             self._kv_store_ref.write('%s/chunk_graph' % graph_path,
-                                     serialize_graph(chunk_graph, compress=True), _tell=True, _wait=False)
+                                     base64.b64encode(serialize_graph(chunk_graph, compress=True)),
+                                     _tell=True, _wait=False)
 
         self._chunk_graph_cache = chunk_graph
         for n in self._chunk_graph_cache:
@@ -754,6 +756,8 @@ class GraphActor(SchedulerActor):
 
             op_refs[op_key] = self.ctx.create_actor(
                 op_cls, self._session_id, self._graph_key, op_key, op_info.copy(),
+                with_kvstore=self._kv_store_ref is not None,
+                schedulers=self.get_schedulers(),
                 uid=op_uid, address=scheduler_addr, wait=False
             )
             if _clean_info:
