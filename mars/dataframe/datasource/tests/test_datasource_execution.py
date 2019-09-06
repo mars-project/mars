@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import numpy as np
-
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -30,7 +25,6 @@ from mars.dataframe.datasource.from_tensor import from_tensor
 from mars.dataframe.datasource.from_records import from_records
 
 
-@unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
     def setUp(self):
         super(Test, self).setUp()

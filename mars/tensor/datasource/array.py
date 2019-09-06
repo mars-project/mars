@@ -127,8 +127,12 @@ class CSRMatrixDataSource(TensorNoInput):
 
 
 def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
-    if gpu is None and cp is not None and get_array_module(spmatrix) is cp:
-        gpu = True
+    if gpu is None:
+        m = get_array_module(spmatrix)
+        if cp is not None and m is cp:
+            gpu = True
+        elif cp is np:
+            gpu = False
     if dtype and spmatrix.dtype != dtype:
         spmatrix = spmatrix.astype(dtype)
     spmatrix = spmatrix.tocsr()
@@ -163,8 +167,11 @@ def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False)
             if isinstance(arr, TENSOR_TYPE):
                 return arr.astype(arr.dtype, order=order, copy=False)
             raise
-        if gpu is None and cp is not None and m is cp:
-            gpu = True
+        if gpu is None:
+            if cp is not None and m is cp:
+                gpu = True
+            elif m is np:
+                gpu = False
 
     if isinstance(data, np.ndarray):
         if data.ndim == 0:

@@ -172,6 +172,8 @@ def full_like(a, fill_value, dtype=None, gpu=None, order='K'):
         Fill value.
     dtype : data-type, optional
         Overrides the data type of the result.
+    gpu : bool, optional
+        Allocate the tensor on GPU if True, None as default
     order : {'C', 'F', 'A', or 'K'}, optional
         Overrides the memory layout of the result. 'C' means C-order,
         'F' means F-order, 'A' means 'F' if `a` is Fortran contiguous,
@@ -212,6 +214,7 @@ def full_like(a, fill_value, dtype=None, gpu=None, order='K'):
     tensor_order = get_order(order, a.order)
     if dtype is None:
         dtype = a.dtype
+    gpu = a.op.gpu if gpu is None else gpu
     op = TensorFullLike(fill_value=fill_value, dtype=dtype,
                         gpu=gpu, sparse=a.issparse())
     return op(a, order=tensor_order)
