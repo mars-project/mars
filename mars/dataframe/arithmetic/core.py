@@ -582,7 +582,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     @classmethod
     def _tile_both_dataframes(cls, op):
         # if both of the inputs are DataFrames, axis is just ignored
-        left, right = op.inputs
+        left, right = op.lhs, op.rhs
         df = op.outputs[0]
         nsplits = [[], []]
         splits = _MinMaxSplitInfo()
@@ -657,10 +657,10 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if all(isinstance(inp, DATAFRAME_TYPE) for inp in op.inputs):
-            return cls._tile_both_dataframes(op)
-        elif any(np.isscalar(inp) for inp in op.inputs):
+        if len(op.inputs) < 2:
             return cls._tile_scalar(op)
+        elif all(isinstance(inp, DATAFRAME_TYPE) for inp in op.inputs):
+            return cls._tile_both_dataframes(op)
         raise NotImplementedError
 
     @classmethod
