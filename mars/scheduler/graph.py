@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import contextlib
 import itertools
 import logging
@@ -412,7 +413,7 @@ class GraphActor(SchedulerActor):
                                                       % (self._session_id, self._graph_key)).value
         else:
             raise GraphNotExists
-        self._chunk_graph_cache = deserialize_graph(chunk_graph_ser, graph_cls=DAG)
+        self._chunk_graph_cache = deserialize_graph(base64.b64decode(chunk_graph_ser), graph_cls=DAG)
 
         op_key_to_chunk = defaultdict(list)
         for n in self._chunk_graph_cache:
@@ -554,7 +555,8 @@ class GraphActor(SchedulerActor):
         if self._kv_store_ref is not None:
             graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
             self._kv_store_ref.write('%s/chunk_graph' % graph_path,
-                                     serialize_graph(chunk_graph, compress=True), _tell=True, _wait=False)
+                                     base64.b64encode(serialize_graph(chunk_graph, compress=True)),
+                                     _tell=True, _wait=False)
 
         self._chunk_graph_cache = chunk_graph
         for n in self._chunk_graph_cache:
