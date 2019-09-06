@@ -667,7 +667,8 @@ class TileableOperandMixin(object):
     def check_inputs(self, inputs):
         pass
 
-    def _check_if_gpu(self, inputs):
+    @classmethod
+    def _check_if_gpu(cls, inputs):
         if inputs is not None and len(inputs) > 0:
             if all(inp.op.gpu is True for inp in inputs):
                 return True
