@@ -743,7 +743,11 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             kw = {'dtypes': df.dtypes,
                   'columns_value': df.columns, 'index_value': df.index_value}
             shape = df.shape
-            return self.new_dataframe([x1, x2], shape, **kw)
+            inputs = []
+            for x in [x1, x2]:
+                if not np.isscalar(x):
+                    inputs.append(x)
+            return self.new_dataframe(inputs, shape, **kw)
         raise NotImplementedError('Only support add dataframe or scalar for now')
 
     def __call__(self, x1, x2):
