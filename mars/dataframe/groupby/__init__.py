@@ -14,11 +14,15 @@
 
 
 def _install():
+    from ..operands import DATAFRAME_TYPE, GROUPBY_TYPE
     from .core import dataframe_groupby
-    from ..operands import DATAFRAME_TYPE
+    from .aggregation import agg
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', dataframe_groupby)
+    for cls in GROUPBY_TYPE:
+        setattr(cls, 'agg', agg)
+        setattr(cls, 'aggregate', agg)
 
 
 _install()

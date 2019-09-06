@@ -17,10 +17,11 @@ from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, D
 
 
 def _install():
-    from ..core import DataFrame
+    from ..core import DATAFRAME_TYPE, GROUPBY_TYPE
 
-    setattr(DataFrame, 'join', join)
-    setattr(DataFrame, 'merge', merge)
+    for cls in DATAFRAME_TYPE:
+        setattr(cls, 'join', join)
+        setattr(cls, 'merge', merge)
 
 
 _install()

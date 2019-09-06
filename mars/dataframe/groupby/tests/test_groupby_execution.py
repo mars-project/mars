@@ -20,7 +20,7 @@ from mars.tests.core import TestBase
 
 
 class Test(TestBase):
-    def testSetIndex(self):
+    def testGroupBy(self):
         df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                             'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
                             'c': list('aabaaddce')})
@@ -41,3 +41,24 @@ class Test(TestBase):
         expected = df2.groupby('b')
         for key, group in r:
             pd.testing.assert_frame_equal(group, expected.get_group(key))
+
+    def testGroupByAgg(self):
+        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4]})
+        mdf = md.DataFrame(df1, chunk_size=3)
+        r1 = mdf.groupby('a').agg('sum')
+        pd.testing.assert_frame_equal(r1.execute(), df1.groupby('a').agg('sum'))
+        r2 = mdf.groupby('b').agg('min')
+        pd.testing.assert_frame_equal(r2.execute(), df1.groupby('b').agg('min'))
+
+        df2 = pd.DataFrame({'c1': range(10),
+                            'c2': np.random.choice(['a', 'b', 'c'], (10,)),
+                            'c3': np.random.rand(10)})
+        mdf2 = md.DataFrame(df2, chunk_size=2)
+        r1 = mdf2.groupby('c2').agg('prod')
+        pd.testing.assert_frame_equal(r1.execute(), df2.groupby('c2').agg('prod'))
+        r2 = mdf2.groupby('c2').agg('max')
+        pd.testing.assert_frame_equal(r2.execute(), df2.groupby('c2').agg('max'))
+
+        r3 = mdf2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'})
+        pd.testing.assert_frame_equal(r3.execute(), df2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}))

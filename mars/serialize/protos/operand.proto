@@ -345,6 +345,12 @@ message OperandDef {
         DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP = 2011;
         DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE = 2012;
 
+        // groupby
+        GROUPBY = 2030;
+        GROUPBY_MAP = 2031;
+        GROUPBY_REDUCE = 2032;
+        GROUPBY_AGG = 2033;
+
         // fetches
         FETCH_SHUFFLE = 999998;
         FETCH = 999999;

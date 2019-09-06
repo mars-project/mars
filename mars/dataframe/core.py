@@ -698,11 +698,6 @@ class DataFrameGroupByData(TileableData):
     def __init__(self, op=None, shape=None, chunks=None, **kw):
         super(DataFrameGroupByData, self).__init__(_op=op, _shape=shape, _chunks=chunks, **kw)
 
-    def get_group(self, name):
-        if name not in self.columns:
-            pass
-        return None
-
 
 class DataFrameGroupBy(TileableEntity):
     __slots__ = ()
@@ -715,6 +710,6 @@ SERIES_TYPE = (Series, SeriesData)
 SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
-TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE
-CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE
 GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
+TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE
+CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE

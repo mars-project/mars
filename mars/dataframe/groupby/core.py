@@ -17,6 +17,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from ... import opcodes as OperandDef
 from ...serialize import BoolField, Int32Field, AnyField
 from ...compat import six
 from ...utils import get_shuffle_input_keys_idxes
@@ -26,6 +27,8 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffle
 
 
 class DataFrameGroupByMap(DataFrameShuffleMap, DataFrameOperandMixin):
+    _op_type_ = OperandDef.GROUPBY_MAP
+
     _by = AnyField('by')
     _shuffle_size = Int32Field('shuffle_size')
 
@@ -61,6 +64,8 @@ class DataFrameGroupByMap(DataFrameShuffleMap, DataFrameOperandMixin):
 
 
 class DataFrameGroupByReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
+    _op_type_ = OperandDef.GROUPBY_REDUCE
+
     def __init__(self, shuffle_key=None, **kw):
         super(DataFrameGroupByReduce, self).__init__(_shuffle_key=shuffle_key,
                                                      _object_type=ObjectType.dataframe, **kw)
@@ -78,10 +83,15 @@ class DataFrameGroupByReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
             row_df = input_idx_to_df.get((row_idx, 0), None)
             if row_df is not None:
                 res.append(row_df)
-        ctx[chunk.key] = pd.concat(res, axis=0)
+        r = pd.concat(res, axis=0)
+        if chunk.index_value is not None:
+            r.index.name = chunk.index_value.value._name
+        ctx[chunk.key] = r
 
 
 class DataFrameGroupByOpernad(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.GROUPBY
+
     _by = AnyField('by')
     _as_index = BoolField('as_index')
 
