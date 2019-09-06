@@ -28,7 +28,8 @@ class BaseOperandActor(SchedulerActor):
     def gen_uid(session_id, op_key):
         return 's:h1:operand$%s$%s' % (session_id, op_key)
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
+                 with_kvstore=True, schedulers=None):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
@@ -70,7 +71,12 @@ class BaseOperandActor(SchedulerActor):
         self._cluster_info_ref = None
         self._assigner_ref = None
         self._resource_ref = None
+
+        self._with_kvstore = with_kvstore
         self._kv_store_ref = None
+
+        if schedulers:  # pragma: no branch
+            self.set_schedulers(schedulers)
 
     def post_create(self):
         from ..graph import GraphActor
@@ -83,9 +89,8 @@ class BaseOperandActor(SchedulerActor):
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
-            self._kv_store_ref = None
+        if self._with_kvstore:
+            self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
 
     @property
     def state(self):

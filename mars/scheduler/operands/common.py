@@ -32,9 +32,10 @@ class OperandActor(BaseOperandActor):
     """
     Actor handling the whole lifecycle of a particular operand instance
     """
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None, **kwargs):
+        super(OperandActor, self).__init__(
+            session_id, graph_id, op_key, op_info, worker=worker, **kwargs)
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
-        super(OperandActor, self).__init__(session_id, graph_id, op_key, op_info, worker=worker)
         io_meta = self._io_meta
         self._input_chunks = io_meta['input_chunks']
         self._chunks = io_meta['chunks']

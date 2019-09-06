@@ -302,7 +302,7 @@ class GraphActor(SchedulerActor):
         if value != self._state:
             logger.debug('Graph %s state from %s to %s.', self._graph_key, self._state, value)
         self._state = value
-        self._graph_meta_ref.set_state(value, _tell=True)
+        self._graph_meta_ref.set_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def reload_state(self):
@@ -319,7 +319,7 @@ class GraphActor(SchedulerActor):
     @final_state.setter
     def final_state(self, value):
         self._final_state = value
-        self._graph_meta_ref.set_final_state(value, _tell=True)
+        self._graph_meta_ref.set_final_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def execute_graph(self, compose=True):
@@ -332,11 +332,11 @@ class GraphActor(SchedulerActor):
                 if callback:
                     callback()
                 else:
-                    self._graph_meta_ref.set_graph_end(_tell=True)
+                    self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
                     self.state = GraphState.CANCELLED
                 raise ExecutionInterrupted
 
-        self._graph_meta_ref.set_graph_start(_tell=True)
+        self._graph_meta_ref.set_graph_start(_tell=True, _wait=False)
         self.state = GraphState.PREPARING
 
         try:
@@ -363,12 +363,12 @@ class GraphActor(SchedulerActor):
             logger.exception('Failed to start graph execution.')
             self.stop_graph()
             self.state = GraphState.FAILED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             raise
 
         if len(self._chunk_graph_cache) == 0:
             self.state = GraphState.SUCCEEDED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def stop_graph(self):
@@ -400,7 +400,7 @@ class GraphActor(SchedulerActor):
                 ref.stop_operand(_tell=True)
         if not has_stopping:
             self.state = GraphState.CANCELLED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def reload_chunk_graph(self):
@@ -757,6 +757,8 @@ class GraphActor(SchedulerActor):
 
             op_refs[op_key] = self.ctx.create_actor(
                 op_cls, self._session_id, self._graph_key, op_key, op_info.copy(),
+                with_kvstore=self._kv_store_ref is not None,
+                schedulers=self.get_schedulers(),
                 uid=op_uid, address=scheduler_addr, wait=False
             )
             if _clean_info:
