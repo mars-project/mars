@@ -25,7 +25,7 @@ from ..array_utils import create_array
 from ..core import TensorOrder
 from .core import TensorHasInput
 from .zeros import TensorZeros
-from .array import tensor
+from .array import tensor as astensor
 
 
 class TensorTri(TensorHasInput):
@@ -97,15 +97,16 @@ class TensorTriu(TensorTri):
     _input = KeyField('input')
     _k = Int32Field('k')
 
-    def __init__(self, k=None, dtype=None, sparse=False, **kw):
-        super(TensorTriu, self).__init__(_k=k, _dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
+        super(TensorTriu, self).__init__(_k=k, _dtype=dtype, _sparse=sparse,
+                                         _gpu=gpu, **kw)
 
     @property
     def k(self):
         return self._k
 
 
-def triu(m, k=0):
+def triu(m, k=0, gpu=None):
     """
     Upper triangle of a tensor.
 
@@ -129,8 +130,9 @@ def triu(m, k=0):
            [ 0,  0, 12]])
 
     """
-    m = tensor(m)
-    op = TensorTriu(k, dtype=m.dtype, sparse=m.issparse())
+    m = astensor(m)
+    gpu = m.op.gpu if gpu is None else gpu
+    op = TensorTriu(k, dtype=m.dtype, sparse=m.issparse(), gpu=gpu)
     return op(m)
 
 
@@ -140,15 +142,16 @@ class TensorTril(TensorTri):
     _input = KeyField('input')
     _k = Int32Field('k')
 
-    def __init__(self, k=None, dtype=None, sparse=False, **kw):
-        super(TensorTril, self).__init__(_k=k, _dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
+        super(TensorTril, self).__init__(_k=k, _dtype=dtype, _sparse=sparse,
+                                         _gpu=gpu, **kw)
 
     @property
     def k(self):
         return self._k
 
 
-def tril(m, k=0):
+def tril(m, k=0, gpu=None):
     """
     Lower triangle of a tensor.
 
@@ -161,6 +164,8 @@ def tril(m, k=0):
     k : int, optional
         Diagonal above which to zero elements.  `k = 0` (the default) is the
         main diagonal, `k < 0` is below it and `k > 0` is above.
+    gpu : bool, optional
+        Allocate the tensor on GPU if True, None as default
 
     Returns
     -------
@@ -182,6 +187,7 @@ def tril(m, k=0):
            [10, 11, 12]])
 
     """
-    m = tensor(m)
-    op = TensorTril(k, dtype=m.dtype, sparse=m.issparse())
+    m = astensor(m)
+    gpu = m.op.gpu if gpu is None else gpu
+    op = TensorTril(k, dtype=m.dtype, sparse=m.issparse(), gpu=gpu)
     return op(m)

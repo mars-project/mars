@@ -667,6 +667,16 @@ class TileableOperandMixin(object):
     def check_inputs(self, inputs):
         pass
 
+    @classmethod
+    def _check_if_gpu(cls, inputs):
+        if inputs is not None and \
+                len([inp for inp in inputs
+                     if inp is not None and getattr(inp, 'op', None) is not None]) > 0:
+            if all(inp.op.gpu is True for inp in inputs):
+                return True
+            elif all(inp.op.gpu is False for inp in inputs):
+                return False
+
     def _create_chunk(self, output_idx, index, **kw):
         raise NotImplementedError
 
@@ -677,6 +687,8 @@ class TileableOperandMixin(object):
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
         if getattr(self, '_key', None) is None:
             getattr(self, '_update_key')()
 
@@ -730,6 +742,8 @@ class TileableOperandMixin(object):
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
         if getattr(self, '_key', None) is None:
             getattr(self, '_update_key')()  # update key when inputs are set
 

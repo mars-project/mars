@@ -50,6 +50,8 @@ from .repeat import repeat, TensorRepeat
 from .tile import tile
 from .isin import isin, TensorIsIn
 from .searchsorted import searchsorted, TensorSearchsorted
+from .to_gpu import to_gpu
+from .to_cpu import to_cpu
 
 
 def _install():
@@ -62,12 +64,16 @@ def _install():
     setattr(Tensor, 'repeat', repeat)
     setattr(Tensor, 'ravel', ravel)
     setattr(Tensor, 'flatten', flatten)
+    setattr(Tensor, 'to_gpu', to_gpu)
+    setattr(Tensor, 'to_cpu', to_cpu)
     setattr(TensorData, 'astype', _astype)
     setattr(TensorData, 'swapaxes', swapaxes)
     setattr(TensorData, 'squeeze', squeeze)
     setattr(TensorData, 'repeat', repeat)
     setattr(TensorData, 'ravel', ravel)
     setattr(TensorData, 'flatten', flatten)
+    setattr(TensorData, 'to_gpu', to_gpu)
+    setattr(TensorData, 'to_cpu', to_cpu)
 
 
 _install()
