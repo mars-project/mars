@@ -14,14 +14,13 @@
 
 import pandas as pd
 import numpy as np
-try:
-    import cudf
-except ImportError:  # pragma: no cover
-    cudf = None
 
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ... import opcodes as OperandDef
+from ...utils import lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+
+cudf = lazy_import('cudf')
 
 
 class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
