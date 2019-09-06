@@ -110,7 +110,7 @@ if WINDOWS:
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
 # context of multiple processes might yield mixed messages in the output.
-log = logging.getLogger('gipc')
+cpdef object log = logging.getLogger('gipc')
 
 
 class GIPCError(Exception):
@@ -846,6 +846,9 @@ cdef class _GIPCHandle:
             fd = "WIN_%s" % self._ihfd
         return "<%s_%s fd: %s>" % (self.__class__.__name__, self._id, fd)
 
+cdef object _neti_pack = struct.Struct('!i').pack
+cdef object _neti_unpack = struct.Struct('!i').unpack
+
 
 cdef class _GIPCReader(_GIPCHandle):
     """
@@ -862,12 +865,22 @@ cdef class _GIPCReader(_GIPCHandle):
         _GIPCHandle.__init__(self)
         self._decoder = decoder
 
+    cdef bytes _recv_chunk(self, int n):
+        cdef bytes chunk
+        cdef int received
+
+        chunk = _read_nonblocking(self._fd, n)
+        received = len(chunk)
+        if received == 0:
+            raise EOFError(
+                "Most likely, the other pipe end is closed.")
+        return chunk
+
     cdef object _recv_in_buffer(self, int n, object buf=None):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
 
         cdef object readbuf
         cdef int remaining
-        cdef int received
         cdef bytes chunk
 
         # In rudimentary tests I have observed frequent creation of a new buffer
@@ -882,19 +895,15 @@ cdef class _GIPCReader(_GIPCHandle):
             # the same time this works around a bug in Mac OS X' read()
             # syscall. These findings are documented in
             # https://bitbucket.org/jgehrcke/gipc/issue/13.
-            if remaining > 65536:
-                chunk = _read_nonblocking(self._fd, 65536)
-            else:
-                chunk = _read_nonblocking(self._fd, remaining)
-            received = len(chunk)
-            if received == 0:
-                if remaining == n:
-                    raise EOFError(
-                        "Most likely, the other pipe end is closed.")
-                else:
+            try:
+                chunk = self._recv_chunk(min(remaining, 65536))
+            except EOFError:
+                if remaining != n:
                     raise IOError("Message interrupted by EOF.")
+                else:
+                    raise
             readbuf.write(chunk)
-            remaining -= received
+            remaining -= len(chunk)
         return readbuf
 
     cpdef bytes get(self, timeout=None):
@@ -937,14 +946,14 @@ cdef class _GIPCReader(_GIPCHandle):
         self._validate()
         buf = io.BytesIO()
         with self._lock:
-            size, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+            size, = _neti_unpack(self._recv_chunk(4))
             for _ in range(size):
-                if timeout:
+                if timeout is not None:
                     # Wait for ready-to-read event.
                     h = gevent.get_hub()
                     h.wait(h.loop.io(self._fd, 1))
                     timeout.cancel()
-                msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+                msize, = _neti_unpack(self._recv_chunk(4))
                 self._recv_in_buffer(msize, buf=buf)
         bindata = buf.getvalue()
         return self._decoder(bindata) if self._decoder is not None else bindata
@@ -1005,10 +1014,10 @@ cdef class _GIPCWriter(_GIPCHandle):
         """
         self._validate()
         with self._lock:
-            self._write(struct.pack("!i", len(oo)))
+            self._write(_neti_pack(len(oo)))
             for o in oo:
                 bindata = self._encoder(o) if self._encoder is not None else o
-                self._write(struct.pack("!i", len(bindata)))
+                self._write(_neti_pack(len(bindata)))
                 self._write(bindata)
 
 
@@ -1080,6 +1089,7 @@ class _GIPCDuplexHandle(_PairContext):
             self.__class__.__name__, self._reader, self._writer)
 
 
+cdef object _read_nonblocking, _write_nonblocking
 # Define non-blocking read and write functions
 if hasattr(gevent.os, 'nb_write'):
     # POSIX system -> use actual non-blocking I/O
