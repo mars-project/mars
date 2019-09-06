@@ -668,8 +668,7 @@ class TileableOperandMixin(object):
         pass
 
     def _check_if_gpu(self, inputs):
-        if getattr(self, '_gpu', None) is None and \
-                inputs is not None and len(inputs) > 0:
+        if inputs is not None and len(inputs) > 0:
             if all(inp.op.gpu is True for inp in inputs):
                 return True
             elif all(inp.op.gpu is False for inp in inputs):
@@ -685,7 +684,8 @@ class TileableOperandMixin(object):
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
-        self._gpu = self._check_if_gpu(self._inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
         if getattr(self, '_key', None) is None:
             getattr(self, '_update_key')()
 
@@ -739,7 +739,8 @@ class TileableOperandMixin(object):
 
         self.check_inputs(inputs)
         getattr(self, '_set_inputs')(inputs)
-        self._gpu = self._check_if_gpu(self._inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
         if getattr(self, '_key', None) is None:
             getattr(self, '_update_key')()  # update key when inputs are set
 
