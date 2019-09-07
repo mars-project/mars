@@ -60,11 +60,14 @@ class GraphMetaActor(SchedulerActor):
         self._graph_key = graph_key
 
         self._kv_store_ref = None
+        self._graph_wait_ref = None
 
         self._start_time = None
         self._end_time = None
         self._state = None
         self._final_state = None
+
+        self._graph_finish_event = None
 
         self._op_infos = defaultdict(dict)
         self._state_to_infos = defaultdict(dict)
@@ -75,6 +78,20 @@ class GraphMetaActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+        self._graph_finish_event = self.ctx.event()
+        graph_wait_uid = GraphWaitActor.gen_uid(self._session_id, self._graph_key)
+        try:
+            graph_wait_uid = self.ctx.distributor.make_same_process(
+                graph_wait_uid, self.uid)
+        except AttributeError:
+            pass
+        self._graph_wait_ref = self.ctx.create_actor(
+            GraphWaitActor, self._graph_finish_event, uid=graph_wait_uid)
+
+    def pre_destroy(self):
+        self._graph_wait_ref.destroy()
+        super(GraphMetaActor, self).pre_destroy()
+
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._op_infos)
 
@@ -83,6 +100,7 @@ class GraphMetaActor(SchedulerActor):
 
     def set_graph_end(self):
         self._end_time = time.time()
+        self._graph_finish_event.set()
 
     def set_state(self, state):
         self._state = state
@@ -92,6 +110,9 @@ class GraphMetaActor(SchedulerActor):
 
     def get_state(self):
         return self._state
+
+    def get_wait_ref(self):
+        return self._graph_wait_ref
 
     def set_final_state(self, state):
         self._final_state = state
@@ -166,6 +187,19 @@ class GraphMetaActor(SchedulerActor):
 
         percentage = finished * 100.0 / total_count if total_count != 0 else 1
         return ops, transposed, percentage
+
+
+class GraphWaitActor(SchedulerActor):
+    @staticmethod
+    def gen_uid(session_id, graph_key):
+        return 's:0:graph_wait$%s$%s' % (session_id, graph_key)
+
+    def __init__(self, graph_event):
+        super(GraphWaitActor, self).__init__()
+        self._graph_event = graph_event
+
+    def wait(self, timeout=None):
+        self._graph_event.wait(timeout)
 
 
 class GraphActor(SchedulerActor):
@@ -329,6 +363,7 @@ class GraphActor(SchedulerActor):
             logger.exception('Failed to start graph execution.')
             self.stop_graph()
             self.state = GraphState.FAILED
+            self._graph_meta_ref.set_graph_end(_tell=True)
             raise
 
         if len(self._chunk_graph_cache) == 0:
@@ -365,6 +400,7 @@ class GraphActor(SchedulerActor):
                 ref.stop_operand(_tell=True)
         if not has_stopping:
             self.state = GraphState.CANCELLED
+            self._graph_meta_ref.set_graph_end(_tell=True)
 
     @log_unhandled
     def reload_chunk_graph(self):

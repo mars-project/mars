@@ -136,6 +136,8 @@ class LocalDistributedCluster(object):
     def serve_forever(self):
         try:
             self._pool.join()
+        except KeyboardInterrupt:
+            pass
         finally:
             self.stop_service()
 

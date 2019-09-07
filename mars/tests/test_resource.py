@@ -104,7 +104,7 @@ class Test(unittest.TestCase):
 
             mem_stats = resource.virtual_memory()
             self.assertEqual(mem_stats.total, 1073741824)
-            self.assertEqual(mem_stats.used, 707457024)
+            self.assertEqual(mem_stats.used, 218181632)
         finally:
             resource.CGROUP_MEM_STAT_FILE = old_stat_file
             del os.environ['MARS_MEM_USE_CGROUP_STAT']
