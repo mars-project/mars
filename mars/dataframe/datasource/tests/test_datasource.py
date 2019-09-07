@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 from weakref import ReferenceType
 import mars.tensor as mt
-import numpy as np
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import numpy as np
+import pandas as pd
 
 from mars import opcodes as OperandDef
 from mars.graph import DAG
@@ -32,7 +28,6 @@ from mars.dataframe.datasource.from_tensor import from_tensor
 from mars.dataframe.datasource.from_records import from_records
 
 
-@unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
     def testChunkSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),

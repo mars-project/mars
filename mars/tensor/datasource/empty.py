@@ -156,7 +156,7 @@ def empty_like(a, dtype=None, gpu=None, order='K'):
     dtype : data-type, optional
         Overrides the data type of the result.
     gpu : bool, optional
-        Allocate the tensor on GPU if True, False as default
+        Allocate the tensor on GPU if True, None as default
     order : {'C', 'F', 'A', or 'K'}, optional
         Overrides the memory layout of the result. 'C' means C-order,
         'F' means F-order, 'A' means 'F' if ``prototype`` is Fortran
@@ -194,5 +194,6 @@ def empty_like(a, dtype=None, gpu=None, order='K'):
     """
     a = tensor(a)
     tensor_order = get_order(order, a.order)
+    gpu = a.op.gpu if gpu is None else gpu
     op = TensorEmptyLike(dtype=dtype, gpu=gpu, sparse=a.issparse(), order=order)
     return op(a, order=tensor_order)

@@ -19,7 +19,7 @@ from .array import tensor as astensor
 from .diag import diag
 
 
-def diagflat(v, k=0, sparse=None, gpu=None, chunk_size=None):
+def diagflat(v, k=0, sparse=None, gpu=False, chunk_size=None):
     """
     Create a two-dimensional tensor with the flattened input as a diagonal.
 

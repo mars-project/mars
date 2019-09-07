@@ -12,3 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from mars.dataframe.base.to_gpu import to_gpu
+from mars.dataframe.base.to_cpu import to_cpu
+
+
+def _install():
+    from ..core import DataFrameData, DataFrame, SeriesData, Series
+
+    DataFrameData.to_gpu = to_gpu
+    DataFrame.to_gpu = to_gpu
+    DataFrameData.to_cpu = to_cpu
+    DataFrame.to_cpu = to_cpu
+    SeriesData.to_gpu = to_gpu
+    Series.to_gpu = to_gpu
+    SeriesData.to_cpu = to_cpu
+    Series.to_cpu = to_cpu
+
+
+_install()
+del _install
