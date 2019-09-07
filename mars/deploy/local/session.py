@@ -123,7 +123,7 @@ class LocalClusterSession(object):
         graph_key = uuid.uuid4()
 
         # submit graph to local cluster
-        self._api.submit_graph(self._session_id, json.dumps(graph.to_json()),
+        self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
                                graph_key, targets, compose=compose)
 
         exec_start_time = time.time()

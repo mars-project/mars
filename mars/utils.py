@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import functools
 import importlib
 import inspect
@@ -248,25 +247,30 @@ def serialize_graph(graph, compress=False):
     ser_graph = graph.to_pb().SerializeToString()
     if compress:
         ser_graph = zlib.compress(ser_graph)
-    return base64.b64encode(ser_graph)
+    return ser_graph
 
 
-def deserialize_graph(graph_b64, graph_cls=None):
+def deserialize_graph(ser_graph, graph_cls=None):
+    from google.protobuf.message import DecodeError
     from .serialize.protos.graph_pb2 import GraphDef
     from .graph import DirectedGraph
     graph_cls = graph_cls or DirectedGraph
+    ser_graph_bin = to_binary(ser_graph)
+    g = GraphDef()
     try:
-        json_obj = json.loads(to_str(graph_b64))
-        return graph_cls.from_json(json_obj)
-    except (SyntaxError, ValueError):
-        g = GraphDef()
-        ser_graph = base64.b64decode(graph_b64)
-        try:
-            ser_graph = zlib.decompress(ser_graph)
-        except zlib.error:
-            pass
-        g.ParseFromString(ser_graph)
+        ser_graph = ser_graph
+        g.ParseFromString(ser_graph_bin)
         return graph_cls.from_pb(g)
+    except DecodeError:
+        pass
+
+    try:
+        ser_graph_bin = zlib.decompress(ser_graph_bin)
+        g.ParseFromString(ser_graph_bin)
+        return graph_cls.from_pb(g)
+    except (zlib.error, DecodeError):
+        json_obj = json.loads(to_str(ser_graph))
+        return graph_cls.from_json(json_obj)
 
 
 if sys.version_info[0] < 3:

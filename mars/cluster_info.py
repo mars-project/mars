@@ -144,8 +144,10 @@ class HasClusterInfoActor(PromiseActor):
         # cluster_info_actor is created when scheduler initialized
         self._cluster_info_ref = self.ctx.actor_ref(self.cluster_info_uid)
         # when some schedulers lost, notification will be received
-        self._cluster_info_ref.register_observer(self.ref(), set_schedulers_fun_name)
-        self.set_schedulers(self._cluster_info_ref.get_schedulers())
+        self._cluster_info_ref.register_observer(
+            self.ref(), set_schedulers_fun_name, _tell=True, _wait=False)
+        if not self._schedulers:
+            self.set_schedulers(self._cluster_info_ref.get_schedulers())
 
     def get_actor_ref(self, key):
         addr = self.get_scheduler(key)
