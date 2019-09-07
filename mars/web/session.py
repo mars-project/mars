@@ -161,7 +161,7 @@ class Session(object):
         exec_start_time = time.time()
         time_elapsed = 0
         while timeout <= 0 or time_elapsed < timeout:
-            timeout_val = min(5, timeout - time_elapsed) if timeout > 0 else 5
+            timeout_val = min(20, timeout - time_elapsed) if timeout > 0 else 20
             try:
                 if self._check_response_finished(graph_url, timeout_val):
                     break

@@ -18,7 +18,7 @@ import os
 from collections import defaultdict
 
 from .kvstore import KVStoreActor
-from .utils import SchedulerActor
+from .utils import SchedulerActor, CombinedFutureWaiter
 from ..compat import PY27, OrderedDict3
 from ..config import options
 from ..utils import BlacklistSet
@@ -558,6 +558,8 @@ class ChunkMetaClient(object):
             )
         if _wait:
             [f.result() for f in futures]
+        else:
+            return CombinedFutureWaiter(futures)
 
     def delete_meta(self, session_id, chunk_key, _tell=False, _wait=True):
         query_key = (session_id, chunk_key)
