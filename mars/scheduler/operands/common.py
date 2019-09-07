@@ -23,7 +23,7 @@ from ...operands import Operand
 from ...utils import log_unhandled
 from ..utils import GraphState, array_to_bytes
 from .base import BaseOperandActor
-from .core import OperandState, OperandPosition, register_operand_class, rewrite_worker_errors
+from .core import OperandState, register_operand_class, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +81,8 @@ class OperandActor(BaseOperandActor):
     def append_graph(self, graph_key, op_info):
         from ..graph import GraphActor
 
-        if self._position != OperandPosition.TERMINAL:
-            self._position = op_info.get('position')
+        if not self._is_terminal:
+            self._is_terminal = op_info.get('is_terminal')
         graph_ref = self.get_actor_ref(GraphActor.gen_uid(self._session_id, graph_key))
         self._graph_refs.append(graph_ref)
         self._pred_keys.update(op_info['io_meta']['predecessors'])
@@ -109,7 +109,7 @@ class OperandActor(BaseOperandActor):
 
     def add_finished_successor(self, op_key, worker):
         super(OperandActor, self).add_finished_successor(op_key, worker)
-        if self._position != OperandPosition.TERMINAL and \
+        if not self._is_terminal and \
                 all(k in self._finish_succs for k in self._succ_keys):
             # make sure that all prior states are terminated (in case of failover)
             states = []
@@ -444,7 +444,7 @@ class OperandActor(BaseOperandActor):
             futures.append(self._get_operand_actor(in_key).add_finished_successor(
                 self._op_key, self.worker, _tell=True, _wait=False))
         # require more chunks to execute if the completion caused no successors to run
-        if self._position == OperandPosition.TERMINAL:
+        if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
             futures.extend(self._add_finished_terminal())
         [f.result() for f in futures]
@@ -455,7 +455,7 @@ class OperandActor(BaseOperandActor):
             return
 
         futures = []
-        if self._position == OperandPosition.TERMINAL:
+        if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
             futures.extend(self._add_finished_terminal(final_state=GraphState.FAILED))
         # set successors to FATAL
@@ -490,7 +490,7 @@ class OperandActor(BaseOperandActor):
     @log_unhandled
     def _on_cancelled(self):
         futures = []
-        if self._position == OperandPosition.TERMINAL:
+        if self._is_terminal:
             futures.extend(self._add_finished_terminal(final_state=GraphState.CANCELLED))
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(

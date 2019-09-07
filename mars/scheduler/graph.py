@@ -26,7 +26,7 @@ import numpy as np
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
-from .operands import get_operand_actor_class, OperandState, OperandPosition
+from .operands import get_operand_actor_class, OperandState
 from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
@@ -740,16 +740,13 @@ class GraphActor(SchedulerActor):
             else:
                 initial_keys.append(op_key)
                 state = OperandState.READY
+                op_info['is_initial'] = True
             op_info['retries'] = 0
             meta_op_info['state'] = op_info['state'] = state
             meta_op_info['worker'] = op_info.get('worker')
 
-            position = None
             if op_key in self._terminal_chunk_op_tileable:
-                position = OperandPosition.TERMINAL
-            elif not io_meta['predecessors']:
-                position = OperandPosition.INITIAL
-            op_info['position'] = position
+                op_info['is_terminal'] = True
 
             op_cls = get_operand_actor_class(type(op))
             op_uid = op_cls.gen_uid(self._session_id, op_key)

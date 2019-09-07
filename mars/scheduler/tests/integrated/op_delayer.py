@@ -14,7 +14,7 @@
 
 import os
 
-from mars.scheduler.operands import OperandActor, OperandPosition, ShuffleProxyActor
+from mars.scheduler.operands import OperandActor, ShuffleProxyActor
 from mars.actors.core import register_actor_implementation
 
 
@@ -42,7 +42,7 @@ class DelayedOperandActor(OperandActor):
 
     def _on_finished(self):
         super(DelayedOperandActor, self)._on_finished()
-        if self._position == OperandPosition.TERMINAL:
+        if self._is_terminal:
             _write_state_file('OP_TERMINATE_STATE_FILE')
 
 

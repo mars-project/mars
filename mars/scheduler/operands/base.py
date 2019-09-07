@@ -18,7 +18,7 @@ from collections import defaultdict
 
 from ...errors import WorkerDead
 from ..utils import SchedulerActor
-from .core import OperandState, OperandPosition, rewrite_worker_errors
+from .core import OperandState, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,8 @@ class BaseOperandActor(SchedulerActor):
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
-        self._position = op_info.get('position')
+        self._is_initial = op_info.get('is_initial') or False
+        self._is_terminal = op_info.get('is_terminal') or False
         # worker actually assigned
         self._worker = worker
 
@@ -239,7 +240,7 @@ class BaseOperandActor(SchedulerActor):
             for in_key in self._pred_keys:
                 futures.append(self._get_operand_actor(in_key).remove_finished_successor(
                     self._op_key, _tell=True, _wait=False))
-            if self._position == OperandPosition.TERMINAL:
+            if self._is_terminal:
                 for graph_ref in self._graph_refs:
                     futures.append(graph_ref.remove_finished_terminal(
                         self._op_key, _tell=True, _wait=False))
