@@ -97,16 +97,19 @@ class Test(unittest.TestCase):
             f.write(_memory_stat_content)
 
         old_stat_file = resource.CGROUP_MEM_STAT_FILE
+        old_shm_path = resource._shm_path
         try:
             os.environ['MARS_MEM_USE_CGROUP_STAT'] = '1'
             resource = reload_module(resource)
             resource.CGROUP_MEM_STAT_FILE = mem_stat_path
+            resource._shm_path = None
 
             mem_stats = resource.virtual_memory()
             self.assertEqual(mem_stats.total, 1073741824)
             self.assertEqual(mem_stats.used, 218181632)
         finally:
             resource.CGROUP_MEM_STAT_FILE = old_stat_file
+            resource._shm_path = old_shm_path
             del os.environ['MARS_MEM_USE_CGROUP_STAT']
             os.unlink(mem_stat_path)
             reload_module(resource)
