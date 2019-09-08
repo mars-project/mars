@@ -119,6 +119,22 @@ class Test(TestBase):
         series3 = df['c1'][0]
         self.assertEqual(series3.execute(), data['c1'][0])
 
+    def testDataFrameGetitemUsingAttr(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        series1 = df.c2
+        pd.testing.assert_series_equal(series1.execute(), data.c2)
+
+        # accessing column using attribute shouldn't overwrite existing attributes
+        self.assertEqual(df.key, getattr(getattr(df, '_data'), '_key'))
+        self.assertEqual(df.size, data.size)
+        pd.testing.assert_series_equal(df.dtypes, data.dtypes)
+
+        # accessing non-existing attributes should trigger exception
+        with self.assertRaises(AttributeError):
+            _ = df.zzz
+
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10))
         series = md.Series(data)

@@ -687,6 +687,15 @@ class DataFrame(TileableEntity):
     def __mars_tensor__(self, dtype=None, order='K'):
         return self._data.to_tensor().astype(dtype=dtype, order=order, copy=False)
 
+    def __getattr__(self, key):
+        try:
+            return getattr(self._data, key)
+        except AttributeError:
+            if key in self.dtypes:
+                return self[key]
+            else:
+                raise
+
 
 INDEX_TYPE = (Index, IndexData)
 INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
