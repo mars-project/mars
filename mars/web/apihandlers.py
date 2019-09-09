@@ -125,6 +125,8 @@ class GraphsApiHandler(MarsApiRequestHandler):
 
 
 class GraphApiHandler(MarsApiRequestHandler):
+    _executor = futures.ThreadPoolExecutor(1)
+
     @gen.coroutine
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
@@ -132,7 +134,6 @@ class GraphApiHandler(MarsApiRequestHandler):
 
         try:
             if wait_timeout:
-                executor = futures.ThreadPoolExecutor(1)
                 if wait_timeout <= 0:
                     wait_timeout = None
 
@@ -140,7 +141,7 @@ class GraphApiHandler(MarsApiRequestHandler):
                     web_api = MarsWebAPI(self._scheduler)
                     return web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
 
-                _ = yield executor.submit(_wait_fun)
+                _ = yield self._executor.submit(_wait_fun)
 
             state = self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:
@@ -167,6 +168,8 @@ class GraphApiHandler(MarsApiRequestHandler):
 
 
 class GraphDataApiHandler(MarsApiRequestHandler):
+    _executor = futures.ThreadPoolExecutor(1)
+
     @gen.coroutine
     def get(self, session_id, graph_key, tileable_key):
         data_type = self.get_argument('type', None)
@@ -186,14 +189,13 @@ class GraphDataApiHandler(MarsApiRequestHandler):
             else:
                 raise web.HTTPError(403, 'Unknown data type requests')
         else:
-            executor = futures.ThreadPoolExecutor(1)
 
             def _fetch_fun():
                 web_api = MarsWebAPI(self._scheduler)
                 return web_api.fetch_data(session_id, graph_key, tileable_key, index_obj=slices_arg,
                                           compressions=compressions_arg)
 
-            data = yield executor.submit(_fetch_fun)
+            data = yield self._executor.submit(_fetch_fun)
             self.write(data)
 
     def delete(self, session_id, graph_key, tileable_key):

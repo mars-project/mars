@@ -262,7 +262,7 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_uid())
+        self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
         self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
@@ -718,6 +718,7 @@ class GraphActor(SchedulerActor):
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
 
+        session_id = self._session_id
         op_refs = dict()
         meta_op_infos = dict()
         initial_keys = []
@@ -751,11 +752,11 @@ class GraphActor(SchedulerActor):
                 op_info['is_terminal'] = True
 
             op_cls = get_operand_actor_class(type(op))
-            op_uid = op_cls.gen_uid(self._session_id, op_key)
+            op_uid = op_cls.gen_uid(session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
 
             op_refs[op_key] = self.ctx.create_actor(
-                op_cls, self._session_id, self._graph_key, op_key, op_info.copy(),
+                op_cls, session_id, self._graph_key, op_key, op_info.copy(),
                 with_kvstore=self._kv_store_ref is not None,
                 schedulers=self.get_schedulers(),
                 uid=op_uid, address=scheduler_addr, wait=False
@@ -783,7 +784,7 @@ class GraphActor(SchedulerActor):
                 op_info['io_meta'] = self._collect_operand_io_meta(chunk_graph, chunks)
 
                 op_cls = get_operand_actor_class(type(op))
-                op_uid = op_cls.gen_uid(self._session_id, op_key)
+                op_uid = op_cls.gen_uid(session_id, op_key)
                 scheduler_addr = self.get_scheduler(op_uid)
                 op_ref = op_refs[op_key] = self.ctx.actor_ref(op_uid, address=scheduler_addr)
                 append_futures.append(op_ref.append_graph(self._graph_key, op_info.copy(), _wait=False))
@@ -792,8 +793,10 @@ class GraphActor(SchedulerActor):
                     del op_info['io_meta']
             [future.result() for future in append_futures]
 
-            start_futures = [ref.start_operand(_tell=True, _wait=False) for ref in op_refs.values()]
-            [future.result() for future in start_futures]
+            res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
+                                if op_info.get('is_initial', False)]
+            self._assigner_actor_ref.apply_for_multiple_resources(
+                session_id, res_applications, _tell=True)
 
     @log_unhandled
     def add_finished_terminal(self, op_key, final_state=None):

@@ -173,6 +173,8 @@ class ExecutionActor(WorkerActor):
         self.ref().periodical_dump(_tell=True, _delay=10)
 
     def _pin_data_keys(self, session_id, graph_key, data_keys):
+        if not data_keys:
+            return
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
         except KeyError:
@@ -864,7 +866,9 @@ class ExecutionActor(WorkerActor):
         query_key = (session_id, graph_key)
         callbacks = self._graph_records[query_key].finish_callbacks
         args, kwargs = self._result_cache[query_key].build_args()
+
         logger.debug('Send finish callback for graph %s into %d targets', graph_key, len(callbacks))
+        kwargs['_wait'] = False
         for cb in callbacks:
             self.tell_promise(cb, *args, **kwargs)
         self._cleanup_graph(session_id, graph_key)

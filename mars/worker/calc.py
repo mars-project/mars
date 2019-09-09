@@ -211,7 +211,7 @@ class CpuCalcActor(WorkerActor):
 
         def _start_calc(context_dict):
             for k in calc_quotas.keys():
-                self._mem_quota_ref.process_quota(k)
+                self._mem_quota_ref.process_quota(k, _tell=True)
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
@@ -241,29 +241,29 @@ class CpuCalcActor(WorkerActor):
         from ..scheduler.chunkmeta import WorkerMeta
 
         storage_client = self.storage_client
-        copy_targets = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+
+        sizes = storage_client.get_data_sizes(session_id, keys_to_store)
+        shapes = storage_client.get_data_shapes(session_id, keys_to_store)
+
+        store_keys, store_metas = [], []
+
+        for k, size in sizes.items():
+            if isinstance(k, tuple):
+                continue
+            store_keys.append(k)
+            store_metas.append(WorkerMeta(size, shapes.get(k), (self.address,)))
+        meta_future = self.get_meta_client().batch_set_chunk_meta(
+            session_id, store_keys, store_metas, _wait=False)
 
         def _delete_key(k, *_):
             storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY], _tell=True)
-            self._release_local_quota(session_id, k)
+            self._mem_quota_ref.release_quota(build_quota_key(session_id, k, owner=self.proc_id))
 
-        def _upload_meta(*_):
-            sizes = storage_client.get_data_sizes(session_id, keys_to_store)
-            shapes = storage_client.get_data_shapes(session_id, keys_to_store)
-
-            store_keys, store_metas = [], []
-
-            for k, size in sizes.items():
-                if isinstance(k, tuple):
-                    continue
-                store_keys.append(k)
-                store_metas.append(WorkerMeta(size, shapes.get(k), (self.address,)))
-            self.get_meta_client().batch_set_chunk_meta(session_id, store_keys, store_metas)
-
+        copy_targets = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
         promise.all_([
             storage_client.copy_to(session_id, k, copy_targets)
                 .then(functools.partial(_delete_key, k))
             for k in keys_to_store]) \
-            .then(_upload_meta) \
+            .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),
                   lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))

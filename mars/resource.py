@@ -73,7 +73,10 @@ def virtual_memory():
         # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
         cgroup_mem_info = _read_cgroup_stat_file()
         total = cgroup_mem_info['hierarchical_memory_limit']
-        used = cgroup_mem_info['cache'] + cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
+        used = cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
+        if _shm_path:
+            shm_stats = psutil.disk_usage(_shm_path)
+            used += shm_stats.used
         available = free = total - used
         percent = 100.0 * (total - available) / total
         return _virt_memory_stat(total, available, percent, used, free)
