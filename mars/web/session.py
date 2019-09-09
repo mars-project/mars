@@ -24,9 +24,10 @@ import uuid
 import numpy as np
 
 from ..compat import six, TimeoutError  # pylint: disable=W0622
-from ..serialize import dataserializer
+from ..config import options
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
+from ..serialize import dataserializer
 from ..tensor.core import Indexes
 from ..utils import build_graph, sort_dataframe_result, numpy_dtype_from_descr_json
 
@@ -160,8 +161,9 @@ class Session(object):
 
         exec_start_time = time.time()
         time_elapsed = 0
+        check_interval = options.check_interval
         while timeout <= 0 or time_elapsed < timeout:
-            timeout_val = min(20, timeout - time_elapsed) if timeout > 0 else 20
+            timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
             try:
                 if self._check_response_finished(graph_url, timeout_val):
                     break
