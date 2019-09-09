@@ -17,26 +17,19 @@ import uuid
 
 import gevent
 
-from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaClient, ChunkMetaActor
+from mars.scheduler import ResourceActor, AssignerActor, ChunkMetaClient, \
+    ChunkMetaActor, OperandActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.actors import FunctionActor, create_actor_pool
 from mars.utils import get_next_port
 
 
-class PromiseReplyTestActor(FunctionActor):
-    def __init__(self):
-        super(PromiseReplyTestActor, self).__init__()
-        self._replied = False
-        self._value = None
+class MockOperandActor(FunctionActor):
+    def submit_to_worker(self, worker_ep, _data_sizes):
+        self._worker_ep = worker_ep
 
-    def reply(self, *value):
-        self._replied = True
-        self._value = value
-
-    def get_reply(self):
-        if not self._replied:
-            return None
-        return self._replied, self._value
+    def get_worker_ep(self):
+        return getattr(self, '_worker_ep', None)
 
 
 class Test(unittest.TestCase):
@@ -85,11 +78,10 @@ class Test(unittest.TestCase):
             chunk_meta_client.set_chunk_meta(session_id, chunk_key2, size=512, workers=(endpoint1,))
             chunk_meta_client.set_chunk_meta(session_id, chunk_key3, size=512, workers=(endpoint2,))
 
-            reply_ref = pool.create_actor(PromiseReplyTestActor)
-            reply_callback = ((reply_ref.uid, reply_ref.address), 'reply')
-            assigner_ref.apply_for_resource(session_id, op_key, op_info, callback=reply_callback)
+            uid = OperandActor.gen_uid(session_id, op_key)
+            reply_ref = pool.create_actor(MockOperandActor, uid=uid)
+            assigner_ref.apply_for_resource(session_id, op_key, op_info)
 
-            while not reply_ref.get_reply():
+            while not reply_ref.get_worker_ep():
                 gevent.sleep(0.1)
-            _, ret_value = reply_ref.get_reply()
-            self.assertEqual(ret_value[0], endpoint1)
+            self.assertEqual(reply_ref.get_worker_ep(), endpoint1)

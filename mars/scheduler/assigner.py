@@ -25,6 +25,7 @@ from .. import promise
 from ..config import options
 from ..errors import DependencyMissing
 from ..utils import log_unhandled
+from .operands import BaseOperandActor
 from .resource import ResourceActor
 from .utils import SchedulerActor
 
@@ -148,6 +149,13 @@ class AssignerActor(SchedulerActor):
             self._refresh_worker_metrics()
         return [w for w in workers if w in self._worker_metrics] if self._worker_metrics else []
 
+    def _enqueue_operand(self, session_id, op_key, op_info, callback=None):
+        priority_item = ChunkPriorityItem(session_id, op_key, op_info, callback)
+        if priority_item.target_worker not in self._worker_metrics:
+            priority_item.target_worker = None
+        self._requests[op_key] = priority_item
+        heapq.heappush(self._req_heap, priority_item)
+
     @promise.reject_on_exception
     @log_unhandled
     def apply_for_resource(self, session_id, op_key, op_info, callback=None):
@@ -159,12 +167,17 @@ class AssignerActor(SchedulerActor):
         :param callback: promise callback, called when the resource is assigned
         """
         self._refresh_worker_metrics()
+        self._enqueue_operand(session_id, op_key, op_info, callback)
+        logger.debug('Operand %s enqueued', op_key)
+        self._actual_ref.allocate_top_resources(_tell=True)
 
-        priority_item = ChunkPriorityItem(session_id, op_key, op_info, callback)
-        if priority_item.target_worker not in self._worker_metrics:
-            priority_item.target_worker = None
-        self._requests[op_key] = priority_item
-        heapq.heappush(self._req_heap, priority_item)
+    @log_unhandled
+    def apply_for_multiple_resources(self, session_id, applications):
+        self._refresh_worker_metrics()
+        logger.debug('%d operands applied for session %s', len(applications), session_id)
+        for app in applications:
+            op_key, op_info = app
+            self._enqueue_operand(session_id, op_key, op_info)
         self._actual_ref.allocate_top_resources(_tell=True)
 
     @log_unhandled
@@ -274,10 +287,11 @@ class AssignEvaluationActor(SchedulerActor):
             try:
                 alloc_ep, rejects = self._allocate_resource(
                     item.session_id, item.op_key, item.op_info, item.target_worker,
-                    reject_workers=reject_workers, callback=item.callback)
+                    reject_workers=reject_workers)
             except:  # noqa: E722
                 logger.exception('Unexpected error occurred in %s', self.uid)
-                self.tell_promise(item.callback, *sys.exc_info(), **dict(_accept=False))
+                if item.callback:  # pragma: no branch
+                    self.tell_promise(item.callback, *sys.exc_info(), **dict(_accept=False))
                 continue
 
             # collect workers failed to assign operand to
@@ -293,7 +307,7 @@ class AssignEvaluationActor(SchedulerActor):
             self._assigner_ref.extend(unassigned)
 
     @log_unhandled
-    def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None, callback=None):
+    def _allocate_resource(self, session_id, op_key, op_info, target_worker=None, reject_workers=None):
         """
         Allocate resource for single operand
         :param session_id: session id
@@ -301,20 +315,19 @@ class AssignEvaluationActor(SchedulerActor):
         :param op_info: operand info dict
         :param target_worker: worker to allocate, can be None
         :param reject_workers: workers denied to assign to
-        :param callback: promise callback from operands
         """
         if target_worker not in self._worker_metrics:
             target_worker = None
 
         reject_workers = reject_workers or set()
 
-        op_io_meta = op_info['io_meta']
+        op_io_meta = op_info.get('io_meta', {})
         try:
             input_metas = op_io_meta['input_data_metas']
             input_data_keys = list(input_metas.keys())
             input_sizes = dict((k, v.chunk_size) for k, v in input_metas.items())
         except KeyError:
-            input_data_keys = op_io_meta['input_chunks']
+            input_data_keys = op_io_meta.get('input_chunks', {})
 
             input_metas = self._get_chunks_meta(session_id, input_data_keys)
             if any(m is None for m in input_metas.values()):
@@ -339,12 +352,15 @@ class AssignEvaluationActor(SchedulerActor):
             if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
-                self.tell_promise(callback, worker_ep, input_metas)
+                self.get_actor_ref(BaseOperandActor.gen_uid(session_id, op_key)) \
+                    .submit_to_worker(worker_ep, input_metas, _tell=True, _wait=False)
                 return worker_ep, rejects
             rejects.append(worker_ep)
         return None, rejects
 
     def _get_chunks_meta(self, session_id, keys):
+        if not keys:
+            return dict()
         return dict(zip(keys, self.chunk_meta.batch_get_chunk_meta(session_id, keys)))
 
     def _get_eps_by_worker_locality(self, input_keys, chunk_workers, input_sizes):

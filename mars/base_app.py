@@ -215,6 +215,8 @@ class BaseApplication(object):
                                 stopped.append(idx)
                         if stopped:
                             self.handle_process_down(stopped)
+                except KeyboardInterrupt:
+                    pass
                 finally:
                     self.stop()
         finally:

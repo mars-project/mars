@@ -507,9 +507,10 @@ class PromiseActor(FunctionActor):
         Tell promise results to the caller
         :param callback: promise callback
         """
+        wait = kwargs.pop('_wait', False)
         uid, address = callback[0]
         callback_args = callback[1:] + args + (kwargs, )
-        self.ctx.actor_ref(uid, address=address).tell(callback_args)
+        return self.ctx.actor_ref(uid, address=address).tell(callback_args, wait=wait)
 
     def handle_promise(self, promise_id, *args, **kwargs):
         """
