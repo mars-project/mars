@@ -21,6 +21,7 @@ import numpy as np
 
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session, LocalSession
+from mars import tensor as mt
 from mars.tests.core import mock
 
 
@@ -493,6 +494,34 @@ class Test(unittest.TestCase):
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                             shared_memory='20M', web=True) as cluster:
+            session = cluster.session.as_default()
+            testWithGivenSession(session)
+
+            with new_session('http://' + cluster._web_endpoint).as_default() as web_session:
+                testWithGivenSession(web_session)
+
+    @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
+    def testMutableTensorConcat(self):
+        def testWithGivenSession(session):
+            mut = session.create_mutable_tensor("test", (4, 5), dtype='int32', chunk_size=100)
+            mut[1:4, 2] = 8
+            mut[2:4] = np.arange(10).reshape(2, 5)
+            arr = mut.seal()
+            arr = mt.concatenate([arr, arr])
+
+            expected = np.zeros((4, 5), dtype='int32')
+            expected[1:4, 2] = 8
+            expected[2:4] = np.arange(10).reshape(2, 5)
+            expected = np.concatenate([expected, expected])
+
+            # check value
+            np.testing.assert_array_equal(session.run(arr), expected)
+
+        with new_session().as_default() as session:
+            testWithGivenSession(session)
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
             session = cluster.session.as_default()
             testWithGivenSession(session)
 

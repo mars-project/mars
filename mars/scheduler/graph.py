@@ -550,6 +550,9 @@ class GraphActor(SchedulerActor):
             for n in tileable_key_opid_to_tiled[(tk, topid)][-1].chunks:
                 self._terminal_chunk_op_tileable[n.op.key].add(tk)
                 self._target_tileable_chunk_ops[tk].add(n.op.key)
+                # treat fetch chunks (from sealed mutable tensor) as executed, see GH#713
+                if isinstance(n.op, Fetch):
+                    self._target_tileable_finished[tk].add(n.op.key)
 
         # sync chunk graph to kv store
         if self._kv_store_ref is not None:

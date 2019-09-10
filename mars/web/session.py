@@ -244,7 +244,7 @@ class Session(object):
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
         shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
-        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+        return create_mutable_tensor(name, chunk_size, tuple(shape), numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
 
     def get_mutable_tensor(self, name):
@@ -257,7 +257,7 @@ class Session(object):
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
             six.reraise(*exc_info)
         shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
-        return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+        return create_mutable_tensor(name, chunk_size, tuple(shape), numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
 
     def write_mutable_tensor(self, tensor, index, value):
@@ -305,7 +305,7 @@ class Session(object):
 
         # # Construct Tensor on the fly.
         shape, dtype, chunk_size, chunk_keys, _ = tensor_meta
-        return create_fetch_tensor(chunk_size, shape, numpy_dtype_from_descr_json(dtype),
+        return create_fetch_tensor(chunk_size, tuple(shape), numpy_dtype_from_descr_json(dtype),
                                    tensor_key=tensor_key, chunk_keys=chunk_keys)
 
     def _update_tileable_shape(self, tileable):
