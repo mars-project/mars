@@ -148,8 +148,10 @@ class SessionActor(SchedulerActor):
                                           state=GraphState.SUCCEEDED, final_state=GraphState.SUCCEEDED,
                                           uid=graph_uid, address=graph_addr)
         self._graph_refs[graph_key] = graph_ref
-        self._graph_meta_refs[graph_key] = self.ctx.actor_ref(
+        graph_meta_ref = self.ctx.actor_ref(
             GraphMetaActor.gen_uid(self._session_id, graph_key), address=tensor_ref.__getstate__()[0])
+        self._graph_meta_refs[graph_key] = graph_meta_ref
+        graph_meta_ref.set_state(GraphState.SUCCEEDED)
 
         # Add the tensor to the GraphActor
         graph_ref.add_fetch_tileable(tensor_key, tensor_id, shape, dtype, chunk_size, chunk_keys)
