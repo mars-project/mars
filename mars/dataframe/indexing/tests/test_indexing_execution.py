@@ -119,6 +119,19 @@ class Test(TestBase):
         series3 = df['c1'][0]
         self.assertEqual(series3.execute(), data['c1'][0])
 
+    def testDataFrameGetitemBool(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        mask_data = data.c1 > 0.5
+        mask = md.Series(mask_data, chunk_size=2)
+
+        # getitem by mars series
+        pd.testing.assert_frame_equal(df[mask].execute(), data[mask_data])
+
+        # getitem by pandas series
+        pd.testing.assert_frame_equal(df[mask_data].execute(), data[mask_data])
+
     def testDataFrameGetitemUsingAttr(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])
         df = md.DataFrame(data, chunk_size=2)
