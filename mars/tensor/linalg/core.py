@@ -139,9 +139,10 @@ class TSQR(object):
         stage2_q_chunks = []
         for c, s in zip(stage1_q_chunks, q_slices):
             slice_op = TensorSlice(slices=[s], dtype=c.dtype)
+            slice_length = s.stop - (s.start or 0)
             stage2_q_chunks.append(slice_op.new_chunk([stage2_q_chunk], index=c.index,
                                                       order=TensorOrder.C_ORDER,
-                                                      shape=(c.shape[0], stage2_q_chunk.shape[1])))
+                                                      shape=(slice_length, stage2_q_chunk.shape[1])))
         stage3_q_chunks = []
         for c1, c2 in izip(stage1_q_chunks, stage2_q_chunks):
             dot_op = TensorDot(dtype=q_dtype)
