@@ -18,6 +18,7 @@ import time
 from collections import deque
 
 from ... import promise
+from ...config import options
 from ...utils import log_unhandled
 from ..utils import WorkerActor
 
@@ -33,7 +34,10 @@ class IORunnerActor(WorkerActor):
     def __init__(self):
         super(IORunnerActor, self).__init__()
         self._work_items = deque()
-        self._cur_work_item = None
+        self._max_work_item_id = 0
+        self._cur_work_items = dict()
+        self._lock_free = options.worker.lock_free_fileio
+        self._lock_work_item_id = dict()
         self._exec_start_time = None
 
     def post_create(self):
@@ -43,49 +47,47 @@ class IORunnerActor(WorkerActor):
         dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         dispatch_ref.register_free_slot(self.uid, 'iorunner')
 
-        self.ref().daemon_io_process(_tell=True)
-
     @promise.reject_on_exception
     @log_unhandled
     def load_from(self, dest_device, session_id, data_key, src_device, callback):
         logger.debug('Copying (%s, %s) from %s into %s submitted in %s',
                      session_id, data_key, src_device, dest_device, self.uid)
         self._work_items.append((dest_device, session_id, data_key, src_device, False, callback))
-        if self._cur_work_item is None:
+        if self._lock_free or not self._cur_work_items:
             self._submit_next()
 
     def lock(self, session_id, data_key, callback):
         logger.debug('Requesting lock for (%s, %s) on %s', session_id, data_key, self.uid)
         self._work_items.append((None, session_id, data_key, None, True, callback))
-        if self._cur_work_item is None:
+        if self._lock_free or not self._cur_work_items:
             self._submit_next()
 
     def unlock(self, session_id, data_key):
         logger.debug('%s unlocked for (%s, %s)', self.uid, session_id, data_key)
-        self._cur_work_item = None
+        work_item_id = self._lock_work_item_id.pop((session_id, data_key), None)
+        if work_item_id is None:
+            return
+        self._cur_work_items.pop(work_item_id)
         self._submit_next()
-
-    def daemon_io_process(self):
-        if self._exec_start_time is not None and time.time() > self._exec_start_time + 60:
-            logger.warning('Work item %r in %s is taking a long time: %s seconds passed',
-                           self._cur_work_item, self.uid, int(time.time() - self._exec_start_time))
-        self.ref().daemon_io_process(_delay=10, _tell=True)
 
     @log_unhandled
     def _submit_next(self):
         if not self._work_items:
             return
+        work_item_id = self._max_work_item_id
+        self._max_work_item_id += 1
         dest_device, session_id, data_key, src_device, is_lock, cb = \
-            self._cur_work_item = self._work_items.popleft()
+            self._cur_work_items[work_item_id] = self._work_items.popleft()
 
         if is_lock:
+            self._lock_work_item_id[(session_id, data_key)] = work_item_id
             self.tell_promise(cb)
             logger.debug('%s locked for (%s, %s)', self.uid, session_id, data_key)
             return
 
         @log_unhandled
         def _finalize(exc, *_):
-            self._cur_work_item = None
+            del self._cur_work_items[work_item_id]
             self._exec_start_time = None
             if not exc:
                 self.tell_promise(cb)

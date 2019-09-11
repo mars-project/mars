@@ -83,6 +83,7 @@ class WorkerService(object):
             options.worker.disk_compression
         options.worker.transfer_compression = kwargs.pop('transfer_compression', None) or \
             options.worker.transfer_compression
+        options.worker.lock_free_fileio = kwargs.pop('lock_free_fileio', None) or False
 
         self._total_mem = kwargs.pop('total_mem', None)
         self._cache_mem_limit = kwargs.pop('cache_mem_limit', None)
