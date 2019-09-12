@@ -16,12 +16,12 @@
 
 import threading
 import itertools
-from operator import attrgetter, mul
+from operator import attrgetter
 from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
-from .compat import six, izip, builtins, reduce
+from .compat import six, izip, builtins
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, is_eager_mode, kernel_mode, calc_data_size
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
@@ -644,19 +644,36 @@ class ChunksIndexer(object):
         self._tileable = tileable
 
     def __getitem__(self, item):
+        '''
+        The indices for `cix` can be [x, y] or [x, :]. For the former the result will be
+        a single chunk, and for the later the result will be a list of chunks (flattened).
+
+        The length of indices must be the same with `chunk_shape` of tileable.
+        '''
         if isinstance(item, tuple):
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]
-            elif all(np.issubdtype(type(it), np.integer) for it in item):
-                if len(item) != self._tileable.ndim:
-                    raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
-                        item, self._tileable.ndim))
+            if len(item) != self._tileable.ndim:
+                raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
+                    item, self._tileable.ndim))
+            indexes = []
+            for it, dim in zip(item, self._tileable.chunk_shape):
+                if isinstance(it, slice):
+                    indexes.append(range(dim)[it])
+                elif np.issubdtype(type(it), np.integer):
+                    if it < 0:
+                        indexes.append(dim + it)
+                    else:
+                        indexes.append(it)
+                else:
+                    raise TypeError('Cannot get tensor chunk by %s, invalid value has type %s' % (
+                        it, type(it)))
 
-                s = self._tileable.chunk_shape
-                item = tuple(i if i >= 0 else i + s for i, s in zip(item, s))
-                idx = sum(idx * reduce(mul, s[i+1:], 1) for i, idx
-                          in zip(itertools.count(0), item))
-                return self._tileable._chunks[idx]
+            flat_index = np.ravel_multi_index(indexes, self._tileable.chunk_shape)
+            if isinstance(flat_index, list):
+                return [self._tileable._chunks[idx] for idx in flat_index]
+            else:
+                return self._tileable._chunks[flat_index]
 
         raise ValueError('Cannot get tensor chunk by {0}'.format(item))
 
