@@ -133,7 +133,7 @@ class Test(TestBase):
 
         # accessing non-existing attributes should trigger exception
         with self.assertRaises(AttributeError):
-            _ = df.zzz
+            _ = df.zzz  # noqa: F841
 
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10))

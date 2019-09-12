@@ -313,6 +313,7 @@ class PromiseRefWrapper(object):
             self._caller.register_promise(p, self._ref)
 
             timeout = kwargs.pop('_timeout', 0)
+            spawn = kwargs.pop('_spawn', True)
 
             kwargs['callback'] = ((self._caller.uid, self._caller.address),
                                   'handle_promise', promise_id)
@@ -325,7 +326,10 @@ class PromiseRefWrapper(object):
                     self._caller.ref().handle_promise(
                         promise_id, *sys.exc_info(), **dict(_accept=False, _tell=True))
 
-            self._caller.async_group.spawn(_promise_runner)
+            if spawn:
+                self._caller.async_group.spawn(_promise_runner)
+            else:
+                ref_fun(*args, **kwargs)
 
             if timeout and timeout > 0:
                 # add a callback that triggers some times later to deal with timeout

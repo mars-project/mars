@@ -425,7 +425,8 @@ class OperandActor(BaseOperandActor):
 
         try:
             with rewrite_worker_errors():
-                self._execution_ref.add_finish_callback(self._session_id, self._op_key, _promise=True) \
+                self._execution_ref.add_finish_callback(
+                    self._session_id, self._op_key, _promise=True, _spawn=False) \
                     .then(_acceptor, _rejecter)
         except WorkerDead:
             logger.debug('Worker %s dead when adding callback for operand %s',
