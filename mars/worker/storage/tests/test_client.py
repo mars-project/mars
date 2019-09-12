@@ -22,6 +22,7 @@ from numpy.testing import assert_allclose
 
 from mars import promise
 from mars.actors import create_actor_pool
+from mars.config import options
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method
@@ -32,9 +33,14 @@ from mars.worker.storage import *
 
 
 class Test(WorkerCase):
+    def tearDown(self):
+        options.worker.lock_free_fileio = False
+        super(Test, self).tearDown()
+
     def testClientReadAndWrite(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with create_actor_pool(n_process=1, address=test_addr) as pool:
+            options.worker.lock_free_fileio = True
             pool.create_actor(
                 WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
             storage_manager_ref = pool.create_actor(

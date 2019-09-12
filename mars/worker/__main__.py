@@ -47,6 +47,8 @@ class WorkerApplication(BaseApplication):
         parser.add_argument('--cache-mem', help='cache memory size limit')
         parser.add_argument('--min-mem', help='minimal free memory required to start worker')
         parser.add_argument('--spill-dir', help='spill directory')
+        parser.add_argument('--lock-free-fileio', action='store_true',
+                            help='make file io lock free, add this when using a mounted dfs')
         parser.add_argument('--plasma-dir', help='path of plasma directory. When specified, the size '
                                                  'of plasma store will not be taken into account when '
                                                  'managing host memory')
@@ -78,11 +80,14 @@ class WorkerApplication(BaseApplication):
         # and distribute them over processes
 
         plasma_dir = self.args.plasma_dir or os.environ.get('MARS_PLASMA_DIRS')
+        lock_free_fileio = self.args.lock_free_fileio \
+            or bool(int(os.environ.get('MARS_LOCK_FREE_FILEIO', '0')))
         self._service = WorkerService(
             advertise_addr=self.args.advertise,
             n_cpu_process=self.args.cpu_procs,
             n_net_process=self.args.net_procs or self.args.io_procs,
             spill_dirs=self.args.spill_dir or os.environ.get('MARS_SPILL_DIRS'),
+            lock_free_fileio=lock_free_fileio,
             total_mem=self.args.phy_mem,
             cache_mem_limit=self.args.cache_mem or os.environ.get('MARS_CACHE_MEM_SIZE'),
             ignore_avail_mem=self.args.ignore_avail_mem,
