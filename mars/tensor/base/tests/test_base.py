@@ -489,8 +489,14 @@ class Test(unittest.TestCase):
         # no view cuz of fancy indexing
         self.assertFalse(arr9.op.create_view)
 
+        arr9[0][0][0] = 100
+        self.assertFalse(arr9.op.create_view)
+
         arr10 = arr[:3, None, :5]
         self.assertTrue(arr10.op.create_view)
+
+        arr10[0][0][0] = 100
+        self.assertFalse(arr10.op.create_view)
 
         data = np.array([[[0], [1], [2]]])
         x = tensor(data)
