@@ -656,24 +656,24 @@ class ChunksIndexer(object):
             if len(item) != self._tileable.ndim:
                 raise ValueError('Cannot get tensor chunk by %s, expect length %d' % (
                     item, self._tileable.ndim))
-            indexes = []
+            slices, singleton = [], True
             for it, dim in zip(item, self._tileable.chunk_shape):
                 if isinstance(it, slice):
-                    indexes.append(range(dim)[it])
+                    slices.append(range(dim)[it])
+                    singleton = False
                 elif np.issubdtype(type(it), np.integer):
-                    if it < 0:
-                        indexes.append(dim + it)
-                    else:
-                        indexes.append(it)
+                    slices.append([it if it >= 0 else dim + it])
                 else:
                     raise TypeError('Cannot get tensor chunk by %s, invalid value has type %s' % (
                         it, type(it)))
 
+            indexes = tuple(zip(*itertools.product(*slices)))
+
             flat_index = np.ravel_multi_index(indexes, self._tileable.chunk_shape)
-            if isinstance(flat_index, list):
-                return [self._tileable._chunks[idx] for idx in flat_index]
+            if singleton:
+                return self._tileable._chunks[flat_index[0]]
             else:
-                return self._tileable._chunks[flat_index]
+                return [self._tileable._chunks[idx] for idx in flat_index]
 
         raise ValueError('Cannot get tensor chunk by {0}'.format(item))
 
