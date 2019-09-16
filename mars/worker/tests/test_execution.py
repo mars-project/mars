@@ -28,7 +28,8 @@ from mars.compat import six
 from mars.config import options
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
-from mars.scheduler import ChunkMetaActor, ChunkMetaClient, ResourceActor
+from mars.scheduler import ChunkMetaActor, ResourceActor
+from mars.scheduler.chunkmeta import WorkerMeta
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method
 from mars.worker.tests.base import WorkerCase
@@ -178,11 +179,13 @@ class Test(WorkerCase):
             arr2 = arr + arr_add
             graph = arr2.build_graph(compose=False, tiled=True)
 
+            metas = dict()
             for chunk in graph:
                 if isinstance(chunk.op, TensorOnes):
                     chunk._op = TensorFetch(
                         dtype=chunk.dtype, _outputs=[weakref.ref(o) for o in chunk.op.outputs],
                         _key=chunk.op.key)
+                    metas[chunk.key] = WorkerMeta(chunk.nbytes, chunk.shape, pool_address)
 
             with self.run_actor_test(pool) as test_actor:
                 session_id = str(uuid.uuid4())
@@ -201,7 +204,7 @@ class Test(WorkerCase):
 
                 graph_key = str(uuid.uuid4())
                 execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[arr2.chunks[0].key]), None, _promise=True) \
+                                            dict(chunks=[arr2.chunks[0].key]), metas, _promise=True) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -222,28 +225,27 @@ class Test(WorkerCase):
 
             self.get_result()
 
-    @patch_method(SharedHolderActor.pin_data_keys)
     def testPrepareQuota(self, *_):
         pinned = [True]
 
-        def _mock_pin(_session_id, chunk_keys, _token):
+        orig_pin = SharedHolderActor.pin_data_keys
+
+        def _mock_pin(self, session_id, chunk_keys, token):
             from mars.errors import PinDataKeyFailed
             if pinned[0]:
                 raise PinDataKeyFailed
-            return chunk_keys
-
-        SharedHolderActor.pin_data_keys.side_effect = _mock_pin
+            return orig_pin(self, session_id, chunk_keys, token)
 
         pool_address = '127.0.0.1:%d' % get_next_port()
         session_id = str(uuid.uuid4())
         mock_data = np.array([1, 2, 3, 4])
-        with create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
+        with patch_method(SharedHolderActor.pin_data_keys, new=_mock_pin), \
+                create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
             pool.create_actor(CpuCalcActor)
             pool.create_actor(InProcHolderActor)
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
-            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
+            pool.actor_ref(WorkerClusterInfoActor.default_uid())
 
             import mars.tensor as mt
             from mars.tensor.fetch import TensorFetch
@@ -256,8 +258,9 @@ class Test(WorkerCase):
             arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
                 _key=modified_chunk.op.key)
-            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+            metas = {modified_chunk.key: WorkerMeta(
+                mock_data.nbytes, mock_data.shape,
+                ('0.0.0.0:1234', pool_address.replace('127.0.0.1', 'localhost')))}
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
@@ -266,7 +269,7 @@ class Test(WorkerCase):
 
                 execution_ref.execute_graph(
                     session_id, graph_key, serialize_graph(graph),
-                    dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+                    dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
                 execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(lambda *_: test_actor.set_result(time.time())) \
@@ -294,9 +297,6 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor)
             pool.create_actor(InProcHolderActor)
 
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
-            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
-
             import mars.tensor as mt
             from mars.tensor.fetch import TensorFetch
             arr = mt.ones((4,), chunk_size=4)
@@ -321,8 +321,8 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+            metas = {modified_chunk.key: WorkerMeta(
+                mock_data.nbytes, mock_data.shape, ('0.0.0.0:1234', pool_address))}
 
             # test read from spilled file
             with self.run_actor_test(pool) as test_actor:
@@ -342,7 +342,7 @@ class Test(WorkerCase):
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _promise=True) \
+                                            dict(chunks=[result_tensor.chunks[0].key]), metas, _promise=True) \
                     .then(_validate) \
                     .then(lambda *_: test_actor.set_result(None)) \
                     .catch(lambda *exc: test_actor.set_result(exc, False))
@@ -449,8 +449,6 @@ class Test(WorkerCase):
             pool.create_actor(CpuCalcActor)
             pool.create_actor(InProcHolderActor)
             pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
-            cluster_info_ref = pool.actor_ref(WorkerClusterInfoActor.default_uid())
-            chunk_meta_client = ChunkMetaClient(pool, cluster_info_ref)
 
             import mars.tensor as mt
             from mars.tensor.fetch import TensorFetch
@@ -477,13 +475,12 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                             shape=mock_data.shape, workers=('0.0.0.0:1234',))
+            metas = {modified_chunk.key: WorkerMeta(mock_data.nbytes, mock_data.shape, ('0.0.0.0:1234',))}
             with self.run_actor_test(pool) as test_actor:
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+                                            dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
                 execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(lambda *_: test_actor.set_result(None)) \
@@ -492,8 +489,9 @@ class Test(WorkerCase):
             with self.assertRaises(DependencyMissing):
                 self.get_result()
 
-            chunk_meta_client.set_chunk_meta(session_id, modified_chunk.key, size=mock_data.nbytes,
-                                             shape=mock_data.shape, workers=('0.0.0.0:1234', pool_address))
+            metas[modified_chunk.key] = WorkerMeta(
+                mock_data.nbytes, mock_data.shape,
+                ('0.0.0.0:1234', pool_address.replace('127.0.0.1', 'localhost')))
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
                     data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)
@@ -502,7 +500,7 @@ class Test(WorkerCase):
                 graph_key = str(uuid.uuid4())
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
                 execution_ref.execute_graph(session_id, graph_key, serialize_graph(graph),
-                                            dict(chunks=[result_tensor.chunks[0].key]), None, _tell=True)
+                                            dict(chunks=[result_tensor.chunks[0].key]), metas, _tell=True)
 
                 execution_ref.add_finish_callback(session_id, graph_key, _promise=True) \
                     .then(_validate) \

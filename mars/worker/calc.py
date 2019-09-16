@@ -74,7 +74,8 @@ class CpuCalcActor(WorkerActor):
         return list(fetch_keys)
 
     def _release_local_quota(self, session_id, data_key):
-        self._mem_quota_ref.release_quota(build_quota_key(session_id, data_key, owner=self.proc_id))
+        self._mem_quota_ref.release_quota(
+            build_quota_key(session_id, data_key, owner=self.proc_id), _tell=True, _wait=False)
 
     def _fetch_keys_to_process(self, session_id, keys_to_fetch):
         context_dict = dict()
@@ -87,7 +88,7 @@ class CpuCalcActor(WorkerActor):
             locations = storage_client.get_data_locations(session_id, k)
             quota_key = build_quota_key(session_id, k, owner=self.proc_id)
             if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
-                self._mem_quota_ref.release_quota(quota_key, _tell=True)
+                self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
                 storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
@@ -98,7 +99,7 @@ class CpuCalcActor(WorkerActor):
             data_key = kwargs.pop('key')
             quota_key = build_quota_key(session_id, data_key, owner=self.proc_id)
             storage_client.delete(session_id, data_key, [DataStorageDevice.PROC_MEMORY])
-            self._mem_quota_ref.release_quota(quota_key, _tell=True)
+            self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
 
             failed[0] = True
             context_dict.clear()
@@ -215,7 +216,7 @@ class CpuCalcActor(WorkerActor):
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
-            self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True)
+            self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True, _wait=False)
 
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
@@ -257,7 +258,8 @@ class CpuCalcActor(WorkerActor):
 
         def _delete_key(k, *_):
             storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY], _tell=True)
-            self._mem_quota_ref.release_quota(build_quota_key(session_id, k, owner=self.proc_id))
+            self._mem_quota_ref.release_quota(
+                build_quota_key(session_id, k, owner=self.proc_id), _tell=True, _wait=False)
 
         copy_targets = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
         promise.all_([

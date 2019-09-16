@@ -353,7 +353,7 @@ class AssignEvaluationActor(SchedulerActor):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
                 self.get_actor_ref(BaseOperandActor.gen_uid(session_id, op_key)) \
-                    .submit_to_worker(worker_ep, input_sizes, _tell=True, _wait=False)
+                    .submit_to_worker(worker_ep, input_metas, _tell=True, _wait=False)
                 return worker_ep, rejects
             rejects.append(worker_ep)
         return None, rejects
