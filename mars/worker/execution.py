@@ -328,8 +328,12 @@ class ExecutionActor(WorkerActor):
             logger.debug('Fetching chunk %s in %s to %s with slot %s',
                          chunk_key, remote_addr, self.address, sender_uid)
 
+            try:
+                target_slot = self._dispatch_ref.get_hash_slot('receiver', chunk_key)
+            except KeyError:
+                target_slot = None
             return sender_ref.send_data(
-                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                session_id, chunk_key, self.address, target_slot, ensure_cached=ensure_cached,
                 timeout=timeout, _timeout=timeout, _promise=True
             ).then(_finish_fetch)
 

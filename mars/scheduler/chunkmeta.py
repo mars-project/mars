@@ -438,7 +438,7 @@ class ChunkMetaClient(object):
         :param workers: workers holding the chunk
         """
         addr = self.get_scheduler((session_id, chunk_key))
-        self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
+        return self.ctx.actor_ref(ChunkMetaActor.default_uid(), address=addr) \
             .set_chunk_meta(session_id, chunk_key, size=size, shape=shape, workers=workers,
                             _tell=_tell, _wait=_wait)
 
