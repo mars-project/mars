@@ -141,7 +141,7 @@ class GraphApiHandler(MarsApiRequestHandler):
                     web_api = MarsWebAPI(self._scheduler)
                     return web_api.wait_graph_finish(session_id, graph_key, wait_timeout)
 
-                _ = yield self._executor.submit(_wait_fun)
+                _ = yield self._executor.submit(_wait_fun)  # noqa: F841
 
             state = self.web_api.get_graph_state(session_id, graph_key)
         except GraphNotExists:

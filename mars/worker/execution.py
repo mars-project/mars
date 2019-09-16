@@ -15,7 +15,6 @@
 import functools
 import logging
 import random
-import sys
 import time
 from collections import defaultdict
 
@@ -328,13 +327,11 @@ class ExecutionActor(WorkerActor):
             sender_ref = self.promise_ref(sender_uid, address=remote_addr)
             logger.debug('Fetching chunk %s in %s to %s with slot %s',
                          chunk_key, remote_addr, self.address, sender_uid)
-            try:
-                return sender_ref.send_data(
-                    session_id, chunk_key, self.address, ensure_cached=ensure_cached,
-                    timeout=timeout, _timeout=timeout, _promise=True
-                ).then(_finish_fetch)
-            except:  # noqa: E722
-                _handle_network_error(*sys.exc_info())
+
+            return sender_ref.send_data(
+                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                timeout=timeout, _timeout=timeout, _promise=True
+            ).then(_finish_fetch)
 
         return promise.finished() \
             .then(lambda *_: remote_disp_ref.get_free_slot('sender', _promise=True, _timeout=timeout)) \

@@ -85,7 +85,7 @@ class MockReceiverActor(WorkerActor):
         query_key = (session_id, chunk_key)
         try:
             meta = self._data_metas[query_key]
-            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.RECEIVING):
+            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.ERROR):
                 self.tell_promise(callback, *meta.callback_args, **meta.callback_kwargs)
             else:
                 raise KeyError
@@ -119,6 +119,8 @@ class MockReceiverActor(WorkerActor):
         if meta.checksum != checksum:
             raise ChecksumMismatch
         meta.status = ReceiveStatus.RECEIVED
+        for cb in self._callbacks[query_key]:
+            self.tell_promise(cb)
 
     def cancel_receive(self, session_id, chunk_key):
         pass
@@ -274,8 +276,10 @@ class Test(WorkerCase):
                         address=recv_pool_addr2, plasma_size=self.plasma_storage_size) as rp2:
                     recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverActor.default_uid())
 
-                    sender_ref_p.send_data(session_id, chunk_key1,
-                                           [recv_pool_addr, recv_pool_addr2], _promise=True)
+                    self.waitp(
+                        sender_ref_p.send_data(session_id, chunk_key1,
+                                               [recv_pool_addr, recv_pool_addr2], _promise=True)
+                    )
                     # send data to already transferred / transferring
                     sender_ref_p.send_data(session_id, chunk_key1,
                                            [recv_pool_addr, recv_pool_addr2], _promise=True) \
@@ -385,6 +389,7 @@ class Test(WorkerCase):
                 # test checksum error on receive_data_part
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
+                self.get_result(5)
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \

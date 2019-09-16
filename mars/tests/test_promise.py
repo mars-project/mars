@@ -599,7 +599,7 @@ class Test(unittest.TestCase):
                 test_ref.test_ref_reject()
 
                 wait_test_actor_result(test_ref, 30)
-                self.assertListEqual(serve_ref.get_result(), [0, 'WorkerProcessStopped'])
+                self.assertListEqual(serve_ref.get_result(), ['WorkerProcessStopped', 0])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
@@ -612,7 +612,7 @@ class Test(unittest.TestCase):
                 test_ref.test_addr_reject()
 
                 wait_test_actor_result(test_ref, 30)
-                self.assertListEqual(serve_ref.get_result(), [0, 'WorkerDead'])
+                self.assertListEqual(serve_ref.get_result(), ['WorkerDead', 0])
         finally:
             self.assertEqual(promise.get_active_promise_count(), 0)
 
