@@ -302,6 +302,22 @@ class Test(TestBase):
         with self.assertRaises(TypeError):
             from_tensor(scalar)
 
+        # from tensor with given index
+        df = from_tensor(tensor, index=np.arange(0, 20, 2))
+        df.tiles()
+        pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
+        pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
+        pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
+        pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
+
+        # from tensor with given columns
+        df = from_tensor(tensor, columns=list('abcdefghij'))
+        df.tiles()
+        pd.testing.assert_index_equal(df.chunks[0].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[1].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[2].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[3].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+
     def testFromRecords(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
 
