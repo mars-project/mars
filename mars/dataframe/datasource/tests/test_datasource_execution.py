@@ -86,6 +86,22 @@ class Test(TestBase):
         pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor4, concat=True)[0])
         pd.testing.assert_frame_equal(pdf_expected, result4)
 
+        # from tensor with given index
+        tensor5 = mt.ones((10, 10), chunk_size=3)
+        df5 = from_tensor(tensor5, index=np.arange(0, 20, 2))
+        result5 = self.executor.execute_dataframe(df5, concat=True)[0]
+        pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor5, concat=True)[0],
+                                    index=np.arange(0, 20, 2))
+        pd.testing.assert_frame_equal(pdf_expected, result5)
+
+        # from tensor with given columns
+        tensor6 = mt.ones((10, 10), chunk_size=3)
+        df6 = from_tensor(tensor6, columns=list('abcdefghij'))
+        result6 = self.executor.execute_dataframe(df6, concat=True)[0]
+        pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor6, concat=True)[0],
+                                    columns=list('abcdefghij'))
+        pd.testing.assert_frame_equal(pdf_expected, result6)
+
     def testFromRecordsExecution(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
 
