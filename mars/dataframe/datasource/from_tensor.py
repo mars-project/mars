@@ -17,6 +17,7 @@
 import numpy as np
 import pandas as pd
 
+from ...core import Base
 from ...serialize import KeyField, SeriesField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -57,6 +58,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError(
                     'index {0} should have the same shape with tensor: {1}'.format(index, input_tensor.shape[0]))
             if not isinstance(index, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
                 index = pd.Index(index)
             index_value = parse_index(index, store_data=True)
         else:
@@ -67,6 +70,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError(
                     'columns {0} should have the same shape with tensor: {1}'.format(columns, input_tensor.shape[1]))
             if not isinstance(columns, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
                 columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)
         else:
