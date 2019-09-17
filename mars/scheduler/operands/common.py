@@ -326,6 +326,9 @@ class OperandActor(BaseOperandActor):
         if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
             self.start_operand()
             return
+        if self.state == OperandState.RUNNING:
+            # already running
+            return
 
         self.worker = worker
 
