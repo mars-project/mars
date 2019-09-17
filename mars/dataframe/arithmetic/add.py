@@ -19,7 +19,7 @@ from ... import opcodes as OperandDef
 from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..operands import DataFrameOperand
-from .core import DataFrameBinOpMixin, DATAFRAME_TYPE
+from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
 
 
 class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
@@ -75,16 +75,16 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
 
 
 def add(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
+    if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        raise NotImplementedError('Only support add with dataframe or scalar!')
+        raise NotImplementedError('Only support add with dataframe, series or scalar!')
     return op(df, other)
 
 
 def radd(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, DATAFRAME_TYPE) or np.isscalar(other):
+    if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
         op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
-        raise NotImplementedError('Only support add with dataframe or scalar!')
+        raise NotImplementedError('Only support add with dataframe, series or scalar!')
     return op.rcall(df, other)

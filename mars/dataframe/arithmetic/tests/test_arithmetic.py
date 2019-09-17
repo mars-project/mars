@@ -29,7 +29,7 @@ from mars.dataframe.utils import split_monotonic_index_min_max, \
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.arithmetic import add, abs, \
     DataFrameAdd, DataFrameAbs
-from mars.dataframe.arithmetic.core import DataFrameIndexAlignMap, \
+from mars.dataframe.base.align import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
 from mars.tests.core import TestBase
 

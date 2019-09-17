@@ -19,6 +19,7 @@ import functools
 
 import numpy as np
 import pandas as pd
+from pandas.core.dtypes.cast import find_common_type
 
 from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
@@ -474,6 +475,27 @@ def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val
     return pd.RangeIndex(actual_max, actual_min, step)
 
 
+def infer_index_value(left_index_value, right_index_value):
+    if isinstance(left_index_value.value, IndexValue.RangeIndex) and \
+            isinstance(right_index_value.value, IndexValue.RangeIndex):
+        if left_index_value.value.slice == right_index_value.value.slice:
+            return left_index_value
+        key = tokenize(left_index_value.key, right_index_value.key)
+        return parse_index(pd.Int64Index([]), key=key)
+
+    # when left index and right index is identical, and both of them are elements unique,
+    # we can infer that the out index should be identical also
+    if left_index_value.is_unique and right_index_value.is_unique and \
+            left_index_value.key == right_index_value.key:
+        return left_index_value
+
+    left_index = left_index_value.to_pandas()
+    right_index = right_index_value.to_pandas()
+    out_index = pd.Index([], dtype=find_common_type([left_index.dtype, right_index.dtype]))
+    key = tokenize(left_index_value.key, right_index_value.key)
+    return parse_index(out_index, key=key)
+
+
 def filter_index_value(index_value, min_max, store_data=False):
     min_val, min_val_close, max_val, max_val_close = min_max
 
@@ -506,6 +528,20 @@ def indexing_index_value(index_value, indexes, store_data=False):
         else:
             return parse_index(pd_index[indexes], store_data=store_data)
 
+
+def infer_dtypes(left_dtypes, right_dtypes, operator):
+    left = build_empty_df(left_dtypes)
+    right = build_empty_df(right_dtypes)
+    return operator(left, right).dtypes
+
+
+def filter_dtypes(dtypes, column_min_max):
+    l_filter = operator.ge if column_min_max[1] else operator.gt
+    l = l_filter(dtypes.index, column_min_max[0])
+    r_filter = operator.le if column_min_max[3] else operator.lt
+    r = r_filter(dtypes.index, column_min_max[2])
+    f = l & r
+    return dtypes[f]
 
 def in_range_index(i, pd_range_index):
     """
