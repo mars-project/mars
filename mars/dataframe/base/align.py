@@ -671,7 +671,7 @@ def align_dataframe_dataframe(left, right):
 
 
 def align_dataframe_series(left, right, axis='columns'):
-    if axis == 'columns':
+    if axis == 'columns' or axis == 1:
         left_columns_chunks = [c.columns for c in left.cix[0, :]]
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, index_nsplits = _calc_axis_splits(left.columns, right.index_value,
@@ -682,7 +682,7 @@ def align_dataframe_series(left, right, axis='columns'):
         left_chunks = _gen_dataframe_chunks(_MinMaxSplitInfo(dummy_splits, index_splits), out_chunk_shape, 0, left)
         right_chunks = _gen_series_chunks(_MinMaxSplitInfo(index_splits, None), (out_chunk_shape[1],), 1, right)
     else:
-        assert axis == 'index'
+        assert axis == 'index' or axis == 0
         left_index_chunks = [c.index_value for c in left.cix[:, 0]]
         right_index_chunks = [c.index_value for c in right.chunks]
         index_splits, index_nsplits = _calc_axis_splits(left.index_value, right.index_value,

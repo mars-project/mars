@@ -22,13 +22,11 @@ from pandas.core.dtypes.cast import find_common_type
 from ...utils import classproperty
 from ..base.align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..utils import infer_dtypes, infer_index_value
 from ..operands import DataFrameOperandMixin, ObjectType
-from ..utils import parse_index
+from ..utils import parse_index, infer_dtypes, infer_index_value
 
 
 class DataFrameBinOpMixin(DataFrameOperandMixin):
-    __slots__ = ()
 
     @classmethod
     def _tile_both_dataframes(cls, op):
@@ -80,7 +78,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         out_chunks = []
         for idx, df_chunk in zip(out_chunk_indexes, left_chunks):
-            if op.axis == 'columns':
+            if op.axis == 'columns' or op.axis == 1:
                 series_chunk = right_chunks[df_chunk.index[1]]
             else:
                 series_chunk = right_chunks[df_chunk.index[0]]
@@ -104,7 +102,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
         out_chunks = []
         for idx, df_chunk in zip(out_chunk_indexes, right_chunks):
-            if op.axis == 'columns':
+            if op.axis == 'columns' or op.axis == 1:
                 series_chunk = left_chunks[df_chunk.index[1]]
             else:
                 series_chunk = left_chunks[df_chunk.index[0]]
@@ -157,7 +155,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        func_name = getattr(cls, '_func_name')
         if len(op.inputs) == 2:
             df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
         elif np.isscalar(op.lhs):
@@ -170,7 +167,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             kw = dict({'axis': op.axis})
         else:
             kw = dict()
-        ctx[op.outputs[0].key] = getattr(df, func_name)(other, level=op.level, fill_value=op.fill_value, **kw)
+        ctx[op.outputs[0].key] = getattr(df, op.func_name)(other, level=op.level, fill_value=op.fill_value, **kw)
 
     @classproperty
     def _operator(self):
@@ -217,7 +214,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     'columns_value': columns, 'index_value': index}
 
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(x2, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
-            if axis == 'columns':
+            if axis == 'columns' or axis == 1:
                 index_shape = x1.shape[0]
                 index = x1.index_value
                 column_shape, dtypes, columns = np.nan, None, None
@@ -233,7 +230,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                         columns.value.should_be_monotonic = True
                         column_shape = x1.shape[1]  # FIXME
             else:
-                assert axis == 'index'
+                assert axis == 'index' or axis == 0
                 column_shape = x1.shape[1]
                 columns = x1.columns
                 dtypes = x1.dtypes
@@ -291,7 +288,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return super(DataFrameBinOpMixin, self)._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
-    def _call(self, x1, x2):
+    def __call__(self, x1, x2):
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
             df1 = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
             df2 = x2 if isinstance(x1, DATAFRAME_TYPE) else x1
@@ -311,12 +308,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             else:
                 return self.new_series([s1], **kw)
         raise NotImplementedError('Only support add dataframe or scalar for now')
-
-    def __call__(self, x1, x2):
-        return self._call(x1, x2)
-
-    def rcall(self, x1, x2):
-        return self._call(x2, x1)
 
 
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):
@@ -345,10 +336,6 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         df = ctx[op.inputs[0].key]
         func_name = getattr(cls, '_func_name')
         ctx[op.outputs[0].key] = getattr(df, func_name)()
-
-    @classproperty
-    def _operator(self):
-        raise NotImplementedError
 
     def __call__(self, df):
         return self.new_dataframe([df], df.shape, dtypes=df.dtypes,

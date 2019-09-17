@@ -25,7 +25,7 @@ from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.arithmetic import add, abs
+from mars.dataframe.arithmetic import abs, add, div, rdiv
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -263,7 +263,7 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(df1.radd(df2), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
 
-    def testAddScalar(self):
+    def testAddDataframeAndScalar(self):
         # test dataframe + scalar
         pdf = pd.DataFrame(np.random.rand(10, 10))
         df = from_pandas(pdf, chunk_size=2)
@@ -391,6 +391,113 @@ class Test(TestBase):
         # modify the order of columns
         result = result[[1, 2, 3]]
         pd.testing.assert_frame_equal(expected, result)
+
+    def testDataframeDiv(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
+                             columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+
+        s1 = from_pandas_series(data2[1], chunk_size=(6,))
+
+        # div single-column dataframe with series
+        df1 = from_pandas(data1[[1]], chunk_size=(5, 5))
+        r1 = div(df1, s1, axis='index')
+
+        expected = data1[[1]].div(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r1, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # div dataframe with series without shuffle
+        df2 = from_pandas(data1, chunk_size=(5, 5))
+        r2 = div(df2, s1, axis='index')
+
+        expected = data1.div(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # div dataframe with series with shuffle
+        df3 = from_pandas(data1, chunk_size=(5, 5))
+        r3 = rdiv(df3, s1, axis='columns')
+
+        expected = data1.rdiv(data2[1], axis='columns')
+        result = self.executor.execute_dataframe(r3, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # div dataframe with scalar
+        df4 = from_pandas(data1, chunk_size=(5, 5))
+        r4 = div(df4, 4, axis='columns')
+
+        expected = data1.div(4, axis='columns')
+        result = self.executor.execute_dataframe(r4, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # rdiv dataframe with scalar
+        df5 = from_pandas(data1, chunk_size=(5, 5))
+        r5 = rdiv(df5, 4, axis='columns')
+
+        expected = data1.rdiv(4, axis='columns')
+        result = self.executor.execute_dataframe(r5, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test both one chunk, axis=0
+        pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
+        df = from_pandas(pdf)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.rdiv(mars_series, axis=0), concat=True)[0]
+        expected = pdf.rdiv(series, axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test different number of chunks, axis=0
+        pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.div(mars_series, axis=0), concat=True)[0]
+        expected = pdf.div(series, axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test with row shuffle, axis=0
+        pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[2, 1, 3])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[3, 1, 2])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.rdiv(mars_series, axis=0), concat=True)[0]
+        expected = pdf.rdiv(series, axis=0).reindex([3, 1, 2])
+        # modify the order of rows
+        result = result.reindex(index=[3, 1, 2])
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test both one chunk, axis=1
+        pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.div(mars_series, axis=1), concat=True)[0]
+        expected = pdf.div(series, axis=1)
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test different number of chunks(axis = 1)
+        pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[1, 2, 3])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.rdiv(mars_series, axis=1), concat=True)[0]
+        expected = pdf.rdiv(series, axis=1)
+        pd.testing.assert_frame_equal(expected, result)
+
+        # test with row shuffle, axis=1
+        pdf = pd.DataFrame({1: [1, 3, 2], 3: [1, 2, 3], 2: [360, 180, 2]}, index=['ra', 'rb', 'rc'])
+        df = from_pandas(pdf, chunk_size=1)
+        series = pd.Series([0, 1, 2], index=[3, 1, 2])
+        mars_series = from_pandas_series(series)
+        result = self.executor.execute_dataframe(df.div(mars_series, axis=1), concat=True)[0]
+        expected = pdf.div(series, axis=1)
+        # modify the order of columns
+        result = result[[1, 2, 3]]
+        pd.testing.assert_frame_equal(expected, result)
+
 
     def testAddSeries(self):
         # only one chunk
