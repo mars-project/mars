@@ -33,6 +33,8 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _func_name = 'add'
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+        axis = 'index' if axis == 0 else axis
+        axis = 'columns' if axis == 1 else axis
         super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
                                            _fill_value=fill_value,
                                            _object_type=object_type, _lhs=lhs, _rhs=rhs,
