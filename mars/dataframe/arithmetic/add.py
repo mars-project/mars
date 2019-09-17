@@ -70,7 +70,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
         else:
-            if isinstance(self._lhs, DATAFRAME_TYPE):
+            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
                 self._lhs = self._inputs[0]
             elif np.isscalar(self._lhs):
                 self._rhs = self._inputs[0]

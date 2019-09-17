@@ -302,37 +302,37 @@ class Test(TestBase):
 
         pd.testing.assert_frame_equal(expected, result)
 
-    def testAddDataFrameSeries(self):
-        # data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
-        #                      columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        # data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
-        #                      columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+    def testAddDataframeAndSeries(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
+                             columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
 
-        # s1 = from_pandas_series(data2[1], chunk_size=(6,))
+        s1 = from_pandas_series(data2[1], chunk_size=(6,))
 
-        # # add single-column dataframe to series
-        # df1 = from_pandas(data1[[1]], chunk_size=(5, 5))
-        # r1 = add(df1, s1, axis='index')
+        # add single-column dataframe to series
+        df1 = from_pandas(data1[[1]], chunk_size=(5, 5))
+        r1 = add(df1, s1, axis='index')
 
-        # expected = data1[[1]].add(data2[1], axis='index')
-        # result = self.executor.execute_dataframe(r1, concat=True)[0]
-        # pd.testing.assert_frame_equal(expected, result)
+        expected = data1[[1]].add(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r1, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
 
-        # # add dataframe to series without shuffle
-        # df2 = from_pandas(data1, chunk_size=(5, 5))
-        # r2 = add(df2, s1, axis='index')
+        # add dataframe to series without shuffle
+        df2 = from_pandas(data1, chunk_size=(5, 5))
+        r2 = add(df2, s1, axis='index')
 
-        # expected = data1.add(data2[1], axis='index')
-        # result = self.executor.execute_dataframe(r2, concat=True)[0]
-        # pd.testing.assert_frame_equal(expected, result)
+        expected = data1.add(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
 
-        # # add dataframe to series with shuffle
-        # df3 = from_pandas(data1, chunk_size=(5, 5))
-        # r3 = add(df3, s1, axis='columns')
+        # add dataframe to series with shuffle
+        df3 = from_pandas(data1, chunk_size=(5, 5))
+        r3 = add(df3, s1, axis='columns')
 
-        # expected = data1.add(data2[1], axis='columns')
-        # result = self.executor.execute_dataframe(r3, concat=True)[0]
-        # pd.testing.assert_frame_equal(expected, result)
+        expected = data1.add(data2[1], axis='columns')
+        result = self.executor.execute_dataframe(r3, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
 
         # test both one chunk, axis=0
         pdf = pd.DataFrame({'ca': [1, 3, 2], 'cb': [360, 180, 2]}, index=[1, 2, 3])
@@ -391,6 +391,53 @@ class Test(TestBase):
         # modify the order of columns
         result = result[[1, 2, 3]]
         pd.testing.assert_frame_equal(expected, result)
+
+    def testAddSeries(self):
+        # only one chunk
+        s1 = pd.Series(range(10))
+        s2 = pd.Series(range(10))
+        r = from_pandas_series(s1, chunk_size=10) + from_pandas_series(s2, chunk_size=10)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1 + s2
+        pd.testing.assert_series_equal(expected, result)
+
+        # same index
+        s1 = pd.Series(range(10))
+        s2 = pd.Series(range(10))
+        r = from_pandas_series(s1, chunk_size=4) + from_pandas_series(s2, chunk_size=6)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1 + s2
+        pd.testing.assert_series_equal(expected, result)
+
+        # no shuffle
+        s1 = pd.Series(range(10), index=range(10))
+        s2 = pd.Series(range(10), index=range(10, 0, -1))
+        r = from_pandas_series(s1, chunk_size=4) + from_pandas_series(s2, chunk_size=6)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1 + s2
+        pd.testing.assert_series_equal(expected, result)
+
+        # shuffle
+        s1 = pd.Series(range(10), index=np.random.permutation(range(10)))
+        s2 = pd.Series(range(10), index=np.random.permutation(range(10, 0, -1)))
+        r = from_pandas_series(s1, chunk_size=4) + from_pandas_series(s2, chunk_size=6)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1 + s2
+        pd.testing.assert_series_equal(expected, result)
+
+        # add with scalar
+        s1 = pd.Series(range(10), index=np.random.permutation(range(10)))
+        r = from_pandas_series(s1, chunk_size=4) + 4
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = s1 + 4
+        pd.testing.assert_series_equal(expected, result)
+
+        # radd with scalar
+        s1 = pd.Series(range(10), index=np.random.permutation(range(10)))
+        r = 4 + from_pandas_series(s1, chunk_size=4)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = 4 + s1
+        pd.testing.assert_series_equal(expected, result)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))

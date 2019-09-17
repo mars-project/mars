@@ -508,7 +508,7 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
     out_chunks = []
     if splits[0] is not None:
         # need no shuffle
-        for out_idx in range(out_shape):
+        for out_idx in range(out_shape[0]):
             idx = splits.get_axis_idx(0, left_or_right, out_idx)
             index_min_max = splits.get_axis_split(0, left_or_right, out_idx)
             chunk = series.cix[(idx,)]
@@ -525,14 +525,14 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
         map_chunks = []
         for chunk in series.chunks:
             map_op = DataFrameIndexAlignMap(
-                sparse=chunk.issparse(), index_shuffle_size=out_shape, object_type=ObjectType.series)
+                sparse=chunk.issparse(), index_shuffle_size=out_shape[0], object_type=ObjectType.series)
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan,), index=chunk.index))
 
         proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.series).new_chunk(
             map_chunks, shape=())
 
         # gen reduce chunks
-        for out_idx in range(out_shape):
+        for out_idx in range(out_shape[0]):
             reduce_op = DataFrameIndexAlignReduce(i=out_idx,
                                                   sparse=proxy_chunk.issparse(), shuffle_key=str(out_idx),
                                                   object_type=ObjectType.series)
@@ -680,7 +680,7 @@ def align_dataframe_series(left, right, axis='columns'):
         nsplits = [dummy_nsplits, index_nsplits]
         out_chunk_shape = tuple(len(ns) for ns in nsplits)
         left_chunks = _gen_dataframe_chunks(_MinMaxSplitInfo(dummy_splits, index_splits), out_chunk_shape, 0, left)
-        right_chunks = _gen_series_chunks(_MinMaxSplitInfo(index_splits, None), out_chunk_shape[1], 1, right)
+        right_chunks = _gen_series_chunks(_MinMaxSplitInfo(index_splits, None), (out_chunk_shape[1],), 1, right)
     else:
         assert axis == 'index'
         left_index_chunks = [c.index_value for c in left.cix[:, 0]]
@@ -691,7 +691,7 @@ def align_dataframe_series(left, right, axis='columns'):
         nsplits = [index_nsplits, dummy_nsplits]
         out_chunk_shape = tuple(len(ns) for ns in nsplits)
         left_chunks = _gen_dataframe_chunks(_MinMaxSplitInfo(index_splits, dummy_splits), out_chunk_shape, 0, left)
-        right_chunks = _gen_series_chunks(_MinMaxSplitInfo(index_splits, None), out_chunk_shape[0], 1, right)
+        right_chunks = _gen_series_chunks(_MinMaxSplitInfo(index_splits, None), (out_chunk_shape[0],), 1, right)
 
     return nsplits, out_chunk_shape, left_chunks, right_chunks
 
@@ -707,7 +707,7 @@ def align_series_series(left, right):
     out_chunk_shape = (len(index_nsplits),)
     splits = _MinMaxSplitInfo(index_splits, None)
 
-    left_chunks = _gen_dataframe_chunks(splits, out_chunk_shape, 0, left)
-    right_chunks = _gen_dataframe_chunks(splits, out_chunk_shape, 1, right)
+    left_chunks = _gen_series_chunks(splits, out_chunk_shape, 0, left)
+    right_chunks = _gen_series_chunks(splits, out_chunk_shape, 1, right)
 
     return nsplits, out_chunk_shape, left_chunks, right_chunks
