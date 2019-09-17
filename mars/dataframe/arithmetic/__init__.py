@@ -14,17 +14,22 @@
 
 from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
-from .add import add, DataFrameAdd
+from .add import add, radd, DataFrameAdd
 
 
 def _install():
-    from ..operands import DATAFRAME_TYPE
-    from .add import add, radd
-    for cls in DATAFRAME_TYPE:
-        setattr(cls, '__add__', wrap_notimplemented_exception(add))
-        setattr(cls, '__radd__', wrap_notimplemented_exception(radd))
-        setattr(cls, 'add', add)
-        setattr(cls, 'radd', radd)
+    from ..core import DataFrame, Series
+    setattr(DataFrame, 'abs', abs)
+    setattr(DataFrame, '__add__', wrap_notimplemented_exception(add))
+    setattr(DataFrame, '__radd__', wrap_notimplemented_exception(radd))
+    setattr(DataFrame, 'add', add)
+    setattr(DataFrame, 'radd', radd)
+
+    setattr(Series, 'abs', abs)
+    setattr(Series, '__add__', wrap_notimplemented_exception(add))
+    setattr(Series, '__radd__', wrap_notimplemented_exception(radd))
+    setattr(Series, 'add', add)
+    setattr(Series, 'radd', radd)
 
 
 _install()

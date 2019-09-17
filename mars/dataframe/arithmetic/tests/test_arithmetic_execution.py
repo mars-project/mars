@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover
 from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas
+from mars.dataframe.datasource.series import from_pandas as series_from_pandas
 from mars.dataframe.arithmetic import add, abs
 
 
@@ -299,6 +300,38 @@ class Test(TestBase):
         expected = data1 + data2
         result = self.executor.execute_dataframe(df3, concat=True)[0]
 
+        pd.testing.assert_frame_equal(expected, result)
+
+    def testAddDataFrameSeries(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data2 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(11, 1, -1),
+                             columns=[5, 9, 12, 3, 11, 10, 6, 4, 1, 2])
+
+        s1 = series_from_pandas(data2[1], chunk_size=(6,))
+
+        # add single-column dataframe to series
+        df1 = from_pandas(data1[[1]], chunk_size=(5, 5))
+        r1 = add(df1, s1, axis='index')
+
+        expected = data1[[1]].add(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r1, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # add dataframe to series without shuffle
+        df2 = from_pandas(data1, chunk_size=(5, 5))
+        r2 = add(df2, s1, axis='index')
+
+        expected = data1.add(data2[1], axis='index')
+        result = self.executor.execute_dataframe(r2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        # add dataframe to series with shuffle
+        df3 = from_pandas(data1, chunk_size=(5, 5))
+        r3 = add(df3, s1, axis='columns')
+
+        expected = data1.add(data2[1], axis='columns')
+        result = self.executor.execute_dataframe(r3, concat=True)[0]
         pd.testing.assert_frame_equal(expected, result)
 
     def testAbs(self):
