@@ -83,7 +83,7 @@ class MockReceiverActor(WorkerActor):
         query_key = (session_id, chunk_key)
         try:
             meta = self._data_metas[query_key]
-            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.RECEIVING):
+            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.ERROR):
                 self.tell_promise(callback, *meta.callback_args, **meta.callback_kwargs)
             else:
                 raise KeyError
@@ -117,6 +117,8 @@ class MockReceiverActor(WorkerActor):
         if meta.checksum != checksum:
             raise ChecksumMismatch
         meta.status = ReceiveStatus.RECEIVED
+        for cb in self._callbacks[query_key]:
+            self.tell_promise(cb)
 
     def cancel_receive(self, session_id, chunk_key):
         pass
@@ -153,7 +155,10 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
     # don't use multiple with-statement as we need the options be forked
     with plasma.start_plasma_store(plasma_size) as store_args:
         options.worker.plasma_socket = plasma_socket = store_args[0]
-        plasma_client = plasma.connect(plasma_socket)
+        try:
+            plasma_client = plasma.connect(plasma_socket)
+        except TypeError:
+            plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
 
         with start_transfer_test_pool(address=pool_address, plasma_size=plasma_size) as pool:
             chunk_holder_ref = pool.actor_ref(ChunkHolderActor.default_uid())
@@ -259,7 +264,11 @@ class Test(WorkerCase):
                     recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverActor.default_uid())
 
                     sender_ref_p.send_data(session_id, chunk_key1,
-                                           [recv_pool_addr, recv_pool_addr2], _promise=True)
+                                           [recv_pool_addr, recv_pool_addr2], _promise=True) \
+                        .then(lambda *s: test_actor.set_result(s)) \
+                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+                    self.get_result(5)
+
                     # send data to already transferred / transferring
                     sender_ref_p.send_data(session_id, chunk_key1,
                                            [recv_pool_addr, recv_pool_addr2], _promise=True) \
@@ -363,6 +372,7 @@ class Test(WorkerCase):
                 # test checksum error on receive_data_part
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
+                self.get_result(5)
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \
@@ -557,7 +567,10 @@ class Test(WorkerCase):
                             DispatchActor.default_uid(), address=remote_pool_addr)
                         remote_mapper_ref = pool.actor_ref(
                             PlasmaKeyMapActor.default_uid(), address=remote_pool_addr)
-                        remote_plasma_client = plasma.connect(remote_plasma_socket)
+                        try:
+                            remote_plasma_client = plasma.connect(remote_plasma_socket)
+                        except TypeError:
+                            remote_plasma_client = plasma.connect(remote_plasma_socket, '', 0)
                         remote_store = PlasmaChunkStore(remote_plasma_client, remote_mapper_ref)
 
                         def _call_send_data(sender_uid):
