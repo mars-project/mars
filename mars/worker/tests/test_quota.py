@@ -62,7 +62,9 @@ class Test(WorkerCase):
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                 ref.request_quota('1', 150, _promise=True) \
+                    .then(lambda *_: test_actor.set_result(True)) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+                pool.sleep(0.5)
 
                 self.assertFalse(quota_ref.request_quota('2', 50))
                 self.assertFalse(quota_ref.request_quota('3', 200))
