@@ -19,7 +19,7 @@ from numpy.linalg import LinAlgError
 
 from ...serialize import KeyField, BoolField
 from ... import opcodes as OperandDef
-from ..operands import TensorHasInput, TensorOperandMixin
+from ..operands import TensorHasInput, TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
 from ..array_utils import as_same_device, device
@@ -48,8 +48,6 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         from ..datasource.zeros import TensorZeros
-        from ..arithmetic.subtract import TensorSubtract
-        from ..arithmetic.utils import tree_add
         from ..base import TensorTranspose
         from ..utils import reverse_order
         from .dot import TensorDot
@@ -83,15 +81,15 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
                                 [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
                             prev_chunks.append(prev_chunk)
-                        if len(prev_chunks) == 1:
-                            s = prev_chunks[0]
-                        else:
-                            s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                         None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
-                            [target, s], shape=target.shape, order=tensor.order)
-                    lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
-                        [target], shape=target.shape, index=(i, j), order=tensor.order)
+
+                        cholesky_fuse_op = TensorCholeskyFuse()
+                        lower_chunk = cholesky_fuse_op.new_chunk([target] + prev_chunks,
+                                                                 shape=target.shape, index=(i, j),
+                                                                 order=tensor.order)
+                    else:
+                        lower_chunk = TensorCholesky(lower=True, dtype=tensor.dtype).new_chunk(
+                            [target], shape=target.shape, index=(i, j), order=tensor.order)
+
                     upper_chunk = TensorTranspose(dtype=lower_chunk.dtype).new_chunk(
                         [lower_chunk], shape=lower_chunk.shape[::-1],
                         index=lower_chunk.index[::-1], order=reverse_order(lower_chunk.order))
@@ -106,16 +104,14 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                             prev_chunk = TensorDot(dtype=tensor.dtype).new_chunk(
                                 [a, b], shape=(a.shape[0], b.shape[1]), order=tensor.order)
                             prev_chunks.append(prev_chunk)
-                        if len(prev_chunks) == 1:
-                            s = prev_chunks[0]
-                        else:
-                            s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                         None, prev_chunks[0].shape)
-                        target = TensorSubtract(dtype=tensor.dtype, lhs=target, rhs=s).new_chunk(
-                            [target, s], shape=target.shape, order=tensor.order)
-                    upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
-                        [lower_chunks[j, j], target], shape=target.shape,
-                        index=(j, i), order=tensor.order)
+                        cholesky_fuse_op = TensorCholeskyFuse(by_solve_triangular=True)
+                        upper_chunk = cholesky_fuse_op.new_chunk([target] + [lower_chunks[j, j]] + prev_chunks,
+                                                                 shape=target.shape, index=(j, i),
+                                                                 order=tensor.order)
+                    else:
+                        upper_chunk = TensorSolveTriangular(lower=True, dtype=tensor.dtype).new_chunk(
+                            [lower_chunks[j, j], target], shape=target.shape,
+                            index=(j, i), order=tensor.order)
                     lower_chunk = TensorTranspose(dtype=upper_chunk.dtype).new_chunk(
                         [upper_chunk], shape=upper_chunk.shape[::-1],
                         index=upper_chunk.index[::-1], order=reverse_order(upper_chunk.order))
@@ -151,6 +147,43 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
                 r = r.T.conj()
 
             ctx[chunk.key] = r
+
+
+class TensorCholeskyFuse(TensorOperand, TensorOperandMixin):
+    _op_type_ = OperandDef.CHOLESKY_FUSE
+
+    _by_solve_triangular = BoolField('by_solve_triangular')
+
+    def __init__(self, by_solve_triangular=None, **kw):
+        super(TensorCholeskyFuse, self).__init__(_by_solve_triangular=by_solve_triangular, **kw)
+
+    @property
+    def by_solve_triangular(self):
+        return self._by_solve_triangular
+
+    @classmethod
+    def _execute_by_cholesky(cls, inputs):
+        import scipy.linalg
+
+        target = inputs[0]
+        return scipy.linalg.cholesky((target - sum(inputs[1:])), lower=True)
+
+    @classmethod
+    def _execute_by_solve_striangular(cls, inputs):
+        import scipy.linalg
+
+        target = inputs[0]
+        lower = inputs[1]
+        return scipy.linalg.solve_triangular(lower, (target - sum(inputs[2:])), lower=True)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        inputs = [ctx[c.key] for c in op.inputs]
+        if op.by_solve_triangular:
+            ret = cls._execute_by_solve_striangular(inputs)
+        else:
+            ret = cls._execute_by_cholesky(inputs)
+        ctx[op.outputs[0].key] = ret
 
 
 def cholesky(a, lower=False):
