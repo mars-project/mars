@@ -50,7 +50,7 @@ class FakeExecutionActor(promise.PromiseActor):
         except KeyError:
             pass
 
-    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
+    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_metas,
                       send_addresses=None, callback=None):
         if callback:
             self._finish_callbacks[graph_key].append(callback)

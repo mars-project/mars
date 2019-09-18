@@ -47,13 +47,13 @@ class GraphExecutionRecord(object):
     Execution records of the graph
     """
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'data_targets',
-                 'chunk_targets', 'io_meta', 'data_sizes', 'shared_input_chunks',
+                 'chunk_targets', 'io_meta', 'data_metas', 'shared_input_chunks',
                  'state_time', 'mem_request', 'pin_request', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'finish_callbacks',
                  'stop_requested')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
-                 io_meta=None, data_sizes=None, mem_request=None,
+                 io_meta=None, data_metas=None, mem_request=None,
                  shared_input_chunks=None, pin_request=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False):
@@ -66,7 +66,7 @@ class GraphExecutionRecord(object):
         self.data_targets = data_targets or []
         self.chunk_targets = chunk_targets or []
         self.io_meta = io_meta or dict()
-        self.data_sizes = data_sizes or dict()
+        self.data_metas = data_metas or dict()
         self.shared_input_chunks = shared_input_chunks or set()
         self.mem_request = mem_request or dict()
         self.pin_request = pin_request or set()
@@ -176,7 +176,8 @@ class ExecutionActor(WorkerActor):
 
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
-        size_ctx = dict((k, (v, v)) for k, v in graph_record.data_sizes.items())
+        size_ctx = dict((k, (v.chunk_size, v.chunk_size))
+                        for k, v in graph_record.data_metas.items())
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
         targets = graph_record.chunk_targets
@@ -202,7 +203,7 @@ class ExecutionActor(WorkerActor):
             return None
 
         graph = graph_record.graph
-        input_data_sizes = graph_record.data_sizes
+        input_data_sizes = dict((k, v.chunk_size) for k, v in graph_record.data_metas.items())
         alloc_mem_batch = dict()
         alloc_cache_batch = dict()
         input_chunk_keys = dict()
@@ -270,7 +271,8 @@ class ExecutionActor(WorkerActor):
         def _finish_fetch(*_):
             self._chunk_holder_ref.pin_chunks(graph_key, chunk_key)
             if self._chunk_holder_ref.is_stored(chunk_key):
-                self._mem_quota_ref.release_quota(build_load_key(graph_key, chunk_key))
+                self._mem_quota_ref.release_quota(
+                    build_load_key(graph_key, chunk_key), _tell=True, _wait=False)
 
         @log_unhandled
         def _handle_network_error(*exc):
@@ -387,7 +389,7 @@ class ExecutionActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
+    def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_metas,
                       send_addresses=None, callback=None):
         """
         Submit graph to the worker and control the execution
@@ -395,7 +397,7 @@ class ExecutionActor(WorkerActor):
         :param graph_key: graph key
         :param graph_ser: serialized executable graph
         :param io_meta: io meta of the chunk
-        :param data_sizes: data size of each input chunk, as a dict
+        :param data_metas: data meta of each input chunk, as a dict
         :param send_addresses: targets to send results after execution
         :param callback: promise callback
         """
@@ -408,7 +410,7 @@ class ExecutionActor(WorkerActor):
         graph_record = self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
             graph_ser, ExecutionState.ALLOCATING,
             io_meta=io_meta,
-            data_sizes=data_sizes,
+            data_metas=data_metas,
             chunk_targets=io_meta['chunks'],
             data_targets=list(io_meta.get('data_targets') or io_meta['chunks']),
             shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
@@ -482,7 +484,7 @@ class ExecutionActor(WorkerActor):
                 graph_record.retry_delay = min(1 + graph_record.retry_delay, 30)
                 self.ref().execute_graph(
                     session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
-                    graph_record.data_sizes, _tell=True, _delay=retry_delay)
+                    graph_record.data_metas, _tell=True, _delay=retry_delay)
                 return
 
             promise.finished() \
@@ -523,8 +525,8 @@ class ExecutionActor(WorkerActor):
                 input_keys.add(op.to_fetch_key or chunk.key)
             elif isinstance(op, FetchShuffle):
                 shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
-                for k in op.to_fetch_keys:
-                    part_key = (k, shuffle_key)
+                for input_key in op.to_fetch_keys:
+                    part_key = (input_key, shuffle_key)
                     input_keys.add(part_key)
                     shuffle_keys.add(part_key)
 
@@ -546,28 +548,26 @@ class ExecutionActor(WorkerActor):
                 unspill_keys.append(input_key)
                 prepare_promises.append(ensure_chunk(self, session_id, input_key, move_to_end=True) \
                                         .then(load_fun))
-                continue
+            else:
+                # load data from another worker
+                chunk_meta = input_metas.get(input_key) or graph_record.data_metas.get(input_key)
+                if chunk_meta:
+                    chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
 
-            # load data from another worker
-            try:
-                chunk_meta = input_metas[input_key]
-                chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
-            except KeyError:
-                chunk_meta = self.get_meta_client().get_chunk_meta(session_id, input_key)
+                if chunk_meta is None or not chunk_meta.workers:
+                    raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
+                worker_results = list(chunk_meta.workers)
+                random.shuffle(worker_results)
 
-            if chunk_meta is None or not chunk_meta.workers:
-                raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
-            worker_results = list(chunk_meta.workers)
-            random.shuffle(worker_results)
+                transfer_keys.append(input_key)
 
-            transfer_keys.append(input_key)
-
-            # fetch data from other workers, if one fails, try another
-            p = promise.finished(_accept=False)
-            for worker in worker_results:
-                p = p.catch(functools.partial(self._fetch_remote_data, session_id, graph_key, input_key, worker,
-                                              ensure_cached=input_key in shared_input_chunks))
-            prepare_promises.append(p)
+                # fetch data from other workers, if one fails, try another
+                p = promise.finished(_accept=False)
+                for worker in worker_results:
+                    p = p.catch(functools.partial(
+                        self._fetch_remote_data, session_id, graph_key, input_key, worker,
+                        ensure_cached=input_key in shared_input_chunks))
+                prepare_promises.append(p)
 
         logger.debug('Graph key %s: Targets %r, unspill keys %r, transfer keys %r',
                      graph_key, graph_record.chunk_targets, unspill_keys, transfer_keys)

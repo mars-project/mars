@@ -323,7 +323,7 @@ class OperandActor(BaseOperandActor):
         self._execution_ref = None
 
         @log_unhandled
-        def _submit_job(worker, data_sizes):
+        def _submit_job(worker, data_metas):
             # worker assigned, submit job
             if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
                 self.start_operand()
@@ -339,15 +339,15 @@ class OperandActor(BaseOperandActor):
                 input_chunks = self._input_chunks
 
             # submit job
-            if 'input_data_metas' not in self._io_meta and self._executable_dag is not None:
-                exec_graph = self._executable_dag
-            else:
+            if len(input_chunks) != self._input_chunks:
                 exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
+            else:
+                exec_graph = self._executable_dag
             self._execution_ref = self._get_execution_ref()
             try:
                 with rewrite_worker_errors():
                     self._execution_ref.execute_graph(
-                        self._session_id, self._op_key, exec_graph, self._io_meta, data_sizes,
+                        self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
                         send_addresses=target_predicts, _tell=True)
             except WorkerDead:
                 logger.debug('Worker %s dead when submitting operand %s into queue',

@@ -339,7 +339,7 @@ class AssignEvaluationActor(SchedulerActor):
             if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):
                 logger.debug('Operand %s(%s) allocated to run in %s', op_key, op_info['op_name'], worker_ep)
 
-                self.tell_promise(callback, worker_ep, input_sizes)
+                self.tell_promise(callback, worker_ep, input_metas)
                 return worker_ep, rejects
             rejects.append(worker_ep)
         return None, rejects
