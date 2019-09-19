@@ -349,6 +349,8 @@ message OperandDef {
         DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP = 2011;
         DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE = 2012;
 
+        CHOLESKY_FUSE = 999988;
+
         // fetches
         FETCH_SHUFFLE = 999998;
         FETCH = 999999;

@@ -158,7 +158,7 @@ be found at the next section.
 | ``--cpu-procs``  | Number of computation processes on CPUs. If absent, the value  |
 |                  | will be the available number of cores                          |
 +------------------+----------------------------------------------------------------+
-| ``--net-procs``  | Number of processes for network transfer. 1 by default         |
+| ``--net-procs``  | Number of processes for network transfer. 4 by default         |
 +------------------+----------------------------------------------------------------+
 | ``--phy-mem``    | Limit of physical memory, can be percentages of total memory   |
 |                  | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
