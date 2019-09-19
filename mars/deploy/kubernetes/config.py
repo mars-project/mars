@@ -414,8 +414,7 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         if self._cpu:
             self.add_env('MKL_NUM_THREADS', str(self._cpu))
             self.add_env('MARS_CPU_TOTAL', str(self._cpu))
-            self.add_env('MARS_CPU_USE_PROCESS_STAT', '1')
-            self.add_env('MARS_MEM_USE_CGROUP_STAT', '1')
+            self.add_env('MARS_USE_CGROUP_STAT', '1')
 
         if self._memory:
             self.add_env('MARS_MEMORY_TOTAL', str(int(self._memory)))

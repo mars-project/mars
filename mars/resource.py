@@ -22,19 +22,25 @@ from collections import namedtuple
 import psutil
 
 from .lib import nvutils
+from .compat import long_type
 
+CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.stat'
 CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
 
 _proc = psutil.Process()
 _timer = getattr(time, 'monotonic', time.time)
 
 _cpu_use_process_stat = bool(int(os.environ.get('MARS_CPU_USE_PROCESS_STAT', '0').strip('"')))
+_cpu_use_cgroup_stat = bool(int(os.environ.get('MARS_CPU_USE_CGROUP_STAT', '0').strip('"')))
 _mem_use_process_stat = bool(int(os.environ.get('MARS_MEM_USE_PROCESS_STAT', '0').strip('"')))
 _mem_use_cgroup_stat = bool(int(os.environ.get('MARS_MEM_USE_CGROUP_STAT', '0').strip('"')))
 
 if 'MARS_USE_PROCESS_STAT' in os.environ:
     _cpu_use_process_stat = _mem_use_process_stat = \
         bool(int(os.environ['MARS_USE_PROCESS_STAT'].strip('"')))
+if 'MARS_USE_CGROUP_STAT' in os.environ:
+    _cpu_use_cgroup_stat = _mem_use_cgroup_stat = \
+        bool(int(os.environ['MARS_USE_CGROUP_STAT'].strip('"')))
 
 if _cpu_use_process_stat and 'MARS_CPU_TOTAL' in os.environ:
     _cpu_total = int(os.environ['MARS_CPU_TOTAL'].strip('"'))
@@ -112,63 +118,69 @@ def cpu_count():
     return _cpu_total
 
 
-_last_cpu_measure = None
+_last_cgroup_cpu_measure = None
+_last_proc_cpu_measure = None
+_last_cpu_percent = None
 
 
 def _take_process_cpu_snapshot():
-    num_cpus = cpu_count() or 1
-
-    def timer():
-        return _timer() * num_cpus
-
-    processes = [p for p in psutil.process_iter() if p.pid != _proc.pid]
-
     pts = dict()
     sts = dict()
-    for p in processes:
+    for p in psutil.process_iter():
         try:
             pts[p.pid] = p.cpu_times()
-            sts[p.pid] = timer()
+            sts[p.pid] = _timer()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
-
-    pts[_proc.pid] = _proc.cpu_times()
-    sts[_proc.pid] = timer()
     return pts, sts
 
 
 def cpu_percent():
-    global _last_cpu_measure
-    if not _cpu_use_process_stat:
+    global _last_cgroup_cpu_measure, _last_proc_cpu_measure, _last_cpu_percent
+    if _cpu_use_cgroup_stat:
+        # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
+        with open(CGROUP_CPU_STAT_FILE, 'r') as cgroup_file:
+            cpu_acct = long_type(cgroup_file.read())
+            sample_time = _timer()
+        if _last_cgroup_cpu_measure is None:
+            _last_cgroup_cpu_measure = (cpu_acct, sample_time)
+            return None
+
+        last_cpu_acct, last_sample_time = _last_cgroup_cpu_measure
+        time_delta = sample_time - last_sample_time
+        if time_delta < 1e-2:
+            return _last_cpu_percent
+
+        _last_cgroup_cpu_measure = (cpu_acct, sample_time)
+        # nanoseconds / seconds * 100, we shall divide 1e7.
+        _last_cpu_percent = round((cpu_acct - last_cpu_acct) / (sample_time - last_sample_time) / 1e7, 1)
+        return _last_cpu_percent
+    elif _cpu_use_process_stat:
+        pts, sts = _take_process_cpu_snapshot()
+
+        if _last_proc_cpu_measure is None:
+            _last_proc_cpu_measure = (pts, sts)
+            return None
+
+        old_pts, old_sts = _last_proc_cpu_measure
+
+        percents = []
+        for pid in pts:
+            if pid not in old_pts:
+                continue
+            pt1 = old_pts[pid]
+            pt2 = pts[pid]
+            delta_proc = (pt2.user - pt1.user) + (pt2.system - pt1.system)
+            time_delta = sts[pid] - old_sts[pid]
+
+            if time_delta < 1e-2:
+                return _last_cpu_percent
+            percents.append((delta_proc / time_delta) * 100)
+        _last_proc_cpu_measure = (pts, sts)
+        _last_cpu_percent = round(sum(percents), 1)
+        return _last_cpu_percent
+    else:
         return sum(psutil.cpu_percent(percpu=True))
-
-    num_cpus = cpu_count() or 1
-    pts, sts = _take_process_cpu_snapshot()
-
-    if _last_cpu_measure is None:
-        _last_cpu_measure = (pts, sts)
-        return None
-
-    old_pts, old_sts = _last_cpu_measure
-
-    percents = []
-    for pid in pts:
-        if pid not in old_pts:
-            continue
-        pt1 = old_pts[pid]
-        pt2 = pts[pid]
-        delta_proc = (pt2.user - pt1.user) + (pt2.system - pt1.system)
-        delta_time = sts[pid] - old_sts[pid]
-
-        try:
-            overall_cpus_percent = (delta_proc / delta_time) * 100
-        except ZeroDivisionError:
-            percents.append(0.0)
-        else:
-            single_cpu_percent = overall_cpus_percent * num_cpus
-            percents.append(single_cpu_percent)
-    _last_cpu_measure = (pts, sts)
-    return round(sum(percents), 1)
 
 
 def disk_usage(d):
