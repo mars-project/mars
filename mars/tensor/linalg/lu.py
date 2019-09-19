@@ -74,7 +74,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         from ..arithmetic.subtract import TensorSubtract
-        from ..arithmetic.utils import tree_add
+        from ..arithmetic.add import TensorTreeAdd
         from ..base.transpose import TensorTranspose
         from ..merge.vstack import vstack
         from ..merge.hstack import hstack
@@ -135,8 +135,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks_u) == 1:
                             s = prev_chunks_u[0]
                         else:
-                            s = tree_add(prev_chunks_u[0].dtype, prev_chunks_u,
-                                         None, prev_chunks_u[0].shape, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(dtype=prev_chunks_u[0].dtype, sparse=op.sparse)
+                            s = tree_add_op.new_chunk(prev_chunks_u, shape=prev_chunks_u[0].shape)
                         target = TensorSubtract(dtype=U.dtype, lhs=target, rhs=s,
                                                 order=out_tensor.order.value).new_chunk(
                             [target, s], shape=target.shape, order=out_tensor.order)
@@ -157,8 +157,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
                         else:
-                            s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                         None, prev_chunks[0].shape, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(dtype=prev_chunks[0].dtype, sparse=op.sparse)
+                            s = tree_add_op.new_chunk(prev_chunks, shape=prev_chunks[0].shape)
                         target = TensorSubtract(dtype=L.dtype, lhs=target, rhs=s,
                                                 order=out_tensor.order.value).new_chunk(
                             [target, s], shape=target.shape)
@@ -208,8 +208,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks_l) == 1:
                             s = prev_chunks_l[0]
                         else:
-                            s = tree_add(prev_chunks_l[0].dtype, prev_chunks_l,
-                                         None, prev_chunks_l[0].shape, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(dtype=prev_chunks_l[0].dtype, sparse=op.sparse)
+                            s = tree_add_op.new_chunk(prev_chunks_l, shape=prev_chunks_l[0].shape)
                         target_l = TensorSubtract(dtype=L.dtype, lhs=target_l, rhs=s,
                                                   order=out_tensor.order.value).new_chunk(
                             [target_l, s], shape=target_l.shape, order=out_tensor.order)
