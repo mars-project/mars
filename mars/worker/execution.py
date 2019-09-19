@@ -309,8 +309,12 @@ class ExecutionActor(WorkerActor):
             logger.debug('Fetching chunk %s in %s to %s with slot %s',
                          chunk_key, remote_addr, self.address, sender_uid)
 
+            try:
+                target_slot = self._dispatch_ref.get_hash_slot('receiver', chunk_key)
+            except KeyError:
+                target_slot = None
             return sender_ref.send_data(
-                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                session_id, chunk_key, self.address, target_slot, ensure_cached=ensure_cached,
                 timeout=timeout, _timeout=timeout, _promise=True
             ).then(_finish_fetch)
 
@@ -484,7 +488,8 @@ class ExecutionActor(WorkerActor):
                 graph_record.retry_delay = min(1 + graph_record.retry_delay, 30)
                 self.ref().execute_graph(
                     session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
-                    graph_record.data_metas, _tell=True, _delay=retry_delay)
+                    graph_record.data_metas, send_addresses=send_addresses,
+                    callback=graph_record.finish_callbacks, _tell=True, _delay=retry_delay)
                 return
 
             promise.finished() \
