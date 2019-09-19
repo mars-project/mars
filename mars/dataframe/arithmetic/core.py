@@ -80,10 +80,17 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         for idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             if op.axis == 'columns' or op.axis == 1:
                 series_chunk = right_chunks[df_chunk.index[1]]
+                kw = {
+                    'shape': (df_chunk.shape[0], np.nan),
+                    'index_value': df_chunk.index_value,
+                }
             else:
                 series_chunk = right_chunks[df_chunk.index[0]]
-            out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk],
-                                                        shape=(np.nan, np.nan), index=idx)
+                kw = {
+                    'shape': (np.nan, df_chunk.shape[1]),
+                    'columns_value': df_chunk.columns,
+                }
+            out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=idx, **kw)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -104,10 +111,17 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         for idx, df_chunk in zip(out_chunk_indexes, right_chunks):
             if op.axis == 'columns' or op.axis == 1:
                 series_chunk = left_chunks[df_chunk.index[1]]
+                kw = {
+                    'shape': (df_chunk.shape[0], np.nan),
+                    'index_value': df_chunk.index_value,
+                }
             else:
                 series_chunk = left_chunks[df_chunk.index[0]]
-            out_chunk = op.copy().reset_key().new_chunk([series_chunk, df_chunk],
-                                                        shape=(np.nan, np.nan), index=idx)
+                kw = {
+                    'shape': (df_chunk.shape[0], np.nan),
+                    'index_value': df_chunk.index_value,
+                }
+            out_chunk = op.copy().reset_key().new_chunk([series_chunk, df_chunk], index=idx, **kw)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

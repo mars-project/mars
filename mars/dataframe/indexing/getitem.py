@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
+
 import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import AnyField, Int32Field, BoolField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..align import align_dataframe_series
+from ..core import SERIES_TYPE
 from ..merge import DataFrameConcat
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, in_range_index
 from .utils import calc_columns_index
 
@@ -194,28 +198,90 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.INDEX
 
     _col_names = AnyField('col_names')
+    _mask = AnyField('mask')
 
-    def __init__(self, col_names=None, object_type=ObjectType.series, **kw):
-        super(DataFrameIndex, self).__init__(_col_names=col_names, _object_type=object_type, **kw)
+    def __init__(self, col_names=None, mask=None, object_type=ObjectType.series, **kw):
+        super(DataFrameIndex, self).__init__(_col_names=col_names, _mask=mask,
+                                             _object_type=object_type, **kw)
 
     @property
     def col_names(self):
         return self._col_names
 
+    @property
+    def mask(self):
+        return self._mask
+
     def __call__(self, df):
-        # if col_names is a list, return a DataFrame, else return a Series
-        if isinstance(self._col_names, list):
-            dtypes = df.dtypes[self._col_names]
-            columns = parse_index(pd.Index(self._col_names), store_data=True)
-            return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
-                                      index_value=df.index_value, columns_value=columns)
+        if self.col_names is not None:
+            # if col_names is a list, return a DataFrame, else return a Series
+            if isinstance(self._col_names, list):
+                dtypes = df.dtypes[self._col_names]
+                columns = parse_index(pd.Index(self._col_names), store_data=True)
+                return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
+                                        index_value=df.index_value, columns_value=columns)
+            else:
+                dtype = df.dtypes[self._col_names]
+                return self.new_series([df], shape=(df.shape[0],), dtype=dtype, index_value=df.index_value,
+                                    name=self._col_names)
         else:
-            dtype = df.dtypes[self._col_names]
-            return self.new_series([df], shape=(df.shape[0],), dtype=dtype, index_value=df.index_value,
-                                   name=self._col_names)
+            if isinstance(self.mask, SERIES_TYPE):
+                return self.new_dataframe([df, self._mask], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
+                                          index_value=parse_index(pd.Index([])), columns_value=df.columns)
+            else:
+                return self.new_dataframe([df], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
+                                          index_value=parse_index(pd.Index([])), columns_value=df.columns)
 
     @classmethod
     def tile(cls, op):
+        if op.col_names is not None:
+            return cls.tile_with_columns(op)
+        else:
+            return cls.tile_with_mask(op)
+
+    @classmethod
+    def tile_with_mask(cls, op):
+        in_df = op.inputs[0]
+        out_df = op.outputs[0]
+
+        out_chunks = []
+
+        if isinstance(op.mask, SERIES_TYPE):
+            mask = op.inputs[1]
+
+            nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_series(in_df, mask, axis='index')
+            out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
+
+            out_chunks = []
+            for idx, df_chunk in zip(out_chunk_indexes, df_chunks):
+                mask_chunk = mask_chunks[df_chunk.index[0]]
+                out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk],
+                                                            shape=(np.nan, df_chunk.shape[1]), index=idx,
+                                                            index_value=df_chunk.index_value,
+                                                            columns_value=df_chunk.columns)
+                out_chunks.append(out_chunk)
+
+        else:
+            nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
+            for idx in range(in_df.chunk_shape[0]):
+                for idxj in range(in_df.chunk_shape[1]):
+                    in_chunk = in_df.cix[idx, idxj]
+                    chunk_op = op.copy().reset_key()
+                    chunk_op._mask = op.mask.iloc[nsplits_acc[idx]:nsplits_acc[idx+1]]
+                    out_chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index,
+                                                    shape=(np.nan, in_chunk.shape[1]), dtypes=in_chunk.dtypes,
+                                                    index_value=in_df.index_value, columns_value=in_chunk.columns)
+                    out_chunks.append(out_chunk)
+
+            nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
+                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     chunks=out_chunks, nsplits=nsplits)
+
+    @classmethod
+    def tile_with_columns(cls, op):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
         col_names = op.col_names
@@ -265,8 +331,16 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        df = ctx[op.inputs[0].key]
-        ctx[op.outputs[0].key] = df[op.col_names]
+        if op.col_names:
+            df = ctx[op.inputs[0].key]
+            ctx[op.outputs[0].key] = df[op.col_names]
+        else:
+            df = ctx[op.inputs[0].key]
+            if isinstance(op.mask, SERIES_TYPE):
+                mask = ctx[op.inputs[1].key]
+            else:
+                mask = op.mask
+            ctx[op.outputs[0].key] = df[mask]
 
 
 def dataframe_getitem(df, item):
@@ -280,6 +354,10 @@ def dataframe_getitem(df, item):
         if item not in columns:
             raise KeyError('%s not in columns' % item)
         op = DataFrameIndex(col_names=item)
+    elif isinstance(item, SERIES_TYPE) and item.dtype == np.bool:
+        op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
+    elif isinstance(item, pd.Series) and item.dtype == np.bool:
+        op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     else:
         raise NotImplementedError('type %s is not support for getitem' % type(item))
     return op(df)
