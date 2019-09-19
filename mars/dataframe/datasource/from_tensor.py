@@ -17,6 +17,7 @@
 import numpy as np
 import pandas as pd
 
+from ...core import Base
 from ...serialize import KeyField, SeriesField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -49,26 +50,36 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         self._input = inputs[0]
 
     def __call__(self, input_tensor, index, columns):
-        if index is not None or columns is not None:
-            if input_tensor.shape != (len(index), len(columns)):
-                raise ValueError(
-                    '({0},{1}) should have the same shape with tensor: {2}'.format(index, columns, input_tensor.shape))
-        if input_tensor.ndim == 1:
-            # convert to 1-d DataFrame
-            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
-            columns_value = parse_index(pd.RangeIndex(start=0, stop=1))
-        elif input_tensor.ndim != 2:
+        if input_tensor.ndim != 1 and input_tensor.ndim != 2:
             raise ValueError('Must pass 1-d or 2-d input')
-        else:
-            # convert to DataFrame
-            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
-            columns_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[1]))
 
-        # overwrite index_value and columns_value if user has set them
         if index is not None:
+            if input_tensor.shape[0] != len(index):
+                raise ValueError(
+                    'index {0} should have the same shape with tensor: {1}'.format(index, input_tensor.shape[0]))
+            if not isinstance(index, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
+                index = pd.Index(index)
             index_value = parse_index(index, store_data=True)
+        else:
+            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
+
         if columns is not None:
+            if input_tensor.shape[1] != len(columns):
+                raise ValueError(
+                    'columns {0} should have the same shape with tensor: {1}'.format(columns, input_tensor.shape[1]))
+            if not isinstance(columns, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
+                columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)
+        else:
+            if input_tensor.ndim == 1:
+                # convert to 1-d DataFrame
+                columns_value = parse_index(pd.RangeIndex(start=0, stop=1), store_data=True)
+            else:
+                columns_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[1]), store_data=True)
 
         return self.new_dataframe([input_tensor], input_tensor.shape, dtypes=self.dtypes,
                                   index_value=index_value,
@@ -99,7 +110,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                                             store_data=True)
 
             index_stop = cum_size[0][i]
-            if out_df.index_value is not None:
+            if out_df.index_value.has_value():
                 index_value = parse_index(out_df.index_value.to_pandas()[index_stop - in_chunk.shape[0]:index_stop],
                                           store_data=True)
             else:
