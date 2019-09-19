@@ -498,7 +498,6 @@ class Test(TestBase):
         result = result[[1, 2, 3]]
         pd.testing.assert_frame_equal(expected, result)
 
-
     def testAddSeries(self):
         # only one chunk
         s1 = pd.Series(range(10))

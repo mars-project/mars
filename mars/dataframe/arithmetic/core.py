@@ -20,7 +20,7 @@ import numpy as np
 from pandas.core.dtypes.cast import find_common_type
 
 from ...utils import classproperty
-from ..base.align import align_series_series, align_dataframe_series, align_dataframe_dataframe
+from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperandMixin, ObjectType
 from ..utils import parse_index, infer_dtypes, infer_index_value
@@ -151,7 +151,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return cls._tile_dataframe_series(op)
         elif isinstance(op.inputs[0], SERIES_TYPE) and isinstance(op.inputs[1], DATAFRAME_TYPE):
             return cls._tile_series_dataframe(op)
-        raise NotImplementedError
 
     @classmethod
     def execute(cls, ctx, op):
