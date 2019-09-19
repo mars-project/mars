@@ -19,6 +19,9 @@ import unittest
 
 from mars.compat import reload_module
 
+_cpu_stat_first = '8678870951786'
+_cpu_stat_last = '8679429771672'
+
 # just a fragment of real memory.stat
 _memory_stat_content = """
 cache 489275392
@@ -74,6 +77,7 @@ class Test(unittest.TestCase):
 
             resource = reload_module(resource)
             resource.cpu_percent()
+            time.sleep(0.5)
 
             mem_stats = resource.virtual_memory()
             self.assertGreaterEqual(mem_stats.available, 0)
@@ -84,6 +88,8 @@ class Test(unittest.TestCase):
 
             cpu_usage = resource.cpu_percent()
             self.assertGreaterEqual(cpu_usage, 0)
+            cpu_usage = resource.cpu_percent()
+            self.assertGreaterEqual(cpu_usage, 0)
         finally:
             del os.environ['MARS_USE_PROCESS_STAT']
             del os.environ['MARS_CPU_TOTAL']
@@ -92,24 +98,39 @@ class Test(unittest.TestCase):
 
     def testUseCGroupStats(self):
         from mars import resource
-        fd, mem_stat_path = tempfile.mkstemp(prefix='test-mars-res-')
+        fd, cpu_stat_path = tempfile.mkstemp(prefix='test-mars-res-cpu-')
+        with os.fdopen(fd, 'w') as f:
+            f.write(_cpu_stat_first)
+        fd, mem_stat_path = tempfile.mkstemp(prefix='test-mars-res-mem-')
         with os.fdopen(fd, 'w') as f:
             f.write(_memory_stat_content)
 
-        old_stat_file = resource.CGROUP_MEM_STAT_FILE
+        old_cpu_stat_file = resource.CGROUP_CPU_STAT_FILE
+        old_mem_stat_file = resource.CGROUP_MEM_STAT_FILE
         old_shm_path = resource._shm_path
         try:
-            os.environ['MARS_MEM_USE_CGROUP_STAT'] = '1'
+            os.environ['MARS_USE_CGROUP_STAT'] = '1'
+
             resource = reload_module(resource)
+            resource.CGROUP_CPU_STAT_FILE = cpu_stat_path
             resource.CGROUP_MEM_STAT_FILE = mem_stat_path
             resource._shm_path = None
+
+            self.assertIsNone(resource.cpu_percent())
+            time.sleep(0.5)
+            with open(cpu_stat_path, 'w') as f:
+                f.write(_cpu_stat_last)
+            self.assertGreater(resource.cpu_percent(), 50)
+            self.assertLess(resource.cpu_percent(), 150)
 
             mem_stats = resource.virtual_memory()
             self.assertEqual(mem_stats.total, 1073741824)
             self.assertEqual(mem_stats.used, 218181632)
         finally:
-            resource.CGROUP_MEM_STAT_FILE = old_stat_file
+            resource.CGROUP_CPU_STAT_FILE = old_cpu_stat_file
+            resource.CGROUP_MEM_STAT_FILE = old_mem_stat_file
             resource._shm_path = old_shm_path
-            del os.environ['MARS_MEM_USE_CGROUP_STAT']
+            del os.environ['MARS_USE_CGROUP_STAT']
+            os.unlink(cpu_stat_path)
             os.unlink(mem_stat_path)
             reload_module(resource)
