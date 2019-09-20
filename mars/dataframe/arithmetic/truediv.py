@@ -22,7 +22,7 @@ from ..operands import DataFrameOperand
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
 
 
-class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
+class DataFrameTrueDiv(DataFrameOperand, DataFrameBinOpMixin):
     _op_type_ = OperandDef.DIV
 
     _axis = AnyField('axis')
@@ -30,17 +30,17 @@ class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
     _fill_value = Float64Field('fill_value')
     _lhs = AnyField('lhs')
     _rhs = AnyField('rhs')
-    _func_name = 'div'
-    _rfunc_name = 'rdiv'
+    _func_name = 'truediv'
+    _rfunc_name = 'rtruediv'
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameDiv, self).__init__(_axis=axis, _level=level,
-                                           _fill_value=fill_value,
-                                           _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+        super(DataFrameTrueDiv, self).__init__(_axis=axis, _level=level,
+                                                _fill_value=fill_value,
+                                                _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @classproperty
     def _operator(self):
-        return operator.div
+        return operator.truediv
 
     @property
     def axis(self):
@@ -63,7 +63,7 @@ class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
         return self._rhs
 
     def _set_inputs(self, inputs):
-        super(DataFrameDiv, self)._set_inputs(inputs)
+        super(DataFrameTrueDiv, self)._set_inputs(inputs)
         if len(self._inputs) == 2:
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
@@ -74,17 +74,17 @@ class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
                 self._rhs = self._inputs[0]
 
 
-def div(df, other, axis='columns', level=None, fill_value=None):
+def truediv(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+        op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
         raise NotImplementedError('Only support div with dataframe, series or scalar!')
     return op(df, other)
 
 
-def rdiv(df, other, axis='columns', level=None, fill_value=None):
+def rtruediv(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+        op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     else:
         raise NotImplementedError('Only support div with dataframe, series or scalar!')
     return op.rcall(df, other)

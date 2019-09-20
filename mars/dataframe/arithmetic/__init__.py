@@ -15,7 +15,8 @@
 from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
 from .add import add, radd, DataFrameAdd
-from .div import div, rdiv, DataFrameDiv
+from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
+from .truediv import truediv, rtruediv, DataFrameTrueDiv
 
 def _install():
     from ..core import DataFrame, Series
@@ -31,14 +32,30 @@ def _install():
     setattr(Series, 'add', add)
     setattr(Series, 'radd', radd)
 
-    setattr(DataFrame, '__div__', wrap_notimplemented_exception(div))
-    setattr(DataFrame, '__rdiv__', wrap_notimplemented_exception(rdiv))
-    setattr(DataFrame, 'div', div)
-    setattr(DataFrame, 'rdiv', rdiv)
-    setattr(Series, '__div__', wrap_notimplemented_exception(div))
-    setattr(Series, '__rdiv__', wrap_notimplemented_exception(rdiv))
-    setattr(Series, 'div', div)
-    setattr(Series, 'rdiv', rdiv)
+    setattr(DataFrame, '__floordiv__', wrap_notimplemented_exception(floordiv))
+    setattr(DataFrame, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
+    setattr(DataFrame, '__truediv__', wrap_notimplemented_exception(truediv))
+    setattr(DataFrame, '__rtruediv__', wrap_notimplemented_exception(rtruediv))
+    setattr(DataFrame, '__div__', wrap_notimplemented_exception(truediv))
+    setattr(DataFrame, '__rdiv__', wrap_notimplemented_exception(rtruediv))
+    setattr(DataFrame, 'floordiv', floordiv)
+    setattr(DataFrame, 'rfloordiv', rfloordiv)
+    setattr(DataFrame, 'truediv', truediv)
+    setattr(DataFrame, 'rtruediv', rtruediv)
+    setattr(DataFrame, 'div', truediv)
+    setattr(DataFrame, 'rdiv', rtruediv)
+    setattr(Series, '__floordiv__', wrap_notimplemented_exception(floordiv))
+    setattr(Series, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
+    setattr(Series, '__truediv__', wrap_notimplemented_exception(truediv))
+    setattr(Series, '__rtruediv__', wrap_notimplemented_exception(rtruediv))
+    setattr(Series, '__div__', wrap_notimplemented_exception(truediv))
+    setattr(Series, '__rdiv__', wrap_notimplemented_exception(rtruediv))
+    setattr(Series, 'floordiv', floordiv)
+    setattr(Series, 'rfloordiv', rfloordiv)
+    setattr(Series, 'truediv', truediv)
+    setattr(Series, 'rtruediv', rtruediv)
+    setattr(Series, 'div', truediv)
+    setattr(Series, 'rdiv', rtruediv)
 
 
 _install()
