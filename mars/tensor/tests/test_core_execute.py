@@ -67,6 +67,23 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
 
+    def testSetItemOnView(self):
+        a = ones((5, 8), dtype=int)
+        b = a[:3]
+        b[0, 0] = 2
+        c = b.ravel()  # create view
+        c[1] = 4
+
+        npa = np.ones((5, 8), dtype=int)
+        npb = npa[:3]
+        npb[0, 0] = 2
+        npc = npb.ravel()  # create view
+        npc[1] = 4
+
+        np.testing.assert_array_equal(a.execute(), npa)
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(c.execute(), npc)
+
     def testViewDataOnTranspose(self):
         data = np.random.rand(10, 20)
         a = tensor(data, chunk_size=6)

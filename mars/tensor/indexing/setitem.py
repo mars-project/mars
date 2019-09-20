@@ -59,6 +59,14 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         self._value = value
         return self.new_tensor(inputs, a.shape, order=a.order)
 
+    def on_output_modify(self, new_output):
+        return new_output
+
+    def on_input_modify(self, new_input):
+        new_op = self.copy().reset_key()
+        new_inputs = [new_input] + self.inputs[1:]
+        return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
+
     @classmethod
     def tile(cls, op):
         tensor = op.outputs[0]
@@ -122,6 +130,7 @@ def _setitem(a, item, value):
     if not (np.isscalar(value) or (isinstance(value, tuple) and a.dtype.fields)):
         value = broadcast_to(value, shape).astype(a.dtype)
 
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value)
+    # __setitem__ on a view should be still a view, see GH #732.
+    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value, _create_view=a.op.create_view)
     ret = op(a, index, value)
     a.data = ret.data
