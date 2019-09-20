@@ -53,7 +53,7 @@ class MockCpuCalcActor(WorkerActor):
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')
 
     @promise.reject_on_exception
-    def calc(self, session_id, graph_key, ser_graph, targets, mem_requests, callback):
+    def calc(self, session_id, graph_key, ser_graph, targets, callback):
         self.ctx.sleep(self._delay)
         self.tell_promise(callback)
         self._dispatch_ref.register_free_slot(self.uid, 'cpu')

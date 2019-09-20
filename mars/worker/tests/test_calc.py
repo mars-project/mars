@@ -141,7 +141,7 @@ class Test(WorkerCase):
             with patch_method(PlasmaSharedStore.create, _mock_plasma_create):
                 self.waitp(
                     calc_ref.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
-                                  [add_chunk.key], quota_batch, _promise=True)
+                                  [add_chunk.key], _promise=True)
                         .then(_extract_value_ref)
                         .then(lambda *_: calc_ref.store_results(session_id, [add_chunk.key], _promise=True))
                 )
@@ -186,6 +186,6 @@ class Test(WorkerCase):
                     self.assertRaises(ValueError):
                 self.waitp(
                     calc_ref.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
-                                    [add_chunk.key], {}, _promise=True)
+                                  [add_chunk.key], _promise=True)
                         .then(lambda *_: calc_ref.store_results(session_id, [add_chunk.key], _promise=True))
                 )
