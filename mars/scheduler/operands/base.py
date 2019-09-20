@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import logging
 from collections import defaultdict
 
@@ -33,7 +32,7 @@ class BaseOperandActor(SchedulerActor):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
-        op_info = self._info = copy.deepcopy(op_info)
+        self._info = op_info
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
@@ -92,6 +91,8 @@ class BaseOperandActor(SchedulerActor):
 
         if self._with_kvstore:
             self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
+
+        self.ref().start_operand(_tell=True)
 
     @property
     def state(self):

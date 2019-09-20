@@ -58,6 +58,8 @@ class OperandActor(BaseOperandActor):
         self._input_worker_scores = dict()
         self._worker_scores = dict()
 
+        self._submitted = self._is_initial
+
     @property
     def retries(self):
         return self._retries
@@ -105,7 +107,7 @@ class OperandActor(BaseOperandActor):
             # all predecessors done, the operand can be executed now
             self.start_operand(OperandState.READY)
             return True
-        self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
+        self.ref().update_demand_depths(self._info.get('optimize', {}).get('depth', 0), _tell=True)
         return False
 
     def add_finished_successor(self, op_key, worker):
@@ -256,6 +258,7 @@ class OperandActor(BaseOperandActor):
                                  self._op_key, self._target_worker)
                     return
 
+        self._submitted = False
         super(OperandActor, self).move_failover_state(from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED, check=True):
@@ -318,43 +321,43 @@ class OperandActor(BaseOperandActor):
         return target_predicts
 
     @log_unhandled
+    def submit_to_worker(self, worker, data_metas):
+        # worker assigned, submit job
+        if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
+            self.start_operand()
+            return
+
+        self.worker = worker
+
+        target_predicts = self._get_target_predicts(worker)
+        try:
+            input_metas = self._io_meta['input_data_metas']
+            input_chunks = [k[0] if isinstance(k, tuple) else k for k in input_metas]
+        except KeyError:
+            input_chunks = self._input_chunks
+
+        # submit job
+        if len(input_chunks) != self._input_chunks:
+            exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
+        else:
+            exec_graph = self._executable_dag
+        self._execution_ref = self._get_execution_ref()
+        try:
+            with rewrite_worker_errors():
+                self._execution_ref.execute_graph(
+                    self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
+                    send_addresses=target_predicts, _tell=True)
+        except WorkerDead:
+            logger.debug('Worker %s dead when submitting operand %s into queue',
+                         worker, self._op_key)
+            self._resource_ref.detach_dead_workers([worker], _tell=True)
+        else:
+            self.start_operand(OperandState.RUNNING)
+
+    @log_unhandled
     def _on_ready(self):
         self.worker = None
         self._execution_ref = None
-
-        @log_unhandled
-        def _submit_job(worker, data_metas):
-            # worker assigned, submit job
-            if self.state in (OperandState.CANCELLED, OperandState.CANCELLING):
-                self.start_operand()
-                return
-
-            self.worker = worker
-
-            target_predicts = self._get_target_predicts(worker)
-            try:
-                input_metas = self._io_meta['input_data_metas']
-                input_chunks = [k[0] if isinstance(k, tuple) else k for k in input_metas]
-            except KeyError:
-                input_chunks = self._input_chunks
-
-            # submit job
-            if len(input_chunks) != self._input_chunks:
-                exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
-            else:
-                exec_graph = self._executable_dag
-            self._execution_ref = self._get_execution_ref()
-            try:
-                with rewrite_worker_errors():
-                    self._execution_ref.execute_graph(
-                        self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
-                        send_addresses=target_predicts, _tell=True)
-            except WorkerDead:
-                logger.debug('Worker %s dead when submitting operand %s into queue',
-                             worker, self._op_key)
-                self._resource_ref.detach_dead_workers([worker], _tell=True)
-            else:
-                self.start_operand(OperandState.RUNNING)
 
         def _apply_fail(*exc_info):
             if issubclass(exc_info[0], DependencyMissing):
@@ -365,13 +368,13 @@ class OperandActor(BaseOperandActor):
             else:
                 six.reraise(*exc_info)
 
-        logger.debug('Applying for resources for operand %s: %r', self._op_key, self._info)
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0
         # Send resource application. Submit job when worker assigned
-        self._assigner_ref.apply_for_resource(
-            self._session_id, self._op_key, self._info, _delay=delay, _promise=True) \
-            .then(_submit_job, _apply_fail)
+        if not self._submitted:
+            self._assigner_ref.apply_for_resource(
+                self._session_id, self._op_key, self._info, _delay=delay, _promise=True) \
+                .catch(_apply_fail)
 
     @log_unhandled
     def _on_running(self):
@@ -379,6 +382,7 @@ class OperandActor(BaseOperandActor):
 
         @log_unhandled
         def _acceptor(data_sizes):
+            self._submitted = False
             if not self._is_worker_alive():
                 return
             self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
@@ -389,6 +393,7 @@ class OperandActor(BaseOperandActor):
 
         @log_unhandled
         def _rejecter(*exc):
+            self._submitted = False
             # handling exception occurrence of operand execution
             exc_type = exc[0]
             self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)

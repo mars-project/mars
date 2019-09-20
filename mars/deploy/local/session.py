@@ -21,9 +21,10 @@ from numbers import Integral
 
 from ...api import MarsAPI
 from ...compat import TimeoutError  # pylint: disable=W0622
+from ...config import options
+from ...errors import ExecutionFailed
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
-from ...errors import ExecutionFailed
 from ...utils import build_graph, sort_dataframe_result
 
 
@@ -128,8 +129,9 @@ class LocalClusterSession(object):
 
         exec_start_time = time.time()
         time_elapsed = 0
+        check_interval = options.check_interval
         while timeout <= 0 or time_elapsed < timeout:
-            timeout_val = min(20, timeout - time_elapsed) if timeout > 0 else 20
+            timeout_val = min(check_interval, timeout - time_elapsed) if timeout > 0 else check_interval
             self._api.wait_graph_finish(self._session_id, graph_key, timeout=timeout_val)
             graph_state = self._api.get_graph_state(self._session_id, graph_key)
             if graph_state == GraphState.SUCCEEDED:
