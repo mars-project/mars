@@ -87,9 +87,9 @@ class Test(unittest.TestCase):
             raise
 
     @classmethod
-    def _remove_docker_image(cls):
+    def _remove_docker_image(cls, raises=True):
         proc = subprocess.Popen(['docker', 'rmi', '-f', cls._docker_image])
-        if proc.wait() != 0:
+        if proc.wait() != 0 and raises:
             raise SystemError('Executing docker rmi failed.')
 
     def testRunInKubernetes(self):
@@ -109,16 +109,22 @@ class Test(unittest.TestCase):
                                   timeout=120)
             self.assertIsNotNone(cluster.endpoint)
 
+            pod_items = kube_api.list_namespaced_pod(cluster.namespace).to_dict()
+
+            log_processes = []
+            for item in pod_items['items']:
+                log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster.namespace,
+                                                      item['metadata']['name']]))
+
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
-            r = cluster.session.run(c)
+            r = cluster.session.run(c, timeout=120)
 
             expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
             assert_array_equal(r, expected.sum())
 
             # turn off service processes with grace to get coverage data
-            pod_items = kube_api.list_namespaced_pod(cluster.namespace).to_dict()
             procs = []
             for item in pod_items['items']:
                 p = subprocess.Popen(['kubectl', 'exec', '-n', cluster.namespace,
@@ -126,11 +132,16 @@ class Test(unittest.TestCase):
                 procs.append(p)
             for p in procs:
                 p.wait()
+
+            [p.terminate() for p in log_processes]
         finally:
             shutil.rmtree(temp_spill_dir)
             if cluster:
-                cluster.stop(wait=True)
-            self._remove_docker_image()
+                try:
+                    cluster.stop(wait=True, timeout=20)
+                except TimeoutError:
+                    pass
+            self._remove_docker_image(False)
 
     @mock.patch('kubernetes.client.CoreV1Api.create_namespaced_replication_controller',
                 new=lambda *_, **__: None)
