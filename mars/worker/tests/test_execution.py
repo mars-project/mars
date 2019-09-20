@@ -100,8 +100,8 @@ class MockSenderActor(WorkerActor):
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
     @promise.reject_on_exception
-    def send_data(self, session_id, chunk_key, target_endpoints, ensure_cached=True,
-                  timeout=0, callback=None):
+    def send_data(self, session_id, chunk_key, target_endpoints, target_slots=None,
+                  ensure_cached=True, compression=None, timeout=None, callback=None):
         if self._mode == 'in':
             self._chunk_store.put(session_id, chunk_key, self._mock_data)
         else:
@@ -583,8 +583,6 @@ class Test(WorkerCase):
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
-
-            pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
 
             def _validate(_):
                 data = test_actor._chunk_store.get(session_id, result_tensor.chunks[0].key)

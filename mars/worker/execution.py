@@ -309,8 +309,12 @@ class ExecutionActor(WorkerActor):
             logger.debug('Fetching chunk %s in %s to %s with slot %s',
                          chunk_key, remote_addr, self.address, sender_uid)
 
+            try:
+                target_slot = self._dispatch_ref.get_hash_slot('receiver', chunk_key)
+            except KeyError:
+                target_slot = None
             return sender_ref.send_data(
-                session_id, chunk_key, self.address, ensure_cached=ensure_cached,
+                session_id, chunk_key, self.address, target_slot, ensure_cached=ensure_cached,
                 timeout=timeout, _timeout=timeout, _promise=True
             ).then(_finish_fetch)
 
@@ -402,12 +406,16 @@ class ExecutionActor(WorkerActor):
         :param callback: promise callback
         """
         session_graph_key = (session_id, graph_key)
+        callback = callback or []
+        if not isinstance(callback, list):
+            callback = [callback]
         try:
-            old_callbacks = self._graph_records[session_graph_key].finish_callbacks or []
+            all_callbacks = self._graph_records[session_graph_key].finish_callbacks or []
         except KeyError:
-            old_callbacks = []
+            all_callbacks = []
+        all_callbacks.extend(callback)
 
-        graph_record = self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
+        graph_record = self._graph_records[session_graph_key] = GraphExecutionRecord(
             graph_ser, ExecutionState.ALLOCATING,
             io_meta=io_meta,
             data_metas=data_metas,
@@ -415,27 +423,17 @@ class ExecutionActor(WorkerActor):
             data_targets=list(io_meta.get('data_targets') or io_meta['chunks']),
             shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
-            finish_callbacks=old_callbacks,
+            finish_callbacks=all_callbacks,
         )
 
         logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
                      graph_record.op_string, graph_record.chunk_targets)
         self._update_state(session_id, graph_key, ExecutionState.ALLOCATING)
 
-        # add callbacks to callback store
-        if callback is None:
-            callback = []
-        elif not isinstance(callback, list):
-            callback = [callback]
-        graph_record.finish_callbacks.extend(callback)
         try:
-            del self._result_cache[(session_id, graph_key)]
+            del self._result_cache[session_graph_key]
         except KeyError:
             pass
-
-        @log_unhandled
-        def _wait_free_slot(*_):
-            return self._dispatch_ref.get_free_slot('cpu', _promise=True)
 
         @log_unhandled
         def _handle_success(*_):
@@ -484,13 +482,13 @@ class ExecutionActor(WorkerActor):
                 graph_record.retry_delay = min(1 + graph_record.retry_delay, 30)
                 self.ref().execute_graph(
                     session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
-                    graph_record.data_metas, _tell=True, _delay=retry_delay)
+                    graph_record.data_metas, send_addresses=send_addresses, _tell=True, _delay=retry_delay)
                 return
 
             promise.finished() \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
-                .then(_wait_free_slot) \
+                .then(lambda *_: self._dispatch_ref.get_free_slot('cpu', _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda uid, sizes: self._dump_cache(session_id, graph_key, uid, sizes)) \
                 .then(_handle_success, _handle_rejection)
