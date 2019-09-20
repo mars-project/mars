@@ -30,20 +30,17 @@ class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
     _fill_value = Float64Field('fill_value')
     _lhs = AnyField('lhs')
     _rhs = AnyField('rhs')
-    _func_name = AnyField('func_name')
+    _func_name = 'div'
+    _rfunc_name = 'rdiv'
 
-    def __init__(self, func_name=None, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameDiv, self).__init__(_func_name=func_name, _axis=axis, _level=level,
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+        super(DataFrameDiv, self).__init__(_axis=axis, _level=level,
                                            _fill_value=fill_value,
                                            _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @classproperty
     def _operator(self):
         return operator.div
-
-    @property
-    def func_name(self):
-        return self._func_name
 
     @property
     def axis(self):
@@ -79,7 +76,7 @@ class DataFrameDiv(DataFrameOperand, DataFrameBinOpMixin):
 
 def div(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameDiv(func_name='div', axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+        op = DataFrameDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
         raise NotImplementedError('Only support div with dataframe, series or scalar!')
     return op(df, other)
@@ -87,7 +84,7 @@ def div(df, other, axis='columns', level=None, fill_value=None):
 
 def rdiv(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameDiv(func_name='rdiv', axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+        op = DataFrameDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     else:
         raise NotImplementedError('Only support div with dataframe, series or scalar!')
-    return op(df, other)
+    return op.rcall(df, other)

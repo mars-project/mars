@@ -30,24 +30,17 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
     _fill_value = Float64Field('fill_value')
     _lhs = AnyField('lhs')
     _rhs = AnyField('rhs')
-    # NB: `_func_name` cannot be defined as a class property for operand op classes,
-    # since the `op` and `rop` may not symmetric.
-    #
-    # For example, we can run df.div(series, axis='columns') but we cannot run series.rdiv(df, axis='columns')
-    _func_name = AnyField('func_name')
+    _func_name = 'add'
+    _rfunc_name = 'radd'
 
-    def __init__(self, func_name=None, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameAdd, self).__init__(_func_name=func_name, _axis=axis, _level=level,
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+        super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
                                            _fill_value=fill_value,
                                            _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @classproperty
     def _operator(self):
         return operator.add
-
-    @property
-    def func_name(self):
-        return self._func_name
 
     @property
     def axis(self):
@@ -83,7 +76,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
 
 def add(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameAdd(func_name='add', axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+        op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     else:
         raise NotImplementedError('Only support add with dataframe, series or scalar!')
     return op(df, other)
@@ -91,7 +84,7 @@ def add(df, other, axis='columns', level=None, fill_value=None):
 
 def radd(df, other, axis='columns', level=None, fill_value=None):
     if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameAdd(func_name='radd', axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+        op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     else:
         raise NotImplementedError('Only support add with dataframe, series or scalar!')
-    return op(df, other)
+    return op.rcall(df, other)

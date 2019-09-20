@@ -25,7 +25,7 @@ from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.arithmetic import abs, add, div, rdiv
+from mars.dataframe.arithmetic import abs, add, radd, div, rdiv
 
 
 @unittest.skipIf(pd is None, 'pandas not installed')
@@ -276,7 +276,7 @@ class Test(TestBase):
         pd.testing.assert_frame_equal(expected, result3)
 
         # test scalar + dataframe
-        result4 = self.executor.execute_dataframe(add(1, df), concat=True)[0]
+        result4 = self.executor.execute_dataframe(radd(df, 1), concat=True)[0]
         pd.testing.assert_frame_equal(expected, result4)
 
         expected2 = 1 + pdf

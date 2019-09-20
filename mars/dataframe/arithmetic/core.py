@@ -170,17 +170,24 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def execute(cls, ctx, op):
         if len(op.inputs) == 2:
             df, other = ctx[op.inputs[0].key], ctx[op.inputs[1].key]
+            if isinstance(op.inputs[0], SERIES_CHUNK_TYPE) and isinstance(op.inputs[1], DATAFRAME_CHUNK_TYPE):
+                df, other = other, df
+                func_name = getattr(cls, '_rfunc_name')
+            else:
+                func_name = getattr(cls, '_func_name')
         elif np.isscalar(op.lhs):
             df = ctx[op.rhs.key]
             other = op.lhs
+            func_name = getattr(cls, '_rfunc_name')
         else:
             df = ctx[op.lhs.key]
             other = op.rhs
+            func_name = getattr(cls, '_func_name')
         if op.object_type == ObjectType.dataframe:
             kw = dict({'axis': op.axis})
         else:
             kw = dict()
-        ctx[op.outputs[0].key] = getattr(df, op.func_name)(other, level=op.level, fill_value=op.fill_value, **kw)
+        ctx[op.outputs[0].key] = getattr(df, func_name)(other, level=op.level, fill_value=op.fill_value, **kw)
 
     @classproperty
     def _operator(self):
@@ -301,7 +308,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return super(DataFrameBinOpMixin, self)._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
-    def __call__(self, x1, x2):
+    def _call(self, x1, x2):
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
             df1 = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
             df2 = x2 if isinstance(x1, DATAFRAME_TYPE) else x1
@@ -321,6 +328,18 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             else:
                 return self.new_series([s1], **kw)
         raise NotImplementedError('Only support add dataframe or scalar for now')
+
+    def __call__(self, x1, x2):
+        if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
+            # reject invokeing series's op on dataframe
+            raise NotImplementedError
+        return self._call(x1, x2)
+
+    def rcall(self, x1, x2):
+        if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
+            # reject invokeing series's op on dataframe
+            raise NotImplementedError
+        return self._call(x2, x1)
 
 
 class DataFrameUnaryOpMixin(DataFrameOperandMixin):
