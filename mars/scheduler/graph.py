@@ -737,6 +737,7 @@ class GraphActor(SchedulerActor):
             op_info['op_name'] = meta_op_info['op_name'] = op_name
             op_info['io_meta'] = io_meta
             op_info['executable_dag'] = self.get_executable_operand_dag(op_key)
+            op_info['calc_device'] = 'cuda' if op.gpu else 'cpu'
 
             if io_meta['predecessors']:
                 state = OperandState.UNSCHEDULED

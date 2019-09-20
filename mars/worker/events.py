@@ -41,9 +41,10 @@ class ResourceEventType(Enum):
 
 
 class ProcedureEventType(Enum):
-    __order__ = 'CALCULATION DISK_IO NETWORK'
+    __order__ = 'CPU_CALC GPU_CALC DISK_IO NETWORK'
 
-    CALCULATION = 'CALCULATION'
+    CPU_CALC = 'CPU_CALC'
+    GPU_CALC = 'GPU_CALC'
     DISK_IO = 'DISK_IO'
     NETWORK = 'NETWORK'
 

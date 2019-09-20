@@ -346,7 +346,14 @@ class AssignEvaluationActor(SchedulerActor):
             return None, []
 
         # todo make more detailed allocation plans
-        alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, memory=sum(input_sizes.values()))
+        calc_device = op_info.get('calc_device', 'cpu')
+        if calc_device == 'cpu':
+            alloc_dict = dict(cpu=options.scheduler.default_cpu_usage, memory=sum(input_sizes.values()))
+        elif calc_device == 'cuda':
+            alloc_dict = dict(cuda=options.scheduler.default_cuda_usage, memory=sum(input_sizes.values()))
+        else:  # pragma: no cover
+            raise NotImplementedError('Calc device %s not supported.' % calc_device)
+
         rejects = []
         for worker_ep in candidate_workers:
             if self._resource_ref.allocate_resource(session_id, op_key, worker_ep, alloc_dict):

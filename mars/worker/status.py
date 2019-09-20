@@ -67,6 +67,11 @@ class StatusReporterActor(WorkerActor):
             hw_metrics['cpu_used'] = cpu_percent / 100.0
             hw_metrics['cpu_total'] = resource.cpu_count()
 
+            cuda_info = resource.cuda_info()
+            if cuda_info:
+                hw_metrics['cuda'] = cuda_info['gpu_count']
+                hw_metrics['cuda_total'] = cuda_info['gpu_count']
+
             hw_metrics['disk_read'] = disk_io[0]
             hw_metrics['disk_write'] = disk_io[1]
             hw_metrics['net_receive'] = net_io[0]

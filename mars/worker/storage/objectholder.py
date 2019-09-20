@@ -291,3 +291,7 @@ class InProcHolderActor(ObjectHolderActor):
 
     def post_delete(self, session_id, data_key):
         pass
+
+
+class CudaHolderActor(ObjectHolderActor):
+    pass

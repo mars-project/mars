@@ -30,13 +30,14 @@ class DataStorageDevice(Enum):
     PROC_MEMORY = 0
     SHARED_MEMORY = 1
     DISK = 2
+    CUDA = 3
 
     def __lt__(self, other):
         return self.value < other.value
 
     @classproperty
     def GLOBAL_DEVICES(cls):
-        return cls.SHARED_MEMORY, cls.DISK
+        return cls.SHARED_MEMORY, cls.DISK, cls.CUDA
 
     def build_location(self, proc_id):
         if self in self.GLOBAL_DEVICES:

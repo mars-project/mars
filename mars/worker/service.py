@@ -30,11 +30,12 @@ from .quota import QuotaActor, MemQuotaActor
 from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
-from .calc import CpuCalcActor
+from .calc import CpuCalcActor, CudaCalcActor
 from .transfer import ReceiverActor, SenderActor
 from .prochelper import ProcessHelperActor
 from .transfer import ResultSenderActor
-from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, InProcHolderActor
+from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
+    InProcHolderActor, CudaHolderActor
 from .utils import WorkerClusterInfoActor
 
 
