@@ -66,7 +66,7 @@ class WorkerService(object):
         self._advertise_addr = kwargs.pop('advertise_addr', None)
 
         self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())
-        self._n_net_process = int(kwargs.pop('n_net_process', None) or '1')
+        self._n_net_process = int(kwargs.pop('n_net_process', None) or '4')
 
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
