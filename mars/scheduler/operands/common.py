@@ -58,7 +58,8 @@ class OperandActor(BaseOperandActor):
         self._input_worker_scores = dict()
         self._worker_scores = dict()
 
-        self._submitted = self._is_initial
+        self._allocated = self._is_initial
+        self._submit_promise = None
 
     @property
     def retries(self):
@@ -258,7 +259,7 @@ class OperandActor(BaseOperandActor):
                                  self._op_key, self._target_worker)
                     return
 
-        self._submitted = False
+        self._allocated = False
         super(OperandActor, self).move_failover_state(from_states, state, new_target, dead_workers)
 
     def free_data(self, state=OperandState.FREED, check=True):
@@ -347,9 +348,9 @@ class OperandActor(BaseOperandActor):
         self._execution_ref = self._get_execution_ref()
         try:
             with rewrite_worker_errors():
-                self._execution_ref.execute_graph(
+                self._submit_promise = self._execution_ref.execute_graph(
                     self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
-                    send_addresses=target_predicts, _tell=True)
+                    send_addresses=target_predicts, _promise=True, _spawn=False)
         except WorkerDead:
             logger.debug('Worker %s dead when submitting operand %s into queue',
                          worker, self._op_key)
@@ -374,7 +375,7 @@ class OperandActor(BaseOperandActor):
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0
         # Send resource application. Submit job when worker assigned
-        if not self._submitted:
+        if not self._allocated:
             self._assigner_ref.apply_for_resource(
                 self._session_id, self._op_key, self._info, _delay=delay, _promise=True) \
                 .catch(_apply_fail)
@@ -385,7 +386,7 @@ class OperandActor(BaseOperandActor):
 
         @log_unhandled
         def _acceptor(data_sizes):
-            self._submitted = False
+            self._allocated = False
             if not self._is_worker_alive():
                 return
             self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
@@ -396,7 +397,7 @@ class OperandActor(BaseOperandActor):
 
         @log_unhandled
         def _rejecter(*exc):
-            self._submitted = False
+            self._allocated = False
             # handling exception occurrence of operand execution
             exc_type = exc[0]
             self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
@@ -428,14 +429,16 @@ class OperandActor(BaseOperandActor):
 
         try:
             with rewrite_worker_errors():
-                self._execution_ref.add_finish_callback(
-                    self._session_id, self._op_key, _promise=True, _spawn=False) \
-                    .then(_acceptor, _rejecter)
+                if self._submit_promise is None:
+                    self._submit_promise = self._execution_ref.add_finish_callback(
+                        self._session_id, self._op_key, _promise=True, _spawn=False)
+                self._submit_promise.then(_acceptor, _rejecter)
         except WorkerDead:
             logger.debug('Worker %s dead when adding callback for operand %s',
                          self.worker, self._op_key)
             self._resource_ref.detach_dead_workers([self.worker], _tell=True)
-            self.start_operand(OperandState.READY)
+        finally:
+            self._submit_promise = None
 
     @log_unhandled
     def _on_finished(self):
