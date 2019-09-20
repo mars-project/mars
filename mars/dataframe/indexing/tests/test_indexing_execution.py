@@ -72,6 +72,7 @@ class Test(TestBase):
         expected = df1
         expected.iloc[1] = 100
         df2.iloc[1] = 100
+        self.assertEqual(expected.shape, df2.execute().shape)
         pd.testing.assert_frame_equal(expected, df2.execute())
 
         # slice index
@@ -127,6 +128,7 @@ class Test(TestBase):
         mask = md.Series(mask_data, chunk_size=2)
 
         # getitem by mars series
+        self.assertEqual(df[mask].execute().shape, data[mask_data].shape)
         pd.testing.assert_frame_equal(df[mask].execute(), data[mask_data])
 
         # getitem by pandas series
