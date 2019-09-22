@@ -94,6 +94,7 @@ message OperandDef {
         RAND_WALD = 86;
         RAND_WEIBULL = 87;
         RAND_ZIPF = 88;
+        PERMUTATION = 89;
 
         // ufunc
         ADD = 101;
@@ -338,6 +339,8 @@ message OperandDef {
         RESHAPE_REDUCE = 2003;
         DATAFRAME_INDEX_ALIGN_MAP = 2004;
         DATAFRAME_INDEX_ALIGN_REDUCE = 2005;
+        PERMUTATION_MAP = 2006;
+        PERMUTATION_REDUCE = 2007;
 
         // indexing
         DATAFRAME_SET_INDEX = 2020;
