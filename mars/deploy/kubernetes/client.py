@@ -50,11 +50,12 @@ class KubernetesClusterClient(object):
     def session(self):
         return self._session
 
-    def stop(self, wait=False):
+    def stop(self, wait=False, timeout=0):
         from kubernetes.client import CoreV1Api
         api = CoreV1Api(self._kube_api_client)
         api.delete_namespace(self._namespace)
         if wait:
+            start_time = time.time()
             while True:
                 try:
                     api.read_namespace(self._namespace)
@@ -62,6 +63,10 @@ class KubernetesClusterClient(object):
                     if ex.status != 404:  # pragma: no cover
                         raise
                     break
+                else:
+                    time.sleep(1)
+                    if time.time() - start_time > timeout:  # pragma: no cover
+                        raise TimeoutError
 
 
 def _get_free_namespace(kube_api):

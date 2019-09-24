@@ -28,6 +28,7 @@ from .utils import wraps, build_exc_info
 
 logger = logging.getLogger(__name__)
 _promise_pool = dict()
+_pack_qword = struct.Struct('<Q').pack
 
 
 class Promise(object):
@@ -37,7 +38,7 @@ class Promise(object):
     def __init__(self, resolve=None, reject=None, done=False, failed=False,
                  args=None, kwargs=None):
         # use random promise id
-        self._id = struct.pack('<Q', id(self)) + np.random.bytes(32)
+        self._id = _pack_qword(id(self)) + np.random.bytes(32)
 
         self._accept_handler = self._wrap_handler(resolve)
         self._reject_handler = self._wrap_handler(reject)
@@ -308,18 +309,31 @@ class PromiseRefWrapper(object):
                 return ref_fun(*args, **kwargs)
 
             p = Promise()
+            promise_id = p.id
             self._caller.register_promise(p, self._ref)
 
             timeout = kwargs.pop('_timeout', 0)
+            spawn = kwargs.pop('_spawn', True)
 
             kwargs['callback'] = ((self._caller.uid, self._caller.address),
-                                  'handle_promise', p.id)
+                                  'handle_promise', promise_id)
             kwargs['_tell'] = True
-            ref_fun(*args, **kwargs)
+
+            def _promise_runner():
+                try:
+                    ref_fun(*args, **kwargs)
+                except:  # noqa: E722
+                    self._caller.ref().handle_promise(
+                        promise_id, *sys.exc_info(), **dict(_accept=False, _tell=True))
+
+            if spawn:
+                self._caller.async_group.spawn(_promise_runner)
+            else:
+                ref_fun(*args, **kwargs)
 
             if timeout and timeout > 0:
                 # add a callback that triggers some times later to deal with timeout
-                self._caller.ref().handle_promise_timeout(p.id, _tell=True, _delay=timeout)
+                self._caller.ref().handle_promise_timeout(promise_id, _tell=True, _delay=timeout)
 
             return p
 
@@ -384,6 +398,12 @@ class PromiseActor(FunctionActor):
             ref = self.ctx.actor_ref(*args, **kwargs)
         return PromiseRefWrapper(ref, self)
 
+    @property
+    def async_group(self):
+        if not hasattr(self, '_async_group'):
+            self._async_group = self.ctx.asyncpool()
+        return self._async_group
+
     def spawn_promised(self, func, *args, **kwargs):
         """
         Run func asynchronously in a pool and returns a promise.
@@ -393,9 +413,6 @@ class PromiseActor(FunctionActor):
         :return: promise
         """
         self._prepare_promise_registration()
-
-        if not hasattr(self, '_async_group'):
-            self._async_group = self.ctx.asyncpool()
 
         p = Promise()
         ref = self.ref()
@@ -412,7 +429,7 @@ class PromiseActor(FunctionActor):
                 del a, kw
 
         try:
-            self._async_group.spawn(_wrapped, *args, **kwargs)
+            self.async_group.spawn(_wrapped, *args, **kwargs)
         finally:
             del args, kwargs
         return p
@@ -490,9 +507,10 @@ class PromiseActor(FunctionActor):
         Tell promise results to the caller
         :param callback: promise callback
         """
+        wait = kwargs.pop('_wait', False)
         uid, address = callback[0]
         callback_args = callback[1:] + args + (kwargs, )
-        self.ctx.actor_ref(uid, address=address).tell(callback_args)
+        return self.ctx.actor_ref(uid, address=address).tell(callback_args, wait=wait)
 
     def handle_promise(self, promise_id, *args, **kwargs):
         """

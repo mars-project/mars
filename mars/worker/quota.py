@@ -154,7 +154,7 @@ class QuotaActor(WorkerActor):
                 self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
 
                 alter_allocation = self.alter_allocations if multiple else self.alter_allocation
-                alter_allocation(keys, quota_sizes)
+                alter_allocation(keys, quota_sizes, allocate=True)
 
                 if callback:
                     self.tell_promise(callback)
@@ -273,33 +273,44 @@ class QuotaActor(WorkerActor):
         # get total allocated size, for debug purpose
         return self._allocated_size
 
-    def alter_allocations(self, keys, quota_sizes=None, handle_shrink=True, new_keys=None):
+    def alter_allocations(self, keys, quota_sizes=None, handle_shrink=True, new_keys=None,
+                          allocate=False, process_quota=False):
         """
         Alter multiple requests
         :param keys: keys to update
         :param quota_sizes: new quota sizes, if None, no changes will be made
         :param handle_shrink: if True and the quota size less than the original, process requests in the queue
         :param new_keys: new allocation keys to replace current keys, if None, no changes will be made
+        :param allocate: if True, will allocate resources for new items
+        :param process_quota: call process_quota() after allocated
         :return:
         """
         quota_sizes = quota_sizes or itertools.repeat(None)
         new_keys = new_keys or itertools.repeat(None)
         shrink = False
         for k, s, nk in zip(keys, quota_sizes, new_keys):
-            shrink = shrink or self.alter_allocation(k, s, handle_shrink=False, new_key=nk)
+            cur_shrink = self.alter_allocation(
+                k, s, handle_shrink=False, new_key=nk, allocate=allocate, process_quota=process_quota)
+            shrink = shrink or cur_shrink
         if shrink and handle_shrink:
             self._process_requests()
 
     @log_unhandled
-    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None):
+    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
+                         allocate=False, process_quota=False):
         """
         Alter a single request by changing its name or request size
         :param key: request key
         :param quota_size: requested quota size
         :param handle_shrink: if True and the quota size less than the original, process requests in the queue
         :param new_key: new allocation key to replace current key
+        :param allocate: if True, will allocate resources for new items
+        :param process_quota: call process_quota() after allocated
         """
         old_size = self._allocations.get(key, 0)
+
+        if not allocate and key not in self._allocations:
+            return
 
         if quota_size is not None and quota_size != old_size:
             quota_size = int(quota_size)
@@ -314,7 +325,10 @@ class QuotaActor(WorkerActor):
                 self._hold_sizes[key] = quota_size
             self._log_allocate('Quota key %s applied on %s. Diff: %s,', key, self.uid, size_diff)
 
-        if key in self._allocations and new_key is not None and new_key != key:
+        if process_quota:
+            self.process_quota(key)
+
+        if new_key is not None and new_key != key:
             self._allocations[new_key] = self._allocations[key]
             del self._allocations[key]
             try:
@@ -345,7 +359,7 @@ class QuotaActor(WorkerActor):
             try:
                 if self._has_space(delta):
                     alter_allocation = self.alter_allocations if multiple else self.alter_allocation
-                    alter_allocation(k, req_size, handle_shrink=False)
+                    alter_allocation(k, req_size, handle_shrink=False, allocate=True)
                     for cb in callbacks:
                         self.tell_promise(cb)
                     if self._status_ref:
@@ -429,10 +443,14 @@ class MemQuotaActor(QuotaActor):
         if self._status_ref:
             self._status_ref.set_mem_quota_allocations(kwargs, _tell=True, _wait=False)
 
-    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None):
+    def alter_allocation(self, key, quota_size=None, handle_shrink=True, new_key=None,
+                         allocate=False, process_quota=False):
         ret = super(MemQuotaActor, self).alter_allocation(
-            key, quota_size, handle_shrink=handle_shrink, new_key=new_key)
-        self._update_status(allocated=self._allocated_size, hold=self._total_hold, total=self._total_size)
+            key, quota_size, handle_shrink=handle_shrink, new_key=new_key,
+            allocate=allocate, process_quota=process_quota)
+        if quota_size:
+            self._update_status(
+                allocated=self._allocated_size, hold=self._total_hold, total=self._total_size)
         return ret
 
     def release_quota(self, key):

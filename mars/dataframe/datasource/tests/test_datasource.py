@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 from weakref import ReferenceType
 import mars.tensor as mt
-import numpy as np
 
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import numpy as np
+import pandas as pd
 
 from mars import opcodes as OperandDef
 from mars.graph import DAG
@@ -32,7 +28,6 @@ from mars.dataframe.datasource.from_tensor import from_tensor
 from mars.dataframe.datasource.from_records import from_records
 
 
-@unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
     def testChunkSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
@@ -306,6 +301,22 @@ class Test(TestBase):
         np.testing.assert_equal(scalar.ndim, 0)
         with self.assertRaises(TypeError):
             from_tensor(scalar)
+
+        # from tensor with given index
+        df = from_tensor(tensor, index=np.arange(0, 20, 2))
+        df.tiles()
+        pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
+        pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
+        pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
+        pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
+
+        # from tensor with given columns
+        df = from_tensor(tensor, columns=list('abcdefghij'))
+        df.tiles()
+        pd.testing.assert_index_equal(df.chunks[0].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[1].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[2].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[3].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
 
     def testFromRecords(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])

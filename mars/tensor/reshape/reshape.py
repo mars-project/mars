@@ -297,7 +297,7 @@ class TensorReshapeMap(TensorShuffleMap, TensorOperandMixin):
 
         data = ctx[op.inputs[0].key]
         indices = list(np.nonzero(data))
-        nz_data = data[indices]
+        nz_data = data[tuple(indices)]
 
         for idx in range(len(old_shape)):
             indices[idx] = np.add(indices[idx], axis_offset[idx], out=indices[idx])

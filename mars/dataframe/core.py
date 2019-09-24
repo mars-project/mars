@@ -253,7 +253,7 @@ class IndexValue(Serializable):
     def has_value(self):
         if isinstance(self._index_value, self.RangeIndex):
             return True
-        elif getattr(self, '_data', None) is not None:
+        elif getattr(self._index_value, '_data', None) is not None:
             return True
         return False
 
@@ -686,6 +686,15 @@ class DataFrame(TileableEntity):
 
     def __mars_tensor__(self, dtype=None, order='K'):
         return self._data.to_tensor().astype(dtype=dtype, order=order, copy=False)
+
+    def __getattr__(self, key):
+        try:
+            return getattr(self._data, key)
+        except AttributeError:
+            if key in self.dtypes:
+                return self[key]
+            else:
+                raise
 
 
 class DataFrameGroupByData(TileableData):

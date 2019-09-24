@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import logging
 from collections import defaultdict
 
 from ...errors import WorkerDead
 from ..utils import SchedulerActor
-from .core import OperandState, OperandPosition, rewrite_worker_errors
+from .core import OperandState, rewrite_worker_errors
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +27,17 @@ class BaseOperandActor(SchedulerActor):
     def gen_uid(session_id, op_key):
         return 's:h1:operand$%s$%s' % (session_id, op_key)
 
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None):
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None,
+                 with_kvstore=True, schedulers=None):
         super(BaseOperandActor, self).__init__()
         self._session_id = session_id
         self._graph_ids = [graph_id]
-        op_info = self._info = copy.deepcopy(op_info)
+        self._info = op_info
         self._op_key = op_key
         self._op_path = '/sessions/%s/operands/%s' % (self._session_id, self._op_key)
 
-        self._position = op_info.get('position')
+        self._is_initial = op_info.get('is_initial') or False
+        self._is_terminal = op_info.get('is_terminal') or False
         # worker actually assigned
         self._worker = worker
 
@@ -70,7 +71,12 @@ class BaseOperandActor(SchedulerActor):
         self._cluster_info_ref = None
         self._assigner_ref = None
         self._resource_ref = None
+
+        self._with_kvstore = with_kvstore
         self._kv_store_ref = None
+
+        if schedulers:  # pragma: no branch
+            self.set_schedulers(schedulers)
 
     def post_create(self):
         from ..graph import GraphActor
@@ -83,9 +89,10 @@ class BaseOperandActor(SchedulerActor):
         self._graph_refs.append(self.get_actor_ref(GraphActor.gen_uid(self._session_id, self._graph_ids[0])))
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
-        self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
-        if not self.ctx.has_actor(self._kv_store_ref):
-            self._kv_store_ref = None
+        if self._with_kvstore:
+            self._kv_store_ref = self.ctx.actor_ref(KVStoreActor.default_uid())
+
+        self.ref().start_operand(_tell=True)
 
     @property
     def state(self):
@@ -237,7 +244,7 @@ class BaseOperandActor(SchedulerActor):
             for in_key in self._pred_keys:
                 futures.append(self._get_operand_actor(in_key).remove_finished_successor(
                     self._op_key, _tell=True, _wait=False))
-            if self._position == OperandPosition.TERMINAL:
+            if self._is_terminal:
                 for graph_ref in self._graph_refs:
                     futures.append(graph_ref.remove_finished_terminal(
                         self._op_key, _tell=True, _wait=False))

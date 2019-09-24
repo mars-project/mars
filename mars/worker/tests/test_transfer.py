@@ -85,7 +85,7 @@ class MockReceiverActor(WorkerActor):
         query_key = (session_id, chunk_key)
         try:
             meta = self._data_metas[query_key]
-            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.RECEIVING):
+            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.ERROR):
                 self.tell_promise(callback, *meta.callback_args, **meta.callback_kwargs)
             else:
                 raise KeyError
@@ -104,21 +104,20 @@ class MockReceiverActor(WorkerActor):
         self._data_writers[query_key] = BytesIO()
         self.tell_promise(callback, self.address, None)
 
-    def receive_data_part(self, session_id, chunk_key, data_part, checksum):
+    def receive_data_part(self, session_id, chunk_key, data_part, checksum, is_last=False):
         query_key = (session_id, chunk_key)
         meta = self._data_metas[query_key]  # type: ReceiverDataMeta
-        new_checksum = zlib.crc32(data_part, meta.checksum)
-        if new_checksum != checksum:
-            raise ChecksumMismatch
-        meta.checksum = checksum
-        self._data_writers[query_key].write(data_part)
+        if data_part:
+            new_checksum = zlib.crc32(data_part, meta.checksum)
+            if new_checksum != checksum:
+                raise ChecksumMismatch
+            meta.checksum = checksum
+            self._data_writers[query_key].write(data_part)
+        if is_last:
+            meta.status = ReceiveStatus.RECEIVED
+        for cb in self._callbacks[query_key]:
+            self.tell_promise(cb)
 
-    def finish_receive(self, session_id, chunk_key, checksum):
-        query_key = (session_id, chunk_key)
-        meta = self._data_metas[query_key]  # type: ReceiverDataMeta
-        if meta.checksum != checksum:
-            raise ChecksumMismatch
-        meta.status = ReceiveStatus.RECEIVED
 
     def cancel_receive(self, session_id, chunk_key):
         pass
@@ -274,8 +273,10 @@ class Test(WorkerCase):
                         address=recv_pool_addr2, plasma_size=self.plasma_storage_size) as rp2:
                     recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverActor.default_uid())
 
-                    sender_ref_p.send_data(session_id, chunk_key1,
-                                           [recv_pool_addr, recv_pool_addr2], _promise=True)
+                    self.waitp(
+                        sender_ref_p.send_data(session_id, chunk_key1,
+                                               [recv_pool_addr, recv_pool_addr2], _promise=True)
+                    )
                     # send data to already transferred / transferring
                     sender_ref_p.send_data(session_id, chunk_key1,
                                            [recv_pool_addr, recv_pool_addr2], _promise=True) \
@@ -295,7 +296,7 @@ class Test(WorkerCase):
                 with self.assertRaises(BrokenPipeError):
                     self.get_result(5)
 
-                def mocked_receive_data_part(*_):
+                def mocked_receive_data_part(*_, **__):
                     raise ChecksumMismatch
 
                 with patch_method(MockReceiverActor.receive_data_part, new=mocked_receive_data_part):
@@ -323,7 +324,6 @@ class Test(WorkerCase):
         chunk_key5 = str(uuid.uuid4())
         chunk_key6 = str(uuid.uuid4())
         chunk_key7 = str(uuid.uuid4())
-        chunk_key8 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
             receiver_ref = pool.create_actor(ReceiverActor, uid=str(uuid.uuid4()))
@@ -385,27 +385,13 @@ class Test(WorkerCase):
                 # test checksum error on receive_data_part
                 receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
+                self.get_result(5)
 
                 receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s)) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data, 0)
-
-                with self.assertRaises(ChecksumMismatch):
-                    self.get_result(5)
-
-                # test checksum error on finish_receive
-                receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
-
-                receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data, serialized_crc32)
-                receiver_ref_p.finish_receive(session_id, chunk_key2, 0)
-
-                receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 with self.assertRaises(ChecksumMismatch):
                     self.get_result(5)
@@ -440,8 +426,8 @@ class Test(WorkerCase):
 
                 receiver_ref_p.receive_data_part(session_id, chunk_key3, serialized_mock_data[:64],
                                                  zlib.crc32(serialized_mock_data[:64]))
-                receiver_ref_p.receive_data_part(session_id, chunk_key3, serialized_mock_data[64:], serialized_crc32)
-                receiver_ref_p.finish_receive(session_id, chunk_key3, serialized_crc32)
+                receiver_ref_p.receive_data_part(
+                    session_id, chunk_key3, serialized_mock_data[64:], serialized_crc32, is_last=True)
 
                 self.assertTupleEqual((), self.get_result(5))
 
@@ -483,9 +469,8 @@ class Test(WorkerCase):
                         .then(lambda *s: test_actor.set_result(s)) \
                         .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
-                    receiver_ref_p.receive_data_part(session_id, chunk_key4, serialized_mock_data, serialized_crc32)
-                    receiver_ref_p.finish_receive(session_id, chunk_key4, serialized_crc32)
-
+                    receiver_ref_p.receive_data_part(
+                        session_id, chunk_key4, serialized_mock_data, serialized_crc32, is_last=True)
                     self.assertTupleEqual((), self.get_result(5))
 
                 # test intermediate error
@@ -532,14 +517,6 @@ class Test(WorkerCase):
 
                 with self.assertRaises(WorkerDead):
                     self.get_result(5)
-
-                # test checksum error on finish_receive
-                result = receiver_ref_p.create_data_writer(session_id, chunk_key8, data_size, test_actor,
-                                                           use_promise=False)
-                self.assertTupleEqual(result, (receiver_ref.address, None))
-
-                receiver_ref_p.receive_data_part(session_id, chunk_key8, serialized_mock_data, serialized_crc32)
-                receiver_ref_p.finish_receive(session_id, chunk_key8, 0)
 
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())

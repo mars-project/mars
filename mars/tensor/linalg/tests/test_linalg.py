@@ -42,6 +42,27 @@ class Test(unittest.TestCase):
         self.assertEqual(q.nsplits, ((3, 3, 3), (6,)))
         self.assertEqual(r.nsplits, ((6,), (6,)))
 
+        self.assertEqual(q.chunks[0].shape, (3, 6))
+        self.assertEqual(q.chunks[0].inputs[0].shape, (3, 3))
+        self.assertEqual(q.chunks[0].inputs[1].shape, (3, 6))
+
+        a = mt.random.rand(18, 6, chunk_size=(9, 6))
+        q, r = mt.linalg.qr(a)
+
+        self.assertEqual(q.shape, (18, 6))
+        self.assertEqual(r.shape, (6, 6))
+
+        q.tiles()
+
+        self.assertEqual(len(q.chunks), 2)
+        self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(q.nsplits, ((9, 9), (6,)))
+        self.assertEqual(r.nsplits, ((6,), (6,)))
+
+        self.assertEqual(q.chunks[0].shape, (9, 6))
+        self.assertEqual(q.chunks[0].inputs[0].shape, (9, 6))
+        self.assertEqual(q.chunks[0].inputs[1].shape, (6, 6))
+
         # for Short-and-Fat QR
         a = mt.random.rand(6, 18, chunk_size=(6, 6))
         q, r = mt.linalg.qr(a, method='sfqr')
@@ -112,6 +133,10 @@ class Test(unittest.TestCase):
         self.assertEqual(s.chunks[0].shape, (6,))
         self.assertEqual(len(V.chunks), 1)
         self.assertEqual(V.chunks[0].shape, (6, 6))
+
+        self.assertEqual(U.chunks[0].inputs[0].shape, (3, 6))
+        self.assertEqual(U.chunks[0].inputs[0].inputs[0].shape, (3, 3))
+        self.assertEqual(U.chunks[0].inputs[0].inputs[1].shape, (3, 6))
 
         self.assertEqual(s.ndim, 1)
         self.assertEqual(len(s.chunks[0].index), 1)

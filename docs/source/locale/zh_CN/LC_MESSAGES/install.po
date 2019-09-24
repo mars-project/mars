@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2019-08-13 13:05+0800\n"
+"POT-Creation-Date: 2019-09-02 17:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -273,7 +273,19 @@ msgstr ""
 msgid "Directories to spill to, separated by : in MacOS or Linux."
 msgstr "Spill 的目标路径，在 MacOS 或 Linux 下使用半角冒号（:）拆分。"
 
-#: ../../source/install.rst:179
+#: ../../source/install.rst:178
+msgid "``--plasma-dir``"
+msgstr ""
+
+#: ../../source/install.rst:178
+msgid ""
+"Directory of plasma store. When specified, the size of plasma store will "
+"not be considered in memory management."
+msgstr ""
+"Plasma Store 存储所用的路径。一旦指定，管理内存时将不会考虑 Plasma Store "
+"的大小。"
+
+#: ../../source/install.rst:182
 msgid ""
 "For instance, if you want to start a Mars cluster with two schedulers, "
 "two workers and one web service, you can run commands below (memory and "
@@ -282,31 +294,31 @@ msgstr ""
 "例如，如果你希望启动一个 Mars 集群，其中包含两个 Scheduler、两个 Worker "
 "及一个 Web 服务，你可以运行下面的命令（内存和 CPU 相关的细节已被忽略）。"
 
-#: ../../source/install.rst:183
+#: ../../source/install.rst:186
 msgid "On Scheduler 1 (192.168.1.10):"
 msgstr "在 Scheduler 1（192.168.1.10）上"
 
-#: ../../source/install.rst:189
+#: ../../source/install.rst:192
 msgid "On Scheduler 2 (192.168.1.11):"
 msgstr "在 Scheduler 2（192.168.1.11）上"
 
-#: ../../source/install.rst:195
+#: ../../source/install.rst:198
 msgid "On Worker 1 (192.168.1.20):"
 msgstr "在 Worker 1（192.168.1.20）上"
 
-#: ../../source/install.rst:202
+#: ../../source/install.rst:205
 msgid "On Worker 2 (192.168.1.21):"
 msgstr "在 Worker 2（192.168.1.21）上"
 
-#: ../../source/install.rst:209
+#: ../../source/install.rst:212
 msgid "On the web server (192.168.1.30):"
 msgstr "在 Web 服务器（192.168.1.30）上"
 
-#: ../../source/install.rst:216
+#: ../../source/install.rst:221
 msgid "Memory Tuning"
 msgstr "内存优化"
 
-#: ../../source/install.rst:217
+#: ../../source/install.rst:222
 #, python-format
 msgid ""
 "Mars worker manages two different parts of memory. The first is private "
@@ -331,11 +343,11 @@ msgstr ""
 "大小，使用 ``--phy-mem`` 参数配置总内存大小，软限制和硬限制将从这些数值"
 "计算。"
 
-#: ../../source/install.rst:229
+#: ../../source/install.rst:234
 msgid "For instance, by using"
 msgstr "例如，使用"
 
-#: ../../source/install.rst:235
+#: ../../source/install.rst:240
 #, python-format
 msgid ""
 "We limit the size of shared memory as 512MB and the worker can use up to "

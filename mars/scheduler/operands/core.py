@@ -55,11 +55,6 @@ class OperandState(Enum):
         return self.FINISHED, self.CACHED, self.FREED, self.FATAL, self.CANCELLED
 
 
-class OperandPosition(Enum):
-    INITIAL = 'initial'
-    TERMINAL = 'terminal'
-
-
 @contextlib.contextmanager
 def rewrite_worker_errors(ignore_error=False):
     rewrite = False

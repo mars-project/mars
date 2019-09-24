@@ -21,7 +21,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 
 
@@ -489,8 +489,14 @@ class Test(unittest.TestCase):
         # no view cuz of fancy indexing
         self.assertFalse(arr9.op.create_view)
 
+        arr9[0][0][0] = 100
+        self.assertFalse(arr9.op.create_view)
+
         arr10 = arr[:3, None, :5]
         self.assertTrue(arr10.op.create_view)
+
+        arr10[0][0][0] = 100
+        self.assertFalse(arr10.op.create_view)
 
         data = np.array([[[0], [1], [2]]])
         x = tensor(data)
@@ -543,3 +549,33 @@ class Test(unittest.TestCase):
         self.assertEqual(t1.shape, to_search.shape)
         self.assertEqual(t1.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(t1.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+    def testToGPU(self):
+        x = tensor(np.random.rand(10, 10), chunk_size=3)
+
+        gx = to_gpu(x)
+
+        self.assertEqual(gx.dtype, x.dtype)
+        self.assertEqual(gx.order, x.order)
+        self.assertTrue(gx.op.gpu)
+
+        gx.tiles()
+
+        self.assertEqual(gx.chunks[0].dtype, x.chunks[0].dtype)
+        self.assertEqual(gx.chunks[0].order, x.chunks[0].order)
+        self.assertTrue(gx.chunks[0].op.gpu)
+
+    def testToCPU(self):
+        x = tensor(np.random.rand(10, 10), chunk_size=3, gpu=True)
+
+        cx = to_cpu(x)
+
+        self.assertEqual(cx.dtype, x.dtype)
+        self.assertEqual(cx.order, x.order)
+        self.assertFalse(cx.op.gpu)
+
+        cx.tiles()
+
+        self.assertEqual(cx.chunks[0].dtype, x.chunks[0].dtype)
+        self.assertEqual(cx.chunks[0].order, x.chunks[0].order)
+        self.assertFalse(cx.chunks[0].op.gpu)

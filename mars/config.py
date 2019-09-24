@@ -293,6 +293,7 @@ default_options = Config()
 default_options.register_option('tcp_timeout', 30, validator=is_integer)
 default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
+default_options.register_option('check_interval', 20, validator=is_integer)
 
 # the number of combined chunks in tree reduction or tree add
 default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
@@ -335,6 +336,7 @@ default_options.register_option('worker.transfer_block_size', 1 * 1024 ** 2, val
 default_options.register_option('worker.transfer_compression', 'lz4', validator=is_string, serialize=True)
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)
 default_options.register_option('worker.peer_blacklist_time', 3600, validator=is_numeric, serialize=True)
+default_options.register_option('worker.lock_free_fileio', False, validator=is_bool, serialize=True)
 
 default_options.register_option('worker.plasma_socket', '/tmp/plasma', validator=is_string)
 

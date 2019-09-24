@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import contextlib
 import itertools
 import logging
@@ -26,7 +27,7 @@ import numpy as np
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
-from .operands import get_operand_actor_class, OperandState, OperandPosition
+from .operands import get_operand_actor_class, OperandState
 from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
@@ -60,11 +61,14 @@ class GraphMetaActor(SchedulerActor):
         self._graph_key = graph_key
 
         self._kv_store_ref = None
+        self._graph_wait_ref = None
 
         self._start_time = None
         self._end_time = None
         self._state = None
         self._final_state = None
+
+        self._graph_finish_event = None
 
         self._op_infos = defaultdict(dict)
         self._state_to_infos = defaultdict(dict)
@@ -75,6 +79,20 @@ class GraphMetaActor(SchedulerActor):
         if not self.ctx.has_actor(self._kv_store_ref):
             self._kv_store_ref = None
 
+        self._graph_finish_event = self.ctx.event()
+        graph_wait_uid = GraphWaitActor.gen_uid(self._session_id, self._graph_key)
+        try:
+            graph_wait_uid = self.ctx.distributor.make_same_process(
+                graph_wait_uid, self.uid)
+        except AttributeError:
+            pass
+        self._graph_wait_ref = self.ctx.create_actor(
+            GraphWaitActor, self._graph_finish_event, uid=graph_wait_uid)
+
+    def pre_destroy(self):
+        self._graph_wait_ref.destroy()
+        super(GraphMetaActor, self).pre_destroy()
+
     def get_graph_info(self):
         return self._start_time, self._end_time, len(self._op_infos)
 
@@ -83,6 +101,7 @@ class GraphMetaActor(SchedulerActor):
 
     def set_graph_end(self):
         self._end_time = time.time()
+        self._graph_finish_event.set()
 
     def set_state(self, state):
         self._state = state
@@ -92,6 +111,9 @@ class GraphMetaActor(SchedulerActor):
 
     def get_state(self):
         return self._state
+
+    def get_wait_ref(self):
+        return self._graph_wait_ref
 
     def set_final_state(self, state):
         self._final_state = state
@@ -168,6 +190,19 @@ class GraphMetaActor(SchedulerActor):
         return ops, transposed, percentage
 
 
+class GraphWaitActor(SchedulerActor):
+    @staticmethod
+    def gen_uid(session_id, graph_key):
+        return 's:0:graph_wait$%s$%s' % (session_id, graph_key)
+
+    def __init__(self, graph_event):
+        super(GraphWaitActor, self).__init__()
+        self._graph_event = graph_event
+
+    def wait(self, timeout=None):
+        self._graph_event.wait(timeout)
+
+
 class GraphActor(SchedulerActor):
     """
     Actor handling execution and status of a Mars graph
@@ -227,7 +262,7 @@ class GraphActor(SchedulerActor):
 
         random.seed(int(time.time()))
         self.set_cluster_info_ref()
-        self._assigner_actor_ref = self.ctx.actor_ref(AssignerActor.default_uid())
+        self._assigner_actor_ref = self.get_actor_ref(AssignerActor.gen_uid(self._session_id))
         self._resource_actor_ref = self.get_actor_ref(ResourceActor.default_uid())
         self._session_ref = self.ctx.actor_ref(SessionActor.gen_uid(self._session_id))
 
@@ -268,7 +303,7 @@ class GraphActor(SchedulerActor):
         if value != self._state:
             logger.debug('Graph %s state from %s to %s.', self._graph_key, self._state, value)
         self._state = value
-        self._graph_meta_ref.set_state(value, _tell=True)
+        self._graph_meta_ref.set_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def reload_state(self):
@@ -285,7 +320,7 @@ class GraphActor(SchedulerActor):
     @final_state.setter
     def final_state(self, value):
         self._final_state = value
-        self._graph_meta_ref.set_final_state(value, _tell=True)
+        self._graph_meta_ref.set_final_state(value, _tell=True, _wait=False)
 
     @log_unhandled
     def execute_graph(self, compose=True):
@@ -298,11 +333,11 @@ class GraphActor(SchedulerActor):
                 if callback:
                     callback()
                 else:
-                    self._graph_meta_ref.set_graph_end(_tell=True)
+                    self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
                     self.state = GraphState.CANCELLED
                 raise ExecutionInterrupted
 
-        self._graph_meta_ref.set_graph_start(_tell=True)
+        self._graph_meta_ref.set_graph_start(_tell=True, _wait=False)
         self.state = GraphState.PREPARING
 
         try:
@@ -329,11 +364,12 @@ class GraphActor(SchedulerActor):
             logger.exception('Failed to start graph execution.')
             self.stop_graph()
             self.state = GraphState.FAILED
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
             raise
 
         if len(self._chunk_graph_cache) == 0:
             self.state = GraphState.SUCCEEDED
-            self._graph_meta_ref.set_graph_end(_tell=True)
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def stop_graph(self):
@@ -365,6 +401,7 @@ class GraphActor(SchedulerActor):
                 ref.stop_operand(_tell=True)
         if not has_stopping:
             self.state = GraphState.CANCELLED
+            self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
     def reload_chunk_graph(self):
@@ -376,7 +413,7 @@ class GraphActor(SchedulerActor):
                                                       % (self._session_id, self._graph_key)).value
         else:
             raise GraphNotExists
-        self._chunk_graph_cache = deserialize_graph(chunk_graph_ser, graph_cls=DAG)
+        self._chunk_graph_cache = deserialize_graph(base64.b64decode(chunk_graph_ser), graph_cls=DAG)
 
         op_key_to_chunk = defaultdict(list)
         for n in self._chunk_graph_cache:
@@ -518,7 +555,8 @@ class GraphActor(SchedulerActor):
         if self._kv_store_ref is not None:
             graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
             self._kv_store_ref.write('%s/chunk_graph' % graph_path,
-                                     serialize_graph(chunk_graph, compress=True), _tell=True, _wait=False)
+                                     base64.b64encode(serialize_graph(chunk_graph, compress=True)),
+                                     _tell=True, _wait=False)
 
         self._chunk_graph_cache = chunk_graph
         for n in self._chunk_graph_cache:
@@ -680,6 +718,7 @@ class GraphActor(SchedulerActor):
         chunk_graph = self.get_chunk_graph()
         operand_infos = self._operand_infos
 
+        session_id = self._session_id
         op_refs = dict()
         meta_op_infos = dict()
         initial_keys = []
@@ -704,23 +743,22 @@ class GraphActor(SchedulerActor):
             else:
                 initial_keys.append(op_key)
                 state = OperandState.READY
+                op_info['is_initial'] = True
             op_info['retries'] = 0
             meta_op_info['state'] = op_info['state'] = state
             meta_op_info['worker'] = op_info.get('worker')
 
-            position = None
             if op_key in self._terminal_chunk_op_tileable:
-                position = OperandPosition.TERMINAL
-            elif not io_meta['predecessors']:
-                position = OperandPosition.INITIAL
-            op_info['position'] = position
+                op_info['is_terminal'] = True
 
             op_cls = get_operand_actor_class(type(op))
-            op_uid = op_cls.gen_uid(self._session_id, op_key)
+            op_uid = op_cls.gen_uid(session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
 
             op_refs[op_key] = self.ctx.create_actor(
-                op_cls, self._session_id, self._graph_key, op_key, op_info.copy(),
+                op_cls, session_id, self._graph_key, op_key, op_info.copy(),
+                with_kvstore=self._kv_store_ref is not None,
+                schedulers=self.get_schedulers(),
                 uid=op_uid, address=scheduler_addr, wait=False
             )
             if _clean_info:
@@ -746,7 +784,7 @@ class GraphActor(SchedulerActor):
                 op_info['io_meta'] = self._collect_operand_io_meta(chunk_graph, chunks)
 
                 op_cls = get_operand_actor_class(type(op))
-                op_uid = op_cls.gen_uid(self._session_id, op_key)
+                op_uid = op_cls.gen_uid(session_id, op_key)
                 scheduler_addr = self.get_scheduler(op_uid)
                 op_ref = op_refs[op_key] = self.ctx.actor_ref(op_uid, address=scheduler_addr)
                 append_futures.append(op_ref.append_graph(self._graph_key, op_info.copy(), _wait=False))
@@ -755,8 +793,10 @@ class GraphActor(SchedulerActor):
                     del op_info['io_meta']
             [future.result() for future in append_futures]
 
-            start_futures = [ref.start_operand(_tell=True, _wait=False) for ref in op_refs.values()]
-            [future.result() for future in start_futures]
+            res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
+                                if op_info.get('is_initial', False)]
+            self._assigner_actor_ref.apply_for_multiple_resources(
+                session_id, res_applications, _tell=True)
 
     @log_unhandled
     def add_finished_terminal(self, op_key, final_state=None):

@@ -90,6 +90,6 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = op.data
 
 
-def from_pandas(data, chunk_size=None, gpu=None, sparse=False):
+def from_pandas(data, chunk_size=None, gpu=False, sparse=False):
     op = DataFrameDataSource(data=data, gpu=gpu, sparse=sparse)
     return op(data.shape, chunk_size=chunk_size)

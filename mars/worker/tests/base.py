@@ -91,7 +91,10 @@ class WorkerCase(unittest.TestCase):
 
         options.worker.spill_directory = cls.spill_dir
 
-        cls._plasma_client = plasma.connect(options.worker.plasma_socket)
+        try:
+            cls._plasma_client = plasma.connect(options.worker.plasma_socket)
+        except TypeError:
+            cls._plasma_client = plasma.connect(options.worker.plasma_socket, '', 0)
         cls._kv_store = kvstore.get(options.kv_store)
 
     @classmethod

@@ -158,7 +158,7 @@ be found at the next section.
 | ``--cpu-procs``  | Number of computation processes on CPUs. If absent, the value  |
 |                  | will be the available number of cores                          |
 +------------------+----------------------------------------------------------------+
-| ``--net-procs``  | Number of processes for network transfer. 1 by default         |
+| ``--net-procs``  | Number of processes for network transfer. 4 by default         |
 +------------------+----------------------------------------------------------------+
 | ``--phy-mem``    | Limit of physical memory, can be percentages of total memory   |
 |                  | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
@@ -174,6 +174,9 @@ be found at the next section.
 |                  | ``80%`` are both acceptable. ``128m`` by default               |
 +------------------+----------------------------------------------------------------+
 | ``--spill-dir``  | Directories to spill to, separated by : in MacOS or Linux.     |
++------------------+----------------------------------------------------------------+
+| ``--plasma-dir`` | Directory of plasma store. When specified, the size of plasma  |
+|                  | store will not be considered in memory management.             |
 +------------------+----------------------------------------------------------------+
 
 For instance, if you want to start a Mars cluster with two schedulers, two
