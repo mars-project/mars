@@ -182,10 +182,11 @@ class TensorPermutationReduce(TensorShuffleReduce, TensorOperandMixin):
         with device(device_id):
             rs = xp.random.RandomState(op.seed)
             data = xp.concatenate(inputs)
-            ctx[op.outputs[0].key] = rs.permutation(data)
+            rs.shuffle(data)
+            ctx[op.outputs[0].key] = data
 
 
-def permutation(random_state, x):
+def permutation(random_state, x, chunk_size=None):
     r"""
     Randomly permute a sequence, or return a permuted range.
 
@@ -195,6 +196,8 @@ def permutation(random_state, x):
         If `x` is an integer, randomly permute ``mt.arange(x)``.
         If `x` is an array, make a copy and shuffle the elements
         randomly.
+    chunk_size : : int or tuple of int or tuple of ints, optional
+        Desired chunk size on each dimension
     Returns
     -------
     out : Tensor
@@ -220,9 +223,9 @@ def permutation(random_state, x):
     if isinstance(x, (Integral, np.integer)):
         from ..datasource import arange
 
-        x = arange(x)
+        x = arange(x, chunk_size=chunk_size)
     else:
-        x = astensor(x)
+        x = astensor(x, chunk_size=chunk_size)
         if x.ndim < 1:
             raise np.AxisError('x must be an integer or at least 1-dimensional')
 
