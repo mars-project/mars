@@ -434,20 +434,22 @@ def _get_chunk_index_min_max(index, index_chunks):
     return chunk_index_min_max, True
 
 
-def _need_align_map(input_chunk, index_min_max, column_min_max):
-    assert not pd.isnull(index_min_max[0]) and not pd.isnull(index_min_max[2])
+def _need_align_map(input_chunk, index_min_max, column_min_max,
+                    dummy_index_splits=False, dummy_column_splits=False):
+    if not dummy_index_splits:
+        assert not pd.isnull(index_min_max[0]) and not pd.isnull(index_min_max[2])
     if isinstance(input_chunk, SERIES_CHUNK_TYPE):
         if input_chunk.index_value is None:
             return True
         if input_chunk.index_value.min_max != index_min_max:
             return True
     else:
-        if input_chunk.index_value is None or input_chunk.columns is None:
-            return True
-        if input_chunk.index_value.min_max != index_min_max:
-            return True
-        if input_chunk.columns.min_max != column_min_max:
-            return True
+        if not dummy_index_splits:
+            if input_chunk.index_value is None or input_chunk.index_value.min_max != index_min_max:
+                return True
+        if not dummy_column_splits:
+            if input_chunk.columns is None or input_chunk.columns.min_max != column_min_max:
+                return True
     return False
 
 
@@ -554,7 +556,8 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
             index_min_max = splits.get_axis_split(0, left_or_right, out_idx[0])
             column_min_max = splits.get_axis_split(1, left_or_right, out_idx[1])
             chunk = df.cix[row_idx, col_idx]
-            if _need_align_map(chunk, index_min_max, column_min_max):
+            if _need_align_map(chunk, index_min_max, column_min_max,
+                               splits[0].isdummy(), splits[1].isdummy()):
                 if splits[1].isdummy():
                     dtypes = chunk.dtypes
                 else:

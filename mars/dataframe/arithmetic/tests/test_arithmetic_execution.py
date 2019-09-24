@@ -372,7 +372,7 @@ class Test(TestBase):
         expected = pdf.add(series, axis=1)
         pd.testing.assert_frame_equal(expected, result)
 
-        # test different number of chunks(axis = 1)
+        # test different number of chunks, axis=1
         pdf = pd.DataFrame({1: [1, 3, 2], 2: [360, 180, 2], 3: [1, 2, 3]}, index=['ra', 'rb', 'rc'])
         df = from_pandas(pdf, chunk_size=1)
         series = pd.Series([0, 1, 2], index=[1, 2, 3])
