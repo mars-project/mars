@@ -35,10 +35,6 @@ from mars.dataframe.align import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
 from mars.tests.core import TestBase
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 
 @unittest.skipIf(pd is None, 'pandas not installed')
 class Test(TestBase):
