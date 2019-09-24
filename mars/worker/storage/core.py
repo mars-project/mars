@@ -21,6 +21,7 @@ from ...compat import Enum, six
 from ...config import options
 from ...utils import classproperty
 from ...serialize import dataserializer
+from .iorunner import IORunnerActor
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +106,12 @@ class BytesStorageIO(object):
 class StorageHandler(object):
     storage_type = None
 
-    def __init__(self, storage_ctx):
+    def __init__(self, storage_ctx, proc_id=None):
         self._storage_ctx = storage_ctx
         self._actor_ctx = storage_ctx.actor_ctx
+        self._proc_id = proc_id if proc_id is not None else storage_ctx.host_actor.proc_id
+        if self.is_device_global():
+            self._proc_id = 0
 
         from ..dispatcher import DispatchActor
         self._dispatch_ref = self.actor_ref(DispatchActor.default_uid())
@@ -123,6 +127,9 @@ class StorageHandler(object):
     def is_device_global(cls):
         return cls.storage_type in DataStorageDevice.GLOBAL_DEVICES
 
+    def is_other_process(self):
+        return not self.is_device_global() and self.proc_id != self._storage_ctx.proc_id
+
     @staticmethod
     def pass_on_exc(func, exc):
         func()
@@ -137,8 +144,12 @@ class StorageHandler(object):
         return self._storage_ctx.host_actor
 
     @property
+    def proc_id(self):
+        return self._proc_id
+
+    @property
     def location(self):
-        return self.storage_type.build_location(self._storage_ctx.proc_id)
+        return self.storage_type.build_location(self._proc_id)
 
     def is_io_runner(self):
         return getattr(self.host_actor, '_io_runner', False)
@@ -182,30 +193,42 @@ class StorageHandler(object):
         self._storage_ctx.manager_ref \
             .register_data(session_id, data_key, self.location, size, shape=shape)
 
-    def transfer_in_global_runner(self, session_id, data_key, src_handler, fallback=None):
-        if fallback:
-            if self.is_io_runner():
-                return fallback()
-            elif src_handler.storage_type != DataStorageDevice.DISK and \
-                    self.storage_type != DataStorageDevice.DISK:
-                return fallback()
+    def transfer_in_runner(self, session_id, data_key, src_handler, fallback=None):
+        if self.is_io_runner():
+            return fallback() if fallback is not None else promise.finished()
 
-        runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
-            'iorunner', (session_id, data_key)))
-
-        if src_handler.is_device_global():
+        if self.is_device_global() and src_handler.is_device_global():
+            runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
+                'iorunner', (session_id, data_key)))
             return runner_ref.load_from(
-                self.storage_type, session_id, data_key, src_handler.storage_type, _promise=True)
-        elif fallback is not None:
-            def _unlocker(*exc):
-                runner_ref.unlock(session_id, data_key)
-                if exc:
-                    six.reraise(*exc)
+                self.location, session_id, data_key, src_handler.location, _promise=True)
+        elif self.is_device_global() or src_handler.is_device_global():
+            if self.is_other_process() or src_handler.is_other_process():
+                runner_proc_id = self.proc_id or src_handler.proc_id
+                runner_ref = self.promise_ref(IORunnerActor.gen_uid(runner_proc_id))
+                return runner_ref.load_from(
+                    self.location, session_id, data_key, src_handler.location, _promise=True)
+            elif fallback is not None:
+                if src_handler.storage_type != DataStorageDevice.DISK and \
+                        self.storage_type != DataStorageDevice.DISK:
+                    return fallback()
 
-            return runner_ref.lock(session_id, data_key, _promise=True) \
-                .then(fallback) \
-                .then(lambda *_: _unlocker(), _unlocker)
-        return promise.finished()
+                runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
+                    'iorunner', (session_id, data_key)))
+
+                def _unlocker(*exc):
+                    runner_ref.unlock(session_id, data_key)
+                    if exc:
+                        six.reraise(*exc)
+
+                return runner_ref.lock(session_id, data_key, _promise=True) \
+                    .then(fallback) \
+                    .then(lambda *_: _unlocker(), _unlocker)
+            else:
+                return promise.finished()
+        else:
+            raise NotImplementedError('Copying from %r to %r not supported now' %
+                                      (src_handler.storage_type, self.storage_type))
 
     def unregister_data(self, session_id, data_key, _tell=False):
         self._storage_ctx.manager_ref \

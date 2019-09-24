@@ -177,8 +177,8 @@ class DiskIO(BytesStorageIO):
 class DiskHandler(StorageHandler, BytesStorageMixin):
     storage_type = DataStorageDevice.DISK
 
-    def __init__(self, storage_ctx):
-        super(DiskHandler, self).__init__(storage_ctx)
+    def __init__(self, storage_ctx, proc_id=None):
+        super(DiskHandler, self).__init__(storage_ctx, proc_id=proc_id)
         self._compress = dataserializer.CompressType(options.worker.disk_compression)
 
         self._status_ref = self._storage_ctx.actor_ref(StatusActor.default_uid())
@@ -216,7 +216,7 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
                       .then(lambda writer: self._copy_bytes_data(reader, writer),
                             lambda *exc: self.pass_on_exc(reader.close, exc)))
 
-        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     @staticmethod
     def _get_serialized_data_size(serialized_obj):
@@ -238,7 +238,7 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
             return src_handler.get_object(session_id, data_key, serialized=True, _promise=True) \
                 .then(_load_data)
 
-        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
         file_name = _build_file_name(session_id, data_key)
