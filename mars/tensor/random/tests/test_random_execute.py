@@ -581,3 +581,21 @@ class Test(unittest.TestCase):
 
         for res in self.executor.execute_tensor(arr):
             self.assertTrue(np.array_equal(res, np.random.RandomState(0).zipf(1.1, 10)))
+
+    def testPermutationExecute(self):
+        x = tensor.random.permutation(10)
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        self.assertFalse(np.all(res[:-1] < res[1:]))
+        np.testing.assert_array_equal(np.sort(res), np.arange(10))
+
+        arr = from_ndarray([1, 4, 9, 12, 15], chunk_size=2)
+        x = tensor.random.permutation(arr)
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        self.assertFalse(np.all(res[:-1] < res[1:]))
+        np.testing.assert_array_equal(np.sort(res), np.asarray([1, 4, 9, 12, 15]))
+
+        arr = from_ndarray(np.arange(48).reshape(12, 4), chunk_size=2)
+        x = tensor.random.permutation(arr)
+        res = self.executor.execute_tensor(x, concat=True)[0]
+        self.assertFalse(np.all(res[:-1] < res[1:]))
+        np.testing.assert_array_equal(np.sort(res, axis=0), np.arange(48).reshape(12, 4))
