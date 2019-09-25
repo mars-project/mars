@@ -89,14 +89,14 @@ class DataFrameGroupByReduce(DataFrameShuffleReduce, DataFrameOperandMixin):
         ctx[chunk.key] = r
 
 
-class DataFrameGroupByOpernad(DataFrameOperand, DataFrameOperandMixin):
+class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
     _by = AnyField('by')
     _as_index = BoolField('as_index')
 
     def __init__(self, by=None, as_index=None, object_type=ObjectType.groupby, **kw):
-        super(DataFrameGroupByOpernad, self).__init__(_by=by, _as_index=as_index,
+        super(DataFrameGroupByOperand, self).__init__(_by=by, _as_index=as_index,
                                                       _object_type=object_type, **kw)
 
     @property
@@ -150,5 +150,5 @@ class DataFrameGroupByOpernad(DataFrameOperand, DataFrameOperandMixin):
 def dataframe_groupby(df, by, as_index=True):
     if isinstance(by, six.string_types):
         by = [by]
-    op = DataFrameGroupByOpernad(by=by, as_index=as_index)
+    op = DataFrameGroupByOperand(by=by, as_index=as_index)
     return op(df)
