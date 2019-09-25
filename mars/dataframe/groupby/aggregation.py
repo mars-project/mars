@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import operator
 
 import numpy as np
 

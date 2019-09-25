@@ -17,7 +17,7 @@ from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, D
 
 
 def _install():
-    from ..core import DATAFRAME_TYPE, GROUPBY_TYPE
+    from ..core import DATAFRAME_TYPE
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'join', join)
