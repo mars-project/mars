@@ -57,6 +57,8 @@ from .vonmises import vonmises, TensorVonmises
 from .wald import wald, TensorWald
 from .weibull import weibull, TensorWeibull
 from .zipf import zipf, TensorZipf
+from .permutation import permutation, TensorPermutation
+from .shuffle import shuffle
 
 
 def _install():
@@ -105,6 +107,8 @@ def _install():
     setattr(RandomState, 'wald', wald)
     setattr(RandomState, 'weibull', weibull)
     setattr(RandomState, 'zipf', zipf)
+    setattr(RandomState, 'permutation', permutation)
+    setattr(RandomState, 'shuffle', shuffle)
 
 
 _install()
@@ -123,6 +127,9 @@ ranf = _random_state.ranf
 sample = _random_state.sample
 choice = _random_state.choice
 bytes = _random_state.bytes
+
+permutation = _random_state.permutation
+shuffle = _random_state.shuffle
 
 beta = _random_state.beta
 binomial = _random_state.binomial

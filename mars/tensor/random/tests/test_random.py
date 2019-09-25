@@ -16,7 +16,8 @@
 
 import numpy as np
 
-from mars.tensor.random import RandomState, beta, rand, choice, multivariate_normal, randint, randn
+from mars.tensor.random import RandomState, beta, rand, choice, multivariate_normal, \
+    randint, randn, permutation, TensorPermutation, shuffle
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.tests.core import TestBase
 
@@ -109,3 +110,54 @@ class Test(TestBase):
 
         with self.assertRaises(ValueError):
             randn(10, 10, chunks=5)
+
+    def testPermutation(self):
+        x = permutation(10)
+
+        self.assertEqual(x.shape, (10,))
+        self.assertIsInstance(x.op, TensorPermutation)
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 1)
+        self.assertIsInstance(x.chunks[0].op, TensorPermutation)
+
+        arr = from_ndarray([1, 4, 9, 12, 15], chunk_size=2)
+        x = permutation(arr)
+
+        self.assertEqual(x.shape, (5,))
+        self.assertIsInstance(x.op, TensorPermutation)
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 3)
+        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
+        self.assertIs(x.chunks[0].inputs[0].inputs[0].inputs[0], arr.chunks[0].data)
+
+        arr = rand(3, 3, chunk_size=2)
+        x = permutation(arr)
+
+        self.assertEqual(x.shape, (3, 3))
+        self.assertIsInstance(x.op, TensorPermutation)
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 4)
+        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
+        self.assertEqual(x.chunks[0].shape[1], 2)
+        self.assertIs(x.cix[0, 0].inputs[0].inputs[0].inputs[0], arr.cix[0, 0].data)
+        self.assertIs(x.cix[0, 0].inputs[0].inputs[1].inputs[0], arr.cix[1, 0].data)
+        self.assertEqual(x.cix[0, 0].op.seed, x.cix[0, 1].op.seed)
+        self.assertEqual(x.cix[0, 0].inputs[0].inputs[0].inputs[0].op.seed,
+                         x.cix[1, 0].inputs[0].inputs[0].inputs[0].op.seed)
+
+        with self.assertRaises(np.AxisError):
+            self.assertRaises(permutation('abc'))
+
+    def testShuffle(self):
+        with self.assertRaises(TypeError):
+            shuffle('abc')
+
+        x = rand(10, 10, chunk_size=2)
+        shuffle(x)
+        self.assertIsInstance(x.op, TensorPermutation)
