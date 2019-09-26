@@ -17,10 +17,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, Float64Field
-from ...tensor.core import TENSOR_TYPE
 from ...utils import classproperty
-from ..initializer import Series
 from ..operands import DataFrameOperand
+from ..utils import wrap_sequence
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
 
 
@@ -77,14 +76,12 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
 
 
 def add(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, (list, tuple, np.ndarray, TENSOR_TYPE)):
-        other = Series(other)
+    other = wrap_sequence(other)
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
 def radd(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, (list, tuple, np.ndarray, TENSOR_TYPE)):
-        other = Series(other)
+    other = wrap_sequence(other)
     op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

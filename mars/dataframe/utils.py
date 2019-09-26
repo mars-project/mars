@@ -23,6 +23,7 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
+from ..tensor.core import TENSOR_TYPE
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize
 from .core import IndexValue
@@ -555,6 +556,17 @@ def in_range_index(i, pd_range_index):
     if step < 0 and start >= i > stop and (start - i) % step == 0:
         return True
     return False
+
+
+def wrap_sequence(seq):
+    """
+    Wrap a sequence value as a Series.
+    """
+    from .initializer import Series
+
+    if isinstance(seq, (list, tuple, np.ndarray, TENSOR_TYPE)):
+        seq = Series(seq)
+    return seq
 
 
 def wrap_notimplemented_exception(func):
