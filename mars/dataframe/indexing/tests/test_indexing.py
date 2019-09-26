@@ -282,6 +282,32 @@ class Test(TestBase):
             self.assertEqual(c.index, (i, 1))
             self.assertEqual(c.shape, (2, 1))
 
+    def testDataFrameGetitemBool(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        mask_data1 = data.c1 > 0.5
+        mask_data2 = data.c1 < 0.5
+        mask1 = md.Series(mask_data1, chunk_size=2)
+        mask2 = md.Series(mask_data2, chunk_size=2)
+
+        r1 = df[mask1]
+        r2 = df[mask2]
+        r3 = df[mask1]
+
+        self.assertNotEqual(r1.index_value.key, df.index_value.key)
+        self.assertNotEqual(r1.index_value.key, mask1.index_value.key)
+        self.assertEqual(r1.columns.key, df.columns.key)
+        self.assertIs(r1.columns, df.columns)
+
+        self.assertNotEqual(r1.index_value.key, r2.index_value.key)
+        self.assertEqual(r1.columns.key, r2.columns.key)
+        self.assertIs(r1.columns, r2.columns)
+
+        self.assertEqual(r1.index_value.key, r3.index_value.key)
+        self.assertEqual(r1.columns.key, r3.columns.key)
+        self.assertIs(r1.columns, r3.columns)
+
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10,), name='a')
         series = md.Series(data, chunk_size=3)

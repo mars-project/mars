@@ -14,17 +14,33 @@
 
 from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
-from .add import add, DataFrameAdd
-
+from .add import add, radd, DataFrameAdd
+from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
+from .truediv import truediv, rtruediv, DataFrameTrueDiv
 
 def _install():
-    from ..operands import DATAFRAME_TYPE
-    from .add import add, radd
-    for cls in DATAFRAME_TYPE:
-        setattr(cls, '__add__', wrap_notimplemented_exception(add))
-        setattr(cls, '__radd__', wrap_notimplemented_exception(radd))
-        setattr(cls, 'add', add)
-        setattr(cls, 'radd', radd)
+    from ..core import DataFrame, Series
+
+    for entity in (DataFrame, Series):
+        setattr(entity, 'abs', abs)
+
+        setattr(entity, '__add__', wrap_notimplemented_exception(add))
+        setattr(entity, '__radd__', wrap_notimplemented_exception(radd))
+        setattr(entity, 'add', add)
+        setattr(entity, 'radd', radd)
+
+        setattr(entity, '__floordiv__', wrap_notimplemented_exception(floordiv))
+        setattr(entity, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
+        setattr(entity, '__truediv__', wrap_notimplemented_exception(truediv))
+        setattr(entity, '__rtruediv__', wrap_notimplemented_exception(rtruediv))
+        setattr(entity, '__div__', wrap_notimplemented_exception(truediv))
+        setattr(entity, '__rdiv__', wrap_notimplemented_exception(rtruediv))
+        setattr(entity, 'floordiv', floordiv)
+        setattr(entity, 'rfloordiv', rfloordiv)
+        setattr(entity, 'truediv', truediv)
+        setattr(entity, 'rtruediv', rtruediv)
+        setattr(entity, 'div', truediv)
+        setattr(entity, 'rdiv', rtruediv)
 
 
 _install()

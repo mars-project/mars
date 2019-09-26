@@ -14,20 +14,18 @@
 
 import unittest
 from numbers import Integral
+import operator
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 
 from mars.config import option_context
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
-    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value
+    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
+    infer_dtypes, infer_index_value
 
 
-@unittest.skipIf(pd is None, 'pandas not installed')
 class Test(unittest.TestCase):
     def testDecideDataFrameChunks(self):
         with option_context() as options:
@@ -255,3 +253,105 @@ class Test(unittest.TestCase):
         filtered = filter_index_value(index_value, min_max)
         self.assertEqual(len(filtered.to_pandas().tolist()), 0)
         self.assertIsInstance(filtered.value, IndexValue.Int64Index)
+
+    def testInferDtypes(self):
+        data1 = pd.DataFrame([[1, 'a', False]], columns=[2.0, 3.0, 4.0])
+        data2 = pd.DataFrame([[1, 3.0, 'b']], columns=[1, 2, 3])
+
+        pd.testing.assert_series_equal(infer_dtypes(data1.dtypes, data2.dtypes, operator.add),
+                                      (data1 + data2).dtypes)
+
+    def testInferIndexValue(self):
+        # same range index
+        index1 = pd.RangeIndex(1, 3)
+        index2 = pd.RangeIndex(1, 3)
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertEqual(oival.key, ival1.key)
+        self.assertEqual(oival.key, ival2.key)
+
+        # different range index
+        index1 = pd.RangeIndex(1, 3)
+        index2 = pd.RangeIndex(2, 4)
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        # same int64 index, all unique
+        index1 = pd.Int64Index([1, 2])
+        index2 = pd.Int64Index([1, 2])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertEqual(oival.key, ival1.key)
+        self.assertEqual(oival.key, ival2.key)
+
+        # same int64 index, not all unique
+        index1 = pd.Int64Index([1, 2, 2])
+        index2 = pd.Int64Index([1, 2, 2])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        # different int64 index
+        index1 = pd.Int64Index([1, 2])
+        index2 = pd.Int64Index([2, 3])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Int64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        # different index type
+        index1 = pd.Int64Index([1, 2])
+        index2 = pd.Float64Index([2.0, 3.0])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Float64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        # range index and other index
+        index1 = pd.RangeIndex(1, 4)
+        index2 = pd.Float64Index([2, 3, 4])
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Float64Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
+
+        index1 = pd.DatetimeIndex([])
+        index2 = pd.RangeIndex(2)
+
+        ival1 = parse_index(index1)
+        ival2 = parse_index(index2)
+        oival = infer_index_value(ival1, ival2)
+
+        self.assertIsInstance(oival.value, IndexValue.Index)
+        self.assertNotEqual(oival.key, ival1.key)
+        self.assertNotEqual(oival.key, ival2.key)
