@@ -72,6 +72,7 @@ class Test(TestBase):
         expected = df1
         expected.iloc[1] = 100
         df2.iloc[1] = 100
+        self.assertEqual(expected.shape, df2.execute().shape)
         pd.testing.assert_frame_equal(expected, df2.execute())
 
         # slice index
@@ -118,6 +119,38 @@ class Test(TestBase):
 
         series3 = df['c1'][0]
         self.assertEqual(series3.execute(), data['c1'][0])
+
+    def testDataFrameGetitemBool(self):
+        data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
+        df = md.DataFrame(data, chunk_size=2)
+
+        mask_data = data.c1 > 0.5
+        mask = md.Series(mask_data, chunk_size=2)
+
+        # getitem by mars series
+        self.assertEqual(df[mask].execute().shape, data[mask_data].shape)
+        pd.testing.assert_frame_equal(df[mask].execute(), data[mask_data])
+
+        # getitem by pandas series
+        pd.testing.assert_frame_equal(df[mask_data].execute(), data[mask_data])
+
+        # getitem by mars series with alignment but no shuffle
+        mask_data = pd.Series([True, True, True, False, False, True, True, False, False, True],
+                              index=range(9, -1, -1))
+        mask = md.Series(mask_data, chunk_size=2)
+        pd.testing.assert_frame_equal(df[mask].execute(), data[mask_data])
+
+        # getitem by mars series with shuffle alignment
+        mask_data = pd.Series([True, True, True, False, False, True, True, False, False, True],
+                              index=[0, 3, 6, 2, 9, 8, 5, 7, 1, 4])
+        mask = md.Series(mask_data, chunk_size=2)
+        pd.testing.assert_frame_equal(df[mask].execute().sort_index(), data[mask_data])
+
+        # getitem by mars series with shuffle alignment and extra element
+        mask_data = pd.Series([True, True, True, False, False, True, True, False, False, True, False],
+                              index=[0, 3, 6, 2, 9, 8, 5, 7, 1, 4, 10])
+        mask = md.Series(mask_data, chunk_size=2)
+        pd.testing.assert_frame_equal(df[mask].execute().sort_index(), data[mask_data])
 
     def testDataFrameGetitemUsingAttr(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'key', 'dtypes', 'size'])

@@ -116,7 +116,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
 
     @staticmethod
     def _merge_shape(*shapes):
-        ret = [np.nan, np.nan]
+        ret = [np.nan] * len(shapes[0])
         for shape in shapes:
             for i, s in enumerate(shape):
                 if np.isnan(ret[i]) and not np.isnan(s):

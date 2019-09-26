@@ -23,25 +23,25 @@ from ..utils import wrap_sequence
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
 
 
-class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
-    _op_type_ = OperandDef.ADD
+class DataFrameTrueDiv(DataFrameOperand, DataFrameBinOpMixin):
+    _op_type_ = OperandDef.DIV
 
     _axis = AnyField('axis')
     _level = AnyField('level')
     _fill_value = Float64Field('fill_value')
     _lhs = AnyField('lhs')
     _rhs = AnyField('rhs')
-    _func_name = 'add'
-    _rfunc_name = 'radd'
+    _func_name = 'truediv'
+    _rfunc_name = 'rtruediv'
 
     def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameAdd, self).__init__(_axis=axis, _level=level,
-                                           _fill_value=fill_value,
-                                           _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+        super(DataFrameTrueDiv, self).__init__(_axis=axis, _level=level,
+                                                _fill_value=fill_value,
+                                                _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @classproperty
     def _operator(self):
-        return operator.add
+        return operator.truediv
 
     @property
     def axis(self):
@@ -64,7 +64,7 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
         return self._rhs
 
     def _set_inputs(self, inputs):
-        super(DataFrameAdd, self)._set_inputs(inputs)
+        super(DataFrameTrueDiv, self)._set_inputs(inputs)
         if len(self._inputs) == 2:
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
@@ -75,13 +75,13 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
                 self._rhs = self._inputs[0]
 
 
-def add(df, other, axis='columns', level=None, fill_value=None):
+def truediv(df, other, axis='columns', level=None, fill_value=None):
     other = wrap_sequence(other)
-    op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+    op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def radd(df, other, axis='columns', level=None, fill_value=None):
+def rtruediv(df, other, axis='columns', level=None, fill_value=None):
     other = wrap_sequence(other)
-    op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+    op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
