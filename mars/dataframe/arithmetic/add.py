@@ -17,7 +17,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, Float64Field
+from ...tensor.core import TENSOR_TYPE
 from ...utils import classproperty
+from ..initializer import Series
 from ..operands import DataFrameOperand
 from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
 
@@ -75,16 +77,14 @@ class DataFrameAdd(DataFrameOperand, DataFrameBinOpMixin):
 
 
 def add(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
-    else:
-        raise NotImplementedError('Only support add with dataframe, series or scalar!')
+    if isinstance(other, (list, tuple, np.ndarray, TENSOR_TYPE)):
+        other = Series(other)
+    op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
 def radd(df, other, axis='columns', level=None, fill_value=None):
-    if isinstance(other, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(other):
-        op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
-    else:
-        raise NotImplementedError('Only support add with dataframe, series or scalar!')
+    if isinstance(other, (list, tuple, np.ndarray, TENSOR_TYPE)):
+        other = Series(other)
+    op = DataFrameAdd(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

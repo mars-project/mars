@@ -15,14 +15,11 @@
 import unittest
 
 import numpy as np
-
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 
 from mars.executor import Executor
 from mars.tests.core import TestBase
+from mars.tensor.datasource import array as from_array
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.arithmetic import abs, add, radd, floordiv, rfloordiv, truediv, rtruediv
@@ -561,6 +558,71 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = 4 + s1
         pd.testing.assert_series_equal(expected, result)
+
+    def testAddWithPlainValue(self):
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=6)
+        s1 = df1[2]
+
+        r = df1.add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1.add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        r = df1.add((1, 2, 3, 4, 5, 6, 7, 8, 9, 10), axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1.add((1, 2, 3, 4, 5, 6, 7, 8, 9, 10), axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        r = df1.add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1.add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        r = df1.add(from_array(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])), axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1.add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        r = s1.add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1[2].add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        pd.testing.assert_series_equal(expected, result)
+
+        r = s1.add((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1[2].add((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+        pd.testing.assert_series_equal(expected, result)
+
+        r = s1.add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1[2].add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        pd.testing.assert_series_equal(expected, result)
+
+        r = s1.add(from_array(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1[2].add(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
+        pd.testing.assert_series_equal(expected, result)
+
+    @unittest.expectedFailure
+    def testAddWithPlainValueUnaligned(self):
+        # When adding dataframe with a sequence value, pandas treats the sequence
+        # as a series using the index_value of the dataframe.
+        #
+        # In mars we cannot do such things because the index_value is not stored.
+        # We also cannot split the sequence using the nsplits of the dataframe since
+        # in many cases the shape of the dataframe chunks is np.nan.
+        #
+        # We record this case as `expectedFailure`.
+        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
+                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        df1 = from_pandas(data1, chunk_size=6)
+
+        r = df1.add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=1)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data1.add([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=0)
+        pd.testing.assert_frame_equal(expected, result)
 
     def testAbs(self):
         data1 = pd.DataFrame(np.random.uniform(low=-1, high=1, size=(10, 10)))

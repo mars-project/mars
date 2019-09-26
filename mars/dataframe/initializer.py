@@ -41,8 +41,10 @@ class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            raise NotImplementedError('Not support create Series from tensor')
-        if isinstance(data, SERIES_TYPE):
+            if name is None:
+                name = 0
+            series = from_tensor(data, index=index, columns=[name], gpu=gpu, sparse=sparse)[name]
+        elif isinstance(data, SERIES_TYPE):
             series = data
         else:
             pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)

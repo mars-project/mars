@@ -20,6 +20,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import AnyField, Int32Field, BoolField
+from ...utils import tokenize
 from ..align import align_dataframe_series
 from ..core import SERIES_TYPE
 from ..merge import DataFrameConcat
@@ -219,18 +220,24 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 dtypes = df.dtypes[self._col_names]
                 columns = parse_index(pd.Index(self._col_names), store_data=True)
                 return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
-                                        index_value=df.index_value, columns_value=columns)
+                                          index_value=df.index_value, columns_value=columns)
             else:
                 dtype = df.dtypes[self._col_names]
                 return self.new_series([df], shape=(df.shape[0],), dtype=dtype, index_value=df.index_value,
-                                    name=self._col_names)
+                                       name=self._col_names)
         else:
             if isinstance(self.mask, SERIES_TYPE):
+                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype),
+                                          key=tokenize(df.key, self.mask.key,
+                                                       df.index_value.key, self.mask.index_value.key))
                 return self.new_dataframe([df, self._mask], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=parse_index(pd.Index([])), columns_value=df.columns)
+                                          index_value=index_value, columns_value=df.columns)
             else:
+                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype),
+                                          key=tokenize(df.key, pd.util.hash_pandas_object(self.mask),
+                                                       df.index_value.key, parse_index(self.mask.index).key))
                 return self.new_dataframe([df], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=parse_index(pd.Index([])), columns_value=df.columns)
+                                          index_value=index_value, columns_value=df.columns)
 
     @classmethod
     def tile(cls, op):
@@ -331,7 +338,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.col_names:
+        if op.mask is None:
             df = ctx[op.inputs[0].key]
             ctx[op.outputs[0].key] = df[op.col_names]
         else:
@@ -350,16 +357,14 @@ def dataframe_getitem(df, item):
             if col_name not in columns:
                 raise KeyError('%s not in columns' % col_name)
         op = DataFrameIndex(col_names=item, object_type=ObjectType.dataframe)
-    elif np.isscalar(item):
-        if item not in columns:
-            raise KeyError('%s not in columns' % item)
-        op = DataFrameIndex(col_names=item)
     elif isinstance(item, SERIES_TYPE) and item.dtype == np.bool:
         op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     elif isinstance(item, pd.Series) and item.dtype == np.bool:
         op = DataFrameIndex(mask=item, object_type=ObjectType.dataframe)
     else:
-        raise NotImplementedError('type %s is not support for getitem' % type(item))
+        if item not in columns:
+            raise KeyError('%s not in columns' % item)
+        op = DataFrameIndex(col_names=item)
     return op(df)
 
 
