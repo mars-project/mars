@@ -17,6 +17,7 @@
 import numpy as np
 
 from .core import Entity, Base
+from .context import LocalContext
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -30,6 +31,7 @@ class LocalSession(object):
 
         self._executor = Executor()
         self._endpoint = None
+        self._ctx = None
 
         self._mut_tensor = dict()
         self._mut_tensor_data = dict()
@@ -47,6 +49,16 @@ class LocalSession(object):
         return None
 
     @property
+    def executor(self):
+        return self._executor
+
+    @property
+    def ctx(self):
+        if self._ctx is None:
+            self._ctx = LocalContext(self)
+        return self._ctx
+
+    @property
     def executed_tileables(self):
         return self._executor.stored_tileables.keys()
 
@@ -57,25 +69,26 @@ class LocalSession(object):
         self._endpoint = endpoint
 
     def run(self, *tileables, **kw):
-        if self._executor is None:
-            raise RuntimeError('Session has closed')
-        dest_gpu = all(tileable.op.gpu for tileable in tileables)
-        if dest_gpu:
-            self._executor._engine = 'cupy'
-        else:
-            self._executor._engine = None
-        if 'n_parallel' not in kw:
+        with self.ctx:
+            if self._executor is None:
+                raise RuntimeError('Session has closed')
+            dest_gpu = all(tileable.op.gpu for tileable in tileables)
             if dest_gpu:
-                # GPU
-                cnt = cuda_count() if cuda_count is not None else 0
-                if cnt == 0:
-                    raise RuntimeError('No GPU found for execution')
-                kw['n_parallel'] = cnt
+                self._executor._engine = 'cupy'
             else:
-                # CPU
-                kw['n_parallel'] = cpu_count()
-        res = self._executor.execute_tileables(tileables, **kw)
-        return res
+                self._executor._engine = None
+            if 'n_parallel' not in kw:
+                if dest_gpu:
+                    # GPU
+                    cnt = cuda_count() if cuda_count is not None else 0
+                    if cnt == 0:
+                        raise RuntimeError('No GPU found for execution')
+                    kw['n_parallel'] = cnt
+                else:
+                    # CPU
+                    kw['n_parallel'] = cpu_count()
+            res = self._executor.execute_tileables(tileables, **kw)
+            return res
 
     def _update_tileable_shape(self, tileable):
         new_nsplits = self._executor.get_tileable_nsplits(tileable)

@@ -22,6 +22,8 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session, Session
+from mars.tensor.arithmetic import TensorAdd
+from mars.context import get_context, RunningMode
 
 
 class Test(unittest.TestCase):
@@ -366,3 +368,27 @@ class Test(unittest.TestCase):
 
         r4 = sess.fetch(df1.iloc[0, 2])
         self.assertEqual(r4, r1.iloc[0, 2])
+
+    def testTileContext(self):
+        class FakeOp(TensorAdd):
+            _size = [None]
+
+            @classmethod
+            def tile(cls, op):
+                keys = [inp.chunks[0].key for inp in op.inputs]
+                ctx = get_context()
+                FakeOp._size[0] = sum(m.chunk_size
+                                      for m in ctx.get_chunk_metas(keys))
+                self.assertEqual(ctx.running_mode, RunningMode.local)
+                return super(FakeOp, cls).tile(op)
+
+            @classmethod
+            def execute(cls, ctx, op):
+                ctx[op.outputs[0].key] = FakeOp._size[0]
+
+        l, r = mt.ones((10, 20), dtype=float), mt.ones((10, 20), dtype=int)
+        f = FakeOp(lhs=l, rhs=r).new_tensor([l, r], shape=(10, 20), dtype=l.dtype)
+
+        sess = new_session()
+        sess.run(l, r)
+        self.assertEqual(sess.run(f), l.nbytes + r.nbytes)
