@@ -31,7 +31,7 @@ class LocalSession(object):
 
         self._executor = Executor()
         self._endpoint = None
-        self._ctx = None
+        self._context = None
 
         self._mut_tensor = dict()
         self._mut_tensor_data = dict()
@@ -53,10 +53,10 @@ class LocalSession(object):
         return self._executor
 
     @property
-    def ctx(self):
-        if self._ctx is None:
-            self._ctx = LocalContext(self)
-        return self._ctx
+    def context(self):
+        if self._context is None:
+            self._context = LocalContext(self)
+        return self._context
 
     @property
     def executed_tileables(self):
@@ -69,7 +69,7 @@ class LocalSession(object):
         self._endpoint = endpoint
 
     def run(self, *tileables, **kw):
-        with self.ctx:
+        with self.context:
             if self._executor is None:
                 raise RuntimeError('Session has closed')
             dest_gpu = all(tileable.op.gpu for tileable in tileables)

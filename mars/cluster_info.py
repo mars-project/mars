@@ -99,11 +99,12 @@ class _ClusterInfoWatchActor(FunctionActor):
 
 
 class ClusterInfoActor(FunctionActor):
-    def __init__(self, discoverer):
+    def __init__(self, discoverer, distributed=True):
         if isinstance(discoverer, list):
             discoverer = StaticSchedulerDiscoverer(discoverer)
 
         self._discoverer = discoverer
+        self._distributed = distributed
         self._hash_ring = None
         self._watcher = None
         self._schedulers = []
@@ -147,6 +148,9 @@ class ClusterInfoActor(FunctionActor):
         if len(self._schedulers) == 1 and size == 1:
             return self._schedulers[0]
         return get_scheduler(self._hash_ring, key, size=size)
+
+    def is_distributed(self):
+        return self._distributed
 
 
 class HasClusterInfoActor(PromiseActor):

@@ -172,7 +172,8 @@ class WorkerService(object):
 
         # create WorkerClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
-            WorkerClusterInfoActor, discoverer, uid=WorkerClusterInfoActor.default_uid())
+            WorkerClusterInfoActor, discoverer, distributed=distributed,
+            uid=WorkerClusterInfoActor.default_uid())
 
         if distributed:
             # create process daemon

@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import unittest
+import sys
 
 import numpy as np
 import pandas as pd
@@ -376,10 +377,14 @@ class Test(unittest.TestCase):
             @classmethod
             def tile(cls, op):
                 keys = [inp.chunks[0].key for inp in op.inputs]
-                ctx = get_context()
+                keys.append('fake_key')
+                cr = sess._sess.executor.chunk_result
+                cr['fake_key'] = 4
+                cr[keys[1]] = pd.DataFrame(cr[keys[1]])
+                context = get_context()
                 FakeOp._size[0] = sum(m.chunk_size
-                                      for m in ctx.get_chunk_metas(keys))
-                self.assertEqual(ctx.running_mode, RunningMode.local)
+                                      for m in context.get_chunk_metas(keys))
+                self.assertEqual(context.running_mode, RunningMode.local)
                 return super(FakeOp, cls).tile(op)
 
             @classmethod
@@ -391,4 +396,7 @@ class Test(unittest.TestCase):
 
         sess = new_session()
         sess.run(l, r)
-        self.assertEqual(sess.run(f), l.nbytes + r.nbytes)
+        expect_nbytes = l.nbytes + \
+                        pd.DataFrame(np.ones((10, 20), dtype=int)).memory_usage().sum() + \
+                        sys.getsizeof(4)
+        self.assertEqual(sess.run(f), expect_nbytes)

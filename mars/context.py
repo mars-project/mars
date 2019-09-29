@@ -51,6 +51,12 @@ class ContextBase(object):
     def __exit__(self, *_):
         _context_factory.current = None
 
+    def wraps(self, func):
+        def h(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+        return h
+
     # ---------------
     # Meta relative
     # ---------------
@@ -93,7 +99,6 @@ ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
 
 class LocalContext(ContextBase):
-
     def __init__(self, local_session):
         self._local_session = local_session
 
@@ -112,7 +117,7 @@ class LocalContext(ContextBase):
                 shape = chunk_data.shape
             elif hasattr(chunk_data, 'memory_usage'):
                 # DataFrame
-                size = chunk_data.memory_usage(deep=True)
+                size = chunk_data.memory_usage(deep=True).sum()
                 shape = chunk_data.shape
             else:
                 # other
@@ -122,3 +127,19 @@ class LocalContext(ContextBase):
             metas.append(ChunkMeta(chunk_size=size, chunk_shape=shape, workers=None))
 
         return metas
+
+
+class DistributedContext(ContextBase):
+    def __init__(self, is_distributed, session_id, chunk_meta_client):
+        self._running_mode = RunningMode.local_cluster \
+            if not is_distributed else RunningMode.distributed
+        self._session_id = session_id
+        self._chunk_meta_client = chunk_meta_client
+
+    @property
+    def running_mode(self):
+        return self._running_mode
+
+    def get_chunk_metas(self, chunk_keys):
+        return self._chunk_meta_client.batch_get_chunk_meta(
+            self._session_id, chunk_keys)

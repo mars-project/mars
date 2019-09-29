@@ -29,6 +29,7 @@ from mars import tensor as mt
 from mars import dataframe as md
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
+from mars.tensor.arithmetic.abs import TensorAbs
 from mars.serialize import Int64Field
 from mars.session import new_session, Session
 from mars.deploy.local.core import new_cluster, LocalDistributedCluster, gen_endpoint
@@ -39,6 +40,7 @@ from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
 from mars.config import options, option_context
 from mars.web.session import Session as WebSession
+from mars.context import get_context, RunningMode
 from mars.tests.core import mock, require_cudf
 
 logger = logging.getLogger(__name__)
@@ -798,3 +800,44 @@ class Test(unittest.TestCase):
             cdf = df.to_gpu()
             result = session.run(cdf)
             pd.testing.assert_frame_equal(pdf, result)
+
+    def testTileContextInLocalCluster(self):
+        class FakeOp(TensorAbs):
+            _op_type_ = 9870102948
+
+            _multiplier = Int64Field('multiplier')
+
+            @classmethod
+            def tile(cls, op):
+                context = get_context()
+
+                self.assertEqual(context.running_mode, RunningMode.local_cluster)
+
+                inp_chunk = op.inputs[0].chunks[0]
+                inp_size = context.get_chunk_metas([inp_chunk.key])[0].chunk_size
+                chunk_op = op.copy().reset_key()
+                chunk_op._multiplier = inp_size
+                chunk = chunk_op.new_chunk([inp_chunk], shape=inp_chunk.shape)
+
+                new_op = op.copy()
+                return new_op.new_tensors(op.inputs, shape=op.outputs[0].shape,
+                                          order=op.outputs[0].order, nsplits=op.inputs[0].nsplits,
+                                          chunks=[chunk])
+
+            @classmethod
+            def execute(cls, ctx, op):
+                ctx[op.outputs[0].key] = ctx[op.inputs[0].key] * op._multiplier
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+
+            raw = np.random.rand(10, 20)
+            data = mt.tensor(raw)
+
+            session.run(data)
+
+            data2 = FakeOp().new_tensor([data], shape=data.shape)
+
+            result = session.run(data2)
+            np.testing.assert_array_equal(raw * raw.nbytes, result)
