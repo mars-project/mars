@@ -120,6 +120,20 @@ class Test(unittest.TestCase):
                              [' '.join(p.cmdline()) for p in processes if p.is_running()])
                 self.assertFalse(any(p.is_running() for p in processes))
 
+    def testLocalClusterError(self, *_):
+        with option_context({'scheduler.retry_num': 1}):
+            with new_cluster(scheduler_n_process=2, worker_n_process=3,
+                            shared_memory='20M', web=True) as cluster:
+                with cluster.session as session:
+                    t = mt.array(["1", "2", "3", "4"])
+                    with self.assertRaises(ExecutionFailed):
+                        session.run(t + 1)
+
+                with new_session('http://' + cluster._web_endpoint) as session:
+                    t = mt.array(["1", "2", "3", "4"])
+                    with self.assertRaises(ExecutionFailed):
+                        session.run(t + 1)
+
     def testNSchedulersNWorkers(self, *_):
         calc_cpu_cnt = functools.partial(lambda: 4)
 

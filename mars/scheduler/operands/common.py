@@ -62,6 +62,9 @@ class OperandActor(BaseOperandActor):
         self._allocated = self._is_initial
         self._submit_promise = None
 
+        # record the exception info when failed to execute the graph
+        self._exc = None
+
     @property
     def retries(self):
         return self._retries
@@ -424,6 +427,7 @@ class OperandActor(BaseOperandActor):
                 if self.retries >= options.scheduler.retry_num:
                     # no further trial
                     self.state = OperandState.FATAL
+                    self._exc = exc
                 else:
                     self.state = OperandState.READY
                 self.ref().start_operand(_tell=True)
@@ -471,7 +475,7 @@ class OperandActor(BaseOperandActor):
         futures = []
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.extend(self._add_finished_terminal(final_state=GraphState.FAILED))
+            futures.extend(self._add_finished_terminal(final_state=GraphState.FAILED, exc=self._exc))
         # set successors to FATAL
         for k in self._succ_keys:
             futures.append(self._get_operand_actor(k).stop_operand(
@@ -514,11 +518,11 @@ class OperandActor(BaseOperandActor):
     def _on_unscheduled(self):
         self.worker = None
 
-    def _add_finished_terminal(self, final_state=None):
+    def _add_finished_terminal(self, final_state=None, exc=None):
         futures = []
         for graph_ref in self._graph_refs:
             futures.append(graph_ref.add_finished_terminal(
-                self._op_key, final_state=final_state, _tell=True, _wait=False
+                self._op_key, final_state=final_state, exc=exc, _tell=True, _wait=False
             ))
 
         return futures
