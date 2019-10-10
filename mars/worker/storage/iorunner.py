@@ -14,7 +14,6 @@
 
 import functools
 import logging
-import time
 from collections import deque
 
 from ... import promise
@@ -31,21 +30,28 @@ class IORunnerActor(WorkerActor):
     """
     _io_runner = True
 
-    def __init__(self):
+    @classmethod
+    def gen_uid(cls, proc_id):
+        return 'w:%d:io_runner_inproc' % proc_id
+
+    def __init__(self, lock_free=False, dispatched=True):
         super(IORunnerActor, self).__init__()
         self._work_items = deque()
         self._max_work_item_id = 0
         self._cur_work_items = dict()
-        self._lock_free = options.worker.lock_free_fileio
+
+        self._lock_free = lock_free or options.worker.lock_free_fileio
         self._lock_work_item_id = dict()
-        self._exec_start_time = None
+
+        self._dispatched = dispatched
 
     def post_create(self):
         super(IORunnerActor, self).post_create()
 
-        from ..dispatcher import DispatchActor
-        dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
-        dispatch_ref.register_free_slot(self.uid, 'iorunner')
+        if self._dispatched:
+            from ..dispatcher import DispatchActor
+            dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
+            dispatch_ref.register_free_slot(self.uid, 'iorunner')
 
     @promise.reject_on_exception
     @log_unhandled
@@ -88,7 +94,6 @@ class IORunnerActor(WorkerActor):
         @log_unhandled
         def _finalize(exc, *_):
             del self._cur_work_items[work_item_id]
-            self._exec_start_time = None
             if not exc:
                 self.tell_promise(cb)
             else:
@@ -97,7 +102,6 @@ class IORunnerActor(WorkerActor):
 
         logger.debug('Start copying (%s, %s) from %s into %s in %s',
                      session_id, data_key, src_device, dest_device, self.uid)
-        self._exec_start_time = time.time()
         src_handler = self.storage_client.get_storage_handler(src_device)
         dest_handler = self.storage_client.get_storage_handler(dest_device)
         dest_handler.load_from(session_id, data_key, src_handler) \

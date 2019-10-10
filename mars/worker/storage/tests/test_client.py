@@ -14,6 +14,7 @@
 
 import functools
 import os
+import time
 import uuid
 import weakref
 
@@ -22,14 +23,88 @@ from numpy.testing import assert_allclose
 
 from mars import promise
 from mars.actors import create_actor_pool
+from mars.compat import TimeoutError, six
 from mars.config import options
+from mars.distributor import MarsDistributor
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method
 from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
+from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
 from mars.worker.storage import *
+
+
+class OtherProcessTestActor(WorkerActor):
+    def __init__(self):
+        super(OtherProcessTestActor, self).__init__()
+        self._accept = None
+        self._result = None
+        self._manager_ref = None
+
+    def post_create(self):
+        super(OtherProcessTestActor, self).post_create()
+        self._manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
+
+    def set_result(self, result, accept=True):
+        self._result, self._accept = result, accept
+
+    def get_result(self):
+        if self._accept is None:
+            return None
+        elif self._accept:
+            return self._result
+        else:
+            six.reraise(*self._result)
+
+    def run_copy_global_to_proc_test(self):
+        self._accept, self._result = None, None
+
+        session_id = str(uuid.uuid4())
+        data1 = np.random.randint(0, 32767, (655360,), np.int16)
+        key1 = str(uuid.uuid4())
+
+        shared_handler = self.storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
+        proc_handler = self.storage_client.get_storage_handler((1, DataStorageDevice.PROC_MEMORY))
+
+        def _verify_result(*_):
+            result = proc_handler.get_object(session_id, key1)
+            assert_allclose(result, data1)
+
+            devices = self._manager_ref.get_data_locations(session_id, key1)
+            if devices != {(0, DataStorageDevice.SHARED_MEMORY), (1, DataStorageDevice.PROC_MEMORY)}:
+                raise AssertionError
+
+        shared_handler.put_object(session_id, key1, data1)
+        self.storage_client.copy_to(session_id, key1, [(1, DataStorageDevice.PROC_MEMORY)]) \
+            .then(_verify_result) \
+            .then(lambda *_: self.set_result(1),
+                  lambda *exc: self.set_result(exc, accept=False))
+
+    def run_copy_proc_to_global_test(self):
+        self._accept, self._result = None, None
+
+        session_id = str(uuid.uuid4())
+        data1 = np.random.randint(0, 32767, (655360,), np.int16)
+        key1 = str(uuid.uuid4())
+
+        shared_handler = self.storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
+        proc_handler = self.storage_client.get_storage_handler((1, DataStorageDevice.PROC_MEMORY))
+
+        def _verify_result(*_):
+            result = shared_handler.get_object(session_id, key1)
+            assert_allclose(result, data1)
+
+            devices = self._manager_ref.get_data_locations(session_id, key1)
+            if devices != {(0, DataStorageDevice.SHARED_MEMORY), (1, DataStorageDevice.PROC_MEMORY)}:
+                raise AssertionError
+
+        proc_handler.put_object(session_id, key1, data1)
+        self.storage_client.copy_to(session_id, key1, [DataStorageDevice.SHARED_MEMORY]) \
+            .then(_verify_result) \
+            .then(lambda *_: self.set_result(1),
+                  lambda *exc: self.set_result(exc, accept=False))
 
 
 class Test(WorkerCase):
@@ -98,7 +173,7 @@ class Test(WorkerCase):
                 # test creating reader when no data in location (should raise)
                 with self.assertRaises(IOError):
                     storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,),
-                                         _promise=False)
+                                                 _promise=False)
 
                 # test creating reader when copy needed
                 storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,)) \
@@ -113,6 +188,42 @@ class Test(WorkerCase):
                 while os.path.exists(file_names[0]):
                     test_actor.ctx.sleep(0.05)
                 self.assertFalse(os.path.exists(file_names[0]))
+
+    def testLoadStoreInOtherProcess(self):
+        test_addr = '127.0.0.1:%d' % get_next_port()
+        with self.create_pool(n_process=2, address=test_addr, distributor=MarsDistributor(2)) as pool:
+            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            pool.create_actor(
+                StorageManagerActor, uid=StorageManagerActor.default_uid())
+
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+
+            pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
+
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+            pool.create_actor(SharedHolderActor, self.plasma_storage_size,
+                              uid=SharedHolderActor.default_uid())
+
+            pool.create_actor(InProcHolderActor, uid='w:1:InProcHolderActor')
+            pool.create_actor(IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(1))
+
+            test_ref = pool.create_actor(OtherProcessTestActor, uid='w:0:OtherProcTest')
+
+            test_ref.run_copy_global_to_proc_test(_tell=True)
+
+            start_time = time.time()
+            while test_ref.get_result() is None:
+                pool.sleep(0.5)
+                if time.time() - start_time > 10:
+                    raise TimeoutError
+
+            test_ref.run_copy_proc_to_global_test(_tell=True)
+
+            start_time = time.time()
+            while test_ref.get_result() is None:
+                pool.sleep(0.5)
+                if time.time() - start_time > 10:
+                    raise TimeoutError
 
     def testClientSpill(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -140,8 +251,8 @@ class Test(WorkerCase):
                 storage_client = test_actor.storage_client
                 idx = 0
 
-                shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
-                proc_handler = storage_client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
+                shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
+                proc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
 
                 def _fill_data():
                     i = 0
@@ -187,7 +298,7 @@ class Test(WorkerCase):
                 data_list[idx] = None
 
                 storage_client.copy_to(session_id, data_keys[idx],
-                               [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]) \
+                                       [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)

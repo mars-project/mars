@@ -34,7 +34,7 @@ def mock_transfer_in_global_runner(self, session_id, data_key, src_handler, fall
         return fallback()
 
 
-@patch_method(StorageHandler.transfer_in_global_runner, new=mock_transfer_in_global_runner)
+@patch_method(StorageHandler.transfer_in_runner, new=mock_transfer_in_global_runner)
 class Test(WorkerCase):
     plasma_storage_size = 1024 * 1024 * 10
 
@@ -57,7 +57,7 @@ class Test(WorkerCase):
             data_key1 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             def _write_data(ser, writer):
                 self.assertEqual(writer.nbytes, ser_data1.total_bytes)
@@ -134,7 +134,7 @@ class Test(WorkerCase):
             data_key1 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             def _write_data(ser, writer):
                 with writer:
@@ -216,7 +216,7 @@ class Test(WorkerCase):
             data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             handler.put_object(session_id, data_key1, data1)
             self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
@@ -259,10 +259,10 @@ class Test(WorkerCase):
             data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             # load from bytes io
-            disk_handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
+            disk_handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
             with disk_handler.create_bytes_writer(
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
@@ -280,7 +280,7 @@ class Test(WorkerCase):
             ref_data2 = weakref.ref(data2)
 
             # load from object io
-            proc_handler = storage_client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
+            proc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
             proc_handler.put_object(session_id, data_key2, data2)
             del data2
 
@@ -314,7 +314,7 @@ class Test(WorkerCase):
             data_keys = [str(uuid.uuid4()) for _ in range(20)]
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
             idx = 0
 
             def _fill_data():

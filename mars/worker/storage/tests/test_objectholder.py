@@ -103,7 +103,7 @@ class Test(WorkerCase):
 
     def _fill_shared_storage(self, session_id, key_list, data_list, idx=0):
         storage_client = self._test_actor.storage_client
-        shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+        shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
         i = 0
         for i, (key, data) in enumerate(zip(key_list[idx:], data_list)):
             try:
@@ -121,7 +121,7 @@ class Test(WorkerCase):
                          for _ in range(20)]
             key_list = [str(uuid.uuid4()) for _ in range(20)]
 
-            shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
             last_idx = self._fill_shared_storage(session_id, key_list, data_list)
 
             pin_token1 = str(uuid.uuid4())
@@ -158,7 +158,7 @@ class Test(WorkerCase):
             mock_runner_ref = pool.actor_ref(MockIORunnerActor.default_uid())
 
             storage_client = test_actor.storage_client
-            shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             session_id = str(uuid.uuid4())
             data_list = [np.random.randint(0, 32767, (655360,), np.int16)

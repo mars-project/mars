@@ -67,7 +67,8 @@ class ObjectHolderActor(WorkerActor):
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
 
-        self._storage_handler = self.storage_client.get_storage_handler(self._storage_device)
+        self._storage_handler = self.storage_client.get_storage_handler(
+            self._storage_device.build_location(self.proc_id))
 
     def pre_destroy(self):
         for k in self._data_holder:

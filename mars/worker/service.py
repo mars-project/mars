@@ -214,6 +214,10 @@ class WorkerService(object):
             actor = actor_holder.create_actor(InProcHolderActor, uid=uid)
             self._inproc_holder_actors.append(actor)
 
+            uid = 'w:%d:mars-inproc-io-runner-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            actor = actor_holder.create_actor(IORunnerActor, lock_free=True, dispatched=False, uid=uid)
+            self._inproc_holder_actors.append(actor)
+
         start_pid = 1 + process_start_index + self._n_cpu_process
 
         if distributed:
@@ -242,7 +246,7 @@ class WorkerService(object):
         start_pid = pool.cluster_info.n_process - 1
         if options.worker.spill_directory:
             for spill_id in range(len(options.worker.spill_directory)):
-                uid = 'w:%d:mars-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
+                uid = 'w:%d:mars-global-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
                 actor = actor_holder.create_actor(IORunnerActor, uid=uid)
                 self._spill_actors.append(actor)
 

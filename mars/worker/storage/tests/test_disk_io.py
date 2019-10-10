@@ -35,7 +35,7 @@ def mock_transfer_in_global_runner(self, session_id, data_key, src_handler, fall
         return fallback()
 
 
-@patch_method(StorageHandler.transfer_in_global_runner, new=mock_transfer_in_global_runner)
+@patch_method(StorageHandler.transfer_in_runner, new=mock_transfer_in_global_runner)
 class Test(WorkerCase):
     @staticmethod
     def _get_compress_types():
@@ -58,7 +58,7 @@ class Test(WorkerCase):
             session_id = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
 
             for handler._compress in self._get_compress_types():
                 data_key1 = str(uuid.uuid4())
@@ -153,7 +153,7 @@ class Test(WorkerCase):
             ser_data1 = dataserializer.serialize(data1)
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
 
             for handler._compress in self._get_compress_types():
                 data_key1 = str(uuid.uuid4())
@@ -211,10 +211,10 @@ class Test(WorkerCase):
             data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
 
             # load from bytes io
-            shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
             with shared_handler.create_bytes_writer(
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
@@ -231,7 +231,7 @@ class Test(WorkerCase):
 
             # load from object io
             ref_data2 = weakref.ref(data2)
-            proc_handler = storage_client.get_storage_handler(DataStorageDevice.PROC_MEMORY)
+            proc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
             proc_handler.put_object(session_id, data_key2, data2)
             del data2
 
