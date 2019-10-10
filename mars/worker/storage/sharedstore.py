@@ -18,6 +18,16 @@ from ...actors import FunctionActor
 from ...errors import StorageFull, StorageDataExists
 from ...utils import calc_data_size
 
+try:
+    import pyarrow
+    from pyarrow import plasma
+    try:
+        from pyarrow.plasma import PlasmaObjectNonexistent, PlasmaStoreFull
+    except ImportError:
+        from pyarrow.lib import PlasmaObjectNonexistent, PlasmaStoreFull
+except ImportError:  # pragma: no cover
+    pyarrow, plasma, PlasmaObjectNonexistent, PlasmaStoreFull = None, None, None, None
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,8 +75,6 @@ class PlasmaSharedStore(object):
         :return: actual storage size in bytes
         """
         if self._actual_size is None:
-            from pyarrow import plasma, lib
-
             bufs = []
             left_size = store_limit
             total_size = 0
@@ -83,7 +91,7 @@ class PlasmaSharedStore(object):
                     total_size += allocate_size
                     left_size -= allocate_size
                     alloc_fraction = 0.9
-                except lib.PlasmaStoreFull:
+                except PlasmaStoreFull:
                     alloc_fraction -= 0.1
                     if alloc_fraction < 1e-6:
                         break
@@ -96,9 +104,8 @@ class PlasmaSharedStore(object):
         """
         Calc unique object id for chunks
         """
-        from pyarrow.plasma import ObjectID
         while True:
-            new_id = ObjectID.from_random()
+            new_id = plasma.ObjectID.from_random()
             if not self._plasma_client.contains(new_id):
                 break
         self._mapper_ref.put(session_id, data_key, new_id)
@@ -111,7 +118,6 @@ class PlasmaSharedStore(object):
         return obj_id
 
     def create(self, session_id, data_key, size):
-        from pyarrow.lib import PlasmaStoreFull
         obj_id = self._new_object_id(session_id, data_key)
 
         try:
@@ -131,7 +137,6 @@ class PlasmaSharedStore(object):
             raise StorageFull(request_size=size, total_size=self._actual_size)
 
     def seal(self, session_id, data_key):
-        from pyarrow.lib import PlasmaObjectNonexistent
         obj_id = self._get_object_id(session_id, data_key)
         try:
             self._plasma_client.seal(obj_id)
@@ -143,11 +148,9 @@ class PlasmaSharedStore(object):
         """
         Get deserialized Mars object from plasma store
         """
-        from pyarrow.plasma import ObjectNotAvailable
-
         obj_id = self._get_object_id(session_id, data_key)
         obj = self._plasma_client.get(obj_id, serialization_context=self._serialize_context, timeout_ms=10)
-        if obj is ObjectNotAvailable:
+        if obj is plasma.ObjectNotAvailable:
             self._mapper_ref.delete(session_id, data_key)
             raise KeyError((session_id, data_key))
         return obj
@@ -185,9 +188,6 @@ class PlasmaSharedStore(object):
         :param data_key: chunk key
         :param value: Mars object to be put
         """
-        import pyarrow
-        from pyarrow.lib import PlasmaStoreFull
-
         data_size = calc_data_size(value)
 
         try:
