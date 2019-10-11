@@ -38,7 +38,8 @@ class BaseCalcActor(WorkerActor):
 
     def __init__(self):
         super(BaseCalcActor, self).__init__()
-        self._mem_quota_ref = None
+        self._remove_intermediate = self._calc_intermediate_device not in self._calc_dest_devices
+
         self._dispatch_ref = None
         self._events_ref = None
         self._status_ref = None
@@ -105,13 +106,15 @@ class BaseCalcActor(WorkerActor):
                 self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
-                storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                if self._remove_intermediate:
+                    storage_client.delete(session_id, k, [self._calc_intermediate_device])
             if not failed[0]:
                 context_dict[k] = obj
 
         def _handle_single_load_fail(*exc, **kwargs):
             data_key = kwargs.pop('key')
-            storage_client.delete(session_id, data_key, [DataStorageDevice.PROC_MEMORY])
+            if self._remove_intermediate:
+                storage_client.delete(session_id, data_key, [self._calc_intermediate_device])
             self._release_local_quota(session_id, data_key)
 
             failed[0] = True
@@ -216,14 +219,16 @@ class BaseCalcActor(WorkerActor):
 
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
-                    self.storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                    if self._remove_intermediate:
+                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
 
             if not exc_info:
                 self.tell_promise(callback, keys)
             else:
                 for k in chunk_targets:
-                    self.storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                    if self._remove_intermediate:
+                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
 
@@ -252,7 +257,8 @@ class BaseCalcActor(WorkerActor):
             session_id, store_keys, store_metas, _wait=False)
 
         def _delete_key(k, *_):
-            storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY], _tell=True)
+            if self._remove_intermediate:
+                storage_client.delete(session_id, k, [self._calc_intermediate_device], _tell=True)
             self._mem_quota_ref.release_quota(
                 build_quota_key(session_id, k, owner=self.proc_id), _tell=True, _wait=False)
 

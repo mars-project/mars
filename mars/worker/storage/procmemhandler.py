@@ -49,8 +49,7 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         def _read_and_put(reader):
             with reader:
-                result = reader.get_io_pool() \
-                    .submit(reader.read).result()
+                result = reader.get_io_pool().submit(reader.read).result()
             self.put_object(session_id, data_key, result, serialized=True)
 
         def _fallback(*_):

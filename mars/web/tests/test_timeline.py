@@ -30,15 +30,15 @@ class Test(unittest.TestCase):
 
         base_time = int(time.time()) - 20
         events = [
-            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CALCULATION,
+            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CPU_CALC,
                         'owner1', base_time),
-            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CALCULATION,
+            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CPU_CALC,
                         'owner2', base_time),
-            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CALCULATION,
+            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CPU_CALC,
                         'owner3', base_time, base_time + 1),
         ]
         range_dfs, patches = updater.update_events(events, base_time + 10)
-        df = range_dfs[ProcedureEventType.CALCULATION]
+        df = range_dfs[ProcedureEventType.CPU_CALC]
 
         self.assertEqual(updater.x_range, (datetime.fromtimestamp(base_time),
                                            datetime.fromtimestamp(base_time + 10)))
@@ -51,12 +51,12 @@ class Test(unittest.TestCase):
         self.assertEqual(len(patches), 0)
 
         events2 = [
-            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CALCULATION,
+            WorkerEvent(EventCategory.PROCEDURE, EventLevel.NORMAL, ProcedureEventType.CPU_CALC,
                         'owner2', base_time, base_time + 10, event_id=events[1].event_id),
         ]
         range_dfs, patches = updater.update_events(events2, base_time + 20)
-        df = range_dfs[ProcedureEventType.CALCULATION]
-        patch = sorted(patches[ProcedureEventType.CALCULATION])
+        df = range_dfs[ProcedureEventType.CPU_CALC]
+        patch = sorted(patches[ProcedureEventType.CPU_CALC])
         self.assertEqual(len(df), 0)
         self.assertEqual(patch[0], (0, datetime.fromtimestamp(base_time + 20)))
         self.assertEqual(patch[1], (1, datetime.fromtimestamp(base_time + 10)))

@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, StringField
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ...lib.sparse import SparseNDArray
-from ..array_utils import create_array
+from ..array_utils import create_array, convert_order
 from ..utils import get_order
 from .core import TensorNoInput, TensorLike
 from .array import tensor
@@ -42,8 +42,12 @@ class TensorOnes(TensorNoInput):
     @classmethod
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
-        ctx[chunk.key] = create_array(op)('ones', chunk.shape,
-                                          dtype=op.dtype, order=op.order)
+        try:
+            ctx[chunk.key] = create_array(op)('ones', chunk.shape,
+                                              dtype=op.dtype, order=op.order)
+        except TypeError:  # in case that cp.ones does not have arg ``order``
+            x = create_array(op)('ones', chunk.shape, dtype=op.dtype)
+            ctx[chunk.key] = convert_order(x, op.order)
 
 
 def ones(shape, dtype=None, chunk_size=None, gpu=False, order='C'):

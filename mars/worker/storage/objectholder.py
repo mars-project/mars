@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import logging
 import time
 import uuid
@@ -294,4 +295,28 @@ class InProcHolderActor(ObjectHolderActor):
 
 
 class CudaHolderActor(ObjectHolderActor):
-    pass
+    _storage_device = DataStorageDevice.CUDA
+
+    def __init__(self, size_limit=0, device_id=None):
+        super(CudaHolderActor, self).__init__(size_limit=size_limit)
+        if device_id is not None:
+            os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
+
+    def post_create(self):
+        super(CudaHolderActor, self).post_create()
+        manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
+        manager_ref.register_process_holder(
+            self.proc_id, DataStorageDevice.CUDA, self.ref())
+
+    def put_object(self, session_id, graph_key, data):
+        from ...utils import calc_data_size
+        self._internal_put_object(session_id, graph_key, data, calc_data_size(data))
+
+    def get_object(self, session_id, data_key):
+        return self._data_holder[(session_id, data_key)]
+
+    def update_cache_status(self):
+        pass
+
+    def post_delete(self, session_id, data_key):
+        pass

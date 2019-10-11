@@ -156,8 +156,6 @@ class ExecutionActor(WorkerActor):
 
         from ..scheduler import ResourceActor
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
-        if not self.ctx.has_actor(self._resource_ref):
-            self._resource_ref = None
 
         self.periodical_dump()
 
@@ -313,11 +311,10 @@ class ExecutionActor(WorkerActor):
                 six.reraise(*exc)
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
-                if self._resource_ref:
-                    self._resource_ref.detach_dead_workers(
-                        [remote_addr],
-                        reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
-                        _tell=True)
+                self._resource_ref.detach_dead_workers(
+                    [remote_addr],
+                    reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
+                    _tell=True, _wait=False)
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled
@@ -427,6 +424,7 @@ class ExecutionActor(WorkerActor):
         :param graph_ser: serialized executable graph
         :param io_meta: io meta of the chunk
         :param data_metas: data meta of each input chunk, as a dict
+        :param calc_device: device for calculation, can be 'gpu' or 'cpu'
         :param send_addresses: targets to send results after execution
         :param callback: promise callback
         """
@@ -443,6 +441,13 @@ class ExecutionActor(WorkerActor):
         calc_device = calc_device or 'cpu'
         preferred_data_device = DataStorageDevice.SHARED_MEMORY if calc_device == 'cpu' \
             else DataStorageDevice.CUDA
+
+        # todo change this when handling multiple devices
+        if preferred_data_device == DataStorageDevice.CUDA:
+            slot = self._dispatch_ref.get_slots(calc_device)[0]
+            proc_id = self.ctx.distributor.distribute(slot)
+            preferred_data_device = (proc_id, preferred_data_device)
+
         graph_record = self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
             graph_ser, ExecutionState.ALLOCATING,
             io_meta=io_meta,
@@ -513,7 +518,7 @@ class ExecutionActor(WorkerActor):
             promise.finished() \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
-                .then(lambda *_: self._dispatch_ref.get_free_slot('cpu', _promise=True)) \
+                .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
                 .then(_handle_success, _handle_rejection)

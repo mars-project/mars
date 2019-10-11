@@ -24,12 +24,15 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from mars import tensor as mt
-from mars.compat import reduce
-from mars.serialize.dataserializer import loads
-from mars.tests.core import EtcdProcessHelper
 from mars.actors.core import new_client
+from mars.compat import reduce
 from mars.scheduler.graph import GraphState
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
+from mars.serialize.dataserializer import loads
+from mars.tests.core import EtcdProcessHelper
+from mars.utils import lazy_import
+
+cupy = lazy_import('cupy', globals=globals())
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +137,31 @@ class Test(SchedulerIntegratedTest):
 
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+        c = (a * b * 2 + 1).sum()
+        graph = c.build_graph()
+        targets = [c.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, c.key)
+        expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
+        assert_allclose(loads(result), expected.sum())
+
+    @unittest.skipIf(cupy is None, 'cupy not installed')
+    def testMainTensorWithCuda(self):
+        self.start_processes(cuda=True)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        a = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
+        b = mt.ones((100, 100), chunk_size=30, gpu=True) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()
         graph = c.build_graph()
         targets = [c.key]

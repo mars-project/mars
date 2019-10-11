@@ -68,6 +68,13 @@ def move_to_device(x, device_id):
         return cp.asarray(x.get())  # remove `get` to do directly copy
 
 
+def convert_order(x, order):
+    xp = get_array_module(x)
+    if xp.isfortran(x) != (order == 'F'):
+        x = xp.array(x, order=order)
+    return x
+
+
 def _most_nbytes_device(device_nbytes):
     device_to_nbytes = defaultdict(lambda: 0)
     for device, nbytes in device_nbytes:

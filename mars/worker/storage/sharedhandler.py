@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 import pyarrow
 
 from ...config import options
@@ -156,15 +158,18 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
-        def _load(obj):
+        def _load(data_or_ser, serialized):
             try:
-                return self.put_object(session_id, data_key, obj, _promise=True)
+                return self.put_object(
+                    session_id, data_key, data_or_ser, serialized=serialized, _promise=True)
             finally:
-                del obj
+                del data_or_ser
 
         def _fallback(*_):
-            return src_handler.get_object(session_id, data_key, _promise=True) \
-                .then(_load)
+            ser_needed = src_handler.storage_type not in \
+                         (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
+            return src_handler.get_object(session_id, data_key, serialized=ser_needed, _promise=True) \
+                .then(functools.partial(_load, serialized=ser_needed))
 
         return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
