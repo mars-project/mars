@@ -24,6 +24,7 @@ from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose
+from mars.tensor.array_utils import cp
 from mars.config import option_context
 
 
@@ -650,3 +651,16 @@ class Test(unittest.TestCase):
         expected.imag = np.array([9, 8, 7])
 
         np.testing.assert_equal(res, expected)
+
+    @unittest.skipIf(cp is None, 'cupy not installed')
+    def testCupyExecution(self):
+        a_data = np.random.rand(10, 10)
+        b_data = np.random.rand(10, 10)
+
+        a = tensor(a_data, gpu=True, chunk_size=3)
+        b = tensor(b_data, gpu=True, chunk_size=3)
+        res_binary = self.executor.execute_tensor((a + b), concat=True)[0]
+        np.testing.assert_array_equal(res_binary.get(), (a_data + b_data))
+
+        res_unary = self.executor.execute_tensor(cos(a), concat=True)[0]
+        np.testing.assert_array_almost_equal(res_unary.get(), np.cos(a_data))
