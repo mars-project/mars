@@ -362,6 +362,10 @@ message OperandDef {
         GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
 
+        // machine learning
+        XGBOOST_TRAIN = 3001;
+        XGBOOST_PREDICT = 3002;
+
         CHOLESKY_FUSE = 999988;
 
 

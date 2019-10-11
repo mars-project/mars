@@ -35,6 +35,9 @@ from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
 
+if gevent:
+    from .actors.pool.gevent_pool import GeventThreadPoolExecutor
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,11 +83,6 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def event(cls):
         return threading.Event()
-
-
-if gevent:
-    from .actors.pool.gevent_pool import GeventThreadPoolExecutor
-
 
 
 class GeventExecutorSyncProvider(ExecutorSyncProvider):
