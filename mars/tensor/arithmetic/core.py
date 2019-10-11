@@ -91,12 +91,24 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 "Binary operand's inputs should less than or equal 4, got {0}".format(len(inputs)))
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
         func_name = getattr(cls, '_func_name')
+        r = getattr(xp, func_name)(lhs, rhs, **kw)
+        out_order = op.outputs[0].order.value
+        if xp.isfortran(r) != (out_order == 'F'):
+            r = xp.array(r, order=out_order)
+        return r
+
+    @classmethod
+    def _execute_cpu(cls, op, xp, lhs, rhs, **kw):
+        kw['order'] = op.order
+        func_name = getattr(cls, '_func_name')
+        return getattr(xp, func_name)(lhs, rhs, **kw)
+
+    @classmethod
+    def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
-
-        func = getattr(xp, func_name)
 
         with device(device_id):
             kw = {'casting': op.casting} if op.out else {}
@@ -108,10 +120,13 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
                 kw['out'] = next(inputs_iter).copy()
             if op.where:
                 kw['where'] = next(inputs_iter)
-            kw['order'] = op.order
 
             with np.errstate(**op.err):
-                ctx[op.outputs[0].key] = _handle_out_dtype(func(lhs, rhs, **kw), op.dtype)
+                if op.is_gpu():
+                    ret = cls._execute_gpu(op, xp, lhs, rhs, **kw)
+                else:
+                    ret = cls._execute_cpu(op, xp, lhs, rhs, **kw)
+                ctx[op.outputs[0].key] = _handle_out_dtype(ret, op.dtype)
 
 
 class TensorBinOp(TensorOperand, TensorBinOpMixin):
@@ -266,11 +281,26 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
         return getattr(xp, func_name)
 
     @classmethod
+    def _execute_gpu(cls, op, xp, inp, **kw):
+        func_name = getattr(cls, '_func_name')
+        r = getattr(xp, func_name)(inp, **kw)
+        out_order = op.outputs[0].order.value
+        if xp.isfortran(r) != (out_order == 'F'):
+            r = xp.array(r, order=out_order)
+        return r
+
+    @classmethod
+    def _execute_cpu(cls, op, xp, inp, **kw):
+        if op.order != 'K':
+            kw['order'] = op.order
+        func_name = getattr(cls, '_func_name')
+        return getattr(xp, func_name)(inp, **kw)
+
+    @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
-        func = cls._get_func(xp)
         with device(device_id):
             kw = {'casting': op.casting} if op.out else {}
 
@@ -280,11 +310,13 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
                 inputs, kw['out'] = inputs[:-1], inputs[-1].copy()
             elif op.where:
                 inputs, kw['where'] = inputs[:-1], inputs[-1]
-            if op.order != 'K':
-                kw['order'] = op.order
 
             with np.errstate(**op.err):
-                ctx[op.outputs[0].key] = _handle_out_dtype(func(inputs[0], **kw), op.dtype)
+                if op.is_gpu():
+                    ret = cls._execute_gpu(op, xp, inputs[0], **kw)
+                else:
+                    ret = cls._execute_cpu(op, xp, inputs[0], **kw)
+                ctx[op.outputs[0].key] = _handle_out_dtype(ret, op.dtype)
 
 
 class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
