@@ -29,10 +29,7 @@ from mars.compat import reduce
 from mars.scheduler.graph import GraphState
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.serialize.dataserializer import loads
-from mars.tests.core import EtcdProcessHelper
-from mars.utils import lazy_import
-
-cupy = lazy_import('cupy', globals=globals())
+from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +148,8 @@ class Test(SchedulerIntegratedTest):
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
         assert_allclose(loads(result), expected.sum())
 
-    @unittest.skipIf(cupy is None, 'cupy not installed')
+    @require_cupy
+    @require_cudf
     def testMainTensorWithCuda(self):
         self.start_processes(cuda=True)
 

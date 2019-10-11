@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import uuid
 import weakref
 
@@ -21,6 +20,7 @@ import pandas as pd
 from numpy.testing import assert_allclose
 
 from mars.serialize import dataserializer
+from mars.tests.core import require_cupy, require_cudf
 from mars.utils import get_next_port, lazy_import
 from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor
 from mars.worker.tests.base import WorkerCase
@@ -30,7 +30,8 @@ cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
 
 
-@unittest.skipIf(cp is None or cudf is None, reason='cupy or cudf not installed')
+@require_cupy
+@require_cudf
 class Test(WorkerCase):
     def testCudaMemPutAndGet(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -59,7 +60,7 @@ class Test(WorkerCase):
                 data_key2 = str(uuid.uuid4())
 
                 storage_client = test_actor.storage_client
-                handler = storage_client.get_storage_handler(DataStorageDevice.CUDA)
+                handler = storage_client.get_storage_handler((0, DataStorageDevice.CUDA))
 
                 handler.put_object(session_id, data_key1, data)
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
@@ -100,10 +101,10 @@ class Test(WorkerCase):
             data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
-            handler = storage_client.get_storage_handler(DataStorageDevice.CUDA)
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.CUDA))
 
             # load from bytes io
-            disk_handler = storage_client.get_storage_handler(DataStorageDevice.DISK)
+            disk_handler = storage_client.get_storage_handler((0, DataStorageDevice.DISK))
             with disk_handler.create_bytes_writer(
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
@@ -124,7 +125,7 @@ class Test(WorkerCase):
             self.assertIsNone(ref_data())
 
             # load from object io
-            shared_handler = storage_client.get_storage_handler(DataStorageDevice.SHARED_MEMORY)
+            shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
             shared_handler.put_object(session_id, data_key2, data2)
 
             handler.load_from_object_io(session_id, data_key2, shared_handler) \

@@ -65,7 +65,7 @@ def move_to_device(x, device_id):
     # for dense array, we currently copy from gpu to memory and then copy back to destination device
     # to avoid kernel panic
     with cp.cuda.Device(device_id):
-        return cp.asarray(x.get())  # remove `get` to do directly copy
+        return cp.asarray(cp.asnumpy(x))  # remove `cp.asnumpy` call to do directly copy
 
 
 def convert_order(x, order):

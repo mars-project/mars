@@ -27,12 +27,11 @@ from mars.actors import create_actor_pool
 from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.config import options
 from mars.promise import PromiseActor
-from mars.utils import get_next_port, serialize_graph, lazy_import
+from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ResourceActor, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
+from mars.tests.core import require_cupy
 from mars.worker import DispatchActor, WorkerDaemonActor
-
-cupy = lazy_import('cupy', globals=globals())
 
 
 class WorkerProcessTestActor(PromiseActor):
@@ -154,7 +153,7 @@ class Test(unittest.TestCase):
                 if time.time() - check_time > 20:
                     raise TimeoutError('Check reply timeout')
 
-    @unittest.skipIf(cupy is None, reason='cupy not installed')
+    @require_cupy
     def testExecuteCudaWorker(self):
         with self._start_worker_process(no_cuda=False, cuda_device='0') as (pool, worker_endpoint):
             test_ref = pool.create_actor(WorkerProcessTestActor)
