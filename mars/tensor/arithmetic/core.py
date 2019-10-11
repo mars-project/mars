@@ -282,8 +282,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
 
     @classmethod
     def _execute_gpu(cls, op, xp, inp, **kw):
-        func_name = getattr(cls, '_func_name')
-        r = getattr(xp, func_name)(inp, **kw)
+        r = cls._get_func(xp)(inp, **kw)
         out_order = op.outputs[0].order.value
         if xp.isfortran(r) != (out_order == 'F'):
             r = xp.array(r, order=out_order)
@@ -293,8 +292,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     def _execute_cpu(cls, op, xp, inp, **kw):
         if op.order != 'K':
             kw['order'] = op.order
-        func_name = getattr(cls, '_func_name')
-        return getattr(xp, func_name)(inp, **kw)
+        return cls._get_func(xp)(inp, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
