@@ -274,3 +274,47 @@ class Test(unittest.TestCase):
         finally:
             shutil.rmtree(temp_dir)
             sys.path = old_sys_path
+
+    def testChunksIndexer(self):
+        a = mt.ones((3, 4, 5), chunk_size=2)
+        a.tiles()
+
+        self.assertEqual(a.chunk_shape, (2, 2, 3))
+
+        with self.assertRaises(ValueError):
+            _ = a.cix[1]
+        with self.assertRaises(ValueError):
+            _ = a.cix[1, :]
+
+        chunk_key = a.cix[0, 0, 0].key
+        expected = a.chunks[0].key
+        self.assertEqual(chunk_key, expected)
+
+        chunk_key = a.cix[1, 1, 1].key
+        expected = a.chunks[9].key
+        self.assertEqual(chunk_key, expected)
+
+        chunk_key = a.cix[1, 1, 2].key
+        expected = a.chunks[11].key
+        self.assertEqual(chunk_key, expected)
+
+        chunk_key = a.cix[0, -1, -1].key
+        expected = a.chunks[5].key
+        self.assertEqual(chunk_key, expected)
+
+        chunk_key = a.cix[0, -1, -1].key
+        expected = a.chunks[5].key
+        self.assertEqual(chunk_key, expected)
+
+        chunk_keys = [c.key for c in a.cix[0, 0, :]]
+        expected = [c.key for c in [a.cix[0, 0, 0], a.cix[0, 0, 1], a.cix[0, 0, 2]]]
+        self.assertEqual(chunk_keys, expected)
+
+        chunk_keys = [c.key for c in a.cix[:, 0, :]]
+        expected = [c.key for c in [a.cix[0, 0, 0], a.cix[0, 0, 1], a.cix[0, 0, 2],
+                                    a.cix[1, 0, 0], a.cix[1, 0, 1], a.cix[1, 0, 2]]]
+        self.assertEqual(chunk_keys, expected)
+
+        chunk_keys = [c.key for c in a.cix[:, :, :]]
+        expected = [c.key for c in a.chunks]
+        self.assertEqual(chunk_keys, expected)

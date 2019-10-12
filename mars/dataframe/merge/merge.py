@@ -18,11 +18,11 @@ import pandas as pd
 
 from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
 from ... import opcodes as OperandDef
+from ...utils import get_shuffle_input_keys_idxes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, \
     DataFrameShuffleMap, DataFrameShuffleReduce, DataFrameShuffleProxy
-from ..utils import build_concated_rows_frame, build_empty_df, parse_index, hash_dataframe_on
-from ..arithmetic.utils import infer_index_value
-from ...utils import get_shuffle_input_keys_idxes
+from ..utils import build_concated_rows_frame, build_empty_df, parse_index, hash_dataframe_on, \
+    infer_index_value
 
 import logging
 logger = logging.getLogger(__name__)
