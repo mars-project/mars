@@ -29,6 +29,12 @@ from mars import compat
 from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
+from mars.utils import lazy_import
+
+try:
+    import pytest
+except ImportError:
+    pytest = None
 
 if compat.PY27:
     try:
@@ -37,8 +43,10 @@ if compat.PY27:
         mock = None
 else:
     from unittest import mock
-
     _mock = mock
+
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
 
 
 class TestCase(unittest.TestCase):
@@ -261,3 +269,17 @@ def patch_method(method, *args, **kwargs):
                           *args, **kwargs)
     else:
         return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
+
+
+def require_cupy(func):
+    if pytest:
+        func = pytest.mark.cuda(func)
+    func = unittest.skipIf(cupy is None, reason='cupy not installed')(func)
+    return func
+
+
+def require_cudf(func):
+    if pytest:
+        func = pytest.mark.cuda(func)
+    func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
+    return func
