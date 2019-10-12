@@ -67,8 +67,8 @@ class SealActor(WorkerActor):
                         raise SpillNotConfigured('Spill not configured')
                     with open(file_name, 'rb') as inf:
                         buf = decompressors[disk_compression](inf.read())
-                buffer = pyarrow.deserialize(memoryview(buf), mars_serialize_context())
-                record_view = np.asarray(memoryview(buffer)).view(dtype=record_type, type=np.recarray)
+                obj = pyarrow.deserialize(memoryview(buf), mars_serialize_context())
+                record_view = obj.view(dtype=record_type, type=np.recarray)
 
                 for record in record_view:
                     idx = np.unravel_index(record.index, shape)
