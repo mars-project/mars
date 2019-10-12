@@ -136,7 +136,7 @@ class StorageClient(object):
 
         if _promise:
             return self.copy_to(session_id, data_key, source_devices) \
-                .then(lambda *_: self.create_reader(session_id, data_key, source_devices))
+                .then(lambda *_: self.create_reader(session_id, data_key, source_devices, packed=packed))
         else:
             raise IOError('Cannot return a non-promise result')
 

@@ -20,12 +20,12 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.compat import six
+from mars.config import option_context
 from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose
-from mars.tensor.array_utils import cp
-from mars.config import option_context
+from mars.tests.core import require_cupy
 
 
 class Test(unittest.TestCase):
@@ -652,8 +652,8 @@ class Test(unittest.TestCase):
 
         np.testing.assert_equal(res, expected)
 
-    @unittest.skipIf(cp is None, 'cupy not installed')
-    def testCupy(self):
+    @require_cupy
+    def testCupyExecution(self):
         a_data = np.random.rand(10, 10)
         b_data = np.random.rand(10, 10)
 

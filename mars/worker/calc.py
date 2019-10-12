@@ -29,10 +29,17 @@ from .utils import WorkerActor, concat_operand_keys, get_chunk_key, build_quota_
 logger = logging.getLogger(__name__)
 
 
-class CpuCalcActor(WorkerActor):
+class BaseCalcActor(WorkerActor):
+    _slot_name = None
+    _calc_event_type = None
+    _calc_source_devices = None
+    _calc_intermediate_device = None
+    _calc_dest_devices = None
+
     def __init__(self):
-        super(CpuCalcActor, self).__init__()
-        self._mem_quota_ref = None
+        super(BaseCalcActor, self).__init__()
+        self._remove_intermediate = self._calc_intermediate_device not in self._calc_dest_devices
+
         self._dispatch_ref = None
         self._events_ref = None
         self._status_ref = None
@@ -40,7 +47,7 @@ class CpuCalcActor(WorkerActor):
         self._execution_pool = None
 
     def post_create(self):
-        super(CpuCalcActor, self).post_create()
+        super(BaseCalcActor, self).post_create()
 
         from .quota import MemQuotaActor
         from .dispatcher import DispatchActor
@@ -49,7 +56,7 @@ class CpuCalcActor(WorkerActor):
 
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
-        self._dispatch_ref.register_free_slot(self.uid, 'cpu')
+        self._dispatch_ref.register_free_slot(self.uid, self._slot_name)
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
@@ -90,7 +97,6 @@ class CpuCalcActor(WorkerActor):
         context_dict = dict()
         failed = [False]
         promises = []
-        device_order = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY]
         storage_client = self.storage_client
 
         def _handle_single_loaded(k, obj):
@@ -100,22 +106,23 @@ class CpuCalcActor(WorkerActor):
                 self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
-                storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                if self._remove_intermediate:
+                    storage_client.delete(session_id, k, [self._calc_intermediate_device])
             if not failed[0]:
                 context_dict[k] = obj
 
         def _handle_single_load_fail(*exc, **kwargs):
             data_key = kwargs.pop('key')
-            quota_key = build_quota_key(session_id, data_key, owner=self.proc_id)
-            storage_client.delete(session_id, data_key, [DataStorageDevice.PROC_MEMORY])
-            self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
+            if self._remove_intermediate:
+                storage_client.delete(session_id, data_key, [self._calc_intermediate_device])
+            self._release_local_quota(session_id, data_key)
 
             failed[0] = True
             context_dict.clear()
             six.reraise(*exc)
 
         for key in keys_to_fetch:
-            promises.append(storage_client.get_object(session_id, key, device_order)
+            promises.append(storage_client.get_object(session_id, key, self._calc_source_devices)
                             .then(functools.partial(_handle_single_loaded, key),
                                   functools.partial(_handle_single_load_fail, key=key)))
 
@@ -133,7 +140,7 @@ class CpuCalcActor(WorkerActor):
         # start actual execution
         executor = Executor(storage=local_context_dict)
         with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
-                          ProcedureEventType.CALCULATION, self.uid):
+                          self._calc_event_type, self.uid):
             self._execution_pool.submit(executor.execute_graph, graph,
                                         chunk_targets, retval=False).result()
 
@@ -179,7 +186,7 @@ class CpuCalcActor(WorkerActor):
         result_keys = [p[0] for p in result_pairs]
 
         return promise.all_([
-            self.storage_client.put_object(session_id, k, v, [DataStorageDevice.PROC_MEMORY])
+            self.storage_client.put_object(session_id, k, v, [self._calc_intermediate_device])
             for k, v in result_pairs
         ]).then(lambda *_: result_keys)
 
@@ -208,18 +215,20 @@ class CpuCalcActor(WorkerActor):
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
-            self._dispatch_ref.register_free_slot(self.uid, 'cpu', _tell=True, _wait=False)
+            self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
 
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
-                    self.storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                    if self._remove_intermediate:
+                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
 
             if not exc_info:
                 self.tell_promise(callback, keys)
             else:
                 for k in chunk_targets:
-                    self.storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY])
+                    if self._remove_intermediate:
+                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
 
@@ -248,15 +257,31 @@ class CpuCalcActor(WorkerActor):
             session_id, store_keys, store_metas, _wait=False)
 
         def _delete_key(k, *_):
-            storage_client.delete(session_id, k, [DataStorageDevice.PROC_MEMORY], _tell=True)
+            if self._remove_intermediate:
+                storage_client.delete(session_id, k, [self._calc_intermediate_device], _tell=True)
             self._mem_quota_ref.release_quota(
                 build_quota_key(session_id, k, owner=self.proc_id), _tell=True, _wait=False)
 
-        copy_targets = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
         promise.all_([
-            storage_client.copy_to(session_id, k, copy_targets)
+            storage_client.copy_to(session_id, k, self._calc_dest_devices)
                 .then(functools.partial(_delete_key, k))
             for k in keys_to_store]) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),
                   lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
+
+
+class CpuCalcActor(BaseCalcActor):
+    _slot_name = 'cpu'
+    _calc_event_type = ProcedureEventType.CPU_CALC
+    _calc_source_devices = (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
+    _calc_intermediate_device = DataStorageDevice.PROC_MEMORY
+    _calc_dest_devices = (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK)
+
+
+class CudaCalcActor(BaseCalcActor):
+    _slot_name = 'cuda'
+    _calc_event_type = ProcedureEventType.GPU_CALC
+    _calc_source_devices = (DataStorageDevice.CUDA, )
+    _calc_intermediate_device = DataStorageDevice.CUDA
+    _calc_dest_devices = (DataStorageDevice.CUDA, )

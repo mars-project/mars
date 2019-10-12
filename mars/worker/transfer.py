@@ -110,8 +110,8 @@ class SenderActor(WorkerActor):
         :param callback: promise callback
         """
         already_started = set()
+        data_size_bin = [self._read_data_size(session_id, chunk_key)]
         wait_refs = []
-        data_size = self._read_data_size(session_id, chunk_key)
         compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         try:
@@ -120,6 +120,20 @@ class SenderActor(WorkerActor):
         except:  # noqa: E722
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
             raise
+
+        @log_unhandled
+        def _create_writers(reader):
+            create_write_promises = []
+            data_size = data_size_bin[0] = self._read_data_size(session_id, chunk_key)
+            for ref in receiver_refs:
+                # register transfer actions
+                create_write_promises.append(
+                    ref.create_data_writer(
+                        session_id, chunk_key, data_size, self.ref(), ensure_cached=ensure_cached,
+                        timeout=timeout, _timeout=timeout, _promise=True
+                    ).then(functools.partial(_handle_created, ref))
+                )
+            return promise.all_(create_write_promises).then(lambda *_: reader)
 
         @log_unhandled
         def _handle_created(ref, address, status):
@@ -134,7 +148,7 @@ class SenderActor(WorkerActor):
         @log_unhandled
         def _finalize(*_):
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
-            self.tell_promise(callback, data_size)
+            self.tell_promise(callback, data_size_bin[0])
 
         @log_unhandled
         def _handle_rejection(*exc):
@@ -145,34 +159,17 @@ class SenderActor(WorkerActor):
             self.tell_promise(callback, *exc, **dict(_accept=False))
 
         try:
-            create_write_promises = []
             source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
-
-            for ref in receiver_refs:
-                # register transfer actions
-                create_write_promises.append(
-                    ref.create_data_writer(
-                        session_id, chunk_key, data_size, self.ref(), ensure_cached=ensure_cached,
-                        timeout=timeout, _timeout=timeout, _promise=True
-                    ).then(functools.partial(_handle_created, ref))
-                )
-
-            if create_write_promises:
-                promise.all_(create_write_promises) \
-                    .then(lambda *_: self.storage_client.create_reader(
-                        session_id, chunk_key, source_devices, packed=True,
-                        packed_compression=compression)) \
-                    .then(lambda reader: self._compress_and_send(
-                        session_id, chunk_key,
-                        [ref for ref in receiver_refs if ref.address not in already_started],
-                        reader, timeout=timeout,
-                    )) \
-                    .then(lambda *_: promise.all_(wait_refs)) \
-                    .then(_finalize, _handle_rejection)
-            else:
-                # nothing to send, the slot can be released
-                self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True, _wait=False)
-                return
+            self.storage_client.create_reader(
+                session_id, chunk_key, source_devices, packed=True, packed_compression=compression) \
+                .then(_create_writers) \
+                .then(lambda reader: self._compress_and_send(
+                    session_id, chunk_key,
+                    [ref for ref in receiver_refs if ref.address not in already_started],
+                    reader, timeout=timeout,
+                )) \
+                .then(lambda *_: promise.all_(wait_refs)) \
+                .then(_finalize, _handle_rejection)
         except:  # noqa: E722
             _handle_rejection(*sys.exc_info())
             return
@@ -427,14 +424,6 @@ class ReceiverActor(WorkerActor):
             meta_future = None
 
             if data_part:
-                if is_last:
-                    # we assume (and also with a very high probability)
-                    # that data transfer will succeed, hence we set chunk meta
-                    # before writing
-                    meta_future = self.get_meta_client().set_chunk_meta(
-                        session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,),
-                        _wait=False
-                    )
                 # check if checksum matches
                 local_checksum = zlib.crc32(data_part, data_meta.checksum)
                 if local_checksum != checksum:
@@ -560,24 +549,46 @@ class ReceiverActor(WorkerActor):
             del self._finish_callbacks[session_chunk_key]
 
 
+class ResultCopyActor(WorkerActor):
+    def start_copy(self, session_id, chunk_key, targets):
+        locations = [v[1] for v in self.storage_client.get_data_locations(session_id, chunk_key)]
+        if set(locations).intersection(targets):
+            return
+        ev = self.ctx.event()
+        self.storage_client.copy_to(session_id, chunk_key, targets) \
+            .then(lambda *_: ev.set())
+        return ev
+
+
 class ResultSenderActor(WorkerActor):
     """
     Actor handling sending result to user client
     """
     def __init__(self):
         super(ResultSenderActor, self).__init__()
+        self._result_copy_ref = None
         self._serialize_pool = None
 
     def post_create(self):
         super(ResultSenderActor, self).post_create()
         self._serialize_pool = self.ctx.threadpool(1)
+        self._result_copy_ref = self.ctx.create_actor(ResultCopyActor, uid=ResultCopyActor.default_uid())
+
+    def pre_destroy(self):
+        self._result_copy_ref.destroy()
+        super(ResultSenderActor, self).pre_destroy()
 
     def fetch_data(self, session_id, chunk_key, index_obj=None):
         compression_type = dataserializer.CompressType(options.worker.transfer_compression)
         if index_obj is None:
+            target_devs = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
+            ev = self._result_copy_ref.start_copy(session_id, chunk_key, target_devs)
+            if ev:
+                ev.wait(options.worker.prepare_data_timeout)
+
             reader = self.storage_client.create_reader(
-                session_id, chunk_key, [DataStorageDevice.DISK, DataStorageDevice.SHARED_MEMORY],
-                packed=True, packed_compression=compression_type, _promise=False)
+                session_id, chunk_key, target_devs, packed=True,
+                packed_compression=compression_type, _promise=False)
 
             with reader:
                 pool = reader.get_io_pool()

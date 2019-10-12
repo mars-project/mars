@@ -50,13 +50,14 @@ class GraphExecutionRecord(object):
                  'chunk_targets', 'io_meta', 'data_metas', 'shared_input_chunks',
                  'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'finish_callbacks',
-                 'stop_requested')
+                 'stop_requested', 'calc_device', 'preferred_data_device')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_metas=None, mem_request=None,
                  shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
-                 finish_callbacks=None, stop_requested=False):
+                 finish_callbacks=None, stop_requested=False, calc_device=None,
+                 preferred_data_device=None):
 
         self.graph_serialized = graph_serialized
         graph = self.graph = deserialize_graph(graph_serialized)
@@ -76,6 +77,8 @@ class GraphExecutionRecord(object):
         self.retry_delay = retry_delay or 0
         self.finish_callbacks = finish_callbacks or []
         self.stop_requested = stop_requested or False
+        self.calc_device = calc_device
+        self.preferred_data_device = preferred_data_device
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -153,8 +156,6 @@ class ExecutionActor(WorkerActor):
 
         from ..scheduler import ResourceActor
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
-        if not self.ctx.has_actor(self._resource_ref):
-            self._resource_ref = None
 
         self.periodical_dump()
 
@@ -179,7 +180,7 @@ class ExecutionActor(WorkerActor):
         except KeyError:
             return
         graph_record.pinned_keys.update(self.storage_client.pin_data_keys(
-            session_id, data_keys, graph_key))
+            session_id, data_keys, graph_key, [graph_record.preferred_data_device]))
 
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
@@ -254,7 +255,7 @@ class ExecutionActor(WorkerActor):
                                if k not in graph_record.shared_input_chunks)
         if alloc_cache_batch:
             # todo change when compute with gpu
-            storage_client.spill_size(sum(alloc_cache_batch.values()), [DataStorageDevice.SHARED_MEMORY])
+            storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
         if alloc_mem_batch:
             graph_record.mem_request = alloc_mem_batch
@@ -289,6 +290,8 @@ class ExecutionActor(WorkerActor):
                 self._pin_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quota(
                     build_quota_key(session_id, chunk_key, owner=graph_key), _tell=True, _wait=False)
+                if (0, graph_record.preferred_data_device) not in locations:
+                    return storage_client.copy_to(session_id, chunk_key, [graph_record.preferred_data_device])
 
         @log_unhandled
         def _handle_network_error(*exc):
@@ -308,11 +311,10 @@ class ExecutionActor(WorkerActor):
                 six.reraise(*exc)
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
-                if self._resource_ref:
-                    self._resource_ref.detach_dead_workers(
-                        [remote_addr],
-                        reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
-                        _tell=True)
+                self._resource_ref.detach_dead_workers(
+                    [remote_addr],
+                    reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
+                    _tell=True, _wait=False)
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled
@@ -414,7 +416,7 @@ class ExecutionActor(WorkerActor):
     @promise.reject_on_exception
     @log_unhandled
     def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_metas,
-                      send_addresses=None, callback=None):
+                      calc_device=None, send_addresses=None, callback=None):
         """
         Submit graph to the worker and control the execution
         :param session_id: session id
@@ -422,6 +424,7 @@ class ExecutionActor(WorkerActor):
         :param graph_ser: serialized executable graph
         :param io_meta: io meta of the chunk
         :param data_metas: data meta of each input chunk, as a dict
+        :param calc_device: device for calculation, can be 'gpu' or 'cpu'
         :param send_addresses: targets to send results after execution
         :param callback: promise callback
         """
@@ -435,6 +438,16 @@ class ExecutionActor(WorkerActor):
             all_callbacks = []
         all_callbacks.extend(callback)
 
+        calc_device = calc_device or 'cpu'
+        preferred_data_device = DataStorageDevice.SHARED_MEMORY if calc_device == 'cpu' \
+            else DataStorageDevice.CUDA
+
+        # todo change this when handling multiple devices
+        if preferred_data_device == DataStorageDevice.CUDA:
+            slot = self._dispatch_ref.get_slots(calc_device)[0]
+            proc_id = self.ctx.distributor.distribute(slot)
+            preferred_data_device = (proc_id, preferred_data_device)
+
         graph_record = self._graph_records[(session_id, graph_key)] = GraphExecutionRecord(
             graph_ser, ExecutionState.ALLOCATING,
             io_meta=io_meta,
@@ -444,6 +457,8 @@ class ExecutionActor(WorkerActor):
             shared_input_chunks=set(io_meta.get('shared_input_chunks', [])),
             send_addresses=send_addresses,
             finish_callbacks=all_callbacks,
+            calc_device=calc_device,
+            preferred_data_device=preferred_data_device,
         )
 
         logger.debug('Worker graph %s(%s) targeting at %r accepted.', graph_key,
@@ -503,7 +518,7 @@ class ExecutionActor(WorkerActor):
             promise.finished() \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
-                .then(lambda *_: self._dispatch_ref.get_free_slot('cpu', _promise=True)) \
+                .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
                 .then(_handle_success, _handle_rejection)
@@ -562,7 +577,7 @@ class ExecutionActor(WorkerActor):
                     lambda k, *_: self._pin_data_keys(session_id, graph_key, [k]), input_key)
                 prepare_promises.append(
                     storage_client.copy_to(
-                        session_id, input_key, [DataStorageDevice.SHARED_MEMORY], ensure=ensure_shared)
+                        session_id, input_key, [graph_record.preferred_data_device], ensure=ensure_shared)
                         .then(pin_fun, lambda *_: None)
                 )
             else:
@@ -615,7 +630,7 @@ class ExecutionActor(WorkerActor):
                 quota_key = None
                 if isinstance(chunk.op, Fetch):
                     locations = storage_client.get_data_locations(session_id, chunk.key) or ()
-                    if (0, DataStorageDevice.SHARED_MEMORY) not in locations:
+                    if (0, graph_record.preferred_data_device) not in locations:
                         quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
                 elif chunk.key in graph_record.chunk_targets:
                     quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)

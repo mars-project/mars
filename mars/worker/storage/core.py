@@ -28,8 +28,9 @@ logger = logging.getLogger(__name__)
 
 class DataStorageDevice(Enum):
     PROC_MEMORY = 0
-    SHARED_MEMORY = 1
-    DISK = 2
+    CUDA = 1
+    SHARED_MEMORY = 2
+    DISK = 3
 
     def __lt__(self, other):
         return self.value < other.value
@@ -354,4 +355,4 @@ def get_storage_handler_cls(storage_type):
     try:
         return _storage_handler_cls[storage_type]
     except KeyError:  # pragma: no cover
-        raise NotImplementedError('Storage type %r not supported' % storage_type)
+        raise NotImplementedError('Storage type %r not supported' % (storage_type, ))

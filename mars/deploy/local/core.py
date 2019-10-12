@@ -46,7 +46,8 @@ class LocalDistributedCluster(object):
     MIN_WORKER_N_PROCESS = 2
 
     def __init__(self, endpoint, n_process=None, scheduler_n_process=None,
-                 worker_n_process=None, ignore_avail_mem=True, shared_memory=None):
+                 worker_n_process=None, cuda_device=None, ignore_avail_mem=True,
+                 shared_memory=None):
         self._endpoint = endpoint
 
         self._started = False
@@ -54,8 +55,10 @@ class LocalDistributedCluster(object):
 
         self._pool = None
         self._scheduler_service = SchedulerService()
+        cuda_devices = [cuda_device] if cuda_device is not None else None
         self._worker_service = WorkerService(ignore_avail_mem=ignore_avail_mem,
-                                             cache_mem_limit=shared_memory)
+                                             cache_mem_limit=shared_memory,
+                                             cuda_devices=cuda_devices)
 
         self._scheduler_n_process, self._worker_n_process = \
             self._calc_scheduler_worker_n_process(n_process,

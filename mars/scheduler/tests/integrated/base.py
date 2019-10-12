@@ -24,6 +24,7 @@ import unittest
 
 import gevent
 
+from mars import resource
 from mars.config import options
 from mars.tests.core import EtcdProcessHelper
 from mars.utils import get_next_port
@@ -129,7 +130,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.state_files[environ] = fn
         return fn
 
-    def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, modules=None,
+    def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
                         log_scheduler=True, log_worker=True, env=None):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
@@ -138,6 +139,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.scheduler_endpoints = ['127.0.0.1:' + p for p in scheduler_ports]
 
         append_args = []
+        append_args_scheduler = []
+        append_args_worker = []
         if modules:
             append_args.extend(['--load-modules', ','.join(modules)])
 
@@ -151,7 +154,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
             append_args.extend(['--schedulers', ','.join(self.scheduler_endpoints)])
 
         if 'DUMP_GRAPH_DATA' in os.environ:
-            append_args += ['-Dscheduler.dump_graph_data=true']
+            append_args_scheduler += ['-Dscheduler.dump_graph_data=true']
+        if not cuda:
+            append_args_worker += ['--no-cuda']
 
         proc_env = os.environ.copy()
         if env:
@@ -166,8 +171,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '-Dscheduler.retry_delay=5',
                               '-Dscheduler.default_cpu_usage=0',
                               '-Dscheduler.status_timeout=10']
-                             + append_args, env=proc_env)
+                             + append_args + append_args_scheduler, env=proc_env)
             for idx, p in enumerate(scheduler_ports)]
+        cuda_count = resource.cuda_count()
         self.proc_workers = [
             subprocess.Popen([sys.executable, '-m', 'mars.worker',
                               '-a', '127.0.0.1',
@@ -176,8 +182,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
                               '--log-format', 'WOR%d %%(asctime)-15s %%(message)s' % idx,
                               '--cache-mem', '16m',
                               '--ignore-avail-mem',
+                              '--cuda-device', str(idx % cuda_count) if cuda_count else '0',
                               '-Dworker.prepare_data_timeout=30']
-                             + append_args, env=proc_env)
+                             + append_args + append_args_worker, env=proc_env)
             for idx in range(n_workers)
         ]
 

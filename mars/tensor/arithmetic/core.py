@@ -25,7 +25,7 @@ from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
 from ..operands import TensorOperandMixin, TensorOperand
-from ..array_utils import device, as_same_device
+from ..array_utils import device, as_same_device, convert_order
 
 
 class TensorElementWise(TensorOperandMixin):
@@ -94,10 +94,7 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
         func_name = getattr(cls, '_func_name')
         r = getattr(xp, func_name)(lhs, rhs, **kw)
-        out_order = op.outputs[0].order.value
-        if xp.isfortran(r) != (out_order == 'F'):
-            r = xp.array(r, order=out_order)
-        return r
+        return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def _execute_cpu(cls, op, xp, lhs, rhs, **kw):
@@ -283,10 +280,7 @@ class TensorUnaryOpMixin(TensorElementWiseWithInputs):
     @classmethod
     def _execute_gpu(cls, op, xp, inp, **kw):
         r = cls._get_func(xp)(inp, **kw)
-        out_order = op.outputs[0].order.value
-        if xp.isfortran(r) != (out_order == 'F'):
-            r = xp.array(r, order=out_order)
-        return r
+        return convert_order(r, op.outputs[0].order.value)
 
     @classmethod
     def _execute_cpu(cls, op, xp, inp, **kw):

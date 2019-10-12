@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .calc import CpuCalcActor
+from .calc import CpuCalcActor, CudaCalcActor
 from .daemon import WorkerDaemonActor
 from .dispatcher import DispatchActor
 from .events import EventsActor

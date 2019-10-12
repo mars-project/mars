@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...utils import lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
-cudf = lazy_import('cudf')
+cudf = lazy_import('cudf', globals=globals())
 
 
 class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):

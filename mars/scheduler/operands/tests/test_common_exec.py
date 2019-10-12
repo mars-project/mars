@@ -95,7 +95,7 @@ class FakeExecutionActor(SchedulerActor):
 
     @log_unhandled
     def execute_graph(self, session_id, graph_key, graph_ser, io_meta, data_sizes,
-                      send_addresses=None, callback=None):
+                      calc_device=None, send_addresses=None, callback=None):
         query_key = (session_id, graph_key)
         assert query_key not in self._graph_records
 
