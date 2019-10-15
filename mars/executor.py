@@ -32,7 +32,7 @@ except ImportError:  # pragma: no cover
 
 from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
-from .compat import six, futures, OrderedDict, enum, reduce
+from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
 
 logger = logging.getLogger(__name__)
