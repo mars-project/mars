@@ -28,7 +28,7 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     flip, flipud, fliplr, repeat, tile, isin, searchsorted, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-from mars.tensor.array_utils import cp
+from mars.tests.core import require_cupy
 
 
 class Test(unittest.TestCase):
@@ -986,7 +986,7 @@ class Test(unittest.TestCase):
         expected = np.searchsorted(raw3, 20, sorter=order)
         np.testing.assert_array_equal(res, expected)
 
-    @unittest.skipIf(cp is None, 'cupy not installed')
+    @require_cupy
     def testToGPUExecution(self):
         raw = np.random.rand(10, 10)
         x = tensor(raw, chunk_size=3)
@@ -996,7 +996,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(gx, concat=True)[0]
         np.testing.assert_array_equal(res.get(), raw)
 
-    @unittest.skipIf(cp is None, 'cupy not installed')
+    @require_cupy
     def testToCPUExecution(self):
         raw = np.random.rand(10, 10)
         x = tensor(raw, chunk_size=3, gpu=True)

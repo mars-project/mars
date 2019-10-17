@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import mars.tensor as mt
-from mars.executor import Executor, register
+from mars.executor import Executor, register, GraphDeviceAssigner
 from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
@@ -164,3 +164,17 @@ class Test(unittest.TestCase):
         executor = Executor()
         res = executor.execute_graph(graph, keys=[chunk.key])[0]
         np.testing.assert_array_equal(res, fake_result)
+
+    def testGraphDeviceAssigner(self):
+        import mars.tensor as mt
+
+        a = mt.random.rand(10, 10, chunk_size=5, gpu=True)
+        b = a.sum(axis=1)
+        graph = b.build_graph(tiled=True, compose=False)
+
+        assigner = GraphDeviceAssigner(graph, list(n.op for n in graph.iter_indep()), devices=[0, 1])
+        assigner.assign()
+
+        self.assertEqual(a.cix[0, 0].device, a.cix[0, 1].device)
+        self.assertEqual(a.cix[1, 0].device, a.cix[1, 1].device)
+        self.assertNotEqual(a.cix[0, 0].device, a.cix[1, 0].device)

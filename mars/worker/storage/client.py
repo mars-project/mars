@@ -64,20 +64,23 @@ class StorageClient(object):
     def promise_ref(self, *args, **kw):
         return self._host_actor.promise_ref(*args, **kw)
 
-    def get_storage_handler(self, storage_type):
+    def get_storage_handler(self, location):
         try:
-            return self._storage_handlers[storage_type]
+            return self._storage_handlers[location]
         except KeyError:
-            handler = self._storage_handlers[storage_type] = \
-                get_storage_handler_cls(storage_type)(self)
+            handler = self._storage_handlers[location] = \
+                get_storage_handler_cls(location[1])(self, proc_id=location[0])
             return handler
 
     def __getattr__(self, item):
         return getattr(self._manager_ref, item)
 
     def _get_stored_devices(self, session_id, data_key):
-        return [loc[1] for loc in (self._manager_ref.get_data_locations(session_id, data_key) or ())
-                if loc[0] == self._proc_id or loc[1] in DataStorageDevice.GLOBAL_DEVICES]
+        return [loc for loc in (self._manager_ref.get_data_locations(session_id, data_key) or ())]
+
+    def _normalize_devices(self, devices):
+        return [d if isinstance(d, tuple) else d.build_location(self.proc_id)
+                for d in devices] if devices is not None else None
 
     def _do_with_spill(self, action, total_bytes, device_order,
                        device_pos=0, spill_multiplier=1.0, ensure=True):
@@ -98,8 +101,8 @@ class StorageClient(object):
                         ))
             six.reraise(*exc_info)
 
-        cur_device_type = device_order[device_pos]
-        handler = self.get_storage_handler(cur_device_type)
+        cur_device = device_order[device_pos]
+        handler = self.get_storage_handler(cur_device)
         return action(handler).catch(_handle_err)
 
     def create_reader(self, session_id, data_key, source_devices, packed=False,
@@ -116,6 +119,7 @@ class StorageClient(object):
         :param packed_compression: compression format to use when reading as packed
         :param _promise: return a promise
         """
+        source_devices = self._normalize_devices(source_devices)
         stored_devs = set(self._get_stored_devices(session_id, data_key))
         for src_dev in source_devices:
             if src_dev not in stored_devs:
@@ -132,12 +136,14 @@ class StorageClient(object):
 
         if _promise:
             return self.copy_to(session_id, data_key, source_devices) \
-                .then(lambda *_: self.create_reader(session_id, data_key, source_devices))
+                .then(lambda *_: self.create_reader(session_id, data_key, source_devices, packed=packed))
         else:
             raise IOError('Cannot return a non-promise result')
 
     def create_writer(self, session_id, data_key, total_bytes, device_order, packed=False,
                       packed_compression=None, _promise=True):
+        device_order = self._normalize_devices(device_order)
+
         def _action(handler, _promise=True):
             logger.debug('Creating %s writer for (%s, %s) on %s', 'packed' if packed else 'bytes',
                          session_id, data_key, handler.storage_type)
@@ -157,6 +163,7 @@ class StorageClient(object):
             raise StorageFull
 
     def get_object(self, session_id, data_key, source_devices, serialized=False, _promise=True):
+        source_devices = self._normalize_devices(source_devices)
         stored_devs = set(self._get_stored_devices(session_id, data_key))
         for src_dev in source_devices:
             if src_dev not in stored_devs:
@@ -174,6 +181,7 @@ class StorageClient(object):
             raise IOError('Getting object without promise not supported')
 
     def put_object(self, session_id, data_key, obj, device_order, serialized=False):
+        device_order = self._normalize_devices(device_order)
         data_size = self._manager_ref.get_data_size(session_id, data_key) or calc_data_size(obj)
 
         def _action(h):
@@ -182,6 +190,7 @@ class StorageClient(object):
         return self._do_with_spill(_action, data_size, device_order)
 
     def copy_to(self, session_id, data_key, device_order, ensure=True):
+        device_order = self._normalize_devices(device_order)
         existing_devs = set(self._get_stored_devices(session_id, data_key))
         data_size = self._manager_ref.get_data_size(session_id, data_key)
 
@@ -213,17 +222,17 @@ class StorageClient(object):
 
     def delete(self, session_id, data_key, devices=None, _tell=False):
         devices = devices or self._get_stored_devices(session_id, data_key) or ()
+        devices = self._normalize_devices(devices)
         for dev_type in devices:
             handler = self.get_storage_handler(dev_type)
             handler.delete(session_id, data_key, _tell=_tell)
 
     def filter_exist_keys(self, session_id, data_keys, devices=None):
-        devices = [d.build_location(self.proc_id)
-                   for d in (devices or DataStorageDevice.__members__.values())]
+        devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())
         return self.manager_ref.filter_exist_keys(session_id, data_keys, devices)
 
     def pin_data_keys(self, session_id, data_keys, token, devices=None):
-        devices = devices or DataStorageDevice.__members__.values()
+        devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())
         pinned = set()
         for dev in devices:
             handler = self.get_storage_handler(dev)
@@ -234,7 +243,7 @@ class StorageClient(object):
         return list(pinned)
 
     def unpin_data_keys(self, session_id, data_keys, token, devices=None):
-        devices = devices or DataStorageDevice.__members__.values()
+        devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())
         for dev in devices:
             handler = self.get_storage_handler(dev)
             if not getattr(handler, '_spillable', False):
@@ -243,6 +252,7 @@ class StorageClient(object):
 
     def spill_size(self, data_size, devices):
         promises = []
+        devices = self._normalize_devices(devices)
         for dev in devices:
             handler = self.get_storage_handler(dev)
             if not getattr(handler, '_spillable', False):

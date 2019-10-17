@@ -22,10 +22,11 @@ from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic
+from . import base
 from . import indexing
 from . import merge
 from . import reduction
 from . import groupby
-del reduction, arithmetic, indexing, merge, groupby
 
+del reduction, arithmetic, indexing, merge, base, groupby
 del DataFrameFetch, DataFrameFetchShuffle

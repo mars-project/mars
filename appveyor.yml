@@ -32,10 +32,10 @@ install:
   - "python -m pip install --disable-pip-version-check --user --upgrade pip"
 
   # Install the build dependencies of the project.
-  - "pip install pyarrow==0.14.0"
-  - "pip install --upgrade wheel twine setuptools virtualenv coveralls"
-  - "pip install -r requirements-dev.txt"
-  - "pip install -r requirements-extra.txt"
+  - "python -m pip install pyarrow==0.14.0"
+  - "python -m pip install --upgrade wheel twine setuptools virtualenv coveralls"
+  - "python -m pip install -r requirements-dev.txt"
+  - "python -m pip install -r requirements-extra.txt"
 
 
 build_script:

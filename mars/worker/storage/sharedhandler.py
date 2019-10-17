@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+
 import pyarrow
 
 from ...config import options
@@ -102,10 +104,10 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                            SpillableStorageMixin):
     storage_type = DataStorageDevice.SHARED_MEMORY
 
-    def __init__(self, storage_ctx):
+    def __init__(self, storage_ctx, proc_id=None):
         from .objectholder import SharedHolderActor
 
-        StorageHandler.__init__(self, storage_ctx)
+        StorageHandler.__init__(self, storage_ctx, proc_id=proc_id)
         self._shared_store = storage_ctx.shared_store
         self._holder_ref = storage_ctx.promise_ref(SharedHolderActor.default_uid())
 
@@ -153,20 +155,23 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                       .then(lambda writer: self._copy_bytes_data(reader, writer),
                             lambda *exc: self.pass_on_exc(reader.close, exc)))
 
-        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
-        def _load(obj):
+        def _load(data_or_ser, serialized):
             try:
-                return self.put_object(session_id, data_key, obj, _promise=True)
+                return self.put_object(
+                    session_id, data_key, data_or_ser, serialized=serialized, _promise=True)
             finally:
-                del obj
+                del data_or_ser
 
         def _fallback(*_):
-            return src_handler.get_object(session_id, data_key, _promise=True) \
-                .then(_load)
+            ser_needed = src_handler.storage_type not in \
+                         (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
+            return src_handler.get_object(session_id, data_key, serialized=ser_needed, _promise=True) \
+                .then(functools.partial(_load, serialized=ser_needed))
 
-        return self.transfer_in_global_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
         self._holder_ref.delete_object(session_id, data_key, _tell=_tell)

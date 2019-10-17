@@ -30,11 +30,12 @@ from .quota import QuotaActor, MemQuotaActor
 from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
-from .calc import CpuCalcActor
+from .calc import CpuCalcActor, CudaCalcActor
 from .transfer import ReceiverActor, SenderActor
 from .prochelper import ProcessHelperActor
 from .transfer import ResultSenderActor
-from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, InProcHolderActor
+from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
+    InProcHolderActor, CudaHolderActor
 from .utils import WorkerClusterInfoActor
 
 
@@ -58,6 +59,9 @@ class WorkerService(object):
         self._cluster_info_ref = None
         self._cpu_calc_actors = []
         self._inproc_holder_actors = []
+        self._inproc_io_runner_actors = []
+        self._cuda_calc_actors = []
+        self._cuda_holder_actors = []
         self._sender_actors = []
         self._receiver_actors = []
         self._spill_actors = []
@@ -65,6 +69,15 @@ class WorkerService(object):
         self._result_sender_ref = None
 
         self._advertise_addr = kwargs.pop('advertise_addr', None)
+
+        cuda_devices = kwargs.pop('cuda_devices', None)
+        if cuda_devices is not None and len(cuda_devices) == 0:
+            self._n_cuda_process = 0
+        else:
+            if cuda_devices is None:
+                cuda_devices = [0]
+            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(d) for d in cuda_devices)
+            self._n_cuda_process = resource.cuda_count()
 
         self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())
         self._n_net_process = int(kwargs.pop('n_net_process', None) or '4')
@@ -104,7 +117,8 @@ class WorkerService(object):
 
     @property
     def n_process(self):
-        return 1 + self._n_cpu_process + self._n_net_process + (1 if self._spill_dirs else 0)
+        return 1 + self._n_cpu_process + self._n_cuda_process + self._n_net_process \
+               + (1 if self._spill_dirs else 0)
 
     def _calc_memory_limits(self):
         def _calc_size_limit(limit_str, total_size):
@@ -206,7 +220,7 @@ class WorkerService(object):
             self._n_cpu_process = pool.cluster_info.n_process - 1 - process_start_index
 
         for cpu_id in range(self._n_cpu_process):
-            uid = 'w:%d:mars-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
+            uid = 'w:%d:mars-cpu-calc-%d-%d' % (cpu_id + 1, os.getpid(), cpu_id)
             actor = actor_holder.create_actor(CpuCalcActor, uid=uid)
             self._cpu_calc_actors.append(actor)
 
@@ -214,7 +228,27 @@ class WorkerService(object):
             actor = actor_holder.create_actor(InProcHolderActor, uid=uid)
             self._inproc_holder_actors.append(actor)
 
-        start_pid = 1 + process_start_index + self._n_cpu_process
+            actor = actor_holder.create_actor(
+                IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(cpu_id + 1))
+            self._inproc_io_runner_actors.append(actor)
+
+        start_pid = 1 + self._n_cpu_process
+
+        stats = resource.cuda_card_stats() if self._n_cuda_process else []
+        for cuda_id, stat in enumerate(stats):
+            uid = 'w:%d:mars-cuda-calc-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
+            actor = actor_holder.create_actor(CudaCalcActor, uid=uid)
+            self._cuda_calc_actors.append(actor)
+
+            uid = 'w:%d:mars-cuda-holder-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
+            actor = actor_holder.create_actor(CudaHolderActor, device_id=stat.index, uid=uid)
+            self._cuda_holder_actors.append(actor)
+
+            actor = actor_holder.create_actor(
+                IORunnerActor, lock_free=True, dispatched=False, uid=IORunnerActor.gen_uid(start_pid + cuda_id))
+            self._inproc_io_runner_actors.append(actor)
+
+        start_pid += self._n_cuda_process
 
         if distributed:
             # create SenderActor and ReceiverActor
@@ -242,7 +276,7 @@ class WorkerService(object):
         start_pid = pool.cluster_info.n_process - 1
         if options.worker.spill_directory:
             for spill_id in range(len(options.worker.spill_directory)):
-                uid = 'w:%d:mars-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
+                uid = 'w:%d:mars-global-io-runner-%d-%d' % (start_pid, os.getpid(), spill_id)
                 actor = actor_holder.create_actor(IORunnerActor, uid=uid)
                 self._spill_actors.append(actor)
 
@@ -258,7 +292,9 @@ class WorkerService(object):
     def stop(self):
         try:
             for actor in (self._cpu_calc_actors + self._sender_actors + self._inproc_holder_actors
-                          + self._receiver_actors + self._spill_actors + self._process_helper_actors):
+                          + self._inproc_io_runner_actors + self._cuda_calc_actors
+                          + self._cuda_holder_actors + self._receiver_actors + self._spill_actors
+                          + self._process_helper_actors):
                 if actor and actor.ctx:
                     actor.destroy(wait=False)
 

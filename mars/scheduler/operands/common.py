@@ -42,6 +42,7 @@ class OperandActor(BaseOperandActor):
 
         # worker the operand expected to be executed on
         self._target_worker = op_info.get('target_worker')
+        self._calc_device = op_info.get('calc_device', 'cpu')
         self._retries = op_info['retries']
         self._assigned_workers = set()
 
@@ -350,7 +351,7 @@ class OperandActor(BaseOperandActor):
             with rewrite_worker_errors():
                 self._submit_promise = self._execution_ref.execute_graph(
                     self._session_id, self._op_key, exec_graph, self._io_meta, data_metas,
-                    send_addresses=target_predicts, _promise=True, _spawn=False)
+                    calc_device=self._calc_device, send_addresses=target_predicts, _promise=True, _spawn=False)
         except WorkerDead:
             logger.debug('Worker %s dead when submitting operand %s into queue',
                          worker, self._op_key)

@@ -66,7 +66,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
 
         if columns is not None:
-            if input_tensor.shape[1] != len(columns):
+            if not (input_tensor.ndim == 1 and len(columns) == 1 or input_tensor.shape[1] == len(columns)):
                 raise ValueError(
                     'columns {0} should have the same shape with tensor: {1}'.format(columns, input_tensor.shape[1]))
             if not isinstance(columns, pd.Index):
@@ -81,9 +81,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             else:
                 columns_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[1]), store_data=True)
 
-        return self.new_dataframe([input_tensor], input_tensor.shape, dtypes=self.dtypes,
-                                  index_value=index_value,
-                                  columns_value=columns_value)
+        if input_tensor.ndim == 1:
+            shape = (input_tensor.shape[0], 1)
+        else:
+            shape = input_tensor.shape
+
+        return self.new_dataframe([input_tensor], shape, dtypes=self.dtypes,
+                                  index_value=index_value, columns_value=columns_value)
 
     @classmethod
     def tile(cls, op):
@@ -122,11 +126,15 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                                          index_value=index_value, columns_value=columns_value)
             out_chunks.append(out_chunk)
 
+        if in_tensor.ndim == 1:
+            nsplits = in_tensor.nsplits + ((1,),)
+        else:
+            nsplits = in_tensor.nsplits
+
         new_op = op.copy()
         return new_op.new_dataframes(out_df.inputs, out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value,
-                                     columns_value=out_df.columns,
-                                     chunks=out_chunks, nsplits=in_tensor.nsplits)
+                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):

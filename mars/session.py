@@ -18,9 +18,10 @@ import numpy as np
 
 from .core import Entity, Base
 try:
-    from .resource import cpu_count
+    from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
     from multiprocessing import cpu_count
+    cuda_count = None
 
 
 class LocalSession(object):
@@ -58,8 +59,21 @@ class LocalSession(object):
     def run(self, *tileables, **kw):
         if self._executor is None:
             raise RuntimeError('Session has closed')
+        dest_gpu = all(tileable.op.gpu for tileable in tileables)
+        if dest_gpu:
+            self._executor._engine = 'cupy'
+        else:
+            self._executor._engine = None
         if 'n_parallel' not in kw:
-            kw['n_parallel'] = cpu_count()
+            if dest_gpu:
+                # GPU
+                cnt = cuda_count() if cuda_count is not None else 0
+                if cnt == 0:
+                    raise RuntimeError('No GPU found for execution')
+                kw['n_parallel'] = cnt
+            else:
+                # CPU
+                kw['n_parallel'] = cpu_count()
         res = self._executor.execute_tileables(tileables, **kw)
         return res
 

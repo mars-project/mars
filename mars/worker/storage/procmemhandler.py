@@ -21,10 +21,8 @@ from .core import DataStorageDevice, StorageHandler, ObjectStorageMixin, \
 class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     storage_type = DataStorageDevice.PROC_MEMORY
 
-    def __init__(self, storage_ctx):
-        StorageHandler.__init__(self, storage_ctx)
-
-        self._proc_id = storage_ctx.proc_id
+    def __init__(self, storage_ctx, proc_id=None):
+        StorageHandler.__init__(self, storage_ctx, proc_id=proc_id)
         self._inproc_store_ref_attr = None
 
     @property
@@ -51,16 +49,21 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         def _read_and_put(reader):
             with reader:
-                result = reader.get_io_pool() \
-                    .submit(reader.read).result()
+                result = reader.get_io_pool().submit(reader.read).result()
             self.put_object(session_id, data_key, result, serialized=True)
 
-        return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
-            .then(_read_and_put)
+        def _fallback(*_):
+            return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
+                .then(_read_and_put)
+
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
-        return src_handler.get_object(session_id, data_key, _promise=True) \
-            .then(lambda obj: self.put_object(session_id, data_key, obj))
+        def _fallback(*_):
+            return src_handler.get_object(session_id, data_key, _promise=True) \
+                .then(lambda obj: self.put_object(session_id, data_key, obj))
+
+        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
         self._inproc_store_ref.delete_object(session_id, data_key, _tell=_tell)

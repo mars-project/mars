@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
-try:
-    import cudf
-except ImportError:  # pragma: no cover
-    cudf = None
 
-from mars.tests.core import TestBase
 from mars.executor import Executor
 from mars.dataframe.base import to_gpu, to_cpu
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
+from mars.tests.core import TestBase, require_cudf
+from mars.utils import lazy_import
+
+cudf = lazy_import('cudf', globals=globals())
 
 
 class Test(TestBase):
@@ -33,7 +30,7 @@ class Test(TestBase):
         super(Test, self).setUp()
         self.executor = Executor()
 
-    @unittest.skipIf(cudf is None, 'cudf not installed')
+    @require_cudf
     def testToGPUExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
         df = from_pandas_df(pdf, chunk_size=(13, 21))
@@ -51,7 +48,7 @@ class Test(TestBase):
         self.assertIsInstance(res, cudf.Series)
         pd.testing.assert_series_equal(res.to_pandas(), pseries)
 
-    @unittest.skipIf(cudf is None, 'cudf not installed')
+    @require_cudf
     def testToCPUExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
         df = from_pandas_df(pdf, chunk_size=(13, 21))

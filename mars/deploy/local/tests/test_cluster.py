@@ -39,7 +39,7 @@ from mars.worker.dispatcher import DispatchActor
 from mars.errors import ExecutionFailed
 from mars.config import options, option_context
 from mars.web.session import Session as WebSession
-from mars.tests.core import mock
+from mars.tests.core import mock, require_cudf
 
 logger = logging.getLogger(__name__)
 _exec_timeout = 120 if 'CI' in os.environ else -1
@@ -785,3 +785,16 @@ class Test(unittest.TestCase):
             r1 = data1.merge(data2, how='inner', on=['a', 'b'])
             r2 = web_session.run(merge(df1, df2, how='inner', on=['a', 'b']), timeout=_exec_timeout)
             pd.testing.assert_frame_equal(sort_dataframe_inplace(r1, 0), sort_dataframe_inplace(r2, 0))
+
+    @require_cudf
+    def testCudaCluster(self, *_):
+        from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+
+        with new_cluster(scheduler_n_process=2, worker_n_process=2,
+                         shared_memory='20M', web=True) as cluster:
+            session = cluster.session
+            pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
+            df = from_pandas_df(pdf, chunk_size=(13, 21))
+            cdf = df.to_gpu()
+            result = session.run(cdf)
+            pd.testing.assert_frame_equal(pdf, result)

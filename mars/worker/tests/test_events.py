@@ -44,7 +44,7 @@ class Test(WorkerCase):
 
             event2 = events_ref.add_open_event(
                 EventCategory.PROCEDURE, EventLevel.NORMAL,
-                ProcedureEventType.CALCULATION, 'test_owner2'
+                ProcedureEventType.CPU_CALC, 'test_owner2'
             )
             self.assertIsNotNone(event2)
 
@@ -66,7 +66,7 @@ class Test(WorkerCase):
             self.assertEqual(reloaded.event_id, proc_events[0].event_id)
 
             with EventContext(events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
-                              ProcedureEventType.CALCULATION, 'test_owner3'):
+                              ProcedureEventType.CPU_CALC, 'test_owner3'):
                 proc_events = events_ref.query_by_time(EventCategory.PROCEDURE)
                 self.assertIsNone(proc_events[-1].time_end)
             self.assertIsNotNone(proc_events[-1].time_end)
