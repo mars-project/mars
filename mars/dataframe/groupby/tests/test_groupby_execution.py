@@ -62,3 +62,18 @@ class Test(TestBase):
 
         r3 = mdf2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'})
         pd.testing.assert_frame_equal(r3.execute(), df2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}))
+
+        r3 = mdf2.groupby('c2').agg({'c1': 'min'})
+        pd.testing.assert_frame_equal(r3.execute(), df2.groupby('c2').agg({'c1': 'min'}))
+
+        r4 = mdf2.groupby('c2').sum()
+        pd.testing.assert_frame_equal(r4.execute(), df2.groupby('c2').sum())
+
+        r5 = mdf2.groupby('c2').prod()
+        pd.testing.assert_frame_equal(r5.execute(), df2.groupby('c2').prod())
+
+        r6 = mdf2.groupby('c2').min()
+        pd.testing.assert_frame_equal(r6.execute(), df2.groupby('c2').min())
+
+        r7 = mdf2.groupby('c2').max()
+        pd.testing.assert_frame_equal(r7.execute(), df2.groupby('c2').max())

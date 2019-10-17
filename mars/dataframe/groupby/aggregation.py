@@ -26,7 +26,7 @@ from .core import DataFrameGroupByMap, DataFrameGroupByReduce
 
 
 class Stage(enum.Enum):
-    map_agg = 'map_agg'
+    agg = 'agg'
     combine = 'combine'
 
 
@@ -103,7 +103,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = []
         for chunk in in_df.chunks:
             agg_op = op.copy().reset_key()
-            agg_op._stage = Stage.map_agg
+            agg_op._stage = Stage.agg
             agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                          index_value=out_df.index_value,
                                          columns_value=out_df.columns)
@@ -130,14 +130,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
-        if op.stage == Stage.map_agg:
-            ret = cls._execute_map_agg(df, op)
+        if op.stage == Stage.agg:
+            ret = cls._execute_agg(df, op)
         else:
             ret = cls._execute_combine(df, op)
         ctx[op.outputs[0].key] = ret
 
     @classmethod
-    def _execute_map_agg(cls, df, op):
+    def _execute_agg(cls, df, op):
         if isinstance(op.func, (six.string_types, dict)):
             return df.groupby(op.by, as_index=op.as_index).agg(op.func)
         else:
@@ -156,9 +156,19 @@ def agg(groupby, func):
     # the data in the stage of groupby and do shuffle after aggregation.
     if not isinstance(groupby, GROUPBY_TYPE):
         raise TypeError('Input should be type of groupby, not %s' % type(groupby))
-    if isinstance(func, list):
+    elif isinstance(func, list):
         raise NotImplementedError('Function list is not supported now.')
+
+    if isinstance(func, six.string_types):
+        funcs = [func]
+    elif isinstance(func, dict):
+        funcs = func.values()
+    else:
+        raise NotImplementedError('Type %s is not support' % type(func))
+    for f in funcs:
+        if f not in ['sum', 'prod', 'min', 'max']:
+            raise NotImplementedError('Aggregation function %s has not been supported' % f)
+
     in_df = groupby.inputs[0]
     agg_op = DataFrameGroupByAgg(func=func, by=groupby.op.by, as_index=groupby.op.as_index)
     return agg_op(in_df)
-
