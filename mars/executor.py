@@ -18,9 +18,11 @@ import logging
 import sys
 import threading
 import weakref
+import operator
 from collections import deque, defaultdict
 from numbers import Integral
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -170,19 +172,140 @@ class MockExecutorSyncProvider(ThreadExecutorSyncProvider):
         return MockThreadPoolExecutor(n_workers)
 
 
+class GraphDeviceAssigner(object):
+    # Analyze graph and assign initial chunks to different GPU devices
+    # only work when execute on GPU
+    def __init__(self, graph, starts, devices):
+        self._graph = graph
+        self._undigraph = None
+        self._op_keys = {start.key for start in starts}
+        self._devices = devices
+        self._device_slots = {dev: 1 for dev in devices}
+
+    def _calc_device_assign_limits(self, initial_count, occupied=None):
+        """
+        Calculate limitation of number of initial operands for devices
+        :param initial_count: num of nodes in READY state
+        :param occupied: device -> num of initials already assigned
+        """
+        occupied = occupied or dict()
+        actual_count = initial_count - sum(occupied.values())
+
+        device_res = sorted(self._device_slots.items(), key=operator.itemgetter(1),
+                            reverse=True)
+
+        devices = [t[0] for t in device_res]
+        device_cores = np.array([t[1] for t in device_res]).astype(np.float32)
+
+        # remove assigned nodes from limitations
+        counts = initial_count * device_cores / device_cores.sum()
+        for idx, dev in enumerate(devices):
+            counts[idx] = max(0, counts[idx] - occupied.get(dev, 0))
+
+        # all assigned, nothing to do
+        if counts.sum() == 0:
+            return dict((dev, 0) for dev in devices)
+
+        counts = (actual_count * counts / counts.sum()).astype(np.int32)
+
+        # assign remaining nodes
+        pos = 0
+        rest = actual_count - counts.sum()
+        while rest > 0:
+            counts[pos] += 1
+            rest -= 1
+            pos = (pos + 1) % len(counts)
+        return dict(zip(devices, counts))
+
+    def _assign_by_bfs(self, start, device, initial_sizes, spread_limits,
+                       keys_to_assign, assigned_record, graph=None):
+        """
+        Assign initial nodes using Breadth-first Search given initial sizes and
+        limitations of spread range.
+        """
+        if initial_sizes[device] <= 0:
+            return
+
+        graph = graph or self._graph
+        if self._undigraph is None:
+            undigraph = self._undigraph = graph.build_undirected()
+        else:
+            undigraph = self._undigraph
+
+        assigned = 0
+        spread_range = 0
+        for v in undigraph.bfs(start=start, visit_predicate='all'):
+            op_key = v.op.key
+            if op_key in assigned_record:
+                continue
+            spread_range += 1
+            if op_key not in keys_to_assign:
+                continue
+            assigned_record[op_key] = device
+            assigned += 1
+            if spread_range >= spread_limits[device] \
+                    or assigned >= initial_sizes[device]:
+                break
+        initial_sizes[device] -= assigned
+
+    def assign(self):
+        """
+        Decide target device for given chunks.
+
+        :return: dict mapping operand keys into device
+        """
+        graph = self._graph
+        cur_assigns = OrderedDict()
+
+        op_key_to_chunks = defaultdict(list)
+        for n in graph:
+            op_key_to_chunks[n.op.key].append(n)
+
+        descendant_readies = set()
+        op_keys = set(self._op_keys)
+        chunks_to_assign = [op_key_to_chunks[k][0] for k in op_keys]
+        assigned_counts = defaultdict(lambda: 0)
+
+        # calculate the number of nodes to be assigned to each device
+        # given number of devices and existing assignments
+        device_quotas = self._calc_device_assign_limits(
+            len(chunks_to_assign) + len(descendant_readies), assigned_counts)
+
+        # calculate expected descendant count (spread range) of
+        # every device and subtract assigned number from it
+        average_spread_range = len(graph) * 1.0 / len(self._device_slots)
+        spread_ranges = defaultdict(lambda: average_spread_range)
+        # assign from other nodes to be assigned
+        sorted_candidates = [v for v in chunks_to_assign]
+        while max(device_quotas.values()):
+            device = max(device_quotas, key=lambda k: device_quotas[k])
+            cur = sorted_candidates.pop()
+            while cur.op.key in cur_assigns:
+                cur = sorted_candidates.pop()
+            self._assign_by_bfs(cur, device, device_quotas, spread_ranges, op_keys,
+                                cur_assigns, graph=graph)
+
+        keys_to_assign = set(n.op.key for n in chunks_to_assign)
+        for k, v in cur_assigns.items():
+            if k in keys_to_assign:
+                for chunk in op_key_to_chunks[k]:
+                    chunk.op._device = v
+
+
 class GraphExecution(object):
     """
     Represent an execution for a specified graph.
     """
 
     def __init__(self, chunk_results, graph, keys, executed_keys, sync_provider,
-                 n_parallel=None, prefetch=False, print_progress=False,
+                 n_parallel=None, engine=None, prefetch=False, print_progress=False,
                  mock=False, mock_max_memory=0, fetch_keys=None, no_intermediate=False):
         self._chunk_results = chunk_results
         self._graph = graph
         self._keys = keys
         self._key_set = set(keys).union(executed_keys)
         self._n_parallel = n_parallel or 1
+        self._engine = engine
         self._prefetch = prefetch
         self._print_progress = print_progress
         self._mock = mock
@@ -209,6 +332,8 @@ class GraphExecution(object):
         self._op_key_to_ops = self._calc_op_key_to_ops()
         self._submitted_op_keys = set()
         self._executed_op_keys = set()
+        # initial assignment for GPU
+        self._assign_devices()
 
     def _order_starts(self):
         visited = set()
@@ -230,6 +355,14 @@ class GraphExecution(object):
                                                    if n not in visited)))
             if not stack and starts:
                 stack.appendleft(starts.popleft())
+
+    def _assign_devices(self):
+        if self._n_parallel <= 1 or self._engine != 'cupy':
+            return
+
+        devices = list(range(self._n_parallel))
+        assigner = GraphDeviceAssigner(self._graph, self._queue, devices)
+        assigner.assign()
 
     def _calc_ref_counts(self):
         ref_counts = dict()
@@ -488,9 +621,9 @@ class Executor(object):
         chunk_result = self._chunk_result if chunk_result is None else chunk_result
         graph_execution = GraphExecution(chunk_result, optimized_graph,
                                          keys, executed_keys, self._sync_provider,
-                                         n_parallel=n_parallel, prefetch=self._prefetch,
-                                         print_progress=print_progress, mock=mock,
-                                         mock_max_memory=self._mock_max_memory,
+                                         n_parallel=n_parallel, engine=self._engine,
+                                         prefetch=self._prefetch, print_progress=print_progress,
+                                         mock=mock, mock_max_memory=self._mock_max_memory,
                                          fetch_keys=fetch_keys, no_intermediate=no_intermediate)
         res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
