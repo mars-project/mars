@@ -57,9 +57,10 @@ def sort_dataframe_inplace(df, *axis):
         df.sort_index(axis=ax, inplace=True)
     return df
 
+
 def concat_tileable_chunks(df):
-    from .merge.concat import DataFrameConcat
-    from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE
+    from .merge.concat import DataFrameConcat, GroupByConcat
+    from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
 
     assert not df.is_coarse()
 
@@ -78,6 +79,9 @@ def concat_tileable_chunks(df):
             [df], shape=df.shape, chunks=[chunk],
             nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
             index_value=df.index_value, name=df.name)
+    elif isinstance(df, GROUPBY_TYPE):
+        chunk = GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_chunk(df.chunks)
+        return GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
     else:
         raise NotImplementedError
 

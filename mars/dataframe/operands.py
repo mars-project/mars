@@ -23,7 +23,7 @@ from ..core import TileableOperandMixin, FuseChunkData, FuseChunk
 from ..operands import Operand, ShuffleMap, ShuffleReduce, Fuse
 from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, GROUPBY_TYPE
 
 
 class ObjectType(Enum):
@@ -31,6 +31,7 @@ class ObjectType(Enum):
     series = 2
     index = 3
     scalar = 4
+    groupby = 5
 
 
 class DataFrameOperandMixin(TileableOperandMixin):
@@ -48,7 +49,8 @@ class DataFrameOperandMixin(TileableOperandMixin):
         ObjectType.dataframe: DATAFRAME_TYPE,
         ObjectType.series: SERIES_TYPE,
         ObjectType.index: INDEX_TYPE,
-        ObjectType.scalar: TENSOR_TYPE
+        ObjectType.scalar: TENSOR_TYPE,
+        ObjectType.groupby: GROUPBY_TYPE
     }
 
     @classmethod
