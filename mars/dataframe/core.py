@@ -697,11 +697,28 @@ class DataFrame(TileableEntity):
                 raise
 
 
+class DataFrameGroupByData(TileableData):
+    __slots__ = ()
+
+    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, shape=None, chunks=None, **kw):
+        super(DataFrameGroupByData, self).__init__(_op=op, _shape=shape, _chunks=chunks, **kw)
+
+
+class DataFrameGroupBy(TileableEntity):
+    __slots__ = ()
+    _allow_data_type_ = (DataFrameGroupByData,)
+
+
 INDEX_TYPE = (Index, IndexData)
 INDEX_CHUNK_TYPE = (IndexChunk, IndexChunkData)
 SERIES_TYPE = (Series, SeriesData)
 SERIES_CHUNK_TYPE = (SeriesChunk, SeriesChunkData)
 DATAFRAME_TYPE = (DataFrame, DataFrameData)
 DATAFRAME_CHUNK_TYPE = (DataFrameChunk, DataFrameChunkData)
-TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE
+GROUPBY_TYPE = (DataFrameGroupBy, DataFrameGroupByData)
+TILEABLE_TYPE = INDEX_TYPE + SERIES_TYPE + DATAFRAME_TYPE + GROUPBY_TYPE
 CHUNK_TYPE = INDEX_CHUNK_TYPE + SERIES_CHUNK_TYPE + DATAFRAME_CHUNK_TYPE

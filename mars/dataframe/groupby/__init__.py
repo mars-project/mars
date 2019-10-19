@@ -12,16 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .concat import DataFrameConcat
-from .merge import join, merge, DataFrameShuffleMerge, DataFrameMergeAlignMap, DataFrameMergeAlignReduce
-
 
 def _install():
-    from ..core import DATAFRAME_TYPE
+    from ..operands import DATAFRAME_TYPE, GROUPBY_TYPE
+    from .core import dataframe_groupby
+    from .aggregation import agg
 
     for cls in DATAFRAME_TYPE:
-        setattr(cls, 'join', join)
-        setattr(cls, 'merge', merge)
+        setattr(cls, 'groupby', dataframe_groupby)
+    for cls in GROUPBY_TYPE:
+        setattr(cls, 'agg', agg)
+        setattr(cls, 'aggregate', agg)
+
+        setattr(cls, 'sum', lambda groupby: agg(groupby, 'sum'))
+        setattr(cls, 'prod', lambda groupby: agg(groupby, 'prod'))
+        setattr(cls, 'max', lambda groupby: agg(groupby, 'max'))
+        setattr(cls, 'min', lambda groupby: agg(groupby, 'min'))
 
 
 _install()
