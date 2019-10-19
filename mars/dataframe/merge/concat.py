@@ -149,3 +149,23 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                                    for i in range(len(inputs[0])))
         else:
             ctx[chunk.key] = _base_concat(chunk, inputs)
+
+
+class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
+    _by = AnyField('by')
+
+    def __init__(self, by=None, object_type=None, **kw):
+        super(GroupByConcat, self).__init__(_by=by, _object_type=object_type, **kw)
+
+    @property
+    def by(self):
+        return self._by
+
+    @classmethod
+    def execute(cls, ctx, op):
+        from pandas.core.groupby.groupby import groupby
+
+        inputs = [ctx[input.key] for input in op.inputs]
+        input_data = [group[1] for inp in inputs if len(inp) > 1 for group in inp]
+        obj = pd.concat(input_data)
+        ctx[op.outputs[0].key] = groupby(obj, by=op.by)
