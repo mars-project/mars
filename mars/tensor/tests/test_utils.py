@@ -23,12 +23,12 @@ from mars.tensor.utils import hash_on_axis
 
 class Test(unittest.TestCase):
     def testHashOnAxis(self):
-        hash_from_buffer = lambda x: mmh3_hash_from_buffer(np_getbuffer(x))
+        hash_from_buffer = lambda x: mmh3_hash_from_buffer(memoryview(x))
 
         a = np.random.rand(10)
 
         result = hash_on_axis(a, 0, 3)
-        expected = np.array([hash_from_buffer(element) % 3 for element in a])
+        expected = np.array([mmh3_hash_from_buffer(element) % 3 for element in a])
 
         np.testing.assert_array_equal(result, expected)
 

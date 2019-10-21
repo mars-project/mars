@@ -32,7 +32,7 @@ except (ImportError, OSError):  # pragma: no cover
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 from ..compat import zip_longest, izip, six, reduce, lkeys, \
-    OrderedDict, functools32, np_getbuffer
+    OrderedDict, functools32
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 
@@ -716,13 +716,13 @@ def hash_on_axis(ar, axis, n_dest):
         def _hash_to_dest(data):
             i = data[0]
             idx = (slice(None),) * axis + (i,)
-            ret[i] = hash_from_buffer(np_getbuffer(ar[idx])) % n_dest
+            ret[i] = hash_from_buffer(memoryview(ar[idx])) % n_dest
 
         np.apply_along_axis(_hash_to_dest, 0, np.arange(ar.shape[axis])[np.newaxis, :])
         return ret
     else:
         def _hash_to_dest(data):
-            return hash_from_buffer(np_getbuffer(data)) % n_dest
+            return hash_from_buffer(memoryview(data)) % n_dest
 
         if ar.ndim == 1:
             ar = ar.reshape(ar.size, 1)
