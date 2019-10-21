@@ -72,6 +72,20 @@ the root of Mars project:
 
     python setup.py build_ext -i
 
+Rebuilding Protobufs
+````````````````````
+Mars uses Protobuf to serialize operands internally. After you change protobuf
+files in Mars, you need to compile them into Python source codes by running the
+command below on the root of Mars project:
+
+.. code-block:: bash
+
+    python setup.py build_proto
+
+Note that besides files compiled by ``protoc``, Mars will also generate an
+``opcodes.py`` given ``operand_type.proto``. You shall not edit the generated
+file.
+
 Running Tests
 -------------
 It is recommended to use ``pytest`` to run Mars tests. A simple command below

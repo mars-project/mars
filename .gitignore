@@ -82,3 +82,7 @@ mars/optimizes/**/*.c*
 mars/scheduler/*.c*
 mars/serialize/*.c*
 mars/worker/*.c*
+
+# files built from protobuf files
+mars/opcodes.py
+mars/**/*_pb2.py
