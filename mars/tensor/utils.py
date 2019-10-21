@@ -30,7 +30,9 @@ except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ..utils import lazy_import
-from ..compat import zip_longest, izip, six, reduce, lkeys, OrderedDict, functools32
+from ..lib.mmh3 import hash_from_buffer
+from ..compat import zip_longest, izip, six, reduce, lkeys, \
+    OrderedDict, functools32, np_getbuffer
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 
@@ -697,3 +699,31 @@ def reverse_order(old_order):
 
     assert isinstance(old_order, TensorOrder)
     return TensorOrder.C_ORDER if old_order == TensorOrder.F_ORDER else TensorOrder.F_ORDER
+
+
+def hash_on_axis(ar, axis, n_dest):
+    ar = np.asarray(ar)
+    # cannot be scalar
+    assert ar.ndim > 0
+    axis = validate_axis(ar.ndim, axis)
+
+    if n_dest == 1:
+        return np.zeros(ar.shape[axis], dtype=np.uint32)
+
+    if ar.ndim > 2:
+        ret = np.empty(ar.shape[axis], dtype=np.uint32)
+
+        def _hash_to_dest(data):
+            i = data[0]
+            idx = (slice(None),) * axis + (i,)
+            ret[i] = hash_from_buffer(np_getbuffer(ar[idx])) % n_dest
+
+        np.apply_along_axis(_hash_to_dest, 0, np.arange(ar.shape[axis])[np.newaxis, :])
+        return ret
+    else:
+        def _hash_to_dest(data):
+            return hash_from_buffer(np_getbuffer(data)) % n_dest
+
+        if ar.ndim == 1:
+            ar = ar.reshape(ar.size, 1)
+        return np.apply_along_axis(_hash_to_dest, 1 - axis, ar)

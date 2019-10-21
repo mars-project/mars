@@ -344,6 +344,7 @@ message OperandDef {
         PERMUTATION_REDUCE = 2007;
         UNIQUE_MAP = 2008;
         UNIQUE_REDUCE = 2009;
+        UNIQUE_INVERSE_REDUCE = 2013;
 
         // indexing
         DATAFRAME_SET_INDEX = 2020;
