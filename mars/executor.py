@@ -594,7 +594,7 @@ class Executor(object):
                 try:
                     return runner(results, op)
                 except UFuncTypeError as e:
-                    raise TypeError(str(e)) from e
+                    six.reraise(TypeError, TypeError(str(e)), sys.exc_info()[2])
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
