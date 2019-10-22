@@ -617,7 +617,7 @@ class Test(unittest.TestCase):
         with self.assertRaises(np.AxisError):
             unique(0.1, axis=1)
 
-        raw = np.random.randint(10, size=(10))
+        raw = np.random.randint(10, size=(10), dtype=np.int64)
         a = tensor(raw, chunk_size=4)
 
         x = unique(a, aggregate_size=2)
@@ -634,7 +634,7 @@ class Test(unittest.TestCase):
             self.assertEqual(x.chunks[i].shape, (np.nan,))
             self.assertEqual(x.chunks[i].dtype, raw.dtype)
 
-        raw = np.random.randint(10, size=(10, 20))
+        raw = np.random.randint(10, size=(10, 20), dtype=np.int64)
         a = tensor(raw, chunk_size=(4, 6))
 
         x, indices, inverse, counts = \
