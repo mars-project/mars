@@ -65,8 +65,10 @@ install:
   - pip install -r requirements-dev.txt &&
     pip install -r requirements-extra.txt &&
     pip install virtualenv coveralls flake8 etcd-gevent
-  - conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
-    conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi
+  - if [[ $TRAVIS_OS_NAME == "linux" ]]; then
+    conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
+    conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi;
+    fi
   - virtualenv testenv && source testenv/bin/activate
   - pip install -r requirements.txt && pip install pytest pytest-timeout
   - if [ -z "$DEFAULT_VENV" ]; then deactivate; else source $DEFAULT_VENV/bin/activate; fi
