@@ -581,7 +581,7 @@ class Test(unittest.TestCase):
         self.assertFalse(cx.chunks[0].op.gpu)
 
     def testUnique(self):
-        x = unique(1)
+        x = unique(np.int64(1))
 
         self.assertEqual(len(x.shape), 1)
         self.assertTrue(np.isnan(x.shape[0]))
