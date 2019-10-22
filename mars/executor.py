@@ -23,6 +23,10 @@ from collections import deque, defaultdict
 from numbers import Integral
 
 import numpy as np
+try:
+    from numpy.core._exceptions import UFuncTypeError
+except ImportError:  # pragma: no cover
+    UFuncTypeError = None
 import pandas as pd
 
 try:
@@ -582,7 +586,15 @@ class Executor(object):
         except KeyError:
             runner = getattr(op, method_name)
         try:
-            return runner(results, op)
+            if UFuncTypeError is None:
+                return runner(results, op)
+            else:
+                # Cast `UFuncTypeError` to `TypeError` since subclasses of the former is unpickleable.
+                # The `UFuncTypeError` was introduced by numpy#12593 since v1.17.0.
+                try:
+                    return runner(results, op)
+                except UFuncTypeError as e:
+                    raise TypeError(str(e)) from e
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
