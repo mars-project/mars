@@ -63,13 +63,13 @@ class Test(unittest.TestCase):
         state = self.api.get_graph_state(session_id, graph_key)
         self.assertEqual(GraphState('preparing'), state)
         exc_info = self.api.get_graph_exc_info(session_id, graph_key)
-        self.assertEqual(None, exc_info)
+        self.assertIsNone(exc_info)
 
         self.api.stop_graph(session_id, graph_key)
         state = self.api.get_graph_state(session_id, graph_key)
         self.assertEqual(GraphState('cancelled'), state)
         exc_info = self.api.get_graph_exc_info(session_id, graph_key)
-        self.assertEqual(None, exc_info)
+        self.assertIsNone(exc_info)
 
         self.api.delete_graph(session_id, graph_key)
         self.assertFalse(self.pool.has_actor(graph_ref))
