@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
+import pandas as pd
 
 from mars import tensor as mt
 from mars.executor import Executor
@@ -25,7 +26,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted, to_gpu, to_cpu
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
 from mars.tests.core import require_cupy
@@ -985,6 +986,111 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(t14, concat=True)[0]
         expected = np.searchsorted(raw3, 20, sorter=order)
         np.testing.assert_array_equal(res, expected)
+
+    def testUniqueExecution(self):
+        rs = np.random.RandomState(0)
+        raw = rs.randint(10, size=(10,))
+
+        for chunk_size in (10, 3):
+            x = tensor(raw, chunk_size=chunk_size)
+
+            y = unique(x)
+
+            res = self.executor.execute_tensor(y, concat=True)[0]
+            expected = np.unique(raw)
+            np.testing.assert_array_equal(res, expected)
+
+            y, indices = unique(x, return_index=True)
+
+            res = self.executor.execute_tensors([y, indices])
+            expected = np.unique(raw, return_index=True)
+            self.assertEqual(len(res), 2)
+            self.assertEqual(len(expected), 2)
+            np.testing.assert_array_equal(res[0], expected[0])
+            np.testing.assert_array_equal(res[1], expected[1])
+
+            y, inverse = unique(x, return_inverse=True)
+
+            res = self.executor.execute_tensors([y, inverse])
+            expected = np.unique(raw, return_inverse=True)
+            self.assertEqual(len(res), 2)
+            self.assertEqual(len(expected), 2)
+            np.testing.assert_array_equal(res[0], expected[0])
+            np.testing.assert_array_equal(res[1], expected[1])
+
+            y, counts = unique(x, return_counts=True)
+
+            res = self.executor.execute_tensors([y, counts])
+            expected = np.unique(raw, return_counts=True)
+            self.assertEqual(len(res), 2)
+            self.assertEqual(len(expected), 2)
+            np.testing.assert_array_equal(res[0], expected[0])
+            np.testing.assert_array_equal(res[1], expected[1])
+
+            y, indices, inverse, counts = unique(x, return_index=True,
+                                                 return_inverse=True, return_counts=True)
+
+            res = self.executor.execute_tensors([y, indices, inverse, counts])
+            expected = np.unique(raw, return_index=True,
+                                 return_inverse=True, return_counts=True)
+            self.assertEqual(len(res), 4)
+            self.assertEqual(len(expected), 4)
+            np.testing.assert_array_equal(res[0], expected[0])
+            np.testing.assert_array_equal(res[1], expected[1])
+            np.testing.assert_array_equal(res[2], expected[2])
+            np.testing.assert_array_equal(res[3], expected[3])
+
+            y, indices, counts = unique(x, return_index=True, return_counts=True)
+
+            res = self.executor.execute_tensors([y, indices, counts])
+            expected = np.unique(raw, return_index=True, return_counts=True)
+            self.assertEqual(len(res), 3)
+            self.assertEqual(len(expected), 3)
+            np.testing.assert_array_equal(res[0], expected[0])
+            np.testing.assert_array_equal(res[1], expected[1])
+            np.testing.assert_array_equal(res[2], expected[2])
+
+            raw2 = rs.randint(10, size=(4, 5, 6))
+            x2 = tensor(raw2, chunk_size=chunk_size)
+
+            y2 = unique(x2)
+
+            res = self.executor.execute_tensor(y2, concat=True)[0]
+            expected = np.unique(raw2)
+            np.testing.assert_array_equal(res, expected)
+
+            y2 = unique(x2, axis=1)
+
+            res = self.executor.execute_tensor(y2, concat=True)[0]
+            expected = np.unique(raw2, axis=1)
+            np.testing.assert_array_equal(res, expected)
+
+            y2 = unique(x2, axis=2)
+
+            res = self.executor.execute_tensor(y2, concat=True)[0]
+            expected = np.unique(raw2, axis=2)
+            np.testing.assert_array_equal(res, expected)
+
+        raw = rs.randint(10, size=(10, 20))
+        raw[:, 0] = raw[:, 11] = rs.randint(10, size=(10,))
+        x = tensor(raw, chunk_size=2)
+        y, ind, inv, counts = unique(x, aggregate_size=3, axis=1, return_index=True,
+                                     return_inverse=True, return_counts=True)
+
+        res_unique, res_ind, res_inv, res_counts = self.executor.execute_tensors((y, ind, inv, counts))
+        exp_unique, exp_ind, exp_counts = np.unique(raw, axis=1, return_index=True, return_counts=True)
+        raw_res_unique = res_unique
+        res_unique_df = pd.DataFrame(res_unique)
+        res_unique_ind = np.asarray(res_unique_df.sort_values(list(range(res_unique.shape[0])),
+                                                              axis=1).columns)
+        res_unique = res_unique[:, res_unique_ind]
+        res_ind = res_ind[res_unique_ind]
+        res_counts = res_counts[res_unique_ind]
+
+        np.testing.assert_array_equal(res_unique, exp_unique)
+        np.testing.assert_array_equal(res_ind, exp_ind)
+        np.testing.assert_array_equal(raw_res_unique[:, res_inv], raw)
+        np.testing.assert_array_equal(res_counts, exp_counts)
 
     @require_cupy
     def testToGPUExecution(self):
