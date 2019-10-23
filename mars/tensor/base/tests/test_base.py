@@ -21,7 +21,7 @@ from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, to_gpu, to_cpu
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 
 
@@ -579,3 +579,103 @@ class Test(unittest.TestCase):
         self.assertEqual(cx.chunks[0].dtype, x.chunks[0].dtype)
         self.assertEqual(cx.chunks[0].order, x.chunks[0].order)
         self.assertFalse(cx.chunks[0].op.gpu)
+
+    def testUnique(self):
+        x = unique(np.int64(1))
+
+        self.assertEqual(len(x.shape), 1)
+        self.assertTrue(np.isnan(x.shape[0]))
+        self.assertEqual(x.dtype, np.dtype(np.int64))
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 1)
+        self.assertEqual(len(x.chunks[0].shape), 1)
+        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
+        self.assertEqual(x.chunks[0].dtype, np.dtype(np.int64))
+
+        x, indices = unique(0.1, return_index=True)
+
+        self.assertEqual(len(x.shape), 1)
+        self.assertTrue(np.isnan(x.shape[0]))
+        self.assertEqual(x.dtype, np.dtype(np.float64))
+        self.assertEqual(len(indices.shape), 1)
+        self.assertTrue(np.isnan(indices.shape[0]))
+        self.assertEqual(indices.dtype, np.dtype(np.intp))
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 1)
+        self.assertEqual(len(x.chunks[0].shape), 1)
+        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
+        self.assertEqual(x.chunks[0].dtype, np.dtype(np.float64))
+        self.assertEqual(len(indices.chunks), 1)
+        self.assertEqual(len(indices.chunks[0].shape), 1)
+        self.assertTrue(np.isnan(indices.chunks[0].shape[0]))
+        self.assertEqual(indices.chunks[0].dtype, np.dtype(np.intp))
+
+        with self.assertRaises(np.AxisError):
+            unique(0.1, axis=1)
+
+        raw = np.random.randint(10, size=(10), dtype=np.int64)
+        a = tensor(raw, chunk_size=4)
+
+        x = unique(a, aggregate_size=2)
+
+        self.assertEqual(len(x.shape), len(raw.shape))
+        self.assertTrue(np.isnan(x.shape[0]))
+        self.assertEqual(x.dtype, np.dtype(np.int64))
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 2)
+        self.assertEqual(x.nsplits, ((np.nan, np.nan),))
+        for i in range(2):
+            self.assertEqual(x.chunks[i].shape, (np.nan,))
+            self.assertEqual(x.chunks[i].dtype, raw.dtype)
+
+        raw = np.random.randint(10, size=(10, 20), dtype=np.int64)
+        a = tensor(raw, chunk_size=(4, 6))
+
+        x, indices, inverse, counts = \
+            unique(a, axis=1, aggregate_size=2, return_index=True,
+                   return_inverse=True, return_counts=True)
+
+        self.assertEqual(x.shape, (10, np.nan))
+        self.assertEqual(x.dtype, np.dtype(np.int64))
+        self.assertEqual(indices.shape, (np.nan,))
+        self.assertEqual(indices.dtype, np.dtype(np.int64))
+        self.assertEqual(inverse.shape, (20,))
+        self.assertEqual(inverse.dtype, np.dtype(np.int64))
+        self.assertEqual(counts.shape, (np.nan,))
+        self.assertEqual(counts.dtype, np.dtype(np.int64))
+
+        x.tiles()
+
+        self.assertEqual(len(x.chunks), 2)
+        self.assertEqual(x.nsplits, ((10,), (np.nan, np.nan)))
+        for i in range(2):
+            self.assertEqual(x.chunks[i].shape, (10, np.nan))
+            self.assertEqual(x.chunks[i].dtype, raw.dtype)
+            self.assertEqual(x.chunks[i].index, (0, i))
+
+        self.assertEqual(len(indices.chunks), 2)
+        self.assertEqual(indices.nsplits, ((np.nan, np.nan),))
+        for i in range(2):
+            self.assertEqual(indices.chunks[i].shape, (np.nan,))
+            self.assertEqual(indices.chunks[i].dtype, raw.dtype)
+            self.assertEqual(indices.chunks[i].index, (i,))
+
+        self.assertEqual(len(inverse.chunks), 4)
+        self.assertEqual(inverse.nsplits, ((6, 6, 6, 2),))
+        for i in range(4):
+            self.assertEqual(inverse.chunks[i].shape, ((6, 6, 6, 2)[i],))
+            self.assertEqual(inverse.chunks[i].dtype, np.dtype(np.int64))
+            self.assertEqual(inverse.chunks[i].index, (i,))
+
+        self.assertEqual(len(counts.chunks), 2)
+        self.assertEqual(counts.nsplits, ((np.nan, np.nan),))
+        for i in range(2):
+            self.assertEqual(counts.chunks[i].shape, (np.nan,))
+            self.assertEqual(counts.chunks[i].dtype, raw.dtype)
+            self.assertEqual(counts.chunks[i].index, (i,))

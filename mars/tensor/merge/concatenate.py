@@ -148,7 +148,10 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                             cs = lmap(operator.itemgetter(1), cs)
                             new_chunks.append((idx, xp.concatenate(cs, axis=len(axes) - i - 1)))
                         chunks = new_chunks
-                    res = xp.concatenate(lmap(operator.itemgetter(1), chunks), axis=axes[0])
+                    try:
+                        res = xp.concatenate(lmap(operator.itemgetter(1), chunks), axis=axes[0])
+                    except ValueError:
+                        raise
             return res
 
         chunk = op.outputs[0]
