@@ -162,8 +162,14 @@ class MarsAPI(object):
             state = state_obj.value if state_obj else 'preparing'
         except ActorNotExist:
             raise GraphNotExists
-        state = GraphState(state.lower())
-        return state
+        return GraphState(state.lower())
+
+    def get_graph_exc_info(self, session_id, graph_key):
+        graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)
+        try:
+            return graph_meta_ref.get_exc_info()
+        except ActorNotExist:
+            raise GraphNotExists
 
     def wait_graph_finish(self, session_id, graph_key, timeout=None):
         graph_meta_ref = self.get_graph_meta_ref(session_id, graph_key)

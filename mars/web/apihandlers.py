@@ -130,6 +130,7 @@ class GraphApiHandler(MarsApiRequestHandler):
     @gen.coroutine
     def get(self, session_id, graph_key):
         from ..scheduler.utils import GraphState
+
         wait_timeout = int(self.get_argument('wait_timeout', None))
 
         try:
@@ -147,18 +148,13 @@ class GraphApiHandler(MarsApiRequestHandler):
         except GraphNotExists:
             raise web.HTTPError(404, 'Graph not exists')
 
-        if state == GraphState.RUNNING:
-            self.write(json.dumps(dict(state='running')))
-        elif state == GraphState.SUCCEEDED:
-            self.write(json.dumps(dict(state='success')))
-        elif state == GraphState.FAILED:
-            self.write(json.dumps(dict(state='failed')))
-        elif state == GraphState.CANCELLED:
-            self.write(json.dumps(dict(state='cancelled')))
-        elif state == GraphState.CANCELLING:
-            self.write(json.dumps(dict(state='cancelling')))
-        elif state == GraphState.PREPARING:
-            self.write(json.dumps(dict(state='preparing')))
+        resp = dict(state=state.value)
+        if state == GraphState.FAILED:
+            exc_info = self.web_api.get_graph_exc_info(session_id, graph_key)
+            if exc_info is not None:
+                resp['exc_info'] = base64.b64encode(pickle.dumps(exc_info)).decode('ascii')
+                resp['exc_info_text'] = ''.join(traceback.format_exception(*exc_info))
+        self.write(json.dumps(resp))
 
     def delete(self, session_id, graph_key):
         try:
