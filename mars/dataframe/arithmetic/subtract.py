@@ -13,66 +13,23 @@
 # limitations under the License.
 
 import operator
-import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
-from ..operands import DataFrameOperand
+from ..operands import DataFrameBinOp
 from ..utils import wrap_sequence
-from .core import DataFrameBinOpMixin, DATAFRAME_TYPE, SERIES_TYPE
+from .core import DataFrameBinOpMixin
 
 
-class DataFrameSubtract(DataFrameOperand, DataFrameBinOpMixin):
+class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
     _op_type_ = OperandDef.SUB
 
-    _axis = AnyField('axis')
-    _level = AnyField('level')
-    _fill_value = Float64Field('fill_value')
-    _lhs = AnyField('lhs')
-    _rhs = AnyField('rhs')
     _func_name = 'sub'
     _rfunc_name = 'rsub'
-
-    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
-        super(DataFrameSubtract, self).__init__(_axis=axis, _level=level,
-                                                _fill_value=fill_value,
-                                                _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
 
     @classproperty
     def _operator(self):
         return operator.sub
-
-    @property
-    def axis(self):
-        return self._axis
-
-    @property
-    def level(self):
-        return self._level
-
-    @property
-    def fill_value(self):
-        return self._fill_value
-
-    @property
-    def lhs(self):
-        return self._lhs
-
-    @property
-    def rhs(self):
-        return self._rhs
-
-    def _set_inputs(self, inputs):
-        super(DataFrameSubtract, self)._set_inputs(inputs)
-        if len(self._inputs) == 2:
-            self._lhs = self._inputs[0]
-            self._rhs = self._inputs[1]
-        else:
-            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
-                self._lhs = self._inputs[0]
-            elif np.isscalar(self._lhs):
-                self._rhs = self._inputs[0]
 
 
 def subtract(df, other, axis='columns', level=None, fill_value=None):
