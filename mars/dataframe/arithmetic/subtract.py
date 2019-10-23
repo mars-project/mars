@@ -21,24 +21,24 @@ from ..utils import wrap_sequence
 from .core import DataFrameBinOpMixin
 
 
-class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
-    _op_type_ = OperandDef.DIV
+class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
+    _op_type_ = OperandDef.SUB
 
-    _func_name = 'floordiv'
-    _rfunc_name = 'rfloordiv'
+    _func_name = 'sub'
+    _rfunc_name = 'rsub'
 
     @classproperty
     def _operator(self):
-        return operator.floordiv
+        return operator.sub
 
 
-def floordiv(df, other, axis='columns', level=None, fill_value=None):
+def subtract(df, other, axis='columns', level=None, fill_value=None):
     other = wrap_sequence(other)
-    op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+    op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
-def rfloordiv(df, other, axis='columns', level=None, fill_value=None):
+def rsubtract(df, other, axis='columns', level=None, fill_value=None):
     other = wrap_sequence(other)
-    op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+    op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
