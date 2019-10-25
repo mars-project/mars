@@ -34,11 +34,14 @@ class DataFrameReductionOperand(DataFrameOperand):
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
-    def __init__(self, axis=None, skipna=None, level=None, min_count=None, calc_with_count=None, dtype=None,
-                 combine_size=None, gpu=None, sparse=None, **kw):
-        super(DataFrameReductionOperand, self).__init__(_axis=axis, _skipna=skipna, _level=level, _min_count=min_count,
+    def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, min_count=None, calc_with_count=None,
+                 dtype=None, combine_size=None, gpu=None, sparse=None, object_type=None, **kw):
+        super(DataFrameReductionOperand, self).__init__(_axis=axis, _skipna=skipna, _level=level,
+                                                        _numeric_only=numeric_only,
+                                                        _min_count=min_count,
                                                         _calc_with_count=calc_with_count, _dtype=dtype,
-                                                        _combine_size=combine_size, _gpu=gpu, _sparse=sparse, **kw)
+                                                        _combine_size=combine_size, _gpu=gpu, _sparse=sparse,
+                                                        _object_type=object_type,**kw)
 
     @property
     def axis(self):
@@ -118,7 +121,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                     index_value = chk.index_value
                     dtypes = pd.Series(op.outputs[0].dtype)
                 new_op = op.copy().reset_key()
-                if op.min_count > 0:
+                if op.min_count is not None and op.min_count > 0:
                     new_op._calc_with_count = True
                 # all intermediate results' type is dataframe
                 new_op._object_type = ObjectType.dataframe
@@ -155,7 +158,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         reduction_chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            if op.min_count > 0:
+            if op.min_count is not None and op.min_count > 0:
                 new_chunk_op._calc_with_count = True
             new_chunk_op._object_type = ObjectType.dataframe
             if op.axis == 0:
@@ -195,7 +198,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         chunks = np.empty(op.inputs[0].chunk_shape, dtype=np.object)
         for c in op.inputs[0].chunks:
             new_chunk_op = op.copy().reset_key()
-            if op.min_count > 0:
+            if op.min_count is not None and op.min_count > 0:
                 new_chunk_op._calc_with_count = True
             chunks[c.index] = new_chunk_op.new_chunk([c], shape=(), dtype=df.dtype, index_value=df.index_value)
 
@@ -208,7 +211,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
                 chk = concat_op.new_chunk(chks, shape=(length,), index=(i,), dtype=chks[0].dtype,
                                           index_value=parse_index(pd.RangeIndex(length)))
                 new_op = op.copy().reset_key()
-                if op.min_count > 0:
+                if op.min_count is not None and op.min_count > 0:
                     new_op._calc_with_count = True
                 new_chunks.append(new_op.new_chunk([chk], shape=(), index=(i,), dtype=chk.dtype,
                                                    index_value=parse_index(pd.RangeIndex(0))))
@@ -243,7 +246,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         kwargs = dict(axis=op.axis, level=op.level, skipna=op.skipna)
         if op.numeric_only is not None:
             kwargs['numeric_only'] = op.numeric_only
-        if min_count:
+        if min_count is not None:
             kwargs['min_count'] = op.min_count
         return getattr(in_data, getattr(cls, '_func_name'))(**kwargs)
 

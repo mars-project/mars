@@ -15,100 +15,114 @@
 import pandas as pd
 import numpy as np
 
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, parameterized
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
 
+reduction_functions = dict(
+    sum=dict(func_name='sum', has_min_count=True),
+    prod=dict(func_name='prod', has_min_count=True),
+    min=dict(func_name='min', has_min_count=False),
+    max=dict(func_name='max', has_min_count=False)
+)
+
+
+@parameterized(**reduction_functions)
 class Test(TestBase):
-    def testSeriesSum(self):
+    def compute(self, data, **kwargs):
+        return getattr(data, self.func_name)(**kwargs)
+
+    def testSeriesReduction(self):
         data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
-        sum_df1 = from_pandas_series(data).sum()
-        self.assertEqual(data.sum(), sum_df1.execute())
+        reduction_df1 = self.compute(from_pandas_series(data))
+        self.assertEqual(self.compute(data), reduction_df1.execute())
 
-        sum_df2 = from_pandas_series(data, chunk_size=6).sum()
-        self.assertAlmostEqual(data.sum(), sum_df2.execute())
+        reduction_df2 = self.compute(from_pandas_series(data, chunk_size=6))
+        self.assertAlmostEqual(self.compute(data), reduction_df2.execute())
 
-        sum_df3 = from_pandas_series(data, chunk_size=3).sum()
-        self.assertAlmostEqual(data.sum(), sum_df3.execute())
+        reduction_df3 = self.compute(from_pandas_series(data, chunk_size=3))
+        self.assertAlmostEqual(self.compute(data), reduction_df3.execute())
 
-        sum_df4 = from_pandas_series(data, chunk_size=4).sum(axis='index')
-        self.assertAlmostEqual(data.sum(axis='index'), sum_df4.execute())
+        reduction_df4 = self.compute(from_pandas_series(data, chunk_size=4), axis='index')
+        self.assertAlmostEqual(self.compute(data, axis='index'), reduction_df4.execute())
 
         data = pd.Series(np.random.rand(20), name='a')
         data[0] = 0.1  # make sure not all elements are NAN
         data[data > 0.5] = np.nan
-        sum_df1 = from_pandas_series(data, chunk_size=3).sum()
-        self.assertAlmostEqual(data.sum(), sum_df1.execute())
+        reduction_df1 = self.compute(from_pandas_series(data, chunk_size=3))
+        self.assertAlmostEqual(self.compute(data), reduction_df1.execute())
 
-        sum_df2 = from_pandas_series(data, chunk_size=3).sum(skipna=False)
-        self.assertTrue(np.isnan(sum_df2.execute()))
+        reduction_df2 = self.compute(from_pandas_series(data, chunk_size=3), skipna=False)
+        self.assertTrue(np.isnan(reduction_df2.execute()))
 
-        sum_df3 = from_pandas_series(data, chunk_size=3).sum(skipna=False, min_count=2)
-        self.assertTrue(np.isnan(sum_df3.execute()))
+        if self.has_min_count:
+            reduction_df3 = self.compute(from_pandas_series(data, chunk_size=3), skipna=False, min_count=2)
+            self.assertTrue(np.isnan(reduction_df3.execute()))
 
-        sum_df4 = from_pandas_series(data, chunk_size=3).sum(min_count=1)
-        self.assertAlmostEqual(data.sum(min_count=1), sum_df4.execute())
+            reduction_df4 = self.compute(from_pandas_series(data, chunk_size=3), min_count=1)
+            self.assertAlmostEqual(self.compute(data, min_count=1), reduction_df4.execute())
 
-        sum_df5 = from_pandas_series(data, chunk_size=3).sum(min_count=21)
-        self.assertTrue(np.isnan(sum_df5.execute()))
+            reduction_df5 = self.compute(from_pandas_series(data, chunk_size=3), min_count=21)
+            self.assertTrue(np.isnan(reduction_df5.execute()))
 
-    def testDataFrameSum(self):
+    def testDataFrameReduction(self):
         data = pd.DataFrame(np.random.rand(20, 10))
-        sum_df1 = from_pandas_df(data).sum()
-        pd.testing.assert_series_equal(data.sum(), sum_df1.execute())
+        reduction_df1 = self.compute(from_pandas_df(data))
+        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
 
-        sum_df2 = from_pandas_df(data, chunk_size=3).sum()
-        pd.testing.assert_series_equal(data.sum(), sum_df2.execute())
+        reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3))
+        pd.testing.assert_series_equal(self.compute(data), reduction_df2.execute())
 
-        sum_df3 = from_pandas_df(data, chunk_size=6).sum(axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df3.execute())
+        reduction_df3 = self.compute(from_pandas_df(data, chunk_size=6), axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df3.execute())
 
-        sum_df4 = from_pandas_df(data, chunk_size=3).sum(axis=1)
-        pd.testing.assert_series_equal(data.sum(axis=1), sum_df4.execute())
+        reduction_df4 = self.compute(from_pandas_df(data, chunk_size=3), axis=1)
+        pd.testing.assert_series_equal(self.compute(data, axis=1), reduction_df4.execute())
 
         # test null
         np_data = np.random.rand(20, 10)
         np_data[np_data > 0.6] = np.nan
         data = pd.DataFrame(np_data)
 
-        sum_df1 = from_pandas_df(data, chunk_size=3).sum()
-        pd.testing.assert_series_equal(data.sum(), sum_df1.execute())
+        reduction_df1 = self.compute(from_pandas_df(data, chunk_size=3))
+        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
 
-        sum_df2 = from_pandas_df(data, chunk_size=3).sum(skipna=False)
-        pd.testing.assert_series_equal(data.sum(skipna=False), sum_df2.execute())
+        reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3), skipna=False)
+        pd.testing.assert_series_equal(self.compute(data, skipna=False), reduction_df2.execute())
 
-        sum_df2 = from_pandas_df(data, chunk_size=3).sum(skipna=False)
-        pd.testing.assert_series_equal(data.sum(skipna=False), sum_df2.execute())
+        reduction_df2 = self.compute(from_pandas_df(data, chunk_size=3), skipna=False)
+        pd.testing.assert_series_equal(self.compute(data, skipna=False), reduction_df2.execute())
 
-        sum_df3 = from_pandas_df(data, chunk_size=3).sum(min_count=15)
-        pd.testing.assert_series_equal(data.sum(min_count=15), sum_df3.execute())
+        if self.has_min_count:
+            reduction_df3 = self.compute(from_pandas_df(data, chunk_size=3), min_count=15)
+            pd.testing.assert_series_equal(self.compute(data, min_count=15), reduction_df3.execute())
 
-        sum_df4 = from_pandas_df(data, chunk_size=3).sum(min_count=3)
-        pd.testing.assert_series_equal(data.sum(min_count=3), sum_df4.execute())
+            reduction_df4 = self.compute(from_pandas_df(data, chunk_size=3), min_count=3)
+            pd.testing.assert_series_equal(self.compute(data, min_count=3), reduction_df4.execute())
 
-        sum_df5 = from_pandas_df(data, chunk_size=3).sum(axis=1, min_count=3)
-        pd.testing.assert_series_equal(data.sum(axis=1, min_count=3), sum_df5.execute())
+            reduction_df5 = self.compute(from_pandas_df(data, chunk_size=3), axis=1, min_count=3)
+            pd.testing.assert_series_equal(self.compute(data, axis=1, min_count=3), reduction_df5.execute())
 
-        sum_df5 = from_pandas_df(data, chunk_size=3).sum(axis=1, min_count=8)
-        pd.testing.assert_series_equal(data.sum(axis=1, min_count=8), sum_df5.execute())
+            reduction_df5 = self.compute(from_pandas_df(data, chunk_size=3), axis=1, min_count=8)
+            pd.testing.assert_series_equal(self.compute(data, axis=1, min_count=8), reduction_df5.execute())
 
         # test numeric_only
         data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
                             columns=[np.random.bytes(10) for _ in range(10)])
-        sum_df1 = from_pandas_df(data, chunk_size=2).sum()
-        pd.testing.assert_series_equal(data.sum(), sum_df1.execute())
+        reduction_df1 = self.compute(from_pandas_df(data, chunk_size=2))
+        pd.testing.assert_series_equal(self.compute(data), reduction_df1.execute())
 
-        sum_df2 = from_pandas_df(data, chunk_size=6).sum(axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df2.execute())
+        reduction_df2 = self.compute(from_pandas_df(data, chunk_size=6), axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df2.execute())
 
-        sum_df3 = from_pandas_df(data, chunk_size=3).sum(axis='columns')
-        pd.testing.assert_series_equal(data.sum(axis='columns'), sum_df3.execute())
+        reduction_df3 = self.compute(from_pandas_df(data, chunk_size=3), axis='columns')
+        pd.testing.assert_series_equal(self.compute(data, axis='columns'), reduction_df3.execute())
 
         data_dict = dict((str(i), np.random.rand(10)) for i in range(10))
         data_dict['string'] = [str(i) for i in range(10)]
         data_dict['bool'] = np.random.choice([True, False], (10,))
         data = pd.DataFrame(data_dict)
-        sum_df = from_pandas_df(data, chunk_size=3).sum(axis='index', numeric_only=True)
-        pd.testing.assert_series_equal(data.sum(axis='index', numeric_only=True), sum_df.execute())
+        reduction_df = self.compute(from_pandas_df(data, chunk_size=3), axis='index', numeric_only=True)
+        pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df.execute())
 
