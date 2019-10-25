@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sum import sum_series, sum_dataframe, SeriesSum, DataFrameSum
+from .sum import sum_series, sum_dataframe, DataFrameSum
 
 
 def _install():

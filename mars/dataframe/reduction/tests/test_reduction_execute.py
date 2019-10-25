@@ -78,6 +78,9 @@ class Test(TestBase):
         sum_df2 = from_pandas_df(data, chunk_size=3).sum(skipna=False)
         pd.testing.assert_series_equal(data.sum(skipna=False), sum_df2.execute())
 
+        sum_df2 = from_pandas_df(data, chunk_size=3).sum(skipna=False)
+        pd.testing.assert_series_equal(data.sum(skipna=False), sum_df2.execute())
+
         sum_df3 = from_pandas_df(data, chunk_size=3).sum(min_count=15)
         pd.testing.assert_series_equal(data.sum(min_count=15), sum_df3.execute())
 

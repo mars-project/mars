@@ -15,40 +15,20 @@
 from ... import opcodes as OperandDef
 from ...serialize import BoolField
 from ..operands import ObjectType
-from .core import DataFrameReductionOperand, SeriesReductionMixin, DataFrameReductionMixin
-
-
-class SeriesSum(DataFrameReductionOperand, SeriesReductionMixin):
-    _op_type_ = OperandDef.SUM
-    _func_name = 'sum'
-
-    _is_terminal = BoolField('is_terminal')
-
-    def __init__(self, is_terminal=None, **kw):
-        super(SeriesSum, self).__init__(_is_terminal=is_terminal, _object_type=ObjectType.series, **kw)
-
-    @property
-    def is_terminal(self):
-        return self._is_terminal
+from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 
 class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.SUM
     _func_name = 'sum'
 
-    _numeric_only = BoolField('numeric_only')
-
     def __init__(self, numeric_only=None, object_type=ObjectType.series, **kw):
         super(DataFrameSum, self).__init__(_numeric_only=numeric_only,
                                            _object_type=object_type, **kw)
 
-    @property
-    def numeric_only(self):
-        return self._numeric_only
-
 
 def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
-    op = SeriesSum(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size)
+    op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size)
     return op(df)
 
 
