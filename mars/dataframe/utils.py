@@ -58,6 +58,40 @@ def sort_dataframe_inplace(df, *axis):
     return df
 
 
+def concat_chunks_on_axis(chunks, axis=0):
+    from .merge.concat import DataFrameConcat
+    from .operands import ObjectType, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
+    from ..tensor.utils import to_numpy
+
+    if isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
+        if axis == 0:
+            dtypes = chunks[0].dtypes
+            columns_value = chunks[0].columns
+            index_value = pd.Index(
+                np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks]))
+        else:
+            dtypes = pd.Index(
+                np.concatenate([to_numpy(c.columns.to_pandas()) for c in chunks]))
+            columns_value = parse_index(dtypes.index)
+            index_value = chunks[0].index_value
+        shape = list(chunks[0].shape)
+        shape[axis] = sum(c.shape[axis] for c in chunks)
+        return DataFrameConcat(object_type=ObjectType.dataframe, axis=axis,
+                               gpu=chunks[0].op.gpu).new_chunk(
+            chunks, shape=tuple(shape), dtypes=dtypes,
+            index_value=index_value, columns_value=columns_value)
+    elif isinstance(chunks[0], SERIES_CHUNK_TYPE):
+        assert axis == 0
+        index_value = pd.Index(
+            np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks]))
+        return DataFrameConcat(object_type=ObjectType.series, axis=axis,
+                               gpu=chunks[0].op.gpu).new_chunk(
+            chunks, shape=(sum(c.shape[0] for c in chunks),), dtype=chunks[0].dtype,
+            index_value=index_value, name=chunks[0].name)
+    else:
+        raise NotImplementedError
+
+
 def concat_tileable_chunks(df):
     from .merge.concat import DataFrameConcat, GroupByConcat
     from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
@@ -100,7 +134,7 @@ def get_fetch_op_cls(op):
     return _inner
 
 
-def get_fuse_op_cls():
+def get_fuse_op_cls(_):
     from .operands import DataFrameFuseChunk
 
     return DataFrameFuseChunk

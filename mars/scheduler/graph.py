@@ -322,8 +322,8 @@ class GraphActor(SchedulerActor):
     @property
     def context(self):
         if self._context is None:
-            self._context = DistributedContext(self._cluster_info_ref.is_distributed(),
-                                               self._session_id, self.chunk_meta)
+            self._context = DistributedContext(
+                self._cluster_info_ref, self._session_id, self.address, self.chunk_meta)
         return self._context
 
     @final_state.setter

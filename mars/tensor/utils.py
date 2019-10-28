@@ -521,6 +521,16 @@ def check_random_state(seed):
                      ' instance' % seed)
 
 
+def concat_chunks_on_axis(chunks, axis=0):
+    from .merge.concatenate import TensorConcatenate
+
+    op = TensorConcatenate(dtype=chunks[0].dtype, gpu=chunks[0].op.gpu)
+    shape = list(chunks[0].shape)
+    shape[axis] = sum(c.shape[axis] for c in chunks)
+    return TensorConcatenate(dtype=op.dtype, axis=axis).new_chunk(
+        chunks, shape=tuple(shape))
+
+
 def concat_tileable_chunks(tensor):
     from .merge.concatenate import TensorConcatenate
 
@@ -637,7 +647,7 @@ def get_fetch_op_cls(op):
         return TensorFetch
 
 
-def get_fuse_op_cls():
+def get_fuse_op_cls(_):
     from .fuse import TensorFuseChunk
 
     return TensorFuseChunk

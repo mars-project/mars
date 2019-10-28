@@ -782,5 +782,6 @@ def register_default(op_cls):
 from . import tensor
 from . import dataframe
 from . import optimizes
+from . import learn
 
-del tensor, dataframe, optimizes
+del tensor, dataframe, optimizes, learn

@@ -11,9 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# register operands
-from .contrib.xgboost import train as xgboost_train
-del xgboost_train
-
-from .utils.core import concat_chunks_on_axis, get_fetch_op_cls, get_fuse_op_cls

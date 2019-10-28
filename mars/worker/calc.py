@@ -22,6 +22,7 @@ from ..compat import six
 from ..executor import Executor
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
     get_chunk_shuffle_key
+from ..context import DistributedDictContext
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
 from .utils import WorkerActor, concat_operand_keys, get_chunk_key, build_quota_key
@@ -134,7 +135,9 @@ class BaseCalcActor(WorkerActor):
         logger.debug('Start calculating operand %s in %s.', graph_key, self.uid)
         start_time = time.time()
 
-        local_context_dict = context_dict.copy()
+        local_context_dict = DistributedDictContext(
+            self._cluster_info_ref, session_id, self.address, self.get_meta_client())
+        local_context_dict.update(context_dict)
         context_dict.clear()
 
         # start actual execution

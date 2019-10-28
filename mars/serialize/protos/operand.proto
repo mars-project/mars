@@ -363,8 +363,12 @@ message OperandDef {
         GROUPBY_AGG = 2033;
 
         // machine learning
+
+        // XGBoost
         XGBOOST_TRAIN = 3001;
         XGBOOST_PREDICT = 3002;
+        TO_DMATRIX = 3003;
+        START_TRACKER = 3004;
 
         CHOLESKY_FUSE = 999988;
 

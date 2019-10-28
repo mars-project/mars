@@ -45,6 +45,13 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    @property
+    def session_id(self):
+        """
+        Get session id.
+        """
+        raise NotImplementedError
+
     def __enter__(self):
         _context_factory.current = self
 
@@ -67,6 +74,26 @@ class ContextBase(object):
 
         :param chunk_keys: chunk keys
         :return: List of chunk metas
+        """
+        raise NotImplementedError
+
+    # -----------------
+    # Cluster relative
+    # -----------------
+
+    def get_scheduler_addresses(self):
+        """
+        Get scheduler addresses
+
+        :return: List of scheduler addresses
+        """
+        raise NotImplementedError
+
+    def get_local_address(self):
+        """
+        Get local address
+
+        :return: local address
         """
         raise NotImplementedError
 
@@ -106,6 +133,16 @@ class LocalContext(ContextBase):
     def running_mode(self):
         return RunningMode.local
 
+    @property
+    def session_id(self):
+        return
+
+    def get_scheduler_addresses(self):
+        return
+
+    def get_local_address(self):
+        return
+
     def get_chunk_metas(self, chunk_keys):
         chunk_result = self._local_session.executor.chunk_result
         metas = []
@@ -129,17 +166,42 @@ class LocalContext(ContextBase):
         return metas
 
 
+class LocalDictContext(LocalContext, dict):
+    def __init__(self, local_session):
+        LocalContext.__init__(self, local_session)
+        dict.__init__(self)
+
+
 class DistributedContext(ContextBase):
-    def __init__(self, is_distributed, session_id, chunk_meta_client):
+    def __init__(self, cluster_info, session_id, addr, chunk_meta_client):
+        self._cluster_info = cluster_info
+        is_distributed = cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
             if not is_distributed else RunningMode.distributed
         self._session_id = session_id
+        self._address = addr
         self._chunk_meta_client = chunk_meta_client
 
     @property
     def running_mode(self):
         return self._running_mode
 
+    @property
+    def session_id(self):
+        return self._session_id
+
+    def get_scheduler_addresses(self):
+        return self._cluster_info.get_schedulers()
+
+    def get_local_address(self):
+        return self._address
+
     def get_chunk_metas(self, chunk_keys):
         return self._chunk_meta_client.batch_get_chunk_meta(
             self._session_id, chunk_keys)
+
+
+class DistributedDictContext(DistributedContext, dict):
+    def __init__(self, *args, **kwargs):
+        DistributedContext.__init__(self, *args, **kwargs)
+        dict.__init__(self)

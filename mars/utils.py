@@ -463,6 +463,10 @@ def get_expr_module(op):
         return expr_module
 
 
+def concat_chunks_on_axis(chunks, axis=0):
+    return get_expr_module(chunks[0].op).concat_chunks_on_axis(chunks, axis=axis)
+
+
 def concat_tileable_chunks(tileable):
     return get_expr_module(tileable.op).concat_tileable_chunks(tileable)
 
@@ -519,7 +523,7 @@ def build_fetch(entity, coarse=False):
 
 
 def get_fuse_op_cls(op):
-    return get_expr_module(op).get_fuse_op_cls()
+    return get_expr_module(op).get_fuse_op_cls(op)
 
 
 def build_fuse_chunk(fused_chunks, **kwargs):

@@ -17,7 +17,7 @@
 import numpy as np
 
 from .core import Entity, Base
-from .context import LocalContext
+from .context import LocalContext, LocalDictContext
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -29,9 +29,9 @@ class LocalSession(object):
     def __init__(self, **kwargs):
         from .executor import Executor
 
-        self._executor = Executor()
         self._endpoint = None
-        self._context = None
+        self._context = LocalContext(self)
+        self._executor = Executor(storage=LocalDictContext(self))
 
         self._mut_tensor = dict()
         self._mut_tensor_data = dict()
@@ -54,8 +54,6 @@ class LocalSession(object):
 
     @property
     def context(self):
-        if self._context is None:
-            self._context = LocalContext(self)
         return self._context
 
     @property
