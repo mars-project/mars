@@ -536,8 +536,8 @@ def concat_tileable_chunks(tensor):
 
     assert not tensor.is_coarse()
 
-    op = TensorConcatenate(dtype=tensor.op.dtype)
-    chunk = TensorConcatenate(dtype=op.dtype).new_chunk(
+    op = TensorConcatenate(dtype=tensor.dtype)
+    chunk = TensorConcatenate(dtype=tensor.dtype).new_chunk(
         tensor.chunks, shape=tensor.shape)
     return op.new_tensor([tensor], tensor.shape, chunks=[chunk],
                          nsplits=tuple((s,) for s in tensor.shape))

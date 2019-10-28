@@ -14,4 +14,5 @@
 
 from .dmatrix import MarsDMatrix
 from .train import XGBTrain, train
+from .predict import XGBPredict, predict
 from .start_tracker import StartTracker

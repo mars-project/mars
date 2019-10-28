@@ -27,14 +27,14 @@ def concat_chunks_on_axis(chunks, axis=0):
 
 
 def get_fetch_op_cls(op):
-    from ...tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE
-    from ...dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE
+    from ...tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
+    from ...dataframe.core import DATAFRAME_TYPE, CHUNK_TYPE as DATAFRAME_CHUNK_TYPE
 
-    if isinstance(op.outputs[0], TENSOR_CHUNK_TYPE):
+    if isinstance(op.outputs[0], (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
         from ...tensor.utils import get_fetch_op_cls
         return get_fetch_op_cls(op)
     else:
-        assert isinstance(op.outputs[0], DATAFRAME_CHUNK_TYPE)
+        assert isinstance(op.outputs[0], (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE))
         from ...dataframe.utils import get_fetch_op_cls
         return get_fetch_op_cls(op)
 
@@ -50,3 +50,17 @@ def get_fuse_op_cls(op):
         assert isinstance(op.outputs[0], DATAFRAME_CHUNK_TYPE)
         from ...dataframe.utils import get_fuse_op_cls
         return get_fuse_op_cls(op)
+
+
+def concat_tileable_chunks(tileable):
+    from ...tensor.core import TENSOR_TYPE
+    from ...dataframe.core import TILEABLE_TYPE
+
+    if isinstance(tileable, TENSOR_TYPE):
+        from ...tensor.utils import concat_tileable_chunks
+        return concat_tileable_chunks(tileable)
+    else:
+        assert isinstance(tileable, TILEABLE_TYPE)
+        from ...dataframe.utils import concat_tileable_chunks
+        return concat_tileable_chunks(tileable)
+

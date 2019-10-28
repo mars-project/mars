@@ -22,6 +22,7 @@ from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....serialize import ValueType, DictField, KeyField, TupleField
 from ....context import get_context, RunningMode
 from .start_tracker import StartTracker
+from .dmatrix import ToDMatrix
 
 
 class XGBTrain(TensorOperand, TensorOperandMixin):
@@ -128,30 +129,12 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             return new_op.new_tensors(op.inputs, shape=op.outputs[0].shape,
                                       chunks=out_chunks, nsplits=((np.nan for _ in out_chunks),))
 
-    @staticmethod
-    def _get_dmatrix(tup, op):
-        from xgboost import DMatrix
-
-        tup_iter = iter(tup)
-        data = next(tup_iter)
-        label, weight = None, None
-        if op.label is not None:
-            label = next(tup_iter)
-        if op.weight is not None:
-            weight = next(tup_iter)
-        missing = next(tup_iter)
-        feature_names = next(tup_iter)
-        feature_types = next(tup_iter)
-        return DMatrix(data, label=label, missing=missing, weight=weight,
-                       feature_names=feature_names, feature_types=feature_types,
-                       nthread=-1)
-
     @classmethod
     def execute(cls, ctx, op):
         from xgboost import train, rabit
 
-        dtrain = cls._get_dmatrix(ctx[op.dtrain.key], op.dtrain.op)
-        eval_dmatrices = [cls._get_dmatrix(ctx[t[0].key], t[0].op) for t in op.evals]
+        dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key], op.dtrain.op)
+        eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key], t[0].op) for t in op.evals]
         evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
 
         if op.tracker is None:
@@ -166,8 +149,8 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
         else:
             # distributed
             rabit_args = ctx[op.tracker.key]
+            rabit.init(rabit_args)
             try:
-                rabit.init(rabit_args)
                 local_history = dict()
                 bst = train(op.params, dtrain, evals=evals, evals_result=local_history,
                             **op.kwargs)
@@ -198,4 +181,8 @@ def train(params, dtrain, evals=(), **kwargs):
     t = op()
     ret = t.execute(session=session)[0]
     eval_result.update(ret['history'])
-    return pickle.loads(ret['booster'])
+    bst = pickle.loads(ret['booster'])
+    num_class = params.get('num_class')
+    if num_class:
+        bst.set_attr(num_class=str(num_class))
+    return bst

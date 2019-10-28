@@ -24,7 +24,7 @@ from ....serialize.core import KeyField, Float64Field, ListField, BoolField, Int
 from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, \
     TensorData, Tensor, TensorChunkData, TensorChunk
 from ....tensor import tensor as astensor
-from ....dataframe.core import DATAFRAME_TYPE, CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, \
+from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
     SERIES_TYPE, DataFrameData, DataFrame, DataFrameChunkData, DataFrameChunk
 from ....dataframe.operands import ObjectType
 from ....dataframe.initializer import DataFrame as create_dataframe, Series as create_series
@@ -46,11 +46,12 @@ class ToDMatrix(Operand, TileableOperandMixin):
                              on_deserialize=ObjectType)
 
     def __init__(self, data=None, label=None, missing=None, weight=None, feature_names=None,
-                 feature_types=None, multi_output=None, gpu=None, **kw):
+                 feature_types=None, multi_output=None, gpu=None, object_type=None, **kw):
         super(ToDMatrix, self).__init__(_data=data, _label=label, _missing=missing,
                                         _weight=weight, _feature_names=feature_names,
                                         _feature_types=feature_types, _gpu=gpu,
-                                        _multi_output=multi_output, **kw)
+                                        _multi_output=multi_output,
+                                        _object_type=object_type, **kw)
 
     @property
     def output_limit(self):
@@ -310,6 +311,24 @@ class ToDMatrix(Operand, TileableOperandMixin):
         else:
             return cls._tile_single_output(op)
 
+    @staticmethod
+    def get_xgb_dmatrix(tup, op):
+        from xgboost import DMatrix
+
+        tup_iter = iter(tup)
+        data = next(tup_iter)
+        label, weight = None, None
+        if op.label is not None:
+            label = next(tup_iter)
+        if op.weight is not None:
+            weight = next(tup_iter)
+        missing = next(tup_iter)
+        feature_names = next(tup_iter)
+        feature_types = next(tup_iter)
+        return DMatrix(data, label=label, missing=missing, weight=weight,
+                       feature_names=feature_names, feature_types=feature_types,
+                       nthread=-1)
+
     def execute(cls, ctx, op):
         if op.multi_output:
             outs = op.outputs
@@ -324,8 +343,7 @@ class ToDMatrix(Operand, TileableOperandMixin):
             tuple(ctx[c.key] for c in op.inputs) + (op.missing, op.feature_names, op.feature_types)
 
 
-def to_dmatrix(data, label=None, missing=None, weight=None,
-               feature_names=None, feature_types=None, session=None):
+def check_data(data):
     if isinstance(data, (DATAFRAME_TYPE, pd.DataFrame)):
         data = create_dataframe(data)
     else:
@@ -334,6 +352,12 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
     if data.ndim != 2:
         raise ValueError('Expecting 2-d data, got: {0}-d'.format(data.ndim))
 
+    return data
+
+
+def to_dmatrix(data, label=None, missing=None, weight=None,
+               feature_names=None, feature_types=None, session=None):
+    data = check_data(data)
     if label is not None:
         if isinstance(label, (DATAFRAME_TYPE, pd.DataFrame)):
             label = create_dataframe(label)
@@ -357,7 +381,7 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
 
     kw = dict()
     if isinstance(data, DATAFRAME_TYPE):
-        kw['_object_type'] = ObjectType.dataframe
+        kw['object_type'] = ObjectType.dataframe
 
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,

@@ -15,3 +15,5 @@
 cpdef str to_str(s, encoding=*)
 cpdef bytes to_binary(s, encoding=*)
 cpdef unicode to_text(s, encoding=*)
+cpdef register(cls, handler)
+

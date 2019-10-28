@@ -221,4 +221,7 @@ tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 
-__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int']
+cpdef register(cls, handler):
+    tokenize_handler.register(cls, handler)
+
+__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int', 'register']
