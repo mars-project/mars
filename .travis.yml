@@ -76,6 +76,9 @@ install:
       conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi;
     fi
   - if [ -z "$NO_COMMON_TESTS" ]; then
+      conda install --quiet --yes -n test -c conda-forge python=$PYTHON xgboost;
+    fi
+  - if [ -z "$NO_COMMON_TESTS" ]; then
       virtualenv testenv && source testenv/bin/activate;
       pip install -r requirements.txt && pip install pytest pytest-timeout;
       if [ -z "$DEFAULT_VENV" ]; then
