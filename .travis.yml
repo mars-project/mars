@@ -76,7 +76,7 @@ install:
       conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi;
     fi
   - if [[ ! "$PYTHON" =~ "3.5" ]] && [[ -z "$NO_COMMON_TESTS" ]]; then
-      conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON xgboost;
+      conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
     fi
   - if [ -z "$NO_COMMON_TESTS" ]; then
       virtualenv testenv && source testenv/bin/activate;
