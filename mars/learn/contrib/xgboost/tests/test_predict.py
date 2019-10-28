@@ -26,6 +26,7 @@ except ImportError:
     xgboost = None
 
 
+@unittest.skipIf(xgboost is None, 'XGBoost not installed')
 class Test(unittest.TestCase):
     def setUp(self):
         n_rows = 1000

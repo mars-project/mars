@@ -182,7 +182,7 @@ class XGBPredict(Operand, TileableOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        from xgboost import rabit, DMatrix
+        from xgboost import DMatrix
 
         raw_data = data = ctx[op.data.key]
         if isinstance(data, tuple):
