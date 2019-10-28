@@ -75,7 +75,7 @@ install:
       conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
       conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi;
     fi
-  - if [ -z "$NO_COMMON_TESTS" ]; then
+  - if [[ ! "$PYTHON" =~ "3.5" ]] && [[ -z "$NO_COMMON_TESTS" ]]; then
       conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON xgboost;
     fi
   - if [ -z "$NO_COMMON_TESTS" ]; then
