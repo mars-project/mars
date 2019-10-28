@@ -24,7 +24,7 @@ from mars.tests.core import TestBase
 from mars.dataframe.core import IndexValue, DataFrameChunk
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.from_tensor import from_tensor
+from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from mars.dataframe.datasource.from_records import from_records
 
 
@@ -242,7 +242,7 @@ class Test(TestBase):
         # test serialization and deserialization
         # pb
         tensor = mt.random.rand(10, 10)
-        df = from_tensor(tensor)
+        df = dataframe_from_tensor(tensor)
         df.tiles()
         chunk = df.chunks[0]
         serials = self._pb_serial(chunk)
@@ -275,7 +275,7 @@ class Test(TestBase):
 
     def testFromTensor(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
-        df = from_tensor(tensor)
+        df = dataframe_from_tensor(tensor)
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(df.op.dtypes[0], tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
 
@@ -289,8 +289,8 @@ class Test(TestBase):
         # in fact, tensor3 is (3,1)
         tensor3 = mt.array([tensor2]).T
 
-        df2 = from_tensor(tensor2)
-        df3 = from_tensor(tensor3)
+        df2 = dataframe_from_tensor(tensor2)
+        df3 = dataframe_from_tensor(tensor3)
         df2.tiles()
         df3.tiles()
         np.testing.assert_equal(df2.chunks[0].index, (0, 0))
@@ -300,10 +300,10 @@ class Test(TestBase):
         scalar = mt.array(1)
         np.testing.assert_equal(scalar.ndim, 0)
         with self.assertRaises(TypeError):
-            from_tensor(scalar)
+            dataframe_from_tensor(scalar)
 
         # from tensor with given index
-        df = from_tensor(tensor, index=np.arange(0, 20, 2))
+        df = dataframe_from_tensor(tensor, index=np.arange(0, 20, 2))
         df.tiles()
         pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
         pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
@@ -311,12 +311,32 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
 
         # from tensor with given columns
-        df = from_tensor(tensor, columns=list('abcdefghij'))
+        df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
         df.tiles()
         pd.testing.assert_index_equal(df.chunks[0].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
         pd.testing.assert_index_equal(df.chunks[1].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
         pd.testing.assert_index_equal(df.chunks[2].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
         pd.testing.assert_index_equal(df.chunks[3].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+
+        # test series from tensor
+        tensor = mt.random.rand(10, chunk_size=4)
+        series = series_from_tensor(tensor, name='a')
+
+        self.assertEqual(series.dtype, tensor.dtype)
+        self.assertEqual(series.name, 'a')
+        pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(10))
+
+        series.tiles()
+        self.assertEqual(len(series.chunks), 3)
+        pd.testing.assert_index_equal(series.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 4))
+        self.assertEqual(series.chunks[0].name, 'a')
+        pd.testing.assert_index_equal(series.chunks[1].index_value.to_pandas(), pd.RangeIndex(4, 8))
+        self.assertEqual(series.chunks[1].name, 'a')
+        pd.testing.assert_index_equal(series.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10))
+        self.assertEqual(series.chunks[2].name, 'a')
+
+        with self.assertRaises(TypeError):
+            series_from_tensor(mt.ones((10, 10)))
 
     def testFromRecords(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])

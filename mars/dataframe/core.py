@@ -504,10 +504,25 @@ class SeriesData(TileableData):
     def index_value(self):
         return self._index_value
 
+    def to_tensor(self, dtype=None):
+        from ..tensor.datasource.from_dataframe import from_series
+        return from_series(self, dtype=dtype)
+
+    @staticmethod
+    def from_tensor(in_tensor, index=None, name=None):
+        from .datasource.from_tensor import series_from_tensor
+        return series_from_tensor(in_tensor, index=index, name=name)
+
 
 class Series(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (SeriesData,)
+
+    def to_tensor(self, dtype=None):
+        return self._data.to_tensor(dtype=dtype)
+
+    def from_tensor(self, in_tensor, index=None, name=None):
+        return self._data.from_tensor(in_tensor, index=index, name=name)
 
 
 class DataFrameChunkData(ChunkData):
@@ -649,14 +664,14 @@ class DataFrameData(TileableData):
         else:
             return self == o
 
-    def to_tensor(self):
+    def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_dataframe
-        return from_dataframe(self)
+        return from_dataframe(self, dtype=dtype)
 
     @staticmethod
-    def from_tensor(in_tensor):
-        from .datasource.from_tensor import from_tensor
-        return from_tensor(in_tensor)
+    def from_tensor(in_tensor, index=None, columns=None):
+        from .datasource.from_tensor import dataframe_from_tensor
+        return dataframe_from_tensor(in_tensor, index=index, columns=columns)
 
     @staticmethod
     def from_records(records, **kw):
@@ -678,8 +693,8 @@ class DataFrame(TileableEntity):
     def to_tensor(self):
         return self._data.to_tensor()
 
-    def from_tensor(self, in_tensor):
-        return self._data.from_tensor(in_tensor)
+    def from_tensor(self, in_tensor, index=None, columns=None):
+        return self._data.from_tensor(in_tensor, index=index, columns=columns)
 
     def from_records(self, records, **kw):
         return self._data.from_records(records, **kw)

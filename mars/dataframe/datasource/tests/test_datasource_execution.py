@@ -21,7 +21,7 @@ from mars.executor import Executor
 from mars.tests.core import TestBase
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.from_tensor import from_tensor
+from mars.dataframe.datasource.from_tensor import dataframe_from_tensor
 from mars.dataframe.datasource.from_records import from_records
 
 
@@ -55,9 +55,21 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(series, concat=True)[0]
         pd.testing.assert_series_equal(ps, result)
 
+    def testSeriesFromTensor(self):
+        data = np.random.rand(10)
+        series = md.Series(mt.tensor(data), name='a')
+        pd.testing.assert_series_equal(series.execute(), pd.Series(data, name='a'))
+
+        series = md.Series(mt.tensor(data, chunk_size=3))
+        pd.testing.assert_series_equal(series.execute(), pd.Series(data))
+
+        series = md.Series(mt.ones((10,), chunk_size=4))
+        pd.testing.assert_series_equal(series.execute(), pd.Series(np.ones(10,)))
+
+
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
-        df = from_tensor(tensor)
+        df = dataframe_from_tensor(tensor)
         tensor_res = self.executor.execute_tensor(tensor, concat=True)[0]
         pdf_expected = pd.DataFrame(tensor_res)
         df_result = self.executor.execute_dataframe(df, concat=True)[0]
@@ -67,28 +79,28 @@ class Test(TestBase):
 
         # test converted with specified index_value and columns
         tensor2 = mt.random.rand(2, 2, chunk_size=1)
-        df2 = from_tensor(tensor2, index=pd.Index(['a', 'b']), columns=pd.Index([3, 4]))
+        df2 = dataframe_from_tensor(tensor2, index=pd.Index(['a', 'b']), columns=pd.Index([3, 4]))
         df_result = self.executor.execute_dataframe(df2, concat=True)[0]
         pd.testing.assert_index_equal(df_result.index, pd.Index(['a', 'b']))
         pd.testing.assert_index_equal(df_result.columns, pd.Index([3, 4]))
 
         # test converted from 1-d tensor
         tensor3 = mt.array([1, 2, 3])
-        df3 = from_tensor(tensor3)
+        df3 = dataframe_from_tensor(tensor3)
         result3 = self.executor.execute_dataframe(df3, concat=True)[0]
         pdf_expected = pd.DataFrame(np.array([1, 2, 3]))
         pd.testing.assert_frame_equal(pdf_expected, result3)
 
         # test converted from identical chunks
         tensor4 = mt.ones((10, 10), chunk_size=3)
-        df4 = from_tensor(tensor4)
+        df4 = dataframe_from_tensor(tensor4)
         result4 = self.executor.execute_dataframe(df4, concat=True)[0]
         pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor4, concat=True)[0])
         pd.testing.assert_frame_equal(pdf_expected, result4)
 
         # from tensor with given index
         tensor5 = mt.ones((10, 10), chunk_size=3)
-        df5 = from_tensor(tensor5, index=np.arange(0, 20, 2))
+        df5 = dataframe_from_tensor(tensor5, index=np.arange(0, 20, 2))
         result5 = self.executor.execute_dataframe(df5, concat=True)[0]
         pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor5, concat=True)[0],
                                     index=np.arange(0, 20, 2))
@@ -96,7 +108,7 @@ class Test(TestBase):
 
         # from tensor with given columns
         tensor6 = mt.ones((10, 10), chunk_size=3)
-        df6 = from_tensor(tensor6, columns=list('abcdefghij'))
+        df6 = dataframe_from_tensor(tensor6, columns=list('abcdefghij'))
         result6 = self.executor.execute_dataframe(df6, concat=True)[0]
         pdf_expected = pd.DataFrame(self.executor.execute_tensor(tensor6, concat=True)[0],
                                     columns=list('abcdefghij'))
@@ -104,7 +116,6 @@ class Test(TestBase):
 
     def testFromRecordsExecution(self):
         dtype = np.dtype([('x', 'int'), ('y', 'double'), ('z', '<U16')])
-
 
         ndarr = np.ones((10,), dtype=dtype)
         pdf_expected = pd.DataFrame.from_records(ndarr, index=pd.RangeIndex(10))
