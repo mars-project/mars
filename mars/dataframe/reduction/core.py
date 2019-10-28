@@ -332,8 +332,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         return self.new_series([series], shape=(), dtype=series.dtype,
                                index_value=parse_index(pd.RangeIndex(0)), name=series.name)
 
-    def __call__(self, input):
+    def __call__(self, input_object):
         if isinstance(input, DATAFRAME_TYPE):
-            return self._call_dataframe(input)
+            return self._call_dataframe(input_object)
         else:
-            return self._call_series(input)
+            return self._call_series(input_object)
