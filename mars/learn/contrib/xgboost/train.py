@@ -19,7 +19,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ....tensor.operands import TensorOperand, TensorOperandMixin
-from ....serialize import ValueType, DictField, KeyField, TupleField, StringField
+from ....serialize import ValueType, DictField, KeyField, TupleField
 from ....context import get_context, RunningMode
 from .start_tracker import StartTracker
 
