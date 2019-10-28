@@ -68,6 +68,7 @@ class GraphMetaActor(SchedulerActor):
         self._end_time = None
         self._state = None
         self._final_state = None
+        self._exc = None
 
         self._graph_finish_event = None
 
@@ -112,6 +113,12 @@ class GraphMetaActor(SchedulerActor):
 
     def get_state(self):
         return self._state
+
+    def set_exc_info(self, exc):
+        self._exc = exc
+
+    def get_exc_info(self):
+        return self._exc
 
     def get_wait_ref(self):
         return self._graph_wait_ref
@@ -812,7 +819,7 @@ class GraphActor(SchedulerActor):
                 session_id, res_applications, _tell=True)
 
     @log_unhandled
-    def add_finished_terminal(self, op_key, final_state=None):
+    def add_finished_terminal(self, op_key, final_state=None, exc=None):
         """
         Add a terminal operand to finished set. Calling this method
         will change graph state if all terminals are in finished states.
@@ -832,6 +839,8 @@ class GraphActor(SchedulerActor):
                 if len(self._terminated_tileables) == len(self._target_tileable_chunk_ops):
                     self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                     self._graph_meta_ref.set_graph_end(_tell=True)
+        if exc is not None:
+            self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
 
     @log_unhandled
     def remove_finished_terminal(self, op_key):
