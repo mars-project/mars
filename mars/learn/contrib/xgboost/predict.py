@@ -36,7 +36,7 @@ from .dmatrix import ToDMatrix, check_data
 try:
     from xgboost import Booster
 
-    register_tokenizer(Booster, lambda x: pickle.dumps(x))
+    register_tokenizer(Booster, pickle.dumps)
 except ImportError:
     pass
 
