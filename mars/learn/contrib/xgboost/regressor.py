@@ -18,7 +18,6 @@ from .core import xgboost, XGBScikitLearnBase
 
 XGBRegressor = None
 if xgboost:
-    from .... import tensor as mt
     from .dmatrix import MarsDMatrix
     from .core import evaluation_matrices
     from .train import train
