@@ -17,7 +17,7 @@
 import numpy as np
 
 from .core import Entity, Base
-from .context import LocalContext, LocalDictContext
+from .context import LocalDictContext
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
