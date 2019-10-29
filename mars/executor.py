@@ -444,6 +444,7 @@ class GraphExecution(object):
                             ref_counts[dep_key] -= 1
                             if ref_counts[dep_key] == 0:
                                 del results[dep_key]
+                                del ref_counts[dep_key]
 
                     # add successors' operands to queue
                     for succ_chunk in self._graph.iter_successors(output):
