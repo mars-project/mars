@@ -62,7 +62,7 @@ from . import special
 # types
 from .core import Tensor, MutableTensor
 
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+from .utils import concat_tileable_chunks, concat_chunks_on_axis, get_fetch_op_cls, get_fuse_op_cls
 
 # register fuse op and fetch op
 from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk

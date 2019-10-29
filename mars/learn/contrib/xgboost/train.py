@@ -31,7 +31,7 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
 
     _params = DictField('params', key_type=ValueType.string)
     _dtrain = KeyField('dtrain')
-    _evals = TupleField('evals', ValueType.tuple(ValueType.key, ValueType.string))
+    _evals = TupleField('evals')
     _kwargs = DictField('kwargs', key_type=ValueType.string)
     _tracker = KeyField('tracker')
 
@@ -82,11 +82,16 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
         return self.new_tensor(inputs, shape=(1,))
 
     @staticmethod
+    def _get_dmatrix_chunks_workers(ctx, dmatrix):
+        # dmatrix_chunk.inputs is concat, and concat's input is the coallocated chunks
+        metas = ctx.get_chunk_metas([c.inputs[0].inputs[0].key for c in dmatrix.chunks])
+        return [m.workers[0] for m in metas]
+
+    @staticmethod
     def _get_dmatrix_worker_to_chunk(dmatrix, workers, ctx):
         worker_to_chunk = dict()
         expect_workers = set(workers)
-        metas = ctx.get_chunk_metas([c.key for c in dmatrix.chunks])
-        workers = [m.workers[0] for m in metas]
+        workers = XGBTrain._get_dmatrix_chunks_workers(ctx, dmatrix)
         for w, c in zip(workers, dmatrix.chunks):
             if w in expect_workers:
                 worker_to_chunk[w] = c
@@ -99,16 +104,16 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             assert all(len(inp.chunks) == 1 for inp in op.inputs)
 
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([inp.chunks[0] for inp in op.inputs], shape=(1,))
+            out_chunk = chunk_op.new_chunk([inp.chunks[0] for inp in op.inputs],
+                                           shape=(1,), index=(0,))
             new_op = op.copy()
             return new_op.new_tensors(op.inputs, shape=op.outputs[0].shape,
                                       chunks=[out_chunk], nsplits=((1,),))
         else:
             inp = op.inputs[0]
             in_chunks = inp.chunks
-            metas = ctx.get_chunk_metas([c.key for c in in_chunks])
-            workers = [m.workers[0] for m in metas]
-            tracker_chunk = StartTracker(n_workers=len(inp.chunks)).new_chunk(in_chunks, shape=())
+            workers = cls._get_dmatrix_chunks_workers(ctx, inp)
+            tracker_chunk = StartTracker(n_workers=len(in_chunks)).new_chunk(in_chunks, shape=())
             out_chunks = []
             worker_to_evals = defaultdict(list)
             if op.evals is not None:
@@ -121,8 +126,9 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
                 chunk_op._tracker = tracker_chunk
                 chunk_evals = tuple(worker_to_evals.get(worker, list()))
                 chunk_op._evals = chunk_evals
-                input_chunks = [in_chunk] + [pair[1] for pair in chunk_evals] + [tracker_chunk]
-                out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,))
+                input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
+                out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,),
+                                               index=in_chunk.index[:1])
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()
@@ -133,16 +139,16 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
     def execute(cls, ctx, op):
         from xgboost import train, rabit
 
-        dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key], op.dtrain.op)
-        eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key], t[0].op) for t in op.evals]
+        dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key])
+        eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key]) for t in op.evals]
         evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
+        params = op.params
+        params['nthread'] = ctx.get_ncores() or -1
 
         if op.tracker is None:
             # non distributed
             local_history = dict()
             kwargs = dict() if op.kwargs is None else op.kwargs
-            params = op.params
-            params['nthread'] = ctx.get_ncores() or -1
             bst = train(params, dtrain, evals=evals,
                         evals_result=local_history, **kwargs)
             ctx[op.outputs[0].key] = np.array([
@@ -150,11 +156,11 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             ])
         else:
             # distributed
-            rabit_args = ctx[op.tracker.key]
+            rabit_args = ctx[op.tracker.key][0]
             rabit.init(rabit_args)
             try:
                 local_history = dict()
-                bst = train(op.params, dtrain, evals=evals, evals_result=local_history,
+                bst = train(params, dtrain, evals=evals, evals_result=local_history,
                             **op.kwargs)
                 ret = np.array([{'booster': pickle.dumps(bst), 'history': local_history}])
                 if rabit.get_rank() != 0:
@@ -179,9 +185,10 @@ def train(params, dtrain, evals=(), **kwargs):
 
     evals_result = kwargs.pop('evals_result', dict())
     session = kwargs.pop('session', None)
+    run_kwargs = kwargs.pop('run_kwargs', dict())
     op = XGBTrain(params=params, dtrain=dtrain, evals=evals, kwargs=kwargs)
     t = op()
-    ret = t.execute(session=session)[0]
+    ret = t.execute(session=session, **run_kwargs)[0]
     evals_result.update(ret['history'])
     bst = pickle.loads(ret['booster'])
     num_class = params.get('num_class')

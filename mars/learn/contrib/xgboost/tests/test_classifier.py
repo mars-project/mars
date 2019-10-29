@@ -18,7 +18,13 @@ import mars.tensor as mt
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
 
+try:
+    import xgboost
+except ImportError:
+    xgboost = None
 
+
+@unittest.skipIf(xgboost is None, 'XGBoost not installed')
 class Test(unittest.TestCase):
     def setUp(self):
         n_rows = 1000

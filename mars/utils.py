@@ -284,6 +284,9 @@ else:
 
 
 def calc_data_size(dt):
+    if dt is None:
+        return 0
+
     data_size = sys.getsizeof(dt)
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)

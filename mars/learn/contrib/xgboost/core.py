@@ -62,7 +62,7 @@ if xgboost:
             raise NotImplementedError
 
 
-    def evaluation_matrices(validation_set, sample_weights, session=None):
+    def evaluation_matrices(validation_set, sample_weights, session=None, run_kwargs=None):
         """
         Parameters
         ----------
@@ -75,6 +75,8 @@ if xgboost:
             The weight vector for validation data.
         session:
             Session to run
+        run_kwargs:
+            kwargs for session.run
         Returns
         -------
         evals: list of validation DMatrix
@@ -85,7 +87,8 @@ if xgboost:
             for i, e in enumerate(validation_set):
                 w = (sample_weights[i]
                      if sample_weights is not None else None)
-                dmat = MarsDMatrix(e[0], label=e[1], weight=w, session=session)
+                dmat = MarsDMatrix(e[0], label=e[1], weight=w,
+                                   session=session, run_kwargs=run_kwargs)
                 evals.append((dmat, 'validation_{}'.format(i)))
         else:
             evals = None

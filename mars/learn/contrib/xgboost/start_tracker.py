@@ -14,9 +14,12 @@
 
 from threading import Thread
 
+import numpy as np
+
 from .... import opcodes as OperandDef
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....serialize import Int32Field
+from ....utils import to_binary
 
 
 class StartTracker(TensorOperand, TensorOperandMixin):
@@ -38,7 +41,7 @@ class StartTracker(TensorOperand, TensorOperandMixin):
         from .tracker import RabitTracker
 
         env = {'DMLC_NUM_WORKER': op.n_workers}
-        rabit_context = RabitTracker(hostIP=ctx.get_local_address(),
+        rabit_context = RabitTracker(hostIP=ctx.get_local_address().split(':', 1)[0],
                                      nslave=op.n_workers)
         env.update(rabit_context.slave_envs())
 
@@ -47,4 +50,5 @@ class StartTracker(TensorOperand, TensorOperandMixin):
         thread.daemon = True
         thread.start()
 
-        ctx[op.outputs[0].key] = env
+        rabit_args = [to_binary('{0}={0}'.format(item)) for item in env.items()]
+        ctx[op.outputs[0].key] = np.array([rabit_args])

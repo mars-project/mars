@@ -30,21 +30,27 @@ if xgboost:
 
         def fit(self, X, y, sample_weights=None, eval_set=None, sample_weight_eval_set=None, **kw):
             session = kw.pop('session', None)
+            run_kwargs = kw.pop('run_kwargs', dict())
             if kw:
                 raise TypeError("fit got an unexpected keyword argument '{0}'".format(next(iter(kw))))
 
-            dtrain = MarsDMatrix(X, label=y, weight=sample_weights, session=session)
+            dtrain = MarsDMatrix(X, label=y, weight=sample_weights,
+                                 session=session, run_kwargs=run_kwargs)
             params = self.get_xgb_params()
-            evals = evaluation_matrices(eval_set, sample_weight_eval_set, session=session)
+            evals = evaluation_matrices(eval_set, sample_weight_eval_set,
+                                        session=session, run_kwargs=run_kwargs)
             self.evals_result_ = dict()
             result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
-                           evals=evals, evals_result=self.evals_result_)
+                           evals=evals, evals_result=self.evals_result_,
+                           session=session, run_kwargs=run_kwargs)
             self._Booster = result
             return self
 
         def predict(self, data, **kw):
             session = kw.pop('session', None)
+            run_kwargs = kw.pop('run_kwargs', None)
             if kw:
                 raise TypeError("predict got an unexpected "
                                 "keyword argument '{0}'".format(next(iter(kw))))
-            return predict(self.get_booster(), data, session=session)
+            return predict(self.get_booster(), data,
+                           session=session, run_kwargs=run_kwargs)

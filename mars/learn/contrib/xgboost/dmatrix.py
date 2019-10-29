@@ -31,6 +31,16 @@ from ....dataframe.initializer import DataFrame as create_dataframe, Series as c
 from ....utils import concat_chunks_on_axis
 
 
+def _on_serialize_object_type(object_type):
+    if object_type is not None:
+        return object_type.value
+
+
+def _on_deserialize_object_type(ser):
+    if ser is not None:
+        return ObjectType(ser)
+
+
 class ToDMatrix(Operand, TileableOperandMixin):
     _op_module_ = 'learn'
     _op_type_ = OperandDef.TO_DMATRIX
@@ -42,8 +52,8 @@ class ToDMatrix(Operand, TileableOperandMixin):
     _feature_names = ListField('feature_names')
     _feature_types = ListField('feature_types')
     _multi_output = BoolField('multi_output')
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
+    _object_type = Int8Field('object_type', on_serialize=_on_serialize_object_type,
+                             on_deserialize=_on_deserialize_object_type)
 
     def __init__(self, data=None, label=None, missing=None, weight=None, feature_names=None,
                  feature_types=None, multi_output=None, gpu=None, object_type=None, **kw):
@@ -312,22 +322,19 @@ class ToDMatrix(Operand, TileableOperandMixin):
             return cls._tile_single_output(op)
 
     @staticmethod
-    def get_xgb_dmatrix(tup, op):
+    def get_xgb_dmatrix(tup):
         from xgboost import DMatrix
 
-        tup_iter = iter(tup)
-        data = next(tup_iter)
-        label, weight = None, None
-        if op.label is not None:
-            label = next(tup_iter)
-        if op.weight is not None:
-            weight = next(tup_iter)
-        missing = next(tup_iter)
-        feature_names = next(tup_iter)
-        feature_types = next(tup_iter)
+        data, label, weight, missing, feature_names, feature_types = tup
         return DMatrix(data, label=label, missing=missing, weight=weight,
                        feature_names=feature_names, feature_types=feature_types,
                        nthread=-1)
+
+    @staticmethod
+    def _from_ctx_if_not_none(ctx, chunk):
+        if chunk is None:
+            return chunk
+        return ctx[chunk.key]
 
     def execute(cls, ctx, op):
         if op.multi_output:
@@ -338,9 +345,15 @@ class ToDMatrix(Operand, TileableOperandMixin):
             if op.weight is not None:
                 ctx[outs[-1].key] = ctx[op.inputs[-1].key]
             return
-
-        ctx[op.outputs[0].key] = \
-            tuple(ctx[c.key] for c in op.inputs) + (op.missing, op.feature_names, op.feature_types)
+        else:
+            ctx[op.outputs[0].key] = (
+                cls._from_ctx_if_not_none(ctx, op.data),
+                cls._from_ctx_if_not_none(ctx, op.label),
+                cls._from_ctx_if_not_none(ctx, op.weight),
+                op.missing,
+                op.feature_names,
+                op.feature_types
+            )
 
 
 def check_data(data):
@@ -356,7 +369,7 @@ def check_data(data):
 
 
 def to_dmatrix(data, label=None, missing=None, weight=None,
-               feature_names=None, feature_types=None, session=None):
+               feature_names=None, feature_types=None, session=None, run_kwargs=None):
     data = check_data(data)
     if label is not None:
         if isinstance(label, (DATAFRAME_TYPE, pd.DataFrame)):
@@ -388,7 +401,7 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
                    gpu=data.op.gpu, multi_output=True, **kw)
     outs = ExecutableTuple(op())
     # Execute first, to make sure the counterpart chunks of data, label and weight are co-allocated
-    outs.execute(session=session, fetch=False)
+    outs.execute(session=session, fetch=False, **(run_kwargs or dict()))
 
     data = outs[0]
     label = None if op.label is None else outs[1]

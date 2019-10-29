@@ -32,13 +32,15 @@ if xgboost:
 
         def fit(self, X, y, sample_weights=None, eval_set=None, sample_weight_eval_set=None, **kw):
             session = kw.pop('session', None)
+            run_kwargs = kw.pop('run_kwargs', dict())
             if kw:
                 raise TypeError("fit got an unexpected keyword argument '{0}'".format(next(iter(kw))))
 
-            dtrain = MarsDMatrix(X, label=y, weight=sample_weights, session=session)
+            dtrain = MarsDMatrix(X, label=y, weight=sample_weights,
+                                 session=session, run_kwargs=run_kwargs)
             params = self.get_xgb_params()
 
-            self.classes_ = mt.unique(y, aggregate_size=1).execute(session=session)
+            self.classes_ = mt.unique(y, aggregate_size=1).execute(session=session, **run_kwargs)
             self.n_classes_ = len(self.classes_)
 
             if self.n_classes_ > 2:
@@ -48,27 +50,30 @@ if xgboost:
                 params['objective'] = 'binary:logistic'
             params.setdefault('num_class', self.n_classes_)
 
-            evals = evaluation_matrices(eval_set, sample_weight_eval_set, session=session)
+            evals = evaluation_matrices(eval_set, sample_weight_eval_set,
+                                        session=session, run_kwargs=run_kwargs)
             self.evals_result_ = dict()
             result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
-                           evals=evals, evals_result=self.evals_result_)
+                           evals=evals, evals_result=self.evals_result_,
+                           session=session, run_kwargs=run_kwargs)
             self._Booster = result
             return self
 
         def predict(self, data, **kw):
             session = kw.pop('session', None)
+            run_kwargs = kw.pop('run_kwargs', dict())
             if kw:
                 raise TypeError("predict got an unexpected "
                                 "keyword argument '{0}'".format(next(iter(kw))))
-            prob = predict(self.get_booster(), data, session=session, run=False)
+            prob = predict(self.get_booster(), data, run=False)
             if prob.ndim > 1:
                 prediction = mt.argmax(prob, axis=1)
             else:
                 prediction = (prob > 0).astype(mt.int64)
-            prediction.execute(session=session)
+            prediction.execute(session=session, fetch=False, **run_kwargs)
             return prediction
 
-        def predict_proba(self, data, ntree_limit=None):
+        def predict_proba(self, data, ntree_limit=None, **kw):
             if ntree_limit is not None:
                 raise NotImplementedError('ntree_limit is not currently supported')
-            return predict(self.get_booster(), data)
+            return predict(self.get_booster(), data, **kw)

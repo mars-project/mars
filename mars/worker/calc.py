@@ -132,7 +132,7 @@ class BaseCalcActor(WorkerActor):
 
     def _get_n_cpu(self):
         if self._n_cpu is None:
-            self._n_cpu = self._dispatch_ref.get_slots('cpu')
+            self._n_cpu = len(self._dispatch_ref.get_slots('cpu'))
         return self._n_cpu
 
     def _calc_results(self, session_id, graph_key, graph, context_dict, chunk_targets):

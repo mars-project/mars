@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import operator
 import pickle
+import base64
 
 import numpy as np
 import pandas as pd
@@ -30,8 +30,9 @@ from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorData, Tensor, \
     TensorChunkData, TensorChunk, TensorOrder
 from ....compat import six
-from ....utils import register_tokenizer
-from .dmatrix import ToDMatrix, check_data
+from ....utils import register_tokenizer, to_str
+from .dmatrix import ToDMatrix, check_data, \
+    _on_serialize_object_type, _on_deserialize_object_type
 
 try:
     from xgboost import Booster
@@ -43,8 +44,12 @@ except ImportError:
 
 def _on_serialize_model(m):
     if not isinstance(m, six.string_types):
-        return pickle.dumps(m)
+        return to_str(base64.b64encode(pickle.dumps(m)))
     return m
+
+
+def _on_deserialize_model(ser):
+    return pickle.loads(base64.b64decode(ser))
 
 
 class XGBPredict(Operand, TileableOperandMixin):
@@ -52,9 +57,9 @@ class XGBPredict(Operand, TileableOperandMixin):
     _op_type_ = OperandDef.XGBOOST_PREDICT
 
     _data = KeyField('data')
-    _model = StringField('model', on_serialize=_on_serialize_model, on_deserialize=pickle.loads)
-    _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
-                             on_deserialize=ObjectType)
+    _model = StringField('model', on_serialize=_on_serialize_model, on_deserialize=_on_deserialize_model)
+    _object_type = Int8Field('object_type', on_serialize=_on_serialize_object_type,
+                             on_deserialize=_on_deserialize_object_type)
 
     def __init__(self, data=None, model=None, object_type=None, gpu=None, **kw):
         super(XGBPredict, self).__init__(_data=data, _model=model, _gpu=gpu,
@@ -186,7 +191,7 @@ class XGBPredict(Operand, TileableOperandMixin):
 
         raw_data = data = ctx[op.data.key]
         if isinstance(data, tuple):
-            data = ToDMatrix.get_xgb_dmatrix(data, op.data.op)
+            data = ToDMatrix.get_xgb_dmatrix(data)
         else:
             data = DMatrix(data)
         result = op.model.predict(data)
@@ -199,7 +204,7 @@ class XGBPredict(Operand, TileableOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def predict(model, data, session=None, run=True):
+def predict(model, data, session=None, run_kwargs=None, run=True):
     from xgboost import Booster
 
     data = check_data(data)
@@ -212,5 +217,5 @@ def predict(model, data, session=None, run=True):
     op = XGBPredict(data=data, model=model, gpu=data.op.gpu, **kw)
     result = op()
     if run:
-        result.execute(session=session)
+        result.execute(session=session, fetch=False, **(run_kwargs or dict()))
     return result
