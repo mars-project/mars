@@ -73,7 +73,9 @@ install:
     pip install virtualenv coveralls flake8 etcd-gevent
   - if [[ $TRAVIS_OS_NAME == "linux" ]] && [[ -z "$NO_COMMON_TESTS" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
       conda install --quiet --yes -n test -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
-      conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
+      if [[ ! "$PYTHON" =~ "2.7"]]; then
+        conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
+      fi
       conda install --quiet --yes -n test -c pkgs/main python=$PYTHON certifi;
     fi
   - if [ -z "$NO_COMMON_TESTS" ]; then
