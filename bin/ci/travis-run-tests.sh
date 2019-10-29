@@ -7,7 +7,8 @@ if [ -n "$WITH_KUBERNETES" ]; then
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build
-  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web mars/learn/contrib/xgboost/tests/integrated
+  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web \
+      mars/learn/contrib/xgboost/tests/integrated
   mv .coverage build/.coverage.tensor.file
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe mars
   mv .coverage build/.coverage.main.file
