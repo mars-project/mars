@@ -27,7 +27,7 @@ from mars.utils import get_next_port
 from mars.actors import new_client
 from mars.scheduler import ResourceActor
 from mars.session import new_session
-from mars.learn.contrib.xgboost import XGBClassifier, XGBRegressor
+from mars.learn.contrib.xgboost import XGBClassifier
 
 try:
     import xgboost
