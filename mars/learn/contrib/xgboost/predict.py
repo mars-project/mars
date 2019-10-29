@@ -199,7 +199,7 @@ class XGBPredict(Operand, TileableOperandMixin):
         ctx[op.outputs[0].key] = result
 
 
-def predict(model, data, session=None):
+def predict(model, data, session=None, run=True):
     from xgboost import Booster
 
     data = check_data(data)
@@ -211,5 +211,6 @@ def predict(model, data, session=None):
 
     op = XGBPredict(data=data, model=model, gpu=data.op.gpu, **kw)
     result = op()
-    result.execute(session=session)
+    if run:
+        result.execute(session=session)
     return result

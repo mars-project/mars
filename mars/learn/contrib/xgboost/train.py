@@ -141,7 +141,9 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             # non distributed
             local_history = dict()
             kwargs = dict() if op.kwargs is None else op.kwargs
-            bst = train(op.params, dtrain, evals=evals,
+            params = op.params
+            params['nthread'] = ctx.get_ncores() or -1
+            bst = train(params, dtrain, evals=evals,
                         evals_result=local_history, **kwargs)
             ctx[op.outputs[0].key] = np.array([
                 {'booster': pickle.dumps(bst), 'history': local_history}
@@ -177,7 +179,7 @@ def train(params, dtrain, evals=(), **kwargs):
 
     eval_result = kwargs.pop('eval_result', dict())
     session = kwargs.pop('session', None)
-    op = XGBTrain(params=params, dtrain=dtrain, evals=evals, **kwargs)
+    op = XGBTrain(params=params, dtrain=dtrain, evals=evals, kwargs=kwargs)
     t = op()
     ret = t.execute(session=session)[0]
     eval_result.update(ret['history'])

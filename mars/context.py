@@ -97,6 +97,12 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    def get_ncores(self):
+        """
+        Get number of cores
+        """
+        raise NotImplementedError
+
     # ---------------
     # Graph relative
     # ---------------
@@ -126,8 +132,12 @@ ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
 
 class LocalContext(ContextBase):
-    def __init__(self, local_session):
+    def __init__(self, local_session, ncores=None):
         self._local_session = local_session
+        self._ncores = ncores
+
+    def set_ncores(self, ncores):
+        self._ncores = ncores
 
     @property
     def running_mode(self):
@@ -142,6 +152,9 @@ class LocalContext(ContextBase):
 
     def get_local_address(self):
         return
+
+    def get_ncores(self):
+        return self._ncores
 
     def get_chunk_metas(self, chunk_keys):
         chunk_result = self._local_session.executor.chunk_result
@@ -167,13 +180,18 @@ class LocalContext(ContextBase):
 
 
 class LocalDictContext(LocalContext, dict):
-    def __init__(self, local_session):
-        LocalContext.__init__(self, local_session)
+    def __init__(self, local_session, ncores=None):
+        LocalContext.__init__(self, local_session, ncores=ncores)
         dict.__init__(self)
+
+    def copy(self):
+        new_d = LocalDictContext(self._local_session, ncores=self._ncores)
+        new_d.update(self)
+        return new_d
 
 
 class DistributedContext(ContextBase):
-    def __init__(self, cluster_info, session_id, addr, chunk_meta_client):
+    def __init__(self, cluster_info, session_id, addr, chunk_meta_client, **kw):
         self._cluster_info = cluster_info
         is_distributed = cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
@@ -181,6 +199,7 @@ class DistributedContext(ContextBase):
         self._session_id = session_id
         self._address = addr
         self._chunk_meta_client = chunk_meta_client
+        self._extra_info = kw
 
     @property
     def running_mode(self):
@@ -195,6 +214,9 @@ class DistributedContext(ContextBase):
 
     def get_local_address(self):
         return self._address
+
+    def get_ncores(self):
+        return self._extra_info.get('n_cpu')
 
     def get_chunk_metas(self, chunk_keys):
         return self._chunk_meta_client.batch_get_chunk_meta(

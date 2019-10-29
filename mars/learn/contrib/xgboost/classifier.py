@@ -11,3 +11,64 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .core import xgboost, XGBScikitLearnBase
+
+
+XGBClassifier = None
+if xgboost:
+    from xgboost.sklearn import XGBClassifierBase
+
+    from .... import tensor as mt
+    from .dmatrix import MarsDMatrix
+    from .core import evaluation_matrices
+    from .train import train
+    from .predict import predict
+
+    class XGBClassifier(XGBScikitLearnBase, XGBClassifierBase):
+        """
+        Implementation of the scikit-learn API for XGBoost classification.
+        """
+
+        def fit(self, X, y, sample_weights=None, eval_set=None, sample_weight_eval_set=None, **kw):
+            session = kw.pop('session', None)
+            if kw:
+                raise TypeError("fit got an unexpected keyword argument '{0}'".format(next(iter(kw))))
+
+            dtrain = MarsDMatrix(X, label=y, weight=sample_weights, session=session)
+            params = self.get_xgb_params()
+
+            self.classes_ = mt.unique(y, aggregate_size=1).execute(session=session)
+            self.n_classes_ = len(self.classes_)
+
+            if self.n_classes_ > 2:
+                params['objective'] = 'multi:softprob'
+                params['num_class'] = self.n_classes_
+            else:
+                params['objective'] = 'binary:logistic'
+            params.setdefault('num_class', self.n_classes_)
+
+            evals = evaluation_matrices(eval_set, sample_weight_eval_set, session=session)
+            self.evals_result_ = dict()
+            result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
+                           evals=evals, eval_result=self.evals_result_)
+            self._Booster = result
+            return self
+
+        def predict(self, data, **kw):
+            session = kw.pop('session', None)
+            if kw:
+                raise TypeError("predict got an unexpected "
+                                "keyword argument '{0}'".format(next(iter(kw))))
+            prob = predict(self.get_booster(), data, session=session, run=False)
+            if prob.ndim > 1:
+                prediction = mt.argmax(prob, axis=1)
+            else:
+                prediction = (prob > 0).astype(mt.int64)
+            prediction.execute(session=session)
+            return prediction
+
+        def predict_proba(self, data, ntree_limit=None):
+            if ntree_limit is not None:
+                raise NotImplementedError('ntree_limit is not currently supported')
+            return predict(self.get_booster(), data)

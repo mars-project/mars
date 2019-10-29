@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from .dmatrix import MarsDMatrix
-from .train import XGBTrain, train
-from .predict import XGBPredict, predict
+from .train import train
+from .predict import predict
 from .start_tracker import StartTracker
+from .classifier import XGBClassifier
+
+del StartTracker

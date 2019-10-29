@@ -30,8 +30,8 @@ class LocalSession(object):
         from .executor import Executor
 
         self._endpoint = None
-        self._context = LocalContext(self)
-        self._executor = Executor(storage=LocalDictContext(self))
+        self._context = LocalDictContext(self)
+        self._executor = Executor(storage=self._context)
 
         self._mut_tensor = dict()
         self._mut_tensor_data = dict()
@@ -85,6 +85,8 @@ class LocalSession(object):
                 else:
                     # CPU
                     kw['n_parallel'] = cpu_count()
+            # set number of running cores
+            self.context.set_ncores(kw['n_parallel'])
             res = self._executor.execute_tileables(tileables, **kw)
             return res
 

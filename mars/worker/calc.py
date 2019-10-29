@@ -46,6 +46,7 @@ class BaseCalcActor(WorkerActor):
         self._status_ref = None
 
         self._execution_pool = None
+        self._n_cpu = None
 
     def post_create(self):
         super(BaseCalcActor, self).post_create()
@@ -129,6 +130,11 @@ class BaseCalcActor(WorkerActor):
 
         return promise.all_(promises).then(lambda *_: context_dict)
 
+    def _get_n_cpu(self):
+        if self._n_cpu is None:
+            self._n_cpu = self._dispatch_ref.get_slots('cpu')
+        return self._n_cpu
+
     def _calc_results(self, session_id, graph_key, graph, context_dict, chunk_targets):
         _, op_name = concat_operand_keys(graph, '_')
 
@@ -136,7 +142,8 @@ class BaseCalcActor(WorkerActor):
         start_time = time.time()
 
         local_context_dict = DistributedDictContext(
-            self._cluster_info_ref, session_id, self.address, self.get_meta_client())
+            self._cluster_info_ref, session_id, self.address, self.get_meta_client(),
+            n_cpu=self._get_n_cpu())
         local_context_dict.update(context_dict)
         context_dict.clear()
 
