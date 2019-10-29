@@ -335,7 +335,7 @@ class Session(object):
         data_url = '%s/api/session/%s/graph/%s/data/%s?wait=%d' % \
                    (self._endpoint, self._session_id, graph_key, tileable_key, 1 if wait else 0)
         self._req_session.delete(data_url)
-        del self._executed_tileables[tileable_key]
+        self._executed_tileables.pop(tileable_key, None)
 
     def stop(self, graph_key):
         session_url = self._endpoint + '/api/session/' + self._session_id
