@@ -177,12 +177,12 @@ def train(params, dtrain, evals=(), **kwargs):
     results: Booster
     """
 
-    eval_result = kwargs.pop('eval_result', dict())
+    evals_result = kwargs.pop('evals_result', dict())
     session = kwargs.pop('session', None)
     op = XGBTrain(params=params, dtrain=dtrain, evals=evals, kwargs=kwargs)
     t = op()
     ret = t.execute(session=session)[0]
-    eval_result.update(ret['history'])
+    evals_result.update(ret['history'])
     bst = pickle.loads(ret['booster'])
     num_class = params.get('num_class')
     if num_class:

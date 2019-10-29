@@ -51,7 +51,7 @@ if xgboost:
             evals = evaluation_matrices(eval_set, sample_weight_eval_set, session=session)
             self.evals_result_ = dict()
             result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
-                           evals=evals, eval_result=self.evals_result_)
+                           evals=evals, evals_result=self.evals_result_)
             self._Booster = result
             return self
 
