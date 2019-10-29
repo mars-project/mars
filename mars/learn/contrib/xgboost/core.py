@@ -79,7 +79,7 @@ if xgboost:
             kwargs for session.run
         Returns
         -------
-        evals: list of validation DMatrix
+        evals: list of validation MarsDMatrix
         """
         evals = []
         if validation_set is not None:
