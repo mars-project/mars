@@ -221,17 +221,17 @@ Getting involved
 Thank you in advance for your contributions!
 
 
-.. |Build| image:: https://img.shields.io/travis/mars-project/mars.svg?style=flat-square
-   :target: https://travis-ci.org/mars-project/mars
-.. |Coverage| image:: https://img.shields.io/coveralls/github/mars-project/mars.svg?style=flat-square
+.. |Build| image:: https://github.com/mars-project/mars/workflows/Mars%20CI/badge.svg
+   :target: https://github.com/mars-project/mars/actions
+.. |Coverage| image:: https://img.shields.io/coveralls/github/mars-project/mars.svg
    :target: https://coveralls.io/github/mars-project/mars
-.. |Quality| image:: https://img.shields.io/codacy/grade/4e15343492d14335847d67630bb3c319.svg?style=flat-square
+.. |Quality| image:: https://img.shields.io/codacy/grade/4e15343492d14335847d67630bb3c319.svg
    :target: https://app.codacy.com/project/mars-project/mars/dashboard
-.. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg?style=flat-square
+.. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg
    :target: https://pypi.python.org/pypi/pymars
-.. |Docs| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat-square
+.. |Docs| image:: https://img.shields.io/badge/docs-latest-brightgreen.svg
    :target: `Documentation`_
-.. |License| image:: https://img.shields.io/pypi/l/pymars.svg?style=flat-square
+.. |License| image:: https://img.shields.io/pypi/l/pymars.svg
    :target: https://github.com/mars-project/mars/blob/master/LICENSE
 .. _`mars-dev@googlegroups.com`: https://groups.google.com/forum/#!forum/mars-dev
 .. _`GitHub issue`: https://github.com/mars-project/mars/issues
