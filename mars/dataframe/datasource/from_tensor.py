@@ -203,7 +203,11 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, input_tensor, index, name):
         if index is not None:
-            index_value = parse_index(pd.Index(index), store_data=True)
+            if not isinstance(index, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
+                index = pd.Index(index)
+            index_value = parse_index(index, store_data=True)
         else:
             index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
         return self.new_series([input_tensor], shape=input_tensor.shape, dtype=self.dtype,
