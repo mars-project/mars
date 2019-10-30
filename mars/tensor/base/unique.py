@@ -408,9 +408,20 @@ class TensorUniqueShuffleReduce(TensorShuffleReduce, TensorOperandMixin):
         with device(device_id):
             ar = xp.concatenate(unique_arrays, axis=op.axis)
             result_return_inverse = op.return_inverse or op.return_counts
-            results = xp.unique(ar, return_index=op.return_index,
-                                return_inverse=result_return_inverse,
-                                axis=op.axis)
+            axis = op.axis
+            if ar.size == 0 or ar.shape[axis] == 0:
+                # empty array on the axis
+                results = [xp.empty(ar.shape)]
+                i = 1
+                for it in (op.return_index, op.return_inverse, op.return_counts):
+                    if it:
+                        results.append(xp.empty([], dtype=op.outputs[i].dtype))
+                        i += 1
+                results = tuple(results)
+            else:
+                results = xp.unique(ar, return_index=op.return_index,
+                                    return_inverse=result_return_inverse,
+                                    axis=axis)
             results = (results,) if not isinstance(results, tuple) else results
             results_iter = iter(results)
             outputs_iter = iter(op.outputs)
