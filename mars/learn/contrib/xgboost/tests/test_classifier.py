@@ -14,8 +14,6 @@
 
 import unittest
 
-import pandas as pd
-
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
