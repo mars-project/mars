@@ -49,8 +49,8 @@ class GraphExecutionRecord(object):
     __slots__ = ('graph', 'graph_serialized', '_state', 'op_string', 'data_targets',
                  'chunk_targets', 'io_meta', 'data_metas', 'shared_input_chunks',
                  'state_time', 'mem_request', 'pin_request', 'est_finish_time',
-                 'calc_actor_uid', 'send_addresses', 'retry_delay', 'finish_callbacks',
-                 'stop_requested')
+                 'calc_actor_uid', 'send_addresses', 'retry_delay', 'retry_pending',
+                 'finish_callbacks', 'stop_requested')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_metas=None, mem_request=None,
@@ -74,6 +74,7 @@ class GraphExecutionRecord(object):
         self.calc_actor_uid = calc_actor_uid
         self.send_addresses = send_addresses
         self.retry_delay = retry_delay or 0
+        self.retry_pending = False
         self.finish_callbacks = finish_callbacks or []
         self.stop_requested = stop_requested or False
 
@@ -411,6 +412,10 @@ class ExecutionActor(WorkerActor):
             callback = [callback]
         try:
             all_callbacks = self._graph_records[session_graph_key].finish_callbacks or []
+            self._graph_records[session_graph_key].finish_callbacks.extend(callback)
+            if not self._graph_records[session_graph_key].retry_pending:
+                self._graph_records[session_graph_key].finish_callbacks = all_callbacks + callback
+                return
         except KeyError:
             all_callbacks = []
         all_callbacks.extend(callback)
@@ -480,6 +485,8 @@ class ExecutionActor(WorkerActor):
                 # cannot pin input chunks: retry later
                 retry_delay = graph_record.retry_delay + 0.5 + random.random()
                 graph_record.retry_delay = min(1 + graph_record.retry_delay, 30)
+                graph_record.retry_pending = True
+
                 self.ref().execute_graph(
                     session_id, graph_key, graph_record.graph_serialized, graph_record.io_meta,
                     graph_record.data_metas, send_addresses=send_addresses, _tell=True, _delay=retry_delay)
