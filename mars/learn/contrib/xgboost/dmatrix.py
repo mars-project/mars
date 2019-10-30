@@ -224,7 +224,7 @@ class ToDMatrix(Operand, TileableOperandMixin):
                 kw['type'] = 'label'
                 kws.append(kw)
             if weight is not None:
-                weight_chunk = chunk_op._weight = weight.cix[i]
+                weight_chunk = chunk_op._weight = weight.cix[i,]
                 inps.append(weight_chunk)
                 kw = cls._get_kw(weight_chunk)
                 kw['index'] = weight_chunk.index

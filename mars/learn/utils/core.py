@@ -28,7 +28,7 @@ def concat_chunks_on_axis(chunks, axis=0):
 
 def get_fetch_op_cls(op):
     from ...tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
-    from ...dataframe.core import DATAFRAME_TYPE, CHUNK_TYPE as DATAFRAME_CHUNK_TYPE
+    from ...dataframe.core import TILEABLE_TYPE as DATAFRAME_TYPE, CHUNK_TYPE as DATAFRAME_CHUNK_TYPE
 
     if isinstance(op.outputs[0], (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
         from ...tensor.utils import get_fetch_op_cls

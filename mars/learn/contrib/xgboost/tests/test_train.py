@@ -16,8 +16,11 @@ import unittest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.session import new_session
+from mars.learn.contrib.xgboost import train, MarsDMatrix
+from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
+from mars.learn.contrib.xgboost.train import XGBTrain
+from mars.context import ContextBase, ChunkMeta, RunningMode
 
 try:
     import xgboost
@@ -48,3 +51,42 @@ class Test(unittest.TestCase):
         dtrain = MarsDMatrix(self.X_df, self.y)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
+
+    def testDistributedTile(self):
+        X, y = self.X, self.y
+
+        X.tiles()
+        y.tiles()
+
+        workers = ['addr1:1', 'addr2:1']
+        chunk_to_workers = dict()
+        X_chunk_to_workers = {c.key: workers[i % 2] for i, c in enumerate(X.chunks)}
+        chunk_to_workers.update(X_chunk_to_workers)
+        y_chunk_to_workers = {c.key: workers[i % 2] for i, c in enumerate(y.chunks)}
+        chunk_to_workers.update(y_chunk_to_workers)
+
+        class MockDistributedDictContext(ContextBase):
+            @property
+            def running_mode(self):
+                return RunningMode.distributed
+
+            def get_chunk_metas(self, chunk_keys):
+                metas = []
+                for ck in chunk_keys:
+                    if ck in chunk_to_workers:
+                        metas.append(ChunkMeta(chunk_size=None, chunk_shape=None,
+                                               workers=[chunk_to_workers[ck]]))
+                    else:
+                        metas.append(ChunkMeta(chunk_size=None, chunk_shape=None,
+                                               workers=None))
+                return metas
+
+        dmatrix = ToDMatrix(data=X, label=y)()
+        model = XGBTrain(dtrain=dmatrix)()
+
+        with MockDistributedDictContext():
+            model.tiles()
+
+            # 2 workers
+            self.assertEqual(len(dmatrix.chunks), 2)
+            self.assertEqual(len(model.chunks), 2)

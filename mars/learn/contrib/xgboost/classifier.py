@@ -48,7 +48,6 @@ if xgboost:
                 params['num_class'] = self.n_classes_
             else:
                 params['objective'] = 'binary:logistic'
-            params.setdefault('num_class', self.n_classes_)
 
             evals = evaluation_matrices(eval_set, sample_weight_eval_set,
                                         session=session, run_kwargs=run_kwargs)
@@ -69,7 +68,7 @@ if xgboost:
             if prob.ndim > 1:
                 prediction = mt.argmax(prob, axis=1)
             else:
-                prediction = (prob > 0).astype(mt.int64)
+                prediction = (prob > 0.5).astype(mt.int64)
             prediction.execute(session=session, fetch=False, **run_kwargs)
             return prediction
 

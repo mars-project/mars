@@ -14,6 +14,9 @@
 
 import unittest
 
+import numpy as np
+import pandas as pd
+
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
@@ -43,7 +46,8 @@ class Test(unittest.TestCase):
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
 
-        predict(booster, self.X)
+        prediction = predict(booster, self.X)
+        self.assertIsInstance(prediction.execute(), np.ndarray)
 
     def testLocalPredictDataFrame(self):
         new_session().as_default()
@@ -51,4 +55,5 @@ class Test(unittest.TestCase):
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
 
-        predict(booster, self.X_df)
+        prediction = predict(booster, self.X_df)
+        self.assertIsInstance(prediction.execute(), pd.Series)

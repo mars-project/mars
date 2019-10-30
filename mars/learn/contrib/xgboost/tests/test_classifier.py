@@ -14,7 +14,10 @@
 
 import unittest
 
+import pandas as pd
+
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
 
@@ -33,6 +36,7 @@ class Test(unittest.TestCase):
         rs = mt.random.RandomState(0)
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
+        self.X_df = md.DataFrame(self.X)
 
     def testLocalClassifier(self):
         new_session().as_default()
@@ -57,5 +61,38 @@ class Test(unittest.TestCase):
         self.assertEqual(len(history['validation_0']['merror']), 2)
 
         prob = classifier.predict_proba(X)
-
         self.assertEqual(prob.shape, X.shape)
+
+        # test dataframe
+        X_df = self.X_df
+        classifier = XGBClassifier(verbosity=1, n_estimators=2)
+        classifier.fit(X_df, y)
+        prediction = classifier.predict(X_df)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        # test weight
+        weight = mt.random.rand(X.shape[0])
+        classifier = XGBClassifier(verbosity=1, n_estimators=2)
+        classifier.fit(X, y, sample_weights=weight)
+        prediction = classifier.predict(X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        # test binary classifier
+        new_y = (self.y > 0.5).astype(mt.int32)
+        classifier = XGBClassifier(verbosity=1, n_estimators=2)
+        classifier.fit(X, new_y)
+        prediction = classifier.predict(X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        classifier = XGBClassifier(verbosity=1, n_estimators=2)
+        with self.assertRaises(TypeError):
+            classifier.fit(X, y, wrong_param=1)
+        classifier.fit(X, y)
+        with self.assertRaises(TypeError):
+            classifier.predict(X, wrong_param=1)

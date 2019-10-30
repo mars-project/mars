@@ -53,3 +53,21 @@ class Test(unittest.TestCase):
 
         self.assertEqual(list(history['validation_0'])[0], 'rmse')
         self.assertEqual(len(history['validation_0']['rmse']), 2)
+
+        # test weight
+        weight = mt.random.rand(X.shape[0])
+        classifier = XGBRegressor(verbosity=1, n_estimators=2)
+        regressor.set_params(tree_method='hist')
+        classifier.fit(X, y, sample_weights=weight)
+        prediction = classifier.predict(X)
+
+        self.assertEqual(prediction.ndim, 1)
+        self.assertEqual(prediction.shape[0], len(self.X))
+
+        # test wrong params
+        regressor = XGBRegressor(verbosity=1, n_estimators=2)
+        with self.assertRaises(TypeError):
+            regressor.fit(X, y, wrong_param=1)
+        regressor.fit(X, y)
+        with self.assertRaises(TypeError):
+            regressor.predict(X, wrong_param=1)

@@ -140,8 +140,10 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
         from xgboost import train, rabit
 
         dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key])
-        eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key]) for t in op.evals]
-        evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
+        evals = tuple()
+        if op.evals is not None:
+            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key]) for t in op.evals]
+            evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
         params = op.params
         params['nthread'] = ctx.get_ncores() or -1
 
