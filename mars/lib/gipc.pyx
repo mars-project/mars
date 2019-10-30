@@ -88,9 +88,14 @@ except ImportError:  # pragma: no cover
 
 cdef:
     bint WINDOWS, PY2
+    int PIPE_BUF_SIZE
 
 WINDOWS = sys.platform == "win32"
 PY2 = sys.version_info[0] == 2
+if PY2 and sys.platform == 'darwin':
+    PIPE_BUF_SIZE = 16384
+else:
+    PIPE_BUF_SIZE = 65536
 
 if WINDOWS:
     import multiprocessing.reduction
@@ -896,7 +901,7 @@ cdef class _GIPCReader(_GIPCHandle):
             # syscall. These findings are documented in
             # https://bitbucket.org/jgehrcke/gipc/issue/13.
             try:
-                chunk = self._recv_chunk(min(remaining, 65536))
+                chunk = self._recv_chunk(min(remaining, PIPE_BUF_SIZE))
             except EOFError:
                 if remaining != n:
                     raise IOError("Message interrupted by EOF.")

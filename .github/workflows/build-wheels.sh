@@ -5,7 +5,7 @@ set -e -x
 yum install -y atlas-devel
 
 # Install requirements
-PYBIN=/opt/python/${PYVER}/bin
+PYBIN=/opt/python/${PYABI}/bin
 REQ_FILE=/io/requirements-wheel.txt
 
 # install packages without pandas first
