@@ -1,0 +1,171 @@
+name: Mars CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-16.04, macOS-latest]  #, windows-latest]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.7-kubernetes]
+        include:
+          - os: ubuntu-16.04
+            python-version: 2.7
+            python-abis: "cp27-cp27m:cp27-cp27mu"
+          - os: ubuntu-16.04
+            python-version: 3.5
+            cython-trace: 1
+            python-abis: "cp35-cp35m"
+          - os: ubuntu-16.04
+            python-version: 3.6
+            python-abis: "cp36-cp36m"
+          - os: ubuntu-16.04
+            python-version: 3.7
+            python-abis: "cp37-cp37m"
+          - os: ubuntu-16.04
+            python-version: 3.7-kubernetes
+            no-common-tests: 1
+            no-deploy: 1
+            with-kubernetes: "with Kubernetes"
+        exclude:
+          - os: macOS-latest
+            python-version: 3.7-kubernetes
+          - os: windows-latest
+            python-version: 2.7
+          - os: windows-latest
+            python-version: 3.7-kubernetes
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v1
+
+    - name: Set up conda ${{ matrix.python-version }}
+      env:
+        PYTHON: ${{ matrix.python-version }}
+      shell: bash
+      run: |
+        source ./.github/workflows/install-conda.sh
+        if [[ "$PYTHON" =~ "2" ]]; then
+          python -m pip install --upgrade pip\<19 setuptools\<40.7 wheel coverage;
+        else
+          python -m pip install --upgrade pip setuptools wheel coverage;
+        fi
+
+    - name: Install dependencies
+      env:
+        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+      shell: bash
+      run: |
+        source ./.github/workflows/reload-env.sh
+        export DEFAULT_VENV=$VIRTUAL_ENV
+        pip install -r requirements-dev.txt
+        pip install -r requirements-extra.txt
+        pip install virtualenv flake8 etcd-gevent
+        pip install git+https://github.com/wjsi/coveralls-python.git
+        if [[ $UNAME != "mingw"* ]]; then
+          if [ -z "$NO_COMMON_TESTS" ]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
+              conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi;
+            fi
+            virtualenv testenv && source testenv/bin/activate;
+            pip install -r requirements.txt && pip install pytest pytest-timeout;
+            if [ -z "$DEFAULT_VENV" ]; then
+              deactivate;
+            else
+              source $DEFAULT_VENV/bin/activate;
+            fi
+          fi
+          source ./.github/workflows/download-etcd.sh
+          if [ -n "$WITH_KUBERNETES" ]; then
+            ./.github/workflows/install-minikube.sh;
+            pip install kubernetes;
+          fi
+        fi
+
+    - name: Build cython extensions
+      env:
+        CYTHON_TRACE: ${{ matrix.cython-trace }}
+      shell: bash
+      run: |
+        printenv
+        source ./.github/workflows/reload-env.sh
+        if [ -z "$CYTHON_TRACE" ]; then
+          for cf in `ls .coveragerc*`; do
+            sed -i.bak "s/plugins *= *Cython\.Coverage//g" $cf;
+            sed -i.bak -e '/*\.pxd/ a\
+            \ \ \ \ *.pyx \
+            ' $cf
+          done
+        fi
+        python setup.py build_ext --force --inplace
+
+    - name: Lint with flake8
+      shell: bash
+      run: |
+        source ./.github/workflows/reload-env.sh
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 mars --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with pytest
+      env:
+        WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
+        NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+        NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
+        CHANGE_MINIKUBE_NONE_USER: true
+      shell: bash
+      run: |
+        source ./.github/workflows/reload-env.sh
+        source ./.github/workflows/run-tests.sh
+        mkdir covdata
+        cp .coverage covdata/.coverage.$RUNNER_TRACKING_ID
+
+    - name: Deploy packages
+      if: startsWith(github.ref, 'refs/tags/') && matrix.no-deploy != '1'
+      shell: bash
+      env:
+        DOCKER_IMAGE: "quay.io/pypa/manylinux1_x86_64"
+        PYABI: ${{ matrix.python-abis }}
+        PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        source ./.github/workflows/reload-env.sh
+        source ./.github/workflows/upload-packages.sh
+
+    - name: Persist coverage data
+      uses: actions/upload-artifact@v1
+      with:
+        name: covdata
+        path: covdata
+
+  finish-build:
+    needs: build
+    runs-on: ubuntu-16.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v1
+
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+
+      - name: Load coverage data
+        uses: actions/download-artifact@v1
+        with:
+          name: covdata
+
+      - name: Report coverage data
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.github_token }}
+        run: |
+          pip install numpy cython gevent coverage
+          pip install git+https://github.com/wjsi/coveralls-python.git
+          CYTHON_TRACE=1 python setup.py sdist
+          export DEFAULT_VENV=$VIRTUAL_ENV
+          coverage combine covdata/
+          coveralls
