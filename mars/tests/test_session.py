@@ -328,7 +328,7 @@ class Test(unittest.TestCase):
         tensor4 = df.to_tensor()
         np.testing.assert_equal(sess.run(tensor4), np.ones((2, 2)))
 
-        df = md.from_tensor(tensor3)
+        df = md.dataframe_from_tensor(tensor3)
         np.testing.assert_equal(sess.run(df).values, np.ones((2, 2)))
 
         df = df.from_tensor(tensor3)
@@ -336,10 +336,10 @@ class Test(unittest.TestCase):
 
         # test raise error exception
         with self.assertRaises(TypeError):
-            md.from_tensor(mt.ones((1, 2, 3)))
+            md.dataframe_from_tensor(mt.ones((1, 2, 3)))
 
         # test exception
-        tensor = md.from_tensor(mt.array([1, 2, 3]))
+        tensor = md.dataframe_from_tensor(mt.array([1, 2, 3]))
         np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
 
     def testFetchSlices(self):
