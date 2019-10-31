@@ -16,28 +16,41 @@ import pandas as pd
 import numpy as np
 
 from mars import opcodes as OperandDef
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, parameterized
 from mars.dataframe.core import IndexValue, Series
-from mars.dataframe.reduction import SeriesSum, DataFrameSum
+from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, DataFrameMax
 from mars.dataframe.merge import DataFrameConcat
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 
 
+reduction_functions = dict(
+    sum=dict(func_name='sum', op=DataFrameSum),
+    prod=dict(func_name='prod', op=DataFrameProd),
+    min=dict(func_name='min', op=DataFrameMin),
+    max=dict(func_name='max', op=DataFrameMax)
+)
+
+
+@parameterized(**reduction_functions)
 class Test(TestBase):
-    def testSeriesSumSerialize(self):
+    @property
+    def op_num(self):
+        return getattr(OperandDef, self.func_name.upper())
+
+    def testSeriesReductionSerialize(self):
         data = pd.Series(np.random.rand(10), name='a')
-        sum_df = from_pandas_series(data).sum(axis='index', skipna=False).tiles()
+        reduction_df = getattr(from_pandas_series(data), self.func_name)(axis='index', skipna=False).tiles()
 
         # pb
-        chunk = sum_df.chunks[0]
+        chunk = reduction_df.chunks[0]
         serials = self._pb_serial(chunk)
         op, pb = serials[chunk.op, chunk.data]
 
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.SUM)
+        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_num)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
@@ -50,7 +63,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
         # json
-        chunk = sum_df.chunks[0]
+        chunk = reduction_df.chunks[0]
         serials = self._json_serial(chunk)
 
         chunk2 = self._json_deserial(serials)[chunk.data]
@@ -63,9 +76,9 @@ class Test(TestBase):
         self.assertEqual(chunk.op.axis, chunk2.op.axis)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
-    def testSeriesSum(self):
+    def testSeriesReduction(self):
         data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
-        series = from_pandas_series(data, chunk_size=3).sum()
+        series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
 
         self.assertIsInstance(series, Series)
         self.assertEqual(series.name, data.name)
@@ -75,12 +88,12 @@ class Test(TestBase):
         series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
-        self.assertIsInstance(series.chunks[0].op, SeriesSum)
+        self.assertIsInstance(series.chunks[0].op, self.op)
         self.assertIsInstance(series.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 2)
 
         data = pd.Series(np.random.rand(25), name='a')
-        series = from_pandas_series(data, chunk_size=7).sum(axis='index', skipna=False)
+        series = getattr(from_pandas_series(data, chunk_size=7), self.func_name)(axis='index', skipna=False)
 
         self.assertIsInstance(series, Series)
         self.assertEqual(series.name, data.name)
@@ -90,23 +103,24 @@ class Test(TestBase):
         series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
-        self.assertIsInstance(series.chunks[0].op, SeriesSum)
+        self.assertIsInstance(series.chunks[0].op, self.op)
         self.assertIsInstance(series.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 4)
 
-    def testDataFrameSumSerialize(self):
+    def testDataFrameReductionSerialize(self):
         data = pd.DataFrame(np.random.rand(10, 8), columns=[np.random.bytes(10) for _ in range(8)])
-        sum_df = from_pandas_df(data, chunk_size=3).sum(axis='index', skipna=False, numeric_only=True).tiles()
+        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(axis='index', skipna=False,
+                                                                                   numeric_only=True).tiles()
 
         # pb
-        chunk = sum_df.chunks[0]
+        chunk = reduction_df.chunks[0]
         serials = self._pb_serial(chunk)
         op, pb = serials[chunk.op, chunk.data]
 
         self.assertEqual(tuple(pb.index), chunk.index)
         self.assertEqual(pb.key, chunk.key)
         self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.SUM)
+        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_num)
 
         chunk2 = self._pb_deserial(serials)[chunk.data]
 
@@ -119,7 +133,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
         # json
-        chunk = sum_df.chunks[0]
+        chunk = reduction_df.chunks[0]
         serials = self._json_serial(chunk)
 
         chunk2 = self._json_deserial(serials)[chunk.data]
@@ -132,47 +146,47 @@ class Test(TestBase):
         self.assertEqual(chunk.op.numeric_only, chunk2.op.numeric_only)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
-    def testDataFrameSum(self):
+    def testDataFrameReduction(self):
         data = pd.DataFrame({'a': list(range(20)), 'b': list(range(20, 0, -1))},
                             index=[str(i) for i in range(20)])
-        sum_df = from_pandas_df(data, chunk_size=3).sum()
+        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)()
 
-        self.assertIsInstance(sum_df, Series)
-        self.assertIsInstance(sum_df.index_value._index_value, IndexValue.Index)
-        self.assertEqual(sum_df.shape, (2,))
+        self.assertIsInstance(reduction_df, Series)
+        self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.Index)
+        self.assertEqual(reduction_df.shape, (2,))
 
-        sum_df.tiles()
+        reduction_df.tiles()
 
-        self.assertEqual(len(sum_df.chunks), 1)
-        self.assertIsInstance(sum_df.chunks[0].op, DataFrameSum)
-        self.assertIsInstance(sum_df.chunks[0].inputs[0].op, DataFrameConcat)
-        self.assertEqual(len(sum_df.chunks[0].inputs[0].inputs), 2)
+        self.assertEqual(len(reduction_df.chunks), 1)
+        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
+        self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
         data = pd.DataFrame(np.random.rand(20, 10))
-        sum_df = from_pandas_df(data, chunk_size=3).sum()
+        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)()
 
-        self.assertIsInstance(sum_df, Series)
-        self.assertIsInstance(sum_df.index_value._index_value, IndexValue.RangeIndex)
-        self.assertEqual(sum_df.shape, (10,))
+        self.assertIsInstance(reduction_df, Series)
+        self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.RangeIndex)
+        self.assertEqual(reduction_df.shape, (10,))
 
-        sum_df.tiles()
+        reduction_df.tiles()
 
-        self.assertEqual(len(sum_df.chunks), 4)
-        self.assertEqual(sum_df.nsplits, ((3, 3, 3, 1),))
-        self.assertIsInstance(sum_df.chunks[0].op, DataFrameSum)
-        self.assertIsInstance(sum_df.chunks[0].inputs[0].op, DataFrameConcat)
-        self.assertEqual(len(sum_df.chunks[0].inputs[0].inputs), 2)
+        self.assertEqual(len(reduction_df.chunks), 4)
+        self.assertEqual(reduction_df.nsplits, ((3, 3, 3, 1),))
+        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
+        self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
         data = pd.DataFrame(np.random.rand(20, 20), index=[str(i) for i in range(20)])
-        sum_df = from_pandas_df(data, chunk_size=4).sum(axis='columns')
+        reduction_df = getattr(from_pandas_df(data, chunk_size=4), self.func_name)(axis='columns')
 
-        self.assertEqual(sum_df.shape, (20,))
+        self.assertEqual(reduction_df.shape, (20,))
 
-        sum_df.tiles()
+        reduction_df.tiles()
 
-        self.assertEqual(len(sum_df.chunks), 5)
-        self.assertEqual(sum_df.nsplits, ((np.nan,) * 5,))
-        self.assertIsInstance(sum_df.chunks[0].op, DataFrameSum)
-        self.assertIsInstance(sum_df.chunks[0].inputs[0].op, DataFrameConcat)
-        self.assertEqual(len(sum_df.chunks[0].inputs[0].inputs), 2)
+        self.assertEqual(len(reduction_df.chunks), 5)
+        self.assertEqual(reduction_df.nsplits, ((np.nan,) * 5,))
+        self.assertIsInstance(reduction_df.chunks[0].op, self.op)
+        self.assertIsInstance(reduction_df.chunks[0].inputs[0].op, DataFrameConcat)
+        self.assertEqual(len(reduction_df.chunks[0].inputs[0].inputs), 2)
 
