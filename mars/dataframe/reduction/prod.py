@@ -16,18 +16,18 @@ from ... import opcodes as OperandDef
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
 
 
-class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
-    _op_type_ = OperandDef.SUM
-    _func_name = 'sum'
+class DataFrameProd(DataFrameReductionOperand, DataFrameReductionMixin):
+    _op_type_ = OperandDef.PROD
+    _func_name = 'prod'
 
 
-def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
-    op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
-                      object_type=ObjectType.series)
+def prod_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
+    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
+                       object_type=ObjectType.series)
     return op(df)
 
 
-def sum_dataframe(df, axis=None, skipna=None, level=None, min_count=0, numeric_only=None, combine_size=None):
-    op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count,
-                      numeric_only=numeric_only, combine_size=combine_size, object_type=ObjectType.series)
+def prod_dataframe(df, axis=None, skipna=None, level=None, min_count=0, numeric_only=None, combine_size=None):
+    op = DataFrameProd(axis=axis, skipna=skipna, level=level, min_count=min_count,
+                       numeric_only=numeric_only, combine_size=combine_size, object_type=ObjectType.series)
     return op(df)

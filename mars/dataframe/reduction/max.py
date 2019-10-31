@@ -16,18 +16,18 @@ from ... import opcodes as OperandDef
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, ObjectType
 
 
-class DataFrameSum(DataFrameReductionOperand, DataFrameReductionMixin):
-    _op_type_ = OperandDef.SUM
-    _func_name = 'sum'
+class DataFrameMax(DataFrameReductionOperand, DataFrameReductionMixin):
+    _op_type_ = OperandDef.MAX
+    _func_name = 'max'
 
 
-def sum_series(df, axis=None, skipna=None, level=None, min_count=0, combine_size=None):
-    op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count, combine_size=combine_size,
+def max_series(df, axis=None, skipna=None, level=None, combine_size=None):
+    op = DataFrameMax(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
                       object_type=ObjectType.series)
     return op(df)
 
 
-def sum_dataframe(df, axis=None, skipna=None, level=None, min_count=0, numeric_only=None, combine_size=None):
-    op = DataFrameSum(axis=axis, skipna=skipna, level=level, min_count=min_count,
-                      numeric_only=numeric_only, combine_size=combine_size, object_type=ObjectType.series)
+def max_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
+    op = DataFrameMax(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
+                      combine_size=combine_size, object_type=ObjectType.series)
     return op(df)

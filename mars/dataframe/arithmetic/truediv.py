@@ -16,9 +16,8 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from ..operands import DataFrameBinOp
 from ..utils import wrap_sequence
-from .core import DataFrameBinOpMixin
+from .core import DataFrameBinOpMixin, DataFrameBinOp
 
 
 class DataFrameTrueDiv(DataFrameBinOp, DataFrameBinOpMixin):
