@@ -22,13 +22,14 @@ import time
 import traceback
 import unittest
 import uuid
+import platform
 
 import numpy as np
 import pandas as pd
 
 from mars import tensor as mt
 from mars import dataframe as md
-from mars.compat import six
+from mars.compat import six, PY27
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
@@ -794,6 +795,7 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
+    @unittest.skipIf(platform.system() == 'Darwin' and PY27, 'skip when OS is Mac OS and python version == 2.7')
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.merge.merge import merge
