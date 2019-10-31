@@ -5,7 +5,6 @@ PYTHON=$(cut -d '-' -f 1 <<< "$PYTHON")
 UNAME="$(uname | awk '{print tolower($0)}')"
 FILE_EXT="sh"
 if [[ "$UNAME" == "darwin" ]]; then
-    set -e
     ulimit -n 1024
     CONDA_OS="MacOSX"
 elif [[ $UNAME == "linux" ]]; then
