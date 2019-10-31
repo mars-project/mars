@@ -28,7 +28,7 @@ import pandas as pd
 
 from mars import tensor as mt
 from mars import dataframe as md
-from mars.compat import six, PY27
+from mars.compat import six
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
