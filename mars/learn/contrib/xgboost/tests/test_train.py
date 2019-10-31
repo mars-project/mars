@@ -63,7 +63,7 @@ class Test(unittest.TestCase):
 
             new_X = mt.random.rand(1000, 10, chunk_size=(1000, 5))
             new_X, new_y = ToDMatrix(data=new_X, label=self.y, multi_output=True)()
-            dmatrix = ToDMatrix(data=new_X, label=self.y)()
+            dmatrix = ToDMatrix(data=new_X, label=new_y)()
             dmatrix.tiles()
 
             self.assertEqual(len(dmatrix.chunks), 1)

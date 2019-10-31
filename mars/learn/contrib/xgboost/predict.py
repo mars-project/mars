@@ -29,7 +29,6 @@ from ....dataframe.core import DATAFRAME_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_CHUN
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorData, Tensor, \
     TensorChunkData, TensorChunk, TensorOrder
-from ....compat import six
 from ....utils import register_tokenizer, to_str
 from .dmatrix import ToDMatrix, check_data, \
     _on_serialize_object_type, _on_deserialize_object_type
