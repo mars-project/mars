@@ -242,6 +242,10 @@ class EtcdProcessHelper(object):
             '-listen-client-urls', client
         ]
 
+        env_path = os.environ.get('PATH', '')
+        if self.base_directory not in env_path:
+            os.environ['PATH'] = os.path.pathsep.join([env_path, self.base_directory])
+
         if proc_args:
             daemon_args.extend(proc_args)
 

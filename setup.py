@@ -14,6 +14,7 @@
 
 import os
 import platform
+import re
 import sys
 from distutils.sysconfig import get_config_var
 from distutils.version import LooseVersion
@@ -50,6 +51,12 @@ except NameError:
 version_file_path = os.path.join(repo_root, 'mars', '_version.py')
 version_ns = {'__file__': version_file_path}
 execfile(version_file_path, version_ns)
+version = version_ns['__version__']
+# check version vs tag
+if os.environ.get('GIT_TAG') and re.search(r'v\d', os.environ['GIT_TAG']) \
+        and os.environ['GIT_TAG'] != 'v' + version:
+    raise ValueError('Tag %r does not match source version %r'
+                     % (os.environ['GIT_TAG'], version))
 
 requirements = []
 with open(os.path.join(repo_root, 'requirements.txt'), 'r') as f:
@@ -77,7 +84,7 @@ if os.path.exists(os.path.join(repo_root, '.git')):
 
 cythonize_kw = dict(language_level=sys.version_info[0])
 cy_extension_kw = dict()
-if 'CYTHON_TRACE' in os.environ:
+if os.environ.get('CYTHON_TRACE'):
     cy_extension_kw['define_macros'] = [('CYTHON_TRACE_NOGIL', '1'), ('CYTHON_TRACE', '1')]
     cythonize_kw['compiler_directives'] = {'linetrace': True}
 
@@ -111,7 +118,7 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
 
 setup_options = dict(
     name='pymars',
-    version=version_ns['__version__'],
+    version=version,
     description='MARS: a tensor-based unified framework for large-scale data computation.',
     long_description=long_description,
     author='Qin Xuye',
