@@ -22,7 +22,6 @@ import time
 import traceback
 import unittest
 import uuid
-import platform
 
 import numpy as np
 import pandas as pd
