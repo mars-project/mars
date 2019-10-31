@@ -28,8 +28,8 @@ class TensorFromDataFrame(TensorHasInput):
     _op_type_ = OperandDef.TENSOR_FROM_DATAFRAME
     _input = KeyField('_input')
 
-    def __init__(self, dtype=None, gpu=None, **kw):
-        super(TensorFromDataFrame, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=True, **kw)
+    def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
+        super(TensorFromDataFrame, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

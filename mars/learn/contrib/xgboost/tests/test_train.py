@@ -39,6 +39,7 @@ class Test(unittest.TestCase):
         self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
+        self.y_series = md.Series(self.y)
 
     def testLocalTrainTensor(self):
         new_session().as_default()
@@ -48,7 +49,7 @@ class Test(unittest.TestCase):
 
     def testLocalTrainDataFrame(self):
         new_session().as_default()
-        dtrain = MarsDMatrix(self.X_df, self.y)
+        dtrain = MarsDMatrix(self.X_df, self.y_series)
         booster = train({}, dtrain, num_boost_round=2)
         self.assertIsInstance(booster, Booster)
 

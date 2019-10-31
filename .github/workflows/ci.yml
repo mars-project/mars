@@ -67,11 +67,9 @@ jobs:
         pip install git+https://github.com/wjsi/coveralls-python.git
         if [[ $UNAME != "mingw"* ]]; then
           if [ -z "$NO_COMMON_TESTS" ]; then
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi;
-            fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
             fi
             virtualenv testenv && source testenv/bin/activate;
