@@ -1,6 +1,10 @@
 #!/bin/bash
 
 export UNAME="$(uname | awk '{print tolower($0)}')"
+if [[ "$UNAME" == "darwin" ]]; then
+    ulimit -n 1024
+fi
+
 if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then
   export GITHUB_TAG_REF="$GITHUB_REF"
   unset CYTHON_TRACE

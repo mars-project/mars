@@ -8,34 +8,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-16.04, macOS-latest]  #, windows-latest]
+        os: [ubuntu-16.04, macOS-latest, windows-latest]
         python-version: [2.7, 3.5, 3.6, 3.7, 3.7-kubernetes]
         include:
-          - os: ubuntu-16.04
-            python-version: 2.7
-            python-abis: "cp27-cp27m:cp27-cp27mu"
-          - os: ubuntu-16.04
-            python-version: 3.5
-            cython-trace: 1
-            python-abis: "cp35-cp35m"
-          - os: ubuntu-16.04
-            python-version: 3.6
-            python-abis: "cp36-cp36m"
-          - os: ubuntu-16.04
-            python-version: 3.7
-            python-abis: "cp37-cp37m"
-          - os: ubuntu-16.04
-            python-version: 3.7-kubernetes
-            no-common-tests: 1
-            no-deploy: 1
-            with-kubernetes: "with Kubernetes"
+          - { os: ubuntu-16.04, python-version: 2.7, python-abis: "cp27-cp27m:cp27-cp27mu" }
+          - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
+          - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
+          - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
+          - { os: ubuntu-16.04, python-version: 3.7-kubernetes, no-common-tests: 1,
+              no-deploy: 1, with-kubernetes: "with Kubernetes" }
+          - { os: windows-latest, python-version: 3.7, build-static: 1 }
         exclude:
-          - os: macOS-latest
-            python-version: 3.7-kubernetes
-          - os: windows-latest
-            python-version: 2.7
-          - os: windows-latest
-            python-version: 3.7-kubernetes
+          - { os: macOS-latest, python-version: 3.7-kubernetes }
+          - { os: windows-latest, python-version: 2.7 }
+          - { os: windows-latest, python-version: 3.7-kubernetes }
 
     steps:
     - name: Check out code
@@ -63,9 +49,11 @@ jobs:
         export DEFAULT_VENV=$VIRTUAL_ENV
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
-        pip install virtualenv flake8 etcd-gevent
         pip install git+https://github.com/wjsi/coveralls-python.git
-        if [[ $UNAME != "mingw"* ]]; then
+        if [[ $UNAME == "mingw"* ]]; then
+          pip install virtualenv flake8
+        else
+          pip install virtualenv flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
@@ -91,7 +79,6 @@ jobs:
         CYTHON_TRACE: ${{ matrix.cython-trace }}
       shell: bash
       run: |
-        printenv
         source ./.github/workflows/reload-env.sh
         if [ -z "$CYTHON_TRACE" ]; then
           for cf in `ls .coveragerc*`; do
@@ -131,6 +118,7 @@ jobs:
       env:
         DOCKER_IMAGE: "quay.io/pypa/manylinux1_x86_64"
         PYABI: ${{ matrix.python-abis }}
+        BUILD_STATIC: ${{ matrix.build-static }}
         PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
       run: |
         source ./.github/workflows/reload-env.sh
