@@ -5,21 +5,39 @@ PYTHON=$(cut -d '-' -f 1 <<< "$PYTHON")
 UNAME="$(uname | awk '{print tolower($0)}')"
 FILE_EXT="sh"
 if [[ "$UNAME" == "darwin" ]]; then
-    set -e
-    ulimit -n 1024
-    CONDA_OS="MacOSX"
+  set -e
+  ulimit -n 1024
+  CONDA_OS="MacOSX"
 elif [[ $UNAME == "linux" ]]; then
-    sudo apt-get install -y liblz4-dev
-    CONDA_OS="Linux"
+  sudo apt-get install -y liblz4-dev
+  CONDA_OS="Linux"
 elif [[ $UNAME == "mingw"* ]]; then
-    CONDA_OS="Windows"
-    FILE_EXT="exe"
+  CONDA_OS="Windows"
+  FILE_EXT="exe"
+  # VS2015 needed by Python 3.5
+  if [[ "$PYTHON" == "3.5" ]]; then
+    npm install --global --silent --vs2015 windows-build-tools
+    # Remove SDK of Windows Driver Framework to avoid confusion
+    rm -rf "/c/Program Files (x86)/Windows Kits/10/include/wdf"
+    # Locate and copy resource compiler into VC dir
+    vcbindir="/c/Program Files (x86)/Microsoft Visual Studio 14.0/VC/BIN/x86_amd64"
+    for subdir in $(ls -r "/c/Program Files (x86)/Windows Kits/10/bin"); do
+      bindir="/c/Program Files (x86)/Windows Kits/10/bin/$subdir/x64"
+      if [ -f "$bindir/rc.exe" ] && [ -f "$bindir/rcdll.dll" ]; then
+        echo "Copying rc.exe from $bindir"
+        cp "$bindir/rc.exe" "$vcbindir"
+        cp "$bindir/rcdll.dll" "$vcbindir"
+        break
+      fi
+    done
+  fi
 fi
 
+
 if version_gt "3.0" "$PYTHON" ; then
-    CONDA_FILE="Miniconda2-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
+  CONDA_FILE="Miniconda2-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 else
-    CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
+  CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 fi
 
 TEST_PACKAGES="virtualenv gevent psutil pyyaml lz4"
