@@ -268,7 +268,7 @@ class ToDMatrix(Operand, TileableOperandMixin):
                                  missing=op.missing, weight=weight_concat_chunk,
                                  feature_names=op.feature_names,
                                  feature_types=op.feature_types,
-                                 multi_output=False)
+                                 multi_output=False, object_type=op.object_type)
             out_chunks = [chunk_op.new_chunk(inps, **data_concat_chunk.params)]
             nsplits = tuple((s,) for s in data_concat_chunk.shape)
         else:

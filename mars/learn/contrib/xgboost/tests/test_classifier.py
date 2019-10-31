@@ -71,13 +71,21 @@ class Test(unittest.TestCase):
         self.assertEqual(prediction.shape[0], len(self.X))
 
         # test weight
-        weight = mt.random.rand(X.shape[0])
-        classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X, y, sample_weights=weight)
-        prediction = classifier.predict(X)
+        weights = [mt.random.rand(X.shape[0]), md.Series(mt.random.rand(X.shape[0])),
+                   md.DataFrame(mt.random.rand(X.shape[0]))]
+        y_df = md.DataFrame(self.y)
+        for weight in weights:
+            classifier = XGBClassifier(verbosity=1, n_estimators=2)
+            classifier.fit(X, y_df, sample_weights=weight)
+            prediction = classifier.predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+            self.assertEqual(prediction.ndim, 1)
+            self.assertEqual(prediction.shape[0], len(self.X))
+
+        # should raise error if weight.ndim > 1
+        with self.assertRaises(ValueError):
+            XGBClassifier(verbosity=1, n_estimators=2).fit(
+                X, y_df, sample_weights=mt.random.rand(1, 1))
 
         # test binary classifier
         new_y = (self.y > 0.5).astype(mt.int32)

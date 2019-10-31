@@ -43,9 +43,7 @@ except ImportError:
 
 
 def _on_serialize_model(m):
-    if not isinstance(m, six.string_types):
-        return to_str(base64.b64encode(pickle.dumps(m)))
-    return m
+    return to_str(base64.b64encode(pickle.dumps(m)))
 
 
 def _on_deserialize_model(ser):

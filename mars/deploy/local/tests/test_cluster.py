@@ -795,7 +795,6 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
-    @unittest.skipIf(platform.system() == 'Darwin' and PY27, 'skip when OS is Mac OS and python version == 2.7')
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.merge.merge import merge

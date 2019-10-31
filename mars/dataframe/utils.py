@@ -67,8 +67,8 @@ def concat_chunks_on_axis(chunks, axis=0):
         if axis == 0:
             dtypes = chunks[0].dtypes
             columns_value = chunks[0].columns
-            index_value = pd.Index(
-                np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks]))
+            index_value = parse_index(pd.Index(
+                np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks])))
         else:
             dtypes = pd.Index(
                 np.concatenate([to_numpy(c.columns.to_pandas()) for c in chunks]))
@@ -76,18 +76,20 @@ def concat_chunks_on_axis(chunks, axis=0):
             index_value = chunks[0].index_value
         shape = list(chunks[0].shape)
         shape[axis] = sum(c.shape[axis] for c in chunks)
+        index = list(chunks[0].index)
+        index[axis] = 0
         return DataFrameConcat(object_type=ObjectType.dataframe, axis=axis,
                                gpu=chunks[0].op.gpu).new_chunk(
-            chunks, shape=tuple(shape), dtypes=dtypes,
+            chunks, shape=tuple(shape), index=tuple(index), dtypes=dtypes,
             index_value=index_value, columns_value=columns_value)
     elif isinstance(chunks[0], SERIES_CHUNK_TYPE):
         assert axis == 0
-        index_value = pd.Index(
-            np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks]))
+        index_value = parse_index(pd.Index(
+            np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks])))
         return DataFrameConcat(object_type=ObjectType.series, axis=axis,
                                gpu=chunks[0].op.gpu).new_chunk(
             chunks, shape=(sum(c.shape[0] for c in chunks),), dtype=chunks[0].dtype,
-            index_value=index_value, name=chunks[0].name)
+            index_value=index_value, name=chunks[0].name, index=(0,))
     else:
         raise NotImplementedError
 

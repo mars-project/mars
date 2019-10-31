@@ -527,8 +527,10 @@ def concat_chunks_on_axis(chunks, axis=0):
     op = TensorConcatenate(dtype=chunks[0].dtype, gpu=chunks[0].op.gpu)
     shape = list(chunks[0].shape)
     shape[axis] = sum(c.shape[axis] for c in chunks)
+    index = list(chunks[0].index)
+    index[axis] = 0
     return TensorConcatenate(dtype=op.dtype, axis=axis).new_chunk(
-        chunks, shape=tuple(shape))
+        chunks, shape=tuple(shape), index=tuple(index))
 
 
 def concat_tileable_chunks(tensor):

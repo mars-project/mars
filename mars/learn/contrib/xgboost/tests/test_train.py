@@ -16,11 +16,13 @@ import unittest
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.dataframe.operands import ObjectType
 from mars.session import new_session
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
 from mars.learn.contrib.xgboost.train import XGBTrain
-from mars.context import ContextBase, ChunkMeta, RunningMode
+from mars.context import ContextBase, ChunkMeta, RunningMode, LocalDictContext
+from mars.graph import DAG
 
 try:
     import xgboost
@@ -40,6 +42,31 @@ class Test(unittest.TestCase):
         self.y = rs.rand(n_rows, chunk_size=chunk_size)
         self.X_df = md.DataFrame(self.X)
         self.y_series = md.Series(self.y)
+        self.weight = rs.rand(n_rows, chunk_size=chunk_size)
+
+    def testSerializeLocalTrain(self):
+        sess = new_session()
+
+        with LocalDictContext(sess._sess):
+            dmatrix = ToDMatrix(data=self.X, label=self.y)()
+            model = XGBTrain(dtrain=dmatrix)()
+
+            graph = model.build_graph(tiled=True)
+            DAG.from_json(graph.to_json())
+
+            dmatrix = ToDMatrix(data=self.X_df, label=self.y_series,
+                                object_type=ObjectType.dataframe)()
+            model = XGBTrain(dtrain=dmatrix)()
+
+            graph = model.build_graph(tiled=True)
+            DAG.from_json(graph.to_json())
+
+            new_X = mt.random.rand(1000, 10, chunk_size=(1000, 5))
+            new_X, new_y = ToDMatrix(data=new_X, label=self.y, multi_output=True)()
+            dmatrix = ToDMatrix(data=new_X, label=self.y)()
+            dmatrix.tiles()
+
+            self.assertEqual(len(dmatrix.chunks), 1)
 
     def testLocalTrainTensor(self):
         new_session().as_default()
@@ -54,10 +81,11 @@ class Test(unittest.TestCase):
         self.assertIsInstance(booster, Booster)
 
     def testDistributedTile(self):
-        X, y = self.X, self.y
+        X, y, w = self.X, self.y, self.weight
 
         X.tiles()
         y.tiles()
+        w.tiles()
 
         workers = ['addr1:1', 'addr2:1']
         chunk_to_workers = dict()
@@ -65,6 +93,8 @@ class Test(unittest.TestCase):
         chunk_to_workers.update(X_chunk_to_workers)
         y_chunk_to_workers = {c.key: workers[i % 2] for i, c in enumerate(y.chunks)}
         chunk_to_workers.update(y_chunk_to_workers)
+        w_chunk_to_workers = {c.key: workers[i % 2] for i, c in enumerate(w.chunks)}
+        chunk_to_workers.update(w_chunk_to_workers)
 
         class MockDistributedDictContext(ContextBase):
             @property
@@ -82,7 +112,7 @@ class Test(unittest.TestCase):
                                                workers=None))
                 return metas
 
-        dmatrix = ToDMatrix(data=X, label=y)()
+        dmatrix = ToDMatrix(data=X, label=y, weight=w)()
         model = XGBTrain(dtrain=dmatrix)()
 
         with MockDistributedDictContext():

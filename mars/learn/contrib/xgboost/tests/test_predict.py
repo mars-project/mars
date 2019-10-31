@@ -50,6 +50,12 @@ class Test(unittest.TestCase):
         prediction = predict(booster, self.X)
         self.assertIsInstance(prediction.execute(), np.ndarray)
 
+        prediction = predict(booster, dtrain)
+        self.assertIsInstance(prediction.fetch(), np.ndarray)
+
+        with self.assertRaises(TypeError):
+            predict(None, self.X)
+
     def testLocalPredictDataFrame(self):
         new_session().as_default()
         dtrain = MarsDMatrix(self.X_df, self.y_series)
