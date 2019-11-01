@@ -836,6 +836,11 @@ cdef inline bytes _wrap_read_func(object read_func, size_t size):
          read_bytes = read_func(size)
     except ConnectionResetError:
         raise BrokenPipeError('The remote server is closed')
+    except socket.error as ex:
+        if ex.errno in (errno.EPIPE, errno.ECONNRESET):
+            raise BrokenPipeError('The remote server is closed')
+        else:
+            raise
 
     if len(read_bytes) == 0:
         raise BrokenPipeError('The remote server is closed')
