@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .contrib.xgboost import train as xgboost_train
-del xgboost_train
+from .dmatrix import MarsDMatrix
+from .train import train
+from .predict import predict
+from .start_tracker import StartTracker
+from .classifier import XGBClassifier
+from .regressor import XGBRegressor
 
-from .utils.core import concat_chunks_on_axis, get_fetch_op_cls, \
-    get_fuse_op_cls, concat_tileable_chunks
+del StartTracker

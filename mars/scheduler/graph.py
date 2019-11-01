@@ -43,6 +43,7 @@ from ..tiles import handler, DataNotReady
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
     get_chunk_shuffle_key
+from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,7 @@ class GraphActor(SchedulerActor):
         self._serialized_chunk_graph = serialized_chunk_graph
         self._state = state
         self._final_state = final_state
+        self._context = None
 
         self._operand_free_paused = False
 
@@ -323,6 +325,13 @@ class GraphActor(SchedulerActor):
     @property
     def final_state(self):
         return self._final_state
+
+    @property
+    def context(self):
+        if self._context is None:
+            self._context = DistributedContext(
+                self._cluster_info_ref, self._session_id, self.address, self.chunk_meta)
+        return self._context
 
     @final_state.setter
     def final_state(self, value):
@@ -493,7 +502,8 @@ class GraphActor(SchedulerActor):
                         if isinstance(to_tile.op, Fetch):
                             td = self.tile_fetch_tileable(tileable)
                         else:
-                            td = self._graph_analyze_pool.submit(handler.dispatch, to_tile).result()
+                            td = self._graph_analyze_pool.submit(
+                                self.context.wraps(handler.dispatch), to_tile).result()
                     except DataNotReady:
                         continue
 
@@ -506,7 +516,8 @@ class GraphActor(SchedulerActor):
                 tileable_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
 
                 # add chunks to fine grained graph
-                q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data for tiled_c in tiled.chunks])
+                q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data
+                           for tiled_c in tiled.chunks])
                 input_chunk_keys = set(itertools.chain(*([(it.key, it.id) for it in input.chunks]
                                                          for input in to_tile.inputs)))
                 while len(q) > 0:

@@ -41,7 +41,7 @@ class SchedulerService(object):
         self._node_info_ref = None
         self._result_receiver_ref = None
 
-    def start(self, endpoint, discoverer, pool):
+    def start(self, endpoint, discoverer, pool, distributed=True):
         """
         there are two way to start a scheduler
         1) if options.kv_store is specified as an etcd address, the endpoint will be written
@@ -63,7 +63,8 @@ class SchedulerService(object):
 
         # create ClusterInfoActor
         self._cluster_info_ref = pool.create_actor(
-            SchedulerClusterInfoActor, discoverer, uid=SchedulerClusterInfoActor.default_uid())
+            SchedulerClusterInfoActor, discoverer, distributed=distributed,
+            uid=SchedulerClusterInfoActor.default_uid())
         # create ChunkMetaActor
         self._chunk_meta_ref = pool.create_actor(ChunkMetaActor, uid=ChunkMetaActor.default_uid())
         # create SessionManagerActor

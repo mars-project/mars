@@ -542,6 +542,9 @@ class DataFrameChunkData(ChunkData):
                                                  _dtypes=dtypes, _index_value=index_value,
                                                  _columns_value=columns_value, **kw)
 
+    def __len__(self):
+        return self.shape[0]
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -587,6 +590,9 @@ class DataFrameChunkData(ChunkData):
 class DataFrameChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (DataFrameChunkData,)
+
+    def __len__(self):
+        return len(self._data)
 
 
 class DataFrameData(TileableData):
@@ -689,6 +695,9 @@ class DataFrame(TileableEntity):
     def __hash__(self):
         # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
         return super(DataFrame, self).__hash__()
+
+    def __len__(self):
+        return len(self._data)
 
     def to_tensor(self):
         return self._data.to_tensor()

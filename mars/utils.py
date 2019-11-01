@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 
 from .compat import irange, functools32, getargspec
-from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int
+from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register as register_tokenizer
 from .config import options
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ random.seed(int(time.time()) * os.getpid())
 
 
 tokenize = tokenize
+register_tokenizer = register_tokenizer
 
 
 # fix encoding conversion problem under windows
@@ -283,6 +284,9 @@ else:
 
 
 def calc_data_size(dt):
+    if dt is None:
+        return 0
+
     data_size = sys.getsizeof(dt)
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)
@@ -463,6 +467,10 @@ def get_expr_module(op):
         return expr_module
 
 
+def concat_chunks_on_axis(chunks, axis=0):
+    return get_expr_module(chunks[0].op).concat_chunks_on_axis(chunks, axis=axis)
+
+
 def concat_tileable_chunks(tileable):
     return get_expr_module(tileable.op).concat_tileable_chunks(tileable)
 
@@ -519,7 +527,7 @@ def build_fetch(entity, coarse=False):
 
 
 def get_fuse_op_cls(op):
-    return get_expr_module(op).get_fuse_op_cls()
+    return get_expr_module(op).get_fuse_op_cls(op)
 
 
 def build_fuse_chunk(fused_chunks, **kwargs):

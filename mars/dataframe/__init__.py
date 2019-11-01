@@ -18,7 +18,7 @@ from .initializer import DataFrame, Series
 # do imports to register operands
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
-from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+from .utils import concat_tileable_chunks, concat_chunks_on_axis, get_fetch_op_cls, get_fuse_op_cls
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic

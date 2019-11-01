@@ -59,6 +59,9 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi;
             fi
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
+              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
+            fi
             virtualenv testenv && source testenv/bin/activate;
             pip install -r requirements.txt && pip install pytest pytest-timeout;
             if [ -z "$DEFAULT_VENV" ]; then

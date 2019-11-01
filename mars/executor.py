@@ -39,6 +39,9 @@ from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
 
+if gevent:
+    from .actors.pool.gevent_pool import GeventThreadPoolExecutor
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,40 +87,6 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def event(cls):
         return threading.Event()
-
-
-if gevent:
-    import gevent.threadpool
-    import gevent.event
-
-
-    class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
-        @staticmethod
-        def _wrap_watch(fn):
-            # Each time a function is submitted, a gevent greenlet may be created,
-            # this is common especially for Mars actor,
-            # but there would be no other greenlet to switch to,
-            # LoopExit will be raised, in order to prevent from this,
-            # we create a greenlet to watch the result
-
-            def check(event):
-                delay = 0.0005
-                while not event.is_set():
-                    event.wait(delay)
-                    delay = min(delay * 2, .05)
-
-            def inner(*args, **kwargs):
-                event = gevent.event.Event()
-                gevent.spawn(check, event)
-                result = fn(*args, **kwargs)
-                event.set()
-                return result
-
-            return inner
-
-        def submit(self, fn, *args, **kwargs):
-            wrapped_fn = self._wrap_watch(fn)
-            return super(GeventThreadPoolExecutor, self).submit(wrapped_fn, *args, **kwargs)
 
 
 class GeventExecutorSyncProvider(ExecutorSyncProvider):
@@ -826,5 +795,6 @@ def register_default(op_cls):
 from . import tensor
 from . import dataframe
 from . import optimizes
+from . import learn
 
-del tensor, dataframe, optimizes
+del tensor, dataframe, optimizes, learn

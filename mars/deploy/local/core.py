@@ -118,7 +118,7 @@ class LocalDistributedCluster(object):
         discoverer = StaticSchedulerDiscoverer([self._endpoint])
 
         # start scheduler first
-        self._scheduler_service.start(self._endpoint, discoverer, self._pool)
+        self._scheduler_service.start(self._endpoint, discoverer, self._pool, distributed=False)
 
         # start worker next
         self._worker_service.start(self._endpoint, self._pool, distributed=False,
