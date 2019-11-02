@@ -1092,6 +1092,11 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(raw_res_unique[:, res_inv], raw)
         np.testing.assert_array_equal(res_counts, exp_counts)
 
+        x = (mt.random.RandomState(0).rand(1000, chunk_size=20) > 0.5).astype(np.int32)
+        y = unique(x)
+        res = np.sort(self.executor.execute_tensor(y, concat=True)[0])
+        np.testing.assert_array_equal(res, np.array([0, 1]))
+
     @require_cupy
     def testToGPUExecution(self):
         raw = np.random.rand(10, 10)
