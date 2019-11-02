@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -x
+set -e
 
 if [ -z "$GITHUB_TAG_REF" ]; then
   echo "Not on a tag, won't deploy to pypi"
@@ -7,6 +7,11 @@ elif [ -n "$NO_DEPLOY" ]; then
   echo "Not on a build config, won't deploy to pypi"
 else
   git clean -f -x
+  source activate test
+
+  if [ -n "$BUILD_STATIC" ]; then
+    python setup.py sdist --formats=gztar
+  fi
 
   if [ "$UNAME" = "linux" ]; then
     sudo chmod 777 bin/*
@@ -19,22 +24,22 @@ else
     done
 
   else
-    virtualenv wheelenv
-    source wheelenv/bin/activate
+    conda create --quiet --yes -n wheel python=$PYTHON
+    conda activate wheel
 
     pip install -r requirements-wheel.txt
     pip wheel --no-deps .
 
-    if [ -z "$DEFAULT_VENV" ]; then
-      deactivate
-    else
-      source $DEFAULT_VENV/bin/activate
-    fi
-    mkdir dist
+    conda activate test
+
+    mkdir -p dist
     cp *.whl dist/
-    pip install delocate
-    delocate-wheel dist/*.whl
-    delocate-addplat --rm-orig -x 10_9 -x 10_10 dist/*.whl
+
+    if [[ "$UNAME" == "darwin" ]]; then
+      pip install delocate
+      delocate-wheel dist/*.whl
+      delocate-addplat --rm-orig -x 10_9 -x 10_10 dist/*.whl
+    fi
   fi
   ls dist/
 

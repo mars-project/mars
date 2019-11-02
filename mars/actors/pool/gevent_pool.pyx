@@ -34,8 +34,8 @@ import gevent.socket
 import gevent.server
 import gevent.subprocess
 import gevent.fileobject
+import gevent.threadpool
 from gevent._tblib import _init as gevent_init_tblib
-from gevent.threadpool import ThreadPool as GThreadPool
 
 from ...lib import gipc
 from ...compat import six, OrderedDict, TimeoutError, BrokenPipeError, ConnectionRefusedError
@@ -107,14 +107,33 @@ cdef class ActorExecutionContext:
         self.inbox.put(message_ctx)
 
 
-cdef class ThreadPool:
-    cdef object _pool
+class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
+    @staticmethod
+    def _wrap_watch(fn):
+        # Each time a function is submitted, a gevent greenlet may be created,
+        # this is common especially for Mars actor,
+        # but there would be no other greenlet to switch to,
+        # LoopExit will be raised, in order to prevent from this,
+        # we create a greenlet to watch the result
 
-    def __init__(self, num_threads):
-        self._pool = GThreadPool(num_threads)
+        def check(event):
+            delay = 0.0005
+            while not event.is_set():
+                event.wait(delay)
+                delay = min(delay * 2, .05)
+
+        def inner(*args, **kwargs):
+            event = gevent.event.Event()
+            gevent.spawn(check, event)
+            result = fn(*args, **kwargs)
+            event.set()
+            return result
+
+        return inner
 
     def submit(self, fn, *args, **kwargs):
-        return self._pool.spawn(fn, *args, **kwargs)
+        wrapped_fn = self._wrap_watch(fn)
+        return super(GeventThreadPoolExecutor, self).submit(wrapped_fn, *args, **kwargs)
 
 
 cdef class ActorContext:
@@ -203,7 +222,7 @@ cdef class ActorContext:
 
     @staticmethod
     def threadpool(size):
-        return ThreadPool(size)
+        return GeventThreadPoolExecutor(size)
 
     @staticmethod
     def asyncpool(size=None):
@@ -1673,7 +1692,7 @@ cdef class ActorClient:
 
     @staticmethod
     def threadpool(size):
-        return ThreadPool(size)
+        return GeventThreadPoolExecutor(size)
 
     @staticmethod
     def asyncpool(size=None):

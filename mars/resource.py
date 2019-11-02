@@ -204,13 +204,13 @@ def disk_io_usage():
 
     # Needed by psutil.disk_io_counters() under newer version of Windows.
     # diskperf -y need to be called or no disk information can be found.
-    if sys.platform == 'win32' and not _win_diskperf_called:  # pragma: no cover
+    if sys.platform == 'win32' and not _win_diskperf_called:
         CREATE_NO_WINDOW = 0x08000000
         try:
             proc = subprocess.Popen(['diskperf', '-y'], shell=False,
                                     creationflags=CREATE_NO_WINDOW)  # nosec
             proc.wait()
-        except (subprocess.CalledProcessError, OSError):
+        except (subprocess.CalledProcessError, OSError):  # pragma: no cover
             pass
         _win_diskperf_called = True
 
