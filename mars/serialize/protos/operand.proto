@@ -363,6 +363,9 @@ message OperandDef {
         GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
 
+        // store
+        READ_CSV = 2100;
+
         // machine learning
 
         // XGBoost
