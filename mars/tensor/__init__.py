@@ -23,7 +23,7 @@ from .datastore import totiledb
 from .base import result_type, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, \
-    average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin, searchsorted
+    average, cov, corrcoef, flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique
 from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
@@ -58,6 +58,9 @@ from . import fft
 from . import linalg
 from . import lib
 from . import special
+
+# types
+from .core import Tensor, MutableTensor
 
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
 
