@@ -22,6 +22,7 @@ import gevent
 
 from mars.tests.core import EtcdProcessHelper
 from mars.kvstore import get, PathResult
+from mars.utils import get_next_port
 
 
 class Test(unittest.TestCase):
@@ -90,8 +91,11 @@ class Test(unittest.TestCase):
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
     def testEtcdPathStore(self):
-        with EtcdProcessHelper(port_range_start=51342).run():
-            kvstore = get(u'etcd://localhost:51342')
+        etcd_port = get_next_port()
+        etcd_internal_port = get_next_port()
+        with EtcdProcessHelper(port_range_start=etcd_port,
+                               internal_port_range_start=etcd_internal_port).run():
+            kvstore = get(u'etcd://localhost:%d' % etcd_port)
             kvstore.write(u'/node/subnode/v1', u'value1')
             kvstore.write(u'/node/v2', u'value2')
 
@@ -202,8 +206,11 @@ class Test(unittest.TestCase):
     @unittest.skipIf('CI' not in os.environ and not EtcdProcessHelper().is_installed(),
                      'does not run without etcd')
     def testEtcdWatch(self):
-        with EtcdProcessHelper(port_range_start=51342).run():
-            kvstore = get('etcd://localhost:51342')
+        etcd_port = get_next_port()
+        etcd_internal_port = get_next_port()
+        with EtcdProcessHelper(port_range_start=etcd_port,
+                               internal_port_range_start=etcd_internal_port).run():
+            kvstore = get('etcd://localhost:%d' % etcd_port)
             kvstore.write('/node/subnode/v1', 'value1')
             kvstore.write('/node/v2', 'value2')
 

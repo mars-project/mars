@@ -143,7 +143,9 @@ class SchedulerIntegratedTest(unittest.TestCase):
 
         if etcd:
             etcd_port = get_next_port()
-            self.etcd_helper = EtcdProcessHelper(port_range_start=etcd_port)
+            etcd_internal_port = get_next_port()
+            self.etcd_helper = EtcdProcessHelper(port_range_start=etcd_port,
+                                                 internal_port_range_start=etcd_internal_port)
             self.etcd_helper.run()
             options.kv_store = 'etcd://127.0.0.1:%s' % etcd_port
             append_args.extend(['--kv-store', options.kv_store])
