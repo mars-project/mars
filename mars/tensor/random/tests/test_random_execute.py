@@ -595,7 +595,13 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(np.sort(res), np.asarray([1, 4, 9, 12, 15]))
 
         arr = from_ndarray(np.arange(48).reshape(12, 4), chunk_size=2)
+        # axis = 0
         x = tensor.random.permutation(arr)
         res = self.executor.execute_tensor(x, concat=True)[0]
         self.assertFalse(np.all(res[:-1] < res[1:]))
         np.testing.assert_array_equal(np.sort(res, axis=0), np.arange(48).reshape(12, 4))
+        # axis != 0
+        x2 = tensor.random.permutation(arr, axis=1)
+        res = self.executor.execute_tensor(x2, concat=True)[0]
+        self.assertFalse(np.all(res[:, :-1] < res[:, 1:]))
+        np.testing.assert_array_equal(np.sort(res, axis=1), np.arange(48).reshape(12, 4))

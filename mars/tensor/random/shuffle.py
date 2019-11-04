@@ -18,7 +18,7 @@ from ..datasource import tensor as astensor
 from ..core import TENSOR_TYPE
 
 
-def shuffle(random_state, x):
+def shuffle(random_state, x, axis=0):
     r"""
     Modify a sequence in-place by shuffling its contents.
     The order of sub-arrays is changed but their contents remains the same.
@@ -26,6 +26,8 @@ def shuffle(random_state, x):
     ----------
     x : array_like
         The array or list to be shuffled.
+    axis : int, optional
+        The axis which `x` is shuffled along. Default is 0.
     Returns
     -------
     None
@@ -51,5 +53,5 @@ def shuffle(random_state, x):
     else:
         raise TypeError('x should be list, numpy ndarray or tensor')
 
-    ret = permutation(random_state, x)
+    ret = permutation(random_state, x, axis=axis)
     x.data = ret.data
