@@ -1,9 +1,6 @@
 #!/bin/bash
 
 export UNAME="$(uname | awk '{print tolower($0)}')"
-if [[ "$UNAME" == "darwin" ]]; then
-  ulimit -S -n 10240
-fi
 
 if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then
   export GITHUB_TAG_REF="$GITHUB_REF"

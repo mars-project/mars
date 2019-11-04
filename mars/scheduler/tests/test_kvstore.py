@@ -34,7 +34,9 @@ class Test(unittest.TestCase):
                      'does not run without etcd')
     def testKVStoreActor(self):
         etcd_port = get_next_port()
-        proc_helper = EtcdProcessHelper(port_range_start=etcd_port)
+        etcd_internal_port = get_next_port()
+        proc_helper = EtcdProcessHelper(port_range_start=etcd_port,
+                                        internal_port_range_start=etcd_internal_port)
         options.kv_store = 'etcd://127.0.0.1:%s' % etcd_port
         with proc_helper.run(), create_actor_pool(n_process=1, backend='gevent') as pool:
             store_ref = pool.create_actor(KVStoreActor, uid=KVStoreActor.default_uid())

@@ -28,9 +28,9 @@ class TensorDataFrameDataSource(TensorHasInput):
     _op_type_ = OperandDef.TENSOR_FROM_DATAFRAME
     _input = KeyField('_input')
 
-    def __init__(self, dtype=None, gpu=None, **kw):
+    def __init__(self, dtype=None, gpu=None, sparse=None,  **kw):
         super(TensorDataFrameDataSource, self).__init__(_dtype=dtype, _gpu=gpu,
-                                                        _sparse=True, **kw)
+                                                        _sparse=sparse, **kw)
 
     @classmethod
     def execute(cls, ctx, op):
