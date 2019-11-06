@@ -32,4 +32,4 @@ from .tri import triu, tril, TensorTriu, TensorTril
 from .from_dense import fromdense, DenseToSparse
 from .from_sparse import fromsparse, SparseToDense
 from .from_tiledb import fromtiledb, TensorTileDBDataSource
-from .from_dataframe import from_dataframe, TensorDataFrameDataSource
+from .from_dataframe import from_dataframe, TensorFromDataFrame

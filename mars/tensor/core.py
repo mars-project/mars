@@ -254,8 +254,8 @@ class TensorData(TileableData):
         return from_dataframe(in_df)
 
     def to_dataframe(self, *args, **kwargs):
-        from ..dataframe.datasource.from_tensor import from_tensor
-        return from_tensor(self, *args, **kwargs)
+        from ..dataframe.datasource.from_tensor import dataframe_from_tensor
+        return dataframe_from_tensor(self, *args, **kwargs)
 
     @property
     def flat(self):
