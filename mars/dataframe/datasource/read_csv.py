@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field
 from ...filesystem import open_file, file_size
-from ..utils import parse_index
+from ..utils import parse_index, build_empty_df
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 
 
@@ -146,14 +146,14 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         with open_file(op.path, compression=op.compression, storage_options=op.storage_options) as f:
             if op.compression is not None:
                 df = pd.read_csv(BytesIO(f.read()), header=op.header, names=op.names, index_col=op.index_col,
-                                         dtype=out_df.dtypes.to_dict())
+                                 dtype=out_df.dtypes.to_dict())
             else:
                 start, end = cls._find_start_end(f, op.offset, op.size)
                 f.seek(start)
                 b = BytesIO(f.read(end - start))
                 if end == start:
                     # the last chunk may be empty
-                    df = pd.DataFrame(columns=out_df.columns.to_pandas())
+                    df = build_empty_df(out_df.dtypes)
                 else:
                     if out_df.index == (0, 0):
                         # The first chunk contains header
