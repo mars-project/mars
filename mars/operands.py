@@ -16,11 +16,14 @@
 from copy import deepcopy
 import weakref
 
+import numpy as np
+
 from .compat import six
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
-from .core import Entity, AttributeAsDictKey
-from .utils import AttributeDict, to_str
+from .core import Entity, AttributeAsDictKey, ExecutableTuple, FuseChunkData, FuseChunk
+from .utils import AttributeDict, to_str, calc_data_size, is_eager_mode
+from .tiles import NotSupportTile
 from . import opcodes as OperandDef
 
 
@@ -194,6 +197,202 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
         raise NotImplementedError
 
 
+class TileableOperandMixin(object):
+    __slots__ = ()
+
+    def check_inputs(self, inputs):
+        pass
+
+    @classmethod
+    def _check_if_gpu(cls, inputs):
+        if inputs is not None and \
+                len([inp for inp in inputs
+                     if inp is not None and getattr(inp, 'op', None) is not None]) > 0:
+            if all(inp.op.gpu is True for inp in inputs):
+                return True
+            elif all(inp.op.gpu is False for inp in inputs):
+                return False
+
+    def _create_chunk(self, output_idx, index, **kw):
+        raise NotImplementedError
+
+    def _new_chunks(self, inputs, kws=None, **kw):
+        output_limit = kw.pop('output_limit', None)
+        if output_limit is None:
+            output_limit = getattr(self, 'output_limit')
+
+        self.check_inputs(inputs)
+        getattr(self, '_set_inputs')(inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
+        if getattr(self, '_key', None) is None:
+            getattr(self, '_update_key')()
+
+        chunks = []
+        for j in range(output_limit):
+            create_chunk_kw = kw.copy()
+            if kws:
+                create_chunk_kw.update(kws[j])
+            index = create_chunk_kw.pop('index', None)
+            chunk = self._create_chunk(j, index, **create_chunk_kw)
+            chunks.append(chunk)
+
+        setattr(self, 'outputs', chunks)
+        if len(chunks) > 1:
+            # for each output chunk, hold the reference to the other outputs
+            # so that either no one or everyone are gc collected
+            for j, t in enumerate(chunks):
+                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
+        return chunks
+
+    def new_chunks(self, inputs, kws=None, **kwargs):
+        """
+        Create chunks.
+        A chunk is a node in a fine grained graph, all the chunk objects are created by
+        calling this function, it happens mostly in tiles.
+        The generated chunks will be set as this operand's outputs and each chunk will
+        hold this operand as it's op.
+        :param inputs: input chunks
+        :param kws: kwargs for each output
+        :param kwargs: common kwargs for all outputs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_chunks` if needed.
+        """
+        return self._new_chunks(inputs, kws=kws, **kwargs)
+
+    def new_chunk(self, inputs, kws=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new chunk with more than 1 outputs')
+
+        return self.new_chunks(inputs, kws=kws, **kw)[0]
+
+    def _create_tileable(self, output_idx, **kw):
+        raise NotImplementedError
+
+    def _new_tileables(self, inputs, kws=None, **kw):
+        output_limit = kw.pop('output_limit', None)
+        if output_limit is None:
+            output_limit = getattr(self, 'output_limit')
+
+        self.check_inputs(inputs)
+        getattr(self, '_set_inputs')(inputs)
+        if getattr(self, '_gpu', None) is None:
+            self._gpu = self._check_if_gpu(self._inputs)
+        if getattr(self, '_key', None) is None:
+            getattr(self, '_update_key')()  # update key when inputs are set
+
+        tileables = []
+        for j in range(output_limit):
+            create_tensor_kw = kw.copy()
+            if kws:
+                create_tensor_kw.update(kws[j])
+            tileable = self._create_tileable(j, **create_tensor_kw)
+            tileables.append(tileable)
+
+        setattr(self, 'outputs', tileables)
+        if len(tileables) > 1:
+            # for each output tileable, hold the reference to the other outputs
+            # so that either no one or everyone are gc collected
+            for j, t in enumerate(tileables):
+                t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
+        return tileables
+
+    def new_tileables(self, inputs, kws=None, **kw):
+        """
+        Create tileable objects(Tensors or DataFrames).
+        This is a base function for create tileable objects like tensors or dataframes,
+        it will be called inside the `new_tensors` and `new_dataframes`.
+        If eager mode is on, it will trigger the execution after tileable objects are created.
+        :param inputs: input tileables
+        :param kws: kwargs for each output
+        :param kw: common kwargs for all outputs
+
+        .. note::
+            It's a final method, do not override.
+            Override the method `_new_tileables` if needed.
+        """
+
+        tileables = self._new_tileables(inputs, kws=kws, **kw)
+        if is_eager_mode():
+            ExecutableTuple(tileables).execute(fetch=False)
+        return tileables
+
+    def new_tileable(self, inputs, kws=None, **kw):
+        if getattr(self, 'output_limit') != 1:
+            raise TypeError('cannot new chunk with more than 1 outputs')
+
+        return self.new_tileables(inputs, kws=kws, **kw)[0]
+
+    @classmethod
+    def execute(cls, ctx, op):
+        raise NotImplementedError
+
+    @classmethod
+    def estimate_size(cls, ctx, op):
+        exec_size = 0
+        outputs = op.outputs
+        if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
+            for out in outputs:
+                ctx[out.key] = (out.nbytes, out.nbytes)
+
+        for inp in op.inputs or ():
+            try:
+                exec_size += ctx[inp.key][0]
+            except KeyError:
+                if not op.sparse:
+                    inp_size = calc_data_size(inp)
+                    if not np.isnan(inp_size):
+                        exec_size += inp_size
+        exec_size = int(exec_size)
+
+        total_out_size = 0
+        chunk_sizes = dict()
+        for out in outputs:
+            try:
+                chunk_size = calc_data_size(out) if not out.is_sparse() else exec_size
+                if np.isnan(chunk_size):
+                    raise TypeError
+                chunk_sizes[out.key] = chunk_size
+                total_out_size += chunk_size
+            except (AttributeError, TypeError, ValueError):
+                pass
+        exec_size = max(exec_size, total_out_size)
+        for out in outputs:
+            if out.key in ctx:
+                continue
+            if out.key in chunk_sizes:
+                store_size = chunk_sizes[out.key]
+            else:
+                store_size = max(exec_size // len(outputs),
+                                 total_out_size // max(len(chunk_sizes), 1))
+            try:
+                if out.is_sparse():
+                    max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+                else:
+                    max_sparse_size = np.nan
+            except TypeError:  # pragma: no cover
+                max_sparse_size = np.nan
+            if not np.isnan(max_sparse_size):
+                store_size = min(store_size, max_sparse_size)
+            ctx[out.key] = (store_size, exec_size // len(outputs))
+
+    @classmethod
+    def concat_tileable_chunks(cls, tileable):
+        raise NotImplementedError
+
+    @classmethod
+    def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
+        raise NotImplementedError
+
+    def get_fetch_op_cls(self, obj):
+        raise NotImplementedError
+
+    def get_fuse_op_cls(self, obj):
+        raise NotImplementedError
+
+
 class HasInput(Operand):
     __slots__ = ()
 
@@ -243,6 +442,22 @@ class Fetch(Operand):
         return self._to_fetch_key
 
 
+class FetchMixin(TileableOperandMixin):
+    def check_inputs(self, inputs):
+        # no inputs
+        if inputs and len(inputs) > 0:
+            raise ValueError("%s has no inputs" % type(self).__name__)
+
+    @classmethod
+    def tile(cls, op):
+        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
+
+    @classmethod
+    def execute(cls, ctx, op):
+        # fetch op need to do nothing
+        pass
+
+
 class Fuse(Operand):
     _op_type_ = OperandDef.FUSE
 
@@ -252,6 +467,24 @@ class Fuse(Operand):
     def operands(self):
         return self._operands
 
+
+class FuseChunkMixin(object):
+    __slots__ = ()
+
+    def _create_chunk(self, output_idx, index, **kw):
+        data = FuseChunkData(_index=index, _op=self, **kw)
+        return FuseChunk(data)
+
+    @classmethod
+    def tile(cls, op):
+        raise NotSupportTile('FuseChunk is a chunk operand which does not support tile')
+
+    def __call__(self, fuse_chunks):
+        head_chunk = fuse_chunks[0]
+        tail_chunk = fuse_chunks[-1]
+        setattr(self, '_operands', [c.op for c in fuse_chunks])
+        return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
+                              _composed=fuse_chunks, _key=tail_chunk.key)
 
 class FetchShuffle(Operand):
     _op_type_ = OperandDef.FETCH_SHUFFLE

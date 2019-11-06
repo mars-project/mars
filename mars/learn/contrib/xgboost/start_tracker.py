@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#      http://www.apache.org/licenses/LICENSE-2.0git
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,26 +14,31 @@
 
 from threading import Thread
 
-import numpy as np
-
 from .... import opcodes as OperandDef
-from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....serialize import Int32Field
 from ....utils import to_binary
+from ....tiles import NotSupportTile
+from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
 
-class StartTracker(TensorOperand, TensorOperandMixin):
-    _op_module_ = 'learn'
+class StartTracker(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.START_TRACKER
 
     _n_workers = Int32Field('n_workers')
 
-    def __init__(self, n_workers=None, **kw):
-        super(StartTracker, self).__init__(_n_workers=n_workers, **kw)
+    def __init__(self, n_workers=None, output_types=None, **kw):
+        super(StartTracker, self).__init__(_n_workers=n_workers,
+                                           _output_types=output_types, **kw)
+        if self._output_types is None:
+            self._output_types = [OutputType.object]
 
     @property
     def n_workers(self):
         return self._n_workers
+
+    @classmethod
+    def tile(cls, op):
+        raise NotSupportTile('StartTracker is a chunk op')
 
     @classmethod
     def execute(cls, ctx, op):
@@ -50,5 +55,5 @@ class StartTracker(TensorOperand, TensorOperandMixin):
         thread.daemon = True
         thread.start()
 
-        rabit_args = [to_binary('{0}={0}'.format(item)) for item in env.items()]
-        ctx[op.outputs[0].key] = np.array([rabit_args])
+        rabit_args = [to_binary('{0}={1}'.format(k, v)) for k, v in env.items()]
+        ctx[op.outputs[0].key] = rabit_args

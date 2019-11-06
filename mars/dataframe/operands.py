@@ -15,15 +15,18 @@
 import operator
 
 import numpy as np
+import pandas as pd
 
-from ..compat import Enum
-from ..serialize import Int8Field
-from ..operands import ShuffleProxy
-from ..core import TileableOperandMixin, FuseChunkData, FuseChunk
-from ..operands import Operand, ShuffleMap, ShuffleReduce, Fuse
-from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, GROUPBY_TYPE
+from ..compat import Enum, reduce
+from ..core import FuseChunkData, FuseChunk
+from ..operands import Operand, TileableOperandMixin, ShuffleMap, ShuffleReduce, Fuse
+from ..operands import ShuffleProxy, FuseChunkMixin
+from ..serialize import Int8Field
+from ..tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
+from ..utils import calc_nsplits
+from .utils import parse_index
 
 
 class ObjectType(Enum):
@@ -125,6 +128,92 @@ class DataFrameOperandMixin(TileableOperandMixin):
                     ret[i] = s
         return tuple(ret)
 
+    @classmethod
+    def concat_tileable_chunks(cls, tileable):
+        from .merge.concat import DataFrameConcat, GroupByConcat
+        from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
+
+        df = tileable
+        assert not df.is_coarse()
+
+        if isinstance(df, DATAFRAME_TYPE):
+            chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
+                df.chunks, shape=df.shape, index=(0, 0), dtypes=df.dtypes,
+                index_value=df.index_value, columns_value=df.columns)
+            return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
+                [df], shape=df.shape, chunks=[chunk],
+                nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
+                index_value=df.index_value, columns_value=df.columns)
+        elif isinstance(df, SERIES_TYPE):
+            chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
+                df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
+                index_value=df.index_value, name=df.name)
+            return DataFrameConcat(object_type=ObjectType.series).new_series(
+                [df], shape=df.shape, chunks=[chunk],
+                nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
+                index_value=df.index_value, name=df.name)
+        elif isinstance(df, GROUPBY_TYPE):
+            chunk = GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_chunk(df.chunks)
+            return GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
+        else:
+            raise NotImplementedError
+
+    @classmethod
+    def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
+        chunk_idx_to_shape = {c.index: c.shape for c in chunks}
+        nsplits = calc_nsplits(chunk_idx_to_shape)
+        shape = tuple(sum(ns) for ns in nsplits)
+        chunk_shape = tuple(max(c.index[i] for c in chunks) + 1
+                            for i in range(chunks[0].ndim))
+        op = chunks[0].op.copy().reset_key()
+        if isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
+            params = cls._calc_dataframe_params(chunks, chunk_shape)
+            params.update(kw)
+            return op.new_dataframe(inputs, shape=shape, chunks=chunks,
+                                    nsplits=nsplits, **params)
+        else:
+            assert isinstance(chunks[0], SERIES_CHUNK_TYPE)
+            params = cls._calc_series_params(chunks)
+            params.update(kw)
+            return op.new_series(inputs, shape=shape, chunks=chunks,
+                                 nsplits=nsplits, **params)
+
+    @classmethod
+    def _calc_dataframe_params(cls, chunks, chunk_shape):
+        chunk_idx_to_chunks = {c.index: c for c in chunks}
+        dtypes = pd.concat([chunk_idx_to_chunks[0, i].dtypes
+                            for i in range(chunk_shape[1])])
+        columns_value = parse_index(dtypes.index)
+        pd_indxes = [chunk_idx_to_chunks[i, 0].index_value.to_pandas()
+                     for i in range(chunk_shape[0])]
+        pd_index = reduce(lambda x, y: x.append(y), pd_indxes)
+        index_value = parse_index(pd_index)
+        return {'dtypes': dtypes, 'columns_value': columns_value,
+                'index_value': index_value}
+
+    @classmethod
+    def _calc_series_params(cls, chunks):
+        pd_indexes = [c.index_value.to_pandas() for c in chunks]
+        pd_index = reduce(lambda x, y: x.append(y), pd_indexes)
+        index_value = parse_index(pd_index)
+        return {'dtype': chunks[0].dtype, 'index_value': index_value}
+
+    def get_fetch_op_cls(self, _):
+        from ..operands import ShuffleProxy
+        from .fetch import DataFrameFetchShuffle, DataFrameFetch
+        if isinstance(self, ShuffleProxy):
+            cls = DataFrameFetchShuffle
+        else:
+            cls = DataFrameFetch
+
+        def _inner(**kw):
+            return cls(object_type=self.object_type, **kw)
+
+        return _inner
+
+    def get_fuse_op_cls(self, _):
+        return DataFrameFuseChunk
+
 
 class DataFrameOperand(Operand):
     _object_type = Int8Field('object_type', on_serialize=operator.attrgetter('value'),
@@ -166,7 +255,7 @@ class DataFrameShuffleReduce(ShuffleReduce):
         return self._object_type
 
 
-class DataFrameFuseMixin(DataFrameOperandMixin):
+class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):
     __slots__ = ()
 
     def _create_chunk(self, output_idx, index, **kw):
@@ -175,7 +264,7 @@ class DataFrameFuseMixin(DataFrameOperandMixin):
         return FuseChunk(data)
 
 
-class DataFrameFuseChunk(Fuse, DataFrameFuseMixin):
+class DataFrameFuseChunk(Fuse, DataFrameFuseChunkMixin):
     def __init__(self, sparse=False, **kwargs):
         super(DataFrameFuseChunk, self).__init__(_sparse=sparse, **kwargs)
 
