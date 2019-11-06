@@ -470,7 +470,7 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
     if nleft == 0:
         return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
 
-    max_chunk_size = options.tensor.chunk_store_limit
+    max_chunk_size = options.chunk_store_limit
 
     # normalize the dimension which specified first
     dim_to_normalized = {i: normalize_chunk_sizes((shape[i],), (c,))[0]

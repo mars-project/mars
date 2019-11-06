@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import tempfile
+import shutil
+
 import numpy as np
 import pandas as pd
 
@@ -65,7 +69,6 @@ class Test(TestBase):
 
         series = md.Series(mt.ones((10,), chunk_size=4))
         pd.testing.assert_series_equal(series.execute(), pd.Series(np.ones(10,)))
-
 
     def testFromTensorExecution(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
@@ -130,3 +133,66 @@ class Test(TestBase):
         df2 = from_records(ndarr)
         df2_result = self.executor.execute_dataframe(df2, concat=True)[0]
         pd.testing.assert_frame_equal(df2_result, pdf_expected)
+
+    def testReadCSVExecution(self):
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+            df.to_csv(file_path)
+
+            pdf = pd.read_csv(file_path, index_col=0)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, chunk_bytes=10),
+                                                   concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            index = pd.date_range(start='1/1/2018', periods=100)
+            df = pd.DataFrame({
+                'col1': np.random.rand(100),
+                'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+                'col3': np.arange(100)
+            }, index=index)
+            df.to_csv(file_path)
+
+            pdf = pd.read_csv(file_path, index_col=0)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, chunk_bytes=100),
+                                                  concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)
+
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.gzip')
+        try:
+            index = pd.date_range(start='1/1/2018', periods=100)
+            df = pd.DataFrame({
+                'col1': np.random.rand(100),
+                'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+                'col3': np.arange(100)
+            }, index=index)
+            df.to_csv(file_path, compression='gzip')
+
+            pdf = pd.read_csv(file_path, compression='gzip', index_col=0)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, compression='gzip', index_col=0),
+                                                  concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, compression='gzip', index_col=0,
+                                                               chunk_bytes=100), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)

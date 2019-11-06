@@ -193,7 +193,7 @@ def decide_dataframe_chunk_sizes(shape, chunk_size, memory_usage):
     if nleft == 0:
         return normalize_chunk_sizes(shape, tuple(chunk_size[j] for j in range(len(shape))))
 
-    max_chunk_size = options.tensor.chunk_store_limit
+    max_chunk_size = options.chunk_store_limit
 
     # for the row side, along axis 0
     if 0 not in chunk_size:
@@ -245,7 +245,7 @@ def decide_series_chunk_size(shape, chunk_size, memory_usage):
     if len(chunk_size) == len(shape):
         return normalize_chunk_sizes(shape, chunk_size[0])
 
-    max_chunk_size = options.tensor.chunk_store_limit
+    max_chunk_size = options.chunk_store_limit
     series_chunk_size = max_chunk_size / average_memory_usage
     return normalize_chunk_sizes(shape, int(series_chunk_size))
 
