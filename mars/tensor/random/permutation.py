@@ -110,7 +110,9 @@ class TensorPermutation(TensorRandomOperand, TensorOperandMixin):
                 shuffle_key = ','.join(str(idx) for idx in c.index)
                 chunk_op = TensorPermutationReduce(seed=reduce_seeds[c.index[op.axis]], axis=op.axis,
                                                    shuffle_key=shuffle_key)
-                reduce_chunk = chunk_op.new_chunk([proxy_chunk], shape=(np.nan,) + c.shape[1:],
+                chunk_shape = list(c.shape)
+                chunk_shape[op.axis] = np.nan
+                reduce_chunk = chunk_op.new_chunk([proxy_chunk], shape=tuple(chunk_shape),
                                                   order=out_tensor.order, index=c.index)
                 reduce_chunks.append(reduce_chunk)
 

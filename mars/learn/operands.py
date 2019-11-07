@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, Fuse, FuseChunkMixin
+from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, \
+    Fuse, FuseChunkMixin, ShuffleMap, ShuffleReduce, ShuffleProxy
 from ..compat import enum
 from ..serialize import ValueType, ListField
 from ..tensor.core import TensorChunkData, TensorChunk, TensorData, Tensor, \
@@ -181,3 +182,38 @@ class LearnObjectFuseChunk(Fuse, LearnObjectFuseChunkMixin):
     @property
     def output_types(self):
         return [OutputType.object]
+
+
+class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
+    _output_types = ListField('output_type', tp=ValueType.int8,
+                              on_serialize=_on_serialize_output_types,
+                              on_deserialize=_on_deserialize_output_types)
+
+    def __init__(self, output_types=None, **kw):
+        super(LearnShuffleProxy, self).__init__(_output_types=output_types, **kw)
+        if self._output_types is None:
+            self._output_types = [OutputType.object]
+
+    @property
+    def output_types(self):
+        return self._output_types
+
+
+class LearnShuffleMap(ShuffleMap):
+    _output_types = ListField('output_type', tp=ValueType.int8,
+                              on_serialize=_on_serialize_output_types,
+                              on_deserialize=_on_deserialize_output_types)
+
+    @property
+    def output_types(self):
+        return self._output_types
+
+
+class LearnShuffleReduce(ShuffleReduce):
+    _output_types = ListField('output_type', tp=ValueType.int8,
+                              on_serialize=_on_serialize_output_types,
+                              on_deserialize=_on_deserialize_output_types)
+
+    @property
+    def output_types(self):
+        return self._output_types

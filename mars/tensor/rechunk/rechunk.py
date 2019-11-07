@@ -149,10 +149,10 @@ def plan_rechunks(tensor, new_chunk_size, threshold=None, chunk_size_limit=None)
 
 def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
     """
-        Find an intermediate rechunk that would merge some adjacent blocks
-        together in order to get us nearer the *new_chunk_size* target, without
-        violating the *graph_size_limit* (in number of elements).
-        """
+    Find an intermediate rechunk that would merge some adjacent blocks
+    together in order to get us nearer the *new_chunk_size* target, without
+    violating the *graph_size_limit* (in number of elements).
+    """
     ndim = len(old_chunk_size)
 
     old_largest_width = [max(c) for c in old_chunk_size]
