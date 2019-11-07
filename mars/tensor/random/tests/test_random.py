@@ -161,3 +161,8 @@ class Test(TestBase):
         x = rand(10, 10, chunk_size=2)
         shuffle(x)
         self.assertIsInstance(x.op, TensorPermutation)
+
+        x = rand(10, 10, chunk_size=2)
+        shuffle(x, axis=1)
+        self.assertIsInstance(x.op, TensorPermutation)
+        self.assertEqual(x.op.axis, 1)
