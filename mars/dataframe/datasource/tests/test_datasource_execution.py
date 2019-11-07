@@ -168,7 +168,7 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(pdf, mdf)
 
             mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, chunk_bytes=100),
-                                                  concat=True)[0]
+                                                   concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
         finally:

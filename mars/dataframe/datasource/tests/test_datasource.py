@@ -380,7 +380,7 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
         try:
-            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'], dtype=np.int64)
             df.to_csv(file_path)
             mdf = read_csv(file_path, index_col=0, chunk_bytes=10)
             self.assertIsInstance(mdf.op, DataFrameReadCSV)
