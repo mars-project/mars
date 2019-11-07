@@ -55,7 +55,10 @@ file_systems = {
 
 def get_fs(path, storage_options):
     parse_result = urlparse(path)
-    scheme = parse_result.scheme or 'file'
+    if os.path.exists(path):
+        scheme = 'file'
+    else:
+        scheme = parse_result.scheme
     storage_options = storage_options or dict()
     return file_systems[scheme](**storage_options)
 
