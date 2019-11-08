@@ -123,7 +123,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 ret = xdf.concat(concats)
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 ret.sort_index(inplace=True)
-            if getattr(chunk.columns, 'should_be_monotonic', False):
+            if getattr(chunk.columns_value, 'should_be_monotonic', False):
                 ret.sort_index(axis=1, inplace=True)
             return ret
 

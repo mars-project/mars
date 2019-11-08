@@ -64,7 +64,7 @@ class Test(TestBase):
                     self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
                     self.assertEqual(rchunk.op.index_shuffle_size, 2)
                     self.assertEqual(rchunk.op.shuffle_on, kw.get('on', None) or kw.get('right_on', None))
-                pd.testing.assert_index_equal(chunk.columns.to_pandas(), df.columns.to_pandas())
+                pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())
 
     def testJoin(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]], index=['a1', 'a2', 'a3'])
@@ -103,7 +103,7 @@ class Test(TestBase):
                     self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
                     self.assertEqual(rchunk.op.index_shuffle_size, 3)
                     self.assertEqual(rchunk.op.shuffle_on, None)
-                pd.testing.assert_index_equal(chunk.columns.to_pandas(), df.columns.to_pandas())
+                pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())
 
     def testJoinOn(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]], columns=['a1', 'a2', 'a3'])
@@ -142,4 +142,4 @@ class Test(TestBase):
                     self.assertIsInstance(rchunk.op, DataFrameMergeAlignMap)
                     self.assertEqual(rchunk.op.index_shuffle_size, 3)
                     self.assertEqual(rchunk.op.shuffle_on, None)
-                pd.testing.assert_index_equal(chunk.columns.to_pandas(), df.columns.to_pandas())
+                pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), df.columns_value.to_pandas())

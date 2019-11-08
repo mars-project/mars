@@ -31,14 +31,14 @@ class Test(TestBase):
         df3 = df2.set_index('y', drop=True)
         df3.tiles()
         self.assertEqual(df3.chunk_shape, (2, 2))
-        pd.testing.assert_index_equal(df3.chunks[0].columns.to_pandas(), pd.Index(['x']))
-        pd.testing.assert_index_equal(df3.chunks[1].columns.to_pandas(), pd.Index(['z']))
+        pd.testing.assert_index_equal(df3.chunks[0].columns_value.to_pandas(), pd.Index(['x']))
+        pd.testing.assert_index_equal(df3.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
 
         df4 = df2.set_index('y', drop=False)
         df4.tiles()
         self.assertEqual(df4.chunk_shape, (2, 2))
-        pd.testing.assert_index_equal(df4.chunks[0].columns.to_pandas(), pd.Index(['x', 'y']))
-        pd.testing.assert_index_equal(df4.chunks[1].columns.to_pandas(), pd.Index(['z']))
+        pd.testing.assert_index_equal(df4.chunks[0].columns_value.to_pandas(), pd.Index(['x', 'y']))
+        pd.testing.assert_index_equal(df4.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
 
     def testILocGetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
@@ -149,11 +149,11 @@ class Test(TestBase):
         self.assertIsInstance(df3.op, DataFrameIlocSetItem)
         self.assertEqual(df3.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df3.index_value.to_pandas())
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df3.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df3.columns_value.to_pandas())
         for c1, c2 in zip(df2.chunks, df3.chunks):
             self.assertEqual(c1.shape, c2.shape)
             pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-            pd.testing.assert_index_equal(c1.columns.to_pandas(), c2.columns.to_pandas())
+            pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
             if isinstance(c2.op, DataFrameIlocSetItem):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
@@ -168,11 +168,11 @@ class Test(TestBase):
         self.assertIsInstance(df4.op, DataFrameIlocSetItem)
         self.assertEqual(df4.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df4.index_value.to_pandas())
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df4.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df4.columns_value.to_pandas())
         for c1, c2 in zip(df2.chunks, df4.chunks):
             self.assertEqual(c1.shape, c2.shape)
             pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-            pd.testing.assert_index_equal(c1.columns.to_pandas(), c2.columns.to_pandas())
+            pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
             if isinstance(c2.op, DataFrameIlocSetItem):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
@@ -187,11 +187,11 @@ class Test(TestBase):
         self.assertIsInstance(df5.op, DataFrameIlocSetItem)
         self.assertEqual(df5.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df5.index_value.to_pandas())
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df5.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df5.columns_value.to_pandas())
         for c1, c2 in zip(df2.chunks, df5.chunks):
             self.assertEqual(c1.shape, c2.shape)
             pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-            pd.testing.assert_index_equal(c1.columns.to_pandas(), c2.columns.to_pandas())
+            pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
             if isinstance(c2.op, DataFrameIlocSetItem):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
@@ -208,11 +208,11 @@ class Test(TestBase):
         self.assertIsInstance(df6.op, DataFrameIlocSetItem)
         self.assertEqual(df6.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df6.index_value.to_pandas())
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df6.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df6.columns_value.to_pandas())
         for c1, c2 in zip(df2.chunks, df6.chunks):
             self.assertEqual(c1.shape, c2.shape)
             pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-            pd.testing.assert_index_equal(c1.columns.to_pandas(), c2.columns.to_pandas())
+            pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
             if isinstance(c2.op, DataFrameIlocSetItem):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
@@ -233,11 +233,11 @@ class Test(TestBase):
         self.assertIsInstance(df7.op, DataFrameIlocSetItem)
         self.assertEqual(df7.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df7.index_value.to_pandas())
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df7.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df7.columns_value.to_pandas())
         for c1, c2 in zip(df2.chunks, df7.chunks):
             self.assertEqual(c1.shape, c2.shape)
             pd.testing.assert_index_equal(c1.index_value.to_pandas(), c2.index_value.to_pandas())
-            pd.testing.assert_index_equal(c1.columns.to_pandas(), c2.columns.to_pandas())
+            pd.testing.assert_index_equal(c1.columns_value.to_pandas(), c2.columns_value.to_pandas())
             if isinstance(c2.op, DataFrameIlocSetItem):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
@@ -267,7 +267,7 @@ class Test(TestBase):
         self.assertIsInstance(df1, DataFrame)
         self.assertEqual(df1.shape, (10, 3))
         self.assertEqual(df1.index_value, df.index_value)
-        pd.testing.assert_index_equal(df1.columns.to_pandas(), data[['c1', 'c2', 'c3']].columns)
+        pd.testing.assert_index_equal(df1.columns_value.to_pandas(), data[['c1', 'c2', 'c3']].columns)
         pd.testing.assert_series_equal(df1.dtypes, data[['c1', 'c2', 'c3']].dtypes)
 
         df1.tiles()
@@ -297,16 +297,16 @@ class Test(TestBase):
 
         self.assertNotEqual(r1.index_value.key, df.index_value.key)
         self.assertNotEqual(r1.index_value.key, mask1.index_value.key)
-        self.assertEqual(r1.columns.key, df.columns.key)
-        self.assertIs(r1.columns, df.columns)
+        self.assertEqual(r1.columns_value.key, df.columns_value.key)
+        self.assertIs(r1.columns_value, df.columns_value)
 
         self.assertNotEqual(r1.index_value.key, r2.index_value.key)
-        self.assertEqual(r1.columns.key, r2.columns.key)
-        self.assertIs(r1.columns, r2.columns)
+        self.assertEqual(r1.columns_value.key, r2.columns_value.key)
+        self.assertIs(r1.columns_value, r2.columns_value)
 
         self.assertEqual(r1.index_value.key, r3.index_value.key)
-        self.assertEqual(r1.columns.key, r3.columns.key)
-        self.assertIs(r1.columns, r3.columns)
+        self.assertEqual(r1.columns_value.key, r3.columns_value.key)
+        self.assertIs(r1.columns_value, r3.columns_value)
 
     def testSeriesGetitem(self):
         data = pd.Series(np.random.rand(10,), name='a')

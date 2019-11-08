@@ -66,12 +66,12 @@ def concat_chunks_on_axis(chunks, axis=0):
     if isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
         if axis == 0:
             dtypes = chunks[0].dtypes
-            columns_value = chunks[0].columns
+            columns_value = chunks[0].columns_value
             index_value = parse_index(pd.Index(
                 np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks])))
         else:
             dtypes = pd.Index(
-                np.concatenate([to_numpy(c.columns.to_pandas()) for c in chunks]))
+                np.concatenate([to_numpy(c.columns_value.to_pandas()) for c in chunks]))
             columns_value = parse_index(dtypes.index)
             index_value = chunks[0].index_value
         shape = list(chunks[0].shape)
@@ -103,11 +103,11 @@ def concat_tileable_chunks(df):
     if isinstance(df, DATAFRAME_TYPE):
         chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
             df.chunks, shape=df.shape, dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns)
+            index_value=df.index_value, columns_value=df.columns_value)
         return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
             [df], shape=df.shape, chunks=[chunk],
             nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns)
+            index_value=df.index_value, columns_value=df.columns_value)
     elif isinstance(df, SERIES_TYPE):
         chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
             df.chunks, shape=df.shape, dtype=df.dtype, index_value=df.index_value, name=df.name)
@@ -471,7 +471,7 @@ def build_concated_rows_frame(df):
     if df.chunk_shape[1] == 1:
         return df
 
-    columns = concat_index_value([df.cix[0, idx].columns for idx in range(df.chunk_shape[1])],
+    columns = concat_index_value([df.cix[0, idx].columns_value for idx in range(df.chunk_shape[1])],
                                  store_data=True)
     columns_size = columns.to_pandas().size
 
@@ -486,7 +486,7 @@ def build_concated_rows_frame(df):
     return DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_dataframe(
         [df], chunks=out_chunks, nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
         shape=df.shape, dtypes=df.dtypes,
-        index_value=df.index_value, columns_value=df.columns)
+        index_value=df.index_value, columns_value=df.columns_value)
 
 
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
