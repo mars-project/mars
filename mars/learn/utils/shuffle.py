@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -249,6 +249,11 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         x = ctx[op.inputs[0].key]
+        conv = lambda x: x
+        if op.output_types[0] == OutputType.tensor:
+            xp = get_array_module(x)
+            conv = xp.ascontiguousarray \
+                if op.outputs[0].order.value == 'C' else xp.asfortranarray
 
         for axis, seed in zip(op.axes, op.seeds):
             size = x.shape[axis]
@@ -256,7 +261,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
             slc = (slice(None),) * axis + (ind,)
             x = _safe_slice(x, slc, op.output_types[0])
 
-        ctx[op.outputs[0].key] = x
+        ctx[op.outputs[0].key] = conv(x)
 
 
 class LearnShuffleMap(LearnShuffleMapBase, LearnOperandMixin):
