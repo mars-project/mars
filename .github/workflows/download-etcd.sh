@@ -18,7 +18,7 @@ FILE_EXT=".zip"
 if [[ $UNAME == mingw* ]]; then UNAME="windows"; fi
 if [[ $UNAME == "linux" ]]; then FILE_EXT=".tar.gz"; fi
 
-mkdir -p bin
+mkdir -p $ETCD_PATH
 URL="https://github.com/coreos/etcd/releases/download/v${VERSION}/etcd-v${VERSION}-${UNAME}-amd64${FILE_EXT}"
 curl -L $URL | tar -C $ETCD_PATH --strip-components=1 -xzvf - "etcd-v${VERSION}-${UNAME}-amd64/etcd"
 if [[ $UNAME != "mingw"* ]]; then
