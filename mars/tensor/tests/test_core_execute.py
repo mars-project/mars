@@ -67,6 +67,18 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
 
+        data = np.random.rand(10, 20)
+        a = tensor(data, chunk_size=6)
+        b = a[:7]
+        b += 1
+
+        npa = data.copy()
+        npb = npa[:7]
+        npb += 1
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
     def testSetItemOnView(self):
         a = ones((5, 8), dtype=int)
         b = a[:3]

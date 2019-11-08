@@ -114,6 +114,13 @@ from .setreal import TensorSetReal
 from .setimag import TensorSetImag
 
 
+def _wrap_iop(func):
+    def inner(self, *args, **kwargs):
+        kwargs['out'] = self
+        return func(self, *args, **kwargs)
+    return inner
+
+
 def _install():
     from ..core import TENSOR_TYPE, Tensor, TensorData
     from .add import add, radd
@@ -132,24 +139,34 @@ def _install():
 
     for cls in TENSOR_TYPE:
         setattr(cls, '__add__', add)
+        setattr(cls, '__iadd__', _wrap_iop(add))
         setattr(cls, '__radd__', radd)
         setattr(cls, '__sub__', subtract)
+        setattr(cls, '__isub__', _wrap_iop(subtract))
         setattr(cls, '__rsub__', rsubtract)
         setattr(cls, '__mul__', multiply)
+        setattr(cls, '__imul__', _wrap_iop(multiply))
         setattr(cls, '__rmul__', rmultiply)
         setattr(cls, '__div__', divide)
+        setattr(cls, '__idiv__', _wrap_iop(divide))
         setattr(cls, '__rdiv__', rdivide)
         setattr(cls, '__truediv__', truediv)
+        setattr(cls, '__itruediv__', _wrap_iop(truediv))
         setattr(cls, '__rtruediv__',rtruediv)
         setattr(cls, '__floordiv__', floordiv)
+        setattr(cls, '__ifloordiv__', _wrap_iop(floordiv))
         setattr(cls, '__rfloordiv__', rfloordiv)
         setattr(cls, '__pow__', power)
+        setattr(cls, '__ipow__', _wrap_iop(power))
         setattr(cls, '__rpow__', rpower)
         setattr(cls, '__mod__', mod)
+        setattr(cls, '__imod__', _wrap_iop(mod))
         setattr(cls, '__rmod__', rmod)
         setattr(cls, '__lshift__', lshift)
+        setattr(cls, '__ilshift__', _wrap_iop(lshift))
         setattr(cls, '__rlshift__', rlshift)
         setattr(cls, '__rshift__', rshift)
+        setattr(cls, '__irshift__', _wrap_iop(rshift))
         setattr(cls, '__rrshift__', rrshift)
 
         setattr(cls, '__eq__', equal)
@@ -159,10 +176,13 @@ def _install():
         setattr(cls, '__gt__', greater)
         setattr(cls, '__ge__', greater_equal)
         setattr(cls, '__and__', bitand)
+        setattr(cls, '__iand__', _wrap_iop(bitand))
         setattr(cls, '__rand__', rbitand)
         setattr(cls, '__or__', bitor)
+        setattr(cls, '__ior__', _wrap_iop(bitor))
         setattr(cls, '__ror__', rbitor)
         setattr(cls, '__xor__', bitxor)
+        setattr(cls, '__ixor__', _wrap_iop(bitxor))
         setattr(cls, '__rxor__', rbitxor)
 
         setattr(cls, '__neg__', negative)
