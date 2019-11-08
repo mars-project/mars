@@ -23,7 +23,6 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
-from ..tensor.core import TENSOR_TYPE
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize
 from .core import IndexValue
