@@ -20,11 +20,9 @@ def main(pwd):
         cov_data = re.sub('"([A-Za-z]):/', lambda m: '"/' + m.group(1).lower() + '/', cov_data)
         cov_data = cov_data.replace(env_pwd, pwd)
 
-        cov_fn = cov_fn.replace('.coverage', '.cov_rewrite')
         with open(cov_fn, 'w') as f:
             f.write(cov_data)
 
 
 if __name__ == '__main__':
     main(sys.argv[1])
-
