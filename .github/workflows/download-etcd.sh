@@ -21,4 +21,7 @@ if [[ $UNAME == "linux" ]]; then FILE_EXT=".tar.gz"; fi
 mkdir -p bin
 URL="https://github.com/coreos/etcd/releases/download/v${VERSION}/etcd-v${VERSION}-${UNAME}-amd64${FILE_EXT}"
 curl -L $URL | tar -C $ETCD_PATH --strip-components=1 -xzvf - "etcd-v${VERSION}-${UNAME}-amd64/etcd"
+if [[ $UNAME != "mingw"* ]]; then
+  chmod a+x $ETCD_PATH/etcd
+fi
 export PATH=$PATH:$ETCD_PATH
