@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,6 +93,8 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     @classmethod
     def _execute_gpu(cls, op, xp, lhs, rhs, **kw):
         func_name = getattr(cls, '_func_name')
+        if kw.get('out') is not None:
+            kw['out'] = xp.asarray(kw['out'])
         r = getattr(xp, func_name)(lhs, rhs, **kw)
         return convert_order(r, op.outputs[0].order.value)
 
@@ -100,6 +102,8 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
     def _execute_cpu(cls, op, xp, lhs, rhs, **kw):
         kw['order'] = op.order
         func_name = getattr(cls, '_func_name')
+        if kw.get('out') is not None:
+            kw['out'] = np.asarray(kw['out'])
         return getattr(xp, func_name)(lhs, rhs, **kw)
 
     @classmethod
@@ -108,14 +112,14 @@ class TensorBinOpMixin(TensorElementWiseWithInputs):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            kw = {'casting': op.casting} if op.out else {}
+            kw = {'casting': op.casting} if op.out is not None else {}
 
             inputs_iter = iter(inputs)
             lhs = op.lhs if np.isscalar(op.lhs) else next(inputs_iter)
             rhs = op.rhs if np.isscalar(op.rhs) else next(inputs_iter)
-            if op.out:
+            if op.out is not None:
                 kw['out'] = next(inputs_iter).copy()
-            if op.where:
+            if op.where is not None:
                 kw['where'] = next(inputs_iter)
 
             with np.errstate(**op.err):

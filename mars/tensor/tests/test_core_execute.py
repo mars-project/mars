@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,6 +63,18 @@ class Test(unittest.TestCase):
         npa = data.copy()
         npb = npa[:5, 5:10]
         npb[:3, :3] = 3
+
+        np.testing.assert_array_equal(b.execute(), npb)
+        np.testing.assert_array_equal(a.execute(), npa)
+
+        data = np.random.rand(10, 20)
+        a = tensor(data, chunk_size=6)
+        b = a[:7]
+        b += 1
+
+        npa = data.copy()
+        npb = npa[:7]
+        npb += 1
 
         np.testing.assert_array_equal(b.execute(), npb)
         np.testing.assert_array_equal(a.execute(), npa)
