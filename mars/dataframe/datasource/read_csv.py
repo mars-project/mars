@@ -175,7 +175,7 @@ def read_csv(path, names=None, sep=None, index_col=None, compression=None, heade
     # infer dtypes and columns
     with open_file(path, compression=compression, storage_options=storage_options) as f:
         if header:
-            [f.readline() for _ in range(header)]
+            _ = [f.readline() for _ in range(header)]  # noqa: F841
         head = f.readline()
         first_row = f.readline()
         mini_df = pd.read_csv(BytesIO(head + first_row), index_col=index_col, dtype=dtype, names=names)
