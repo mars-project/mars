@@ -84,17 +84,18 @@ class Test(unittest.TestCase):
             n_samples = n_clusters * 50
 
             for hypercube in (False, True):
-                X, y = make(n_samples=n_samples, n_classes=n_classes,
-                            weights=weights, n_features=n_informative,
-                            n_informative=n_informative,
-                            n_clusters_per_class=n_clusters_per_class,
-                            hypercube=hypercube, random_state=0)
+                generated = make(n_samples=n_samples, n_classes=n_classes,
+                                 weights=weights, n_features=n_informative,
+                                 n_informative=n_informative,
+                                 n_clusters_per_class=n_clusters_per_class,
+                                 hypercube=hypercube, random_state=0)
 
+                X, y = mt.ExecutableTuple(generated).execute()
                 self.assertEqual(X.shape, (n_samples, n_informative))
                 self.assertEqual(y.shape, (n_samples,))
 
                 # Cluster by sign, viewed as strings to allow uniquing
-                signs = mt.sign(X).execute()
+                signs = np.sign(X)
                 signs = signs.view(dtype='|S{0}'.format(signs.strides[0]))
                 unique_signs, cluster_index = np.unique(signs,
                                                         return_inverse=True)
