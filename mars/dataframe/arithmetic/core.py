@@ -24,6 +24,7 @@ from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..initializer import Series, DataFrame
 from ..utils import parse_index, infer_dtypes, infer_index_value
 
 
@@ -353,6 +354,17 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return super(DataFrameBinOpMixin, self)._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
+    @staticmethod
+    def _process_input(x):
+        if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(x):
+            return x
+        elif isinstance(x, (list, tuple)) or getattr(x, 'ndim', None) == 1:
+            return Series(x)
+        elif getattr(x, 'ndim', None) == 2:
+            return DataFrame(x)
+        else:
+            raise NotImplementedError("Don't support type {}".format(type(x)))
+
     def _call(self, x1, x2):
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
             df1 = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
@@ -375,14 +387,18 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError('Only support add dataframe or scalar for now')
 
     def __call__(self, x1, x2):
+        x1 = self._process_input(x1)
+        x2 = self._process_input(x2)
         if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
-            # reject invokeing series's op on dataframe
+            # reject invoking series's op on dataframe
             raise NotImplementedError
         return self._call(x1, x2)
 
     def rcall(self, x1, x2):
+        x1 = self._process_input(x1)
+        x2 = self._process_input(x2)
         if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
-            # reject invokeing series's op on dataframe
+            # reject invoking series's op on dataframe
             raise NotImplementedError
         return self._call(x2, x1)
 

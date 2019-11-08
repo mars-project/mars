@@ -584,6 +584,7 @@ def filter_dtypes(dtypes, column_min_max):
     f = l & r
     return dtypes[f]
 
+
 def in_range_index(i, pd_range_index):
     """
     Check whether the input `i` is within `pd_range_index` which is a pd.RangeIndex.
@@ -596,17 +597,6 @@ def in_range_index(i, pd_range_index):
     if step < 0 and start >= i > stop and (start - i) % step == 0:
         return True
     return False
-
-
-def wrap_sequence(seq):
-    """
-    Wrap a sequence value as a Series.
-    """
-    from .initializer import Series
-
-    if isinstance(seq, (list, tuple, np.ndarray, TENSOR_TYPE)):
-        seq = Series(seq)
-    return seq
 
 
 def wrap_notimplemented_exception(func):
