@@ -16,8 +16,9 @@
 from __future__ import absolute_import
 
 from ..serialize import DataTypeField
-from ..core import TileableOperandMixin
-from ..operands import Operand, HasInput, ShuffleProxy, ShuffleMap, ShuffleReduce, Fuse
+from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, \
+    ShuffleMap, ShuffleReduce, Fuse
+from ..utils import calc_nsplits
 from .core import TensorData, Tensor, SparseTensor, TensorChunkData, TensorChunk, TensorOrder
 
 
@@ -74,6 +75,42 @@ class TensorOperandMixin(TileableOperandMixin):
             raise TypeError('cannot new tensor with more than 1 outputs')
 
         return self.new_tensors(inputs, shape=shape, dtype=dtype, order=order, **kw)[0]
+
+    @classmethod
+    def concat_tileable_chunks(cls, tileable):
+        from .merge.concatenate import TensorConcatenate
+
+        tensor = tileable
+        assert not tensor.is_coarse()
+
+        op = TensorConcatenate(dtype=tensor.dtype)
+        chunk = TensorConcatenate(dtype=tensor.dtype).new_chunk(
+            tensor.chunks, shape=tensor.shape, index=(0,) * tileable.ndim)
+        return op.new_tensor([tensor], tensor.shape, chunks=[chunk],
+                             nsplits=tuple((s,) for s in tensor.shape))
+
+    @classmethod
+    def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
+        chunk_idx_to_shape = {c.index: c.shape for c in chunks}
+        nsplits = calc_nsplits(chunk_idx_to_shape)
+        shape = tuple(sum(ns) for ns in nsplits)
+        op = chunks[0].op.copy().reset_key()
+        return op.new_tensor(inputs, shape=shape, chunks=chunks,
+                             nsplits=nsplits, dtype=chunks[0].dtype, **kw)
+
+    def get_fetch_op_cls(self, _):
+        from ..operands import ShuffleProxy
+        from .fetch import TensorFetchShuffle, TensorFetch
+
+        if isinstance(self, ShuffleProxy):
+            return TensorFetchShuffle
+        else:
+            return TensorFetch
+
+    def get_fuse_op_cls(self, _):
+        from .fuse import TensorFuseChunk
+
+        return TensorFuseChunk
 
 
 class TensorOperand(Operand):

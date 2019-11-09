@@ -14,37 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...tiles import NotSupportTile
-from ...core import FuseChunkData, FuseChunk
+from ...operands import FuseChunkMixin
 from ..operands import TensorFuse, TensorOperandMixin
 
 
-class TensorFuseChunkMixin(TensorOperandMixin):
+class TensorFuseChunkMixin(FuseChunkMixin, TensorOperandMixin):
     __slots__ = ()
-
-    def _create_chunk(self, output_idx, index, **kw):
-        data = FuseChunkData(_index=index, _op=self, **kw)
-        return FuseChunk(data)
-
-    @classmethod
-    def tile(cls, op):
-        raise NotSupportTile('TensorFuseChunk is a chunk operand which does not support tile')
-
-    def __call__(self, fuse_chunks):
-        head_chunk = fuse_chunks[0]
-        tail_chunk = fuse_chunks[-1]
-        setattr(self, '_operands', [c.op for c in fuse_chunks])
-        return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
-                              _composed=fuse_chunks, _key=tail_chunk.key)
 
 
 class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def __init__(self, dtype=None, sparse=False, **kw):
         super(TensorFuseChunk, self).__init__(_dtype=dtype, _sparse=sparse, **kw)
-
-    @classmethod
-    def tile(cls, op):
-        raise NotSupportTile('TensorFuseChunk is a chunk operand which does not support tile')
 
 
 def estimate_fuse_size(ctx, op):

@@ -19,19 +19,13 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes as OperandDef
-from ....operands import Operand
-from ....core import TileableOperandMixin
-from ....serialize import KeyField, StringField, Int8Field
-from ....dataframe.operands import ObjectType
-from ....dataframe.core import DATAFRAME_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE, \
-    DataFrameData, DataFrame, SeriesData, Series, DataFrameChunkData, DataFrameChunk, \
-    SeriesChunkData, SeriesChunk
+from ....serialize import KeyField, StringField
+from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
-from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, TensorData, Tensor, \
-    TensorChunkData, TensorChunk, TensorOrder
+from ....tensor.core import TENSOR_TYPE, TensorOrder
 from ....utils import register_tokenizer, to_str
-from .dmatrix import ToDMatrix, check_data, \
-    _on_serialize_object_type, _on_deserialize_object_type
+from ...operands import LearnOperand, LearnOperandMixin, OutputType
+from .dmatrix import ToDMatrix, check_data
 
 try:
     from xgboost import Booster
@@ -49,18 +43,15 @@ def _on_deserialize_model(ser):
     return pickle.loads(base64.b64decode(ser))
 
 
-class XGBPredict(Operand, TileableOperandMixin):
-    _op_module_ = 'learn'
+class XGBPredict(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.XGBOOST_PREDICT
 
     _data = KeyField('data')
     _model = StringField('model', on_serialize=_on_serialize_model, on_deserialize=_on_deserialize_model)
-    _object_type = Int8Field('object_type', on_serialize=_on_serialize_object_type,
-                             on_deserialize=_on_deserialize_object_type)
 
-    def __init__(self, data=None, model=None, object_type=None, gpu=None, **kw):
+    def __init__(self, data=None, model=None, output_types=None, gpu=None, **kw):
         super(XGBPredict, self).__init__(_data=data, _model=model, _gpu=gpu,
-                                         _object_type=object_type, **kw)
+                                         _output_types=output_types, **kw)
 
     @property
     def data(self):
@@ -70,53 +61,9 @@ class XGBPredict(Operand, TileableOperandMixin):
     def model(self):
         return self._model
 
-    @property
-    def object_type(self):
-        return self._object_type
-
     def _set_inputs(self, inputs):
         super(XGBPredict, self)._set_inputs(inputs)
         self._data = self._inputs[0]
-
-    def _create_chunk(self, output_idx, index, **kw):
-        shape = kw.pop('shape', self._data.shape)
-        if isinstance(self._data, TENSOR_CHUNK_TYPE):
-            dtype = kw.pop('dtype', self._data.dtype)
-            order = kw.pop('order', self._data.order)
-            data = TensorChunkData(shape=shape, dtype=dtype, op=self,
-                                   order=order, index=index, **kw)
-            return TensorChunk(data)
-        else:
-            assert isinstance(self._data, DATAFRAME_CHUNK_TYPE)
-            if self._model.attr('num_class'):
-                data = DataFrameChunkData(shape=shape, op=self,
-                                          index=index, **kw)
-                return DataFrameChunk(data)
-            else:
-                data = SeriesChunkData(shape=shape, op=self,
-                                       index=index, **kw)
-                return SeriesChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        shape = kw.pop('shape', self._data.shape)
-        chunks = kw.pop('chunks', None)
-        nsplits = kw.pop('nsplits', None)
-        if isinstance(self._data, TENSOR_TYPE):
-            dtype = kw.pop('dtype', self._data.dtype)
-            order = kw.pop('order', self._data.order)
-            data = TensorData(shape=shape, dtype=dtype, op=self,
-                              order=order, chunks=chunks, nsplits=nsplits, **kw)
-            return Tensor(data)
-        else:
-            assert isinstance(self._data, DATAFRAME_TYPE)
-            if self._model.attr('num_class'):
-                data = DataFrameData(shape=shape, op=self,
-                                     chunks=chunks, nsplits=nsplits, **kw)
-                return DataFrame(data)
-            else:
-                data = SeriesData(shape=shape, op=self,
-                                  chunks=chunks, nsplits=nsplits, **kw)
-                return Series(data)
 
     def __call__(self):
         num_class = self._model.attr('num_class')
@@ -126,10 +73,10 @@ class XGBPredict(Operand, TileableOperandMixin):
             shape = (len(self._data), int(self._model.attr('num_class')))
         else:
             shape = (len(self._data),)
-        if isinstance(self._data, TENSOR_TYPE):
+        if self._output_types[0] == OutputType.tensor:
             return self.new_tileable([self._data], shape=shape, dtype=np.dtype(np.float32),
                                      order=TensorOrder.C_ORDER)
-        elif num_class is not None:
+        elif self._output_types[0] == OutputType.dataframe:
             # dataframe
             dtypes = pd.DataFrame(np.random.rand(0, num_class), dtype=np.float32).dtypes
             return self.new_tileable([self._data], shape=shape, dtypes=dtypes,
@@ -155,10 +102,11 @@ class XGBPredict(Operand, TileableOperandMixin):
                 chunk_index += (0,)
             else:
                 chunk_shape = (len(in_chunk),)
-            if isinstance(op._data, TENSOR_TYPE):
+            if op.output_types[0] == OutputType.tensor:
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
+                                               dtype=out.dtype,
                                                order=out.order, index=chunk_index)
-            elif op.model.attr('num_class'):
+            elif op.output_types[0] == OutputType.dataframe:
                 # dataframe chunk
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
                                                dtypes=data.dtypes,
@@ -207,11 +155,16 @@ def predict(model, data, session=None, run_kwargs=None, run=True):
     data = check_data(data)
     if not isinstance(model, Booster):
         raise TypeError('model has to be a xgboost.Booster, got {0} instead'.format(type(model)))
-    kw = dict()
-    if isinstance(data, DATAFRAME_TYPE):
-        kw['object_type'] = ObjectType.dataframe if model.attr('num_class') else ObjectType.series
 
-    op = XGBPredict(data=data, model=model, gpu=data.op.gpu, **kw)
+    num_class = model.attr('num_class')
+    if isinstance(data, TENSOR_TYPE):
+        output_types = [OutputType.tensor]
+    elif num_class is not None:
+        output_types = [OutputType.dataframe]
+    else:
+        output_types = [OutputType.series]
+
+    op = XGBPredict(data=data, model=model, gpu=data.op.gpu, output_types=output_types)
     result = op()
     if run:
         result.execute(session=session, fetch=False, **(run_kwargs or dict()))

@@ -18,15 +18,14 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....tensor.operands import TensorOperand, TensorOperandMixin
-from ....serialize import ValueType, DictField, KeyField, TupleField
+from ....serialize import ValueType, DictField, KeyField, TupleField, BoolField
 from ....context import get_context, RunningMode
+from ...operands import LearnOperand, LearnOperandMixin, OutputType
 from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
 
-class XGBTrain(TensorOperand, TensorOperandMixin):
-    _op_module_ = 'learn'
+class XGBTrain(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
     _params = DictField('params', key_type=ValueType.string)
@@ -34,12 +33,15 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
     _evals = TupleField('evals')
     _kwargs = DictField('kwargs', key_type=ValueType.string)
     _tracker = KeyField('tracker')
+    _merge = BoolField('merge')
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
-                 tracker=None, gpu=None, **kw):
+                 tracker=None, merge=None, gpu=None, output_types=None, **kw):
         super(XGBTrain, self).__init__(_params=params, _dtrain=dtrain, _evals=evals,
-                                       _kwargs=kwargs, _tracker=tracker,
-                                       _gpu=gpu, **kw)
+                                       _kwargs=kwargs, _tracker=tracker, _merge=merge,
+                                       _gpu=gpu, _output_types=output_types, **kw)
+        if self._output_types is None:
+            self._output_types = [OutputType.object]
 
     @property
     def params(self):
@@ -61,6 +63,10 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
     def tracker(self):
         return self._tracker
 
+    @property
+    def merge(self):
+        return self._merge
+
     def _set_inputs(self, inputs):
         super(XGBTrain, self)._set_inputs(inputs)
         self._dtrain = self._inputs[0]
@@ -79,7 +85,7 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
         inputs = [self._dtrain]
         if self._evals is not None:
             inputs.extend(e[0] for e in self._evals)
-        return self.new_tensor(inputs, shape=(1,))
+        return self.new_tileable(inputs)
 
     @staticmethod
     def _get_dmatrix_chunks_workers(ctx, dmatrix):
@@ -107,8 +113,7 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             out_chunk = chunk_op.new_chunk([inp.chunks[0] for inp in op.inputs],
                                            shape=(1,), index=(0,))
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, shape=op.outputs[0].shape,
-                                      chunks=[out_chunk], nsplits=((1,),))
+            return new_op.new_tileables(op.inputs, chunks=[out_chunk], nsplits=((1,),))
         else:
             inp = op.inputs[0]
             in_chunks = inp.chunks
@@ -132,11 +137,16 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
                 out_chunks.append(out_chunk)
 
             new_op = op.copy()
-            return new_op.new_tensors(op.inputs, shape=op.outputs[0].shape,
-                                      chunks=out_chunks, nsplits=((np.nan for _ in out_chunks),))
+            return new_op.new_tileables(op.inputs, chunks=out_chunks,
+                                        nsplits=((np.nan for _ in out_chunks),))
 
     @classmethod
     def execute(cls, ctx, op):
+        if op.merge:
+            inputs = [ctx[inp.key] for inp in op.inputs]
+            ctx[op.outputs[0].key] = next(inp for inp in inputs if inp)
+            return
+
         from xgboost import train, rabit
 
         dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key])
@@ -153,23 +163,30 @@ class XGBTrain(TensorOperand, TensorOperandMixin):
             kwargs = dict() if op.kwargs is None else op.kwargs
             bst = train(params, dtrain, evals=evals,
                         evals_result=local_history, **kwargs)
-            ctx[op.outputs[0].key] = np.array([
-                {'booster': pickle.dumps(bst), 'history': local_history}
-            ])
+            ctx[op.outputs[0].key] = {'booster': pickle.dumps(bst), 'history': local_history}
         else:
             # distributed
-            rabit_args = ctx[op.tracker.key][0]
+            rabit_args = ctx[op.tracker.key]
             rabit.init(rabit_args)
             try:
                 local_history = dict()
                 bst = train(params, dtrain, evals=evals, evals_result=local_history,
                             **op.kwargs)
-                ret = np.array([{'booster': pickle.dumps(bst), 'history': local_history}])
+                ret = {'booster': pickle.dumps(bst), 'history': local_history}
                 if rabit.get_rank() != 0:
-                    ret = np.array([])
+                    ret = {}
                 ctx[op.outputs[0].key] = ret
             finally:
                 rabit.finalize()
+
+    @classmethod
+    def concat_tileable_chunks(cls, tileable):
+        assert not tileable.is_coarse()
+
+        op = cls(merge=True)
+        chunk = cls(merge=True).new_chunk(tileable.chunks)
+        return op.new_tensor([tileable], chunks=[chunk],
+                             nsplits=((1,) * len(tileable.chunks)))
 
 
 def train(params, dtrain, evals=(), **kwargs):
@@ -190,7 +207,7 @@ def train(params, dtrain, evals=(), **kwargs):
     run_kwargs = kwargs.pop('run_kwargs', dict())
     op = XGBTrain(params=params, dtrain=dtrain, evals=evals, kwargs=kwargs)
     t = op()
-    ret = t.execute(session=session, **run_kwargs)[0]
+    ret = t.execute(session=session, **run_kwargs)
     evals_result.update(ret['history'])
     bst = pickle.loads(ret['booster'])
     num_class = params.get('num_class')
