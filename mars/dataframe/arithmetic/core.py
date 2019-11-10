@@ -19,11 +19,56 @@ import numpy as np
 
 from pandas.core.dtypes.cast import find_common_type
 
+from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
 from ..utils import parse_index, infer_dtypes, infer_index_value
+
+
+class DataFrameBinOp(DataFrameOperand):
+    _axis = AnyField('axis')
+    _level = AnyField('level')
+    _fill_value = Float64Field('fill_value')
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
+
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+        super(DataFrameBinOp, self).__init__(_axis=axis, _level=level,
+                                             _fill_value=fill_value,
+                                             _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def fill_value(self):
+        return self._fill_value
+
+    @property
+    def lhs(self):
+        return self._lhs
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    def _set_inputs(self, inputs):
+        super(DataFrameBinOp, self)._set_inputs(inputs)
+        if len(self._inputs) == 2:
+            self._lhs = self._inputs[0]
+            self._rhs = self._inputs[1]
+        else:
+            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
+                self._lhs = self._inputs[0]
+            elif np.isscalar(self._lhs):
+                self._rhs = self._inputs[0]
 
 
 class DataFrameBinOpMixin(DataFrameOperandMixin):
