@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
                                    n_redundant=1, n_repeated=1, n_classes=3,
                                    n_clusters_per_class=1, hypercube=False,
                                    shift=None, scale=None, weights=weights,
-                                   random_state=0)
+                                   random_state=0, flip_y=-1)
 
         self.assertEqual(weights, [0.1, 0.25])
         self.assertEqual(X.shape, (100, 20), "X shape mismatch")
