@@ -90,6 +90,26 @@ class Test(unittest.TestCase):
         return cur
 
     def testShuffleExecution(self):
+        # test consistency
+        s1 = np.arange(9).reshape(3, 3)
+        s2 = np.arange(1, 10).reshape(3, 3)
+        ts1 = mt.array(s1, chunk_size=2)
+        ts2 = mt.array(s2, chunk_size=2)
+
+        ret = shuffle(ts1, ts2, axes=[0, 1], random_state=0)
+        res1, res2 = ret.execute()
+
+        # calc row index
+        s1_col_0 = s1[:, 0].tolist()
+        rs1_col_0 = [res1[:, i] for i in range(3) if set(s1_col_0) == set(res1[:, i])][0]
+        row_index = [s1_col_0.index(j) for j in rs1_col_0]
+        # calc col index
+        s1_row_0 = s1[0].tolist()
+        rs1_row_0 = [res1[i] for i in range(3) if set(s1_row_0) == set(res1[i])][0]
+        col_index = [s1_row_0.index(j) for j in rs1_row_0]
+        np.testing.assert_array_equal(res2, s2[row_index][:, col_index])
+
+        # tensor + tensor
         raw1 = np.random.rand(10, 15, 20)
         t1 = mt.array(raw1, chunk_size=8)
         raw2 = np.random.rand(10, 15, 20)
@@ -104,6 +124,7 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(Test._sort(raw1, axes), Test._sort(res1, axes))
             np.testing.assert_array_equal(Test._sort(raw2, axes), Test._sort(res2, axes))
 
+        # tensor + tensor(more dimension)
         raw3 = np.random.rand(10, 15)
         t3 = mt.array(raw3, chunk_size=(8, 15))
         raw4 = np.random.rand(10, 15, 20)
@@ -118,6 +139,7 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(Test._sort(raw3, axes), Test._sort(res3, axes))
             np.testing.assert_array_equal(Test._sort(raw4, axes), Test._sort(res4, axes))
 
+        # tensor + dataframe + series
         raw5 = np.random.rand(10, 15, 20)
         t5 = mt.array(raw5, chunk_size=8)
         raw6 = pd.DataFrame(np.random.rand(10, 15))
