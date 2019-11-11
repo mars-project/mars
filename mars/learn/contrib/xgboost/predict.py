@@ -110,7 +110,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
                 # dataframe chunk
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=chunk_shape,
                                                dtypes=data.dtypes,
-                                               columns_value=data.columns,
+                                               columns_value=data.columns_value,
                                                index_value=in_chunk.index_value,
                                                index=chunk_index)
             else:
