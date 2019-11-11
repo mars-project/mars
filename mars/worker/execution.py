@@ -548,6 +548,7 @@ class ExecutionActor(WorkerActor):
             raise ExecutionInterrupted
 
         loaded_keys = []
+        move_keys = []
         transfer_keys = []
 
         logger.debug('Start preparing input data for graph %s', graph_key)
@@ -576,7 +577,7 @@ class ExecutionActor(WorkerActor):
                     build_quota_key(session_id, input_key, owner=graph_key), _tell=True)
             elif storage_client.get_data_locations(session_id, input_key):
                 # load data from other devices
-                loaded_keys.append(input_key)
+                move_keys.append(input_key)
                 ensure_shared = input_key in graph_record.shared_input_chunks or input_key in shuffle_keys
                 if ensure_shared:
                     self._mem_quota_ref.release_quota(
@@ -610,8 +611,8 @@ class ExecutionActor(WorkerActor):
                         ensure_cached=input_key in shared_input_chunks))
                 prepare_promises.append(p)
 
-        logger.debug('Graph key %s: Targets %r, loaded keys %r, transfer keys %r',
-                     graph_key, graph_record.chunk_targets, loaded_keys, transfer_keys)
+        logger.debug('Graph key %s: Targets %r, loaded keys %r, move keys %s, transfer keys %r',
+                     graph_key, graph_record.chunk_targets, loaded_keys, move_keys, transfer_keys)
         p = promise.all_(prepare_promises) \
             .then(lambda *_: logger.debug('Data preparation for graph %s finished', graph_key))
         return p
@@ -861,8 +862,7 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def delete_data_by_keys(self, session_id, keys):
-        for k in keys:
-            self.storage_client.delete(session_id, k, _tell=True)
+        self.storage_client.batch_delete(session_id, keys, _tell=True)
 
     @log_unhandled
     def handle_worker_change(self, _adds, removes):

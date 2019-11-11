@@ -157,7 +157,8 @@ class BaseCalcActor(WorkerActor):
         end_time = time.time()
 
         # collect results
-        result_pairs = []
+        result_keys = []
+        result_values = []
         collected_chunk_keys = set()
         for k, v in local_context_dict.items():
             if isinstance(k, tuple):
@@ -167,7 +168,8 @@ class BaseCalcActor(WorkerActor):
 
             chunk_key = get_chunk_key(k)
             if chunk_key in chunk_targets:
-                result_pairs.append((k, v))
+                result_keys.append(k)
+                result_values.append(v)
                 collected_chunk_keys.add(chunk_key)
 
         local_context_dict.clear()
@@ -178,7 +180,7 @@ class BaseCalcActor(WorkerActor):
 
         # adjust sizes in allocation
         apply_alloc_sizes = defaultdict(lambda: 0)
-        for k, v in result_pairs:
+        for k, v in zip(result_keys, result_values):
             apply_alloc_sizes[get_chunk_key(k)] += calc_data_size(v)
 
         for k, v in apply_alloc_sizes.items():
@@ -193,12 +195,9 @@ class BaseCalcActor(WorkerActor):
 
         logger.debug('Finish calculating operand %s.', graph_key)
 
-        result_keys = [p[0] for p in result_pairs]
-
-        return promise.all_([
-            self.storage_client.put_object(session_id, k, v, [self._calc_intermediate_device])
-            for k, v in result_pairs
-        ]).then(lambda *_: result_keys)
+        return self.storage_client.batch_put_object(
+            session_id, result_keys, result_values, [self._calc_intermediate_device])\
+            .then(lambda *_: result_keys)
 
     @promise.reject_on_exception
     @log_unhandled

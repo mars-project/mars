@@ -164,6 +164,9 @@ class StorageHandler(object):
     def delete(self, session_id, data_key, _tell=False):
         raise NotImplementedError
 
+    def batch_delete(self, session_id, data_keys, _tell=False):
+        raise NotImplementedError
+
     def load_from(self, session_id, data_key, src_handler):
         """
         :param session_id:
@@ -193,6 +196,10 @@ class StorageHandler(object):
     def register_data(self, session_id, data_key, size, shape=None):
         self._storage_ctx.manager_ref \
             .register_data(session_id, data_key, self.location, size, shape=shape)
+
+    def batch_register_data(self, session_id, data_keys, sizes, shapes=None):
+        self._storage_ctx.manager_ref \
+            .batch_register_data(session_id, data_keys, self.location, sizes, shapes=shapes)
 
     def transfer_in_runner(self, session_id, data_key, src_handler, fallback=None):
         if self.is_io_runner():
@@ -234,6 +241,10 @@ class StorageHandler(object):
     def unregister_data(self, session_id, data_key, _tell=False):
         self._storage_ctx.manager_ref \
             .unregister_data(session_id, data_key, self.location, _tell=_tell)
+
+    def batch_unregister_data(self, session_id, data_keys, _tell=False):
+        self._storage_ctx.manager_ref \
+            .batch_unregister_data(session_id, data_keys, self.location, _tell=_tell)
 
 
 class BytesStorageMixin(object):
@@ -303,6 +314,9 @@ class ObjectStorageMixin(object):
         raise NotImplementedError
 
     def put_object(self, session_id, data_key, obj, serialized=False, _promise=False):
+        raise NotImplementedError
+
+    def batch_put_object(self, session_id, data_keys, objs, serialized=False, _promise=False):
         raise NotImplementedError
 
 

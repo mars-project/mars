@@ -55,6 +55,10 @@ class PlasmaKeyMapActor(FunctionActor):
         except KeyError:
             pass
 
+    def batch_delete(self, session_id, chunk_keys):
+        for k in chunk_keys:
+            self.delete(session_id, k)
+
 
 class PlasmaSharedStore(object):
     """
@@ -245,3 +249,6 @@ class PlasmaSharedStore(object):
 
     def delete(self, session_id, data_key):
         self._mapper_ref.delete(session_id, data_key)
+
+    def batch_delete(self, session_id, data_keys):
+        self._mapper_ref.batch_delete(session_id, data_keys)

@@ -182,10 +182,19 @@ class StorageClient(object):
 
     def put_object(self, session_id, data_key, obj, device_order, serialized=False):
         device_order = self._normalize_devices(device_order)
-        data_size = self._manager_ref.get_data_size(session_id, data_key) or calc_data_size(obj)
+        data_size = calc_data_size(obj)
 
         def _action(h):
             return h.put_object(session_id, data_key, obj, serialized=serialized, _promise=True)
+
+        return self._do_with_spill(_action, data_size, device_order)
+
+    def batch_put_object(self, session_id, data_keys, objs, device_order, serialized=False):
+        device_order = self._normalize_devices(device_order)
+        data_size = sum(calc_data_size(obj) for obj in objs)
+
+        def _action(h):
+            return h.batch_put_object(session_id, data_keys, objs, serialized=serialized, _promise=True)
 
         return self._do_with_spill(_action, data_size, device_order)
 
@@ -226,6 +235,13 @@ class StorageClient(object):
         for dev_type in devices:
             handler = self.get_storage_handler(dev_type)
             handler.delete(session_id, data_key, _tell=_tell)
+
+    def batch_delete(self, session_id, data_keys, devices=None, _tell=False):
+        devices = devices or self._manager_ref.get_all_data_locations(session_id, data_keys)
+        devices = self._normalize_devices(devices)
+        for dev_type in devices:
+            handler = self.get_storage_handler(dev_type)
+            handler.batch_delete(session_id, data_keys, _tell=_tell)
 
     def filter_exist_keys(self, session_id, data_keys, devices=None):
         devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())

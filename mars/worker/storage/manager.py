@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from collections import defaultdict
 
 from ..utils import WorkerActor
@@ -68,6 +69,11 @@ class StorageManagerActor(WorkerActor):
         if location[0] > 0:
             self._proc_to_data[location[0]].add(session_data_key)
 
+    def batch_register_data(self, session_id, data_keys, location, sizes, shapes=None):
+        shapes = shapes or itertools.repeat(None)
+        for key, size, shape in zip(data_keys, sizes, shapes):
+            self.register_data(session_id, key, location, size, shape)
+
     def unregister_data(self, session_id, data_key, location):
         session_data_key = (session_id, data_key)
         if location[0] > 0:
@@ -83,11 +89,24 @@ class StorageManagerActor(WorkerActor):
         except KeyError:
             pass
 
+    def batch_unregister_data(self, session_id, data_keys, location):
+        for k in data_keys:
+            self.unregister_data(session_id, k, location)
+
     def get_data_locations(self, session_id, data_key):
         try:
             return self._data_to_locations[(session_id, data_key)]
         except KeyError:
             return None
+
+    def get_all_data_locations(self, session_id, data_keys):
+        locations = set()
+        for k in data_keys:
+            try:
+                locations.update(self._data_to_locations[(session_id, k)])
+            except KeyError:
+                pass
+        return locations
 
     def get_data_size(self, session_id, data_key):
         sizes = self.get_data_sizes(session_id, [data_key])

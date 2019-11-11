@@ -46,6 +46,14 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         self._inproc_store_ref.put_object(session_id, data_key, o)
         self.register_data(session_id, data_key, calc_data_size(o), shape=getattr(o, 'shape', None))
 
+    @wrap_promised
+    def batch_put_object(self, session_id, data_keys, objs, serialized=False, _promise=False):
+        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+        data_sizes = [calc_data_size(obj) for obj in objs]
+        shapes = [getattr(obj, 'shape', None) for obj in objs]
+        self._inproc_store_ref.batch_put_object(session_id, data_keys, objs)
+        self.batch_register_data(session_id, data_keys, data_sizes, shapes)
+
     def load_from_bytes_io(self, session_id, data_key, src_handler):
         def _read_and_put(reader):
             with reader:
@@ -66,8 +74,12 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
-        self._inproc_store_ref.delete_object(session_id, data_key, _tell=_tell)
+        self._inproc_store_ref.delete_objects(session_id, [data_key], _tell=_tell)
         self.unregister_data(session_id, data_key, _tell=_tell)
+
+    def batch_delete(self, session_id, data_keys, _tell=False):
+        self._inproc_store_ref.delete_objects(session_id, data_keys, _tell=_tell)
+        self.batch_unregister_data(session_id, data_keys, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.PROC_MEMORY, ProcMemHandler)

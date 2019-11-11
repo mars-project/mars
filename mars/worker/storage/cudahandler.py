@@ -50,20 +50,36 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
             obj = dataserializer.serialize(obj)
         return obj
 
+    @staticmethod
+    def _obj_to_cuda(o):
+        if isinstance(o, np.ndarray):
+            return cp.asarray(o)
+        elif isinstance(o, pd.DataFrame):
+            return cudf.DataFrame.from_pandas(o)
+        elif isinstance(o, pd.Series):
+            return cudf.Series.from_pandas(o)
+        return o
+
     @wrap_promised
     def put_object(self, session_id, data_key, obj, serialized=False, _promise=False):
         o = self._deserial(obj) if serialized else obj
         data_size = calc_data_size(o)
 
-        if isinstance(o, np.ndarray):
-            o = cp.asarray(o)
-        elif isinstance(o, pd.DataFrame):
-            o = cudf.DataFrame.from_pandas(o)
-        elif isinstance(o, pd.Series):
-            o = cudf.Series.from_pandas(o)
+        o = self._obj_to_cuda(o)
 
         self._cuda_store_ref.put_object(session_id, data_key, o)
         self.register_data(session_id, data_key, data_size, shape=getattr(o, 'shape', None))
+
+    @wrap_promised
+    def batch_put_object(self, session_id, data_keys, objs, serialized=False, _promise=False):
+        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+        data_sizes = [calc_data_size(obj) for obj in objs]
+
+        objs = [self._obj_to_cuda(obj) for obj in objs]
+        shapes = [getattr(obj, 'shape', None) for obj in objs]
+
+        self._cuda_store_ref.batch_put_object(session_id, data_keys, objs)
+        self.batch_register_data(session_id, data_keys, data_sizes, shapes)
 
     def load_from_object_io(self, session_id, data_key, src_handler):
         return src_handler.get_object(session_id, data_key, _promise=True) \
@@ -79,8 +95,12 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
             .then(_read_and_put)
 
     def delete(self, session_id, data_key, _tell=False):
-        self._cuda_store_ref.delete_object(session_id, data_key, _tell=_tell)
+        self._cuda_store_ref.delete_objects(session_id, [data_key], _tell=_tell)
         self.unregister_data(session_id, data_key, _tell=_tell)
+
+    def batch_delete(self, session_id, data_keys, _tell=False):
+        self._cuda_store_ref.delete_objects(session_id, data_keys, _tell=_tell)
+        self.batch_unregister_data(session_id, data_keys, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.CUDA, CudaHandler)

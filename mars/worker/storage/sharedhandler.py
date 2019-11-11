@@ -174,8 +174,12 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
 
     def delete(self, session_id, data_key, _tell=False):
-        self._holder_ref.delete_object(session_id, data_key, _tell=_tell)
+        self._holder_ref.delete_objects(session_id, [data_key], _tell=_tell)
         self.unregister_data(session_id, data_key, _tell=_tell)
+
+    def batch_delete(self, session_id, data_keys, _tell=False):
+        self._holder_ref.delete_objects(session_id, data_keys, _tell=_tell)
+        self.batch_unregister_data(session_id, data_keys, _tell=_tell)
 
     def spill_size(self, size, multiplier=1):
         return self._holder_ref.spill_size(size, multiplier, _promise=True)

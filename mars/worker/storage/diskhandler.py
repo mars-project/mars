@@ -249,5 +249,15 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
             self._actor_ctx.popen(['rm', '-f', file_name])
         self.unregister_data(session_id, data_key, _tell=_tell)
 
+    def batch_delete(self, session_id, data_keys, _tell=False):
+        for data_key in data_keys:
+            file_name = _build_file_name(session_id, data_key)
+            if sys.platform == 'win32':  # pragma: no cover
+                CREATE_NO_WINDOW = 0x08000000
+                self._actor_ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
+            else:
+                self._actor_ctx.popen(['rm', '-f', file_name])
+        self.batch_unregister_data(session_id, data_keys, _tell=_tell)
+
 
 register_storage_handler_cls(DataStorageDevice.DISK, DiskHandler)
