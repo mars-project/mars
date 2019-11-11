@@ -274,13 +274,11 @@ class SharedHolderActor(ObjectHolderActor):
         self._shared_store.batch_delete(session_id, data_keys)
         self._storage_handler.batch_unregister_data(session_id, data_keys)
 
-    def put_object_by_key(self, session_id, data_key, pin=False):
+    def put_object_by_key(self, session_id, data_key, shape=None):
         buf = self._shared_store.get_buffer(session_id, data_key)
         self._internal_put_object(session_id, data_key, buf, len(buf))
-        if pin:
-            token = tokenize(time.time(), str(uuid.uuid4()))
-            self.pin_data_keys(session_id, [data_key], token)
-            return token
+        self.storage_client.register_data(
+            session_id, data_key, (0, DataStorageDevice.SHARED_MEMORY), len(buf), shape=shape)
 
 
 class InProcHolderActor(ObjectHolderActor):
