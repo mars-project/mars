@@ -139,11 +139,11 @@ class DataFrameOperandMixin(TileableOperandMixin):
         if isinstance(df, DATAFRAME_TYPE):
             chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
                 df.chunks, shape=df.shape, index=(0, 0), dtypes=df.dtypes,
-                index_value=df.index_value, columns_value=df.columns)
+                index_value=df.index_value, columns_value=df.columns_value)
             return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
-                index_value=df.index_value, columns_value=df.columns)
+                index_value=df.index_value, columns_value=df.columns_value)
         elif isinstance(df, SERIES_TYPE):
             chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
