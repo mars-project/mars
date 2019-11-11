@@ -265,16 +265,17 @@ class BaseCalcActor(WorkerActor):
         meta_future = self.get_meta_client().batch_set_chunk_meta(
             session_id, store_keys, store_metas, _wait=False)
 
-        def _delete_key(k, *_):
+        def _delete_keys(*_):
             if self._remove_intermediate:
-                storage_client.delete(session_id, k, [self._calc_intermediate_device], _tell=True)
-            self._mem_quota_ref.release_quota(
-                build_quota_key(session_id, k, owner=self.proc_id), _tell=True, _wait=False)
+                storage_client.batch_delete(
+                    session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)
+            quotas = [build_quota_key(session_id, k, owner=self.proc_id) for k in keys_to_store]
+            self._mem_quota_ref.release_quotas(quotas, _tell=True, _wait=False)
 
         promise.all_([
             storage_client.copy_to(session_id, k, self._calc_dest_devices)
-                .then(functools.partial(_delete_key, k))
             for k in keys_to_store]) \
+            .then(_delete_keys) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),
                   lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
