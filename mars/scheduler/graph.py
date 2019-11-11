@@ -933,7 +933,7 @@ class GraphActor(SchedulerActor):
         tileable = self._get_tileable_by_key(tileable_key)
         chunk_indexes = OrderedDict((c.index, c.key) for c in tileable.chunks)
         nsplits = tileable.nsplits
-        if np.nan in tileable.shape:
+        if hasattr(tileable, 'shape') and np.nan in tileable.shape:
             chunk_shapes = self.chunk_meta.batch_get_chunk_shape(
                 self._session_id, list(chunk_indexes.values()))
             nsplits = calc_nsplits(OrderedDict(zip(chunk_indexes.keys(), chunk_shapes)))

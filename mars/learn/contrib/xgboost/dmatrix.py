@@ -16,18 +16,15 @@ import itertools
 
 import pandas as pd
 
-from ....operands import Operand
-from ....core import TileableOperandMixin, ExecutableTuple
+from ....core import ExecutableTuple
 from .... import opcodes as OperandDef
-from ....serialize.core import KeyField, Float64Field, ListField, BoolField, Int8Field
-from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE, \
-    TensorData, Tensor, TensorChunkData, TensorChunk
+from ....serialize.core import KeyField, Float64Field, ListField, BoolField
+from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
-from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
-    SERIES_TYPE, DataFrameData, DataFrame, DataFrameChunkData, DataFrameChunk
+from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....dataframe.operands import ObjectType
 from ....dataframe.initializer import DataFrame as create_dataframe, Series as create_series
-from ....utils import concat_chunks_on_axis
+from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
 
 def _on_serialize_object_type(object_type):
@@ -40,8 +37,7 @@ def _on_deserialize_object_type(ser):
         return ObjectType(ser)
 
 
-class ToDMatrix(Operand, TileableOperandMixin):
-    _op_module_ = 'learn'
+class ToDMatrix(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.TO_DMATRIX
 
     _data = KeyField('data')
@@ -51,16 +47,14 @@ class ToDMatrix(Operand, TileableOperandMixin):
     _feature_names = ListField('feature_names')
     _feature_types = ListField('feature_types')
     _multi_output = BoolField('multi_output')
-    _object_type = Int8Field('object_type', on_serialize=_on_serialize_object_type,
-                             on_deserialize=_on_deserialize_object_type)
 
     def __init__(self, data=None, label=None, missing=None, weight=None, feature_names=None,
-                 feature_types=None, multi_output=None, gpu=None, object_type=None, **kw):
+                 feature_types=None, multi_output=None, gpu=None, output_types=None, **kw):
         super(ToDMatrix, self).__init__(_data=data, _label=label, _missing=missing,
                                         _weight=weight, _feature_names=feature_names,
                                         _feature_types=feature_types, _gpu=gpu,
                                         _multi_output=multi_output,
-                                        _object_type=object_type, **kw)
+                                        _output_types=output_types, **kw)
 
     @property
     def output_limit(self):
@@ -96,10 +90,6 @@ class ToDMatrix(Operand, TileableOperandMixin):
     def multi_output(self):
         return self._multi_output
 
-    @property
-    def object_type(self):
-        return self._object_type
-
     def _set_inputs(self, inputs):
         super(ToDMatrix, self)._set_inputs(inputs)
         self._data = self._inputs[0]
@@ -109,49 +99,6 @@ class ToDMatrix(Operand, TileableOperandMixin):
         if self._weight is not None:
             i = 1 if not has_label else 2
             self._weight = self._inputs[i]
-
-    def _get_input(self, tp):
-        if tp is None or tp == 'data':
-            return self._data
-        elif tp == 'label':
-            return self._label
-        else:
-            assert tp == 'weight'
-            return self._weight
-
-    def _create_chunk(self, output_idx, index, **kw):
-        tp = kw.pop('type', None)
-        inp = self._get_input(tp)
-        shape = kw.pop('shape', inp.shape)
-        if isinstance(inp, TENSOR_CHUNK_TYPE):
-            dtype = kw.pop('dtype', inp.dtype)
-            order = kw.pop('order', inp.order)
-            data = TensorChunkData(shape=shape, index=index, op=self,
-                                   dtype=dtype, order=order, **kw)
-            return TensorChunk(data)
-        else:
-            assert isinstance(inp, DATAFRAME_CHUNK_TYPE)
-            data = DataFrameChunkData(shape=shape, index=index,
-                                      op=self, **kw)
-            return DataFrameChunk(data)
-
-    def _create_tileable(self, output_idx, **kw):
-        tp = kw.get('type', None)
-        inp = self._get_input(tp)
-        shape = kw.pop('shape', inp.shape)
-        chunks = kw.pop('chunks', None)
-        nsplits = kw.pop('nsplits', None)
-        if isinstance(inp, TENSOR_TYPE):
-            dtype = kw.pop('dtype', inp.dtype)
-            order = kw.pop('order', inp.order)
-            data = TensorData(shape=shape, dtype=dtype, op=self,
-                              order=order, chunks=chunks, nsplits=nsplits, **kw)
-            return Tensor(data)
-        else:
-            assert isinstance(inp, DATAFRAME_TYPE)
-            data = DataFrameData(shape=shape, op=self,
-                                 chunks=chunks, nsplits=nsplits, **kw)
-            return DataFrame(data)
 
     @staticmethod
     def _get_kw(obj):
@@ -254,21 +201,21 @@ class ToDMatrix(Operand, TileableOperandMixin):
         ctx = get_context()
         if ctx.running_mode != RunningMode.distributed:
             # for local and local cluster, just concat all data into one
-            data_concat_chunk = concat_chunks_on_axis(data.chunks)
+            data_concat_chunk = data.op.concat_tileable_chunks(data).chunks[0]
             inps = [data_concat_chunk]
             label_concat_chunk = None
             if label is not None:
-                label_concat_chunk = concat_chunks_on_axis(label.chunks)
+                label_concat_chunk = label.op.concat_tileable_chunks(label).chunks[0]
                 inps.append(label_concat_chunk)
             weight_concat_chunk = None
             if weight is not None:
-                weight_concat_chunk = concat_chunks_on_axis(weight.chunks)
+                weight_concat_chunk = weight.op.concat_tileable_chunks(weight).chunks[0]
                 inps.append(weight_concat_chunk)
             chunk_op = ToDMatrix(data=data_concat_chunk, label=label_concat_chunk,
                                  missing=op.missing, weight=weight_concat_chunk,
                                  feature_names=op.feature_names,
                                  feature_types=op.feature_types,
-                                 multi_output=False, object_type=op.object_type)
+                                 multi_output=False, output_types=op.output_types)
             out_chunks = [chunk_op.new_chunk(inps, **data_concat_chunk.params)]
             nsplits = tuple((s,) for s in data_concat_chunk.shape)
         else:
@@ -289,19 +236,23 @@ class ToDMatrix(Operand, TileableOperandMixin):
             ind = itertools.count(0)
             out_chunks = []
             for worker, chunks in worker_to_chunks.items():
-                data_chunk = concat_chunks_on_axis(chunks[0])
+                worker_data = chunks[0][0].op.create_tileable_from_chunks(chunks[0])
+                data_chunk = worker_data.op.concat_tileable_chunks(worker_data).chunks[0]
                 inps = [data_chunk]
                 label_chunk = None
                 if label is not None:
-                    label_chunk = concat_chunks_on_axis(chunks[1])
+                    worker_label = chunks[1][0].op.create_tileable_from_chunks(chunks[1])
+                    label_chunk = worker_label.op.concat_tileable_chunks(worker_label).chunks[0]
                     inps.append(label_chunk)
                 weight_chunk = None
                 if weight is not None:
-                    weight_chunk = concat_chunks_on_axis(chunks[-1])
+                    worker_weight = chunks[2][0].op.create_tileable_from_chunks(chunks[2])
+                    weight_chunk = worker_weight.op.concat_tileable_chunks(worker_weight).chunks[0]
                     inps.append(weight_chunk)
                 chunk_op = ToDMatrix(data=data_chunk, label=label_chunk, missing=op.missing,
                                      weight=weight_chunk, feature_names=op.feature_names,
-                                     feature_types=op.feature_types, multi_output=False)
+                                     feature_types=op.feature_types, multi_output=False,
+                                     output_types=op.output_types)
                 kws = data_chunk.params
                 kws['index'] = (next(ind), 0)
                 out_chunks.append(chunk_op.new_chunk(inps, **kws))
@@ -367,6 +318,22 @@ def check_data(data):
     return data
 
 
+def _get_output_types(*objs):
+    output_types = []
+    for obj in objs:
+        if obj is None:
+            continue
+        if isinstance(obj, TENSOR_TYPE):
+            output_types.append(OutputType.tensor)
+        elif isinstance(obj, DATAFRAME_TYPE):
+            output_types.append(OutputType.dataframe)
+        elif isinstance(obj, SERIES_TYPE):
+            output_types.append(OutputType.series)
+        else:  # pragma: no cover
+            raise TypeError('Output can only be tensor, dataframe or series')
+    return output_types
+
+
 def to_dmatrix(data, label=None, missing=None, weight=None,
                feature_names=None, feature_types=None, session=None, run_kwargs=None):
     data = check_data(data)
@@ -391,13 +358,10 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
             if weight.ndim != 1:
                 raise ValueError('Expecting 1-d weight, got {0}-d'.format(weight.ndim))
 
-    kw = dict()
-    if isinstance(data, DATAFRAME_TYPE):
-        kw['object_type'] = ObjectType.dataframe
-
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,
-                   gpu=data.op.gpu, multi_output=True, **kw)
+                   gpu=data.op.gpu, multi_output=True,
+                   output_types=_get_output_types(data, label, weight))
     outs = ExecutableTuple(op())
     # Execute first, to make sure the counterpart chunks of data, label and weight are co-allocated
     outs.execute(session=session, fetch=False, **(run_kwargs or dict()))
@@ -409,7 +373,8 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
     # to feed the data into XGBoost for training.
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,
-                   gpu=data.op.gpu, multi_output=False, **kw)
+                   gpu=data.op.gpu, multi_output=False,
+                   output_types=_get_output_types(data))
     return op()
 
 

@@ -3,6 +3,7 @@ syntax = "proto3";
 import "mars/serialize/protos/value.proto";
 import "mars/serialize/protos/dataframe.proto";
 import "mars/serialize/protos/tensor.proto";
+import "mars/serialize/protos/object.proto";
 
 
 message FuseChunkDef {
@@ -12,6 +13,7 @@ message FuseChunkDef {
             IndexChunkDef index_chunk = 2;
             SeriesChunkDef series_chunk = 3;
             DataFrameChunkDef dataframe_chunk = 4;
+            ObjectChunkDef object_chunk = 5;
         }
     }
 

@@ -15,26 +15,13 @@
 import operator
 
 from ...serialize.core import TupleField, ValueType, Int8Field
-from ...operands import Fetch, FetchShuffle
+from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..operands import DataFrameOperandMixin, ObjectType
 
 
-class DataFrameFetchMixin(DataFrameOperandMixin):
-
-    def check_inputs(self, inputs):
-        # no inputs
-        if inputs and len(inputs) > 0:
-            raise ValueError("%s has no inputs" % type(self).__name__)
-
-    @classmethod
-    def tile(cls, op):
-        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
-
-    @classmethod
-    def execute(cls, ctx, op):
-        # fetch op need to do nothing
-        pass
+class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
+    __slots__ = ()
 
 
 class DataFrameFetch(Fetch, DataFrameFetchMixin):

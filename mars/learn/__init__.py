@@ -16,5 +16,3 @@
 from .contrib.xgboost import train as xgboost_train
 del xgboost_train
 
-from .utils.core import concat_chunks_on_axis, get_fetch_op_cls, \
-    get_fuse_op_cls, concat_tileable_chunks

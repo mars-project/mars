@@ -16,8 +16,8 @@ import unittest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.dataframe.operands import ObjectType
 from mars.session import new_session
+from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
 from mars.learn.contrib.xgboost.train import XGBTrain
@@ -55,7 +55,7 @@ class Test(unittest.TestCase):
             DAG.from_json(graph.to_json())
 
             dmatrix = ToDMatrix(data=self.X_df, label=self.y_series,
-                                object_type=ObjectType.dataframe)()
+                                output_types=[OutputType.dataframe])()
             model = XGBTrain(dtrain=dmatrix)()
 
             graph = model.build_graph(tiled=True)

@@ -23,6 +23,7 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
+from ..tensor.core import TENSOR_TYPE
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize
 from .core import IndexValue
@@ -55,90 +56,6 @@ def sort_dataframe_inplace(df, *axis):
     for ax in axis:
         df.sort_index(axis=ax, inplace=True)
     return df
-
-
-def concat_chunks_on_axis(chunks, axis=0):
-    from .merge.concat import DataFrameConcat
-    from .operands import ObjectType, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-    from ..tensor.utils import to_numpy
-
-    if isinstance(chunks[0], DATAFRAME_CHUNK_TYPE):
-        if axis == 0:
-            dtypes = chunks[0].dtypes
-            columns_value = chunks[0].columns_value
-            index_value = parse_index(pd.Index(
-                np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks])))
-        else:
-            dtypes = pd.Index(
-                np.concatenate([to_numpy(c.columns_value.to_pandas()) for c in chunks]))
-            columns_value = parse_index(dtypes.index)
-            index_value = chunks[0].index_value
-        shape = list(chunks[0].shape)
-        shape[axis] = sum(c.shape[axis] for c in chunks)
-        index = list(chunks[0].index)
-        index[axis] = 0
-        return DataFrameConcat(object_type=ObjectType.dataframe, axis=axis,
-                               gpu=chunks[0].op.gpu).new_chunk(
-            chunks, shape=tuple(shape), index=tuple(index), dtypes=dtypes,
-            index_value=index_value, columns_value=columns_value)
-    elif isinstance(chunks[0], SERIES_CHUNK_TYPE):
-        assert axis == 0
-        index_value = parse_index(pd.Index(
-            np.concatenate([to_numpy(c.index_value.to_pandas()) for c in chunks])))
-        return DataFrameConcat(object_type=ObjectType.series, axis=axis,
-                               gpu=chunks[0].op.gpu).new_chunk(
-            chunks, shape=(sum(c.shape[0] for c in chunks),), dtype=chunks[0].dtype,
-            index_value=index_value, name=chunks[0].name, index=(0,))
-    else:
-        raise NotImplementedError
-
-
-def concat_tileable_chunks(df):
-    from .merge.concat import DataFrameConcat, GroupByConcat
-    from .operands import ObjectType, DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE
-
-    assert not df.is_coarse()
-
-    if isinstance(df, DATAFRAME_TYPE):
-        chunk = DataFrameConcat(object_type=ObjectType.dataframe).new_chunk(
-            df.chunks, shape=df.shape, dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns_value)
-        return DataFrameConcat(object_type=ObjectType.dataframe).new_dataframe(
-            [df], shape=df.shape, chunks=[chunk],
-            nsplits=tuple((s,) for s in df.shape), dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns_value)
-    elif isinstance(df, SERIES_TYPE):
-        chunk = DataFrameConcat(object_type=ObjectType.series).new_chunk(
-            df.chunks, shape=df.shape, dtype=df.dtype, index_value=df.index_value, name=df.name)
-        return DataFrameConcat(object_type=ObjectType.series).new_series(
-            [df], shape=df.shape, chunks=[chunk],
-            nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
-            index_value=df.index_value, name=df.name)
-    elif isinstance(df, GROUPBY_TYPE):
-        chunk = GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_chunk(df.chunks)
-        return GroupByConcat(by=df.op.by, object_type=ObjectType.dataframe).new_dataframe([df], chunks=[chunk])
-    else:
-        raise NotImplementedError
-
-
-def get_fetch_op_cls(op):
-    from ..operands import ShuffleProxy
-    from .fetch import DataFrameFetchShuffle, DataFrameFetch
-    if isinstance(op, ShuffleProxy):
-        cls = DataFrameFetchShuffle
-    else:
-        cls = DataFrameFetch
-
-    def _inner(**kw):
-        return cls(object_type=op.object_type, **kw)
-
-    return _inner
-
-
-def get_fuse_op_cls(_):
-    from .operands import DataFrameFuseChunk
-
-    return DataFrameFuseChunk
 
 
 def _get_range_index_start(pd_range_index):

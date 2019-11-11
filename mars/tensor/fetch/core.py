@@ -12,25 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...operands import Fetch, FetchShuffle
+from ...operands import Fetch, FetchShuffle, FetchMixin
 from ...serialize import DataTypeField
 from ..operands import TensorOperandMixin
 
 
-class TensorFetchMixin(TensorOperandMixin):
-    def check_inputs(self, inputs):
-        # no inputs
-        if inputs and len(inputs) > 0:
-            raise ValueError("%s has no inputs" % type(self).__name__)
-
-    @classmethod
-    def tile(cls, op):
-        raise NotImplementedError('Fetch tile cannot be handled by operand itself')
-
-    @classmethod
-    def execute(cls, ctx, op):
-        # fetch op need to do nothing
-        pass
+class TensorFetchMixin(TensorOperandMixin, FetchMixin):
+    __slots__ = ()
 
 
 class TensorFetch(Fetch, TensorFetchMixin):

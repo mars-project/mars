@@ -521,30 +521,6 @@ def check_random_state(seed):
                      ' instance' % seed)
 
 
-def concat_chunks_on_axis(chunks, axis=0):
-    from .merge.concatenate import TensorConcatenate
-
-    op = TensorConcatenate(dtype=chunks[0].dtype, gpu=chunks[0].op.gpu)
-    shape = list(chunks[0].shape)
-    shape[axis] = sum(c.shape[axis] for c in chunks)
-    index = list(chunks[0].index)
-    index[axis] = 0
-    return TensorConcatenate(dtype=op.dtype, axis=axis).new_chunk(
-        chunks, shape=tuple(shape), index=tuple(index))
-
-
-def concat_tileable_chunks(tensor):
-    from .merge.concatenate import TensorConcatenate
-
-    assert not tensor.is_coarse()
-
-    op = TensorConcatenate(dtype=tensor.dtype)
-    chunk = TensorConcatenate(dtype=tensor.dtype).new_chunk(
-        tensor.chunks, shape=tensor.shape)
-    return op.new_tensor([tensor], tensor.shape, chunks=[chunk],
-                         nsplits=tuple((s,) for s in tensor.shape))
-
-
 def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
     """
     Construct Fetch tensor on the fly, using given chunk_size, shape, dtype,
@@ -638,21 +614,6 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
         new_value = chunk_value if is_scalar else chunk_value[value_idx]
         records.append((np.ravel_multi_index(chunk_idx, input_chunk.shape), ts, new_value))
     return records
-
-
-def get_fetch_op_cls(op):
-    from ..operands import ShuffleProxy
-    from .fetch import TensorFetchShuffle, TensorFetch
-    if isinstance(op, ShuffleProxy):
-        return TensorFetchShuffle
-    else:
-        return TensorFetch
-
-
-def get_fuse_op_cls(_):
-    from .fuse import TensorFuseChunk
-
-    return TensorFuseChunk
 
 
 def filter_inputs(inputs):

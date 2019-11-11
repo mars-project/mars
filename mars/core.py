@@ -23,7 +23,7 @@ import numpy as np
 
 from .compat import six, izip, builtins
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
-    on_deserialize_shape, on_serialize_nsplits, is_eager_mode, kernel_mode, calc_data_size
+    on_deserialize_shape, on_serialize_nsplits, kernel_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField, OneOfField
 from .tiles import Tileable, handler
@@ -285,6 +285,33 @@ class Chunk(Entity):
     _allow_data_type_ = (ChunkData,)
 
 
+class ObjectChunkData(ChunkData):
+    # chunk whose data could be any serializable
+    __slots__ = ()
+
+    def __init__(self, op=None, index=None, **kw):
+        super(ObjectChunkData, self).__init__(_op=op, _index=index, **kw)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from .serialize.protos.object_pb2 import ObjectChunkDef
+            return ObjectChunkDef
+        return super(ObjectChunkData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new chunk
+        return {
+            'index': self.index,
+        }
+
+
+class ObjectChunk(Chunk):
+    __slots__ = ()
+    _allow_data_type_ = (ObjectChunkData,)
+
+
 def _on_serialize_composed(composed):
     return [FuseChunkData.ChunkRef(c.data if isinstance(c, Entity) else c) for c in composed]
 
@@ -304,7 +331,9 @@ class FuseChunkData(ChunkData):
                             index_chunk='mars.dataframe.core.IndexChunkData',
                             index='mars.dataframe.core.IndexData',
                             series_chunk='mars.dataframe.core.SeriesChunkData',
-                            series='mars.dataframe.core.SeriesData')
+                            series='mars.dataframe.core.SeriesData',
+                            object_chunk='mars.core.ObjectChunkData',
+                            object='mars.core.ObjectData')
 
         @property
         def chunk(self):
@@ -358,8 +387,6 @@ class TileableData(SerializableWithKey, Tileable):
 
     # required fields
     _op = KeyField('op')
-    _shape = TupleField('shape', ValueType.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
     _nsplits = TupleField('nsplits', ValueType.tuple(ValueType.uint64),
@@ -378,29 +405,6 @@ class TileableData(SerializableWithKey, Tileable):
             self._chunks = sorted(self._chunks, key=attrgetter('index'))
 
         self._entities = WeakSet()
-
-    @property
-    def ndim(self):
-        return len(self.shape)
-
-    def __len__(self):
-        try:
-            return self.shape[0]
-        except IndexError:
-            if build_mode().is_build_mode:
-                return 0
-            raise TypeError('len() of unsized object')
-
-    @property
-    def shape(self):
-        if hasattr(self, '_shape') and self._shape is not None:
-            return self._shape
-        if hasattr(self, '_nsplits') and self._nsplits is not None:
-            self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
-            return self._shape
-
-    def _update_shape(self, new_shape):
-        self._shape = new_shape
 
     @property
     def chunk_shape(self):
@@ -422,10 +426,6 @@ class TileableData(SerializableWithKey, Tileable):
     @nsplits.setter
     def nsplits(self, new_nsplits):
         self._nsplits = new_nsplits
-
-    @property
-    def size(self):
-        return np.prod(self.shape).item()
 
     @property
     def inputs(self):
@@ -637,6 +637,73 @@ class TileableEntity(Entity):
             entity_view_handler.data_changed(self._data, new_data)
 
 
+class HasShapeTileableData(TileableData):
+    # required fields
+    _shape = TupleField('shape', ValueType.int64,
+                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+
+    @property
+    def ndim(self):
+        return len(self.shape)
+
+    def __len__(self):
+        try:
+            return self.shape[0]
+        except IndexError:
+            if build_mode().is_build_mode:
+                return 0
+            raise TypeError('len() of unsized object')
+
+    @property
+    def shape(self):
+        if hasattr(self, '_shape') and self._shape is not None:
+            return self._shape
+        if hasattr(self, '_nsplits') and self._nsplits is not None:
+            self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
+            return self._shape
+
+    def _update_shape(self, new_shape):
+        self._shape = new_shape
+
+    @property
+    def size(self):
+        return np.prod(self.shape).item()
+
+
+class ObjectData(TileableData):
+    __slots__ = ()
+
+    # optional fields
+    _chunks = ListField('chunks', ValueType.reference(ObjectChunkData),
+                        on_serialize=lambda x: [it.data for it in x] if x is not None else x,
+                        on_deserialize=lambda x: [ObjectChunk(it) for it in x] if x is not None else x)
+
+    def __init__(self, op=None, nsplits=None, chunks=None, **kw):
+        super(ObjectData, self).__init__(_op=op, _nsplits=nsplits, _chunks=chunks, **kw)
+
+    @classmethod
+    def cls(cls, provider):
+        if provider.type == ProviderType.protobuf:
+            from .serialize.protos.object_pb2 import ObjectDef
+            return ObjectDef
+        return super(ObjectData, cls).cls(provider)
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+        }
+
+
+class Object(Entity):
+    __slots__ = ()
+    _allow_data_type_ = (ObjectData,)
+
+
+OBJECT_TYPE = (ObjectData, Object)
+OBJECT_CHUNK_TYPE = (ObjectChunkData, ObjectChunk)
+
+
 class ChunksIndexer(object):
     __slots__ = '_tileable',
 
@@ -644,12 +711,12 @@ class ChunksIndexer(object):
         self._tileable = tileable
 
     def __getitem__(self, item):
-        '''
+        """
         The indices for `cix` can be [x, y] or [x, :]. For the former the result will be
         a single chunk, and for the later the result will be a list of chunks (flattened).
 
         The length of indices must be the same with `chunk_shape` of tileable.
-        '''
+        """
         if isinstance(item, tuple):
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]
@@ -676,188 +743,6 @@ class ChunksIndexer(object):
                 return [self._tileable._chunks[idx] for idx in flat_index]
 
         raise ValueError('Cannot get tensor chunk by {0}'.format(item))
-
-
-class TileableOperandMixin(object):
-    __slots__ = ()
-
-    def check_inputs(self, inputs):
-        pass
-
-    @classmethod
-    def _check_if_gpu(cls, inputs):
-        if inputs is not None and \
-                len([inp for inp in inputs
-                     if inp is not None and getattr(inp, 'op', None) is not None]) > 0:
-            if all(inp.op.gpu is True for inp in inputs):
-                return True
-            elif all(inp.op.gpu is False for inp in inputs):
-                return False
-
-    def _create_chunk(self, output_idx, index, **kw):
-        raise NotImplementedError
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        output_limit = kw.pop('output_limit', None)
-        if output_limit is None:
-            output_limit = getattr(self, 'output_limit')
-
-        self.check_inputs(inputs)
-        getattr(self, '_set_inputs')(inputs)
-        if getattr(self, '_gpu', None) is None:
-            self._gpu = self._check_if_gpu(self._inputs)
-        if getattr(self, '_key', None) is None:
-            getattr(self, '_update_key')()
-
-        chunks = []
-        for j in range(output_limit):
-            create_chunk_kw = kw.copy()
-            if kws:
-                create_chunk_kw.update(kws[j])
-            index = create_chunk_kw.pop('index', None)
-            chunk = self._create_chunk(j, index, **create_chunk_kw)
-            chunks.append(chunk)
-
-        setattr(self, 'outputs', chunks)
-        if len(chunks) > 1:
-            # for each output chunk, hold the reference to the other outputs
-            # so that either no one or everyone are gc collected
-            for j, t in enumerate(chunks):
-                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
-        return chunks
-
-    def new_chunks(self, inputs, kws=None, **kwargs):
-        """
-        Create chunks.
-        A chunk is a node in a fine grained graph, all the chunk objects are created by
-        calling this function, it happens mostly in tiles.
-        The generated chunks will be set as this operand's outputs and each chunk will
-        hold this operand as it's op.
-        :param inputs: input chunks
-        :param kws: kwargs for each output
-        :param kwargs: common kwargs for all outputs
-
-        .. note::
-            It's a final method, do not override.
-            Override the method `_new_chunks` if needed.
-        """
-        return self._new_chunks(inputs, kws=kws, **kwargs)
-
-    def new_chunk(self, inputs, kws=None, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
-
-        return self.new_chunks(inputs, kws=kws, **kw)[0]
-
-    def _create_tileable(self, output_idx, **kw):
-        raise NotImplementedError
-
-    def _new_tileables(self, inputs, kws=None, **kw):
-        output_limit = kw.pop('output_limit', None)
-        if output_limit is None:
-            output_limit = getattr(self, 'output_limit')
-
-        self.check_inputs(inputs)
-        getattr(self, '_set_inputs')(inputs)
-        if getattr(self, '_gpu', None) is None:
-            self._gpu = self._check_if_gpu(self._inputs)
-        if getattr(self, '_key', None) is None:
-            getattr(self, '_update_key')()  # update key when inputs are set
-
-        tileables = []
-        for j in range(output_limit):
-            create_tensor_kw = kw.copy()
-            if kws:
-                create_tensor_kw.update(kws[j])
-            tileable = self._create_tileable(j, **create_tensor_kw)
-            tileables.append(tileable)
-
-        setattr(self, 'outputs', tileables)
-        if len(tileables) > 1:
-            # for each output tileable, hold the reference to the other outputs
-            # so that either no one or everyone are gc collected
-            for j, t in enumerate(tileables):
-                t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
-        return tileables
-
-    def new_tileables(self, inputs, kws=None, **kw):
-        """
-        Create tileable objects(Tensors or DataFrames).
-        This is a base function for create tileable objects like tensors or dataframes,
-        it will be called inside the `new_tensors` and `new_dataframes`.
-        If eager mode is on, it will trigger the execution after tileable objects are created.
-        :param inputs: input tileables
-        :param kws: kwargs for each output
-        :param kw: common kwargs for all outputs
-
-        .. note::
-            It's a final method, do not override.
-            Override the method `_new_tileables` if needed.
-        """
-
-        tileables = self._new_tileables(inputs, kws=kws, **kw)
-        if is_eager_mode():
-            ExecutableTuple(tileables).execute(fetch=False)
-        return tileables
-
-    def new_tileable(self, inputs, kws=None, **kw):
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
-
-        return self.new_tileables(inputs, kws=kws, **kw)[0]
-
-    @classmethod
-    def execute(cls, ctx, op):
-        raise NotImplementedError
-
-    @classmethod
-    def estimate_size(cls, ctx, op):
-        exec_size = 0
-        outputs = op.outputs
-        if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
-            for out in outputs:
-                ctx[out.key] = (out.nbytes, out.nbytes)
-
-        for inp in op.inputs or ():
-            try:
-                exec_size += ctx[inp.key][0]
-            except KeyError:
-                if not op.sparse:
-                    inp_size = calc_data_size(inp)
-                    if not np.isnan(inp_size):
-                        exec_size += inp_size
-        exec_size = int(exec_size)
-
-        total_out_size = 0
-        chunk_sizes = dict()
-        for out in outputs:
-            try:
-                chunk_size = calc_data_size(out) if not out.is_sparse() else exec_size
-                if np.isnan(chunk_size):
-                    raise TypeError
-                chunk_sizes[out.key] = chunk_size
-                total_out_size += chunk_size
-            except (AttributeError, TypeError, ValueError):
-                pass
-        exec_size = max(exec_size, total_out_size)
-        for out in outputs:
-            if out.key in ctx:
-                continue
-            if out.key in chunk_sizes:
-                store_size = chunk_sizes[out.key]
-            else:
-                store_size = max(exec_size // len(outputs),
-                                 total_out_size // max(len(chunk_sizes), 1))
-            try:
-                if out.is_sparse():
-                    max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
-                else:
-                    max_sparse_size = np.nan
-            except TypeError:  # pragma: no cover
-                max_sparse_size = np.nan
-            if not np.isnan(max_sparse_size):
-                store_size = min(store_size, max_sparse_size)
-            ctx[out.key] = (store_size, exec_size // len(outputs))
 
 
 class ExecutableTuple(tuple):

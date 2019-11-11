@@ -37,7 +37,7 @@ except ImportError:  # pragma: no cover
 from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
 from .compat import six, futures, OrderedDict, enum
-from .utils import kernel_mode, concat_tileable_chunks, build_fetch, calc_nsplits
+from .utils import kernel_mode, build_fetch, calc_nsplits
 
 if gevent:
     from .actors.pool.gevent_pool import GeventThreadPoolExecutor
@@ -621,7 +621,7 @@ class Executor(object):
             # only for tests
             tileable.tiles()
             if len(tileable.chunks) > 1:
-                tileable = concat_tileable_chunks(tileable)
+                tileable = tileable.op.concat_tileable_chunks(tileable)
 
         graph = tileable.build_graph(cls=DirectedGraph, tiled=True, compose=compose)
 
@@ -656,7 +656,7 @@ class Executor(object):
                 pass
             elif len(tileable.chunks) > 1:
                 # if need to fetch data and chunks more than 1, we concatenate them into 1
-                tileable = concat_tileable_chunks(tileable)
+                tileable = tileable.op.concat_tileable_chunks(tileable)
                 chunk = tileable.chunks[0]
                 result_keys.append(chunk.key)
                 # the concatenated key

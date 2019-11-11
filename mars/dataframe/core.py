@@ -21,8 +21,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type
-from ..core import ChunkData, Chunk, TileableEntity, TileableData, is_eager_mode
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, is_eager_mode
+from ..core import ChunkData, Chunk, TileableEntity, TileableData, HasShapeTileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField
@@ -321,7 +321,7 @@ class IndexChunk(Chunk):
     _allow_data_type_ = (IndexChunkData,)
 
 
-class IndexData(TileableData):
+class IndexData(HasShapeTileableData):
     __slots__ = ()
 
     # optional field
@@ -442,7 +442,7 @@ class SeriesChunk(Chunk):
     _allow_data_type_ = (SeriesChunkData,)
 
 
-class SeriesData(TileableData):
+class SeriesData(HasShapeTileableData):
     __slots__ = ()
 
     # optional field
@@ -595,7 +595,7 @@ class DataFrameChunk(Chunk):
         return len(self._data)
 
 
-class DataFrameData(TileableData):
+class DataFrameData(HasShapeTileableData):
     __slots__ = ()
 
     # optional fields

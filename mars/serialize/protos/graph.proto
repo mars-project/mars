@@ -4,6 +4,7 @@ syntax = "proto3";
 import "mars/serialize/protos/operand.proto";
 import "mars/serialize/protos/tensor.proto";
 import "mars/serialize/protos/dataframe.proto";
+import "mars/serialize/protos/object.proto";
 import "mars/serialize/protos/fusechunk.proto";
 
 
@@ -19,6 +20,8 @@ message GraphDef {
             IndexDef index = 7;
             SeriesChunkDef series_chunk = 8;
             SeriesDef series = 9;
+            ObjectChunkDef object_chunk = 11;
+            ObjectDef object = 12;
             FuseChunkDef fuse_chunk =10;
         }
     }
