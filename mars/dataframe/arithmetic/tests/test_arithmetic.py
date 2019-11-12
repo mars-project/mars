@@ -447,9 +447,9 @@ class TestBinary(TestBase):
 
         # test df3's index and columns
         pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns_value.should_be_monotonic)
+        self.assertFalse(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.RangeIndex)
-        self.assertTrue(df3.index_value.should_be_monotonic)
+        self.assertFalse(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.RangeIndex(0, 10))
         self.assertEqual(df3.index_value.key, df1.index_value.key)
         self.assertEqual(df3.index_value.key, df2.index_value.key)
@@ -912,9 +912,9 @@ class TestBinary(TestBase):
 
         # test df2's index and columns
         pd.testing.assert_index_equal(df2.columns_value.to_pandas(), self.func(data, data).columns)
-        self.assertTrue(df2.columns_value.should_be_monotonic)
+        self.assertFalse(df2.columns_value.should_be_monotonic)
         self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
-        self.assertTrue(df2.index_value.should_be_monotonic)
+        self.assertFalse(df2.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), pd.Int64Index([]))
         self.assertEqual(df2.index_value.key, df.index_value.key)
         self.assertEqual(df2.columns_value.key, df.columns_value.key)
