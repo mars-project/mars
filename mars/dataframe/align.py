@@ -429,7 +429,7 @@ def _get_chunk_index_min_max(index, index_chunks):
         chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
     if index.is_monotonic_decreasing:
         return list(reversed(chunk_index_min_max)), False
-    if _check_overlap(chunk_index_min_max):
+    if index.is_monotonic_decreasing and _check_overlap(chunk_index_min_max):
         return
     return chunk_index_min_max, True
 
@@ -547,7 +547,7 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
     if splits.all_axes_can_split():
         # no shuffle for all axes
         kw = {
-            'index_shuffle_size':  -1 if splits[0].isdummy() else None,
+            'index_shuffle_size': -1 if splits[0].isdummy() else None,
             'column_shuffle_size': -1 if splits[1].isdummy() else None,
         }
         for out_idx in itertools.product(*(range(s) for s in out_shape)):

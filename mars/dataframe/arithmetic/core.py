@@ -258,7 +258,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                     x1.columns_value.key == x2.columns_value.key:
                 dtypes = x1.dtypes
                 columns = copy.copy(x1.columns_value)
-                columns.value.should_be_monotonic = True
+                columns.value.should_be_monotonic = False
                 column_shape = len(dtypes)
             elif x1.dtypes is not None and x2.dtypes is not None:
                 dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
@@ -268,7 +268,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)
-                    index.value.should_be_monotonic = True
+                    index.value.should_be_monotonic = False
                     index_shape = x1.shape[0]
                 else:
                     index = infer_index_value(x1.index_value, x2.index_value)

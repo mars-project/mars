@@ -219,6 +219,16 @@ class TestBinary(TestBase):
 
         pd.testing.assert_frame_equal(expected, result)
 
+    def testSameIndex(self):
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(0, 2, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        df = from_pandas(data, chunk_size=3)
+        df2 = self.func(df, df)
+
+        expected = self.func(data, data)
+        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
     def testChained(self):
         data1 = pd.DataFrame(np.random.rand(10, 10))
         df1 = from_pandas(data1, chunk_size=5)
