@@ -17,13 +17,12 @@
 import unittest
 
 from mars.compat import OrderedDict
-from mars.actors import create_actor_pool
 from mars.utils import get_next_port
 from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
     GraphState, ChunkMetaClient, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.api import MarsAPI
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 
 
 class Test(unittest.TestCase):

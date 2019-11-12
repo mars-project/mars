@@ -22,7 +22,8 @@ from mars.executor import Executor, register, GraphDeviceAssigner
 from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
-from mars.actors import create_actor_pool, Distributor, Actor
+from mars.actors import Distributor, Actor
+from mars.tests.core import create_actor_pool
 
 
 class FakeDistributor(Distributor):

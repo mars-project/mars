@@ -20,7 +20,7 @@ import unittest
 import gevent.event
 
 from mars import promise
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.compat import six, TimeoutError  # pylint: disable=W0622
 from mars.utils import classproperty

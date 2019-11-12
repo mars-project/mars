@@ -17,7 +17,7 @@ import tempfile
 
 import gevent
 
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.scheduler import ResourceActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
