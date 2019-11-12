@@ -74,6 +74,7 @@ bin/etcd*
 
 # cython compiled files
 mars/*.c*
+mars/*.h*
 mars/lib/*.c*
 mars/actors/*.c*
 mars/actors/pool/*.c*

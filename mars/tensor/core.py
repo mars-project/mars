@@ -21,12 +21,13 @@ from operator import attrgetter
 
 import numpy as np
 
-from ..core import Entity, TileableEntity, ChunkData, Chunk, TileableData, is_eager_mode, build_mode, Serializable
+from ..core import Entity, TileableEntity, ChunkData, Chunk, HasShapeTileableData, \
+    build_mode, Serializable
 from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..compat import Enum
-from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
+from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
 from .utils import get_chunk_slices
 
 import logging
@@ -112,7 +113,7 @@ class TensorChunk(Chunk):
         return len(self._data)
 
 
-class TensorData(TileableData):
+class TensorData(HasShapeTileableData):
     __slots__ = ()
 
     # required fields

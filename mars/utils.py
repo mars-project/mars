@@ -296,7 +296,7 @@ def calc_data_size(dt):
     except AttributeError:
         pass
 
-    if len(dt.shape) == 0:
+    if hasattr(dt, 'shape') and len(dt.shape) == 0:
         return 0
     if hasattr(dt, 'memory_usage'):
         return sys.getsizeof(dt)
@@ -305,7 +305,8 @@ def calc_data_size(dt):
     if hasattr(dt, 'dtype') and hasattr(dt, 'shape'):
         return dt.shape[0] * dt.dtype.itemsize
 
-    raise ValueError('Cannot support calculating size of %s', type(dt))
+    # object chunk
+    return data_size
 
 
 def get_shuffle_input_keys_idxes(chunk):
@@ -453,32 +454,6 @@ class BlacklistSet(object):
             del self._key_time[k]
 
 
-_expr_modules = dict()
-
-
-def get_expr_module(op):
-    module_name = op._op_module_
-    try:
-        return _expr_modules[module_name]
-    except KeyError:
-        # tensor and dataframe have method concat_tileable_chunks
-        expr_module_name = '.{0}'.format(module_name)
-        expr_module = _expr_modules[module_name] = importlib.import_module(expr_module_name, __package__)
-        return expr_module
-
-
-def concat_chunks_on_axis(chunks, axis=0):
-    return get_expr_module(chunks[0].op).concat_chunks_on_axis(chunks, axis=axis)
-
-
-def concat_tileable_chunks(tileable):
-    return get_expr_module(tileable.op).concat_tileable_chunks(tileable)
-
-
-def get_fetch_op_cls(op):
-    return get_expr_module(op).get_fetch_op_cls(op)
-
-
 def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
     from .operands import ShuffleProxy
 
@@ -491,11 +466,11 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
         to_fetch_keys = [pinp.key for pinp in chunk.inputs
                          if input_chunk_keys is None or pinp.key in input_chunk_keys]
         to_fetch_idxes = [pinp.index for pinp in chunk.inputs]
-        op = get_fetch_op_cls(chunk_op)(to_fetch_keys=to_fetch_keys, to_fetch_idxes=to_fetch_idxes)
+        op = chunk_op.get_fetch_op_cls(chunk)(to_fetch_keys=to_fetch_keys, to_fetch_idxes=to_fetch_idxes)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
-        op = get_fetch_op_cls(chunk_op)(sparse=chunk.op.sparse)
+        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse)
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
@@ -511,7 +486,7 @@ def build_fetch_tileable(tileable, coarse=False):
     tileable_op = tileable.op
     params = tileable.params.copy()
 
-    new_op = get_fetch_op_cls(tileable_op)()
+    new_op = tileable_op.get_fetch_op_cls(tileable)()
     return new_op.new_tileables(None, chunks=chunks, nsplits=tileable.nsplits,
                                 _key=tileable.key, _id=tileable.id, **params)[0]
 
@@ -526,17 +501,13 @@ def build_fetch(entity, coarse=False):
         raise TypeError('Type %s not supported' % type(entity).__name__)
 
 
-def get_fuse_op_cls(op):
-    return get_expr_module(op).get_fuse_op_cls(op)
-
-
 def build_fuse_chunk(fused_chunks, **kwargs):
     head_chunk = fused_chunks[0]
     tail_chunk = fused_chunks[-1]
     chunk_op = tail_chunk.op
     params = tail_chunk.params.copy()
 
-    fuse_op = get_fuse_op_cls(chunk_op)(
+    fuse_op = chunk_op.get_fuse_op_cls(tail_chunk)(
         sparse=chunk_op.sparse, _key=chunk_op.key, _gpu=tail_chunk.op.gpu,
         _operands=[c.op for c in fused_chunks])
     return fuse_op.new_chunk(
@@ -584,7 +555,15 @@ def merge_chunks(chunk_results):
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
     else:
-        raise TypeError('unsupported type %s' % type(v))
+        result = None
+        for cr in chunk_results:
+            if not cr[1]:
+                continue
+            if result is None:
+                result = cr[1]
+            else:
+                raise TypeError('unsupported type %s' % type(v))
+        return result
 
 
 def calc_nsplits(chunk_idx_to_shape):
