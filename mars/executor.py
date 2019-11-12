@@ -623,11 +623,15 @@ class Executor(object):
             if len(tileable.chunks) > 1:
                 tileable = tileable.op.concat_tileable_chunks(tileable)
 
+        # shallow copy
+        chunk_result = self._chunk_result.copy()
         graph = tileable.build_graph(cls=DirectedGraph, tiled=True, compose=compose)
-
-        return self.execute_graph(graph, [c.key for c in tileable.chunks],
+        ret = self.execute_graph(graph, [c.key for c in tileable.chunks],
                                   n_parallel=n_parallel or n_thread,
-                                  print_progress=print_progress, mock=mock)
+                                  print_progress=print_progress, mock=mock,
+                                  chunk_result=chunk_result)
+        self._chunk_result.update(chunk_result)
+        return ret
 
     execute_tensor = execute_tileable
     execute_dataframe = execute_tileable
