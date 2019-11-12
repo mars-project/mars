@@ -627,9 +627,9 @@ class Executor(object):
         chunk_result = self._chunk_result.copy()
         graph = tileable.build_graph(cls=DirectedGraph, tiled=True, compose=compose)
         ret = self.execute_graph(graph, [c.key for c in tileable.chunks],
-                                  n_parallel=n_parallel or n_thread,
-                                  print_progress=print_progress, mock=mock,
-                                  chunk_result=chunk_result)
+                                 n_parallel=n_parallel or n_thread,
+                                 print_progress=print_progress, mock=mock,
+                                 chunk_result=chunk_result)
         self._chunk_result.update(chunk_result)
         return ret
 
