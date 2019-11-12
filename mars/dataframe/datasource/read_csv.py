@@ -1,4 +1,6 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -198,7 +200,7 @@ def read_csv(path, names=None, sep=None, index_col=None, compression=None, heade
     :param index_col: Column(s) to use as the row labels of the DataFrame, either given as string name or column index.
     :param compression: For on-the-fly decompression of on-disk data.
     :param header: Row number(s) to use as the column names, and the start of the data.
-    :param dtype: Data type for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’: ‘Int64’}
+    :param dtype: Data type for data or columns. E.g. {'a': np.float64, 'b': np.int32, 'c': 'Int64'}
     Use str or object together with suitable na_values settings to preserve and not interpret dtype.
     :param chunk_bytes: Number of chunk bytes.
     :param gpu: If read into cudf DataFrame.
