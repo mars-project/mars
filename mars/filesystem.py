@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import glob as local_glob
 from gzip import GzipFile
 
 from pyarrow import LocalFileSystem as ArrowLocalFileSystem
@@ -33,8 +34,13 @@ if lz4:
 
 
 class LocalFileSystem(ArrowLocalFileSystem):
-    def __init__(self, **_):
-        super(LocalFileSystem, self).__init__()
+    _fs_instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._fs_instance is None:
+            cls._fs_instance = LocalFileSystem()
+        return cls._fs_instance
 
     def stat(self, path):
         os_stat = os.stat(path)
@@ -46,6 +52,10 @@ class LocalFileSystem(ArrowLocalFileSystem):
         else:
             stat['type'] = 'other'
         return stat
+
+    @staticmethod
+    def glob(path):
+        return local_glob.glob(path)
 
 
 file_systems = {
@@ -59,8 +69,11 @@ def get_fs(path, storage_options):
         scheme = 'file'
     else:
         scheme = parse_result.scheme
-    storage_options = storage_options or dict()
-    return file_systems[scheme](**storage_options)
+    if scheme == 'file':
+        return file_systems[scheme].get_instance()
+    else:
+        storage_options = storage_options or dict()
+        return file_systems[scheme](**storage_options)
 
 
 def open_file(path, mode='rb', compression=None, storage_options=None):
@@ -72,6 +85,11 @@ def open_file(path, mode='rb', compression=None, storage_options=None):
         f = compress(f)
 
     return f
+
+
+def glob(path, storage_options=None):
+    fs = get_fs(path, storage_options)
+    return fs.glob(path)
 
 
 def file_size(path, storage_options=None):

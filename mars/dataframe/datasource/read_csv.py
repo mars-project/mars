@@ -16,22 +16,40 @@ from io import BytesIO
 
 import pandas as pd
 import numpy as np
+try:
+    import cudf
+except ImportError:
+    cudf = None
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field
-from ...filesystem import open_file, file_size
+from ...utils import parse_readable_size
+from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, AnyField
+from ...filesystem import open_file, file_size, glob
 from ..utils import parse_index, build_empty_df
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+
+
+def _find_chunk_start_end(f, offset, size):
+    f.seek(offset)
+    if f.tell() == 0:
+        start = 0
+    else:
+        f.readline()
+        start = f.tell()
+    f.seek(offset + size)
+    f.readline()
+    end = f.tell()
+    return start, end
 
 
 class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.READ_CSV
 
-    _path = StringField('path')
+    _path = AnyField('path')
     _names = ListField('names')
     _sep = StringField('sep')
-    _header = Int32Field('header')
+    _header = AnyField('header')
     _index_col = Int32Field('index_col')
     _compression = StringField('compression')
     _offset = Int64Field('offset')
@@ -40,10 +58,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None, compression=None,
-                 offset=None, size=None, storage_options=None, **kw):
+                 offset=None, size=None, gpu=None, storage_options=None, **kw):
         super(DataFrameReadCSV, self).__init__(_path=path, _names=names, _sep=sep, _header=header,
                                                _index_col=index_col, _compression=compression,
-                                               _offset=offset, _size=size,
+                                               _offset=offset, _size=size, _gpu=gpu,
                                                _storage_options=storage_options,
                                                _object_type=ObjectType.dataframe, **kw)
 
@@ -101,37 +119,32 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=[new_chunk], nsplits=nsplits)
 
     @classmethod
-    def _find_start_end(cls, f, offset, size):
-        f.seek(offset)
-        if f.tell() == 0:
-            start = 0
-        else:
-            f.readline()
-            start = f.tell()
-        f.seek(offset + size)
-        f.readline()
-        end = f.tell()
-        return start, end
-
-    @classmethod
     def tile(cls, op):
         if op.compression:
             return cls._tile_compressed(op)
 
         df = op.outputs[0]
         chunk_bytes = df.extra_params.chunk_bytes
-        total_bytes = file_size(op.path)
-        offset = 0
+        chunk_bytes = int(parse_readable_size(chunk_bytes)[0])
+
+        paths = op.path if isinstance(op.path, (tuple, list)) else [op.path]
+
         out_chunks = []
-        for i in range(int(total_bytes / chunk_bytes) + 1):
-            chunk_op = op.copy().reset_key()
-            chunk_op._offset = offset
-            chunk_op._size = min(chunk_bytes, total_bytes - offset)
-            shape = (np.nan, len(df.dtypes))
-            new_chunk = chunk_op.new_chunk(None, shape=shape, index=(i, 0), index_value=df.index_value,
-                                           columns_value=df.columns, dtypes=df.dtypes)
-            out_chunks.append(new_chunk)
-            offset += chunk_bytes
+        index_num = 0
+        for path in paths:
+            total_bytes = file_size(path)
+            offset = 0
+            for i in range(int(np.ceil(total_bytes / chunk_bytes))):
+                chunk_op = op.copy().reset_key()
+                chunk_op._path = path
+                chunk_op._offset = offset
+                chunk_op._size = min(chunk_bytes, total_bytes - offset)
+                shape = (np.nan, len(df.dtypes))
+                new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=df.index_value,
+                                               columns_value=df.columns, dtypes=df.dtypes)
+                out_chunks.append(new_chunk)
+                index_num += 1
+                offset += chunk_bytes
 
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
@@ -142,26 +155,30 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
+        xdf = cudf if op.gpu else pd
         out_df = op.outputs[0]
+        csv_kwargs = op.extra_params.copy()
+
         with open_file(op.path, compression=op.compression, storage_options=op.storage_options) as f:
             if op.compression is not None:
-                df = pd.read_csv(BytesIO(f.read()), header=op.header, names=op.names, index_col=op.index_col,
-                                 dtype=out_df.dtypes.to_dict())
+                # As we specify names and dtype, we need to skip header rows
+                csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+                df = xdf.read_csv(BytesIO(f.read()), names=op.names, index_col=op.index_col,
+                                  dtype=out_df.dtypes.to_dict(), **csv_kwargs)
             else:
-                start, end = cls._find_start_end(f, op.offset, op.size)
+                start, end = _find_chunk_start_end(f, op.offset, op.size)
                 f.seek(start)
                 b = BytesIO(f.read(end - start))
                 if end == start:
                     # the last chunk may be empty
                     df = build_empty_df(out_df.dtypes)
                 else:
-                    if out_df.index == (0, 0):
+                    if start == 0:
                         # The first chunk contains header
-                        df = pd.read_csv(b, header=op.header, names=op.names, index_col=op.index_col,
-                                         dtype=out_df.dtypes.to_dict())
-                    else:
-                        df = pd.read_csv(b, names=op.names, index_col=op.index_col,
-                                         dtype=out_df.dtypes.to_dict())
+                        # As we specify names and dtype, we need to skip header rows
+                        csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+                    df = xdf.read_csv(b, names=op.names, index_col=op.index_col,
+                                      dtype=out_df.dtypes.to_dict(), **csv_kwargs)
         ctx[out_df.key] = df
 
     def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):
@@ -170,15 +187,41 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=columns_value, chunk_bytes=chunk_bytes)
 
 
-def read_csv(path, names=None, sep=None, index_col=None, compression=None, header=None, dtype=None,
-             chunk_bytes=None, storage_options=None, **kwargs):
+def read_csv(path, names=None, sep=None, index_col=None, compression=None, header='infer', dtype=None,
+             chunk_bytes=None, gpu=None, head_bytes='100k', head_lines=None, storage_options=None, **kwargs):
+    """
+    Read comma-separated values (csv) file(s) into DataFrame.
+    :param path: file path(s).
+    :param names: List of column names to use. If file contains no header row,
+    then you should explicitly pass header=None. Duplicates in this list are not allowed.
+    :param sep:Delimiter to use.
+    :param index_col: Column(s) to use as the row labels of the DataFrame, either given as string name or column index.
+    :param compression: For on-the-fly decompression of on-disk data.
+    :param header: Row number(s) to use as the column names, and the start of the data.
+    :param dtype: Data type for data or columns. E.g. {‘a’: np.float64, ‘b’: np.int32, ‘c’: ‘Int64’}
+    Use str or object together with suitable na_values settings to preserve and not interpret dtype.
+    :param chunk_bytes: Number of chunk bytes.
+    :param gpu: If read into cudf DataFrame.
+    :param head_bytes: Number of bytes to use in the head of file, mainly for data inference.
+    :param head_lines: Number of lines to use in the head of file, mainly for data inference.
+    :param storage_options: Options for storage connection.
+    :param kwargs:
+    :return: Mars DataFrame.
+    """
     # infer dtypes and columns
-    with open_file(path, compression=compression, storage_options=storage_options) as f:
-        if header:
-            _ = [f.readline() for _ in range(header)]  # noqa: F841
-        head = f.readline()
-        first_row = f.readline()
-        mini_df = pd.read_csv(BytesIO(head + first_row), index_col=index_col, dtype=dtype, names=names)
+    if isinstance(path, (list, tuple)):
+        file_path = path[0]
+    else:
+        file_path = glob(path)[0]
+    with open_file(file_path, compression=compression, storage_options=storage_options) as f:
+        if head_lines is not None:
+            b = b''.join([f.readline() for _ in range(head_lines)])
+        else:
+            head_bytes = int(parse_readable_size(head_bytes)[0])
+            head_start, head_end = _find_chunk_start_end(f, 0, head_bytes)
+            f.seek(head_start)
+            b = f.read(head_end - head_start)
+        mini_df = pd.read_csv(BytesIO(b), index_col=index_col, dtype=dtype, names=names, header=header)
 
     if isinstance(mini_df.index, pd.RangeIndex):
         index_value = parse_index(pd.RangeIndex(0))
@@ -188,12 +231,8 @@ def read_csv(path, names=None, sep=None, index_col=None, compression=None, heade
     if index_col and not isinstance(index_col, int):
         index_col = list(mini_df.columns).index(index_col)
     names = list(mini_df.columns)
-    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header or 0, index_col=index_col,
-                          compression=compression, storage_options=storage_options, **kwargs)
+    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
+                          compression=compression, gpu=gpu, storage_options=storage_options, **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=mini_df.dtypes, chunk_bytes=chunk_bytes)
-
-
-
-

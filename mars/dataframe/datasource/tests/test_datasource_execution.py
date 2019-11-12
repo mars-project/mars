@@ -152,6 +152,25 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+        # test missing value
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame({'c1': [np.nan, 'a', 'b', 'c'], 'c2': [1, 2, 3, np.nan],
+                               'c3': [np.nan, np.nan, 3.4, 2.2]})
+            df.to_csv(file_path)
+
+            pdf = pd.read_csv(file_path, index_col=0)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, index_col=0, chunk_bytes=12),
+                                                   concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)
+
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
         try:
@@ -174,6 +193,7 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+        # test compression
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.gzip')
         try:
@@ -191,8 +211,29 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(pdf, mdf)
 
             mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, compression='gzip', index_col=0,
-                                                               chunk_bytes=100), concat=True)[0]
+                                                               chunk_bytes='1k'), concat=True)[0]
             pd.testing.assert_frame_equal(pdf, mdf2)
 
         finally:
             shutil.rmtree(tempdir)
+
+        # test multiply files
+        tempdir = tempfile.mkdtemp()
+        try:
+            df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
+
+            file_paths = [os.path.join(tempdir, 'test{}.csv'.format(i)) for i in range(3)]
+            df[:100].to_csv(file_paths[0])
+            df[100:200].to_csv(file_paths[1])
+            df[200:].to_csv(file_paths[2])
+
+            mdf = self.executor.execute_dataframe(md.read_csv(file_paths, index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(df, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_paths, index_col=0, chunk_bytes=50),
+                                                   concat=True)[0]
+            pd.testing.assert_frame_equal(df, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)
+
