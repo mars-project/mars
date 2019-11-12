@@ -611,7 +611,7 @@ class Executor(object):
         res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
-            self._chunk_result.clear()
+            chunk_result.clear()
         return res
 
     @kernel_mode
