@@ -313,14 +313,9 @@ def require_cudf(func):
     return func
 
 
-DEFAULT_PORT = 12345
-
-
 def create_actor_pool(*args, **kwargs):
     import gevent.socket
     from mars.actors import create_actor_pool as new_actor_pool
-
-    RETRY_NUM = 100
 
     address = kwargs.pop('address', None)
     if not address:
@@ -331,15 +326,13 @@ def create_actor_pool(*args, **kwargs):
         port = int(address.rsplit(':', 1)[1])
     else:
         host = '127.0.0.1'
-        port = DEFAULT_PORT
+        port = np.random.randint(10000, 65535)
     it = itertools.count(port)
 
-    retry = 0
-    while True:
+    for _ in range(5):
         try:
             address = '{0}:{1}'.format(host, next(it))
             return new_actor_pool(address, *args, **kwargs)
         except (OSError, gevent.socket.error):
-            if retry == RETRY_NUM:
-                raise
-        retry += 1
+            continue
+    raise OSError("Failed to create actor pool")
