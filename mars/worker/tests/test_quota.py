@@ -15,8 +15,7 @@
 import functools
 import time
 
-from mars.actors import create_actor_pool
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port, build_exc_info
 from mars.worker import QuotaActor, MemQuotaActor, DispatchActor, \
     ProcessHelperActor, StatusActor

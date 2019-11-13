@@ -106,7 +106,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._stage = Stage.agg
             agg_chunk = agg_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                          index_value=out_df.index_value,
-                                         columns_value=out_df.columns)
+                                         columns_value=out_df.columns_value)
             agg_chunks.append(agg_chunk)
 
         # Shuffle the aggregation chunk.
@@ -119,12 +119,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             combine_op._stage = Stage.combine
             combine_chunk = combine_op.new_chunk([chunk], shape=out_df.shape, index=chunk.index,
                                                  index_value=out_df.index_value,
-                                                 columns_value=out_df.columns)
+                                                 columns_value=out_df.columns_value)
             combine_chunks.append(combine_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes([in_df], shape=out_df.shape, index_value=out_df.index_value,
-                                     columns_value=out_df.columns, chunks=combine_chunks,
+                                     columns_value=out_df.columns_value, chunks=combine_chunks,
                                      nsplits=((np.nan,) * len(combine_chunks), (out_df.shape[1],)))
 
     @classmethod

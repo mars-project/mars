@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ import uuid
 
 import gevent
 
-from mars.actors import create_actor_pool
-from mars.compat import TimeoutError
+from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.config import options
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ResourceActor, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
+from mars.tests.core import create_actor_pool
 from mars.worker import DispatchActor, WorkerDaemonActor
 
 

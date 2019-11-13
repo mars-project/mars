@@ -27,8 +27,7 @@ from mars.scheduler import OperandActor, ResourceActor, GraphActor, AssignerActo
 from mars.scheduler.utils import GraphState, SchedulerClusterInfoActor, SchedulerActor
 from mars.worker.execution import GraphExecutionRecord
 from mars.utils import serialize_graph, log_unhandled, build_exc_info
-from mars.actors import create_actor_pool
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 
 logger = logging.getLogger(__name__)
 

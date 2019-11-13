@@ -98,13 +98,13 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
             chunk_op.extra_params['end_index'] = end_index
             out_chunk = chunk_op.new_chunk(
                 [chunk], shape=(chunk.shape[0], df.shape[1]), index=(chunk.index[0], 0), dtypes=df.dtypes,
-                index_value=chunk_index_value, columns_value=df.columns)
+                index_value=chunk_index_value, columns_value=df.columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes([tensor], df.shape, dtypes=df.dtypes,
                                      index_value=df.index_value,
-                                     columns_value=df.columns,
+                                     columns_value=df.columns_value,
                                      chunks=out_chunks, nsplits=[tensor.nsplits[0], [df.shape[1]]])
 
     @classmethod
@@ -112,7 +112,7 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
         chunk = op.outputs[0]
         ctx[chunk.key] = pd.DataFrame.from_records(
             ctx[op.inputs[0].key],
-            index=chunk.index_value.to_pandas(), columns=chunk.columns.to_pandas(),
+            index=chunk.index_value.to_pandas(), columns=chunk.columns_value.to_pandas(),
             exclude=op.exclude, coerce_float=op.coerce_float, nrows=op.nrows)
 
 

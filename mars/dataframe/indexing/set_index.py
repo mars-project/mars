@@ -71,7 +71,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
 
         try:
-            column_index = in_df.columns.to_pandas().get_loc(op.keys)
+            column_index = in_df.columns_value.to_pandas().get_loc(op.keys)
         except KeyError:
             raise NotImplementedError('The new index label must be a column of the original dataframe')
 
@@ -83,10 +83,10 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                 input_chunk = in_df.cix[row_idx, col_idx]
                 if op.drop and input_chunk.key == index_chunk.key:
                     new_shape = (input_chunk.shape[0], input_chunk.shape[1] - 1)
-                    columns = parse_index(input_chunk.columns.to_pandas().drop(op.keys), store_data=True)
+                    columns = parse_index(input_chunk.columns_value.to_pandas().drop(op.keys), store_data=True)
                 else:
                     new_shape = input_chunk.shape
-                    columns = input_chunk.columns
+                    columns = input_chunk.columns_value
                 out_op = op.copy().reset_key()
                 out_chunk = out_op.new_chunk([index_chunk, input_chunk],
                                              shape=new_shape, dtypes=out_df.dtypes, index=input_chunk.index,
@@ -97,7 +97,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
                                      index_value=out_df.index_value,
-                                     columns_value=out_df.columns,
+                                     columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=in_df.nsplits)
 
     @classmethod

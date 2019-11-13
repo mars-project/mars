@@ -17,11 +17,11 @@ import sys
 import unittest
 import uuid
 
-from mars.actors import create_actor_pool, new_client
+from mars.actors import new_client
 from mars.scheduler.chunkmeta import WorkerMeta, ChunkMetaStore, ChunkMetaCache, \
     ChunkMetaActor, ChunkMetaClient
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
 
 
