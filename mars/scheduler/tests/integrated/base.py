@@ -197,12 +197,12 @@ class SchedulerIntegratedTest(unittest.TestCase):
             try:
                 try:
                     started_schedulers = self.cluster_info.get_schedulers()
-                    if len(started_schedulers) < n_schedulers:
-                        raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
-                            len(started_schedulers), n_schedulers
-                        ))
                 except Exception as e:
                     raise ProcessRequirementUnmetError('Failed to get scheduler numbers, %s' % e)
+                if len(started_schedulers) < n_schedulers:
+                    raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
+                        len(started_schedulers), n_schedulers
+                    ))
                 actor_address = self.cluster_info.get_scheduler(SessionManagerActor.default_uid())
                 self.session_manager_ref = actor_client.actor_ref(
                     SessionManagerActor.default_uid(), address=actor_address)
