@@ -16,12 +16,12 @@ import time
 import unittest
 import uuid
 
-from mars.actors import create_actor_pool, FunctionActor
+from mars.actors import FunctionActor
 from mars.config import options
 from mars.scheduler import ChunkMetaActor, ChunkMetaClient, GraphActor, \
     ResourceActor, SessionManagerActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.tests.core import mock
+from mars.tests.core import mock, create_actor_pool
 from mars.utils import get_next_port
 
 

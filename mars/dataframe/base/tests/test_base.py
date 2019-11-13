@@ -30,7 +30,7 @@ class Test(TestBase):
         cdf = to_gpu(df)
 
         self.assertEqual(df.index_value, cdf.index_value)
-        self.assertEqual(df.columns, cdf.columns)
+        self.assertEqual(df.columns_value, cdf.columns_value)
         self.assertTrue(cdf.op.gpu)
         pd.testing.assert_series_equal(df.dtypes, cdf.dtypes)
 
@@ -38,7 +38,7 @@ class Test(TestBase):
 
         self.assertEqual(df.nsplits, cdf.nsplits)
         self.assertEqual(df.chunks[0].index_value, cdf.chunks[0].index_value)
-        self.assertEqual(df.chunks[0].columns, cdf.chunks[0].columns)
+        self.assertEqual(df.chunks[0].columns_value, cdf.chunks[0].columns_value)
         self.assertTrue(cdf.chunks[0].op.gpu)
         pd.testing.assert_series_equal(df.chunks[0].dtypes, cdf.chunks[0].dtypes)
 
@@ -68,7 +68,7 @@ class Test(TestBase):
         df2 = to_cpu(cdf)
 
         self.assertEqual(df.index_value, df2.index_value)
-        self.assertEqual(df.columns, df2.columns)
+        self.assertEqual(df.columns_value, df2.columns_value)
         self.assertFalse(df2.op.gpu)
         pd.testing.assert_series_equal(df.dtypes, df2.dtypes)
 
@@ -76,7 +76,7 @@ class Test(TestBase):
 
         self.assertEqual(df.nsplits, df2.nsplits)
         self.assertEqual(df.chunks[0].index_value, df2.chunks[0].index_value)
-        self.assertEqual(df.chunks[0].columns, df2.chunks[0].columns)
+        self.assertEqual(df.chunks[0].columns_value, df2.chunks[0].columns_value)
         self.assertFalse(df2.chunks[0].op.gpu)
         pd.testing.assert_series_equal(df.chunks[0].dtypes, df2.chunks[0].dtypes)
 

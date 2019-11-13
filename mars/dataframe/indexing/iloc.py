@@ -90,13 +90,13 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         elif isinstance(self.indexes[0], Integral):
             shape = shape1
             dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
-            index_value = indexing_index_value(df.columns, self.indexes[1])
+            index_value = indexing_index_value(df.columns_value, self.indexes[1])
             self._object_type = ObjectType.series
             return self.new_series([df], shape=shape, dtype=dtype, index_value=index_value)
         else:
             return self.new_dataframe([df], shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
                                       index_value=indexing_index_value(df.index_value, self.indexes[0]),
-                                      columns_value=indexing_index_value(df.columns, self.indexes[1], store_data=True))
+                                      columns_value=indexing_index_value(df.columns_value, self.indexes[1], store_data=True))
 
     # FIXME The view behavior of DataFrame.iloc
     #
@@ -162,12 +162,12 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             elif integral_index_on_index:
                 shape = column_chunk.shape
                 index = column_chunk.index
-                index_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0])
+                index_value = indexing_index_value(in_chunk.columns_value, column_chunk.op.indexes[0])
                 out_chunk = chunk_op.new_chunk([in_chunk], shape=shape, index=index,
                                                dtype=out_val.dtype, index_value=index_value)
             else:
                 index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes[0])
-                columns_value = indexing_index_value(in_chunk.columns, column_chunk.op.indexes[0], store_data=True)
+                columns_value = indexing_index_value(in_chunk.columns_value, column_chunk.op.indexes[0], store_data=True)
                 dtypes = in_chunk.dtypes.iloc[column_chunk.op.indexes[0]]
                 out_chunk = chunk_op.new_chunk([in_chunk],
                                                shape=index_chunk.shape + column_chunk.shape,
@@ -187,7 +187,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
             nsplits = tensor0.nsplits + tensor1.nsplits
             return new_op.new_dataframes(op.inputs, out_val.shape, dtypes=out_val.dtypes,
                                         index_value=out_val.index_value,
-                                        columns_value=out_val.columns, chunks=out_chunks, nsplits=nsplits)
+                                        columns_value=out_val.columns_value, chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -221,7 +221,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
             raise NotImplementedError('The index value cannot be unexecuted mars tensor')
         return self.new_dataframe([df], shape=df.shape, dtypes=df.dtypes,
-                                  index_value=df.index_value, columns_value=df.columns)
+                                  index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def tile(cls, op):
@@ -246,12 +246,12 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk],
                                                 shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
-                                                index_value=chunk.index_value, columns_value=chunk.columns)
+                                                index_value=chunk.index_value, columns_value=chunk.columns_value)
                 out_chunks.append(out_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     index_value=out_df.index_value, columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=in_df.nsplits)
 
     @classmethod

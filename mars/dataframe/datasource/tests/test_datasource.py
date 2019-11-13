@@ -50,7 +50,7 @@ class Test(TestBase):
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
 
         # json
         chunk = df.chunks[0]
@@ -62,7 +62,7 @@ class Test(TestBase):
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
 
     def testDataFrameGraphSerialize(self):
         df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
@@ -79,7 +79,7 @@ class Test(TestBase):
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
         pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
-        pd.testing.assert_index_equal(t2.columns.to_pandas(), t.columns.to_pandas())
+        pd.testing.assert_index_equal(t2.columns_value.to_pandas(), t.columns_value.to_pandas())
 
         jsn = graph.to_json()
         graph2 = DAG.from_json(jsn)
@@ -91,7 +91,7 @@ class Test(TestBase):
         self.assertEqual(t.shape, t2.shape)
         self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
         pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
-        pd.testing.assert_index_equal(t2.columns.to_pandas(), t.columns.to_pandas())
+        pd.testing.assert_index_equal(t2.columns_value.to_pandas(), t.columns_value.to_pandas())
 
         # test graph with tiled DataFrame
         t2 = from_pandas_df(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
@@ -107,7 +107,7 @@ class Test(TestBase):
         self.assertEqual(chunks[0].index, t2.chunks[0].index)
         self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
         pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
-        pd.testing.assert_index_equal(chunks[0].columns.to_pandas(), t2.chunks[0].columns.to_pandas())
+        pd.testing.assert_index_equal(chunks[0].columns_value.to_pandas(), t2.chunks[0].columns_value.to_pandas())
 
         jsn = graph.to_json()
         graph2 = DAG.from_json(jsn)
@@ -118,7 +118,7 @@ class Test(TestBase):
         self.assertEqual(chunks[0].index, t2.chunks[0].index)
         self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
         pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
-        pd.testing.assert_index_equal(chunks[0].columns.to_pandas(), t2.chunks[0].columns.to_pandas())
+        pd.testing.assert_index_equal(chunks[0].columns_value.to_pandas(), t2.chunks[0].columns_value.to_pandas())
 
     def testFromPandasDataFrame(self):
         data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
@@ -132,7 +132,7 @@ class Test(TestBase):
         self.assertTrue(df.index_value.is_unique)
         self.assertEqual(df.index_value.min_val, 0)
         self.assertEqual(df.index_value.max_val, 9)
-        np.testing.assert_equal(df.columns._index_value._data, data.columns.values)
+        np.testing.assert_equal(df.columns_value._index_value._data, data.columns.values)
 
         df.tiles()
 
@@ -259,7 +259,7 @@ class Test(TestBase):
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
 
         # json
         chunk = df.chunks[0]
@@ -271,7 +271,7 @@ class Test(TestBase):
         self.assertEqual(chunk.key, chunk2.key)
         self.assertEqual(chunk.shape, chunk2.shape)
         pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns.to_pandas(), chunk.columns.to_pandas())
+        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
 
     def testFromTensor(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)
@@ -313,10 +313,10 @@ class Test(TestBase):
         # from tensor with given columns
         df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
         df.tiles()
-        pd.testing.assert_index_equal(df.chunks[0].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
-        pd.testing.assert_index_equal(df.chunks[1].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
-        pd.testing.assert_index_equal(df.chunks[2].columns.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
-        pd.testing.assert_index_equal(df.chunks[3].columns.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[1].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[2].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[3].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
 
         # test series from tensor
         tensor = mt.random.rand(10, chunk_size=4)
@@ -364,7 +364,7 @@ class Test(TestBase):
         names = pd.Index(['x', 'y', 'z'])
         dtypes = pd.Series({'x': np.dtype('int'), 'y': np.dtype('double'), 'z': np.dtype('<U16')})
         for chunk in df.chunks:
-            pd.testing.assert_index_equal(chunk.columns.to_pandas(), names)
+            pd.testing.assert_index_equal(chunk.columns_value.to_pandas(), names)
             pd.testing.assert_series_equal(chunk.dtypes, dtypes)
 
         pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 3))

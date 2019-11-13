@@ -195,7 +195,10 @@ class SchedulerIntegratedTest(unittest.TestCase):
         check_time = time.time()
         while True:
             try:
-                started_schedulers = self.cluster_info.get_schedulers()
+                try:
+                    started_schedulers = self.cluster_info.get_schedulers()
+                except Exception as e:
+                    raise ProcessRequirementUnmetError('Failed to get scheduler numbers, %s' % e)
                 if len(started_schedulers) < n_schedulers:
                     raise ProcessRequirementUnmetError('Schedulers does not met requirement: %d < %d.' % (
                         len(started_schedulers), n_schedulers

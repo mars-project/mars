@@ -176,7 +176,7 @@ class Test(TestBase):
         #
         # But we can guarantee that other effective columns have absolutely same value with pandas.
 
-        columns_to_compare = jdf1.columns.to_pandas()
+        columns_to_compare = jdf1.columns_value.to_pandas()
 
         pd.testing.assert_frame_equal(sort_dataframe_inplace(expected1[columns_to_compare], 0, 1),
                                       sort_dataframe_inplace(result1[columns_to_compare], 0, 1))

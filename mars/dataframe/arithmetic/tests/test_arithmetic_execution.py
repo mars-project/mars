@@ -219,6 +219,30 @@ class TestBinary(TestBase):
 
         pd.testing.assert_frame_equal(expected, result)
 
+    def testSameIndex(self):
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(0, 2, size=(10,)),
+                            columns=['c' + str(i) for i in range(10)])
+        df = from_pandas(data, chunk_size=3)
+        df2 = self.func(df, df)
+
+        expected = self.func(data, data)
+        result = self.executor.execute_dataframe(df2, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        series = from_pandas_series(data.iloc[0], chunk_size=3)
+        df3 = self.func(df, series)
+
+        expected = self.func(data, data.iloc[0])
+        result = self.executor.execute_dataframe(df3, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
+        series = from_pandas_series(data.iloc[:, 0], chunk_size=3)
+        df4 = getattr(df, self.func_name)(series, axis=0)
+
+        expected = getattr(data, self.func_name)(data.iloc[:, 0], axis=0)
+        result = self.executor.execute_dataframe(df4, concat=True)[0]
+        pd.testing.assert_frame_equal(expected, result)
+
     def testChained(self):
         data1 = pd.DataFrame(np.random.rand(10, 10))
         df1 = from_pandas(data1, chunk_size=5)

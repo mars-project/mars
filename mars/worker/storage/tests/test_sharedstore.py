@@ -18,7 +18,7 @@ import uuid
 import numpy as np
 from numpy.testing import assert_allclose
 
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.errors import StorageDataExists, StorageFull
 from mars.utils import get_next_port
 from mars.worker.storage import *

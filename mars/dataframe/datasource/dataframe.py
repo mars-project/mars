@@ -82,7 +82,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         new_op = op.copy()
         return new_op.new_dataframes(None, df.shape, dtypes=op.dtypes,
                                      index_value=df.index_value,
-                                     columns_value=df.columns,
+                                     columns_value=df.columns_value,
                                      chunks=out_chunks, nsplits=chunk_size)
 
     @classmethod

@@ -23,7 +23,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from mars import promise
-from mars.actors import create_actor_pool
 from mars.compat import six
 from mars.config import options
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
@@ -31,7 +30,7 @@ from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ChunkMetaActor, ResourceActor
 from mars.scheduler.chunkmeta import WorkerMeta
 from mars.scheduler.utils import SchedulerClusterInfoActor
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.worker.tests.base import WorkerCase
 from mars.worker import *
 from mars.worker.storage import PlasmaKeyMapActor

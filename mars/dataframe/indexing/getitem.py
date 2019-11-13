@@ -231,13 +231,13 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                           key=tokenize(df.key, self.mask.key,
                                                        df.index_value.key, self.mask.index_value.key))
                 return self.new_dataframe([df, self._mask], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=index_value, columns_value=df.columns)
+                                          index_value=index_value, columns_value=df.columns_value)
             else:
                 index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype),
                                           key=tokenize(df.key, pd.util.hash_pandas_object(self.mask),
                                                        df.index_value.key, parse_index(self.mask.index).key))
                 return self.new_dataframe([df], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=index_value, columns_value=df.columns)
+                                          index_value=index_value, columns_value=df.columns_value)
 
     @classmethod
     def tile(cls, op):
@@ -265,7 +265,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk],
                                                             shape=(np.nan, df_chunk.shape[1]), index=idx,
                                                             index_value=df_chunk.index_value,
-                                                            columns_value=df_chunk.columns)
+                                                            columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
 
         else:
@@ -277,14 +277,14 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                     chunk_op._mask = op.mask.iloc[nsplits_acc[idx]:nsplits_acc[idx+1]]
                     out_chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index,
                                                     shape=(np.nan, in_chunk.shape[1]), dtypes=in_chunk.dtypes,
-                                                    index_value=in_df.index_value, columns_value=in_chunk.columns)
+                                                    index_value=in_df.index_value, columns_value=in_chunk.columns_value)
                     out_chunks.append(out_chunk)
 
             nsplits = ((np.nan,) * in_df.chunk_shape[0], in_df.nsplits[1])
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     index_value=out_df.index_value, columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
@@ -333,7 +333,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             nsplits = (in_df.nsplits[0], tuple(column_nsplits))
             return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
                                          index_value=out_df.index_value,
-                                         columns_value=out_df.columns,
+                                         columns_value=out_df.columns_value,
                                          chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
@@ -351,7 +351,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
 
 def dataframe_getitem(df, item):
-    columns = df.columns.to_pandas()
+    columns = df.columns_value.to_pandas()
     if isinstance(item, list):
         for col_name in item:
             if col_name not in columns:

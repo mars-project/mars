@@ -27,7 +27,6 @@ from numpy.testing import assert_array_equal
 from pyarrow import plasma
 
 from mars import promise
-from mars.actors import create_actor_pool
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull,\
@@ -35,7 +34,7 @@ from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull,\
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
 from mars.worker import SenderActor, ReceiverActor, DispatchActor, QuotaActor, \
     MemQuotaActor, StorageManagerActor, IORunnerActor, StatusActor, \
@@ -117,7 +116,6 @@ class MockReceiverActor(WorkerActor):
             meta.status = ReceiveStatus.RECEIVED
         for cb in self._callbacks[query_key]:
             self.tell_promise(cb)
-
 
     def cancel_receive(self, session_id, chunk_key):
         pass
