@@ -406,7 +406,7 @@ class _MinMaxSplitInfo(object):
                 return self.get_col_right_split(out_idx)
 
 
-def _get_chunk_index_min_max(index, index_chunks, is_monotonic=True):
+def _get_chunk_index_min_max(index_chunks):
     chunk_index_min_max = []
     for chunk in index_chunks:
         min_val = chunk.min_val
@@ -416,16 +416,21 @@ def _get_chunk_index_min_max(index, index_chunks, is_monotonic=True):
         if min_val is None or max_val is None:
             return
         chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
-    if is_monotonic and index.is_monotonic_decreasing:
+    return chunk_index_min_max
+
+
+def _get_monotonic_chunk_index_min_max(index, index_chunks):
+    chunk_index_min_max = _get_chunk_index_min_max(index_chunks)
+    if index.is_monotonic_decreasing:
         return list(reversed(chunk_index_min_max)), False
-    if is_monotonic:
-        for j in range(len(chunk_index_min_max) - 1):
-            # overlap only if the prev max is close and curr min is close
-            # and they are identical
-            prev_max, prev_max_close = chunk_index_min_max[j][2:]
-            curr_min, curr_min_close = chunk_index_min_max[j + 1][:2]
-            if prev_max_close and curr_min_close and prev_max == curr_min:
-                return
+
+    for j in range(len(chunk_index_min_max) - 1):
+        # overlap only if the prev max is close and curr min is close
+        # and they are identical
+        prev_max, prev_max_close = chunk_index_min_max[j][2:]
+        curr_min, curr_min_close = chunk_index_min_max[j + 1][:2]
+        if prev_max_close and curr_min_close and prev_max == curr_min:
+            return
     return chunk_index_min_max, True
 
 
@@ -475,15 +480,15 @@ def _calc_axis_splits(left_axis, right_axis, left_axis_chunks, right_axis_chunks
     else:
         # no need to do shuffle on this axis
         if _is_index_identical(left_axis_chunks, right_axis_chunks):
-            left_chunk_index_min_max = _get_chunk_index_min_max(
-                left_axis, left_axis_chunks, is_monotonic=False)[0]
+            left_chunk_index_min_max = _get_chunk_index_min_max(left_axis_chunks)
             left_increase = None
-            right_chunk_index_min_max = _get_chunk_index_min_max(
-                right_axis, right_axis_chunks, is_monotonic=False)[0]
+            right_chunk_index_min_max = _get_chunk_index_min_max(right_axis_chunks)
             right_increase = None
         else:
-            left_chunk_index_min_max, left_increase = _get_chunk_index_min_max(left_axis, left_axis_chunks)
-            right_chunk_index_min_max, right_increase = _get_chunk_index_min_max(right_axis, right_axis_chunks)
+            left_chunk_index_min_max, left_increase = _get_monotonic_chunk_index_min_max(left_axis,
+                                                                                         left_axis_chunks)
+            right_chunk_index_min_max, right_increase = _get_monotonic_chunk_index_min_max(right_axis,
+                                                                                           right_axis_chunks)
         if len(left_chunk_index_min_max) == 1 and len(right_chunk_index_min_max) == 1:
             # both left and right has only 1 chunk
             left_splits, right_splits = [left_chunk_index_min_max], [right_chunk_index_min_max]
