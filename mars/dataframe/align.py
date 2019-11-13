@@ -406,7 +406,7 @@ class _MinMaxSplitInfo(object):
                 return self.get_col_right_split(out_idx)
 
 
-def _get_chunk_index_min_max(index, index_chunks, check_overlap=True):
+def _get_chunk_index_min_max(index, index_chunks, is_monotonic=True):
     chunk_index_min_max = []
     for chunk in index_chunks:
         min_val = chunk.min_val
@@ -416,9 +416,9 @@ def _get_chunk_index_min_max(index, index_chunks, check_overlap=True):
         if min_val is None or max_val is None:
             return
         chunk_index_min_max.append((min_val, min_val_close, max_val, max_val_close))
-    if index.is_monotonic_decreasing:
+    if is_monotonic and index.is_monotonic_decreasing:
         return list(reversed(chunk_index_min_max)), False
-    if check_overlap:
+    if is_monotonic:
         for j in range(len(chunk_index_min_max) - 1):
             # overlap only if the prev max is close and curr min is close
             # and they are identical
@@ -475,10 +475,12 @@ def _calc_axis_splits(left_axis, right_axis, left_axis_chunks, right_axis_chunks
     else:
         # no need to do shuffle on this axis
         if _is_index_identical(left_axis_chunks, right_axis_chunks):
-            left_chunk_index_min_max, left_increase = _get_chunk_index_min_max(left_axis, left_axis_chunks,
-                                                                               check_overlap=False)
-            right_chunk_index_min_max, right_increase = _get_chunk_index_min_max(right_axis, right_axis_chunks,
-                                                                                 check_overlap=False)
+            left_chunk_index_min_max = _get_chunk_index_min_max(
+                left_axis, left_axis_chunks, is_monotonic=False)[0]
+            left_increase = None
+            right_chunk_index_min_max = _get_chunk_index_min_max(
+                right_axis, right_axis_chunks, is_monotonic=False)[0]
+            right_increase = None
         else:
             left_chunk_index_min_max, left_increase = _get_chunk_index_min_max(left_axis, left_axis_chunks)
             right_chunk_index_min_max, right_increase = _get_chunk_index_min_max(right_axis, right_axis_chunks)

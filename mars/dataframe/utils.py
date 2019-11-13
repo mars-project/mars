@@ -330,9 +330,9 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
             else:
                 right_curr_min_max[:2] = max_val[0], not max_val[1]
 
-    if not left_increase:
+    if left_increase is False:
         left_idx_to_min_max = list(reversed(left_idx_to_min_max))
-    if not right_increase:
+    if right_increase is False:
         right_idx_to_min_max = list(reversed(right_idx_to_min_max))
 
     return left_idx_to_min_max, right_idx_to_min_max
@@ -344,16 +344,16 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     # which means there is one input chunk, and will be split into 2 out chunks
     # in this function, we want to build a new dict from the out chunk index to
     # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
-    if not increase:
+    if increase is False:
         splits = list(reversed(splits))
     out_idx = itertools.count(0)
     res = dict()
     for origin_idx, _ in enumerate(splits):
         for pos in range(len(splits[origin_idx])):
-            if increase:
-                o_idx = origin_idx
-            else:
+            if increase is False:
                 o_idx = len(splits) - origin_idx - 1
+            else:
+                o_idx = origin_idx
             res[next(out_idx)] = o_idx, pos
     return res
 

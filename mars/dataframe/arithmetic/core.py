@@ -251,7 +251,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             dtype = find_common_type([x1.dtype, type(x2)])
             return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
 
-        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(x2, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
+        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(
+                x2, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
             index_shape, column_shape, dtypes, columns, index = np.nan, np.nan, None, None, None
 
             if x1.columns_value is not None and x2.columns_value is not None and \
