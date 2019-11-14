@@ -26,6 +26,6 @@ except ImportError:
 class Test(unittest.TestCase):
     def testLocalRunTensorFlowScript(self):
         self.assertEqual(run_tensorflow_script(
-            'tf_test.py', n_workers=2, command_argv=['multiple'],
+            'tf_distributed_sample.py', n_workers=2, command_argv=['multiple'],
             port=2222, run_kwargs={'n_parallel': 2}
         )['status'], 'ok')
