@@ -20,7 +20,6 @@ from ....serialize.core import KeyField, Float64Field, ListField, BoolField
 from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
 from ....dataframe.core import DATAFRAME_TYPE
-from ....dataframe.operands import ObjectType
 from ...operands import LearnOperand, LearnOperandMixin
 from ...utils import convert_to_tensor_or_dataframe, get_output_types
 
