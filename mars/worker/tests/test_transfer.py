@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ from collections import defaultdict
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from mars.actors import create_actor_pool
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
@@ -33,7 +32,7 @@ from mars.errors import ChecksumMismatch, DependencyMissing, StoreFull,\
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
 from mars.worker import SenderActor, ReceiverActor, DispatchActor, QuotaActor, \
     MemQuotaActor, ChunkHolderActor, SpillActor, StatusActor

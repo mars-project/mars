@@ -60,6 +60,13 @@ class MockStorage(object):
     def __delitem__(self, key):
         pass
 
+    def copy(self):
+        return MockStorage()
+
+    def update(self, other):
+        self._data1.update(other._data1)
+        self._data2.update(other._data2)
+
 
 class Test(unittest.TestCase):
     def setUp(self):

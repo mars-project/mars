@@ -17,7 +17,7 @@ import os
 import sys
 import unittest
 
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.scheduler.kvstore import KVStoreActor
 from mars.tests.core import EtcdProcessHelper
