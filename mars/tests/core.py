@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import itertools
 import unittest
 from collections import Iterable
 from weakref import ReferenceType
@@ -310,3 +311,28 @@ def require_cudf(func):
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
     return func
+
+
+def create_actor_pool(*args, **kwargs):
+    import gevent.socket
+    from mars.actors import create_actor_pool as new_actor_pool
+
+    address = kwargs.pop('address', None)
+    if not address:
+        return new_actor_pool(*args, **kwargs)
+
+    if isinstance(address, six.string_types):
+        host = address.rsplit(':')[0]
+        port = int(address.rsplit(':', 1)[1])
+    else:
+        host = '127.0.0.1'
+        port = np.random.randint(10000, 65535)
+    it = itertools.count(port)
+
+    for _ in range(5):
+        try:
+            address = '{0}:{1}'.format(host, next(it))
+            return new_actor_pool(address, *args, **kwargs)
+        except (OSError, gevent.socket.error):
+            continue
+    raise OSError("Failed to create actor pool")

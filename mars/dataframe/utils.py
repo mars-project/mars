@@ -23,7 +23,6 @@ from pandas.core.dtypes.cast import find_common_type
 
 from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
-from ..tensor.core import TENSOR_TYPE
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
 from ..utils import tokenize
 from .core import IndexValue
@@ -331,9 +330,9 @@ def split_monotonic_index_min_max(left_min_max, left_increase, right_min_max, ri
             else:
                 right_curr_min_max[:2] = max_val[0], not max_val[1]
 
-    if not left_increase:
+    if left_increase is False:
         left_idx_to_min_max = list(reversed(left_idx_to_min_max))
-    if not right_increase:
+    if right_increase is False:
         right_idx_to_min_max = list(reversed(right_idx_to_min_max))
 
     return left_idx_to_min_max, right_idx_to_min_max
@@ -345,16 +344,16 @@ def build_split_idx_to_origin_idx(splits, increase=True):
     # which means there is one input chunk, and will be split into 2 out chunks
     # in this function, we want to build a new dict from the out chunk index to
     # the original chunk index and the inner position, like {0: (0, 0), 1: (0, 1)}
-    if not increase:
+    if increase is False:
         splits = list(reversed(splits))
     out_idx = itertools.count(0)
     res = dict()
     for origin_idx, _ in enumerate(splits):
         for pos in range(len(splits[origin_idx])):
-            if increase:
-                o_idx = origin_idx
-            else:
+            if increase is False:
                 o_idx = len(splits) - origin_idx - 1
+            else:
+                o_idx = origin_idx
             res[next(out_idx)] = o_idx, pos
     return res
 
@@ -387,7 +386,7 @@ def build_concated_rows_frame(df):
     if df.chunk_shape[1] == 1:
         return df
 
-    columns = concat_index_value([df.cix[0, idx].columns for idx in range(df.chunk_shape[1])],
+    columns = concat_index_value([df.cix[0, idx].columns_value for idx in range(df.chunk_shape[1])],
                                  store_data=True)
     columns_size = columns.to_pandas().size
 
@@ -402,7 +401,7 @@ def build_concated_rows_frame(df):
     return DataFrameConcat(axis=1, object_type=ObjectType.dataframe).new_dataframe(
         [df], chunks=out_chunks, nsplits=((chunk.shape[0] for chunk in out_chunks), (df.shape[1],)),
         shape=df.shape, dtypes=df.dtypes,
-        index_value=df.index_value, columns_value=df.columns)
+        index_value=df.index_value, columns_value=df.columns_value)
 
 
 def _filter_range_index(pd_range_index, min_val, min_val_close, max_val, max_val_close):
@@ -500,6 +499,7 @@ def filter_dtypes(dtypes, column_min_max):
     f = l & r
     return dtypes[f]
 
+
 def in_range_index(i, pd_range_index):
     """
     Check whether the input `i` is within `pd_range_index` which is a pd.RangeIndex.
@@ -512,17 +512,6 @@ def in_range_index(i, pd_range_index):
     if step < 0 and start >= i > stop and (start - i) % step == 0:
         return True
     return False
-
-
-def wrap_sequence(seq):
-    """
-    Wrap a sequence value as a Series.
-    """
-    from .initializer import Series
-
-    if isinstance(seq, (list, tuple, np.ndarray, TENSOR_TYPE)):
-        seq = Series(seq)
-    return seq
 
 
 def wrap_notimplemented_exception(func):

@@ -22,13 +22,12 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from mars import promise
-from mars.actors import create_actor_pool
 from mars.compat import TimeoutError, six
 from mars.config import options
 from mars.distributor import MarsDistributor
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
 from mars.worker.utils import WorkerActor

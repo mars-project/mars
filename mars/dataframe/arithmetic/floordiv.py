@@ -16,7 +16,6 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from ..utils import wrap_sequence
 from .core import DataFrameBinOpMixin, DataFrameBinOp
 
 
@@ -32,12 +31,10 @@ class DataFrameFloorDiv(DataFrameBinOp, DataFrameBinOpMixin):
 
 
 def floordiv(df, other, axis='columns', level=None, fill_value=None):
-    other = wrap_sequence(other)
     op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
 def rfloordiv(df, other, axis='columns', level=None, fill_value=None):
-    other = wrap_sequence(other)
     op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)

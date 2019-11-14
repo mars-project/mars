@@ -62,8 +62,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -74,8 +74,8 @@ class TestBinary(TestBase):
         df3.tiles()
 
         # test df3's index and columns after tiling
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -121,9 +121,9 @@ class TestBinary(TestBase):
             self.assertEqual(c.inputs[0].op.column_min_close, left_column_min_max[1])
             self.assertEqual(c.inputs[0].op.column_max, left_column_min_max[2])
             self.assertEqual(c.inputs[0].op.column_max_close, left_column_min_max[3])
-            expect_left_columns = filter_index_value(expect_df1_input.columns, left_column_min_max,
+            expect_left_columns = filter_index_value(expect_df1_input.columns_value, left_column_min_max,
                                                      store_data=True)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), expect_left_columns.to_pandas())
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), expect_left_columns.to_pandas())
             pd.testing.assert_index_equal(c.inputs[0].dtypes.index, expect_left_columns.to_pandas())
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignMap)
@@ -142,9 +142,9 @@ class TestBinary(TestBase):
             self.assertEqual(c.inputs[1].op.column_min_close, right_column_min_max[1])
             self.assertEqual(c.inputs[1].op.column_max, right_column_min_max[2])
             self.assertEqual(c.inputs[1].op.column_max_close, right_column_min_max[3])
-            expect_right_columns = filter_index_value(expect_df2_input.columns, left_column_min_max,
+            expect_right_columns = filter_index_value(expect_df2_input.columns_value, left_column_min_max,
                                                       store_data=True)
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), expect_right_columns.to_pandas())
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), expect_right_columns.to_pandas())
             pd.testing.assert_index_equal(c.inputs[1].dtypes.index, expect_right_columns.to_pandas())
 
     def testDataFrameAndSeriesWithAlignMap(self):
@@ -184,9 +184,9 @@ class TestBinary(TestBase):
             self.assertEqual(c.inputs[0].op.column_min_close, left_column_min_max[1])
             self.assertEqual(c.inputs[0].op.column_max, left_column_min_max[2])
             self.assertEqual(c.inputs[0].op.column_max_close, left_column_min_max[3])
-            expect_left_columns = filter_index_value(expect_df1_input.columns, left_column_min_max,
+            expect_left_columns = filter_index_value(expect_df1_input.columns_value, left_column_min_max,
                                                      store_data=True)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), expect_left_columns.to_pandas())
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), expect_left_columns.to_pandas())
             pd.testing.assert_index_equal(c.inputs[0].dtypes.index, expect_left_columns.to_pandas())
 
             # test the right side (series)
@@ -212,8 +212,8 @@ class TestBinary(TestBase):
 
         self.assertEqual(df2.shape, (10, 10))
         self.assertEqual(df2.index_value.key, df1.index_value.key)
-        self.assertEqual(df2.columns.key, df1.columns.key)
-        self.assertEqual(df2.columns.key, s1.index_value.key)
+        self.assertEqual(df2.columns_value.key, df1.columns_value.key)
+        self.assertEqual(df2.columns_value.key, s1.index_value.key)
 
         self.assertEqual(df2.chunk_shape, (2, 2))
         for c in df2.chunks:
@@ -222,11 +222,11 @@ class TestBinary(TestBase):
             self.assertEqual(c.shape, (5, 5))
             self.assertEqual(c.index_value.key, df1.cix[c.index].index_value.key)
             self.assertEqual(c.index_value.key, df2.cix[c.index].index_value.key)
-            self.assertEqual(c.columns.key, df1.cix[c.index].columns.key)
-            self.assertEqual(c.columns.key, df2.cix[c.index].columns.key)
-            pd.testing.assert_index_equal(c.columns.to_pandas(), df1.cix[c.index].columns.to_pandas())
-            pd.testing.assert_index_equal(c.columns.to_pandas(), df2.cix[c.index].columns.to_pandas())
-            pd.testing.assert_index_equal(c.dtypes.index, df1.cix[c.index].columns.to_pandas())
+            self.assertEqual(c.columns_value.key, df1.cix[c.index].columns_value.key)
+            self.assertEqual(c.columns_value.key, df2.cix[c.index].columns_value.key)
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), df1.cix[c.index].columns_value.to_pandas())
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), df2.cix[c.index].columns_value.to_pandas())
+            pd.testing.assert_index_equal(c.dtypes.index, df1.cix[c.index].columns_value.to_pandas())
 
             # test the left side
             self.assertIsInstance(c.inputs[0].op, DataFrameDataSource)
@@ -247,9 +247,9 @@ class TestBinary(TestBase):
         # test df2's index and columns
         self.assertEqual(df2.shape, (df1.shape[0], np.nan))
         self.assertEqual(df2.index_value.key, df1.index_value.key)
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), pd.Int64Index([]))
-        self.assertNotEqual(df2.columns.key, df1.columns.key)
-        self.assertTrue(df2.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), pd.Int64Index([]))
+        self.assertNotEqual(df2.columns_value.key, df1.columns_value.key)
+        self.assertTrue(df2.columns_value.should_be_monotonic)
 
         df2.tiles()
 
@@ -263,7 +263,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), c.inputs[0].dtypes.index)
             pd.testing.assert_index_equal(c.inputs[0].index_value.to_pandas(), c.index_value.to_pandas())
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             for j, ci, ic in zip(itertools.count(0), c.inputs[0].inputs[0].inputs, df1.cix[idx[0], :]):
@@ -446,10 +446,10 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertFalse(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.RangeIndex)
-        self.assertTrue(df3.index_value.should_be_monotonic)
+        self.assertFalse(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.RangeIndex(0, 10))
         self.assertEqual(df3.index_value.key, df1.index_value.key)
         self.assertEqual(df3.index_value.key, df2.index_value.key)
@@ -464,11 +464,11 @@ class TestBinary(TestBase):
             self.assertEqual(c.shape, (5, 5))
             self.assertEqual(c.index_value.key, df1.cix[c.index].index_value.key)
             self.assertEqual(c.index_value.key, df2.cix[c.index].index_value.key)
-            self.assertEqual(c.columns.key, df1.cix[c.index].columns.key)
-            self.assertEqual(c.columns.key, df2.cix[c.index].columns.key)
-            pd.testing.assert_index_equal(c.columns.to_pandas(), df1.cix[c.index].columns.to_pandas())
-            pd.testing.assert_index_equal(c.columns.to_pandas(), df2.cix[c.index].columns.to_pandas())
-            pd.testing.assert_index_equal(c.dtypes.index, df1.cix[c.index].columns.to_pandas())
+            self.assertEqual(c.columns_value.key, df1.cix[c.index].columns_value.key)
+            self.assertEqual(c.columns_value.key, df2.cix[c.index].columns_value.key)
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), df1.cix[c.index].columns_value.to_pandas())
+            pd.testing.assert_index_equal(c.columns_value.to_pandas(), df2.cix[c.index].columns_value.to_pandas())
+            pd.testing.assert_index_equal(c.dtypes.index, df1.cix[c.index].columns_value.to_pandas())
 
             # test the left side
             self.assertIs(c.inputs[0], df1.cix[c.index].data)
@@ -489,8 +489,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -519,7 +519,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), c.inputs[0].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             left_row_idx, left_row_inner_idx = left_index_idx_to_original_idx[idx[0]]
@@ -545,7 +545,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[1].inputs[0].inputs])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), c.inputs[1].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), c.inputs[1].dtypes.index)
             self.assertIsInstance(c.inputs[1].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             right_row_idx, right_row_inner_idx = right_index_idx_to_original_idx[idx[0]]
@@ -590,8 +590,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -611,7 +611,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), c.inputs[0].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[0].inputs[0].op.key)
@@ -620,7 +620,7 @@ class TestBinary(TestBase):
                 self.assertEqual(ic.op.index_shuffle_size, 2)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 2)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 shuffle_segments = ic.op.column_shuffle_segments
                 expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 2)
                 self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
@@ -632,7 +632,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 2)[c.index[1]]
                                        for ic in c.inputs[1].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), c.inputs[1].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), c.inputs[1].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[1].inputs[0].op.key)
@@ -641,7 +641,7 @@ class TestBinary(TestBase):
                 self.assertEqual(ic.op.index_shuffle_size, 2)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 2)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 shuffle_segments = ic.op.column_shuffle_segments
                 expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 2)
                 self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
@@ -662,8 +662,8 @@ class TestBinary(TestBase):
         df6 = self.func(df4, df5)
 
         # test df6's index and columns
-        pd.testing.assert_index_equal(df6.columns.to_pandas(), self.func(data4, data5).columns)
-        self.assertTrue(df6.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df6.columns_value.to_pandas(), self.func(data4, data5).columns)
+        self.assertTrue(df6.columns_value.should_be_monotonic)
         self.assertIsInstance(df6.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df6.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df6.index_value.to_pandas(), pd.Int64Index([]))
@@ -683,7 +683,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 4)[c.index[1]]
                                        for ic in c.inputs[0].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), c.inputs[0].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[0].inputs[0].op.key)
@@ -692,7 +692,7 @@ class TestBinary(TestBase):
                 self.assertEqual(ic.op.index_shuffle_size, 4)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 4)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 shuffle_segments = ic.op.column_shuffle_segments
                 expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
                 self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
@@ -704,7 +704,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([hash_dtypes(ic.inputs[0].op.data.dtypes, 4)[c.index[1]]
                                        for ic in c.inputs[1].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), c.inputs[1].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), c.inputs[1].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[1].inputs[0].op.key)
@@ -713,7 +713,7 @@ class TestBinary(TestBase):
                 self.assertEqual(ic.op.index_shuffle_size, 4)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertEqual(ic.op.column_shuffle_size, 4)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 shuffle_segments = ic.op.column_shuffle_segments
                 expected_shuffle_segments = hash_dtypes(ci.data.dtypes, 4)
                 self.assertEqual(len(shuffle_segments), len(expected_shuffle_segments))
@@ -737,8 +737,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -774,12 +774,12 @@ class TestBinary(TestBase):
             self.assertEqual(c.inputs[0].op.index_max, left_index_min_max[2])
             self.assertEqual(c.inputs[0].op.index_max_close, left_index_min_max[3])
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
-            self.assertEqual(c.inputs[0].op.column_min, expect_df1_input.columns.min_val)
-            self.assertEqual(c.inputs[0].op.column_min_close, expect_df1_input.columns.min_val_close)
-            self.assertEqual(c.inputs[0].op.column_max, expect_df1_input.columns.max_val)
-            self.assertEqual(c.inputs[0].op.column_max_close, expect_df1_input.columns.max_val_close)
-            expect_left_columns = expect_df1_input.columns
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), expect_left_columns.to_pandas())
+            self.assertEqual(c.inputs[0].op.column_min, expect_df1_input.columns_value.min_val)
+            self.assertEqual(c.inputs[0].op.column_min_close, expect_df1_input.columns_value.min_val_close)
+            self.assertEqual(c.inputs[0].op.column_max, expect_df1_input.columns_value.max_val)
+            self.assertEqual(c.inputs[0].op.column_max_close, expect_df1_input.columns_value.max_val_close)
+            expect_left_columns = expect_df1_input.columns_value
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), expect_left_columns.to_pandas())
             pd.testing.assert_index_equal(c.inputs[0].dtypes.index, expect_left_columns.to_pandas())
             # test the right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignMap)
@@ -792,12 +792,12 @@ class TestBinary(TestBase):
             self.assertEqual(c.inputs[1].op.index_max, right_index_min_max[2])
             self.assertEqual(c.inputs[1].op.index_max_close, right_index_min_max[3])
             self.assertIsInstance(c.inputs[1].index_value.to_pandas(), type(data2.index))
-            self.assertEqual(c.inputs[1].op.column_min, expect_df2_input.columns.min_val)
-            self.assertEqual(c.inputs[1].op.column_min_close, expect_df2_input.columns.min_val_close)
-            self.assertEqual(c.inputs[1].op.column_max, expect_df2_input.columns.max_val)
-            self.assertEqual(c.inputs[1].op.column_max_close, expect_df2_input.columns.max_val_close)
-            expect_right_columns = expect_df2_input.columns
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), expect_right_columns.to_pandas())
+            self.assertEqual(c.inputs[1].op.column_min, expect_df2_input.columns_value.min_val)
+            self.assertEqual(c.inputs[1].op.column_min_close, expect_df2_input.columns_value.min_val_close)
+            self.assertEqual(c.inputs[1].op.column_max, expect_df2_input.columns_value.max_val)
+            self.assertEqual(c.inputs[1].op.column_max_close, expect_df2_input.columns_value.max_val_close)
+            expect_right_columns = expect_df2_input.columns_value
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), expect_right_columns.to_pandas())
             pd.testing.assert_index_equal(c.inputs[1].dtypes.index, expect_right_columns.to_pandas())
 
     def testBothOneChunk(self):
@@ -812,8 +812,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -844,8 +844,8 @@ class TestBinary(TestBase):
         df3 = self.func(df1, df2)
 
         # test df3's index and columns
-        pd.testing.assert_index_equal(df3.columns.to_pandas(), self.func(data1, data2).columns)
-        self.assertTrue(df3.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
+        self.assertTrue(df3.columns_value.should_be_monotonic)
         self.assertIsInstance(df3.index_value.value, IndexValue.Int64Index)
         self.assertTrue(df3.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df3.index_value.to_pandas(), pd.Int64Index([]))
@@ -865,7 +865,7 @@ class TestBinary(TestBase):
             expect_dtypes = pd.concat([ic.inputs[0].op.data.dtypes
                                        for ic in c.inputs[0].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[0].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[0].columns.to_pandas(), c.inputs[0].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[0].columns_value.to_pandas(), c.inputs[0].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[0].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[0].inputs[0].op.key)
@@ -873,19 +873,19 @@ class TestBinary(TestBase):
                 self.assertIsInstance(ic.op, DataFrameIndexAlignMap)
                 self.assertEqual(ic.op.index_shuffle_size, 2)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
-                self.assertEqual(ic.op.column_min, ci.columns.min_val)
-                self.assertEqual(ic.op.column_min_close, ci.columns.min_val_close)
-                self.assertEqual(ic.op.column_max, ci.columns.max_val)
-                self.assertEqual(ic.op.column_max_close, ci.columns.max_val_close)
+                self.assertEqual(ic.op.column_min, ci.columns_value.min_val)
+                self.assertEqual(ic.op.column_min_close, ci.columns_value.min_val_close)
+                self.assertEqual(ic.op.column_max, ci.columns_value.max_val)
+                self.assertEqual(ic.op.column_max_close, ci.columns_value.max_val_close)
                 self.assertIsNone(ic.op.column_shuffle_size, None)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 self.assertIs(ic.inputs[0], ci.data)
             # test right side
             self.assertIsInstance(c.inputs[1].op, DataFrameIndexAlignReduce)
             expect_dtypes = pd.concat([ic.inputs[0].op.data.dtypes
                                        for ic in c.inputs[1].inputs[0].inputs if ic.index[0] == 0])
             pd.testing.assert_series_equal(c.inputs[1].dtypes, expect_dtypes)
-            pd.testing.assert_index_equal(c.inputs[1].columns.to_pandas(), c.inputs[1].dtypes.index)
+            pd.testing.assert_index_equal(c.inputs[1].columns_value.to_pandas(), c.inputs[1].dtypes.index)
             self.assertIsInstance(c.inputs[0].index_value.to_pandas(), type(data1.index))
             self.assertIsInstance(c.inputs[1].inputs[0].op, DataFrameShuffleProxy)
             proxy_keys.add(c.inputs[1].inputs[0].op.key)
@@ -894,12 +894,12 @@ class TestBinary(TestBase):
                 self.assertEqual(ic.op.index_shuffle_size, 2)
                 self.assertIsInstance(ic.index_value.to_pandas(), type(data1.index))
                 self.assertIsNone(ic.op.column_shuffle_size)
-                self.assertEqual(ic.op.column_min, ci.columns.min_val)
-                self.assertEqual(ic.op.column_min_close, ci.columns.min_val_close)
-                self.assertEqual(ic.op.column_max, ci.columns.max_val)
-                self.assertEqual(ic.op.column_max_close, ci.columns.max_val_close)
+                self.assertEqual(ic.op.column_min, ci.columns_value.min_val)
+                self.assertEqual(ic.op.column_min_close, ci.columns_value.min_val_close)
+                self.assertEqual(ic.op.column_max, ci.columns_value.max_val)
+                self.assertEqual(ic.op.column_max_close, ci.columns_value.max_val_close)
                 self.assertIsNone(ic.op.column_shuffle_size, None)
-                self.assertIsNotNone(ic.columns)
+                self.assertIsNotNone(ic.columns_value)
                 self.assertIs(ic.inputs[0], ci.data)
 
         self.assertEqual(len(proxy_keys), 2)
@@ -911,13 +911,13 @@ class TestBinary(TestBase):
         df2 = self.func(df, df)
 
         # test df2's index and columns
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), self.func(data, data).columns)
-        self.assertTrue(df2.columns.should_be_monotonic)
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), self.func(data, data).columns)
+        self.assertFalse(df2.columns_value.should_be_monotonic)
         self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
-        self.assertTrue(df2.index_value.should_be_monotonic)
+        self.assertFalse(df2.index_value.should_be_monotonic)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), pd.Int64Index([]))
         self.assertEqual(df2.index_value.key, df.index_value.key)
-        self.assertEqual(df2.columns.key, df.columns.key)
+        self.assertEqual(df2.columns_value.key, df.columns_value.key)
         self.assertEqual(df2.shape[1], 10)
 
         df2.tiles()
@@ -943,19 +943,19 @@ class TestBinary(TestBase):
         result3 = getattr(df, self.rfunc_name)(1)
         result4 = self.func(df, 1)
         result5 = self.func(1, df)
-        pd.testing.assert_index_equal(result.columns.to_pandas(), data.columns)
+        pd.testing.assert_index_equal(result.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result.index_value.value, IndexValue.Int64Index)
 
-        pd.testing.assert_index_equal(result2.columns.to_pandas(), data.columns)
+        pd.testing.assert_index_equal(result2.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result2.index_value.value, IndexValue.Int64Index)
 
-        pd.testing.assert_index_equal(result3.columns.to_pandas(), data.columns)
+        pd.testing.assert_index_equal(result3.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result3.index_value.value, IndexValue.Int64Index)
 
-        pd.testing.assert_index_equal(result4.columns.to_pandas(), data.columns)
+        pd.testing.assert_index_equal(result4.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result4.index_value.value, IndexValue.Int64Index)
 
-        pd.testing.assert_index_equal(result5.columns.to_pandas(), data.columns)
+        pd.testing.assert_index_equal(result5.columns_value.to_pandas(), data.columns)
         self.assertIsInstance(result5.index_value.value, IndexValue.Int64Index)
 
         # test NotImplemented, use other's rfunc instead
@@ -1008,7 +1008,7 @@ class TestUnary(TestBase):
         df2 = abs(df1)
 
         # test df2's index and columns
-        pd.testing.assert_index_equal(df2.columns.to_pandas(), df1.columns.to_pandas())
+        pd.testing.assert_index_equal(df2.columns_value.to_pandas(), df1.columns_value.to_pandas())
         self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
         self.assertEqual(df2.shape, (10, 10))
 
@@ -1020,5 +1020,5 @@ class TestUnary(TestBase):
             self.assertEqual(len(c2.inputs), 1)
             # compare with input chunks
             self.assertEqual(c2.index, c1.index)
-            pd.testing.assert_index_equal(c2.columns.to_pandas(), c1.columns.to_pandas())
+            pd.testing.assert_index_equal(c2.columns_value.to_pandas(), c1.columns_value.to_pandas())
             pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())

@@ -560,7 +560,7 @@ class DataFrameChunkData(ChunkData):
             'dtypes': self.dtypes,
             'index': self.index,
             'index_value': self.index_value,
-            'columns_value': self.columns,
+            'columns_value': self.columns_value,
         }
 
     @property
@@ -583,7 +583,7 @@ class DataFrameChunkData(ChunkData):
         return self._index_value
 
     @property
-    def columns(self):
+    def columns_value(self):
         return self._columns_value
 
 
@@ -643,7 +643,7 @@ class DataFrameData(HasShapeTileableData):
             'shape': self.shape,
             'dtypes': self.dtypes,
             'index_value': self.index_value,
-            'columns_value': self.columns
+            'columns_value': self.columns_value
         }
 
     @property
@@ -658,7 +658,7 @@ class DataFrameData(HasShapeTileableData):
         return self._index_value
 
     @property
-    def columns(self):
+    def columns_value(self):
         return self._columns_value
 
     def _equal(self, o):

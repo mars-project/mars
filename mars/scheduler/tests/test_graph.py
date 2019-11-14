@@ -22,9 +22,8 @@ from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaA
     AssignerActor, GraphState, OperandState
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
-from mars.actors import create_actor_pool
 from mars.graph import DAG
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 
 
 @patch_method(ResourceActor._broadcast_sessions)

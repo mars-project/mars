@@ -105,13 +105,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 i, = in_chunk.index
                 column_stop = 1
                 index = (in_chunk.index[0], 0)
-                columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
+                columns_value = parse_index(out_df.columns_value.to_pandas()[0:1], store_data=True)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
                 index = in_chunk.index
-                columns_value = parse_index(out_df.columns.to_pandas()[column_stop - in_chunk.shape[1]:column_stop],
-                                            store_data=True)
+                columns_value = parse_index(
+                    out_df.columns_value.to_pandas()[column_stop - in_chunk.shape[1]:column_stop], store_data=True)
 
             index_stop = cum_size[0][i]
             if out_df.index_value.has_value():
@@ -133,7 +133,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy()
         return new_op.new_dataframes(out_df.inputs, out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     index_value=out_df.index_value, columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
@@ -141,7 +141,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         chunk = op.outputs[0]
         tensor_data = ctx[op.inputs[0].key]
         ctx[chunk.key] = pd.DataFrame(tensor_data, index=chunk.index_value.to_pandas(),
-                                      columns=chunk.columns.to_pandas())
+                                      columns=chunk.columns_value.to_pandas())
 
 
 def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):

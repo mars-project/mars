@@ -15,7 +15,7 @@
 import pickle
 import time
 
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.utils import get_next_port
 from mars.worker.tests.base import WorkerCase

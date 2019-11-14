@@ -110,7 +110,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             return {'shape': obj.shape,
                     'dtypes': obj.dtypes,
                     'index_value': obj.index_value,
-                    'columns_value': obj.columns}
+                    'columns_value': obj.columns_value}
 
     def __call__(self):
         inputs = [self._data]

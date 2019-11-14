@@ -16,7 +16,6 @@ import operator
 
 from ... import opcodes as OperandDef
 from ...utils import classproperty
-from ..utils import wrap_sequence
 from .core import DataFrameBinOpMixin, DataFrameBinOp
 
 
@@ -32,12 +31,10 @@ class DataFrameSubtract(DataFrameBinOp, DataFrameBinOpMixin):
 
 
 def subtract(df, other, axis='columns', level=None, fill_value=None):
-    other = wrap_sequence(other)
     op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
     return op(df, other)
 
 
 def rsubtract(df, other, axis='columns', level=None, fill_value=None):
-    other = wrap_sequence(other)
     op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
     return op.rcall(df, other)
