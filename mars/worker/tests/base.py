@@ -19,8 +19,6 @@ import unittest
 
 import gevent.event
 
-from mars import promise
-from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.compat import six
 from mars.utils import classproperty
