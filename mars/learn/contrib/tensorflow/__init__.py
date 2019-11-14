@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dmatrix import MarsDMatrix
-from .train import train
-from .predict import predict
-from .classifier import XGBClassifier
-from .regressor import XGBRegressor
+from .run_script import run_tensorflow_script
 
 
 def register_op():
-    from .start_tracker import StartTracker
-    del StartTracker
+    from .run_script import RunTensorFlow
+    del RunTensorFlow

@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dmatrix import MarsDMatrix
-from .train import train
-from .predict import predict
-from .classifier import XGBClassifier
-from .regressor import XGBRegressor
+import unittest
+
+from mars.learn.contrib.tensorflow import run_tensorflow_script
+
+try:
+    import tensorflow
+except ImportError:
+    tensorflow = None
 
 
-def register_op():
-    from .start_tracker import StartTracker
-    del StartTracker
+@unittest.skipIf(tensorflow is None, 'tensorflow not installed')
+class Test(unittest.TestCase):
+    def testLocalRunTensorFlowScript(self):
+        self.assertEqual(run_tensorflow_script(
+            'tf_test.py', n_workers=2, command_argv=['multiple'])['status'], 'ok')

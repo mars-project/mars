@@ -44,6 +44,7 @@ class BaseCalcActor(WorkerActor):
         self._dispatch_ref = None
         self._events_ref = None
         self._status_ref = None
+        self._resource_ref = None
 
         self._execution_pool = None
         self._n_cpu = None
@@ -55,6 +56,7 @@ class BaseCalcActor(WorkerActor):
         from .dispatcher import DispatchActor
         from .events import EventsActor
         from .status import StatusActor
+        from ..scheduler import ResourceActor
 
         self._mem_quota_ref = self.promise_ref(MemQuotaActor.default_uid())
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
@@ -62,6 +64,8 @@ class BaseCalcActor(WorkerActor):
 
         status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         self._status_ref = status_ref if self.ctx.has_actor(status_ref) else None
+
+        self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -143,7 +147,7 @@ class BaseCalcActor(WorkerActor):
 
         local_context_dict = DistributedDictContext(
             self._cluster_info_ref, session_id, self.address, self.get_meta_client(),
-            n_cpu=self._get_n_cpu())
+            self._resource_ref, self.ctx, n_cpu=self._get_n_cpu())
         local_context_dict.update(context_dict)
         context_dict.clear()
 
