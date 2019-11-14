@@ -14,5 +14,7 @@
 
 # register operands
 from .contrib.xgboost import train as xgboost_train
+from .utils.shuffle import shuffle
 del xgboost_train
+del shuffle
 

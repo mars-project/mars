@@ -13,4 +13,6 @@
 # limitations under the License.
 
 
+from .core import convert_to_tensor_or_dataframe, get_output_types
 from .validation import check_array
+from .shuffle import shuffle

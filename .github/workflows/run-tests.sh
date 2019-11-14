@@ -11,10 +11,10 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     coverage report
   else
     mkdir -p build
-    pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web \
-        mars/learn/contrib/xgboost
+    pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web mars/learn
     mv .coverage build/.coverage.tensor.file
-    pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe mars
+    pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
+     --ignore mars/learn mars
     mv .coverage build/.coverage.main.file
     coverage combine build/ && coverage report --fail-under=85
 

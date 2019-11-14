@@ -28,6 +28,8 @@ class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
+            if chunk_size is not None:
+                data = data.rechunk(chunk_size)
             df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             df = data
