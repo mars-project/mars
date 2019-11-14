@@ -25,16 +25,6 @@ from ...operands import LearnOperand, LearnOperandMixin
 from ...utils import convert_to_tensor_or_dataframe, get_output_types
 
 
-def _on_serialize_object_type(object_type):
-    if object_type is not None:
-        return object_type.value
-
-
-def _on_deserialize_object_type(ser):
-    if ser is not None:
-        return ObjectType(ser)
-
-
 class ToDMatrix(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.TO_DMATRIX
 
