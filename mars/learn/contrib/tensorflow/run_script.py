@@ -170,7 +170,8 @@ class RunTensorFlow(LearnMergeDictOperand):
             os.remove(filename)
 
 
-def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None, session=None):
+def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None,
+                          session=None, run_kwargs=None):
     if int(n_workers) <= 0:
         raise ValueError('n_workers should be at least 1')
     if int(n_ps) < 0:
@@ -183,4 +184,4 @@ def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None, session=
 
     op = RunTensorFlow(code=to_binary(code), n_workers=int(n_workers), n_ps=int(n_ps),
                        command_args=command_argv)
-    return op().execute(session=session)
+    return op().execute(session=session, **(run_kwargs or {}))
