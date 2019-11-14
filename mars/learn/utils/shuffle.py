@@ -89,7 +89,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
                     param['index_value'] = self._shuffle_index_value(param['index_value'])
                 if 1 in axes:
                     dtypes = param['dtypes'] = self._shuffle_dtypes(param['dtypes'])
-                    param['columns'] = parse_index(dtypes.index, store_data=True)
+                    param['columns_value'] = parse_index(dtypes.index, store_data=True)
             elif output_type == OutputType.series:
                 if 0 in axes:
                     param['index_value'] = self._shuffle_index_value(param['index_value'])
@@ -124,7 +124,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
                 chunk_shape[0] = np.nan
             params['shape'] = tuple(chunk_shape)
             params['dtypes'] = output.dtypes
-            params['columns_value'] = output.columns
+            params['columns_value'] = output.columns_value
             params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
         else:
             assert output_type == OutputType.series
