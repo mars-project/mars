@@ -17,6 +17,8 @@ import os
 import json
 import tempfile
 import sys
+import subprocess
+from collections import defaultdict
 
 import numpy as np
 
@@ -97,10 +99,7 @@ class RunTensorFlow(LearnMergeDictOperand):
     @classmethod
     def tile(cls, op):
         ctx = get_context()
-        ncores = ctx.get_ncores()
-        if op.n_roles > ncores:
-            raise ValueError('The size of workers(size {}) or ps(size {}) '
-                             'is greater than all cores(size {})'.format(op.n_workers, op.n_ps, ncores))
+
         port = 2221
         cluster_conf = {'worker': []}
         if op.n_ps > 0:
@@ -124,11 +123,12 @@ class RunTensorFlow(LearnMergeDictOperand):
         else:
             worker_addresses = ctx.get_worker_addresses()
             picked_workers = cls.pick_workers(worker_addresses, op.n_roles)
-            worker_to_port_iter = {w: itertools.count(port) for w in set(picked_workers)}
+            worker_to_port_iter = defaultdict(lambda: itertools.count(port))
 
             for i, worker in enumerate(picked_workers):
+                worker_addr = worker.rsplit(':', 1)[0]
                 chunk_op = op.copy().reset_key()
-                addr = '{}:{}'.format(worker.split(':', 1)[0], next(worker_to_port_iter[worker]))
+                addr = '{}:{}'.format(worker_addr, next(worker_to_port_iter[worker_addr]))
                 # tell graph actor that the chunk should be executed on the exact worker
                 chunk_op._expect_worker = worker
                 tp = 'worker' if i < n_workers else 'ps'
@@ -149,15 +149,17 @@ class RunTensorFlow(LearnMergeDictOperand):
         if op.merge:
             return super(RunTensorFlow, cls).execute(ctx, op)
 
+        assert ctx.get_local_address() == op.expect_worker
+
         # write source code into a temp file
-        filename = tempfile.mktemp('.py')
-        with open(filename, 'wb') as f:
+        fd, filename = tempfile.mkstemp('.py')
+        with os.fdopen(fd, 'wb') as f:
             f.write(op.code)
 
         try:
             # exec tf code in a new process
-            process = ctx.popen([sys.executable, filename] + op.command_args,
-                                env={'TF_CONFIG': json.dumps(op.tf_config)})
+            process = subprocess.Popen([sys.executable, filename] + op.command_args,
+                                       env={'TF_CONFIG': json.dumps(op.tf_config)})
             process.wait()
             if process.returncode != 0:
                 raise RuntimeError('Run TensorFlow script failed')

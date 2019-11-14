@@ -139,7 +139,7 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
 
     @property
     def expect_worker(self):
-        return self._expect_worker
+        return getattr(self, '_expect_worker', None)
 
     @property
     def extra_params(self):

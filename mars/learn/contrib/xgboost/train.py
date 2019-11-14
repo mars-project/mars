@@ -17,8 +17,8 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
+from ....serialize import ValueType, DictField, KeyField, TupleField
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, DictField, KeyField, TupleField, BoolField
 from ....context import get_context, RunningMode
 from ...operands import LearnMergeDictOperand, OutputType
 from .start_tracker import StartTracker
