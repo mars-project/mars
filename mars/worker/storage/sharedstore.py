@@ -16,7 +16,6 @@ import logging
 
 from ...actors import FunctionActor
 from ...errors import StorageFull, StorageDataExists
-from ...utils import calc_data_size
 
 try:
     import pyarrow
@@ -138,7 +137,8 @@ class PlasmaSharedStore(object):
             raise
 
         if exc_type is PlasmaStoreFull:
-            raise StorageFull(request_size=size, total_size=self._actual_size)
+            raise StorageFull(request_size=size, capacity=self._actual_size,
+                              affected_keys=[data_key])
 
     def seal(self, session_id, data_key):
         obj_id = self._get_object_id(session_id, data_key)
@@ -192,7 +192,7 @@ class PlasmaSharedStore(object):
         :param data_key: chunk key
         :param value: Mars object to be put
         """
-        data_size = calc_data_size(value)
+        data_size = None
 
         try:
             obj_id = self._new_object_id(session_id, data_key)
@@ -231,7 +231,8 @@ class PlasmaSharedStore(object):
             raise
 
         if exc is PlasmaStoreFull:
-            raise StorageFull(request_size=data_size, total_size=self._actual_size)
+            raise StorageFull(request_size=data_size, capacity=self._actual_size,
+                              affected_keys=[data_key])
 
     def contains(self, session_id, data_key):
         """

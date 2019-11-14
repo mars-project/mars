@@ -48,23 +48,23 @@ class Test(WorkerCase):
             storage_client = test_actor.storage_client
             handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
 
-            handler.put_object(session_id, data_key1, data1)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            handler.put_objects(session_id, [data_key1], [data1])
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.PROC_MEMORY)])
             assert_allclose(data1, handler.get_object(session_id, data_key1))
 
-            handler.delete(session_id, data_key1)
-            self.assertIsNone(storage_manager_ref.get_data_locations(session_id, data_key1))
+            handler.delete(session_id, [data_key1])
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]), [])
             with self.assertRaises(KeyError):
                 handler.get_object(session_id, data_key1)
 
-            handler.put_object(session_id, data_key2, ser_data2, serialized=True)
+            handler.put_objects(session_id, [data_key2], [ser_data2], serialized=True)
             assert_allclose(data2, handler.get_object(session_id, data_key2))
-            handler.delete(session_id, data_key2)
+            handler.delete(session_id, [data_key2])
 
-            handler.put_object(session_id, data_key2, bytes_data2, serialized=True)
+            handler.put_objects(session_id, [data_key2], [bytes_data2], serialized=True)
             assert_allclose(data2, handler.get_object(session_id, data_key2))
-            handler.delete(session_id, data_key2)
+            handler.delete(session_id, [data_key2])
 
     def testProcMemLoad(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -99,37 +99,37 @@ class Test(WorkerCase):
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            handler.load_from_bytes_io(session_id, data_key1, disk_handler) \
+            handler.load_from_bytes_io(session_id, [data_key1], disk_handler) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.DISK)])
 
-            disk_handler.delete(session_id, data_key1)
+            disk_handler.delete(session_id, [data_key1])
 
             data_load = handler.get_object(session_id, data_key1)
             ref_data = weakref.ref(data_load)
             del data_load
-            handler.delete(session_id, data_key1)
+            handler.delete(session_id, [data_key1])
             self.assertIsNone(ref_data())
 
             # load from object io
             shared_handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
-            shared_handler.put_object(session_id, data_key2, data2)
+            shared_handler.put_objects(session_id, [data_key2], [data2])
 
-            handler.load_from_object_io(session_id, data_key2, shared_handler) \
+            handler.load_from_object_io(session_id, [data_key2], shared_handler) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key2)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key2])[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
 
-            shared_handler.delete(session_id, data_key2)
+            shared_handler.delete(session_id, [data_key2])
 
             data_load = handler.get_object(session_id, data_key2)
             ref_data = weakref.ref(data_load)
             del data_load
-            handler.delete(session_id, data_key2)
+            handler.delete(session_id, [data_key2])
             self.assertIsNone(ref_data())
 

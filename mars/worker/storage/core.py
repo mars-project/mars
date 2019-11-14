@@ -15,6 +15,7 @@
 import functools
 import logging
 import sys
+from collections import defaultdict
 
 from ... import promise
 from ...compat import Enum, six
@@ -88,7 +89,7 @@ class BytesStorageIO(object):
     def register(self, size, shape=None):
         location = self.storage_type.build_location(self._storage_ctx.proc_id)
         self._storage_ctx.manager_ref \
-            .register_data(self._session_id, self._data_key, location, size, shape=shape)
+            .register_data(self._session_id, [self._data_key], location, [size], shapes=[shape])
 
     def close(self, finished=True):
         self._closed = True
@@ -161,90 +162,93 @@ class StorageHandler(object):
     def promise_ref(self, *args, **kwargs):
         return self._storage_ctx.host_actor.promise_ref(self.actor_ref(*args, **kwargs))
 
-    def delete(self, session_id, data_key, _tell=False):
+    def delete(self, session_id, data_keys, _tell=False):
         raise NotImplementedError
 
-    def batch_delete(self, session_id, data_keys, _tell=False):
-        raise NotImplementedError
-
-    def load_from(self, session_id, data_key, src_handler):
+    def load_from(self, session_id, data_keys, src_handler):
         """
         :param session_id:
-        :param data_key:
+        :param data_keys:
         :param src_handler:
         :type src_handler: StorageHandler
         """
-        logger.debug('Try loading data (%s, %s) from device %s into %s',
-                     session_id, data_key, src_handler.storage_type, self.storage_type)
+        logger.debug('Try loading data %s from device %s into %s',
+                     data_keys, src_handler.storage_type, self.storage_type)
         left_has_obj_io = getattr(self, '_has_object_io', False)
         right_has_obj_io = getattr(src_handler, '_has_object_io', False)
         right_has_bytes_io = getattr(src_handler, '_has_bytes_io', False)
 
         if left_has_obj_io and right_has_obj_io:
-            return self.load_from_object_io(session_id, data_key, src_handler)
+            return self.load_from_object_io(session_id, data_keys, src_handler)
         elif right_has_bytes_io:
-            return self.load_from_bytes_io(session_id, data_key, src_handler)
+            return self.load_from_bytes_io(session_id, data_keys, src_handler)
         else:
-            return self.load_from_object_io(session_id, data_key, src_handler)
+            return self.load_from_object_io(session_id, data_keys, src_handler)
 
-    def load_from_bytes_io(self, session_id, data_key, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler):
         raise NotImplementedError
 
-    def load_from_object_io(self, session_id, data_key, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler):
         raise NotImplementedError
 
-    def register_data(self, session_id, data_key, size, shape=None):
+    def register_data(self, session_id, data_keys, sizes, shapes=None):
         self._storage_ctx.manager_ref \
-            .register_data(session_id, data_key, self.location, size, shape=shape)
+            .register_data(session_id, data_keys, self.location, sizes, shapes=shapes)
 
-    def batch_register_data(self, session_id, data_keys, sizes, shapes=None):
-        self._storage_ctx.manager_ref \
-            .batch_register_data(session_id, data_keys, self.location, sizes, shapes=shapes)
+    def _dispatch_keys_to_uids(self, session_id, data_keys):
+        uid_to_keys = defaultdict(list)
+        runner_uids = self._dispatch_ref.get_hash_slots(
+            'iorunner', [(session_id, k) for k in data_keys])
+        for k, uid in zip(data_keys, runner_uids):
+            uid_to_keys[uid].append(k)
+        return uid_to_keys.items()
 
-    def transfer_in_runner(self, session_id, data_key, src_handler, fallback=None):
+    def transfer_in_runner(self, session_id, data_keys, src_handler, fallback=None):
         if self.is_io_runner():
             return fallback() if fallback is not None else promise.finished()
 
         if self.is_device_global() and src_handler.is_device_global():
-            runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
-                'iorunner', (session_id, data_key)))
-            return runner_ref.load_from(
-                self.location, session_id, data_key, src_handler.location, _promise=True)
+            return promise.all_(
+                self.promise_ref(uid).load_from(
+                    self.location, session_id, keys, src_handler.location, _promise=True)
+                for uid, keys in self._dispatch_keys_to_uids(session_id, data_keys))
         elif self.is_device_global() or src_handler.is_device_global():
             if self.is_other_process() or src_handler.is_other_process():
                 runner_proc_id = self.proc_id or src_handler.proc_id
                 runner_ref = self.promise_ref(IORunnerActor.gen_uid(runner_proc_id))
                 return runner_ref.load_from(
-                    self.location, session_id, data_key, src_handler.location, _promise=True)
+                    self.location, session_id, data_keys, src_handler.location, _promise=True)
             elif fallback is not None:
                 if src_handler.storage_type != DataStorageDevice.DISK and \
                         self.storage_type != DataStorageDevice.DISK:
                     return fallback()
 
-                runner_ref = self.promise_ref(self._dispatch_ref.get_hash_slot(
-                    'iorunner', (session_id, data_key)))
+                uid_to_work_item_ids = dict()
 
-                def _unlocker(*exc):
-                    runner_ref.unlock(session_id, data_key)
-                    if exc:
+                def _fallback_runner(uid, work_item_id):
+                    uid_to_work_item_ids[uid] = work_item_id
+                    return fallback()
+
+                def _unlocker(uid, *exc, **kwargs):
+                    self.promise_ref(uid).unlock(uid_to_work_item_ids[uid])
+                    if not kwargs.get('accept', True):
                         six.reraise(*exc)
 
-                return runner_ref.lock(session_id, data_key, _promise=True) \
-                    .then(fallback) \
-                    .then(lambda *_: _unlocker(), _unlocker)
+                return promise.all_(
+                    self.promise_ref(uid).lock(session_id, keys, _promise=True)
+                        .then(functools.partial(_fallback_runner, uid))
+                        .then(functools.partial(_unlocker, uid), functools.partial(_unlocker, uid, accept=False))
+                    for uid, keys in self._dispatch_keys_to_uids(session_id, data_keys)
+                )
             else:
                 return promise.finished()
         else:
             raise NotImplementedError('Copying from %r to %r not supported now' %
                                       (src_handler.storage_type, self.storage_type))
 
-    def unregister_data(self, session_id, data_key, _tell=False):
+    def unregister_data(self, session_id, data_keys, _tell=False):
         self._storage_ctx.manager_ref \
-            .unregister_data(session_id, data_key, self.location, _tell=_tell)
-
-    def batch_unregister_data(self, session_id, data_keys, _tell=False):
-        self._storage_ctx.manager_ref \
-            .batch_unregister_data(session_id, data_keys, self.location, _tell=_tell)
+            .unregister_data(session_id, data_keys, self.location, _tell=_tell)
 
 
 class BytesStorageMixin(object):
@@ -258,7 +262,7 @@ class BytesStorageMixin(object):
                             packed_compression=None, _promise=False):
         raise NotImplementedError
 
-    def _copy_bytes_data(self, reader, writer):
+    def _copy_bytes_data(self, reader, writer, on_close=None):
         copy_block_size = options.worker.copy_block_size
         async_read_pool = reader.get_io_pool()
         async_write_pool = writer.get_io_pool()
@@ -279,6 +283,8 @@ class BytesStorageMixin(object):
                     with_exc = True
                     raise
                 finally:
+                    if on_close:
+                        on_close(reader, writer, not with_exc)
                     writer.close(finished=not with_exc)
         return self.host_actor.spawn_promised(_copy)
 
@@ -310,13 +316,30 @@ class ObjectStorageMixin(object):
         else:
             return dataserializer.deserialize(obj)
 
+    def _batch_load_objects(self, session_id, data_keys, key_loader, store_serialized=False):
+        keys, objs = [], []
+        sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
+
+        def _record_data(k, o):
+            keys.append(k)
+            objs.append(o)
+
+        def _put_objects(*_):
+            try:
+                return self.put_objects(session_id, keys, objs, sizes, serialized=store_serialized,
+                                        _promise=True)
+            finally:
+                objs[:] = []
+
+        return promise.all_(
+            key_loader(k).then(functools.partial(_record_data, k))
+            for k in data_keys).then(_put_objects)
+
     def get_object(self, session_id, data_key, serialized=False, _promise=False):
         raise NotImplementedError
 
-    def put_object(self, session_id, data_key, obj, serialized=False, _promise=False):
-        raise NotImplementedError
-
-    def batch_put_object(self, session_id, data_keys, objs, serialized=False, _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+                    _promise=False):
         raise NotImplementedError
 
 
@@ -326,7 +349,7 @@ class SpillableStorageMixin(object):
     def spill_size(self, size, multiplier=1):
         raise NotImplementedError
 
-    def lift_data_key(self, session_id, data_key):
+    def lift_data_keys(self, session_id, data_keys):
         raise NotImplementedError
 
     def pin_data_keys(self, session_id, data_keys, token):

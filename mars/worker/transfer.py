@@ -70,7 +70,7 @@ class SenderActor(WorkerActor):
         :param chunk_key: chunk key
         :return: size of data
         """
-        nbytes = self.storage_client.get_data_size(session_id, chunk_key)
+        nbytes = self.storage_client.get_data_sizes(session_id, [chunk_key])[0]
         if nbytes is None:
             raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
         return nbytes
@@ -282,7 +282,7 @@ class ReceiverActor(WorkerActor):
         """
         session_chunk_key = (session_id, chunk_key)
 
-        if self.storage_client.get_data_locations(session_id, chunk_key):
+        if self.storage_client.get_data_locations(session_id, [chunk_key])[0]:
             return ReceiveStatus.RECEIVED
         if session_chunk_key in self._data_writers:
             # data still being transferred
@@ -551,11 +551,11 @@ class ReceiverActor(WorkerActor):
 
 class ResultCopyActor(WorkerActor):
     def start_copy(self, session_id, chunk_key, targets):
-        locations = [v[1] for v in self.storage_client.get_data_locations(session_id, chunk_key)]
+        locations = [v[1] for v in self.storage_client.get_data_locations(session_id, [chunk_key])[0]]
         if set(locations).intersection(targets):
             return
         ev = self.ctx.event()
-        self.storage_client.copy_to(session_id, chunk_key, targets) \
+        self.storage_client.copy_to(session_id, [chunk_key], targets) \
             .then(lambda *_: ev.set())
         return ev
 

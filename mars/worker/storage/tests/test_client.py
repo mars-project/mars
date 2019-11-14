@@ -71,12 +71,12 @@ class OtherProcessTestActor(WorkerActor):
             result = proc_handler.get_object(session_id, key1)
             assert_allclose(result, data1)
 
-            devices = self._manager_ref.get_data_locations(session_id, key1)
+            devices = self._manager_ref.get_data_locations(session_id, [key1])[0]
             if devices != {(0, DataStorageDevice.SHARED_MEMORY), (1, DataStorageDevice.PROC_MEMORY)}:
                 raise AssertionError
 
-        shared_handler.put_object(session_id, key1, data1)
-        self.storage_client.copy_to(session_id, key1, [(1, DataStorageDevice.PROC_MEMORY)]) \
+        shared_handler.put_objects(session_id, [key1], [data1])
+        self.storage_client.copy_to(session_id, [key1], [(1, DataStorageDevice.PROC_MEMORY)]) \
             .then(_verify_result) \
             .then(lambda *_: self.set_result(1),
                   lambda *exc: self.set_result(exc, accept=False))
@@ -95,12 +95,12 @@ class OtherProcessTestActor(WorkerActor):
             result = shared_handler.get_object(session_id, key1)
             assert_allclose(result, data1)
 
-            devices = self._manager_ref.get_data_locations(session_id, key1)
+            devices = self._manager_ref.get_data_locations(session_id, [key1])[0]
             if devices != {(0, DataStorageDevice.SHARED_MEMORY), (1, DataStorageDevice.PROC_MEMORY)}:
                 raise AssertionError
 
-        proc_handler.put_object(session_id, key1, data1)
-        self.storage_client.copy_to(session_id, key1, [DataStorageDevice.SHARED_MEMORY]) \
+        proc_handler.put_objects(session_id, [key1], [data1])
+        self.storage_client.copy_to(session_id, [key1], [DataStorageDevice.SHARED_MEMORY]) \
             .then(_verify_result) \
             .then(lambda *_: self.set_result(1),
                   lambda *exc: self.set_result(exc, accept=False))
@@ -155,7 +155,7 @@ class Test(WorkerCase):
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 self.assertTrue(os.path.exists(file_names[0]))
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                                  [(0, DataStorageDevice.DISK)])
 
                 def _read_data(reader):
@@ -180,10 +180,10 @@ class Test(WorkerCase):
                     .then(functools.partial(test_actor.set_result),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                                  [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
-                storage_client.delete(session_id, data_key1)
+                storage_client.delete(session_id, [data_key1])
                 while os.path.exists(file_names[0]):
                     test_actor.ctx.sleep(0.05)
                 self.assertFalse(os.path.exists(file_names[0]))
@@ -257,7 +257,7 @@ class Test(WorkerCase):
                     i = 0
                     for i, (key, data) in enumerate(zip(data_keys[idx:], data_list)):
                         try:
-                            shared_handler.put_object(session_id, key, data)
+                            shared_handler.put_objects(session_id, [key], [data])
                         except StorageFull:
                             break
                     return i + idx
@@ -265,19 +265,19 @@ class Test(WorkerCase):
                 idx = _fill_data()
 
                 # test copying non-existing keys
-                storage_client.copy_to(session_id, 'non-exist-key', [DataStorageDevice.SHARED_MEMORY]) \
+                storage_client.copy_to(session_id, ['non-exist-key'], [DataStorageDevice.SHARED_MEMORY]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 with self.assertRaises(KeyError):
                     self.get_result(5)
 
                 # test copying into containing locations
-                storage_client.copy_to(session_id, data_keys[0], [DataStorageDevice.SHARED_MEMORY]) \
+                storage_client.copy_to(session_id, [data_keys[0]], [DataStorageDevice.SHARED_MEMORY]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
 
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[0])),
+                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_keys[0]])[0]),
                                  [(0, DataStorageDevice.SHARED_MEMORY)])
 
                 # test unsuccessful copy when no data at target
@@ -286,36 +286,39 @@ class Test(WorkerCase):
 
                 with patch_method(StorageHandler.load_from, _mock_load_from), \
                         self.assertRaises(SystemError):
-                    storage_client.copy_to(session_id, data_keys[0], [DataStorageDevice.DISK]) \
+                    storage_client.copy_to(session_id, [data_keys[0]], [DataStorageDevice.DISK]) \
                         .then(lambda *_: test_actor.set_result(None),
                               lambda *exc: test_actor.set_result(exc, accept=False))
                     self.get_result(5)
 
-                # test successful copy
+                # test successful copy for multiple objects
+                storage_client.delete(session_id, [data_keys[idx - 1]])
                 ref_data = weakref.ref(data_list[idx])
-                proc_handler.put_object(session_id, data_keys[idx], data_list[idx])
-                data_list[idx] = None
+                ref_data2 = weakref.ref(data_list[idx + 1])
+                proc_handler.put_objects(session_id, data_keys[idx:idx + 2], data_list[idx:idx + 2])
+                data_list[idx:idx + 2] = [None, None]
 
-                storage_client.copy_to(session_id, data_keys[idx],
+                storage_client.copy_to(session_id, data_keys[idx:idx + 2],
                                        [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
 
-                proc_handler.delete(session_id, data_keys[idx])
+                proc_handler.delete(session_id, data_keys[idx:idx + 2])
 
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
-                                 [(0, DataStorageDevice.DISK)])
+                self.assertEqual(storage_manager_ref.get_data_locations(session_id, data_keys[idx:idx + 2]),
+                                 [{(0, DataStorageDevice.SHARED_MEMORY)}, {(0, DataStorageDevice.DISK)}])
                 self.assertIsNone(ref_data())
+                self.assertIsNone(ref_data2())
 
                 # test copy with spill
-                idx += 1
-                proc_handler.put_object(session_id, data_keys[idx], data_list[idx])
+                idx += 2
+                proc_handler.put_objects(session_id, [data_keys[idx]], [data_list[idx]])
 
-                storage_client.copy_to(session_id, data_keys[idx], [DataStorageDevice.SHARED_MEMORY]) \
+                storage_client.copy_to(session_id, [data_keys[idx]], [DataStorageDevice.SHARED_MEMORY]) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
 
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
+                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_keys[idx]])[0]),
                                  [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])

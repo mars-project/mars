@@ -102,6 +102,12 @@ class DispatchActor(WorkerActor):
         return uid
 
     @log_unhandled
+    def get_hash_slots(self, queue_name, keys):
+        slots = list(self._all_slots[queue_name])
+        uids = [slots[mod_hash(key, len(slots))] for key in keys]
+        return uids
+
+    @log_unhandled
     def get_slots(self, queue_name):
         """
         Get all uids of slots of a queue

@@ -102,21 +102,21 @@ class BaseCalcActor(WorkerActor):
         storage_client = self.storage_client
 
         def _handle_single_loaded(k, obj):
-            locations = storage_client.get_data_locations(session_id, k)
+            locations = storage_client.get_data_locations(session_id, [k])[0]
             quota_key = build_quota_key(session_id, k, owner=self.proc_id)
             if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
                 self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
                 if self._remove_intermediate:
-                    storage_client.delete(session_id, k, [self._calc_intermediate_device])
+                    storage_client.delete(session_id, [k], [self._calc_intermediate_device])
             if not failed[0]:
                 context_dict[k] = obj
 
         def _handle_single_load_fail(*exc, **kwargs):
             data_key = kwargs.pop('key')
             if self._remove_intermediate:
-                storage_client.delete(session_id, data_key, [self._calc_intermediate_device])
+                storage_client.delete(session_id, [data_key], [self._calc_intermediate_device])
             self._release_local_quota(session_id, data_key)
 
             failed[0] = True
@@ -159,6 +159,7 @@ class BaseCalcActor(WorkerActor):
         # collect results
         result_keys = []
         result_values = []
+        result_sizes = []
         collected_chunk_keys = set()
         for k, v in local_context_dict.items():
             if isinstance(k, tuple):
@@ -170,6 +171,7 @@ class BaseCalcActor(WorkerActor):
             if chunk_key in chunk_targets:
                 result_keys.append(k)
                 result_values.append(v)
+                result_sizes.append(calc_data_size(v))
                 collected_chunk_keys.add(chunk_key)
 
         local_context_dict.clear()
@@ -180,8 +182,8 @@ class BaseCalcActor(WorkerActor):
 
         # adjust sizes in allocation
         apply_alloc_sizes = defaultdict(lambda: 0)
-        for k, v in zip(result_keys, result_values):
-            apply_alloc_sizes[get_chunk_key(k)] += calc_data_size(v)
+        for k, size in zip(result_keys, result_sizes):
+            apply_alloc_sizes[get_chunk_key(k)] += size
 
         for k, v in apply_alloc_sizes.items():
             quota_key = build_quota_key(session_id, k, owner=self.proc_id)
@@ -195,8 +197,8 @@ class BaseCalcActor(WorkerActor):
 
         logger.debug('Finish calculating operand %s.', graph_key)
 
-        return self.storage_client.batch_put_object(
-            session_id, result_keys, result_values, [self._calc_intermediate_device])\
+        return self.storage_client.put_objects(
+            session_id, result_keys, result_values, [self._calc_intermediate_device], sizes=result_sizes) \
             .then(lambda *_: result_keys)
 
     @promise.reject_on_exception
@@ -229,7 +231,7 @@ class BaseCalcActor(WorkerActor):
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
                     if self._remove_intermediate:
-                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
+                        self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
 
             if not exc_info:
@@ -237,7 +239,7 @@ class BaseCalcActor(WorkerActor):
             else:
                 for k in chunk_targets:
                     if self._remove_intermediate:
-                        self.storage_client.delete(session_id, k, [self._calc_intermediate_device])
+                        self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
                     self._release_local_quota(session_id, k)
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
 
@@ -257,24 +259,22 @@ class BaseCalcActor(WorkerActor):
 
         store_keys, store_metas = [], []
 
-        for k, size in sizes.items():
-            if isinstance(k, tuple):
+        for k, size, shape in zip(keys_to_store, sizes, shapes):
+            if size is None or isinstance(k, tuple):
                 continue
             store_keys.append(k)
-            store_metas.append(WorkerMeta(size, shapes.get(k), (self.address,)))
+            store_metas.append(WorkerMeta(size, shape, (self.address,)))
         meta_future = self.get_meta_client().batch_set_chunk_meta(
             session_id, store_keys, store_metas, _wait=False)
 
         def _delete_keys(*_):
             if self._remove_intermediate:
-                storage_client.batch_delete(
+                storage_client.delete(
                     session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)
             quotas = [build_quota_key(session_id, k, owner=self.proc_id) for k in keys_to_store]
             self._mem_quota_ref.release_quotas(quotas, _tell=True, _wait=False)
 
-        promise.all_([
-            storage_client.copy_to(session_id, k, self._calc_dest_devices)
-            for k in keys_to_store]) \
+        return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
             .then(_delete_keys) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),

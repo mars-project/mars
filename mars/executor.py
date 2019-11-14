@@ -40,7 +40,7 @@ from .compat import six, futures, OrderedDict, enum
 from .utils import kernel_mode, build_fetch, calc_nsplits
 
 if gevent:
-    from .actors.pool.gevent_pool import GeventThreadPoolExecutor
+    from .actors.pool.gevent_pool import GeventThreadPool
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +92,7 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
 class GeventExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def thread_pool_executor(cls, n_workers):
-        return GeventThreadPoolExecutor(n_workers)
+        return GeventThreadPool(n_workers)
 
     @classmethod
     def semaphore(cls, value):

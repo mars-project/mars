@@ -230,7 +230,7 @@ class ExecutionActor(WorkerActor):
             op = chunk.op
             if isinstance(op, Fetch):
                 # use actual size as potential allocation size
-                input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key, calc_data_size(chunk))
+                input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key) or calc_data_size(chunk)
             elif isinstance(op, FetchShuffle):
                 shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
                 for k in op.to_fetch_keys:
@@ -287,13 +287,13 @@ class ExecutionActor(WorkerActor):
 
         @log_unhandled
         def _finish_fetch(*_):
-            locations = storage_client.get_data_locations(session_id, chunk_key) or ()
+            locations = storage_client.get_data_locations(session_id, [chunk_key])[0]
             if (0, DataStorageDevice.SHARED_MEMORY) in locations:
                 self._pin_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quota(
                     build_quota_key(session_id, chunk_key, owner=graph_key), _tell=True, _wait=False)
                 if (0, graph_record.preferred_data_device) not in locations:
-                    return storage_client.copy_to(session_id, chunk_key, [graph_record.preferred_data_device])
+                    return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
 
         @log_unhandled
         def _handle_network_error(*exc):
@@ -301,9 +301,9 @@ class ExecutionActor(WorkerActor):
                 logger.warning('Communicating to %s encountered %s when fetching %s',
                                remote_addr, exc[0].__name__, chunk_key)
 
-                if not storage_client.get_data_locations(session_id, chunk_key):
+                if not storage_client.get_data_locations(session_id, [chunk_key])[0]:
                     logger.debug('Deleting chunk %s from worker because of failure of transfer', chunk_key)
-                    storage_client.delete(session_id, chunk_key)
+                    storage_client.delete(session_id, [chunk_key])
                 else:
                     # as data already transferred, we can skip the error
                     logger.debug('Chunk %s already transferred', chunk_key)
@@ -382,7 +382,7 @@ class ExecutionActor(WorkerActor):
                     break
                 data_size = calc_data_size(c)
                 input_size += data_size
-                data_locations = self.storage_client.get_data_locations(session_id, c.key) or ()
+                data_locations = self.storage_client.get_data_locations(session_id, [c.key])[0]
                 if (0, DataStorageDevice.SHARED_MEMORY) in data_locations:
                     continue
                 elif (0, DataStorageDevice.DISK) in data_locations:
@@ -500,7 +500,8 @@ class ExecutionActor(WorkerActor):
             self._invoke_finish_callbacks(session_id, graph_key)
 
         # collect target data already computed
-        save_sizes = self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
+        sizes = self.storage_client.get_data_sizes(session_id, graph_record.data_targets)
+        save_sizes = dict((k, v) for k, v in zip(graph_record.data_targets, sizes) if v)
 
         # when all target data are computed, report success directly
         if all(k in save_sizes for k in graph_record.data_targets):
@@ -575,7 +576,7 @@ class ExecutionActor(WorkerActor):
                 loaded_keys.append(input_key)
                 self._mem_quota_ref.release_quota(
                     build_quota_key(session_id, input_key, owner=graph_key), _tell=True)
-            elif storage_client.get_data_locations(session_id, input_key):
+            elif storage_client.get_data_locations(session_id, [input_key])[0]:
                 # load data from other devices
                 move_keys.append(input_key)
                 ensure_shared = input_key in graph_record.shared_input_chunks or input_key in shuffle_keys
@@ -639,7 +640,7 @@ class ExecutionActor(WorkerActor):
             for chunk in graph_record.graph:
                 quota_key = None
                 if isinstance(chunk.op, Fetch):
-                    locations = storage_client.get_data_locations(session_id, chunk.key) or ()
+                    locations = storage_client.get_data_locations(session_id, [chunk.key])[0]
                     if (0, graph_record.preferred_data_device) not in locations:
                         quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
                 elif chunk.key in graph_record.chunk_targets:
@@ -746,7 +747,8 @@ class ExecutionActor(WorkerActor):
             raise WorkerProcessStopped
 
         def _cache_result(*_):
-            save_sizes = storage_client.get_data_sizes(session_id, saved_keys)
+            sizes = storage_client.get_data_sizes(session_id, saved_keys)
+            save_sizes = dict((k, v) for k, v in zip(saved_keys, sizes) if v)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if not send_addresses:
@@ -862,7 +864,7 @@ class ExecutionActor(WorkerActor):
 
     @log_unhandled
     def delete_data_by_keys(self, session_id, keys):
-        self.storage_client.batch_delete(session_id, keys, _tell=True)
+        self.storage_client.delete(session_id, keys, _tell=True)
 
     @log_unhandled
     def handle_worker_change(self, _adds, removes):

@@ -63,11 +63,11 @@ class SealActor(WorkerActor):
                 del buffer
 
             # clean up
-            self.storage_client.delete(session_id, key)
+            self.storage_client.delete(session_id, [key])
             self.get_meta_client().delete_meta(session_id, key, False)
             self._mem_quota_ref.release_quota(key)
 
-        self.storage_client.put_object(
-            session_id, chunk_key, ndarr, [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])
+        self.storage_client.put_objects(
+            session_id, [chunk_key], [ndarr], [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK])
         self.get_meta_client().set_chunk_meta(session_id, chunk_key, size=chunk_bytes_size,
                                               shape=shape, workers=(self.address,))

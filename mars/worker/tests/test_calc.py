@@ -96,10 +96,10 @@ class Test(WorkerCase):
 
             for fetch_chunk, d in zip(fetch_chunks, data_list):
                 self.waitp(
-                    storage_client.put_object(
-                        session_id, fetch_chunk.key, d, [DataStorageDevice.SHARED_MEMORY]),
+                    storage_client.put_objects(
+                        session_id, [fetch_chunk.key], [d], [DataStorageDevice.SHARED_MEMORY]),
                 )
-            self.assertEqual(list(storage_client.get_data_locations(session_id, fetch_chunks[0].key)),
+            self.assertEqual(list(storage_client.get_data_locations(session_id, [fetch_chunks[0].key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
             quota_batch = {
@@ -111,12 +111,12 @@ class Test(WorkerCase):
                     = data_list[idx].nbytes
 
                 self.waitp(
-                    storage_client.copy_to(session_id, fetch_chunks[idx].key, [DataStorageDevice.DISK])
+                    storage_client.copy_to(session_id, [fetch_chunks[idx].key], [DataStorageDevice.DISK])
                         .then(lambda *_: storage_client.delete(
-                            session_id, fetch_chunks[idx].key, [DataStorageDevice.SHARED_MEMORY]))
+                            session_id, [fetch_chunks[idx].key], [DataStorageDevice.SHARED_MEMORY]))
                 )
                 self.assertEqual(
-                    list(storage_client.get_data_locations(session_id, fetch_chunks[idx].key)),
+                    list(storage_client.get_data_locations(session_id, [fetch_chunks[idx].key])[0]),
                     [(0, DataStorageDevice.DISK)])
 
             self.waitp(
@@ -154,13 +154,13 @@ class Test(WorkerCase):
             self.assertEqual(len(quota_dump.proc_sizes), 0)
             self.assertEqual(len(quota_dump.hold_sizes), 0)
 
-            self.assertEqual(sorted(storage_client.get_data_locations(session_id, fetch_chunks[0].key)),
+            self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[0].key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
-            self.assertEqual(sorted(storage_client.get_data_locations(session_id, fetch_chunks[1].key)),
+            self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[1].key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
-            self.assertEqual(sorted(storage_client.get_data_locations(session_id, fetch_chunks[2].key)),
+            self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[2].key])[0]),
                              [(0, DataStorageDevice.DISK)])
-            self.assertEqual(sorted(storage_client.get_data_locations(session_id, add_chunk.key)),
+            self.assertEqual(sorted(storage_client.get_data_locations(session_id, [add_chunk.key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
     def testCpuCalcErrorInRunning(self):
@@ -175,8 +175,8 @@ class Test(WorkerCase):
 
             for fetch_chunk, d in zip(fetch_chunks, data_list):
                 self.waitp(
-                    storage_client.put_object(
-                        session_id, fetch_chunk.key, d, [DataStorageDevice.SHARED_MEMORY]),
+                    storage_client.put_objects(
+                        session_id, [fetch_chunk.key], [d], [DataStorageDevice.SHARED_MEMORY]),
                 )
 
             def _mock_calc_results_error(*_, **__):
