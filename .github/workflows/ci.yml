@@ -63,7 +63,7 @@ jobs:
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
             fi
             if [[ $UNAME == "linux" ]]; then
-              pip install tensorflow
+              pip install tensorflow;
             fi
             virtualenv testenv && source testenv/bin/activate;
             pip install -r requirements.txt && pip install pytest pytest-timeout;
