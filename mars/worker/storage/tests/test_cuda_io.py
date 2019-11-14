@@ -69,7 +69,7 @@ class Test(WorkerCase):
                 assert_obj_equal(data, move_to_mem(handler.get_object(session_id, data_key1)))
 
                 handler.delete(session_id, [data_key1])
-                self.assertIsNone(storage_manager_ref.get_data_locations(session_id, [data_key1])[0])
+                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]), [])
                 with self.assertRaises(KeyError):
                     handler.get_object(session_id, data_key1)
 

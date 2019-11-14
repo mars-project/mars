@@ -588,7 +588,7 @@ class ExecutionActor(WorkerActor):
                     lambda k, *_: self._pin_data_keys(session_id, graph_key, [k]), input_key)
                 prepare_promises.append(
                     storage_client.copy_to(
-                        session_id, input_key, [graph_record.preferred_data_device], ensure=ensure_shared)
+                        session_id, [input_key], [graph_record.preferred_data_device], ensure=ensure_shared)
                         .then(pin_fun, lambda *_: None)
                 )
             else:

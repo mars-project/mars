@@ -17,6 +17,7 @@ import os
 import time
 import uuid
 import weakref
+from collections import defaultdict
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -27,7 +28,7 @@ from mars.config import options
 from mars.distributor import MarsDistributor
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
-from mars.tests.core import patch_method, create_actor_pool
+from mars.tests.core import patch_method
 from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
 from mars.worker.utils import WorkerActor
@@ -107,28 +108,25 @@ class OtherProcessTestActor(WorkerActor):
 
 
 class Test(WorkerCase):
+    plasma_storage_size = 1024 * 1024 * 10
+
     def tearDown(self):
         options.worker.lock_free_fileio = False
         super(Test, self).tearDown()
 
     def testClientReadAndWrite(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
-        with create_actor_pool(n_process=1, address=test_addr) as pool:
+        with self.create_pool(n_process=1, address=test_addr) as pool:
             options.worker.lock_free_fileio = True
-            pool.create_actor(
-                WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
-            storage_manager_ref = pool.create_actor(
-                StorageManagerActor, uid=StorageManagerActor.default_uid())
+            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
 
-            pool.create_actor(
-                DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
             pool.create_actor(IORunnerActor)
 
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
             pool.create_actor(
-                PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
-            pool.create_actor(
-                SharedHolderActor, self.plasma_storage_size,
-                uid=SharedHolderActor.default_uid())
+                SharedHolderActor, self.plasma_storage_size, uid=SharedHolderActor.default_uid())
 
             data1 = np.random.random((10, 10))
             ser_data1 = dataserializer.serialize(data1)
@@ -147,7 +145,19 @@ class Test(WorkerCase):
                     with writer:
                         ser.write_to(writer)
 
-                # test creating writer and write
+                # test creating non-promised writer and write
+                with storage_client.create_writer(
+                        session_id, data_key1, ser_data1.total_bytes, (DataStorageDevice.DISK,),
+                        _promise=False) as writer:
+                    _write_data(ser_data1, writer)
+                self.assertTrue(os.path.exists(file_names[0]))
+                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key1])[0]),
+                                 [(0, DataStorageDevice.DISK)])
+
+                storage_client.delete(session_id, [data_key1])
+
+                # test creating promised writer and write
+                file_names[:] = []
                 storage_client.create_writer(
                         session_id, data_key1, ser_data1.total_bytes, (DataStorageDevice.DISK,)) \
                     .then(functools.partial(_write_data, ser_data1)) \
@@ -155,7 +165,7 @@ class Test(WorkerCase):
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 self.assertTrue(os.path.exists(file_names[0]))
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
+                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key1])[0]),
                                  [(0, DataStorageDevice.DISK)])
 
                 def _read_data(reader):
@@ -180,7 +190,7 @@ class Test(WorkerCase):
                     .then(functools.partial(test_actor.set_result),
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
-                self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
+                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key1])[0]),
                                  [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
                 storage_client.delete(session_id, [data_key1])
@@ -188,12 +198,60 @@ class Test(WorkerCase):
                     test_actor.ctx.sleep(0.05)
                 self.assertFalse(os.path.exists(file_names[0]))
 
+    def testClientPutAndGet(self):
+        test_addr = '127.0.0.1:%d' % get_next_port()
+        with self.create_pool(n_process=1, address=test_addr) as pool:
+            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
+
+            pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
+            pool.create_actor(IORunnerActor)
+
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+            pool.create_actor(
+                SharedHolderActor, self.plasma_storage_size, uid=SharedHolderActor.default_uid())
+            pool.create_actor(InProcHolderActor, uid='w:1:InProcHolderActor')
+
+            session_id = str(uuid.uuid4())
+            data_list = [np.random.randint(0, 32767, (655360,), np.int16)
+                         for _ in range(20)]
+            data_keys = [str(uuid.uuid4()) for _ in range(20)]
+            data_dict = dict(zip(data_keys, data_list))
+
+            with self.run_actor_test(pool) as test_actor:
+                storage_client = test_actor.storage_client
+
+                # check batch object put with size exceeds
+                storage_client.put_objects(session_id, data_keys, data_list,
+                                           [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY]) \
+                    .then(functools.partial(test_actor.set_result),
+                          lambda *exc: test_actor.set_result(exc, accept=False))
+                self.get_result(5)
+                locations = storage_client.get_data_locations(session_id, data_keys)
+                loc_to_keys = defaultdict(list)
+                for key, location in zip(data_keys, locations):
+                    self.assertEqual(len(location), 1)
+                    loc_to_keys[list(location)[0][-1]].append(key)
+                self.assertGreater(len(loc_to_keys[DataStorageDevice.PROC_MEMORY]), 1)
+                self.assertGreater(len(loc_to_keys[DataStorageDevice.SHARED_MEMORY]), 1)
+
+                # check get object with all cases
+                with self.assertRaises(IOError):
+                    first_shared_key = loc_to_keys[DataStorageDevice.SHARED_MEMORY][0]
+                    storage_client.get_object(session_id, first_shared_key,
+                                              [DataStorageDevice.PROC_MEMORY], _promise=False)
+
+                storage_client.get_object(session_id, first_shared_key,
+                                          [DataStorageDevice.PROC_MEMORY], _promise=True) \
+                    .then(functools.partial(test_actor.set_result),
+                          lambda *exc: test_actor.set_result(exc, accept=False))
+                assert_allclose(self.get_result(5), data_dict[first_shared_key])
+
     def testLoadStoreInOtherProcess(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=2, address=test_addr, distributor=MarsDistributor(2)) as pool:
             pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
-            pool.create_actor(
-                StorageManagerActor, uid=StorageManagerActor.default_uid())
+            pool.create_actor(StorageManagerActor, uid=StorageManagerActor.default_uid())
 
             pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
 

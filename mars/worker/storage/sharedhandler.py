@@ -221,7 +221,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                          (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_object(session_id, k, _promise=True), ser_needed)
+                lambda k: src_handler.get_object(session_id, k, serialized=ser_needed, _promise=True), ser_needed)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
