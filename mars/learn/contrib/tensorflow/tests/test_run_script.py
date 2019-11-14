@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import os
 
 from mars.learn.contrib.tensorflow import run_tensorflow_script
 
@@ -25,6 +26,7 @@ except ImportError:
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
 class Test(unittest.TestCase):
     def testLocalRunTensorFlowScript(self):
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.assertEqual(run_tensorflow_script(
             'tf_distributed_sample.py', n_workers=2, command_argv=['multiple'],
             port=2222, run_kwargs={'n_parallel': 2}
