@@ -27,5 +27,5 @@ class Test(unittest.TestCase):
     def testLocalRunTensorFlowScript(self):
         self.assertEqual(run_tensorflow_script(
             'tf_test.py', n_workers=2, command_argv=['multiple'],
-            run_kwargs={'n_parallel': 2}
+            port=2222, run_kwargs={'n_parallel': 2}
         )['status'], 'ok')

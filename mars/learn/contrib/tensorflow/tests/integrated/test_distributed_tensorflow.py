@@ -34,5 +34,5 @@ class Test(LearnIntegrationTestBase):
             run_kwargs = {'timeout': timeout}
             self.assertEqual(run_tensorflow_script(
                 '../tf_test.py', n_workers=2, command_argv=['multiple'],
-                session=sess, run_kwargs=run_kwargs
+                port=3222, session=sess, run_kwargs=run_kwargs
             )['status'], 'ok')

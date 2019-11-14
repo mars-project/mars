@@ -135,13 +135,6 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
-    # ---------------
-    # helper function
-    # ---------------
-
-    def popen(self, *args, **kwargs):
-        raise NotImplementedError
-
 
 ChunkMeta = namedtuple('ChunkMeta', ['chunk_size', 'chunk_shape', 'workers'])
 
@@ -196,10 +189,6 @@ class LocalContext(ContextBase):
 
         return metas
 
-    def popen(self, *args, **kwargs):
-        import subprocess
-        return subprocess.Popen(*args, **kwargs)
-
 
 class LocalDictContext(LocalContext, dict):
     def __init__(self, local_session, ncores=None):
@@ -249,9 +238,6 @@ class DistributedContext(ContextBase):
     def get_chunk_metas(self, chunk_keys):
         return self._chunk_meta_client.batch_get_chunk_meta(
             self._session_id, chunk_keys)
-
-    def popen(self, *args, **kwargs):
-        return self._actor_ctx.popen(*args, **kwargs)
 
 
 class DistributedDictContext(DistributedContext, dict):

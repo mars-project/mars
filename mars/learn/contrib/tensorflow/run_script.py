@@ -37,17 +37,17 @@ class RunTensorFlow(LearnMergeDictOperand):
     _n_ps = Int32Field('n_ps')
     _command_args = ListField('comamnd_args')
     _tf_config = DictField('tf_config')
+    _port = Int32Field('port')
     # used for chunk op
     _tf_task_type = StringField('tf_task_type')
     _tf_task_index = Int32Field('tf_task_index')
 
     def __init__(self, code=None, n_workers=None, n_ps=None, tf_config=None,
-                 command_args=None, tf_task_type=None, tf_task_index=None,
+                 port=None, command_args=None, tf_task_type=None, tf_task_index=None,
                  merge=None, output_types=None, **kw):
         super(RunTensorFlow, self).__init__(_code=code, _n_workers=n_workers, _n_ps=n_ps,
-                                            _tf_config=tf_config, _command_args=command_args,
-                                            _tf_task_type=tf_task_type,
-                                            _tf_task_index=tf_task_index,
+                                            _tf_config=tf_config, _command_args=command_args, _port=port,
+                                            _tf_task_type=tf_task_type, _tf_task_index=tf_task_index,
                                             _merge=merge, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
@@ -71,6 +71,10 @@ class RunTensorFlow(LearnMergeDictOperand):
     @property
     def tf_config(self):
         return self._tf_config
+
+    @property
+    def port(self):
+        return self._port
 
     @property
     def command_args(self):
@@ -100,7 +104,7 @@ class RunTensorFlow(LearnMergeDictOperand):
     def tile(cls, op):
         ctx = get_context()
 
-        port = 2221
+        port = op.port or 2221
         cluster_conf = {'worker': []}
         if op.n_ps > 0:
             cluster_conf['ps'] = []
@@ -173,7 +177,7 @@ class RunTensorFlow(LearnMergeDictOperand):
 
 
 def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None,
-                          session=None, run_kwargs=None):
+                          session=None, run_kwargs=None, port=None):
     if int(n_workers) <= 0:
         raise ValueError('n_workers should be at least 1')
     if int(n_ps) < 0:
@@ -185,5 +189,5 @@ def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None,
             code = f.read()
 
     op = RunTensorFlow(code=to_binary(code), n_workers=int(n_workers), n_ps=int(n_ps),
-                       command_args=command_argv)
+                       port=port, command_args=command_argv)
     return op().execute(session=session, **(run_kwargs or {}))
