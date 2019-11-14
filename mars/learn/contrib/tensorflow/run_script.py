@@ -185,7 +185,7 @@ def run_tensorflow_script(script, n_workers, n_ps=0, command_argv=None,
     if hasattr(script, 'read'):
         code = script.read()
     else:
-        with open(script, 'rb') as f:
+        with open(os.path.abspath(script), 'rb') as f:
             code = f.read()
 
     op = RunTensorFlow(code=to_binary(code), n_workers=int(n_workers), n_ps=int(n_ps),
