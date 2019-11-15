@@ -62,7 +62,7 @@ jobs:
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
             fi
-            if [[ $UNAME == "linux" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
               pip install tensorflow;
             fi
             virtualenv testenv && source testenv/bin/activate;
