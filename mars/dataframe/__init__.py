@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from .initializer import DataFrame, Series
 from .datasource.from_tensor import dataframe_from_tensor
 from .datasource.from_records import from_records
 from .utils import concat_tileable_chunks, get_fetch_op_cls, get_fuse_op_cls
+from .datasource.read_csv import read_csv
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 
 from . import arithmetic

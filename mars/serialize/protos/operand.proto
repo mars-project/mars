@@ -363,8 +363,10 @@ message OperandDef {
         GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
 
-        CHOLESKY_FUSE = 999988;
+        // store
+        READ_CSV = 2100;
 
+        CHOLESKY_FUSE = 999988;
 
         // fetches
         FETCH_SHUFFLE = 999998;
