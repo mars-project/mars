@@ -30,9 +30,9 @@ except ImportError:  # pragma: no cover
 import pandas as pd
 
 try:
-    import gevent
+    from .actors.pool.gevent_pool import GeventThreadPool
 except ImportError:  # pragma: no cover
-    gevent = None
+    GeventThreadPool = None
 
 from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
@@ -86,63 +86,33 @@ class ThreadExecutorSyncProvider(ExecutorSyncProvider):
         return threading.Event()
 
 
-if gevent:
-    import gevent.threadpool
-    import gevent.event
+if GeventThreadPool:
+    class GeventExecutorSyncProvider(ExecutorSyncProvider):
+        @classmethod
+        def thread_pool_executor(cls, n_workers):
+            return GeventThreadPool(n_workers)
 
-    class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
-        @staticmethod
-        def _wrap_watch(fn):
-            # Each time a function is submitted, a gevent greenlet may be created,
-            # this is common especially for Mars actor,
-            # but there would be no other greenlet to switch to,
-            # LoopExit will be raised, in order to prevent from this,
-            # we create a greenlet to watch the result
+        @classmethod
+        def semaphore(cls, value):
+            # as gevent threadpool is the **real** thread, so use threading.Semaphore
+            return threading.Semaphore(value)
 
-            def check(event):
-                delay = 0.0005
-                while not event.is_set():
-                    event.wait(delay)
-                    delay = min(delay * 2, .05)
+        @classmethod
+        def lock(cls):
+            # as gevent threadpool is the **real** thread, so use threading.Lock
+            return threading.Lock()
 
-            def inner(*args, **kwargs):
-                event = gevent.event.Event()
-                gevent.spawn(check, event)
-                result = fn(*args, **kwargs)
-                event.set()
-                return result
+        @classmethod
+        def rlock(cls):
+            # as gevent threadpool is the **real** thread, so use threading.RLock
+            return threading.RLock()
 
-            return inner
-
-        def submit(self, fn, *args, **kwargs):
-            wrapped_fn = self._wrap_watch(fn)
-            return super(GeventThreadPoolExecutor, self).submit(wrapped_fn, *args, **kwargs)
-
-
-class GeventExecutorSyncProvider(ExecutorSyncProvider):
-    @classmethod
-    def thread_pool_executor(cls, n_workers):
-        return GeventThreadPoolExecutor(n_workers)
-
-    @classmethod
-    def semaphore(cls, value):
-        # as gevent threadpool is the **real** thread, so use threading.Semaphore
-        return threading.Semaphore(value)
-
-    @classmethod
-    def lock(cls):
-        # as gevent threadpool is the **real** thread, so use threading.Lock
-        return threading.Lock()
-
-    @classmethod
-    def rlock(cls):
-        # as gevent threadpool is the **real** thread, so use threading.RLock
-        return threading.RLock()
-
-    @classmethod
-    def event(cls):
-        # as gevent threadpool is the **real** thread, so use threading.Event
-        return threading.Event()
+        @classmethod
+        def event(cls):
+            # as gevent threadpool is the **real** thread, so use threading.Event
+            return threading.Event()
+else:
+    GeventExecutorSyncProvider = None
 
 
 class MockThreadPoolExecutor(object):
@@ -541,8 +511,9 @@ class Executor(object):
     _sync_provider = {
         SyncProviderType.MOCK: MockExecutorSyncProvider,
         SyncProviderType.THREAD: ThreadExecutorSyncProvider,
-        SyncProviderType.GEVENT: GeventExecutorSyncProvider,
     }
+    if GeventExecutorSyncProvider:
+        _sync_provider[SyncProviderType.GEVENT] = GeventExecutorSyncProvider
 
     def __init__(self, engine=None, storage=None, prefetch=False,
                  sync_provider_type=SyncProviderType.THREAD):

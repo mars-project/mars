@@ -107,7 +107,10 @@ cdef class ActorExecutionContext:
         self.inbox.put(message_ctx)
 
 
-class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
+class GeventThreadPool:
+    def __init__(self, num_threads):
+        self._pool = gevent.threadpool.ThreadPool(num_threads)
+
     @staticmethod
     def _wrap_watch(fn):
         # Each time a function is submitted, a gevent greenlet may be created,
@@ -133,7 +136,7 @@ class GeventThreadPoolExecutor(gevent.threadpool.ThreadPoolExecutor):
 
     def submit(self, fn, *args, **kwargs):
         wrapped_fn = self._wrap_watch(fn)
-        return super(GeventThreadPoolExecutor, self).submit(wrapped_fn, *args, **kwargs)
+        return self._pool.spawn(wrapped_fn, *args, **kwargs)
 
 
 cdef class ActorContext:
@@ -222,7 +225,7 @@ cdef class ActorContext:
 
     @staticmethod
     def threadpool(size):
-        return GeventThreadPoolExecutor(size)
+        return GeventThreadPool(size)
 
     @staticmethod
     def asyncpool(size=None):
@@ -1692,7 +1695,7 @@ cdef class ActorClient:
 
     @staticmethod
     def threadpool(size):
-        return GeventThreadPoolExecutor(size)
+        return GeventThreadPool(size)
 
     @staticmethod
     def asyncpool(size=None):
