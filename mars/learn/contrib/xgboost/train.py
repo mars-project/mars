@@ -17,15 +17,15 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
+from ....serialize import ValueType, DictField, KeyField, TupleField
 from .... import opcodes as OperandDef
-from ....serialize import ValueType, DictField, KeyField, TupleField, BoolField
 from ....context import get_context, RunningMode
-from ...operands import LearnOperand, LearnOperandMixin, OutputType
+from ...operands import LearnMergeDictOperand, OutputType
 from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
 
-class XGBTrain(LearnOperand, LearnOperandMixin):
+class XGBTrain(LearnMergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
     _params = DictField('params', key_type=ValueType.string)
@@ -33,7 +33,6 @@ class XGBTrain(LearnOperand, LearnOperandMixin):
     _evals = TupleField('evals')
     _kwargs = DictField('kwargs', key_type=ValueType.string)
     _tracker = KeyField('tracker')
-    _merge = BoolField('merge')
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
                  tracker=None, merge=None, gpu=None, output_types=None, **kw):
@@ -62,10 +61,6 @@ class XGBTrain(LearnOperand, LearnOperandMixin):
     @property
     def tracker(self):
         return self._tracker
-
-    @property
-    def merge(self):
-        return self._merge
 
     def _set_inputs(self, inputs):
         super(XGBTrain, self)._set_inputs(inputs)
@@ -143,9 +138,7 @@ class XGBTrain(LearnOperand, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         if op.merge:
-            inputs = [ctx[inp.key] for inp in op.inputs]
-            ctx[op.outputs[0].key] = next(inp for inp in inputs if inp)
-            return
+            return super(XGBTrain, cls).execute(ctx, op)
 
         from xgboost import train, rabit
 
@@ -178,15 +171,6 @@ class XGBTrain(LearnOperand, LearnOperandMixin):
                 ctx[op.outputs[0].key] = ret
             finally:
                 rabit.finalize()
-
-    @classmethod
-    def concat_tileable_chunks(cls, tileable):
-        assert not tileable.is_coarse()
-
-        op = cls(merge=True)
-        chunk = cls(merge=True).new_chunk(tileable.chunks)
-        return op.new_tensor([tileable], chunks=[chunk],
-                             nsplits=((1,) * len(tileable.chunks)))
 
 
 def train(params, dtrain, evals=(), **kwargs):

@@ -89,6 +89,14 @@ class ContextBase(object):
         """
         raise NotImplementedError
 
+    def get_worker_addresses(self):
+        """
+        Get worker addreses
+
+        :return: List of worker addresses
+        """
+        raise NotImplementedError
+
     def get_local_address(self):
         """
         Get local address
@@ -150,6 +158,9 @@ class LocalContext(ContextBase):
     def get_scheduler_addresses(self):
         return
 
+    def get_worker_addresses(self):
+        return
+
     def get_local_address(self):
         return
 
@@ -191,7 +202,8 @@ class LocalDictContext(LocalContext, dict):
 
 
 class DistributedContext(ContextBase):
-    def __init__(self, cluster_info, session_id, addr, chunk_meta_client, **kw):
+    def __init__(self, cluster_info, session_id, addr, chunk_meta_client,
+                 resource_actor_ref, actor_ctx, **kw):
         self._cluster_info = cluster_info
         is_distributed = cluster_info.is_distributed()
         self._running_mode = RunningMode.local_cluster \
@@ -199,6 +211,8 @@ class DistributedContext(ContextBase):
         self._session_id = session_id
         self._address = addr
         self._chunk_meta_client = chunk_meta_client
+        self._resource_actor_ref = resource_actor_ref
+        self._actor_ctx = actor_ctx
         self._extra_info = kw
 
     @property
@@ -211,6 +225,9 @@ class DistributedContext(ContextBase):
 
     def get_scheduler_addresses(self):
         return self._cluster_info.get_schedulers()
+
+    def get_worker_addresses(self):
+        return self._resource_actor_ref.get_worker_endpoints()
 
     def get_local_address(self):
         return self._address

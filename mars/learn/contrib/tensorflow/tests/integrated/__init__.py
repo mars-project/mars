@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .dmatrix import MarsDMatrix
-from .train import train
-from .predict import predict
-from .classifier import XGBClassifier
-from .regressor import XGBRegressor
-
-
-def register_op():
-    from .start_tracker import StartTracker
-    del StartTracker

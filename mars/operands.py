@@ -67,6 +67,10 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     _sparse = BoolField('sparse')
     _gpu = BoolField('gpu')
     _device = Int32Field('device')
+    # worker to execute, only work for chunk op,
+    # if specified, the op should be executed on the specified worker
+    # only work for those operand that has no input
+    _expect_worker = StringField('expect_worker')
     # will this operand create a view of input data or not
     _create_view = BoolField('create_view')
 
@@ -132,6 +136,10 @@ class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
     @property
     def create_view(self):
         return getattr(self, '_create_view', False)
+
+    @property
+    def expect_worker(self):
+        return getattr(self, '_expect_worker', None)
 
     @property
     def extra_params(self):

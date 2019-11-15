@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
+PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning
+--ignore mars/lib/functools32 --ignore mars/lib/futures"
 if [ -n "$WITH_KUBERNETES" ]; then
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/deploy/kubernetes
   coverage report

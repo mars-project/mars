@@ -137,6 +137,9 @@ class ResourceActor(SchedulerActor):
         return dict((k, v) for k, v in self._meta_cache.items()
                     if k not in self._worker_blacklist)
 
+    def get_worker_endpoints(self):
+        return [k for k in self._meta_cache if k not in self._worker_blacklist]
+
     def select_worker(self, size=None):
         # NB: randomly choice the indices, rather than the worker list to avoid the `str` to `np.str_` casting.
         available_workers = [k for k in self._meta_cache if k not in self._worker_blacklist]
