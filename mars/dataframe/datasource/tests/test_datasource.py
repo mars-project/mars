@@ -385,12 +385,12 @@ class Test(TestBase):
             mdf = read_csv(file_path, index_col=0, chunk_bytes=10)
             self.assertIsInstance(mdf.op, DataFrameReadCSV)
             self.assertEqual(mdf.shape[1], 3)
-            pd.testing.assert_index_equal(df.columns, mdf.columns.to_pandas())
+            pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
 
             mdf.tiles()
             self.assertEqual(len(mdf.chunks), 4)
             for chunk in mdf.chunks:
-                pd.testing.assert_index_equal(df.columns, chunk.columns.to_pandas())
+                pd.testing.assert_index_equal(df.columns, chunk.columns_value.to_pandas())
                 pd.testing.assert_series_equal(df.dtypes, chunk.dtypes)
         finally:
             shutil.rmtree(tempdir)

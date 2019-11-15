@@ -112,12 +112,12 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         chunk_op._size = file_size(op.path)
         shape = df.shape
         new_chunk = chunk_op.new_chunk(None, shape=shape, index=(0, 0), index_value=df.index_value,
-                                       columns_value=df.columns, dtypes=df.dtypes)
+                                       columns_value=df.columns_value, dtypes=df.dtypes)
         new_op = op.copy()
         nsplits = ((np.nan,), (df.shape[1],))
         return new_op.new_dataframes(None, df.shape, dtypes=df.dtypes,
                                      index_value=df.index_value,
-                                     columns_value=df.columns,
+                                     columns_value=df.columns_value,
                                      chunks=[new_chunk], nsplits=nsplits)
 
     @classmethod
@@ -143,7 +143,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._size = min(chunk_bytes, total_bytes - offset)
                 shape = (np.nan, len(df.dtypes))
                 new_chunk = chunk_op.new_chunk(None, shape=shape, index=(index_num, 0), index_value=df.index_value,
-                                               columns_value=df.columns, dtypes=df.dtypes)
+                                               columns_value=df.columns_value, dtypes=df.dtypes)
                 out_chunks.append(new_chunk)
                 index_num += 1
                 offset += chunk_bytes
@@ -152,7 +152,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         return new_op.new_dataframes(None, df.shape, dtypes=df.dtypes,
                                      index_value=df.index_value,
-                                     columns_value=df.columns,
+                                     columns_value=df.columns_value,
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
