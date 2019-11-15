@@ -136,7 +136,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         for path in paths:
             total_bytes = file_size(path)
             offset = 0
-            for i in range(int(np.ceil(total_bytes * 1.0 / chunk_bytes))):
+            for _ in range(int(np.ceil(total_bytes * 1.0 / chunk_bytes))):
                 chunk_op = op.copy().reset_key()
                 chunk_op._path = path
                 chunk_op._offset = offset
