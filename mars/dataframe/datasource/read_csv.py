@@ -165,7 +165,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
             if op.compression is not None:
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-                df = xdf.read_csv(BytesIO(f.read()), names=op.names, index_col=op.index_col,
+                df = xdf.read_csv(BytesIO(f.read()), sep=op.sep, names=op.names, index_col=op.index_col,
                                   dtype=out_df.dtypes.to_dict(), **csv_kwargs)
             else:
                 start, end = _find_chunk_start_end(f, op.offset, op.size)
@@ -179,7 +179,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                         # The first chunk contains header
                         # As we specify names and dtype, we need to skip header rows
                         csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-                    df = xdf.read_csv(b, names=op.names, index_col=op.index_col,
+                    df = xdf.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
                                       dtype=out_df.dtypes.to_dict(), **csv_kwargs)
         ctx[out_df.key] = df
 
@@ -189,14 +189,14 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=columns_value, chunk_bytes=chunk_bytes)
 
 
-def read_csv(path, names=None, sep=None, index_col=None, compression=None, header='infer', dtype=None,
+def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer', dtype=None,
              chunk_bytes=None, gpu=None, head_bytes='100k', head_lines=None, storage_options=None, **kwargs):
     """
     Read comma-separated values (csv) file(s) into DataFrame.
     :param path: file path(s).
     :param names: List of column names to use. If file contains no header row,
     then you should explicitly pass header=None. Duplicates in this list are not allowed.
-    :param sep:Delimiter to use.
+    :param sep:Delimiter to use, default is ','.
     :param index_col: Column(s) to use as the row labels of the DataFrame, either given as string name or column index.
     :param compression: For on-the-fly decompression of on-disk data.
     :param header: Row number(s) to use as the column names, and the start of the data.
@@ -223,7 +223,7 @@ def read_csv(path, names=None, sep=None, index_col=None, compression=None, heade
             head_start, head_end = _find_chunk_start_end(f, 0, head_bytes)
             f.seek(head_start)
             b = f.read(head_end - head_start)
-        mini_df = pd.read_csv(BytesIO(b), index_col=index_col, dtype=dtype, names=names, header=header)
+        mini_df = pd.read_csv(BytesIO(b), sep=sep, index_col=index_col, dtype=dtype, names=names, header=header)
 
     if isinstance(mini_df.index, pd.RangeIndex):
         index_value = parse_index(pd.RangeIndex(0))

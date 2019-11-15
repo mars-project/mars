@@ -152,6 +152,24 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+        # test sep
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
+            df.to_csv(file_path, sep=';')
+
+            pdf = pd.read_csv(file_path, sep=';', index_col=0)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, sep=';', index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf)
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, sep=';', index_col=0, chunk_bytes=10),
+                                                   concat=True)[0]
+            pd.testing.assert_frame_equal(pdf, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)
+
         # test missing value
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
