@@ -16,7 +16,6 @@ import logging
 
 from ...actors import FunctionActor
 from ...errors import StorageFull, StorageDataExists
-from ...utils import calc_data_size
 
 try:
     import pyarrow
@@ -54,6 +53,10 @@ class PlasmaKeyMapActor(FunctionActor):
             del self._mapping[(session_id, chunk_key)]
         except KeyError:
             pass
+
+    def batch_delete(self, session_id, chunk_keys):
+        for k in chunk_keys:
+            self.delete(session_id, k)
 
 
 class PlasmaSharedStore(object):
@@ -134,7 +137,8 @@ class PlasmaSharedStore(object):
             raise
 
         if exc_type is PlasmaStoreFull:
-            raise StorageFull(request_size=size, total_size=self._actual_size)
+            raise StorageFull(request_size=size, capacity=self._actual_size,
+                              affected_keys=[data_key])
 
     def seal(self, session_id, data_key):
         obj_id = self._get_object_id(session_id, data_key)
@@ -188,7 +192,7 @@ class PlasmaSharedStore(object):
         :param data_key: chunk key
         :param value: Mars object to be put
         """
-        data_size = calc_data_size(value)
+        data_size = None
 
         try:
             obj_id = self._new_object_id(session_id, data_key)
@@ -227,7 +231,8 @@ class PlasmaSharedStore(object):
             raise
 
         if exc is PlasmaStoreFull:
-            raise StorageFull(request_size=data_size, total_size=self._actual_size)
+            raise StorageFull(request_size=data_size, capacity=self._actual_size,
+                              affected_keys=[data_key])
 
     def contains(self, session_id, data_key):
         """
@@ -245,3 +250,6 @@ class PlasmaSharedStore(object):
 
     def delete(self, session_id, data_key):
         self._mapper_ref.delete(session_id, data_key)
+
+    def batch_delete(self, session_id, data_keys):
+        self._mapper_ref.batch_delete(session_id, data_keys)

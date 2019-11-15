@@ -69,9 +69,9 @@ class Test(WorkerCase):
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
-            handler.delete(session_id, data_key1)
+            handler.delete(session_id, [data_key1])
 
             def _write_data(ser, writer):
                 with writer:
@@ -83,7 +83,7 @@ class Test(WorkerCase):
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
             def _read_data_all(reader):
@@ -112,7 +112,7 @@ class Test(WorkerCase):
                 .then(functools.partial(test_actor.set_result),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             assert_allclose(self.get_result(5), data1)
-            handler.delete(session_id, data_key1)
+            handler.delete(session_id, [data_key1])
 
     def testSharedReadAndWritePacked(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -146,9 +146,9 @@ class Test(WorkerCase):
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
-            handler.delete(session_id, data_key1)
+            handler.delete(session_id, [data_key1])
 
             def _write_data(ser, writer):
                 with writer:
@@ -164,7 +164,7 @@ class Test(WorkerCase):
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
 
             def _read_data_all(reader):
@@ -193,7 +193,7 @@ class Test(WorkerCase):
                 .then(functools.partial(test_actor.set_result),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             assert_allclose(self.get_result(5), data1)
-            handler.delete(session_id, data_key1)
+            handler.delete(session_id, [data_key1])
 
     def testSharedPutAndGet(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -218,25 +218,27 @@ class Test(WorkerCase):
             storage_client = test_actor.storage_client
             handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
-            handler.put_object(session_id, data_key1, data1)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            handler.put_objects(session_id, [data_key1], [data1])
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             assert_allclose(data1, handler.get_object(session_id, data_key1))
 
-            handler.delete(session_id, data_key1)
-            self.assertIsNone(storage_manager_ref.get_data_locations(session_id, data_key1))
+            handler.delete(session_id, [data_key1])
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]), [])
             with self.assertRaises(KeyError):
                 handler.get_object(session_id, data_key1)
 
-            handler.put_object(session_id, data_key2, ser_data2, serialized=True)
+            handler.put_objects(session_id, [data_key2], [ser_data2], serialized=True)
             assert_allclose(data2, handler.get_object(session_id, data_key2))
-            handler.delete(session_id, data_key2)
+            handler.delete(session_id, [data_key2])
 
-            handler.put_object(session_id, data_key2, bytes_data2, serialized=True)
+            handler.put_objects(session_id, [data_key2], [bytes_data2], serialized=True)
             assert_allclose(data2, handler.get_object(session_id, data_key2))
-            handler.delete(session_id, data_key2)
+            handler.delete(session_id, [data_key2])
 
-    def testSharedLoad(self, *_):
+    def testSharedLoadFromBytes(self, *_):
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=1, address=test_addr) as pool, \
                 self.run_actor_test(pool) as test_actor:
@@ -251,12 +253,10 @@ class Test(WorkerCase):
             pool.create_actor(SharedHolderActor, uid=SharedHolderActor.default_uid())
 
             data1 = np.random.random((10, 10))
-            data2 = np.random.random((10, 10))
             ser_data1 = dataserializer.serialize(data1)
 
             session_id = str(uuid.uuid4())
             data_key1 = str(uuid.uuid4())
-            data_key2 = str(uuid.uuid4())
 
             storage_client = test_actor.storage_client
             handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
@@ -267,33 +267,85 @@ class Test(WorkerCase):
                     session_id, data_key1, ser_data1.total_bytes) as writer:
                 ser_data1.write_to(writer)
 
-            handler.load_from_bytes_io(session_id, data_key1, disk_handler) \
+            handler.load_from_bytes_io(session_id, [data_key1], disk_handler) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key1)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
-            disk_handler.delete(session_id, data_key1)
-            handler.delete(session_id, data_key1)
+            disk_handler.delete(session_id, [data_key1])
+            handler.delete(session_id, [data_key1])
 
-            ref_data2 = weakref.ref(data2)
+            # load from bytes io till no capacity
+            data_list = [np.random.randint(0, 32767, (655360,), np.int16)
+                         for _ in range(20)]
+            data_keys = [str(uuid.uuid4()) for _ in range(20)]
+            for key, data in zip(data_keys, data_list):
+                ser_data = dataserializer.serialize(data)
+                with disk_handler.create_bytes_writer(
+                        session_id, key, ser_data.total_bytes) as writer:
+                    ser_data.write_to(writer)
+
+            handler.load_from_bytes_io(session_id, data_keys, disk_handler) \
+                .then(lambda *_: test_actor.set_result(None),
+                      lambda *exc: test_actor.set_result(exc, accept=False))
+
+            affected_keys = set()
+            try:
+                self.get_result(5)
+            except StorageFull as ex:
+                affected_keys.update(ex.affected_keys)
+
+            storage_client.delete(session_id, data_keys, [DataStorageDevice.DISK])
+
+            self.assertLess(len(affected_keys), len(data_keys))
+            self.assertGreater(len(affected_keys), 1)
+            for k, size in zip(data_keys, storage_client.get_data_sizes(session_id, data_keys)):
+                if k in affected_keys:
+                    self.assertIsNone(size)
+                else:
+                    self.assertIsNotNone(size)
+
+    def testSharedLoadFromObjects(self, *_):
+        test_addr = '127.0.0.1:%d' % get_next_port()
+        with self.create_pool(n_process=1, address=test_addr) as pool, \
+                self.run_actor_test(pool) as test_actor:
+            pool.create_actor(WorkerDaemonActor, uid=WorkerDaemonActor.default_uid())
+            storage_manager_ref = pool.create_actor(
+                StorageManagerActor, uid=StorageManagerActor.default_uid())
+
+            pool.create_actor(QuotaActor, 1024 ** 2, uid=MemQuotaActor.default_uid())
+            pool.create_actor(InProcHolderActor)
+
+            pool.create_actor(PlasmaKeyMapActor, uid=PlasmaKeyMapActor.default_uid())
+            pool.create_actor(SharedHolderActor, uid=SharedHolderActor.default_uid())
+
+            data1 = np.random.random((10, 10))
+
+            session_id = str(uuid.uuid4())
+            data_key1 = str(uuid.uuid4())
+
+            storage_client = test_actor.storage_client
+            handler = storage_client.get_storage_handler((0, DataStorageDevice.SHARED_MEMORY))
 
             # load from object io
-            proc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
-            proc_handler.put_object(session_id, data_key2, data2)
-            del data2
+            ref_data1 = weakref.ref(data1)
 
-            handler.load_from_object_io(session_id, data_key2, proc_handler) \
+            proc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
+            proc_handler.put_objects(session_id, [data_key1], [data1])
+            del data1
+
+            handler.load_from_object_io(session_id, [data_key1], proc_handler) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))
             self.get_result(5)
-            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, data_key2)),
+            self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                              [(0, DataStorageDevice.PROC_MEMORY), (0, DataStorageDevice.SHARED_MEMORY)])
 
-            proc_handler.delete(session_id, data_key2)
-            self.assertIsNone(ref_data2())
-            handler.delete(session_id, data_key2)
+            proc_handler.delete(session_id, [data_key1])
+            self.assertIsNone(ref_data1())
+            handler.delete(session_id, [data_key1])
 
     def testSharedSpill(self, *_):
         test_addr = '127.0.0.1:%d' % get_next_port()
@@ -321,13 +373,13 @@ class Test(WorkerCase):
                 i = 0
                 for i, (key, data) in enumerate(zip(data_keys[idx:], data_list)):
                     try:
-                        handler.put_object(session_id, key, data)
+                        handler.put_objects(session_id, [key], [data])
                     except StorageFull:
                         break
                 return i + idx
 
             def _do_spill():
-                data_size = storage_manager_ref.get_data_size(session_id, data_keys[0])
+                data_size = storage_manager_ref.get_data_sizes(session_id, [data_keys[0]])[0]
                 handler.spill_size(2 * data_size) \
                     .then(lambda *_: test_actor.set_result(None),
                           lambda *exc: test_actor.set_result(exc, accept=False))
@@ -335,34 +387,34 @@ class Test(WorkerCase):
 
             # test lift data key
             idx = _fill_data()
-            handler.lift_data_key(session_id, data_keys[0])
+            handler.lift_data_keys(session_id, [data_keys[0]])
             _do_spill()
 
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[0])),
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[0]])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[1])),
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[1]])[0]),
                              [(0, DataStorageDevice.DISK)])
 
-            handler.put_object(session_id, data_keys[idx], data_list[idx])
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
+            handler.put_objects(session_id, [data_keys[idx]], [data_list[idx]])
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[idx]])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             idx += 1
 
             # test pin data key
             idx = _fill_data()
-            holder_ref.lift_data_key(session_id, data_keys[0], last=False)
+            holder_ref.lift_data_keys(session_id, [data_keys[0]], last=False)
             pin_token = str(uuid.uuid4())
             pinned_keys = handler.pin_data_keys(session_id, (data_keys[0],), pin_token)
             self.assertIn(data_keys[0], pinned_keys)
             _do_spill()
 
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[0])),
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[0]])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[1])),
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[1]])[0]),
                              [(0, DataStorageDevice.DISK)])
 
-            handler.put_object(session_id, data_keys[idx], data_list[idx])
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[idx])),
+            handler.put_objects(session_id, [data_keys[idx]], [data_list[idx]])
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[idx]])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             idx += 1
 
@@ -371,5 +423,5 @@ class Test(WorkerCase):
             handler.unpin_data_keys(session_id, (data_keys[0],), pin_token)
             _do_spill()
 
-            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, data_keys[0])),
+            self.assertEqual(list(storage_manager_ref.get_data_locations(session_id, [data_keys[0]])[0]),
                              [(0, DataStorageDevice.DISK)])

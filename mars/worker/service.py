@@ -75,8 +75,11 @@ class WorkerService(object):
             self._n_cuda_process = 0
         else:
             if cuda_devices is None:
-                cuda_devices = [0]
-            os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(d) for d in cuda_devices)
+                cuda_devices = [int(d) for d in os.environ['CUDA_VISIBLE_DEVICES'].split(',')] \
+                    if os.environ.get('CUDA_VISIBLE_DEVICES') else []
+            cuda_devices = os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(d) for d in cuda_devices)
+            if cuda_devices:
+                logger.info('Started Mars worker with CUDA cards %s', cuda_devices)
             self._n_cuda_process = resource.cuda_count()
 
         self._n_cpu_process = int(kwargs.pop('n_cpu_process', None) or resource.cpu_count())

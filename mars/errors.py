@@ -24,11 +24,7 @@ class MarsError(RuntimeError):
         super(MarsError, self).__init__(msg)
 
     def __str__(self):
-        if hasattr(self, 'message'):
-            message = self.message
-        else:
-            message = self.args[0]  # py3
-        return message or ''
+        return self.args[0] or ''
 
 
 class StartArgumentError(MarsError):
@@ -46,10 +42,12 @@ class DependencyMissing(MarsError):
 class StorageFull(MarsError):
     def __init__(self, msg=None, **kwargs):
         self._request_size = kwargs.pop('request_size', 0)
-        self._total_size = kwargs.pop('total_size', 0)
-        if self._request_size and self._total_size:
+        self._capacity = kwargs.pop('total_size', 0)
+        self._affected_keys = kwargs.pop('affected_keys', [])
+
+        if self._request_size and self._capacity:
             msg = (msg or '') + ' request_size=%s, total_size=%s' \
-                  % (self._request_size, self._total_size)
+                  % (self._request_size, self._capacity)
             msg = msg.strip()
         super(StorageFull, self).__init__(msg)
 
@@ -58,8 +56,12 @@ class StorageFull(MarsError):
         return self._request_size
 
     @property
-    def total_size(self):
-        return self._total_size
+    def capacity(self):
+        return self._capacity
+
+    @property
+    def affected_keys(self):
+        return self._affected_keys
 
 
 class StorageDataExists(MarsError):

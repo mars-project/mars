@@ -41,7 +41,7 @@ class IORunnerActor(WorkerActor):
         self._cur_work_items = dict()
 
         self._lock_free = lock_free or options.worker.lock_free_fileio
-        self._lock_work_item_id = dict()
+        self._lock_work_items = dict()
 
         self._dispatched = dispatched
 
@@ -55,26 +55,25 @@ class IORunnerActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def load_from(self, dest_device, session_id, data_key, src_device, callback):
-        logger.debug('Copying (%s, %s) from %s into %s submitted in %s',
-                     session_id, data_key, src_device, dest_device, self.uid)
-        self._work_items.append((dest_device, session_id, data_key, src_device, False, callback))
+    def load_from(self, dest_device, session_id, data_keys, src_device, callback):
+        logger.debug('Copying %r from %s into %s submitted in %s',
+                     data_keys, src_device, dest_device, self.uid)
+        self._work_items.append((dest_device, session_id, data_keys, src_device, False, callback))
         if self._lock_free or not self._cur_work_items:
             self._submit_next()
 
-    def lock(self, session_id, data_key, callback):
-        logger.debug('Requesting lock for (%s, %s) on %s', session_id, data_key, self.uid)
-        self._work_items.append((None, session_id, data_key, None, True, callback))
+    def lock(self, session_id, data_keys, callback):
+        logger.debug('Requesting lock for %r on %s', data_keys, self.uid)
+        self._work_items.append((None, session_id, data_keys, None, True, callback))
         if self._lock_free or not self._cur_work_items:
             self._submit_next()
 
-    def unlock(self, session_id, data_key):
-        logger.debug('%s unlocked for (%s, %s)', self.uid, session_id, data_key)
-        work_item_id = self._lock_work_item_id.pop((session_id, data_key), None)
-        if work_item_id is None:
-            return
-        self._cur_work_items.pop(work_item_id)
-        self._submit_next()
+    def unlock(self, work_item_id):
+        data_keys = self._lock_work_items.pop(work_item_id)[2]
+        logger.debug('%s unlocked for %r on work item %d', self.uid, data_keys, work_item_id)
+        if work_item_id is not None:  # pragma: no branch
+            self._cur_work_items.pop(work_item_id)
+            self._submit_next()
 
     @log_unhandled
     def _submit_next(self):
@@ -82,13 +81,13 @@ class IORunnerActor(WorkerActor):
             return
         work_item_id = self._max_work_item_id
         self._max_work_item_id += 1
-        dest_device, session_id, data_key, src_device, is_lock, cb = \
+        dest_device, session_id, data_keys, src_device, is_lock, cb = \
             self._cur_work_items[work_item_id] = self._work_items.popleft()
 
         if is_lock:
-            self._lock_work_item_id[(session_id, data_key)] = work_item_id
-            self.tell_promise(cb)
-            logger.debug('%s locked for (%s, %s)', self.uid, session_id, data_key)
+            self._lock_work_items[work_item_id] = self._cur_work_items[work_item_id]
+            self.tell_promise(cb, work_item_id)
+            logger.debug('%s locked for %r on work item %d', self.uid, data_keys, work_item_id)
             return
 
         @log_unhandled
@@ -100,9 +99,9 @@ class IORunnerActor(WorkerActor):
                 self.tell_promise(cb, *exc, **dict(_accept=False))
             self._submit_next()
 
-        logger.debug('Start copying (%s, %s) from %s into %s in %s',
-                     session_id, data_key, src_device, dest_device, self.uid)
+        logger.debug('Start copying %r from %s into %s in %s',
+                     data_keys, src_device, dest_device, self.uid)
         src_handler = self.storage_client.get_storage_handler(src_device)
         dest_handler = self.storage_client.get_storage_handler(dest_device)
-        dest_handler.load_from(session_id, data_key, src_handler) \
+        dest_handler.load_from(session_id, data_keys, src_handler) \
             .then(functools.partial(_finalize, None), lambda *exc: _finalize(exc))

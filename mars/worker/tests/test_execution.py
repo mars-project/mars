@@ -75,7 +75,8 @@ class MockSenderActor(WorkerActor):
                   ensure_cached=True, compression=None, timeout=None, callback=None):
         if self._mode == 'in':
             self._dispatch_ref.register_free_slot(self.uid, 'sender')
-            self.storage_client.put_object(session_id, chunk_key, self._mock_data, [DataStorageDevice.SHARED_MEMORY]) \
+            self.storage_client.put_objects(
+                session_id, [chunk_key], [self._mock_data], [DataStorageDevice.SHARED_MEMORY]) \
                 .then(lambda *_: self.tell_promise(callback))
         else:
             data = self._shared_store.get(session_id, chunk_key)
@@ -191,8 +192,8 @@ class Test(WorkerCase):
 
                 storage_client = test_actor.storage_client
                 self.waitp(
-                    storage_client.put_object(session_id, arr.chunks[0].key, np.ones((10, 8), dtype=np.int16),
-                                              [DataStorageDevice.SHARED_MEMORY]),
+                    storage_client.put_objects(session_id, [arr.chunks[0].key], [np.ones((10, 8), dtype=np.int16)],
+                                               [DataStorageDevice.SHARED_MEMORY]),
                 )
 
                 execution_ref = test_actor.promise_ref(ExecutionActor.default_uid())
@@ -326,12 +327,12 @@ class Test(WorkerCase):
             # test read from spilled file
             with self.run_actor_test(pool) as test_actor:
                 self.waitp(
-                    test_actor.storage_client.put_object(
-                        session_id, modified_chunk.key, mock_data, [DataStorageDevice.PROC_MEMORY]) \
+                    test_actor.storage_client.put_objects(
+                        session_id, [modified_chunk.key], [mock_data], [DataStorageDevice.PROC_MEMORY]) \
                         .then(lambda *_: test_actor.storage_client.copy_to(
-                            session_id, modified_chunk.key, [DataStorageDevice.DISK]))
+                            session_id, [modified_chunk.key], [DataStorageDevice.DISK]))
                 )
-                test_actor.storage_client.delete(session_id, modified_chunk.key,
+                test_actor.storage_client.delete(session_id, [modified_chunk.key],
                                                  [DataStorageDevice.PROC_MEMORY])
 
                 def _validate(_):

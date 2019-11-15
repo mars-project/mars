@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import os
 import shutil
 import sys
 import time
 
+from ... import promise
 from ...config import options
 from ...serialize import dataserializer
 from ...errors import SpillNotConfigured, StorageDataExists
@@ -75,7 +77,7 @@ class DiskIO(BytesStorageIO):
         filename = self._dest_filename = self._filename = _build_file_name(session_id, data_key)
         if self.is_writable:
             if os.path.exists(self._dest_filename):
-                exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, data_key) or ()
+                exist_devs = self._storage_ctx.manager_ref.get_data_locations(session_id, [data_key])[0]
                 if (0, DataStorageDevice.DISK) in exist_devs:
                     self._closed = True
                     raise StorageDataExists('File for data (%s, %s) already exists.' % (session_id, data_key))
@@ -169,7 +171,7 @@ class DiskIO(BytesStorageIO):
         if self._handler.status_ref and transfer_speed is not None:
             self._handler.status_ref.update_mean_stats(status_key, transfer_speed, _tell=True, _wait=False)
         if self._event_id:
-            self._handler.events_ref.close_event(self._event_id, _tell=True)
+            self._handler.events_ref.close_event(self._event_id, _tell=True, _wait=False)
 
         super(DiskIO, self).close(finished=finished)
 
@@ -208,15 +210,17 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
                       packed=packed, handler=self)
 
-    def load_from_bytes_io(self, session_id, data_key, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler):
         def _fallback(*_):
-            return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
+            return promise.all_(
+                src_handler.create_bytes_reader(session_id, k, _promise=True) \
                 .then(lambda reader: self.create_bytes_writer(
-                    session_id, data_key, reader.nbytes, _promise=True)
+                    session_id, k, reader.nbytes, _promise=True)
                       .then(lambda writer: self._copy_bytes_data(reader, writer),
                             lambda *exc: self.pass_on_exc(reader.close, exc)))
+                for k in data_keys)
 
-        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
     @staticmethod
     def _get_serialized_data_size(serialized_obj):
@@ -225,29 +229,31 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         else:
             return len(serialized_obj)
 
-    def load_from_object_io(self, session_id, data_key, src_handler):
-        def _load_data(obj_data):
+    def load_from_object_io(self, session_id, data_keys, src_handler):
+        def _load_data(key, obj_data):
             try:
                 data_size = self._get_serialized_data_size(obj_data)
-                writer = self.create_bytes_writer(session_id, data_key, data_size, _promise=False)
+                writer = self.create_bytes_writer(session_id, key, data_size, _promise=False)
                 return self._copy_object_data(obj_data, writer)
             finally:
                 del obj_data
 
         def _fallback(*_):
-            return src_handler.get_object(session_id, data_key, serialized=True, _promise=True) \
-                .then(_load_data)
+            return promise.all_(
+                src_handler.get_object(session_id, key, serialized=True, _promise=True)
+                .then(functools.partial(_load_data, key)) for key in data_keys)
 
-        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def delete(self, session_id, data_key, _tell=False):
-        file_name = _build_file_name(session_id, data_key)
-        if sys.platform == 'win32':  # pragma: no cover
-            CREATE_NO_WINDOW = 0x08000000
-            self._actor_ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
-        else:
-            self._actor_ctx.popen(['rm', '-f', file_name])
-        self.unregister_data(session_id, data_key, _tell=_tell)
+    def delete(self, session_id, data_keys, _tell=False):
+        for data_key in data_keys:
+            file_name = _build_file_name(session_id, data_key)
+            if sys.platform == 'win32':  # pragma: no cover
+                CREATE_NO_WINDOW = 0x08000000
+                self._actor_ctx.popen(['del', file_name], creationflags=CREATE_NO_WINDOW)
+            else:
+                self._actor_ctx.popen(['rm', '-f', file_name])
+        self.unregister_data(session_id, data_keys, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.DISK, DiskHandler)
