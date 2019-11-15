@@ -165,12 +165,13 @@ class StorageHandler(object):
     def delete(self, session_id, data_keys, _tell=False):
         raise NotImplementedError
 
-    def load_from(self, session_id, data_keys, src_handler):
+    def load_from(self, session_id, data_keys, src_handler, pin=False):
         """
         :param session_id:
         :param data_keys:
         :param src_handler:
         :type src_handler: StorageHandler
+        :param pin:
         """
         logger.debug('Try loading data %s from device %s into %s',
                      data_keys, src_handler.storage_type, self.storage_type)
@@ -179,16 +180,16 @@ class StorageHandler(object):
         right_has_bytes_io = getattr(src_handler, '_has_bytes_io', False)
 
         if left_has_obj_io and right_has_obj_io:
-            return self.load_from_object_io(session_id, data_keys, src_handler)
+            return self.load_from_object_io(session_id, data_keys, src_handler, pin=pin)
         elif right_has_bytes_io:
-            return self.load_from_bytes_io(session_id, data_keys, src_handler)
+            return self.load_from_bytes_io(session_id, data_keys, src_handler, pin=pin)
         else:
-            return self.load_from_object_io(session_id, data_keys, src_handler)
+            return self.load_from_object_io(session_id, data_keys, src_handler, pin=pin)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin=False):
         raise NotImplementedError
 
-    def load_from_object_io(self, session_id, data_keys, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin=False):
         raise NotImplementedError
 
     def register_data(self, session_id, data_keys, sizes, shapes=None):
@@ -259,7 +260,8 @@ class BytesStorageMixin(object):
         raise NotImplementedError
 
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
-                            packed_compression=None, _promise=False):
+                            packed_compression=None, auto_register=True, pin=False,
+                            _promise=False):
         raise NotImplementedError
 
     def _copy_bytes_data(self, reader, writer, on_close=None):
@@ -316,7 +318,7 @@ class ObjectStorageMixin(object):
         else:
             return dataserializer.deserialize(obj)
 
-    def _batch_load_objects(self, session_id, data_keys, key_loader, store_serialized=False):
+    def _batch_load_objects(self, session_id, data_keys, key_loader, store_serialized=False, pin=False):
         keys, objs = [], []
         sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
@@ -327,7 +329,7 @@ class ObjectStorageMixin(object):
         def _put_objects(*_):
             try:
                 return self.put_objects(session_id, keys, objs, sizes, serialized=store_serialized,
-                                        _promise=True)
+                                        pin=pin, _promise=True)
             finally:
                 objs[:] = []
 
@@ -338,7 +340,7 @@ class ObjectStorageMixin(object):
     def get_object(self, session_id, data_key, serialized=False, _promise=False):
         raise NotImplementedError
 
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, pin=False,
                     _promise=False):
         raise NotImplementedError
 

@@ -235,36 +235,42 @@ class QuotaActor(WorkerActor):
             del self._proc_sizes[key]
 
     @log_unhandled
-    def release_quota(self, key):
-        """
-        Release allocated quota
-        :param key: request key
-        """
-        if key not in self._allocations:
-            return
-        alloc_size = self._allocations[key]
-        self._allocated_size -= alloc_size
-        del self._allocations[key]
-
-        if key in self._proc_sizes:
-            self._total_proc -= self._proc_sizes[key]
-            del self._proc_sizes[key]
-
-        if key in self._hold_sizes:
-            self._total_hold -= self._hold_sizes[key]
-            del self._hold_sizes[key]
-
-        self._process_requests()
-        self._log_allocate('Quota key %s released on %s.', key, self.uid)
-
-    @log_unhandled
     def release_quotas(self, keys):
         """
         Release allocated quota in batch
         :param keys: request keys
         """
-        for k in keys:
-            self.release_quota(k)
+        total_alloc_size = 0
+        total_proc_change = 0
+        total_hold_change = 0
+
+        for key in keys:
+            if key not in self._allocations:
+                continue
+            try:
+                alloc_size = self._allocations[key]
+                total_alloc_size += alloc_size
+                del self._allocations[key]
+            except KeyError:
+                continue
+            try:
+                total_proc_change += self._proc_sizes[key]
+                del self._proc_sizes[key]
+            except KeyError:
+                pass
+            try:
+                total_hold_change += self._hold_sizes[key]
+                del self._proc_sizes[key]
+            except KeyError:
+                pass
+
+        self._allocated_size -= total_alloc_size
+        self._total_proc -= total_proc_change
+        self._total_hold -= total_hold_change
+
+        if total_alloc_size:
+            self._process_requests()
+            self._log_allocate('Quota key %s released on %s.', keys, self.uid)
 
     def dump_data(self):
         return QuotaDumpType(self._allocations, self._requests, self._proc_sizes, self._hold_sizes)
@@ -373,9 +379,10 @@ class QuotaActor(WorkerActor):
             except:  # noqa: E722
                 removed.append(k)
                 # just in case the quota is allocated
-                self.release_quota(k)
                 for cb in callbacks:
-                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False))
+                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False, _wait=False))
+        if removed:
+            self.release_quotas(removed)
         for k in removed:
             self._requests.pop(k, None)
 
@@ -453,7 +460,7 @@ class MemQuotaActor(QuotaActor):
                 allocated=self._allocated_size, hold=self._total_hold, total=self._total_size)
         return ret
 
-    def release_quota(self, key):
-        ret = super(MemQuotaActor, self).release_quota(key)
+    def release_quotas(self, keys):
+        ret = super(MemQuotaActor, self).release_quotas(keys)
         self._update_status(allocated=self._allocated_size, total=self._total_size)
         return ret

@@ -38,7 +38,7 @@ class Test(WorkerCase):
 
             quota_ref.process_quota('non_exist')
             quota_ref.hold_quota('non_exist')
-            quota_ref.release_quota('non_exist')
+            quota_ref.release_quotas(['non_exist'])
 
             with self.assertRaises(ValueError):
                 quota_ref.request_quota('ERROR', 1000)
@@ -106,7 +106,7 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 with patch_method(QuotaActor.alter_allocation, new=_raiser):
-                    quota_ref.release_quota('2')
+                    quota_ref.release_quotas(['2'])
 
                     with self.assertRaises(ValueError):
                         self.get_result(5)
@@ -122,7 +122,7 @@ class Test(WorkerCase):
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                 def actual_exec(x):
-                    ref.release_quota(x)
+                    ref.release_quotas([x])
                     end_time.append(time.time())
                     finished.add(x)
                     if len(finished) == 5:
@@ -154,7 +154,7 @@ class Test(WorkerCase):
 
                     def actual_exec(keys):
                         for k in keys:
-                            ref.release_quota(k)
+                            ref.release_quotas([k])
                         end_time.append(time.time())
                         test_actor.set_result(None)
 
@@ -190,7 +190,7 @@ class Test(WorkerCase):
                 time_recs.append(time.time())
 
                 def actual_exec(x):
-                    ref.release_quota(x)
+                    ref.release_quotas([x])
                     time_recs.append(time.time())
                     test_actor.set_result(None)
 

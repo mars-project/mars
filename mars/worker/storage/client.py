@@ -201,7 +201,7 @@ class StorageClient(object):
 
         return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order)
 
-    def copy_to(self, session_id, data_keys, device_order, ensure=True):
+    def copy_to(self, session_id, data_keys, device_order, ensure=True, pin=False):
         device_order = self._normalize_devices(device_order)
         existing_devs = self._manager_ref.get_data_locations(session_id, data_keys)
         data_sizes = self._manager_ref.get_data_sizes(session_id, data_keys)
@@ -232,7 +232,7 @@ class StorageClient(object):
             return promise.finished()
 
         def _action(src_handler, h, keys):
-            return h.load_from(session_id, keys, src_handler)
+            return h.load_from(session_id, keys, src_handler, pin=pin)
 
         def _handle_exc(keys, *exc):
             existing = self._manager_ref.get_data_locations(session_id, keys)

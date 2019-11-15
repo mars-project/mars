@@ -41,14 +41,15 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return obj
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+                    pin=False, _promise=False):
         objs = [self._deserial(obj) if serialized else obj for obj in objs]
         sizes = sizes or [calc_data_size(obj) for obj in objs]
         shapes = [getattr(obj, 'shape', None) for obj in objs]
-        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes)
+        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin=pin)
         self.register_data(session_id, data_keys, sizes, shapes)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin=False):
         def _read_serialized(reader):
             with reader:
                 return reader.get_io_pool().submit(reader.read).result()
@@ -57,12 +58,12 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
             return self._batch_load_objects(
                 session_id, data_keys,
                 lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
-                True
+                store_serialized=True
             )
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def load_from_object_io(self, session_id, data_keys, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin=False):
         def _fallback(*_):
             return self._batch_load_objects(
                 session_id, data_keys,

@@ -96,8 +96,8 @@ class BaseCalcActor(WorkerActor):
         return new_keys
 
     def _release_local_quota(self, session_id, data_key):
-        self._mem_quota_ref.release_quota(
-            build_quota_key(session_id, data_key, owner=self.proc_id), _tell=True, _wait=False)
+        self._mem_quota_ref.release_quotas(
+            [build_quota_key(session_id, data_key, owner=self.proc_id)], _tell=True, _wait=False)
 
     def _fetch_keys_to_process(self, session_id, keys_to_fetch):
         context_dict = dict()
@@ -109,7 +109,7 @@ class BaseCalcActor(WorkerActor):
             locations = storage_client.get_data_locations(session_id, [k])[0]
             quota_key = build_quota_key(session_id, k, owner=self.proc_id)
             if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
-                self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
+                self._mem_quota_ref.release_quotas([quota_key], _tell=True, _wait=False)
             else:
                 self._mem_quota_ref.hold_quota(quota_key, _tell=True)
                 if self._remove_intermediate:

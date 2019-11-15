@@ -260,9 +260,11 @@ class SimpleObjectHolderActor(ObjectHolderActor):
         manager_ref.register_process_holder(
             self.proc_id, self._storage_device, self.ref())
 
-    def put_objects(self, session_id, data_keys, data_objs, data_sizes):
+    def put_objects(self, session_id, data_keys, data_objs, data_sizes, pin=False):
         for data_key, obj, size in zip(data_keys, data_objs, data_sizes):
             self._internal_put_objects(session_id, data_key, obj, size)
+        if pin:
+            self.pin_data_keys(session_id, data_keys)
         self._finish_put_objects(session_id, data_keys)
 
     def get_object(self, session_id, data_key):
@@ -293,13 +295,15 @@ class SharedHolderActor(ObjectHolderActor):
         self._shared_store.batch_delete(session_id, data_keys)
         self._storage_handler.unregister_data(session_id, data_keys)
 
-    def put_objects_by_keys(self, session_id, data_keys, shapes=None):
+    def put_objects_by_keys(self, session_id, data_keys, shapes=None, pin=False):
         sizes = []
         for data_key in data_keys:
             buf = self._shared_store.get_buffer(session_id, data_key)
             size = len(buf)
             self._internal_put_objects(session_id, data_key, buf, size)
             sizes.append(size)
+        if pin:
+            self.pin_data_keys(session_id, data_keys)
 
         self.storage_client.register_data(
             session_id, data_keys, (0, DataStorageDevice.SHARED_MEMORY), sizes, shapes=shapes)

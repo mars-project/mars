@@ -32,7 +32,7 @@ class SharedStorageIO(BytesStorageIO):
 
     def __init__(self, session_id, data_key, mode='w', shared_store=None,
                  nbytes=None, packed=False, compress=None, auto_register=True,
-                 handler=None):
+                 pin=False, handler=None):
         from .objectholder import SharedHolderActor
 
         super(SharedStorageIO, self).__init__(session_id, data_key, mode=mode,
@@ -45,6 +45,7 @@ class SharedStorageIO(BytesStorageIO):
         self._compress = compress or dataserializer.CompressType.NONE
         self._packed = packed
         self._auto_register = auto_register
+        self._pin = pin
 
         block_size = options.worker.copy_block_size
 
@@ -99,7 +100,8 @@ class SharedStorageIO(BytesStorageIO):
             self._shared_store.seal(self._session_id, self._data_key)
             if finished:
                 if self._auto_register:
-                    self._holder_ref.put_objects_by_keys(self._session_id, [self._data_key])
+                    self._holder_ref.put_objects_by_keys(
+                        self._session_id, [self._data_key], pin=self._pin)
             else:
                 self._shared_store.delete(self._session_id, self._data_key)
 
@@ -127,7 +129,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
-                            packed_compression=None, auto_register=True, _promise=False):
+                            packed_compression=None, auto_register=True, pin=False,
+                            _promise=False):
         return SharedStorageIO(session_id, data_key, 'w', self._shared_store,
                                nbytes=total_bytes, packed=packed, auto_register=auto_register,
                                handler=self)
@@ -140,7 +143,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
             return self._shared_store.get(session_id, data_key)
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, _promise=False):
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+                    pin=False, _promise=False):
         keys, shapes = [], []
         obj_refs = []
         affected_keys = []
@@ -161,7 +165,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                     capacity = ex.capacity
                 finally:
                     del obj
-            self._holder_ref.put_objects_by_keys(session_id, keys, shapes=shapes)
+            self._holder_ref.put_objects_by_keys(session_id, keys, shapes=shapes, pin=pin)
             if affected_keys:
                 raise StorageFull(request_size=request_size, capacity=capacity,
                                   affected_keys=affected_keys)
@@ -169,7 +173,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
             obj_refs[:] = []
             del objs
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin=False):
         shared_bufs = []
         failed_keys = set()
         storage_full_sizes = [0, 0]
@@ -194,7 +198,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
             try:
                 success_keys = [k for k in data_keys if k not in failed_keys]
                 if success_keys:
-                    self._holder_ref.put_objects_by_keys(session_id, success_keys)
+                    self._holder_ref.put_objects_by_keys(session_id, success_keys, pin=pin)
                 if failed_keys:
                     raise StorageFull(request_size=storage_full_sizes[0], capacity=storage_full_sizes[1],
                                       affected_keys=list(failed_keys))
@@ -215,13 +219,14 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def load_from_object_io(self, session_id, data_keys, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin=False):
         def _fallback(*_):
             ser_needed = src_handler.storage_type not in \
                          (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_object(session_id, k, serialized=ser_needed, _promise=True), ser_needed)
+                lambda k: src_handler.get_object(session_id, k, serialized=ser_needed, _promise=True),
+                ser_needed, pin=pin)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
