@@ -303,12 +303,14 @@ default_options.register_option('check_interval', 20, validator=is_integer)
 # the number of combined chunks in tree reduction or tree add
 default_options.register_option('combine_size', 4, validator=is_integer, serialize=True)
 
+# the default chunk store size
+default_options.register_option('chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
+
 # deploy
 default_options.register_option('deploy.open_browser', True, validator=is_bool)
 
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 
@@ -373,3 +375,5 @@ class OptionsProxy(object):
 
 
 options = OptionsProxy()
+
+options.redirect_option('tensor.chunk_store_limit', 'chunk_store_limit')

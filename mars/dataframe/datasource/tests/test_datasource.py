@@ -13,11 +13,14 @@
 # limitations under the License.
 
 from weakref import ReferenceType
-import mars.tensor as mt
+import os
+import tempfile
+import shutil
 
 import numpy as np
 import pandas as pd
 
+import mars.tensor as mt
 from mars import opcodes as OperandDef
 from mars.graph import DAG
 from mars.tests.core import TestBase
@@ -26,6 +29,7 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from mars.dataframe.datasource.from_records import from_records
+from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
 
 
 class Test(TestBase):
@@ -371,3 +375,23 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.RangeIndex(3, 6))
         pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.RangeIndex(6, 9))
         pd.testing.assert_index_equal(df.chunks[3].index_value.to_pandas(), pd.RangeIndex(9, 10))
+
+    def testReadCSV(self):
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'], dtype=np.int64)
+            df.to_csv(file_path)
+            mdf = read_csv(file_path, index_col=0, chunk_bytes=10)
+            self.assertIsInstance(mdf.op, DataFrameReadCSV)
+            self.assertEqual(mdf.shape[1], 3)
+            pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
+
+            mdf.tiles()
+            self.assertEqual(len(mdf.chunks), 4)
+            for chunk in mdf.chunks:
+                pd.testing.assert_index_equal(df.columns, chunk.columns_value.to_pandas())
+                pd.testing.assert_series_equal(df.dtypes, chunk.dtypes)
+        finally:
+            shutil.rmtree(tempdir)
+
