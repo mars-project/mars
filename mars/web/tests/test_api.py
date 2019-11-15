@@ -330,7 +330,7 @@ class MockedServer(object):
         if '/worker' in url:
             return MockResponse(200, json_text=1)
         if url.split('/')[-2] == 'graph':
-            return MockResponse(200, json_text={"state": 'success'})
+            return MockResponse(200, json_text={"state": 'succeeded'})
         elif url.split('/')[-2] == 'data':
             data = dumps(np.ones((100, 100)) * 100)
             return MockResponse(200, data=data)
