@@ -178,6 +178,20 @@ class RunTensorFlow(LearnMergeDictOperand):
 
 def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None,
                           session=None, run_kwargs=None, port=None):
+    """
+    Run tensorflow script in Mars cluster.
+
+    :param script: script to run
+    :type script: str or file-like object
+    :param n_workers: number of TensorFlow workers
+    :param n_ps: number of TensorFlow ps, optional
+    :param gpu: run TensorFlow script on GPU
+    :param command_argv: extra command args for script
+    :param session: Mars session, if not provided, will use default one
+    :param run_kwargs: extra kwargs for session.run
+    :param port: port of TensorFlow worker or ps, will automatically increase for the same worker
+    :return: return {'status': 'ok'} if succeeded, or error raised
+    """
     if int(n_workers) <= 0:
         raise ValueError('n_workers should be at least 1')
     if int(n_ps) < 0:

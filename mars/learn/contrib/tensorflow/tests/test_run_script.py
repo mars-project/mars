@@ -31,3 +31,9 @@ class Test(unittest.TestCase):
             path, n_workers=2, command_argv=['multiple'],
             port=2222, run_kwargs={'n_parallel': 2}
         )['status'], 'ok')
+
+        with self.assertRaises(ValueError):
+            run_tensorflow_script(path, n_workers=0)
+
+        with self.assertRaises(ValueError):
+            run_tensorflow_script(path, 2, n_ps=-1)
