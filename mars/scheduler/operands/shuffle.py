@@ -45,7 +45,12 @@ class ShuffleProxyActor(BaseOperandActor):
         super(ShuffleProxyActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
 
         from ..chunkmeta import WorkerMeta
-        self._worker_to_mappers[worker].add(op_key)
+        chunk_key = next(iter(output_sizes.keys()))[0]
+        self._mapper_op_to_chunk[op_key] = chunk_key
+        if op_key not in self._worker_to_mappers[worker]:
+            self._worker_to_mappers[worker].add(op_key)
+            self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
+
         shuffle_keys_to_op = self._shuffle_keys_to_op
 
         if not self._reducer_workers:
@@ -55,10 +60,6 @@ class ShuffleProxyActor(BaseOperandActor):
         data_to_addresses = dict()
 
         for (chunk_key, shuffle_key), data_size in output_sizes.items() or ():
-            self._mapper_op_to_chunk[op_key] = chunk_key
-            # create a pseudo meta at the meta store
-            self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
-
             succ_op_key = shuffle_keys_to_op[shuffle_key]
             meta = self._reducer_to_mapper[succ_op_key][op_key] = \
                 WorkerMeta(chunk_size=data_size, workers=(worker,))
