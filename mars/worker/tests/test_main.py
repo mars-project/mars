@@ -154,7 +154,8 @@ class Test(unittest.TestCase):
 
     @require_cupy
     def testExecuteCudaWorker(self):
-        with self._start_worker_process(no_cuda=False, cuda_device='0') as (pool, worker_endpoint):
+        dev_id = os.environ.get('CUDA_VISIBLE_DEVICES', '0').split(',', 1)[0]
+        with self._start_worker_process(no_cuda=False, cuda_device=dev_id) as (pool, worker_endpoint):
             test_ref = pool.create_actor(WorkerProcessTestActor)
             test_ref.run_test(worker_endpoint, calc_device='cuda', _tell=True)
 

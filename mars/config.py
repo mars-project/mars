@@ -311,7 +311,6 @@ default_options.register_option('deploy.open_browser', True, validator=is_bool)
 
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.chunk_store_limit', default_options.chunk_store_limit, validator=is_numeric)
 default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
 default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 
@@ -379,3 +378,5 @@ class OptionsProxy(object):
 
 
 options = OptionsProxy()
+
+options.redirect_option('chunk_store_limit', 'tensor.chunk_store_limit')

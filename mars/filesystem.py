@@ -17,6 +17,7 @@ import glob as local_glob
 from gzip import GzipFile
 
 from pyarrow import LocalFileSystem as ArrowLocalFileSystem
+from pyarrow import HadoopFileSystem
 try:
     import lz4, lz4.frame
 except ImportError:
@@ -59,7 +60,8 @@ class LocalFileSystem(ArrowLocalFileSystem):
 
 
 file_systems = {
-    'file': LocalFileSystem
+    'file': LocalFileSystem,
+    'hdfs': HadoopFileSystem
 }
 
 
