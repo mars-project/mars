@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .sum import sum_series, sum_dataframe, SeriesSum, DataFrameSum
+from .sum import DataFrameSum
+from .prod import DataFrameProd
+from .max import DataFrameMax
+from .min import DataFrameMin
 
 
 def _install():
     from ..core import DataFrame, Series
+    from .sum import sum_series, sum_dataframe
+    from .prod import prod_series, prod_dataframe
+    from .max import max_series, max_dataframe
+    from .min import min_series, min_dataframe
 
     setattr(DataFrame, 'sum', sum_dataframe)
     setattr(Series, 'sum', sum_series)
+    setattr(DataFrame, 'prod', prod_dataframe)
+    setattr(Series, 'prod', prod_series)
+    setattr(DataFrame, 'max', max_dataframe)
+    setattr(Series, 'max', max_series)
+    setattr(DataFrame, 'min', min_dataframe)
+    setattr(Series, 'min', min_series)
 
 
 _install()

@@ -19,6 +19,7 @@ import logging
 import os
 import sys
 import time
+import traceback
 import unittest
 import uuid
 
@@ -27,6 +28,7 @@ import pandas as pd
 
 from mars import tensor as mt
 from mars import dataframe as md
+from mars.compat import six
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.serialize import Int64Field
@@ -119,6 +121,43 @@ class Test(unittest.TestCase):
                 logger.error('Processes still running: %r',
                              [' '.join(p.cmdline()) for p in processes if p.is_running()])
                 self.assertFalse(any(p.is_running() for p in processes))
+
+    def testLocalClusterError(self, *_):
+        with option_context({'scheduler.retry_num': 1}):
+            with new_cluster(scheduler_n_process=2, worker_n_process=3,
+                            shared_memory='20M', web=True) as cluster:
+                # Note that it is nested exception and we want to check the message
+                # of the inner exeception, thus assertRaises won't work.
+
+                with cluster.session as session:
+                    t = mt.array(["1", "2", "3", "4"])
+                    try:
+                        session.run(t + 1)
+                    except:
+                        etype, exp, tb = sys.exc_info()
+                        self.assertEqual(etype, ExecutionFailed)
+                        self.assertIsInstance(exp, ExecutionFailed)
+                        if six.PY3:
+                            formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
+                            self.assertIn('TypeError', formatted_tb)
+                            self.assertIn('ufunc', formatted_tb)
+                            self.assertIn('add', formatted_tb)
+                            self.assertIn('signature matching types', formatted_tb)
+
+                with new_session('http://' + cluster._web_endpoint) as session:
+                    t = mt.array(["1", "2", "3", "4"])
+                    try:
+                        session.run(t + 1)
+                    except:
+                        etype, exp, tb = sys.exc_info()
+                        self.assertEqual(etype, ExecutionFailed)
+                        self.assertIsInstance(exp, ExecutionFailed)
+                        if six.PY3:
+                            formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
+                            self.assertIn('TypeError', formatted_tb)
+                            self.assertIn('ufunc', formatted_tb)
+                            self.assertIn('add', formatted_tb)
+                            self.assertIn('signature matching types', formatted_tb)
 
     def testNSchedulersNWorkers(self, *_):
         calc_cpu_cnt = functools.partial(lambda: 4)

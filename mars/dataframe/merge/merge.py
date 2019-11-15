@@ -187,11 +187,11 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                             sparse=chunk.issparse(),
                                             index_shuffle_size=out_shape[0])
             map_chunks.append(map_op.new_chunk([chunk], shape=(np.nan, np.nan), dtypes=chunk.dtypes, index=chunk.index,
-                                               index_value=chunk.index_value, columns_value=chunk.columns))
+                                               index_value=chunk.index_value, columns_value=chunk.columns_value))
 
         proxy_chunk = DataFrameShuffleProxy(object_type=ObjectType.dataframe).new_chunk(
             map_chunks, shape=(), dtypes=df.dtypes,
-            index_value=df.index_value, columns_value=df.columns)
+            index_value=df.index_value, columns_value=df.columns_value)
 
         # gen reduce chunks
         reduce_chunks = []
@@ -200,7 +200,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                                   shuffle_key=','.join(str(idx) for idx in out_idx))
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), dtypes=proxy_chunk.dtypes, index=out_idx,
-                                    index_value=proxy_chunk.index_value, columns_value=proxy_chunk.columns))
+                                    index_value=proxy_chunk.index_value, columns_value=proxy_chunk.columns_value))
         return reduce_chunks
 
     @classmethod
@@ -233,14 +233,14 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
             out_chunk = merge_op.new_chunk([left_chunk, right_chunk], shape=(np.nan, df.shape[1]),
                                            index=left_chunk.index,
                                            index_value=infer_index_value(left_chunk.index_value, right_chunk.index_value),
-                                           columns_value=df.columns)
+                                           columns_value=df.columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
                                      chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns)
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def execute(cls, ctx, op):

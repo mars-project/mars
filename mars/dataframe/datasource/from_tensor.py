@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ...core import Base
-from ...serialize import KeyField, SeriesField
+from ...serialize import KeyField, SeriesField, DataTypeField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 from ..utils import parse_index
@@ -105,13 +105,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 i, = in_chunk.index
                 column_stop = 1
                 index = (in_chunk.index[0], 0)
-                columns_value = parse_index(out_df.columns.to_pandas()[0:1], store_data=True)
+                columns_value = parse_index(out_df.columns_value.to_pandas()[0:1], store_data=True)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
                 index = in_chunk.index
-                columns_value = parse_index(out_df.columns.to_pandas()[column_stop - in_chunk.shape[1]:column_stop],
-                                            store_data=True)
+                columns_value = parse_index(
+                    out_df.columns_value.to_pandas()[column_stop - in_chunk.shape[1]:column_stop], store_data=True)
 
             index_stop = cum_size[0][i]
             if out_df.index_value.has_value():
@@ -133,7 +133,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy()
         return new_op.new_dataframes(out_df.inputs, out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns,
+                                     index_value=out_df.index_value, columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
@@ -141,10 +141,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         chunk = op.outputs[0]
         tensor_data = ctx[op.inputs[0].key]
         ctx[chunk.key] = pd.DataFrame(tensor_data, index=chunk.index_value.to_pandas(),
-                                      columns=chunk.columns.to_pandas())
+                                      columns=chunk.columns_value.to_pandas())
 
 
-def from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
+def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
     if tensor.ndim > 2 or tensor.ndim <= 0:
         raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
     try:
@@ -154,3 +154,70 @@ def from_tensor(tensor, index=None, columns=None, gpu=None, sparse=False):
     gpu = tensor.op.gpu if gpu is None else gpu
     op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num), gpu=gpu, sparse=sparse)
     return op(tensor, index, columns)
+
+
+class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.SERIES_FROM_TENSOR
+
+    _dtype = DataTypeField('dtype')
+
+    def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
+        super(SeriesFromTensor, self).__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse,
+                                               _object_type=ObjectType.series, **kw)
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @classmethod
+    def tile(cls, op):
+        out_series = op.outputs[0]
+        in_tensor = op.inputs[0]
+        nsplits = in_tensor.nsplits
+
+        if any(any(np.isnan(ns)) for ns in nsplits):
+            raise NotImplementedError('NAN shape is not supported in DataFrame')
+
+        index_start = 0
+        out_chunks = []
+        series_index = out_series.index_value.to_pandas()
+        for in_chunk in in_tensor.chunks:
+            new_op = op.copy().reset_key()
+            index_value = parse_index(series_index[index_start: index_start + in_chunk.shape[0]], store_data=True)
+            new_op.extra_params['index_start'] = index_start
+            index_start += in_chunk.shape[0]
+            out_chunk = new_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
+                                         index_value=index_value, name=out_series.name)
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        return new_op.new_dataframes(op.inputs, out_series.shape, dtype=out_series.dtype,
+                                     index_value=out_series.index_value, name=out_series.name,
+                                     chunks=out_chunks, nsplits=in_tensor.nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        tensor_data = ctx[op.inputs[0].key]
+        ctx[chunk.key] = pd.Series(tensor_data, index=chunk.index_value.to_pandas(), name=chunk.name)
+
+    def __call__(self, input_tensor, index, name):
+        if index is not None:
+            if not isinstance(index, pd.Index):
+                if isinstance(index, Base):
+                    raise NotImplementedError('The index value cannot be a tileable')
+                index = pd.Index(index)
+            index_value = parse_index(index, store_data=True)
+        else:
+            index_value = parse_index(pd.RangeIndex(start=0, stop=input_tensor.shape[0]))
+        return self.new_series([input_tensor], shape=input_tensor.shape, dtype=self.dtype,
+                               index_value=index_value, name=name)
+
+
+def series_from_tensor(tensor, index=None, name=None, gpu=None, sparse=False):
+    if tensor.ndim > 1 or tensor.ndim <= 0:
+        raise TypeError('Not support create DataFrame from {0} dims tensor', format(tensor.ndim))
+    gpu = tensor.op.gpu if gpu is None else gpu
+    op = SeriesFromTensor(dtype=tensor.dtype, gpu=gpu, sparse=sparse)
+    return op(tensor, index, name)
+

@@ -16,7 +16,7 @@ import pickle
 import time
 import unittest
 
-from mars.actors import create_actor_pool
+from mars.tests.core import create_actor_pool
 from mars.config import options
 from mars.tests.core import patch_method
 from mars.utils import get_next_port

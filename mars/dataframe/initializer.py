@@ -21,14 +21,14 @@ from ..tensor.core import TENSOR_TYPE
 from .core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame as _Frame, Series as _Series
 from .datasource.dataframe import from_pandas as from_pandas_df
 from .datasource.series import from_pandas as from_pandas_series
-from .datasource.from_tensor import from_tensor
+from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 
 
 class DataFrame(_Frame):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            df = from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+            df = dataframe_from_tensor(data, index=index, columns=columns, gpu=gpu, sparse=sparse)
         elif isinstance(data, DATAFRAME_TYPE):
             df = data
         else:
@@ -41,9 +41,7 @@ class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
-            if name is None:
-                name = 0
-            series = from_tensor(data, index=index, columns=[name], gpu=gpu, sparse=sparse)[name]
+            series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
             series = data
         else:

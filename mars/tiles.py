@@ -16,7 +16,7 @@
 
 from collections import deque
 
-from .graph import DirectedGraph
+from .graph import DirectedGraph, DAG
 from .utils import kernel_mode
 
 
@@ -132,17 +132,14 @@ class OperandTilesHandler(object):
         return to_tiles
 
     def tiles(self, tiles_obj):
-        graph = DirectedGraph()
+        graph = DAG()
         visited = {id(tiles_obj)}
-        loose_requires = set()
         q = deque([tiles_obj])
 
         while q:
             to_tiles = q.popleft()
             if to_tiles not in graph:
                 graph.add_node(to_tiles)
-            if getattr(to_tiles.op, '_loose_require', False):
-                loose_requires.add(to_tiles)
             objs = to_tiles.inputs or []
             for o in objs:
                 if not isinstance(o, Tileable):
@@ -150,38 +147,15 @@ class OperandTilesHandler(object):
                 if o not in graph:
                     graph.add_node(o)
                 graph.add_edge(o, to_tiles)
-
                 if id(o) in visited:
                     continue
                 visited.add(id(o))
-
                 q.append(o)
 
-        visited = set()
-        q = deque(graph.iter_indep())
-
-        while q:
-            node = q.popleft()
-            if node in visited:
-                continue
-            preds = graph.predecessors(node)
-            if node in loose_requires:
-                accessible = any(pred in visited for pred in preds)
-            else:
-                accessible = all(pred in visited for pred in preds)
-            if not preds or accessible:
-                if node.is_coarse() and node.op:
-                    tiled = self._dispatch(node.op)
-                    self._assign_to([t.data for t in tiled], node.op.outputs)
-                visited.add(node)
-                q.extend(n for n in graph[node] if n not in visited)
-            else:
-                q.append(node)
-                q.extend(n for n in preds if n not in visited)
-
-        for to_tiles in loose_requires:
-            tiled = self._dispatch(to_tiles.op)
-            self._assign_to(tiled, to_tiles.op.outputs)
+        for node in graph.topological_iter():
+            if node.is_coarse() and node.op:
+                tiled = self._dispatch(node.op)
+                self._assign_to([t.data for t in tiled], node.op.outputs)
 
         return tiles_obj
 

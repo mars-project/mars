@@ -19,11 +19,57 @@ import numpy as np
 
 from pandas.core.dtypes.cast import find_common_type
 
+from ...serialize import AnyField, Float64Field
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..initializer import Series, DataFrame
 from ..utils import parse_index, infer_dtypes, infer_index_value
+
+
+class DataFrameBinOp(DataFrameOperand):
+    _axis = AnyField('axis')
+    _level = AnyField('level')
+    _fill_value = Float64Field('fill_value')
+    _lhs = AnyField('lhs')
+    _rhs = AnyField('rhs')
+
+    def __init__(self, axis=None, level=None, fill_value=None, object_type=None, lhs=None, rhs=None, **kw):
+        super(DataFrameBinOp, self).__init__(_axis=axis, _level=level,
+                                             _fill_value=fill_value,
+                                             _object_type=object_type, _lhs=lhs, _rhs=rhs, **kw)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @property
+    def level(self):
+        return self._level
+
+    @property
+    def fill_value(self):
+        return self._fill_value
+
+    @property
+    def lhs(self):
+        return self._lhs
+
+    @property
+    def rhs(self):
+        return self._rhs
+
+    def _set_inputs(self, inputs):
+        super(DataFrameBinOp, self)._set_inputs(inputs)
+        if len(self._inputs) == 2:
+            self._lhs = self._inputs[0]
+            self._rhs = self._inputs[1]
+        else:
+            if isinstance(self._lhs, (DATAFRAME_TYPE, SERIES_TYPE)):
+                self._lhs = self._inputs[0]
+            elif np.isscalar(self._lhs):
+                self._rhs = self._inputs[0]
 
 
 class DataFrameBinOpMixin(DataFrameOperandMixin):
@@ -47,7 +93,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
                                      chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns)
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_both_series(cls, op):
@@ -88,7 +134,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 series_chunk = right_chunks[out_idx[0]]
                 kw = {
                     'shape': (np.nan, df_chunk.shape[1]),
-                    'columns_value': df_chunk.columns,
+                    'columns_value': df_chunk.columns_value,
                 }
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
@@ -97,7 +143,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
                                      chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns)
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_series_dataframe(cls, op):
@@ -128,7 +174,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return new_op.new_dataframes(op.inputs, df.shape,
                                      nsplits=tuple(tuple(ns) for ns in nsplits),
                                      chunks=out_chunks, dtypes=df.dtypes,
-                                     index_value=df.index_value, columns_value=df.columns)
+                                     index_value=df.index_value, columns_value=df.columns_value)
 
     @classmethod
     def _tile_scalar(cls, op):
@@ -139,7 +185,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
                 out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
-                                            index_value=chunk.index_value, columns_value=getattr(chunk, 'columns'))
+                                             index_value=chunk.index_value,
+                                             columns_value=getattr(chunk, 'columns_value'))
             else:
                 out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtype=chunk.dtype,
                                             index_value=chunk.index_value, name=getattr(chunk, 'name'))
@@ -151,7 +198,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                       index_value=df.index_value, name=df.name, chunks=out_chunks)
         else:
             return new_op.new_dataframes(op.inputs, df.shape, nsplits=tileable.nsplits, dtypes=df.dtypes,
-                                         index_value=df.index_value, columns_value=df.columns, chunks=out_chunks)
+                                         index_value=df.index_value, columns_value=df.columns_value, chunks=out_chunks)
 
     @classmethod
     def tile(cls, op):
@@ -198,20 +245,21 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and (x2 is None or np.isscalar(x2)):
             # FIXME infer the dtypes of result df properly
             return {'shape': x1.shape, 'dtypes': x1.dtypes,
-                    'columns_value': x1.columns, 'index_value': x1.index_value}
+                    'columns_value': x1.columns_value, 'index_value': x1.index_value}
 
         if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and (x2 is None or np.isscalar(x2)):
             dtype = find_common_type([x1.dtype, type(x2)])
             return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
 
-        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(x2, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
+        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and isinstance(
+                x2, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
             index_shape, column_shape, dtypes, columns, index = np.nan, np.nan, None, None, None
 
-            if x1.columns is not None and x2.columns is not None and \
-                    x1.columns.key == x2.columns.key:
+            if x1.columns_value is not None and x2.columns_value is not None and \
+                    x1.columns_value.key == x2.columns_value.key:
                 dtypes = x1.dtypes
-                columns = copy.copy(x1.columns)
-                columns.value.should_be_monotonic = True
+                columns = copy.copy(x1.columns_value)
+                columns.value.should_be_monotonic = False
                 column_shape = len(dtypes)
             elif x1.dtypes is not None and x2.dtypes is not None:
                 dtypes = infer_dtypes(x1.dtypes, x2.dtypes, cls._operator)
@@ -221,7 +269,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)
-                    index.value.should_be_monotonic = True
+                    index.value.should_be_monotonic = False
                     index_shape = x1.shape[0]
                 else:
                     index = infer_index_value(x1.index_value, x2.index_value)
@@ -238,27 +286,27 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 index_shape = x1.shape[0]
                 index = x1.index_value
                 column_shape, dtypes, columns = np.nan, None, None
-                if x1.columns is not None and x1.index_value is not None:
-                    if x1.columns.key == x2.index_value.key:
+                if x1.columns_value is not None and x1.index_value is not None:
+                    if x1.columns_value.key == x2.index_value.key:
                         dtypes = x1.dtypes
-                        columns = copy.copy(x1.columns)
-                        columns.value.should_be_monotonic = True
+                        columns = copy.copy(x1.columns_value)
+                        columns.value.should_be_monotonic = False
                         column_shape = len(dtypes)
                     else:
                         dtypes = x1.dtypes  # FIXME
-                        columns = infer_index_value(x1.columns, x2.index_value)
+                        columns = infer_index_value(x1.columns_value, x2.index_value)
                         columns.value.should_be_monotonic = True
                         column_shape = np.nan
             else:
                 assert axis == 'index' or axis == 0
                 column_shape = x1.shape[1]
-                columns = x1.columns
+                columns = x1.columns_value
                 dtypes = x1.dtypes
                 index_shape, index = np.nan, None
                 if x1.index_value is not None and x1.index_value is not None:
-                    if x1.columns.key == x2.index_value.key:
-                        index = copy.copy(x1.columns)
-                        index.value.should_be_monotonic = True
+                    if x1.index_value.key == x2.index_value.key:
+                        index = copy.copy(x1.columns_value)
+                        index.value.should_be_monotonic = False
                         index_shape = x1.shape[0]
                     else:
                         index = infer_index_value(x1.index_value, x2.index_value)
@@ -274,7 +322,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if x1.index_value is not None and x2.index_value is not None:
                 if x1.index_value.key == x2.index_value.key:
                     index = copy.copy(x1.index_value)
-                    index.value.should_be_monotonic = True
+                    index.value.should_be_monotonic = False
                     index_shape = x1.shape[0]
                 else:
                     index = infer_index_value(x1.index_value, x2.index_value)
@@ -308,6 +356,17 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         return super(DataFrameBinOpMixin, self)._new_chunks(
             inputs, shape=shape, kws=kws, **kw)
 
+    @staticmethod
+    def _process_input(x):
+        if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(x):
+            return x
+        elif isinstance(x, (list, tuple)) or getattr(x, 'ndim', None) == 1:
+            return Series(x)
+        elif getattr(x, 'ndim', None) == 2:
+            return DataFrame(x)
+        else:
+            raise NotImplementedError("Don't support type {}".format(type(x)))
+
     def _call(self, x1, x2):
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
             df1 = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
@@ -330,14 +389,18 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError('Only support add dataframe or scalar for now')
 
     def __call__(self, x1, x2):
+        x1 = self._process_input(x1)
+        x2 = self._process_input(x2)
         if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
-            # reject invokeing series's op on dataframe
+            # reject invoking series's op on dataframe
             raise NotImplementedError
         return self._call(x1, x2)
 
     def rcall(self, x1, x2):
+        x1 = self._process_input(x1)
+        x2 = self._process_input(x2)
         if isinstance(x1, SERIES_TYPE) and isinstance(x2, DATAFRAME_TYPE):
-            # reject invokeing series's op on dataframe
+            # reject invoking series's op on dataframe
             raise NotImplementedError
         return self._call(x2, x1)
 
@@ -354,13 +417,13 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
         for in_chunk in in_df.chunks:
             out_op = op.copy().reset_key()
             out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=in_chunk.index,
-                                         index_value=in_chunk.index_value, columns_value=in_chunk.columns)
+                                         index_value=in_chunk.index_value, columns_value=in_chunk.columns_value)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         return new_op.new_dataframes(op.inputs, out_df.shape, dtypes=out_df.dtypes,
                                      index_value=out_df.index_value,
-                                     columns_value=out_df.columns,
+                                     columns_value=out_df.columns_value,
                                      chunks=out_chunks, nsplits=in_df.nsplits)
 
     @classmethod
@@ -371,4 +434,4 @@ class DataFrameUnaryOpMixin(DataFrameOperandMixin):
 
     def __call__(self, df):
         return self.new_dataframe([df], df.shape, dtypes=df.dtypes,
-                                  columns_value=df.columns, index_value=df.index_value)
+                                  columns_value=df.columns_value, index_value=df.index_value)

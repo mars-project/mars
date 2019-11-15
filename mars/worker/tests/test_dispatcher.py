@@ -18,9 +18,8 @@ from functools import partial
 import gevent
 
 from mars import promise
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
-from mars.actors import create_actor_pool
 from mars.promise import PromiseActor
 from mars.worker import *
 from mars.worker.tests.base import WorkerCase

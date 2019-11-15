@@ -23,5 +23,5 @@ def calc_columns_index(column_name, df):
     :return: chunk index on the columns axis
     """
     column_nsplits = df.nsplits[1]
-    column_loc = df.columns.to_pandas().get_loc(column_name)
+    column_loc = df.columns_value.to_pandas().get_loc(column_name)
     return np.searchsorted(np.cumsum(column_nsplits), column_loc + 1)

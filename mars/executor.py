@@ -23,6 +23,10 @@ from collections import deque, defaultdict
 from numbers import Integral
 
 import numpy as np
+try:
+    from numpy.core._exceptions import UFuncTypeError
+except ImportError:  # pragma: no cover
+    UFuncTypeError = None
 import pandas as pd
 
 try:
@@ -582,7 +586,15 @@ class Executor(object):
         except KeyError:
             runner = getattr(op, method_name)
         try:
-            return runner(results, op)
+            if UFuncTypeError is None:
+                return runner(results, op)
+            else:
+                # Cast `UFuncTypeError` to `TypeError` since subclasses of the former is unpickleable.
+                # The `UFuncTypeError` was introduced by numpy#12593 since v1.17.0.
+                try:
+                    return runner(results, op)
+                except UFuncTypeError as e:
+                    six.reraise(TypeError, TypeError(str(e)), sys.exc_info()[2])
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):
@@ -629,7 +641,7 @@ class Executor(object):
         res = graph_execution.execute(retval)
         self._mock_max_memory = max(self._mock_max_memory, graph_execution._mock_max_memory)
         if mock:
-            self._chunk_result.clear()
+            chunk_result.clear()
         return res
 
     @kernel_mode
@@ -641,11 +653,15 @@ class Executor(object):
             if len(tileable.chunks) > 1:
                 tileable = concat_tileable_chunks(tileable)
 
+        # shallow copy
+        chunk_result = self._chunk_result.copy()
         graph = tileable.build_graph(cls=DirectedGraph, tiled=True, compose=compose)
-
-        return self.execute_graph(graph, [c.key for c in tileable.chunks],
-                                  n_parallel=n_parallel or n_thread,
-                                  print_progress=print_progress, mock=mock)
+        ret = self.execute_graph(graph, [c.key for c in tileable.chunks],
+                                 n_parallel=n_parallel or n_thread,
+                                 print_progress=print_progress, mock=mock,
+                                 chunk_result=chunk_result)
+        self._chunk_result.update(chunk_result)
+        return ret
 
     execute_tensor = execute_tileable
     execute_dataframe = execute_tileable

@@ -14,18 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 from mars.compat import OrderedDict
-from mars.actors import create_actor_pool
 from mars.utils import get_next_port
 from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
     GraphState, ChunkMetaClient, ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.api import MarsAPI
-from mars.tests.core import patch_method
+from mars.tests.core import patch_method, create_actor_pool
 
 
+@unittest.skipIf(sys.platform == 'win32', 'does not run under windows')
 class Test(unittest.TestCase):
     def setUp(self):
         endpoint = '127.0.0.1:%d' % get_next_port()
@@ -62,10 +63,14 @@ class Test(unittest.TestCase):
 
         state = self.api.get_graph_state(session_id, graph_key)
         self.assertEqual(GraphState('preparing'), state)
+        exc_info = self.api.get_graph_exc_info(session_id, graph_key)
+        self.assertIsNone(exc_info)
 
         self.api.stop_graph(session_id, graph_key)
         state = self.api.get_graph_state(session_id, graph_key)
         self.assertEqual(GraphState('cancelled'), state)
+        exc_info = self.api.get_graph_exc_info(session_id, graph_key)
+        self.assertIsNone(exc_info)
 
         self.api.delete_graph(session_id, graph_key)
         self.assertFalse(self.pool.has_actor(graph_ref))

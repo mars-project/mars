@@ -104,7 +104,8 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
-        PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning"
+        PYTEST_CONFIG="--log-level=DEBUG --cov-report= --cov=mars --timeout=1500 -W ignore::PendingDeprecationWarning
+        --ignore mars/lib/functools32 --ignore mars/lib/futures"
         if [[ "$UNAME" == "mingw"* ]]; then
           python -m pytest $PYTEST_CONFIG --ignore=mars/scheduler --ignore=mars/worker --timeout=1500
           coverage report
@@ -135,6 +136,7 @@ jobs:
 
         mkdir covdata
         cp .coverage covdata/.coverage.$RUNNER_TRACKING_ID
+        echo $(pwd) > covdata/.pwd.$RUNNER_TRACKING_ID
 
     - name: Deploy packages
       if: startsWith(github.ref, 'refs/tags/') && matrix.no-deploy != '1'
@@ -179,5 +181,6 @@ jobs:
           pip install git+https://github.com/wjsi/coveralls-python.git
           CYTHON_TRACE=1 python setup.py sdist
           export DEFAULT_VENV=$VIRTUAL_ENV
+          python .github/workflows/unify_coverage.py covdata/ "$(pwd)"
           coverage combine covdata/
           coveralls

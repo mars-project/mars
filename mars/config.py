@@ -109,25 +109,30 @@ class AttributeDict(dict):
         del self[key]
 
     def _setattr(self, key, value, silent=False):
-        if not silent and key not in self:
-            raise OptionError('You can only set the value of existing options')
+        splits = key.split('.')
+        target = self
+        for k in splits[:-1]:
+            if not silent and (not isinstance(target, AttributeDict) or k not in target):
+                raise OptionError('You can only set the value of existing options')
+            target = target[k]
+        key = splits[-1]
 
         if not isinstance(value, AttributeDict):
             validate = None
-            if key in self:
-                val = self[key]
-                validate = self[key][1]
+            if key in target:
+                val = target[key]
+                validate = target[key][1]
                 if validate is not None:
                     if not validate(value):
                         raise ValueError('Cannot set value `%s`' % value)
                 if isinstance(val[0], Redirection):
                     val[0].setvalue(value)
                 else:
-                    self[key] = value, validate
+                    target[key] = value, validate
             else:
-                self[key] = value, validate
+                target[key] = value, validate
         else:
-            self[key] = value
+            target[key] = value
 
     def __setattr__(self, key, value):
         if key == '_inited':

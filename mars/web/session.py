@@ -115,21 +115,18 @@ class Session(object):
         except ValueError:
             raise ResponseMalformed('Response malformed. Code: %d, Content:\n%s' %
                                     (resp.status_code, resp.text))
-        if resp_json['state'] == 'success':
+        if resp_json['state'] == 'succeeded':
             return True
         elif resp_json['state'] in ('running', 'preparing'):
             return False
         elif resp_json['state'] in ('cancelled', 'cancelling'):
             raise ExecutionInterrupted
         elif resp_json['state'] == 'failed':
-            # TODO add traceback
-            if 'traceback' in resp_json:
-                traceback = resp_json['traceback']
-                traceback = ''.join(str(s) for s in traceback) \
-                    if isinstance(traceback, list) else traceback
-                raise ExecutionFailed(
-                    'Graph execution failed.\nMessage: %s\nTraceback from server:\n%s' %
-                    (resp_json['msg'], traceback))
+            if 'exc_info' in resp_json:
+                try:
+                    six.reraise(*pickle.loads(base64.b64decode(resp_json['exc_info'])))
+                except:  # noqa: E722
+                    raise ExecutionFailed('Graph execution failed.')
             else:
                 raise ExecutionFailed('Graph execution failed with unknown reason.')
         raise ExecutionStateUnknown(

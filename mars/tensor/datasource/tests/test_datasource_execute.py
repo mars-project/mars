@@ -945,3 +945,12 @@ class Test(TestBase):
         np.testing.assert_array_equal(tensor_result3, np.asarray(raw))
         self.assertTrue(tensor_result3.flags['F_CONTIGUOUS'])
         self.assertFalse(tensor_result3.flags['C_CONTIGUOUS'])
+
+        # test from series
+        series = md.Series([1, 2, 3])
+        tensor_result = series.to_tensor().execute()
+        np.testing.assert_array_equal(tensor_result, np.array([1, 2, 3]))
+
+        series = md.Series(range(10), chunk_size=3)
+        tensor_result = series.to_tensor().execute()
+        np.testing.assert_array_equal(tensor_result, np.arange(10))

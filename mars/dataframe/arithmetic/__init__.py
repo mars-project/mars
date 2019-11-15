@@ -15,8 +15,10 @@
 from ..utils import wrap_notimplemented_exception
 from .abs import abs, DataFrameAbs
 from .add import add, radd, DataFrameAdd
+from .subtract import subtract, rsubtract, DataFrameSubtract
 from .floordiv import floordiv, rfloordiv, DataFrameFloorDiv
 from .truediv import truediv, rtruediv, DataFrameTrueDiv
+
 
 def _install():
     from ..core import DataFrame, Series
@@ -28,6 +30,11 @@ def _install():
         setattr(entity, '__radd__', wrap_notimplemented_exception(radd))
         setattr(entity, 'add', add)
         setattr(entity, 'radd', radd)
+
+        setattr(entity, '__sub__', wrap_notimplemented_exception(subtract))
+        setattr(entity, '__rsub__', wrap_notimplemented_exception(rsubtract))
+        setattr(entity, 'sub', subtract)
+        setattr(entity, 'rsub', rsubtract)
 
         setattr(entity, '__floordiv__', wrap_notimplemented_exception(floordiv))
         setattr(entity, '__rfloordiv__', wrap_notimplemented_exception(rfloordiv))
