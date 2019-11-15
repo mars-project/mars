@@ -602,6 +602,7 @@ class GraphActor(SchedulerActor):
 
         initial_chunks = [c for c in chunk_graph
                           if chunk_graph.count_successors(c) == 0]
+        # TODO refine this to support mixed scenarios here
         if all(c.op.expect_worker is not None for c in initial_chunks):
             assignments = {c.op.key: c.op.expect_worker for c in initial_chunks}
         else:
