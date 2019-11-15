@@ -13,6 +13,11 @@
 # limitations under the License.
 
 # register operands
-from .contrib.xgboost import train as xgboost_train
-del xgboost_train
+from .contrib.xgboost import register_op
+register_op()
+from .utils.shuffle import shuffle
+del shuffle
+from .contrib.tensorflow import register_op
+register_op()
+del register_op
 

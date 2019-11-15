@@ -287,15 +287,11 @@ def calc_data_size(dt):
     if dt is None:
         return 0
 
-    data_size = sys.getsizeof(dt)
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)
 
-    try:
-        return max(data_size, dt.nbytes)
-    except AttributeError:
-        pass
-
+    if hasattr(dt, 'nbytes'):
+        return max(sys.getsizeof(dt), dt.nbytes)
     if hasattr(dt, 'shape') and len(dt.shape) == 0:
         return 0
     if hasattr(dt, 'memory_usage'):
@@ -306,7 +302,7 @@ def calc_data_size(dt):
         return dt.shape[0] * dt.dtype.itemsize
 
     # object chunk
-    return data_size
+    return sys.getsizeof(dt)
 
 
 def get_shuffle_input_keys_idxes(chunk):

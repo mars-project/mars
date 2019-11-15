@@ -14,27 +14,14 @@
 
 import itertools
 
-import pandas as pd
-
 from ....core import ExecutableTuple
 from .... import opcodes as OperandDef
 from ....serialize.core import KeyField, Float64Field, ListField, BoolField
 from ....tensor.core import TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
-from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
-from ....dataframe.operands import ObjectType
-from ....dataframe.initializer import DataFrame as create_dataframe, Series as create_series
-from ...operands import LearnOperand, LearnOperandMixin, OutputType
-
-
-def _on_serialize_object_type(object_type):
-    if object_type is not None:
-        return object_type.value
-
-
-def _on_deserialize_object_type(ser):
-    if ser is not None:
-        return ObjectType(ser)
+from ....dataframe.core import DATAFRAME_TYPE
+from ...operands import LearnOperand, LearnOperandMixin
+from ...utils import convert_to_tensor_or_dataframe, get_output_types
 
 
 class ToDMatrix(LearnOperand, LearnOperandMixin):
@@ -307,61 +294,35 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
 
 def check_data(data):
-    if isinstance(data, (DATAFRAME_TYPE, pd.DataFrame)):
-        data = create_dataframe(data)
-    else:
-        data = astensor(data)
-
+    data = convert_to_tensor_or_dataframe(data)
     if data.ndim != 2:
         raise ValueError('Expecting 2-d data, got: {0}-d'.format(data.ndim))
 
     return data
 
 
-def _get_output_types(*objs):
-    output_types = []
-    for obj in objs:
-        if obj is None:
-            continue
-        if isinstance(obj, TENSOR_TYPE):
-            output_types.append(OutputType.tensor)
-        elif isinstance(obj, DATAFRAME_TYPE):
-            output_types.append(OutputType.dataframe)
-        elif isinstance(obj, SERIES_TYPE):
-            output_types.append(OutputType.series)
-        else:  # pragma: no cover
-            raise TypeError('Output can only be tensor, dataframe or series')
-    return output_types
-
-
 def to_dmatrix(data, label=None, missing=None, weight=None,
                feature_names=None, feature_types=None, session=None, run_kwargs=None):
     data = check_data(data)
     if label is not None:
-        if isinstance(label, (DATAFRAME_TYPE, pd.DataFrame)):
-            label = create_dataframe(label)
-            label = label.iloc[:, 0].to_tensor()
-        elif isinstance(label, (SERIES_TYPE, pd.Series)):
-            label = create_series(label).to_tensor()
-        else:
-            label = astensor(label)
-            if label.ndim != 1:
-                raise ValueError('Expecting 1-d label, got: {0}-d'.format(label.ndim))
+        label = convert_to_tensor_or_dataframe(label)
+        if isinstance(label, DATAFRAME_TYPE):
+            label = label.iloc[:, 0]
+        label = astensor(label)
+        if label.ndim != 1:
+            raise ValueError('Expecting 1-d label, got: {0}-d'.format(label.ndim))
     if weight is not None:
-        if isinstance(weight, (DATAFRAME_TYPE, pd.DataFrame)):
-            weight = create_dataframe(weight)
-            weight = weight.iloc[:, 0].to_tensor()
-        elif isinstance(weight, (SERIES_TYPE, pd.Series)):
-            weight = create_series(weight).to_tensor()
-        else:
-            weight = astensor(weight)
-            if weight.ndim != 1:
-                raise ValueError('Expecting 1-d weight, got {0}-d'.format(weight.ndim))
+        weight = convert_to_tensor_or_dataframe(weight)
+        if isinstance(weight, DATAFRAME_TYPE):
+            weight = weight.iloc[:, 0]
+        weight = astensor(weight)
+        if weight.ndim != 1:
+            raise ValueError('Expecting 1-d weight, got {0}-d'.format(weight.ndim))
 
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,
                    gpu=data.op.gpu, multi_output=True,
-                   output_types=_get_output_types(data, label, weight))
+                   output_types=get_output_types(data, label, weight))
     outs = ExecutableTuple(op())
     # Execute first, to make sure the counterpart chunks of data, label and weight are co-allocated
     outs.execute(session=session, fetch=False, **(run_kwargs or dict()))
@@ -374,7 +335,7 @@ def to_dmatrix(data, label=None, missing=None, weight=None,
     op = ToDMatrix(data=data, label=label, missing=missing, weight=weight,
                    feature_names=feature_names, feature_types=feature_types,
                    gpu=data.op.gpu, multi_output=False,
-                   output_types=_get_output_types(data))
+                   output_types=get_output_types(data))
     return op()
 
 

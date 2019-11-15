@@ -15,8 +15,10 @@
 from .dmatrix import MarsDMatrix
 from .train import train
 from .predict import predict
-from .start_tracker import StartTracker
 from .classifier import XGBClassifier
 from .regressor import XGBRegressor
 
-del StartTracker
+
+def register_op():
+    from .start_tracker import StartTracker
+    del StartTracker

@@ -25,7 +25,7 @@ from .nanmin import nanmin, TensorNanMin
 from .all import all, TensorAll
 from .any import any, TensorAny
 from .mean import mean, TensorMean, TensorMeanChunk, TensorMeanCombine
-from .nanmean import nanmean, TensorNanMean, TensorNanMeanChunk, TensorMeanCombine
+from .nanmean import nanmean, TensorNanMean, TensorNanMeanChunk
 from .argmax import argmax, TensorArgmax, TensorArgmaxMap, TensorArgmaxCombine
 from .nanargmax import nanargmax, TensorNanArgmax, \
     TensorNanArgmaxMap, TensorNanArgmaxCombine

@@ -330,7 +330,8 @@ class GraphActor(SchedulerActor):
     def context(self):
         if self._context is None:
             self._context = DistributedContext(
-                self._cluster_info_ref, self._session_id, self.address, self.chunk_meta)
+                self._cluster_info_ref, self._session_id, self.address,
+                self.chunk_meta, self._resource_actor_ref, self.ctx)
         return self._context
 
     @final_state.setter
@@ -599,9 +600,15 @@ class GraphActor(SchedulerActor):
         operand_infos = self._operand_infos
         chunk_graph = self.get_chunk_graph()
 
-        if analyzer is None:
-            analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
-        assignments = analyzer.calc_operand_assignments(op_keys, input_chunk_metas=input_chunk_metas)
+        initial_chunks = [c for c in chunk_graph
+                          if chunk_graph.count_successors(c) == 0]
+        # TODO refine this to support mixed scenarios here
+        if all(c.op.expect_worker is not None for c in initial_chunks):
+            assignments = {c.op.key: c.op.expect_worker for c in initial_chunks}
+        else:
+            if analyzer is None:
+                analyzer = GraphAnalyzer(chunk_graph, self._get_worker_slots())
+            assignments = analyzer.calc_operand_assignments(op_keys, input_chunk_metas=input_chunk_metas)
         for idx, (k, v) in enumerate(assignments.items()):
             operand_infos[k]['optimize']['placement_order'] = idx
             operand_infos[k]['target_worker'] = v

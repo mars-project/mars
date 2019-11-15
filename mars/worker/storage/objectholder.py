@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
 import time
-import uuid
 
 from ... import promise
 from ...compat import OrderedDict3, six, functools32
@@ -78,7 +77,7 @@ class ObjectHolderActor(WorkerActor):
     def update_cache_status(self):
         raise NotImplementedError
 
-    def post_delete(self, session_id, data_key):
+    def post_delete(self, session_id, data_keys):
         raise NotImplementedError
 
     @promise.reject_on_exception
@@ -122,7 +121,7 @@ class ObjectHolderActor(WorkerActor):
             def _release_spill_allocations(key):
                 logger.debug('Removing reference of data %s from %s when spilling. ref_key=%s',
                              key, self.uid, spill_ref_key)
-                self.delete_object(*key)
+                self.delete_objects(key[0], [key[1]])
 
             @log_unhandled
             def _handle_spill_reject(*exc, **kwargs):
@@ -136,7 +135,7 @@ class ObjectHolderActor(WorkerActor):
                     self._remove_spill_pending(*key)
                     return
                 logger.debug('Spilling key %s in %s. ref_key=%s', key, self.uid, spill_ref_key)
-                return self.storage_client.copy_to(*(key + (self._spill_devices,))) \
+                return self.storage_client.copy_to(key[0], [key[1]], self._spill_devices) \
                     .then(lambda *_: _release_spill_allocations(key),
                           functools32.partial(_handle_spill_reject, session_data_key=key))
 
@@ -160,7 +159,7 @@ class ObjectHolderActor(WorkerActor):
                 self.tell_promise(callback)
 
     @log_unhandled
-    def _internal_put_object(self, session_id, data_key, obj, size):
+    def _internal_put_objects(self, session_id, data_key, obj, size):
         session_data_key = (session_id, data_key)
         if session_data_key in self._data_holder:
             self._total_hold -= self._data_sizes[session_data_key]
@@ -171,7 +170,12 @@ class ObjectHolderActor(WorkerActor):
         self._data_holder.move_to_end(session_data_key)
 
         self._total_hold += size
-        logger.debug('Data %s registered in %s. total_hold=%d', data_key, self.uid, self._total_hold)
+
+    def _finish_put_objects(self, _session_id, data_keys):
+        if logger.getEffectiveLevel() <= logging.DEBUG:  # pragma: no cover
+            simplified_keys = sorted(set(k[0] if isinstance(k, tuple) else k for k in data_keys))
+            logger.debug('Data %r registered in %s. total_hold=%d', simplified_keys,
+                         self.uid, self._total_hold)
         self.update_cache_status()
 
     def _remove_spill_pending(self, session_id, data_key):
@@ -182,29 +186,34 @@ class ObjectHolderActor(WorkerActor):
             pass
 
     @log_unhandled
-    def delete_object(self, session_id, data_key):
-        session_data_key = (session_id, data_key)
+    def delete_objects(self, session_id, data_keys):
+        actual_removed = []
+        for data_key in data_keys:
+            session_data_key = (session_id, data_key)
 
-        self._remove_spill_pending(session_id, data_key)
+            self._remove_spill_pending(session_id, data_key)
 
-        try:
-            del self._pinned_counter[session_data_key]
-        except KeyError:
-            pass
+            try:
+                del self._pinned_counter[session_data_key]
+            except KeyError:
+                pass
 
-        if session_data_key in self._data_holder:
-            logger.debug('Data %s unregistered in %s. total_hold=%d', data_key, self.uid, self._total_hold)
+            if session_data_key in self._data_holder:
+                actual_removed.append(data_key)
 
-            data_size = self._data_sizes[session_data_key]
-            self._total_hold -= data_size
-            del self._data_holder[session_data_key]
-            del self._data_sizes[session_data_key]
-            self.post_delete(session_id, data_key)
+                data_size = self._data_sizes[session_data_key]
+                self._total_hold -= data_size
+                del self._data_holder[session_data_key]
+                del self._data_sizes[session_data_key]
 
+        self.post_delete(session_id, actual_removed)
+        if actual_removed:
+            logger.debug('Data %s unregistered in %s. total_hold=%d', actual_removed, self.uid, self._total_hold)
             self.update_cache_status()
 
-    def lift_data_key(self, session_id, data_key, last=True):
-        self._data_holder.move_to_end((session_id, data_key), last)
+    def lift_data_keys(self, session_id, data_keys, last=True):
+        for k in data_keys:
+            self._data_holder.move_to_end((session_id, k), last)
 
     @log_unhandled
     def pin_data_keys(self, session_id, data_keys, token):
@@ -244,6 +253,28 @@ class ObjectHolderActor(WorkerActor):
         return list(self._data_holder.keys())
 
 
+class SimpleObjectHolderActor(ObjectHolderActor):
+    def post_create(self):
+        super(SimpleObjectHolderActor, self).post_create()
+        manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
+        manager_ref.register_process_holder(
+            self.proc_id, self._storage_device, self.ref())
+
+    def put_objects(self, session_id, data_keys, data_objs, data_sizes):
+        for data_key, obj, size in zip(data_keys, data_objs, data_sizes):
+            self._internal_put_objects(session_id, data_key, obj, size)
+        self._finish_put_objects(session_id, data_keys)
+
+    def get_object(self, session_id, data_key):
+        return self._data_holder[(session_id, data_key)]
+
+    def update_cache_status(self):
+        pass
+
+    def post_delete(self, session_id, data_keys):
+        pass
+
+
 class SharedHolderActor(ObjectHolderActor):
     _storage_device = DataStorageDevice.SHARED_MEMORY
     _spill_devices = (DataStorageDevice.DISK,)
@@ -258,65 +289,30 @@ class SharedHolderActor(ObjectHolderActor):
             self._status_ref.set_cache_allocations(
                 dict(hold=self._total_hold, total=self._size_limit), _tell=True, _wait=False)
 
-    def post_delete(self, session_id, data_key):
-        self._shared_store.delete(session_id, data_key)
-        self._storage_handler.unregister_data(session_id, data_key)
+    def post_delete(self, session_id, data_keys):
+        self._shared_store.batch_delete(session_id, data_keys)
+        self._storage_handler.unregister_data(session_id, data_keys)
 
-    def put_object_by_key(self, session_id, data_key, pin=False):
-        buf = self._shared_store.get_buffer(session_id, data_key)
-        self._internal_put_object(session_id, data_key, buf, len(buf))
-        if pin:
-            token = tokenize(time.time(), str(uuid.uuid4()))
-            self.pin_data_keys(session_id, [data_key], token)
-            return token
+    def put_objects_by_keys(self, session_id, data_keys, shapes=None):
+        sizes = []
+        for data_key in data_keys:
+            buf = self._shared_store.get_buffer(session_id, data_key)
+            size = len(buf)
+            self._internal_put_objects(session_id, data_key, buf, size)
+            sizes.append(size)
+
+        self.storage_client.register_data(
+            session_id, data_keys, (0, DataStorageDevice.SHARED_MEMORY), sizes, shapes=shapes)
 
 
-class InProcHolderActor(ObjectHolderActor):
+class InProcHolderActor(SimpleObjectHolderActor):
     _storage_device = DataStorageDevice.PROC_MEMORY
 
-    def post_create(self):
-        super(InProcHolderActor, self).post_create()
-        manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
-        manager_ref.register_process_holder(
-            self.proc_id, DataStorageDevice.PROC_MEMORY, self.ref())
 
-    def put_object(self, session_id, graph_key, data):
-        from ...utils import calc_data_size
-        self._internal_put_object(session_id, graph_key, data, calc_data_size(data))
-
-    def get_object(self, session_id, data_key):
-        return self._data_holder[(session_id, data_key)]
-
-    def update_cache_status(self):
-        pass
-
-    def post_delete(self, session_id, data_key):
-        pass
-
-
-class CudaHolderActor(ObjectHolderActor):
+class CudaHolderActor(SimpleObjectHolderActor):
     _storage_device = DataStorageDevice.CUDA
 
     def __init__(self, size_limit=0, device_id=None):
         super(CudaHolderActor, self).__init__(size_limit=size_limit)
         if device_id is not None:
             os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
-
-    def post_create(self):
-        super(CudaHolderActor, self).post_create()
-        manager_ref = self.ctx.actor_ref(StorageManagerActor.default_uid())
-        manager_ref.register_process_holder(
-            self.proc_id, DataStorageDevice.CUDA, self.ref())
-
-    def put_object(self, session_id, graph_key, data):
-        from ...utils import calc_data_size
-        self._internal_put_object(session_id, graph_key, data, calc_data_size(data))
-
-    def get_object(self, session_id, data_key):
-        return self._data_holder[(session_id, data_key)]
-
-    def update_cache_status(self):
-        pass
-
-    def post_delete(self, session_id, data_key):
-        pass

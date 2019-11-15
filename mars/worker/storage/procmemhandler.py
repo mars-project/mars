@@ -41,33 +41,38 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return obj
 
     @wrap_promised
-    def put_object(self, session_id, data_key, obj, serialized=False, _promise=False):
-        o = self._deserial(obj) if serialized else obj
-        self._inproc_store_ref.put_object(session_id, data_key, o)
-        self.register_data(session_id, data_key, calc_data_size(o), shape=getattr(o, 'shape', None))
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, _promise=False):
+        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+        sizes = sizes or [calc_data_size(obj) for obj in objs]
+        shapes = [getattr(obj, 'shape', None) for obj in objs]
+        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes)
+        self.register_data(session_id, data_keys, sizes, shapes)
 
-    def load_from_bytes_io(self, session_id, data_key, src_handler):
-        def _read_and_put(reader):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+        def _read_serialized(reader):
             with reader:
-                result = reader.get_io_pool().submit(reader.read).result()
-            self.put_object(session_id, data_key, result, serialized=True)
+                return reader.get_io_pool().submit(reader.read).result()
 
         def _fallback(*_):
-            return src_handler.create_bytes_reader(session_id, data_key, _promise=True) \
-                .then(_read_and_put)
+            return self._batch_load_objects(
+                session_id, data_keys,
+                lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
+                True
+            )
 
-        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def load_from_object_io(self, session_id, data_key, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler):
         def _fallback(*_):
-            return src_handler.get_object(session_id, data_key, _promise=True) \
-                .then(lambda obj: self.put_object(session_id, data_key, obj))
+            return self._batch_load_objects(
+                session_id, data_keys,
+                lambda k: src_handler.get_object(session_id, k, _promise=True))
 
-        return self.transfer_in_runner(session_id, data_key, src_handler, _fallback)
+        return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def delete(self, session_id, data_key, _tell=False):
-        self._inproc_store_ref.delete_object(session_id, data_key, _tell=_tell)
-        self.unregister_data(session_id, data_key, _tell=_tell)
+    def delete(self, session_id, data_keys, _tell=False):
+        self._inproc_store_ref.delete_objects(session_id, data_keys, _tell=_tell)
+        self.unregister_data(session_id, data_keys, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.PROC_MEMORY, ProcMemHandler)

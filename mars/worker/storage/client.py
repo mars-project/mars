@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
+import operator
+from collections import defaultdict
 
 from ... import promise
-from ...compat import six
+from ...compat import six, reduce
 from ...errors import StorageFull
 from ...utils import calc_data_size, build_exc_info
 from .core import DataStorageDevice, get_storage_handler_cls
@@ -75,35 +78,32 @@ class StorageClient(object):
     def __getattr__(self, item):
         return getattr(self._manager_ref, item)
 
-    def _get_stored_devices(self, session_id, data_key):
-        return [loc for loc in (self._manager_ref.get_data_locations(session_id, data_key) or ())]
-
     def _normalize_devices(self, devices):
         return [d if isinstance(d, tuple) else d.build_location(self.proc_id)
                 for d in devices] if devices is not None else None
 
-    def _do_with_spill(self, action, total_bytes, device_order,
+    def _do_with_spill(self, action, data_keys, total_bytes, device_order,
                        device_pos=0, spill_multiplier=1.0, ensure=True):
         def _handle_err(*exc_info):
             if issubclass(exc_info[0], StorageFull):
                 req_bytes = max(total_bytes, exc_info[1].request_size)
                 if device_pos < len(device_order) - 1:
                     return self._do_with_spill(
-                        action, req_bytes, device_order,
+                        action, exc_info[1].affected_keys, req_bytes, device_order,
                         device_pos=device_pos + 1, spill_multiplier=1.0, ensure=ensure,
                     )
                 elif ensure:
                     new_multiplier = min(spill_multiplier + 0.1, 10)
                     return handler.spill_size(req_bytes, spill_multiplier) \
                         .then(lambda *_: self._do_with_spill(
-                            action, req_bytes, device_order, device_pos=device_pos,
-                            spill_multiplier=new_multiplier, ensure=ensure,
+                            action, exc_info[1].affected_keys, req_bytes, device_order,
+                            device_pos=device_pos, spill_multiplier=new_multiplier, ensure=ensure,
                         ))
             six.reraise(*exc_info)
 
         cur_device = device_order[device_pos]
         handler = self.get_storage_handler(cur_device)
-        return action(handler).catch(_handle_err)
+        return action(handler, data_keys).catch(_handle_err)
 
     def create_reader(self, session_id, data_key, source_devices, packed=False,
                       packed_compression=None, _promise=True):
@@ -120,7 +120,7 @@ class StorageClient(object):
         :param _promise: return a promise
         """
         source_devices = self._normalize_devices(source_devices)
-        stored_devs = set(self._get_stored_devices(session_id, data_key))
+        stored_devs = set(self._manager_ref.get_data_locations(session_id, [data_key])[0])
         for src_dev in source_devices:
             if src_dev not in stored_devs:
                 continue
@@ -135,7 +135,7 @@ class StorageClient(object):
                 raise IOError('Device %r does not support direct reading.' % src_dev)
 
         if _promise:
-            return self.copy_to(session_id, data_key, source_devices) \
+            return self.copy_to(session_id, [data_key], source_devices) \
                 .then(lambda *_: self.create_reader(session_id, data_key, source_devices, packed=packed))
         else:
             raise IOError('Cannot return a non-promise result')
@@ -144,7 +144,7 @@ class StorageClient(object):
                       packed_compression=None, _promise=True):
         device_order = self._normalize_devices(device_order)
 
-        def _action(handler, _promise=True):
+        def _action(handler, _keys, _promise=True):
             logger.debug('Creating %s writer for (%s, %s) on %s', 'packed' if packed else 'bytes',
                          session_id, data_key, handler.storage_type)
             return handler.create_bytes_writer(
@@ -152,19 +152,20 @@ class StorageClient(object):
                 packed_compression=packed_compression, _promise=_promise)
 
         if _promise:
-            return self._do_with_spill(_action, total_bytes, device_order)
+            return self._do_with_spill(_action, [data_key], total_bytes, device_order)
         else:
+            exc = ValueError('Missing device type')
             for device_type in device_order:
                 try:
                     handler = self.get_storage_handler(device_type)
-                    return _action(handler, _promise=False)
-                except StorageFull:
-                    pass
-            raise StorageFull
+                    return _action(handler, [data_key], _promise=False)
+                except StorageFull as ex:
+                    exc = ex
+            raise exc
 
     def get_object(self, session_id, data_key, source_devices, serialized=False, _promise=True):
         source_devices = self._normalize_devices(source_devices)
-        stored_devs = set(self._get_stored_devices(session_id, data_key))
+        stored_devs = set(self._manager_ref.get_data_locations(session_id, [data_key])[0])
         for src_dev in source_devices:
             if src_dev not in stored_devs:
                 continue
@@ -175,57 +176,87 @@ class StorageClient(object):
                 raise IOError('Device %r does not support direct reading.' % src_dev)
 
         if _promise:
-            return self.copy_to(session_id, data_key, source_devices) \
+            return self.copy_to(session_id, [data_key], source_devices) \
                 .then(lambda *_: self.get_object(session_id, data_key, source_devices, serialized=serialized))
         else:
             raise IOError('Getting object without promise not supported')
 
-    def put_object(self, session_id, data_key, obj, device_order, serialized=False):
+    def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialized=False):
         device_order = self._normalize_devices(device_order)
-        data_size = self._manager_ref.get_data_size(session_id, data_key) or calc_data_size(obj)
+        if sizes:
+            sizes_dict = dict(zip(data_keys, sizes))
+        else:
+            sizes_dict = dict((k, calc_data_size(obj)) for k, obj in zip(data_keys, objs))
 
-        def _action(h):
-            return h.put_object(session_id, data_key, obj, serialized=serialized, _promise=True)
+        data_dict = dict(zip(data_keys, objs))
 
-        return self._do_with_spill(_action, data_size, device_order)
+        def _action(h, keys):
+            objects = [data_dict[k] for k in keys]
+            data_sizes = [sizes_dict[k] for k in keys]
+            try:
+                return h.put_objects(session_id, keys, objects, sizes=data_sizes, serialized=serialized,
+                                     _promise=True)
+            finally:
+                objects[:] = []
 
-    def copy_to(self, session_id, data_key, device_order, ensure=True):
+        return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order)
+
+    def copy_to(self, session_id, data_keys, device_order, ensure=True):
         device_order = self._normalize_devices(device_order)
-        existing_devs = set(self._get_stored_devices(session_id, data_key))
-        data_size = self._manager_ref.get_data_size(session_id, data_key)
+        existing_devs = self._manager_ref.get_data_locations(session_id, data_keys)
+        data_sizes = self._manager_ref.get_data_sizes(session_id, data_keys)
 
-        if not existing_devs or not data_size:
-            return promise.finished(
-                *build_exc_info(KeyError, 'Data key (%s, %s) does not exist.' % (session_id, data_key)),
-                **dict(_accept=False)
-            )
+        device_to_keys = defaultdict(list)
+        device_total_size = defaultdict(lambda: 0)
+        lift_reqs = defaultdict(list)
+        for k, devices, size in zip(data_keys, existing_devs, data_sizes):
+            if not devices or not size:
+                return promise.finished(
+                    *build_exc_info(KeyError, 'Data key (%s, %s) does not exist.' % (session_id, k)),
+                    **dict(_accept=False)
+                )
 
-        target = next((d for d in device_order if d in existing_devs), None)
-        if target is not None:
+            target = next((d for d in device_order if d in devices), None)
+            if target is not None:
+                lift_reqs[target].append(k)
+            else:
+                max_device = max(devices)
+                device_to_keys[max_device].append(k)
+                device_total_size[max_device] += size
+
+        for target, data_keys in lift_reqs.items():
             handler = self.get_storage_handler(target)
             if getattr(handler, '_spillable', False):
-                handler.lift_data_key(session_id, data_key)
-            return promise.finished(target)
+                handler.lift_data_keys(session_id, data_keys)
+        if not device_to_keys:
+            return promise.finished()
 
-        source_handler = self.get_storage_handler(max(existing_devs))
+        def _action(src_handler, h, keys):
+            return h.load_from(session_id, keys, src_handler)
 
-        def _action(h):
-            return h.load_from(session_id, data_key, source_handler)
+        def _handle_exc(keys, *exc):
+            existing = self._manager_ref.get_data_locations(session_id, keys)
+            for devices in existing:
+                if not any(d for d in device_order if d in devices):
+                    six.reraise(*exc)
 
-        def _handle_exc(*exc):
-            existing = set(self._get_stored_devices(session_id, data_key))
-            if not any(d for d in device_order if d in existing):
-                six.reraise(*exc)
+        promises = []
+        for d in device_to_keys.keys():
+            action = functools.partial(_action, self.get_storage_handler(d))
+            keys = device_to_keys[d]
+            total_size = device_total_size[d]
+            promises.append(
+                self._do_with_spill(action, keys, total_size, device_order, ensure=ensure)
+                    .catch(functools.partial(_handle_exc, keys))
+            )
+        return promise.all_(promises)
 
-        return self._do_with_spill(_action, data_size, device_order, ensure=ensure) \
-            .catch(_handle_exc)
-
-    def delete(self, session_id, data_key, devices=None, _tell=False):
-        devices = devices or self._get_stored_devices(session_id, data_key) or ()
+    def delete(self, session_id, data_keys, devices=None, _tell=False):
+        devices = devices or reduce(operator.or_, self._manager_ref.get_data_locations(session_id, data_keys))
         devices = self._normalize_devices(devices)
         for dev_type in devices:
             handler = self.get_storage_handler(dev_type)
-            handler.delete(session_id, data_key, _tell=_tell)
+            handler.delete(session_id, data_keys, _tell=_tell)
 
     def filter_exist_keys(self, session_id, data_keys, devices=None):
         devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())

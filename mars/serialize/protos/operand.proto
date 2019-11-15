@@ -374,8 +374,10 @@ message OperandDef {
         TO_DMATRIX = 3003;
         START_TRACKER = 3004;
 
-        CHOLESKY_FUSE = 999988;
+        // TensorFlow
+        RUN_TENSORFLOW = 3010;
 
+        CHOLESKY_FUSE = 999988;
 
         // fetches
         FETCH_SHUFFLE = 999998;

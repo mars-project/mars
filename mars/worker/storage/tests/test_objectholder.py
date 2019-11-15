@@ -44,12 +44,12 @@ class MockIORunnerActor(WorkerActor):
         dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         dispatch_ref.register_free_slot(self.uid, 'iorunner')
 
-    def load_from(self, dest_device, session_id, data_key, src_device, callback):
-        session_data_key = (session_id, data_key)
+    def load_from(self, dest_device, session_id, data_keys, src_device, callback):
+        session_data_key = (session_id, data_keys[0])
         self._work_items[session_data_key] = (dest_device, src_device, callback)
         if session_data_key in self._submissions:
             exc_info = self._submissions[session_data_key]
-            self.submit_item(session_id, data_key, exc_info)
+            self.submit_item(session_id, data_keys[0], exc_info)
 
     def submit_item(self, session_id, data_key, exc_info=None):
         try:
@@ -63,7 +63,7 @@ class MockIORunnerActor(WorkerActor):
         else:
             src_handler = self.storage_client.get_storage_handler(src_device)
             dest_handler = self.storage_client.get_storage_handler(dest_device)
-            dest_handler.load_from(session_id, data_key, src_handler) \
+            dest_handler.load_from(session_id, [data_key], src_handler) \
                 .then(lambda *_: self.tell_promise(cb),
                       lambda *exc: self.tell_promise(cb, *exc, **dict(_accept=False)))
 
@@ -107,7 +107,7 @@ class Test(WorkerCase):
         i = 0
         for i, (key, data) in enumerate(zip(key_list[idx:], data_list)):
             try:
-                shared_handler.put_object(session_id, key, data)
+                shared_handler.put_objects(session_id, [key], [data])
             except StorageFull:
                 break
         return i + idx
@@ -128,9 +128,9 @@ class Test(WorkerCase):
             pinned = shared_handler.pin_data_keys(session_id, key_list, pin_token1)
             self.assertEqual(sorted(key_list[:last_idx]), sorted(pinned))
 
-            shared_handler.delete(session_id, key_list[0])
-            shared_handler.delete(session_id, key_list[1])
-            shared_handler.put_object(session_id, key_list[last_idx], data_list[last_idx])
+            shared_handler.delete(session_id, [key_list[0]])
+            shared_handler.delete(session_id, [key_list[1]])
+            shared_handler.put_objects(session_id, [key_list[last_idx]], [data_list[last_idx]])
             assert_allclose(data_list[last_idx],
                             shared_handler.get_object(session_id, key_list[last_idx]))
 
@@ -138,7 +138,7 @@ class Test(WorkerCase):
             pinned = shared_handler.pin_data_keys(session_id, key_list, pin_token2)
             self.assertEqual(sorted(key_list[2:last_idx + 1]), sorted(pinned))
 
-            shared_handler.put_object(session_id, key_list[last_idx], data_list[last_idx])
+            shared_handler.put_objects(session_id, [key_list[last_idx]], [data_list[last_idx]])
             assert_allclose(data_list[last_idx],
                             shared_handler.get_object(session_id, key_list[last_idx]))
 
@@ -166,7 +166,7 @@ class Test(WorkerCase):
             key_list = [str(uuid.uuid4()) for _ in range(20)]
 
             self._fill_shared_storage(session_id, key_list, data_list)
-            data_size = manager_ref.get_data_size(session_id, key_list[0])
+            data_size = manager_ref.get_data_sizes(session_id, [key_list[0]])[0]
 
             # spill huge sizes
             with self.assertRaises(SpillSizeExceeded):
@@ -181,7 +181,7 @@ class Test(WorkerCase):
 
             expect_spills = key_list[2:4]
 
-            shared_holder_ref.lift_data_key(session_id, key_list[0])
+            shared_holder_ref.lift_data_keys(session_id, [key_list[0]])
             shared_handler.spill_size(data_size * 1.5) \
                 .then(lambda *_: test_actor.set_result(None),
                       lambda *exc: test_actor.set_result(exc, accept=False))

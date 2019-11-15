@@ -61,6 +61,7 @@ from . import special
 
 # types
 from .core import Tensor, MutableTensor
+from ..core import ExecutableTuple
 
 # register fuse op and fetch op
 from .fuse import TensorFuseChunk, TensorCpFuseChunk, TensorNeFuseChunk

@@ -165,19 +165,21 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
 
             for idx in range(0, len(chunk_keys) - 7):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
-                storage_client_ref.put_object(session_id, chunk_keys[idx], data, [DataStorageDevice.PROC_MEMORY])
+                storage_client_ref.put_objects(
+                    session_id, [chunk_keys[idx]], [data], [DataStorageDevice.PROC_MEMORY])
             for idx in range(len(chunk_keys) - 7, len(chunk_keys)):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
-                storage_client_ref.put_object(session_id, chunk_keys[idx], data, [DataStorageDevice.SHARED_MEMORY])
+                storage_client_ref.put_objects(
+                    session_id, [chunk_keys[idx]], [data], [DataStorageDevice.SHARED_MEMORY])
 
-            while not all(storage_client_ref.get_data_locations(session_id, k) for k in chunk_keys):
+            while not all(storage_client_ref.get_data_locations(session_id, chunk_keys)):
                 pool.sleep(0.1)
 
             for idx in range(0, len(chunk_keys) - 7):
-                storage_client_ref.copy_to(session_id, chunk_keys[idx], [DataStorageDevice.DISK])
+                storage_client_ref.copy_to(session_id, [chunk_keys[idx]], [DataStorageDevice.DISK])
 
-            while not all((0, DataStorageDevice.DISK) in storage_client_ref.get_data_locations(session_id, k)
-                          for k in chunk_keys[:-7]):
+            while not all((0, DataStorageDevice.DISK) in locations
+                          for locations in storage_client_ref.get_data_locations(session_id, chunk_keys[:-7])):
                 pool.sleep(0.1)
 
             msg_queue.put(plasma_socket)
@@ -253,11 +255,12 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
                 self.get_result(5)
                 assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
-                storage_client.delete(session_id, chunk_key1)
+                storage_client.delete(session_id, [chunk_key1])
 
                 # send data in plasma store
                 self.waitp(
-                    storage_client.put_object(session_id, chunk_key1, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                    storage_client.put_objects(
+                        session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY])
                 )
 
                 sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
@@ -285,7 +288,8 @@ class Test(WorkerCase):
 
                 # send data to non-exist endpoint which causes error
                 self.waitp(
-                    storage_client.put_object(session_id, chunk_key2, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                    storage_client.put_objects(
+                        session_id, [chunk_key2], [mock_data], [DataStorageDevice.SHARED_MEMORY])
                 )
 
                 sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr2, _promise=True) \
@@ -341,10 +345,11 @@ class Test(WorkerCase):
                 )
                 self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
                                  ReceiveStatus.RECEIVED)
-                storage_client.delete(session_id, chunk_key1)
+                storage_client.delete(session_id, [chunk_key1])
 
                 self.waitp(
-                    storage_client.put_object(session_id, chunk_key1, mock_data, [DataStorageDevice.SHARED_MEMORY])
+                    storage_client.put_objects(
+                        session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY])
                 )
 
                 self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
