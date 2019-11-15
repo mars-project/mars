@@ -29,7 +29,7 @@ from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chu
 class Test(unittest.TestCase):
     def testDecideDataFrameChunks(self):
         with option_context() as options:
-            options.tensor.chunk_store_limit = 64
+            options.chunk_store_limit = 64
 
             memory_usage = pd.Series([8, 22.2, 4, 2, 11.2], index=list('abcde'))
 
@@ -50,7 +50,7 @@ class Test(unittest.TestCase):
             [self.assertTrue(all(isinstance(i, Integral) for i in ns)) for ns in nsplit]
             self.assertEqual(shape, tuple(sum(ns) for ns in nsplit))
 
-            options.tensor.chunk_store_limit = 20
+            options.chunk_store_limit = 20
 
             shape = (10, 5)
             nsplit = decide_dataframe_chunk_sizes(shape, None, memory_usage)
@@ -71,7 +71,7 @@ class Test(unittest.TestCase):
 
     def testDecideSeriesChunks(self):
         with option_context() as options:
-            options.tensor.chunk_store_limit = 64
+            options.chunk_store_limit = 64
 
             s = pd.Series(np.empty(50, dtype=np.int64))
             nsplit = decide_series_chunk_size(s.shape, None, s.memory_usage(index=False, deep=True))
