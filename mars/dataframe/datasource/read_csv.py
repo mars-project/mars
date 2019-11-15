@@ -18,18 +18,17 @@ from io import BytesIO
 
 import pandas as pd
 import numpy as np
-try:
-    import cudf
-except ImportError:
-    cudf = None
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...utils import parse_readable_size
+from ...utils import parse_readable_size, lazy_import
 from ...serialize import StringField, DictField, ListField, Int32Field, Int64Field, AnyField
 from ...filesystem import open_file, file_size, glob
 from ..utils import parse_index, build_empty_df
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+
+
+cudf = lazy_import('cudf', globals=globals())
 
 
 def _find_chunk_start_end(f, offset, size):
