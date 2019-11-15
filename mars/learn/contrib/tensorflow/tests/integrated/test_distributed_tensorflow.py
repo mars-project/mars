@@ -31,9 +31,10 @@ class Test(LearnIntegrationTestBase):
         service_ep = 'http://127.0.0.1:' + self.web_port
         timeout = 120 if 'CI' in os.environ else -1
         with new_session(service_ep) as sess:
-            os.chdir(os.path.dirname(os.path.abspath(__file__)))
+            path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                'tf_distributed_sample.py')
             run_kwargs = {'timeout': timeout}
             self.assertEqual(run_tensorflow_script(
-                '../tf_distributed_sample.py', n_workers=2, command_argv=['multiple'],
+                path, n_workers=2, command_argv=['multiple'],
                 port=3222, session=sess, run_kwargs=run_kwargs
             )['status'], 'ok')

@@ -26,8 +26,8 @@ except ImportError:
 @unittest.skipIf(tensorflow is None, 'tensorflow not installed')
 class Test(unittest.TestCase):
     def testLocalRunTensorFlowScript(self):
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
         self.assertEqual(run_tensorflow_script(
-            'tf_distributed_sample.py', n_workers=2, command_argv=['multiple'],
+            path, n_workers=2, command_argv=['multiple'],
             port=2222, run_kwargs={'n_parallel': 2}
         )['status'], 'ok')
