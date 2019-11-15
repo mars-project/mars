@@ -379,4 +379,4 @@ class OptionsProxy(object):
 
 options = OptionsProxy()
 
-options.redirect_option('chunk_store_limit', 'tensor.chunk_store_limit')
+options.redirect_option('tensor.chunk_store_limit', 'chunk_store_limit')
