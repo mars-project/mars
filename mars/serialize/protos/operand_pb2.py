@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n#mars/serialize/protos/operand.proto\x1a!mars/serialize/protos/value.proto\"\x81*\n\nOperandDef\x12\x0c\n\x04type\x18\x01 \x01(\t\x12#\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x15.OperandDef.AttrEntry\x12\x1d\n\x08operands\x18\x03 \x03(\x0b\x32\x0b.OperandDef\x12\n\n\x02id\x18\x04 \x01(\t\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\"\xdf(\n\x0bOperandType\x12\x08\n\x04NULL\x10\x00\x12\n\n\x06SCALAR\x10\x01\x12\x16\n\x12TENSOR_DATA_SOURCE\x10\x02\x12\x0f\n\x0bTENSOR_ONES\x10\x03\x12\x14\n\x10TENSOR_ONES_LIKE\x10\x04\x12\x10\n\x0cTENSOR_ZEROS\x10\x05\x12\x15\n\x11TENSOR_ZEROS_LIKE\x10\x06\x12\x10\n\x0cTENSOR_EMPTY\x10\x07\x12\x15\n\x11TENSOR_EMPTY_LIKE\x10\x08\x12\x0f\n\x0bTENSOR_FULL\x10\t\x12\x14\n\x10TENSOR_FULL_LIKE\x10\x19\x12\x11\n\rTENSOR_ARANGE\x10\n\x12\x12\n\x0eTENSOR_INDICES\x10\x0b\x12\x0f\n\x0bTENSOR_DIAG\x10\x0c\x12\x0e\n\nTENSOR_EYE\x10\r\x12\x13\n\x0fTENSOR_LINSPACE\x10\x0e\x12\x0f\n\x0bTENSOR_TRIU\x10\x0f\x12\x0f\n\x0bTENSOR_TRIL\x10\x10\x12\x16\n\x12TENSOR_FROM_TILEDB\x10\x12\x12\x17\n\x13TENSOR_STORE_TILEDB\x10\x13\x12#\n\x1fTENSOR_STORE_TILEDB_CONSOLIDATE\x10\x14\x12\x19\n\x15TENSOR_FROM_DATAFRAME\x10\x16\x12\x19\n\x15\x44\x41TAFRAME_DATA_SOURCE\x10\x11\x12\x19\n\x15\x44\x41TAFRAME_FROM_TENSOR\x10\x15\x12\x16\n\x12SERIES_FROM_TENSOR\x10\x1a\x12\x1a\n\x16\x44\x41TAFRAME_FROM_RECORDS\x10\x18\x12\x16\n\x12SERIES_DATA_SOURCE\x10\x17\x12\n\n\x06TO_GPU\x10\x1e\x12\n\n\x06TO_CPU\x10\x1f\x12\r\n\tRAND_RAND\x10)\x12\x0e\n\nRAND_RANDN\x10*\x12\x10\n\x0cRAND_RANDINT\x10+\x12\x18\n\x14RAND_RANDOM_INTEGERS\x10,\x12\x16\n\x12RAND_RANDOM_SAMPLE\x10-\x12\x0f\n\x0bRAND_RANDOM\x10.\x12\r\n\tRAND_RANF\x10/\x12\x0f\n\x0bRAND_SAMPLE\x10\x30\x12\x0e\n\nRAND_BYTES\x10\x31\x12\r\n\tRAND_BETA\x10\x32\x12\x11\n\rRAND_BINOMIAL\x10\x33\x12\x12\n\x0eRAND_CHISQUARE\x10\x34\x12\x0f\n\x0bRAND_CHOICE\x10\x35\x12\x12\n\x0eRAND_DIRICHLET\x10\x36\x12\x14\n\x10RAND_EXPONENTIAL\x10\x37\x12\n\n\x06RAND_F\x10\x38\x12\x0e\n\nRAND_GAMMA\x10\x39\x12\x12\n\x0eRAND_GEOMETRIC\x10:\x12\x0f\n\x0bRAND_GUMBEL\x10;\x12\x17\n\x13RAND_HYPERGEOMETRIC\x10<\x12\x10\n\x0cRAND_LAPLACE\x10=\x12\x11\n\rRAND_LOGISTIC\x10>\x12\x12\n\x0eRAND_LOGNORMAL\x10?\x12\x12\n\x0eRAND_LOGSERIES\x10@\x12\x14\n\x10RAND_MULTINOMIAL\x10\x41\x12\x1c\n\x18RAND_MULTIVARIATE_NORMAL\x10\x42\x12\x1a\n\x16RAND_NEGATIVE_BINOMIAL\x10\x43\x12\x1c\n\x18RAND_NONCENTRAL_CHISQURE\x10\x44\x12\x15\n\x11RAND_NONCENTRAL_F\x10\x45\x12\x0f\n\x0bRAND_NORMAL\x10\x46\x12\x0f\n\x0bRAND_PARETO\x10G\x12\x14\n\x10RAND_PERMUTATION\x10H\x12\x10\n\x0cRAND_POSSION\x10I\x12\x0e\n\nRAND_POWER\x10J\x12\x11\n\rRAND_RAYLEIGH\x10K\x12\x10\n\x0cRAND_SHUFFLE\x10L\x12\x18\n\x14RAND_STANDARD_CAUCHY\x10M\x12\x1d\n\x19RAND_STANDARD_EXPONENTIAL\x10N\x12\x18\n\x14RAND_STANDARD_GAMMMA\x10O\x12\x18\n\x14RAND_STANDARD_NORMAL\x10P\x12\x13\n\x0fRAND_STANDARD_T\x10Q\x12\x11\n\rRAND_TOMAXINT\x10R\x12\x13\n\x0fRAND_TRIANGULAR\x10S\x12\x10\n\x0cRAND_UNIFORM\x10T\x12\x11\n\rRAND_VONMISES\x10U\x12\r\n\tRAND_WALD\x10V\x12\x10\n\x0cRAND_WEIBULL\x10W\x12\r\n\tRAND_ZIPF\x10X\x12\x0f\n\x0bPERMUTATION\x10Y\x12\n\n\x06UNIQUE\x10Z\x12\x07\n\x03\x41\x44\x44\x10\x65\x12\x07\n\x03SUB\x10\x66\x12\x07\n\x03MUL\x10g\x12\x07\n\x03\x44IV\x10h\x12\x0b\n\x07TRUEDIV\x10i\x12\x0c\n\x08\x46LOORDIV\x10j\x12\x07\n\x03POW\x10k\x12\x07\n\x03MOD\x10l\x12\x08\n\x04\x46MOD\x10m\x12\r\n\tLOGADDEXP\x10n\x12\x0e\n\nLOGADDEXP2\x10o\x12\x0c\n\x08NEGATIVE\x10p\x12\x0c\n\x08POSITIVE\x10q\x12\x0c\n\x08\x41\x42SOLUTE\x10r\x12\x08\n\x04\x46\x41\x42S\x10s\x12\x07\n\x03\x41\x42S\x10t\x12\x08\n\x04RINT\x10u\x12\x08\n\x04SIGN\x10v\x12\x08\n\x04\x43ONJ\x10w\x12\x07\n\x03\x45XP\x10x\x12\x08\n\x04\x45XP2\x10y\x12\x07\n\x03LOG\x10z\x12\x08\n\x04LOG2\x10{\x12\t\n\x05LOG10\x10|\x12\t\n\x05\x45XPM1\x10}\x12\t\n\x05LOG1P\x10~\x12\x08\n\x04SQRT\x10\x7f\x12\x0b\n\x06SQUARE\x10\x80\x01\x12\t\n\x04\x43\x42RT\x10\x81\x01\x12\x0f\n\nRECIPROCAL\x10\x82\x01\x12\x07\n\x02\x45Q\x10\x83\x01\x12\x07\n\x02NE\x10\x84\x01\x12\x07\n\x02LT\x10\x85\x01\x12\x07\n\x02LE\x10\x86\x01\x12\x07\n\x02GT\x10\x87\x01\x12\x07\n\x02GE\x10\x88\x01\x12\x08\n\x03SIN\x10\x89\x01\x12\x08\n\x03\x43OS\x10\x8a\x01\x12\x08\n\x03TAN\x10\x8b\x01\x12\x0b\n\x06\x41RCSIN\x10\x8c\x01\x12\x0b\n\x06\x41RCCOS\x10\x8d\x01\x12\x0b\n\x06\x41RCTAN\x10\x8e\x01\x12\x0c\n\x07\x41RCTAN2\x10\x8f\x01\x12\n\n\x05HYPOT\x10\x90\x01\x12\t\n\x04SINH\x10\x91\x01\x12\t\n\x04\x43OSH\x10\x92\x01\x12\t\n\x04TANH\x10\x93\x01\x12\x0c\n\x07\x41RCSINH\x10\x94\x01\x12\x0c\n\x07\x41RCCOSH\x10\x95\x01\x12\x0c\n\x07\x41RCTANH\x10\x96\x01\x12\x0c\n\x07\x44\x45G2RAD\x10\x97\x01\x12\x0c\n\x07RAD2DEG\x10\x98\x01\x12\x0b\n\x06\x42ITAND\x10\x99\x01\x12\n\n\x05\x42ITOR\x10\x9a\x01\x12\x0b\n\x06\x42ITXOR\x10\x9b\x01\x12\x0b\n\x06INVERT\x10\x9c\x01\x12\x0b\n\x06LSHIFT\x10\x9d\x01\x12\x0b\n\x06RSHIFT\x10\x9e\x01\x12\x08\n\x03\x41ND\x10\x9f\x01\x12\x07\n\x02OR\x10\xa0\x01\x12\x08\n\x03XOR\x10\xa1\x01\x12\x08\n\x03NOT\x10\xa2\x01\x12\x0c\n\x07MAXIMUM\x10\xa3\x01\x12\x0c\n\x07MINIMUM\x10\xa4\x01\x12\x0b\n\x06\x41ROUND\x10\xa5\x01\x12\x10\n\x0b\x46LOAT_POWER\x10\xa6\x01\x12\t\n\x04\x46MAX\x10\xa7\x01\x12\t\n\x04\x46MIN\x10\xa8\x01\x12\r\n\x08ISFINITE\x10\xa9\x01\x12\n\n\x05ISINF\x10\xaa\x01\x12\n\n\x05ISNAN\x10\xab\x01\x12\x0c\n\x07SIGNBIT\x10\xac\x01\x12\r\n\x08\x43OPYSIGN\x10\xad\x01\x12\x0e\n\tNEXTAFTER\x10\xae\x01\x12\x0c\n\x07SPACING\x10\xaf\x01\x12\n\n\x05LDEXP\x10\xb0\x01\x12\n\n\x05\x46REXP\x10\xb1\x01\x12\t\n\x04MODF\x10\xb2\x01\x12\n\n\x05\x46LOOR\x10\xb3\x01\x12\t\n\x04\x43\x45IL\x10\xb4\x01\x12\n\n\x05TRUNC\x10\xb5\x01\x12\x0c\n\x07\x44\x45GREES\x10\xb6\x01\x12\x0c\n\x07RADIANS\x10\xb7\x01\x12\t\n\x04\x43LIP\x10\xb8\x01\x12\x0b\n\x06ISREAL\x10\xb9\x01\x12\x0e\n\tISCOMPLEX\x10\xba\x01\x12\t\n\x04REAL\x10\xbb\x01\x12\t\n\x04IMAG\x10\xbc\x01\x12\x08\n\x03\x46IX\x10\xbd\x01\x12\x07\n\x02I0\x10\xbe\x01\x12\t\n\x04SINC\x10\xbf\x01\x12\x0f\n\nNAN_TO_NUM\x10\xc0\x01\x12\x0c\n\x07ISCLOSE\x10\xc1\x01\x12\x0b\n\x06\x44IVMOD\x10\xc2\x01\x12\n\n\x05\x41NGLE\x10\xc3\x01\x12\r\n\x08SET_REAL\x10\xc4\x01\x12\r\n\x08SET_IMAG\x10\xc5\x01\x12\x0c\n\x07GAMMALN\x10\xc8\x01\x12\x08\n\x03\x45RF\x10\xc9\x01\x12\r\n\x08TREE_ADD\x10\xfb\x01\x12\x12\n\rTREE_MULTIPLY\x10\xfc\x01\x12\x0b\n\x06\x43UMSUM\x10\xad\x02\x12\x0c\n\x07\x43UMPROD\x10\xae\x02\x12\t\n\x04PROD\x10\xaf\x02\x12\x08\n\x03SUM\x10\xb0\x02\x12\x08\n\x03MAX\x10\xb1\x02\x12\x08\n\x03MIN\x10\xb2\x02\x12\x08\n\x03\x41LL\x10\xb3\x02\x12\x08\n\x03\x41NY\x10\xb4\x02\x12\x0f\n\nMEAN_CHUNK\x10\xb5\x02\x12\x11\n\x0cMEAN_COMBINE\x10\xb6\x02\x12\t\n\x04MEAN\x10\xb7\x02\x12\x0b\n\x06\x41RGMAX\x10\xb8\x02\x12\x11\n\x0c\x41RGMAX_CHUNK\x10\xb9\x02\x12\x13\n\x0e\x41RGMAX_COMBINE\x10\xba\x02\x12\x0b\n\x06\x41RGMIN\x10\xbb\x02\x12\x11\n\x0c\x41RGMIN_CHUNK\x10\xbc\x02\x12\x13\n\x0e\x41RGMIN_COMBINE\x10\xbd\x02\x12\x0b\n\x06NANSUM\x10\xbe\x02\x12\x0b\n\x06NANMAX\x10\xbf\x02\x12\x0b\n\x06NANMIN\x10\xc0\x02\x12\x0c\n\x07NANPROD\x10\xc1\x02\x12\x0c\n\x07NANMEAN\x10\xc2\x02\x12\x12\n\rNANMEAN_CHUNK\x10\xc3\x02\x12\x0e\n\tNANARGMAX\x10\xc4\x02\x12\x14\n\x0fNANARGMAX_CHUNK\x10\xc5\x02\x12\x16\n\x11NANARGMAX_COMBINE\x10\xc6\x02\x12\x0e\n\tNANARGMIN\x10\xc7\x02\x12\x14\n\x0fNANARGMIN_CHUNK\x10\xc8\x02\x12\x16\n\x11NANARGMIN_COMBINE\x10\xc9\x02\x12\x12\n\rCOUNT_NONZERO\x10\xca\x02\x12\x11\n\x0cMOMENT_CHUNK\x10\xcb\x02\x12\x14\n\x0fNANMOMENT_CHUNK\x10\xcc\x02\x12\x13\n\x0eMOMENT_COMBINE\x10\xcd\x02\x12\x16\n\x11NANMOMENT_COMBINE\x10\xce\x02\x12\x0b\n\x06MOMENT\x10\xcf\x02\x12\x0e\n\tNANMOMENT\x10\xd0\x02\x12\x08\n\x03VAR\x10\xd1\x02\x12\x08\n\x03STD\x10\xd2\x02\x12\x0b\n\x06NANVAR\x10\xd3\x02\x12\x0b\n\x06NANSTD\x10\xd4\x02\x12\x0e\n\tNANCUMSUM\x10\xd5\x02\x12\x0f\n\nNANCUMPROD\x10\xd6\x02\x12\x0c\n\x07RESHAPE\x10\x91\x03\x12\n\n\x05SLICE\x10\x92\x03\x12\n\n\x05INDEX\x10\x93\x03\x12\x12\n\rINDEXSETVALUE\x10\x94\x03\x12\x10\n\x0b\x43ONCATENATE\x10\x95\x03\x12\x0c\n\x07RECHUNK\x10\x96\x03\x12\x0b\n\x06\x41STYPE\x10\x97\x03\x12\x0e\n\tTRANSPOSE\x10\x98\x03\x12\r\n\x08SWAPAXES\x10\x99\x03\x12\x11\n\x0c\x42ROADCAST_TO\x10\x9a\x03\x12\n\n\x05STACK\x10\x9b\x03\x12\n\n\x05WHERE\x10\x9c\x03\x12\x0b\n\x06\x43HOOSE\x10\x9d\x03\x12\x0c\n\x07NONZERO\x10\x9e\x03\x12\r\n\x08\x41RGWHERE\x10\x9f\x03\x12\x12\n\rUNRAVEL_INDEX\x10\xa0\x03\x12\x16\n\x11RAVEL_MULTI_INDEX\x10\xa1\x03\x12\x10\n\x0b\x41RRAY_SPLIT\x10\xa2\x03\x12\x0c\n\x07SQUEEZE\x10\xa3\x03\x12\r\n\x08\x44IGITIZE\x10\xa4\x03\x12\x0b\n\x06REPEAT\x10\xa5\x03\x12\x0b\n\x06\x43OPYTO\x10\xa6\x03\x12\t\n\x04ISIN\x10\xa7\x03\x12\x11\n\x0cSEARCHSORTED\x10\xac\x03\x12\x1f\n\x1a\x46\x41NCY_INDEX_DISTRIBUTE_MAP\x10\xa8\x03\x12\"\n\x1d\x46\x41NCY_INDEX_DISTRIBUTE_REDUCE\x10\xa9\x03\x12\x1b\n\x16\x46\x41NCY_INDEX_CONCAT_MAP\x10\xaa\x03\x12\x1e\n\x19\x46\x41NCY_INDEX_CONCAT_REDUCE\x10\xab\x03\x12\x0e\n\tTENSORDOT\x10\xf5\x03\x12\x08\n\x03\x44OT\x10\xf6\x03\x12\x0b\n\x06MATMUL\x10\xf7\x03\x12\r\n\x08\x43HOLESKY\x10\xfe\x03\x12\x07\n\x02QR\x10\xff\x03\x12\x08\n\x03SVD\x10\x80\x04\x12\x07\n\x02LU\x10\x81\x04\x12\x15\n\x10SOLVE_TRIANGULAR\x10\x88\x04\x12\x08\n\x03INV\x10\x89\x04\x12\t\n\x04NORM\x10\x92\x04\x12\x08\n\x03\x46\x46T\x10\xd9\x04\x12\t\n\x04IFFT\x10\xda\x04\x12\t\n\x04\x46\x46T2\x10\xdb\x04\x12\n\n\x05IFFT2\x10\xdc\x04\x12\t\n\x04\x46\x46TN\x10\xdd\x04\x12\n\n\x05IFFTN\x10\xde\x04\x12\t\n\x04RFFT\x10\xdf\x04\x12\n\n\x05IRFFT\x10\xe0\x04\x12\n\n\x05RFFT2\x10\xe1\x04\x12\x0b\n\x06IRFFT2\x10\xe2\x04\x12\n\n\x05RFFTN\x10\xe3\x04\x12\x0b\n\x06IRFFTN\x10\xe4\x04\x12\t\n\x04HFFT\x10\xe5\x04\x12\n\n\x05IHFFT\x10\xe6\x04\x12\x0c\n\x07\x46\x46TFREQ\x10\xe7\x04\x12\x12\n\rFFTFREQ_CHUNK\x10\xe8\x04\x12\r\n\x08RFFTFREQ\x10\xe9\x04\x12\r\n\x08\x46\x46TSHIFT\x10\xea\x04\x12\x0e\n\tIFFTSHIFT\x10\xeb\x04\x12\x1e\n\x19SPARSE_MATRIX_DATA_SOURCE\x10\xbd\x05\x12\x14\n\x0f\x44\x45NSE_TO_SPARSE\x10\xbe\x05\x12\x14\n\x0fSPARSE_TO_DENSE\x10\xbf\x05\x12\t\n\x04\x46USE\x10\xa1\x06\x12\n\n\x05\x45NTER\x10\x85\x07\x12\n\n\x05LEAVE\x10\x86\x07\x12\x0f\n\nFIX_LATEST\x10\x87\x07\x12\x0c\n\x07IF_ELSE\x10\x88\x07\x12\x0e\n\tNEXT_ITER\x10\x89\x07\x12\x0e\n\tTABLE_COO\x10\xeb\x07\x12\x0e\n\tSTORE_COO\x10\xec\x07\x12\x12\n\rSHUFFLE_PROXY\x10\xd1\x0f\x12\x10\n\x0bRESHAPE_MAP\x10\xd2\x0f\x12\x13\n\x0eRESHAPE_REDUCE\x10\xd3\x0f\x12\x1e\n\x19\x44\x41TAFRAME_INDEX_ALIGN_MAP\x10\xd4\x0f\x12!\n\x1c\x44\x41TAFRAME_INDEX_ALIGN_REDUCE\x10\xd5\x0f\x12\x14\n\x0fPERMUTATION_MAP\x10\xd6\x0f\x12\x17\n\x12PERMUTATION_REDUCE\x10\xd7\x0f\x12\x0f\n\nUNIQUE_MAP\x10\xd8\x0f\x12\x12\n\rUNIQUE_REDUCE\x10\xd9\x0f\x12\x1a\n\x15UNIQUE_INVERSE_REDUCE\x10\xdd\x0f\x12\x18\n\x13\x44\x41TAFRAME_SET_INDEX\x10\xe4\x0f\x12\x1b\n\x16\x44\x41TAFRAME_ILOC_GETITEM\x10\xe5\x0f\x12\x1b\n\x16\x44\x41TAFRAME_ILOC_SETITEM\x10\xe6\x0f\x12\x1c\n\x17\x44\x41TAFRAME_SHUFFLE_MERGE\x10\xda\x0f\x12&\n!DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP\x10\xdb\x0f\x12)\n$DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE\x10\xdc\x0f\x12\x0c\n\x07GROUPBY\x10\xee\x0f\x12\x10\n\x0bGROUPBY_MAP\x10\xef\x0f\x12\x13\n\x0eGROUPBY_REDUCE\x10\xf0\x0f\x12\x10\n\x0bGROUPBY_AGG\x10\xf1\x0f\x12\r\n\x08READ_CSV\x10\xb4\x10\x12\x12\n\rXGBOOST_TRAIN\x10\xb9\x17\x12\x14\n\x0fXGBOOST_PREDICT\x10\xba\x17\x12\x0f\n\nTO_DMATRIX\x10\xbb\x17\x12\x12\n\rSTART_TRACKER\x10\xbc\x17\x12\x13\n\x0eRUN_TENSORFLOW\x10\xc2\x17\x12\x13\n\rCHOLESKY_FUSE\x10\xb4\x84=\x12\x13\n\rFETCH_SHUFFLE\x10\xbe\x84=\x12\x0b\n\x05\x46\x45TCH\x10\xbf\x84=b\x06proto3')
+  serialized_pb=_b('\n#mars/serialize/protos/operand.proto\x1a!mars/serialize/protos/value.proto\"\xa1+\n\nOperandDef\x12\x0c\n\x04type\x18\x01 \x01(\t\x12#\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x15.OperandDef.AttrEntry\x12\x1d\n\x08operands\x18\x03 \x03(\x0b\x32\x0b.OperandDef\x12\n\n\x02id\x18\x04 \x01(\t\x1a\x33\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\x05value\x18\x02 \x01(\x0b\x32\x06.Value:\x02\x38\x01\"\xff)\n\x0bOperandType\x12\x08\n\x04NULL\x10\x00\x12\n\n\x06SCALAR\x10\x01\x12\x16\n\x12TENSOR_DATA_SOURCE\x10\x02\x12\x0f\n\x0bTENSOR_ONES\x10\x03\x12\x14\n\x10TENSOR_ONES_LIKE\x10\x04\x12\x10\n\x0cTENSOR_ZEROS\x10\x05\x12\x15\n\x11TENSOR_ZEROS_LIKE\x10\x06\x12\x10\n\x0cTENSOR_EMPTY\x10\x07\x12\x15\n\x11TENSOR_EMPTY_LIKE\x10\x08\x12\x0f\n\x0bTENSOR_FULL\x10\t\x12\x14\n\x10TENSOR_FULL_LIKE\x10\x19\x12\x11\n\rTENSOR_ARANGE\x10\n\x12\x12\n\x0eTENSOR_INDICES\x10\x0b\x12\x0f\n\x0bTENSOR_DIAG\x10\x0c\x12\x0e\n\nTENSOR_EYE\x10\r\x12\x13\n\x0fTENSOR_LINSPACE\x10\x0e\x12\x0f\n\x0bTENSOR_TRIU\x10\x0f\x12\x0f\n\x0bTENSOR_TRIL\x10\x10\x12\x16\n\x12TENSOR_FROM_TILEDB\x10\x12\x12\x17\n\x13TENSOR_STORE_TILEDB\x10\x13\x12#\n\x1fTENSOR_STORE_TILEDB_CONSOLIDATE\x10\x14\x12\x19\n\x15TENSOR_FROM_DATAFRAME\x10\x16\x12\x19\n\x15\x44\x41TAFRAME_DATA_SOURCE\x10\x11\x12\x19\n\x15\x44\x41TAFRAME_FROM_TENSOR\x10\x15\x12\x16\n\x12SERIES_FROM_TENSOR\x10\x1a\x12\x1a\n\x16\x44\x41TAFRAME_FROM_RECORDS\x10\x18\x12\x16\n\x12SERIES_DATA_SOURCE\x10\x17\x12\n\n\x06TO_GPU\x10\x1e\x12\n\n\x06TO_CPU\x10\x1f\x12\r\n\tRAND_RAND\x10)\x12\x0e\n\nRAND_RANDN\x10*\x12\x10\n\x0cRAND_RANDINT\x10+\x12\x18\n\x14RAND_RANDOM_INTEGERS\x10,\x12\x16\n\x12RAND_RANDOM_SAMPLE\x10-\x12\x0f\n\x0bRAND_RANDOM\x10.\x12\r\n\tRAND_RANF\x10/\x12\x0f\n\x0bRAND_SAMPLE\x10\x30\x12\x0e\n\nRAND_BYTES\x10\x31\x12\r\n\tRAND_BETA\x10\x32\x12\x11\n\rRAND_BINOMIAL\x10\x33\x12\x12\n\x0eRAND_CHISQUARE\x10\x34\x12\x0f\n\x0bRAND_CHOICE\x10\x35\x12\x12\n\x0eRAND_DIRICHLET\x10\x36\x12\x14\n\x10RAND_EXPONENTIAL\x10\x37\x12\n\n\x06RAND_F\x10\x38\x12\x0e\n\nRAND_GAMMA\x10\x39\x12\x12\n\x0eRAND_GEOMETRIC\x10:\x12\x0f\n\x0bRAND_GUMBEL\x10;\x12\x17\n\x13RAND_HYPERGEOMETRIC\x10<\x12\x10\n\x0cRAND_LAPLACE\x10=\x12\x11\n\rRAND_LOGISTIC\x10>\x12\x12\n\x0eRAND_LOGNORMAL\x10?\x12\x12\n\x0eRAND_LOGSERIES\x10@\x12\x14\n\x10RAND_MULTINOMIAL\x10\x41\x12\x1c\n\x18RAND_MULTIVARIATE_NORMAL\x10\x42\x12\x1a\n\x16RAND_NEGATIVE_BINOMIAL\x10\x43\x12\x1c\n\x18RAND_NONCENTRAL_CHISQURE\x10\x44\x12\x15\n\x11RAND_NONCENTRAL_F\x10\x45\x12\x0f\n\x0bRAND_NORMAL\x10\x46\x12\x0f\n\x0bRAND_PARETO\x10G\x12\x14\n\x10RAND_PERMUTATION\x10H\x12\x10\n\x0cRAND_POSSION\x10I\x12\x0e\n\nRAND_POWER\x10J\x12\x11\n\rRAND_RAYLEIGH\x10K\x12\x10\n\x0cRAND_SHUFFLE\x10L\x12\x18\n\x14RAND_STANDARD_CAUCHY\x10M\x12\x1d\n\x19RAND_STANDARD_EXPONENTIAL\x10N\x12\x18\n\x14RAND_STANDARD_GAMMMA\x10O\x12\x18\n\x14RAND_STANDARD_NORMAL\x10P\x12\x13\n\x0fRAND_STANDARD_T\x10Q\x12\x11\n\rRAND_TOMAXINT\x10R\x12\x13\n\x0fRAND_TRIANGULAR\x10S\x12\x10\n\x0cRAND_UNIFORM\x10T\x12\x11\n\rRAND_VONMISES\x10U\x12\r\n\tRAND_WALD\x10V\x12\x10\n\x0cRAND_WEIBULL\x10W\x12\r\n\tRAND_ZIPF\x10X\x12\x0f\n\x0bPERMUTATION\x10Y\x12\n\n\x06UNIQUE\x10Z\x12\x07\n\x03\x41\x44\x44\x10\x65\x12\x07\n\x03SUB\x10\x66\x12\x07\n\x03MUL\x10g\x12\x07\n\x03\x44IV\x10h\x12\x0b\n\x07TRUEDIV\x10i\x12\x0c\n\x08\x46LOORDIV\x10j\x12\x07\n\x03POW\x10k\x12\x07\n\x03MOD\x10l\x12\x08\n\x04\x46MOD\x10m\x12\r\n\tLOGADDEXP\x10n\x12\x0e\n\nLOGADDEXP2\x10o\x12\x0c\n\x08NEGATIVE\x10p\x12\x0c\n\x08POSITIVE\x10q\x12\x0c\n\x08\x41\x42SOLUTE\x10r\x12\x08\n\x04\x46\x41\x42S\x10s\x12\x07\n\x03\x41\x42S\x10t\x12\x08\n\x04RINT\x10u\x12\x08\n\x04SIGN\x10v\x12\x08\n\x04\x43ONJ\x10w\x12\x07\n\x03\x45XP\x10x\x12\x08\n\x04\x45XP2\x10y\x12\x07\n\x03LOG\x10z\x12\x08\n\x04LOG2\x10{\x12\t\n\x05LOG10\x10|\x12\t\n\x05\x45XPM1\x10}\x12\t\n\x05LOG1P\x10~\x12\x08\n\x04SQRT\x10\x7f\x12\x0b\n\x06SQUARE\x10\x80\x01\x12\t\n\x04\x43\x42RT\x10\x81\x01\x12\x0f\n\nRECIPROCAL\x10\x82\x01\x12\x07\n\x02\x45Q\x10\x83\x01\x12\x07\n\x02NE\x10\x84\x01\x12\x07\n\x02LT\x10\x85\x01\x12\x07\n\x02LE\x10\x86\x01\x12\x07\n\x02GT\x10\x87\x01\x12\x07\n\x02GE\x10\x88\x01\x12\x08\n\x03SIN\x10\x89\x01\x12\x08\n\x03\x43OS\x10\x8a\x01\x12\x08\n\x03TAN\x10\x8b\x01\x12\x0b\n\x06\x41RCSIN\x10\x8c\x01\x12\x0b\n\x06\x41RCCOS\x10\x8d\x01\x12\x0b\n\x06\x41RCTAN\x10\x8e\x01\x12\x0c\n\x07\x41RCTAN2\x10\x8f\x01\x12\n\n\x05HYPOT\x10\x90\x01\x12\t\n\x04SINH\x10\x91\x01\x12\t\n\x04\x43OSH\x10\x92\x01\x12\t\n\x04TANH\x10\x93\x01\x12\x0c\n\x07\x41RCSINH\x10\x94\x01\x12\x0c\n\x07\x41RCCOSH\x10\x95\x01\x12\x0c\n\x07\x41RCTANH\x10\x96\x01\x12\x0c\n\x07\x44\x45G2RAD\x10\x97\x01\x12\x0c\n\x07RAD2DEG\x10\x98\x01\x12\x0b\n\x06\x42ITAND\x10\x99\x01\x12\n\n\x05\x42ITOR\x10\x9a\x01\x12\x0b\n\x06\x42ITXOR\x10\x9b\x01\x12\x0b\n\x06INVERT\x10\x9c\x01\x12\x0b\n\x06LSHIFT\x10\x9d\x01\x12\x0b\n\x06RSHIFT\x10\x9e\x01\x12\x08\n\x03\x41ND\x10\x9f\x01\x12\x07\n\x02OR\x10\xa0\x01\x12\x08\n\x03XOR\x10\xa1\x01\x12\x08\n\x03NOT\x10\xa2\x01\x12\x0c\n\x07MAXIMUM\x10\xa3\x01\x12\x0c\n\x07MINIMUM\x10\xa4\x01\x12\x0b\n\x06\x41ROUND\x10\xa5\x01\x12\x10\n\x0b\x46LOAT_POWER\x10\xa6\x01\x12\t\n\x04\x46MAX\x10\xa7\x01\x12\t\n\x04\x46MIN\x10\xa8\x01\x12\r\n\x08ISFINITE\x10\xa9\x01\x12\n\n\x05ISINF\x10\xaa\x01\x12\n\n\x05ISNAN\x10\xab\x01\x12\x0c\n\x07SIGNBIT\x10\xac\x01\x12\r\n\x08\x43OPYSIGN\x10\xad\x01\x12\x0e\n\tNEXTAFTER\x10\xae\x01\x12\x0c\n\x07SPACING\x10\xaf\x01\x12\n\n\x05LDEXP\x10\xb0\x01\x12\n\n\x05\x46REXP\x10\xb1\x01\x12\t\n\x04MODF\x10\xb2\x01\x12\n\n\x05\x46LOOR\x10\xb3\x01\x12\t\n\x04\x43\x45IL\x10\xb4\x01\x12\n\n\x05TRUNC\x10\xb5\x01\x12\x0c\n\x07\x44\x45GREES\x10\xb6\x01\x12\x0c\n\x07RADIANS\x10\xb7\x01\x12\t\n\x04\x43LIP\x10\xb8\x01\x12\x0b\n\x06ISREAL\x10\xb9\x01\x12\x0e\n\tISCOMPLEX\x10\xba\x01\x12\t\n\x04REAL\x10\xbb\x01\x12\t\n\x04IMAG\x10\xbc\x01\x12\x08\n\x03\x46IX\x10\xbd\x01\x12\x07\n\x02I0\x10\xbe\x01\x12\t\n\x04SINC\x10\xbf\x01\x12\x0f\n\nNAN_TO_NUM\x10\xc0\x01\x12\x0c\n\x07ISCLOSE\x10\xc1\x01\x12\x0b\n\x06\x44IVMOD\x10\xc2\x01\x12\n\n\x05\x41NGLE\x10\xc3\x01\x12\r\n\x08SET_REAL\x10\xc4\x01\x12\r\n\x08SET_IMAG\x10\xc5\x01\x12\x0c\n\x07GAMMALN\x10\xc8\x01\x12\x08\n\x03\x45RF\x10\xc9\x01\x12\r\n\x08TREE_ADD\x10\xfb\x01\x12\x12\n\rTREE_MULTIPLY\x10\xfc\x01\x12\x0b\n\x06\x43UMSUM\x10\xad\x02\x12\x0c\n\x07\x43UMPROD\x10\xae\x02\x12\t\n\x04PROD\x10\xaf\x02\x12\x08\n\x03SUM\x10\xb0\x02\x12\x08\n\x03MAX\x10\xb1\x02\x12\x08\n\x03MIN\x10\xb2\x02\x12\x08\n\x03\x41LL\x10\xb3\x02\x12\x08\n\x03\x41NY\x10\xb4\x02\x12\x0f\n\nMEAN_CHUNK\x10\xb5\x02\x12\x11\n\x0cMEAN_COMBINE\x10\xb6\x02\x12\t\n\x04MEAN\x10\xb7\x02\x12\x0b\n\x06\x41RGMAX\x10\xb8\x02\x12\x11\n\x0c\x41RGMAX_CHUNK\x10\xb9\x02\x12\x13\n\x0e\x41RGMAX_COMBINE\x10\xba\x02\x12\x0b\n\x06\x41RGMIN\x10\xbb\x02\x12\x11\n\x0c\x41RGMIN_CHUNK\x10\xbc\x02\x12\x13\n\x0e\x41RGMIN_COMBINE\x10\xbd\x02\x12\x0b\n\x06NANSUM\x10\xbe\x02\x12\x0b\n\x06NANMAX\x10\xbf\x02\x12\x0b\n\x06NANMIN\x10\xc0\x02\x12\x0c\n\x07NANPROD\x10\xc1\x02\x12\x0c\n\x07NANMEAN\x10\xc2\x02\x12\x12\n\rNANMEAN_CHUNK\x10\xc3\x02\x12\x0e\n\tNANARGMAX\x10\xc4\x02\x12\x14\n\x0fNANARGMAX_CHUNK\x10\xc5\x02\x12\x16\n\x11NANARGMAX_COMBINE\x10\xc6\x02\x12\x0e\n\tNANARGMIN\x10\xc7\x02\x12\x14\n\x0fNANARGMIN_CHUNK\x10\xc8\x02\x12\x16\n\x11NANARGMIN_COMBINE\x10\xc9\x02\x12\x12\n\rCOUNT_NONZERO\x10\xca\x02\x12\x11\n\x0cMOMENT_CHUNK\x10\xcb\x02\x12\x14\n\x0fNANMOMENT_CHUNK\x10\xcc\x02\x12\x13\n\x0eMOMENT_COMBINE\x10\xcd\x02\x12\x16\n\x11NANMOMENT_COMBINE\x10\xce\x02\x12\x0b\n\x06MOMENT\x10\xcf\x02\x12\x0e\n\tNANMOMENT\x10\xd0\x02\x12\x08\n\x03VAR\x10\xd1\x02\x12\x08\n\x03STD\x10\xd2\x02\x12\x0b\n\x06NANVAR\x10\xd3\x02\x12\x0b\n\x06NANSTD\x10\xd4\x02\x12\x0e\n\tNANCUMSUM\x10\xd5\x02\x12\x0f\n\nNANCUMPROD\x10\xd6\x02\x12\x0c\n\x07RESHAPE\x10\x91\x03\x12\n\n\x05SLICE\x10\x92\x03\x12\n\n\x05INDEX\x10\x93\x03\x12\x12\n\rINDEXSETVALUE\x10\x94\x03\x12\x10\n\x0b\x43ONCATENATE\x10\x95\x03\x12\x0c\n\x07RECHUNK\x10\x96\x03\x12\x0b\n\x06\x41STYPE\x10\x97\x03\x12\x0e\n\tTRANSPOSE\x10\x98\x03\x12\r\n\x08SWAPAXES\x10\x99\x03\x12\x11\n\x0c\x42ROADCAST_TO\x10\x9a\x03\x12\n\n\x05STACK\x10\x9b\x03\x12\n\n\x05WHERE\x10\x9c\x03\x12\x0b\n\x06\x43HOOSE\x10\x9d\x03\x12\x0c\n\x07NONZERO\x10\x9e\x03\x12\r\n\x08\x41RGWHERE\x10\x9f\x03\x12\x12\n\rUNRAVEL_INDEX\x10\xa0\x03\x12\x16\n\x11RAVEL_MULTI_INDEX\x10\xa1\x03\x12\x10\n\x0b\x41RRAY_SPLIT\x10\xa2\x03\x12\x0c\n\x07SQUEEZE\x10\xa3\x03\x12\r\n\x08\x44IGITIZE\x10\xa4\x03\x12\x0b\n\x06REPEAT\x10\xa5\x03\x12\x0b\n\x06\x43OPYTO\x10\xa6\x03\x12\t\n\x04ISIN\x10\xa7\x03\x12\x11\n\x0cSEARCHSORTED\x10\xac\x03\x12\t\n\x04SORT\x10\xad\x03\x12\x1f\n\x1a\x46\x41NCY_INDEX_DISTRIBUTE_MAP\x10\xa8\x03\x12\"\n\x1d\x46\x41NCY_INDEX_DISTRIBUTE_REDUCE\x10\xa9\x03\x12\x1b\n\x16\x46\x41NCY_INDEX_CONCAT_MAP\x10\xaa\x03\x12\x1e\n\x19\x46\x41NCY_INDEX_CONCAT_REDUCE\x10\xab\x03\x12\x0e\n\tTENSORDOT\x10\xf5\x03\x12\x08\n\x03\x44OT\x10\xf6\x03\x12\x0b\n\x06MATMUL\x10\xf7\x03\x12\r\n\x08\x43HOLESKY\x10\xfe\x03\x12\x07\n\x02QR\x10\xff\x03\x12\x08\n\x03SVD\x10\x80\x04\x12\x07\n\x02LU\x10\x81\x04\x12\x15\n\x10SOLVE_TRIANGULAR\x10\x88\x04\x12\x08\n\x03INV\x10\x89\x04\x12\t\n\x04NORM\x10\x92\x04\x12\x08\n\x03\x46\x46T\x10\xd9\x04\x12\t\n\x04IFFT\x10\xda\x04\x12\t\n\x04\x46\x46T2\x10\xdb\x04\x12\n\n\x05IFFT2\x10\xdc\x04\x12\t\n\x04\x46\x46TN\x10\xdd\x04\x12\n\n\x05IFFTN\x10\xde\x04\x12\t\n\x04RFFT\x10\xdf\x04\x12\n\n\x05IRFFT\x10\xe0\x04\x12\n\n\x05RFFT2\x10\xe1\x04\x12\x0b\n\x06IRFFT2\x10\xe2\x04\x12\n\n\x05RFFTN\x10\xe3\x04\x12\x0b\n\x06IRFFTN\x10\xe4\x04\x12\t\n\x04HFFT\x10\xe5\x04\x12\n\n\x05IHFFT\x10\xe6\x04\x12\x0c\n\x07\x46\x46TFREQ\x10\xe7\x04\x12\x12\n\rFFTFREQ_CHUNK\x10\xe8\x04\x12\r\n\x08RFFTFREQ\x10\xe9\x04\x12\r\n\x08\x46\x46TSHIFT\x10\xea\x04\x12\x0e\n\tIFFTSHIFT\x10\xeb\x04\x12\x1e\n\x19SPARSE_MATRIX_DATA_SOURCE\x10\xbd\x05\x12\x14\n\x0f\x44\x45NSE_TO_SPARSE\x10\xbe\x05\x12\x14\n\x0fSPARSE_TO_DENSE\x10\xbf\x05\x12\t\n\x04\x46USE\x10\xa1\x06\x12\n\n\x05\x45NTER\x10\x85\x07\x12\n\n\x05LEAVE\x10\x86\x07\x12\x0f\n\nFIX_LATEST\x10\x87\x07\x12\x0c\n\x07IF_ELSE\x10\x88\x07\x12\x0e\n\tNEXT_ITER\x10\x89\x07\x12\x0e\n\tTABLE_COO\x10\xeb\x07\x12\x0e\n\tSTORE_COO\x10\xec\x07\x12\x12\n\rSHUFFLE_PROXY\x10\xd1\x0f\x12\x10\n\x0bRESHAPE_MAP\x10\xd2\x0f\x12\x13\n\x0eRESHAPE_REDUCE\x10\xd3\x0f\x12\x1e\n\x19\x44\x41TAFRAME_INDEX_ALIGN_MAP\x10\xd4\x0f\x12!\n\x1c\x44\x41TAFRAME_INDEX_ALIGN_REDUCE\x10\xd5\x0f\x12\x14\n\x0fPERMUTATION_MAP\x10\xd6\x0f\x12\x17\n\x12PERMUTATION_REDUCE\x10\xd7\x0f\x12\x0f\n\nUNIQUE_MAP\x10\xd8\x0f\x12\x12\n\rUNIQUE_REDUCE\x10\xd9\x0f\x12\x1a\n\x15UNIQUE_INVERSE_REDUCE\x10\xdd\x0f\x12\x18\n\x13\x44\x41TAFRAME_SET_INDEX\x10\xe4\x0f\x12\x1b\n\x16\x44\x41TAFRAME_ILOC_GETITEM\x10\xe5\x0f\x12\x1b\n\x16\x44\x41TAFRAME_ILOC_SETITEM\x10\xe6\x0f\x12\x1c\n\x17\x44\x41TAFRAME_SHUFFLE_MERGE\x10\xda\x0f\x12&\n!DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP\x10\xdb\x0f\x12)\n$DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE\x10\xdc\x0f\x12\x0c\n\x07GROUPBY\x10\xee\x0f\x12\x10\n\x0bGROUPBY_MAP\x10\xef\x0f\x12\x13\n\x0eGROUPBY_REDUCE\x10\xf0\x0f\x12\x10\n\x0bGROUPBY_AGG\x10\xf1\x0f\x12\x1d\n\x18PSRS_SORT_REGULAR_SMAPLE\x10\xf8\x0f\x12\x16\n\x11PSRS_CONCAT_PIVOT\x10\xf9\x0f\x12\x15\n\x10PSRS_SHUFFLE_MAP\x10\xfa\x0f\x12\x18\n\x13PSRS_SHUFFLE_REDUCE\x10\xfb\x0f\x12\x13\n\x0ePSRS_ALIGN_MAP\x10\xfc\x0f\x12\x16\n\x11PSRS_ALIGN_REDUCE\x10\xfd\x0f\x12\r\n\x08READ_CSV\x10\xb4\x10\x12\x12\n\rXGBOOST_TRAIN\x10\xb9\x17\x12\x14\n\x0fXGBOOST_PREDICT\x10\xba\x17\x12\x0f\n\nTO_DMATRIX\x10\xbb\x17\x12\x12\n\rSTART_TRACKER\x10\xbc\x17\x12\x13\n\x0eRUN_TENSORFLOW\x10\xc2\x17\x12\x13\n\rCHOLESKY_FUSE\x10\xb4\x84=\x12\x13\n\rFETCH_SHUFFLE\x10\xbe\x84=\x12\x0b\n\x05\x46\x45TCH\x10\xbf\x84=b\x06proto3')
   ,
   dependencies=[mars_dot_serialize_dot_protos_dot_value__pb2.DESCRIPTOR,])
 
@@ -1018,302 +1018,330 @@ _OPERANDDEF_OPERANDTYPE = _descriptor.EnumDescriptor(
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_DISTRIBUTE_MAP', index=246, number=424,
+      name='SORT', index=246, number=429,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_DISTRIBUTE_REDUCE', index=247, number=425,
+      name='FANCY_INDEX_DISTRIBUTE_MAP', index=247, number=424,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_CONCAT_MAP', index=248, number=426,
+      name='FANCY_INDEX_DISTRIBUTE_REDUCE', index=248, number=425,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FANCY_INDEX_CONCAT_REDUCE', index=249, number=427,
+      name='FANCY_INDEX_CONCAT_MAP', index=249, number=426,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TENSORDOT', index=250, number=501,
+      name='FANCY_INDEX_CONCAT_REDUCE', index=250, number=427,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DOT', index=251, number=502,
+      name='TENSORDOT', index=251, number=501,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='MATMUL', index=252, number=503,
+      name='DOT', index=252, number=502,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CHOLESKY', index=253, number=510,
+      name='MATMUL', index=253, number=503,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='QR', index=254, number=511,
+      name='CHOLESKY', index=254, number=510,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SVD', index=255, number=512,
+      name='QR', index=255, number=511,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LU', index=256, number=513,
+      name='SVD', index=256, number=512,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SOLVE_TRIANGULAR', index=257, number=520,
+      name='LU', index=257, number=513,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='INV', index=258, number=521,
+      name='SOLVE_TRIANGULAR', index=258, number=520,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NORM', index=259, number=530,
+      name='INV', index=259, number=521,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFT', index=260, number=601,
+      name='NORM', index=260, number=530,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFT', index=261, number=602,
+      name='FFT', index=261, number=601,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFT2', index=262, number=603,
+      name='IFFT', index=262, number=602,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFT2', index=263, number=604,
+      name='FFT2', index=263, number=603,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTN', index=264, number=605,
+      name='IFFT2', index=264, number=604,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFTN', index=265, number=606,
+      name='FFTN', index=265, number=605,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFT', index=266, number=607,
+      name='IFFTN', index=266, number=606,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFT', index=267, number=608,
+      name='RFFT', index=267, number=607,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFT2', index=268, number=609,
+      name='IRFFT', index=268, number=608,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFT2', index=269, number=610,
+      name='RFFT2', index=269, number=609,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFTN', index=270, number=611,
+      name='IRFFT2', index=270, number=610,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IRFFTN', index=271, number=612,
+      name='RFFTN', index=271, number=611,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='HFFT', index=272, number=613,
+      name='IRFFTN', index=272, number=612,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IHFFT', index=273, number=614,
+      name='HFFT', index=273, number=613,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTFREQ', index=274, number=615,
+      name='IHFFT', index=274, number=614,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTFREQ_CHUNK', index=275, number=616,
+      name='FFTFREQ', index=275, number=615,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RFFTFREQ', index=276, number=617,
+      name='FFTFREQ_CHUNK', index=276, number=616,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FFTSHIFT', index=277, number=618,
+      name='RFFTFREQ', index=277, number=617,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IFFTSHIFT', index=278, number=619,
+      name='FFTSHIFT', index=278, number=618,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SPARSE_MATRIX_DATA_SOURCE', index=279, number=701,
+      name='IFFTSHIFT', index=279, number=619,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DENSE_TO_SPARSE', index=280, number=702,
+      name='SPARSE_MATRIX_DATA_SOURCE', index=280, number=701,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SPARSE_TO_DENSE', index=281, number=703,
+      name='DENSE_TO_SPARSE', index=281, number=702,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FUSE', index=282, number=801,
+      name='SPARSE_TO_DENSE', index=282, number=703,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='ENTER', index=283, number=901,
+      name='FUSE', index=283, number=801,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='LEAVE', index=284, number=902,
+      name='ENTER', index=284, number=901,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FIX_LATEST', index=285, number=903,
+      name='LEAVE', index=285, number=902,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='IF_ELSE', index=286, number=904,
+      name='FIX_LATEST', index=286, number=903,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='NEXT_ITER', index=287, number=905,
+      name='IF_ELSE', index=287, number=904,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TABLE_COO', index=288, number=1003,
+      name='NEXT_ITER', index=288, number=905,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='STORE_COO', index=289, number=1004,
+      name='TABLE_COO', index=289, number=1003,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='SHUFFLE_PROXY', index=290, number=2001,
+      name='STORE_COO', index=290, number=1004,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RESHAPE_MAP', index=291, number=2002,
+      name='SHUFFLE_PROXY', index=291, number=2001,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RESHAPE_REDUCE', index=292, number=2003,
+      name='RESHAPE_MAP', index=292, number=2002,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_INDEX_ALIGN_MAP', index=293, number=2004,
+      name='RESHAPE_REDUCE', index=293, number=2003,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_INDEX_ALIGN_REDUCE', index=294, number=2005,
+      name='DATAFRAME_INDEX_ALIGN_MAP', index=294, number=2004,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='PERMUTATION_MAP', index=295, number=2006,
+      name='DATAFRAME_INDEX_ALIGN_REDUCE', index=295, number=2005,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='PERMUTATION_REDUCE', index=296, number=2007,
+      name='PERMUTATION_MAP', index=296, number=2006,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='UNIQUE_MAP', index=297, number=2008,
+      name='PERMUTATION_REDUCE', index=297, number=2007,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='UNIQUE_REDUCE', index=298, number=2009,
+      name='UNIQUE_MAP', index=298, number=2008,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='UNIQUE_INVERSE_REDUCE', index=299, number=2013,
+      name='UNIQUE_REDUCE', index=299, number=2009,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_SET_INDEX', index=300, number=2020,
+      name='UNIQUE_INVERSE_REDUCE', index=300, number=2013,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_ILOC_GETITEM', index=301, number=2021,
+      name='DATAFRAME_SET_INDEX', index=301, number=2020,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_ILOC_SETITEM', index=302, number=2022,
+      name='DATAFRAME_ILOC_GETITEM', index=302, number=2021,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_SHUFFLE_MERGE', index=303, number=2010,
+      name='DATAFRAME_ILOC_SETITEM', index=303, number=2022,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP', index=304, number=2011,
+      name='DATAFRAME_SHUFFLE_MERGE', index=304, number=2010,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE', index=305, number=2012,
+      name='DATAFRAME_SHUFFLE_MERGE_ALIGN_MAP', index=305, number=2011,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GROUPBY', index=306, number=2030,
+      name='DATAFRAME_SHUFFLE_MERGE_ALIGN_REDUCE', index=306, number=2012,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GROUPBY_MAP', index=307, number=2031,
+      name='GROUPBY', index=307, number=2030,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GROUPBY_REDUCE', index=308, number=2032,
+      name='GROUPBY_MAP', index=308, number=2031,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='GROUPBY_AGG', index=309, number=2033,
+      name='GROUPBY_REDUCE', index=309, number=2032,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='READ_CSV', index=310, number=2100,
+      name='GROUPBY_AGG', index=310, number=2033,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='XGBOOST_TRAIN', index=311, number=3001,
+      name='PSRS_SORT_REGULAR_SMAPLE', index=311, number=2040,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='XGBOOST_PREDICT', index=312, number=3002,
+      name='PSRS_CONCAT_PIVOT', index=312, number=2041,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='TO_DMATRIX', index=313, number=3003,
+      name='PSRS_SHUFFLE_MAP', index=313, number=2042,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='START_TRACKER', index=314, number=3004,
+      name='PSRS_SHUFFLE_REDUCE', index=314, number=2043,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='RUN_TENSORFLOW', index=315, number=3010,
+      name='PSRS_ALIGN_MAP', index=315, number=2044,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='CHOLESKY_FUSE', index=316, number=999988,
+      name='PSRS_ALIGN_REDUCE', index=316, number=2045,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FETCH_SHUFFLE', index=317, number=999998,
+      name='READ_CSV', index=317, number=2100,
       serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='FETCH', index=318, number=999999,
+      name='XGBOOST_TRAIN', index=318, number=3001,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='XGBOOST_PREDICT', index=319, number=3002,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='TO_DMATRIX', index=320, number=3003,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='START_TRACKER', index=321, number=3004,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='RUN_TENSORFLOW', index=322, number=3010,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='CHOLESKY_FUSE', index=323, number=999988,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='FETCH_SHUFFLE', index=324, number=999998,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='FETCH', index=325, number=999999,
       serialized_options=None,
       type=None),
   ],
   containing_type=None,
   serialized_options=None,
   serialized_start=237,
-  serialized_end=5452,
+  serialized_end=5612,
 )
 _sym_db.RegisterEnumDescriptor(_OPERANDDEF_OPERANDTYPE)
 
@@ -1404,7 +1432,7 @@ _OPERANDDEF = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=75,
-  serialized_end=5452,
+  serialized_end=5612,
 )
 
 _OPERANDDEF_ATTRENTRY.fields_by_name['value'].message_type = mars_dot_serialize_dot_protos_dot_value__pb2._VALUE
