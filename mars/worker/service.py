@@ -31,9 +31,8 @@ from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
 from .calc import CpuCalcActor, CudaCalcActor
-from .transfer import ReceiverActor, SenderActor
+from .transfer import ReceiverActor, SenderActor, ReceiverStatusActor, ResultSenderActor
 from .prochelper import ProcessHelperActor
-from .transfer import ResultSenderActor
 from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
     InProcHolderActor, CudaHolderActor
 from .utils import WorkerClusterInfoActor
@@ -55,6 +54,7 @@ class WorkerService(object):
         self._status_ref = None
         self._execution_ref = None
         self._daemon_ref = None
+        self._receiver_status_ref = None
 
         self._cluster_info_ref = None
         self._cpu_calc_actors = []
@@ -216,6 +216,8 @@ class WorkerService(object):
         self._dispatch_ref = pool.create_actor(DispatchActor, uid=DispatchActor.default_uid())
         # create EventsActor
         self._events_ref = pool.create_actor(EventsActor, uid=EventsActor.default_uid())
+        # create ReceiverNotifierActor
+        self._receiver_status_ref = pool.create_actor(ReceiverStatusActor, uid=ReceiverStatusActor.default_uid())
         # create ExecutionActor
         self._execution_ref = pool.create_actor(ExecutionActor, uid=ExecutionActor.default_uid())
 

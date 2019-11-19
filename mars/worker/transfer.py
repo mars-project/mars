@@ -239,6 +239,47 @@ class ReceiverDataMeta(object):
         self.callback_kwargs = callback_kwargs or {}
 
 
+class ReceiverStatusActor(WorkerActor):
+    def __init__(self):
+        super(ReceiverStatusActor, self).__init__()
+        self._receiver_callback_ids = dict()
+        self._max_callback_id = 0
+        self._callback_id_to_callbacks = dict()
+        self._callback_id_to_keys = dict()
+
+    def register_keys(self, session_id, data_keys):
+        for key in data_keys:
+            self._receiver_callback_ids[(session_id, key)] = []
+
+    def filter_registered_keys(self, session_id, data_keys):
+        return [k for k in data_keys if (session_id, k) in self._receiver_callback_ids]
+
+    def add_keys_callback(self, session_id, data_keys, callback):
+        cb_id = self._max_callback_id
+        self._max_callback_id += 1
+
+        self._callback_id_to_callbacks[cb_id] = callback
+        self._callback_id_to_keys[cb_id] = set((session_id, k) for k in data_keys)
+
+        for k in data_keys:
+            self._receiver_callback_ids[(session_id, k)].append(cb_id)
+
+    def notify_key_finish(self, session_id, data_key, *args, **kwargs):
+        session_data_key = (session_id, data_key)
+        cb_ids = self._receiver_callback_ids.pop(session_data_key, [])
+        if not cb_ids:
+            return
+
+        kwargs['_wait'] = False
+        for cb_id in cb_ids:
+            cb_keys = self._callback_id_to_keys[cb_id]
+            cb_keys.remove(session_data_key)
+            if not cb_keys:
+                del self._callback_id_to_keys[cb_id]
+                cb = self._callback_id_to_callbacks.pop(cb_id)
+                self.tell_promise(cb, *args, **kwargs)
+
+
 class ReceiverActor(WorkerActor):
     """
     Actor handling receiving data from a SenderActor
@@ -247,6 +288,7 @@ class ReceiverActor(WorkerActor):
         super(ReceiverActor, self).__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
+        self._receiver_status_ref = None
         self._events_ref = None
         self._status_ref = None
 
@@ -269,6 +311,10 @@ class ReceiverActor(WorkerActor):
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
+
+        self._receiver_status_ref = self.ctx.actor_ref(ReceiverStatusActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_status_ref):
+            self._receiver_status_ref = None
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
@@ -545,6 +591,8 @@ class ReceiverActor(WorkerActor):
         for cb in self._finish_callbacks[session_chunk_key]:
             kwargs['_wait'] = False
             self.tell_promise(cb, *args, **kwargs)
+        if self._receiver_status_ref:
+            self._receiver_status_ref.notify_key_finish(session_id, chunk_key, *args, **kwargs)
         if session_chunk_key in self._finish_callbacks:
             del self._finish_callbacks[session_chunk_key]
 

@@ -167,8 +167,6 @@ class ObjectHolderActor(WorkerActor):
 
         self._data_holder[session_data_key] = obj
         self._data_sizes[session_data_key] = size
-        self._data_holder.move_to_end(session_data_key)
-
         self._total_hold += size
 
     def _finish_put_objects(self, _session_id, data_keys):
