@@ -293,7 +293,7 @@ class ExecutionActor(WorkerActor):
             if (0, DataStorageDevice.SHARED_MEMORY) in locations:
                 self._pin_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quotas(
-                    build_quota_key(session_id, [chunk_key], owner=graph_key), _tell=True, _wait=False)
+                    [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
                 if (0, graph_record.preferred_data_device) not in locations:
                     return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
 
@@ -553,7 +553,6 @@ class ExecutionActor(WorkerActor):
         logger.debug('Start preparing input data for graph %s', graph_key)
         self._update_state(session_id, graph_key, ExecutionState.PREPARING_INPUTS)
         prepare_promises = []
-        shared_input_chunks = graph_record.shared_input_chunks
 
         input_keys = set()
         shuffle_keys = set()

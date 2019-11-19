@@ -318,7 +318,8 @@ class ObjectStorageMixin(object):
         else:
             return dataserializer.deserialize(obj)
 
-    def _batch_load_objects(self, session_id, data_keys, key_loader, store_serialized=False, pin=False):
+    def _batch_load_objects(self, session_id, data_keys, key_loader,
+                            batch_get=False, store_serialized=False, pin=False):
         keys, objs = [], []
         sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
@@ -333,11 +334,21 @@ class ObjectStorageMixin(object):
             finally:
                 objs[:] = []
 
-        return promise.all_(
-            key_loader(k).then(functools.partial(_record_data, k))
-            for k in data_keys).then(_put_objects)
+        def _batch_put_objects(objs):
+            try:
+                return self.put_objects(session_id, data_keys, objs, sizes,
+                                        serialized=store_serialized, pin=pin, _promise=True)
+            finally:
+                objs[:] = []
 
-    def get_object(self, session_id, data_key, serialized=False, _promise=False):
+        if batch_get:
+            return key_loader(data_keys).then(_batch_put_objects)
+        else:
+            return promise.all_(
+                key_loader(k).then(functools.partial(_record_data, k))
+                for k in data_keys).then(_put_objects)
+
+    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
         raise NotImplementedError
 
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, pin=False,

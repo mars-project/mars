@@ -34,11 +34,11 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return self._inproc_store_ref_attr
 
     @wrap_promised
-    def get_object(self, session_id, data_key, serialized=False, _promise=False):
-        obj = self._inproc_store_ref.get_object(session_id, data_key)
+    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
+        objs = self._inproc_store_ref.get_objects(session_id, data_keys)
         if serialized:
-            obj = dataserializer.serialize(obj)
-        return obj
+            objs = [dataserializer.serialize(o) for o in objs]
+        return objs
 
     @wrap_promised
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
@@ -67,7 +67,7 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         def _fallback(*_):
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_object(session_id, k, _promise=True))
+                lambda k: src_handler.get_objects(session_id, k, _promise=True), batch_get=True)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

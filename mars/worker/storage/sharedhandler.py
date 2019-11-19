@@ -136,11 +136,11 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                                handler=self)
 
     @wrap_promised
-    def get_object(self, session_id, data_key, serialized=False, _promise=False):
+    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
         if serialized:
-            return self._shared_store.get_buffer(session_id, data_key)
+            return [self._shared_store.get_buffer(session_id, k) for k in data_keys]
         else:
-            return self._shared_store.get(session_id, data_key)
+            return [self._shared_store.get(session_id, k) for k in data_keys]
 
     @wrap_promised
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
@@ -225,8 +225,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                          (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_object(session_id, k, serialized=ser_needed, _promise=True),
-                ser_needed, pin=pin)
+                lambda k: src_handler.get_objects(session_id, k, serialized=ser_needed, _promise=True),
+                store_serialized=ser_needed, pin=pin, batch_get=True)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

@@ -36,8 +36,8 @@ class Test(WorkerCase):
 
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
-            quota_ref.process_quota('non_exist')
-            quota_ref.hold_quota('non_exist')
+            quota_ref.process_quotas(['non_exist'])
+            quota_ref.hold_quotas(['non_exist'])
             quota_ref.release_quotas(['non_exist'])
 
             with self.assertRaises(ValueError):
@@ -47,12 +47,12 @@ class Test(WorkerCase):
             self.assertTrue(quota_ref.request_quota('0', 50))
             self.assertTrue(quota_ref.request_quota('0', 200))
 
-            quota_ref.process_quota('0')
+            quota_ref.process_quotas(['0'])
             self.assertIn('0', quota_ref.dump_data().proc_sizes)
             quota_ref.alter_allocation('0', 190, new_key=('0', 0))
             self.assertEqual(quota_ref.dump_data().allocations[('0', 0)], 190)
 
-            quota_ref.hold_quota(('0', 0))
+            quota_ref.hold_quotas([('0', 0)])
             self.assertIn(('0', 0), quota_ref.dump_data().hold_sizes)
             quota_ref.alter_allocation(('0', 0), new_key=('0', 1))
             self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 190)

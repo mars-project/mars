@@ -270,6 +270,9 @@ class SimpleObjectHolderActor(ObjectHolderActor):
     def get_object(self, session_id, data_key):
         return self._data_holder[(session_id, data_key)]
 
+    def get_objects(self, session_id, data_keys):
+        return [self._data_holder[(session_id, key)] for key in data_keys]
+
     def update_cache_status(self):
         pass
 

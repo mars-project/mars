@@ -171,7 +171,11 @@ class StorageClient(object):
                 continue
             handler = self.get_storage_handler(src_dev)
             try:
-                return handler.get_object(session_id, data_key, serialized=serialized, _promise=_promise)
+                if not _promise:
+                    return handler.get_objects(session_id, [data_key], serialized=serialized, _promise=_promise)[0]
+                else:
+                    return handler.get_objects(session_id, [data_key], serialized=serialized, _promise=_promise) \
+                        .then(lambda v: v[0])
             except AttributeError:  # pragma: no cover
                 raise IOError('Device %r does not support direct reading.' % src_dev)
 
@@ -180,6 +184,41 @@ class StorageClient(object):
                 .then(lambda *_: self.get_object(session_id, data_key, source_devices, serialized=serialized))
         else:
             raise IOError('Getting object without promise not supported')
+
+    def get_objects(self, session_id, data_keys, source_devices, serialized=False, _promise=True):
+        source_devices = self._normalize_devices(source_devices)
+        stored_dev_lists = self._manager_ref.get_data_locations(session_id, data_keys)
+        dev_to_keys = defaultdict(list)
+        for key, devs in zip(data_keys, stored_dev_lists):
+            first_dev = next((stored_dev for stored_dev in source_devices if stored_dev in devs),
+                             None) or sorted(devs)[0]
+            dev_to_keys[first_dev].append(key)
+
+        data_dict = dict()
+        if not _promise:
+            if any(dev not in source_devices for dev in dev_to_keys.keys()):
+                raise IOError('Getting objects without promise not supported')
+            for stored_dev, keys in dev_to_keys.items():
+                handler = self.get_storage_handler(stored_dev)
+                data_dict.update(zip(keys, handler.get_objects(
+                    session_id, data_keys, serialized=serialized, _promise=False)))
+            return [data_dict[k] for k in data_keys]
+        else:
+            promises = []
+            for stored_dev, keys in dev_to_keys.items():
+                handler = self.get_storage_handler(stored_dev)
+                loc_getter = functools.partial(
+                    lambda keys, *_: self.get_objects(
+                        session_id, keys, source_devices, serialized=serialized, _promise=True), keys)
+                updater = functools.partial(lambda keys, objs: data_dict.update(zip(keys, objs)),
+                                            keys)
+                if stored_dev in source_devices:
+                    promises.append(handler.get_objects(
+                        session_id, keys, serialized=serialized, _promise=True).then(updater))
+                else:
+                    promises.append(self.copy_to(session_id, keys, source_devices)
+                        .then(loc_getter).then(updater))
+            return promise.all_(promises).then(lambda *_: [data_dict[k] for k in data_keys])
 
     def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialized=False):
         device_order = self._normalize_devices(device_order)
