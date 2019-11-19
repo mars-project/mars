@@ -19,10 +19,6 @@ from io import BytesIO
 import pandas as pd
 import numpy as np
 from pyarrow import HdfsFile
-try:
-    import cudf
-except ImportError:
-    cudf = None
 
 from ... import opcodes as OperandDef
 from ...config import options

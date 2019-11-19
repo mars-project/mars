@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+import os
 from io import BytesIO
 
 import pyarrow
@@ -38,6 +40,7 @@ A,B,C,D,E
 """.strip()
 
 
+@unittest.skipIf(not os.environ['WITH_HDFS'], 'Only run when hdfs is installed')
 class TestHDFS(TestBase):
     def setUp(self):
         super(TestHDFS, self).setUp()
