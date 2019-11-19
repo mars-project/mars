@@ -413,6 +413,68 @@ class Tensor(TileableEntity):
     def copy(self, order='C'):
         return super(Tensor, self).copy().astype(self.dtype, order=order, copy=False)
 
+    def sort(self, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None):
+        """
+        Sort a tensor, in-place.
+
+        Parameters
+        ----------
+        axis : int, optional
+            Axis along which to sort. Default is -1, which means sort along the
+            last axis.
+        kind : {'quicksort', 'mergesort', 'heapsort', 'stable'}, optional
+            Sorting algorithm. Default is 'quicksort'.
+        parallel_kind: {'PSRS'}, optional
+            Parallel sorting algorithm, for the details, refer to:
+            http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
+        psrs_kinds: list with 3 elements, optional
+            Sorting algorithms during PSRS algorithm.
+        order : str or list of str, optional
+            When `a` is a tensor with fields defined, this argument specifies
+            which fields to compare first, second, etc.  A single field can
+            be specified as a string, and not all fields need be specified,
+            but unspecified fields will still be used, in the order in which
+            they come up in the dtype, to break ties.
+
+        See Also
+        --------
+        numpy.sort : Return a sorted copy of a tensor.
+        argsort : Indirect sort.
+        lexsort : Indirect stable sort on multiple keys.
+        searchsorted : Find elements in sorted tensor.
+        partition: Partial sort.
+
+        Notes
+        -----
+        See ``sort`` for notes on the different sorting algorithms.
+
+        Examples
+        --------
+        >>> import mars.tensor as mt
+        >>> a = mt.array([[1,4], [3,1]])
+        >>> a.sort(axis=1)
+        >>> a.execute()
+        array([[1, 4],
+               [1, 3]])
+        >>> a.sort(axis=0)
+        >>> a.execute()
+        array([[1, 3],
+               [1, 4]])
+
+        Use the `order` keyword to specify a field to use when sorting a
+        structured tensor:
+
+        >>> a = mt.array([('a', 2), ('c', 1)], dtype=[('x', 'S1'), ('y', int)])
+        >>> a.sort(order='y')
+        >>> a.execute()
+        array([('c', 1), ('a', 2)],
+              dtype=[('x', '|S1'), ('y', '<i4')])
+        """
+        from .base import sort
+
+        self._data = sort(self, axis=axis, kind=kind, parallel_kind=parallel_kind,
+                          psrs_kinds=psrs_kinds, order=order).data
+
     @property
     def flat(self):
         """

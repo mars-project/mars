@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+from functools import partial
 
 import numpy as np
 
@@ -110,10 +111,16 @@ class PSRSSorter(object):
         out_tensor = op.outputs[0]
         axis_shape = in_tensor.shape[op.axis]
         axis_chunk_shape = in_tensor.chunk_shape[op.axis]
+
+        # rechunk to ensure all chunks on axis have rough same size
         while axis_chunk_shape ** 2 > axis_shape:
             axis_chunk_shape -= 1
+        chunk_size = int(axis_shape / axis_chunk_shape)
+        chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
+        if axis_shape % chunk_size > 0:
+            chunk_sizes[-1] += axis_shape % chunk_size
         in_tensor = in_tensor.rechunk(
-            {op.axis: int(axis_shape / axis_chunk_shape)}).single_tiles()
+            {op.axis: tuple(chunk_sizes)}).single_tiles()
         axis_chunk_shape = in_tensor.chunk_shape[op.axis]
 
         left_chunk_shape = in_tensor.chunk_shape[:op.axis] + in_tensor.chunk_shape[op.axis + 1:]
@@ -131,6 +138,8 @@ class PSRSSorter(object):
         for out_idx in out_idxes:
             sorted_chunks, sampled_chunks = [], []
             # stage 1: local sort and regular samples collected
+            sampled_dtype = np.dtype([(o, in_tensor.dtype[o]) for o in op.order]) \
+                if op.order is not None else in_tensor.dtype
             for i in range(axis_chunk_shape):
                 idx = list(out_idx)
                 idx.insert(op.axis, i)
@@ -146,10 +155,6 @@ class PSRSSorter(object):
                             'index': in_chunk.index,
                             'type': 'sorted'})
                 sampled_shape = (axis_chunk_shape - 1,)
-                if op.order is not None:
-                    sampled_dtype = in_chunk.dtype[op.order[0]]
-                else:
-                    sampled_dtype = in_chunk.dtype
                 kws.append({'shape': sampled_shape,
                             'order': in_chunk.order,
                             'dtype': sampled_dtype,
@@ -161,6 +166,7 @@ class PSRSSorter(object):
 
             # stage 2: gather and merge samples, choose and broadcast p-1 pivots
             concat_pivot_op = PSRSConcatPivot(axis=op.axis,
+                                              order=op.order,
                                               kind=None if op.psrs_kinds is None else op.psrs_kinds[1],
                                               dtype=sampled_chunks[0].dtype,
                                               gpu=op.gpu)
@@ -251,7 +257,8 @@ class PSRSSorter(object):
 
         new_op = op.copy()
         nsplits = list(in_tensor.nsplits)
-        nsplits[op.axis] = (np.nan,) * axis_chunk_shape
+        if not need_align:
+            nsplits[op.axis] = (np.nan,) * axis_chunk_shape
         return new_op.new_tensors(op.inputs, shape=out_tensor.shape, order=out_tensor.order,
                                   chunks=out_chunks, nsplits=tuple(nsplits))
 
@@ -260,6 +267,26 @@ class PSRSOperandMixin(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         raise NotSupportTile('{} is a chunk op'.format(cls))
+
+
+def _sort(a, op, xp, axis=None, kind=None, order=None, inplace=False):
+    axis = axis if axis is not None else op.axis
+    kind = kind if kind is not None else op.kind
+    order = order if order is not None else op.order
+    if xp is np:
+        method = a.sort if inplace else partial(np.sort, a)
+        try:
+            return method(axis=axis, kind=kind, order=order)
+        except TypeError:  # pragma: no cover
+            # kind is added for numpy 1.15
+            return method(axis=axis, order=order)
+    else:
+        # cupy does not support structure type
+        assert xp is cp
+        assert order is not None
+        method = a.sort if inplace else partial(cp.sort, a)
+        # cupy does not support kind, thus just ignore it
+        return method(axis=axis)
 
 
 class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
@@ -311,46 +338,35 @@ class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
 
         with device(device_id):
-            if xp is np:
-                sort_res = ctx[op.outputs[0].key] = cls._sort_cpu(op, a, xp)
-            else:
-                # sparse is not supported for now
-                assert xp is cp
-                # cupy does not support structured type
-                assert op.order is None
-                sort_res = ctx[op.outputs[0].key] = cls._sort_gpu(op, a, xp)
+            sort_res = ctx[op.outputs[0].key] = _sort(a, op, xp)
 
             # do regular sample
             n = op.n_partition
             w = int(a.shape[op.axis] // n)
             if op.order is not None:
-                # for structure type, only sort the first field
-                sort_res = sort_res[op.order[0]]
+                sort_res = sort_res[op.order]
             slc = (slice(None),) * op.axis + (slice(w, (n - 1) * w + 1, w),)
             ctx[op.outputs[1].key] = sort_res[slc]
-
-
-def _merge_sort(a, axis, xp, order=None):
-    if xp is np:
-        a.sort(axis=axis, kind='mergesort', order=order)
-    else:
-        assert xp is cp
-        a.sort(axis=axis)
 
 
 class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
     _op_type_ = OperandDef.PSRS_CONCAT_PIVOT
 
     _axis = Int32Field('axis')
+    _order = ListField('order', ValueType.string)
     _kind = StringField('kind')
 
-    def __init__(self, axis=None, kind=None, dtype=None, gpu=None, **kw):
-        super(PSRSConcatPivot, self).__init__(_axis=axis, _kind=kind,
+    def __init__(self, axis=None, order=None, kind=None, dtype=None, gpu=None, **kw):
+        super(PSRSConcatPivot, self).__init__(_axis=axis, _order=order, _kind=kind,
                                               _dtype=dtype, _gpu=gpu, **kw)
 
     @property
     def axis(self):
         return self._axis
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def kind(self):
@@ -363,7 +379,7 @@ class PSRSConcatPivot(TensorOperand, PSRSOperandMixin):
 
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
-            _merge_sort(a, op.axis, xp)
+            _sort(a, op, xp, inplace=True)
 
             p = len(inputs)
             assert a.shape[op.axis] == (p - 1) * p
@@ -406,10 +422,13 @@ class PSRSShuffleMap(TensorShuffleMap, PSRSOperandMixin):
             shape = tuple(s for i, s in enumerate(a.shape) if i != op.axis)
             reduce_outputs = [np.empty(shape, dtype=object) for _ in range(op.n_partition)]
             for idx in itertools.product(*(range(s) for s in shape)):
-                a_1d, pivots_1d = a[idx], pivots[idx]
+                slc = list(idx)
+                slc.insert(op.axis, slice(None))
+                slc = tuple(slc)
+                a_1d, pivots_1d = a[slc], pivots[slc]
                 raw_a_1d = a_1d
                 if op.order is not None:
-                    a_1d = a_1d[op.order[0]]
+                    a_1d = a_1d[op.order]
                 poses = xp.searchsorted(a_1d, pivots_1d, side='right')
                 poses = (None,) + tuple(poses) + (None,)
                 for i in range(op.n_partition):
@@ -476,7 +495,7 @@ class PSRSShuffleReduce(TensorShuffleReduce, PSRSOperandMixin):
             it = itertools.count(0)
             for inps in zip(*inputs):
                 out = xp.concatenate(inps)
-                _merge_sort(out, 0, xp, order=op.order)
+                _sort(out, op, xp, axis=0, inplace=True)
                 j = next(it)
                 sort_res.ravel()[j] = out
                 sort_info.ravel()[j] = len(out)
@@ -538,8 +557,9 @@ class PSRSAlignMap(TensorShuffleMap, PSRSOperandMixin):
                     outs[out_idx, i] = sort_1d[s: s + size]
 
             for idx in range(len(op.output_sizes)):
-                ctx[(op.outputs[0].key, str(idx))] = tuple(ar if ar is not None else xp.empty((0,))
-                                                           for ar in outs[idx])
+                ctx[(op.outputs[0].key, str(idx))] = \
+                    tuple(ar if ar is not None else xp.empty((0,), dtype=out.dtype)
+                          for ar in outs[idx])
 
 
 class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
@@ -580,13 +600,135 @@ class PSRSAlignReduce(TensorShuffleReduce, PSRSOperandMixin):
                 slc.insert(op.axis, slice(None))
                 concat_1d = xp.concatenate(inps)
                 res[slc] = concat_1d
-            ctx[out.key] = res.astype(None, order=out.order.value)
+            ctx[out.key] = res.astype(res.dtype, order=out.order.value)
 
 
 _AVAILABLE_KINDS = {'QUICKSORT', 'MERGESORT', 'HEAPSORT', 'STABLE'}
 
 
 def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None):
+    r"""
+    Return a sorted copy of a tensor.
+
+    Parameters
+    ----------
+    a : array_like
+        Tensor to be sorted.
+    axis : int or None, optional
+        Axis along which to sort. If None, the tensor is flattened before
+        sorting. The default is -1, which sorts along the last axis.
+    kind : {'quicksort', 'mergesort', 'heapsort', 'stable'}, optional
+        Sorting algorithm. The default is 'quicksort'. Note that both 'stable'
+        and 'mergesort' use timsort or radix sort under the covers and, in general,
+        the actual implementation will vary with data type. The 'mergesort' option
+        is retained for backwards compatibility.
+    parallel_kind: {'PSRS'}, optional
+        Parallel sorting algorithm, for the details, refer to:
+        http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
+    psrs_kinds: list with 3 elements, optional
+        Sorting algorithms during PSRS algorithm.
+    order : str or list of str, optional
+        When `a` is a tensor with fields defined, this argument specifies
+        which fields to compare first, second, etc.  A single field can
+        be specified as a string, and not all fields need be specified,
+        but unspecified fields will still be used, in the order in which
+        they come up in the dtype, to break ties.
+
+    Returns
+    -------
+    sorted_tensor : Tensor
+        Tensor of the same type and shape as `a`.
+
+    See Also
+    --------
+    Tensor.sort : Method to sort a tensor in-place.
+    argsort : Indirect sort.
+    lexsort : Indirect stable sort on multiple keys.
+    searchsorted : Find elements in a sorted tensor.
+    partition : Partial sort.
+
+    Notes
+    -----
+    The various sorting algorithms are characterized by their average speed,
+    worst case performance, work space size, and whether they are stable. A
+    stable sort keeps items with the same key in the same relative
+    order. The four algorithms implemented in NumPy have the following
+    properties:
+
+    =========== ======= ============= ============ ========
+       kind      speed   worst case    work space   stable
+    =========== ======= ============= ============ ========
+    'quicksort'    1     O(n^2)            0          no
+    'heapsort'     3     O(n*log(n))       0          no
+    'mergesort'    2     O(n*log(n))      ~n/2        yes
+    'timsort'      2     O(n*log(n))      ~n/2        yes
+    =========== ======= ============= ============ ========
+
+    .. note:: The datatype determines which of 'mergesort' or 'timsort'
+       is actually used, even if 'mergesort' is specified. User selection
+       at a finer scale is not currently available.
+
+    All the sort algorithms make temporary copies of the data when
+    sorting along any but the last axis.  Consequently, sorting along
+    the last axis is faster and uses less space than sorting along
+    any other axis.
+
+    The sort order for complex numbers is lexicographic. If both the real
+    and imaginary parts are non-nan then the order is determined by the
+    real parts except when they are equal, in which case the order is
+    determined by the imaginary parts.
+
+    quicksort has been changed to an introsort which will switch
+    heapsort when it does not make enough progress. This makes its
+    worst case O(n*log(n)).
+
+    'stable' automatically choses the best stable sorting algorithm
+    for the data type being sorted. It, along with 'mergesort' is
+    currently mapped to timsort or radix sort depending on the
+    data type. API forward compatibility currently limits the
+    ability to select the implementation and it is hardwired for the different
+    data types.
+
+    Timsort is added for better performance on already or nearly
+    sorted data. On random data timsort is almost identical to
+    mergesort. It is now used for stable sort while quicksort is still the
+    default sort if none is chosen. For details of timsort, refer to
+    `CPython listsort.txt <https://github.com/python/cpython/blob/3.7/Objects/listsort.txt>`_.
+    'mergesort' and 'stable' are mapped to radix sort for integer data types. Radix sort is an
+    O(n) sort instead of O(n log n).
+
+    Examples
+    --------
+    >>> import mars.tensor as mt
+    >>> a = mt.array([[1,4],[3,1]])
+    >>> mt.sort(a).execute()                # sort along the last axis
+    array([[1, 4],
+           [1, 3]])
+    >>> mt.sort(a, axis=None).execute()     # sort the flattened tensor
+    array([1, 1, 3, 4])
+    >>> mt.sort(a, axis=0).execute()        # sort along the first axis
+    array([[1, 1],
+           [3, 4]])
+
+    Use the `order` keyword to specify a field to use when sorting a
+    structured array:
+
+    >>> dtype = [('name', 'S10'), ('height', float), ('age', int)]
+    >>> values = [('Arthur', 1.8, 41), ('Lancelot', 1.9, 38),
+    ...           ('Galahad', 1.7, 38)]
+    >>> a = mt.array(values, dtype=dtype)       # create a structured tensor
+    >>> mt.sort(a, order='height').execute()                # doctest: +SKIP
+    array([('Galahad', 1.7, 38), ('Arthur', 1.8, 41),
+           ('Lancelot', 1.8999999999999999, 38)],
+          dtype=[('name', '|S10'), ('height', '<f8'), ('age', '<i4')])
+
+    Sort by age, then height if ages are equal:
+
+    >>> mt.sort(a, order=['age', 'height']).execute()       # doctest: +SKIP
+    array([('Galahad', 1.7, 38), ('Lancelot', 1.8999999999999999, 38),
+           ('Arthur', 1.8, 41)],
+          dtype=[('name', '|S10'), ('height', '<f8'), ('age', '<i4')])
+    """
     a = astensor(a)
     if axis is None:
         a = a.flatten()
@@ -617,9 +759,20 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None)
                                      'in psrs_kinds'.format(psrs_kind))
         else:
             raise TypeError('psrs_kinds should be list or tuple')
+    else:
+        psrs_kinds = ['quicksort', 'mergesort', 'mergesort']
     # if a is structure type and order is None
-    if getattr(a.dtype, 'fields', None) is not None and order is None:
-        order = a.dtype.names
+    if getattr(a.dtype, 'fields', None) is not None:
+        if order is None:
+            order = list(a.dtype.names)
+        else:
+            if isinstance(order, (list, tuple)):
+                order = list(order)
+            else:
+                order = [order]
+            for o in order:
+                if o not in a.dtype.fields:
+                    raise ValueError('unknown field name: {}'.format(o))
 
     op = TensorSort(axis=axis, kind=kind, parallel_kind=parallel_kind, order=order,
                     psrs_kinds=psrs_kinds, dtype=a.dtype, gpu=a.op.gpu)

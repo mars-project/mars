@@ -710,6 +710,9 @@ class Test(unittest.TestCase):
         sa = sort(a)
         self.assertSequenceEqual(sa.op.order, ['id', 'size'])
 
+        with self.assertRaises(ValueError):
+            sort(a, order=['unknown_field'])
+
         with self.assertRaises(np.AxisError):
             sort(np.random.rand(100), axis=1)
 

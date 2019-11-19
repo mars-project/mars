@@ -1172,3 +1172,60 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(sx, concat=True)[0]
         np.testing.assert_array_equal(res, np.sort(raw))
+
+        # test 3-d
+        raw = np.random.rand(20, 25, 28)
+        x = tensor(raw, chunk_size=(10, 5, 7))
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        sx = sort(x, axis=0)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0))
+
+        sx = sort(x, axis=1)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=1))
+
+        # test multi-dimension with structured type
+        raw = np.empty((10, 100), dtype=[('id', np.int32), ('size', np.int64)])
+        raw['id'] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
+        raw['size'] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
+        x = tensor(raw, chunk_size=(3, 10))
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        sx = sort(x, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+
+        sx = sort(x, order=['size'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size']))
+
+        sx = sort(x, axis=0, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
+
+        raw = np.random.rand(10, 12)
+        a = tensor(raw, chunk_size=(5, 4))
+        a.sort(axis=1)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=1))
+
+        a.sort(axis=0)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(np.sort(raw, axis=1), axis=0))
