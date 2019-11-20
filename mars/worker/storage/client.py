@@ -164,26 +164,12 @@ class StorageClient(object):
             raise exc
 
     def get_object(self, session_id, data_key, source_devices, serialized=False, _promise=True):
-        source_devices = self._normalize_devices(source_devices)
-        stored_devs = set(self._manager_ref.get_data_locations(session_id, [data_key])[0])
-        for src_dev in source_devices:
-            if src_dev not in stored_devs:
-                continue
-            handler = self.get_storage_handler(src_dev)
-            try:
-                if not _promise:
-                    return handler.get_objects(session_id, [data_key], serialized=serialized, _promise=_promise)[0]
-                else:
-                    return handler.get_objects(session_id, [data_key], serialized=serialized, _promise=_promise) \
-                        .then(lambda v: v[0])
-            except AttributeError:  # pragma: no cover
-                raise IOError('Device %r does not support direct reading.' % src_dev)
-
         if _promise:
-            return self.copy_to(session_id, [data_key], source_devices) \
-                .then(lambda *_: self.get_object(session_id, data_key, source_devices, serialized=serialized))
+            return self.get_objects(session_id, [data_key], source_devices, serialized=serialized,
+                                    _promise=True).then(lambda objs: objs[0])
         else:
-            raise IOError('Getting object without promise not supported')
+            return self.get_objects(session_id, [data_key], source_devices, serialized=serialized,
+                                    _promise=False)[0]
 
     def get_objects(self, session_id, data_keys, source_devices, serialized=False, _promise=True):
         source_devices = self._normalize_devices(source_devices)
@@ -240,7 +226,7 @@ class StorageClient(object):
 
         return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order)
 
-    def copy_to(self, session_id, data_keys, device_order, ensure=True, pin=False):
+    def copy_to(self, session_id, data_keys, device_order, ensure=True, pin_token=None):
         device_order = self._normalize_devices(device_order)
         existing_devs = self._manager_ref.get_data_locations(session_id, data_keys)
         data_sizes = self._manager_ref.get_data_sizes(session_id, data_keys)
@@ -271,7 +257,7 @@ class StorageClient(object):
             return promise.finished()
 
         def _action(src_handler, h, keys):
-            return h.load_from(session_id, keys, src_handler, pin=pin)
+            return h.load_from(session_id, keys, src_handler, pin_token=pin_token)
 
         def _handle_exc(keys, *exc):
             existing = self._manager_ref.get_data_locations(session_id, keys)

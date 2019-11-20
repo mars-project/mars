@@ -234,11 +234,7 @@ class QuotaActor(WorkerActor):
             self._total_hold += alloc_size - self._hold_sizes.get(key, 0)
             self._hold_sizes[key] = alloc_size
 
-            try:
-                self._total_proc -= self._proc_sizes[key]
-                del self._proc_sizes[key]
-            except KeyError:
-                pass
+            self._total_proc -= self._proc_sizes.pop(key, 0)
 
     @log_unhandled
     def release_quotas(self, keys):
@@ -247,8 +243,6 @@ class QuotaActor(WorkerActor):
         :param keys: request keys
         """
         total_alloc_size = 0
-        total_proc_change = 0
-        total_hold_change = 0
 
         for key in keys:
             try:
@@ -257,23 +251,10 @@ class QuotaActor(WorkerActor):
                 del self._allocations[key]
             except KeyError:
                 continue
-            except TypeError:
-                raise
-            try:
-                total_proc_change += self._proc_sizes[key]
-                del self._proc_sizes[key]
-            except KeyError:
-                pass
-            try:
-                total_hold_change += self._hold_sizes[key]
-                del self._hold_sizes[key]
-            except KeyError:
-                pass
+            self._total_proc -= self._proc_sizes.pop(key, 0)
+            self._total_hold -= self._hold_sizes.pop(key, 0)
 
         self._allocated_size -= total_alloc_size
-        self._total_proc -= total_proc_change
-        self._total_hold -= total_hold_change
-
         if total_alloc_size:
             self._process_requests()
             self._log_allocate('Quota key %s released on %s.', keys, self.uid)
@@ -329,30 +310,25 @@ class QuotaActor(WorkerActor):
             size_diff = quota_size - old_size
             self._allocated_size += size_diff
             self._allocations[key] = quota_size
-            if key in self._proc_sizes:
+            try:
                 self._total_proc += quota_size - self._proc_sizes[key]
                 self._proc_sizes[key] = quota_size
-            if key in self._hold_sizes:
+            except KeyError:
+                pass
+            try:
                 self._total_hold += quota_size - self._hold_sizes[key]
                 self._hold_sizes[key] = quota_size
+            except KeyError:
+                pass
             self._log_allocate('Quota key %s applied on %s. Diff: %s,', key, self.uid, size_diff)
 
         if process_quota:
             self.process_quotas([key])
 
         if new_key is not None and new_key != key:
-            self._allocations[new_key] = self._allocations[key]
-            del self._allocations[key]
-            try:
-                self._proc_sizes[new_key] = self._proc_sizes[key]
-                del self._proc_sizes[key]
-            except KeyError:
-                pass
-            try:
-                self._hold_sizes[new_key] = self._hold_sizes[key]
-                del self._hold_sizes[key]
-            except KeyError:
-                pass
+            self._allocations[new_key] = self._allocations.pop(key)
+            self._proc_sizes[new_key] = self._proc_sizes.pop(key, 0)
+            self._hold_sizes[new_key] = self._hold_sizes.pop(key, 0)
 
         if quota_size is not None and quota_size < old_size:
             if handle_shrink:

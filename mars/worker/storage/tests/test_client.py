@@ -238,8 +238,13 @@ class Test(WorkerCase):
                 # check get object with all cases
                 with self.assertRaises(IOError):
                     first_shared_key = loc_to_keys[DataStorageDevice.SHARED_MEMORY][0]
-                    storage_client.get_objects(session_id, [first_shared_key],
+                    storage_client.get_object(session_id, first_shared_key,
                                               [DataStorageDevice.PROC_MEMORY], _promise=False)
+
+                shared_objs = storage_client.get_objects(
+                    session_id, [first_shared_key], [DataStorageDevice.SHARED_MEMORY], _promise=False)
+                self.assertEqual(len(shared_objs), 1)
+                assert_allclose(shared_objs[0], data_dict[first_shared_key])
 
                 storage_client.get_object(session_id, first_shared_key,
                                           [DataStorageDevice.PROC_MEMORY], _promise=True) \

@@ -205,12 +205,12 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
-                            packed_compression=None, auto_register=True, pin=False,
+                            packed_compression=None, auto_register=True, pin_token=None,
                             _promise=False):
         return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
                       packed=packed, handler=self)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin=False):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _fallback(*_):
             return promise.all_(
                 src_handler.create_bytes_reader(session_id, k, _promise=True)
@@ -229,7 +229,7 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         else:
             return len(serialized_obj)
 
-    def load_from_object_io(self, session_id, data_keys, src_handler, pin=False):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _load_data(key, obj_data):
             data_size = self._get_serialized_data_size(obj_data)
             return self.create_bytes_writer(session_id, key, data_size, _promise=True) \

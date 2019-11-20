@@ -111,7 +111,7 @@ class BaseCalcActor(WorkerActor):
             inproc_quota_keys = []
 
             context_dict.update(zip(keys_to_fetch, objs))
-            for k, locations, obj in zip(keys_to_fetch, data_locations, objs):
+            for k, locations in zip(keys_to_fetch, data_locations):
                 quota_key = build_quota_key(session_id, k, owner=self.proc_id)
                 if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
                     shared_quota_keys.append(quota_key)

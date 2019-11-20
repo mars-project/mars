@@ -617,13 +617,14 @@ class ExecutionActor(WorkerActor):
             promises.append(
                 self.storage_client.copy_to(
                     session_id, ensure_shared_keys, [graph_record.preferred_data_device],
-                    ensure=True, pin=True)
+                    ensure=True, pin_token=graph_key)
             )
         if better_shared_keys:
             promises.append(
                 self.storage_client.copy_to(
                     session_id, better_shared_keys, [graph_record.preferred_data_device],
-                    ensure=False, pin=True).then(lambda *_: _release_copied_keys(better_shared_keys))
+                    ensure=False, pin_token=graph_key) \
+                    .then(lambda *_: _release_copied_keys(better_shared_keys))
             )
         return promises
 
