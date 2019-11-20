@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,7 +65,8 @@ file_systems = {
 }
 
 
-def _parse_from_path(parsed_uri):
+def _parse_from_path(uri):
+    parsed_uri = urlparse(uri)
     options = dict()
     options['host'] = parsed_uri.netloc.rsplit("@", 1)[-1].rsplit(":", 1)[0]
     if parsed_uri.port:
@@ -78,15 +79,14 @@ def _parse_from_path(parsed_uri):
 
 
 def get_fs(path, storage_options):
-    parsed_result = urlparse(path)
     if os.path.exists(path) or local_glob.glob(path):
         scheme = 'file'
     else:
-        scheme = parsed_result.scheme
+        scheme = urlparse(path).scheme
     if scheme == 'file':
         return file_systems[scheme].get_instance()
     else:
-        options = _parse_from_path(parsed_result)
+        options = _parse_from_path(path)
         storage_options = storage_options or dict()
         storage_options.update(options)
         return file_systems[scheme](**storage_options)
