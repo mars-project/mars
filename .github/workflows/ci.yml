@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.7-kubernetes]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.7-kubernetes, 3.7-hdfs]
         include:
           - { os: ubuntu-16.04, python-version: 2.7, python-abis: "cp27-cp27m:cp27-cp27mu" }
           - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
@@ -17,11 +17,15 @@ jobs:
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
           - { os: ubuntu-16.04, python-version: 3.7-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
+          - { os: ubuntu-16.04, python-version: 3.7-hdfs, no-common-tests: 1,
+              no-deploy: 1, with-hdfs: "with hdfs" }
           - { os: windows-latest, python-version: 3.7, build-static: 1 }
         exclude:
           - { os: macOS-latest, python-version: 3.7-kubernetes }
+          - { os: macOS-latest, python-version: 3.7-hdfs }
           - { os: windows-latest, python-version: 2.7 }
           - { os: windows-latest, python-version: 3.7-kubernetes }
+          - { os: windows-latest, python-version: 3.7-hdfs }
 
     steps:
     - name: Check out code
@@ -41,6 +45,7 @@ jobs:
 
     - name: Install dependencies
       env:
+        WITH_HDFS: ${{ matrix.with-hdfs }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
       shell: bash
@@ -78,6 +83,9 @@ jobs:
             ./.github/workflows/install-minikube.sh;
             pip install kubernetes;
           fi
+          if [ -n "$WITH_HDFS" ]; then
+            ./.github/workflows/install-hdfs.sh;
+          fi
         fi
 
     - name: Build cython extensions
@@ -107,6 +115,7 @@ jobs:
 
     - name: Test with pytest
       env:
+        WITH_HDFS: ${{ matrix.with-hdfs }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
