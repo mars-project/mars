@@ -255,3 +255,23 @@ class Test(TestBase):
         finally:
             shutil.rmtree(tempdir)
 
+        # test multiply files
+        tempdir = tempfile.mkdtemp()
+        try:
+            df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
+
+            file_paths = [os.path.join(tempdir, 'test{}.csv'.format(i)) for i in range(3)]
+            df[:100].to_csv(file_paths[0])
+            df[100:200].to_csv(file_paths[1])
+            df[200:].to_csv(file_paths[2])
+
+            mdf = self.executor.execute_dataframe(
+                md.read_csv('{}/*.csv'.format(tempdir), index_col=0), concat=True)[0]
+            pd.testing.assert_frame_equal(df, mdf)
+
+            mdf2 = self.executor.execute_dataframe(
+                md.read_csv('{}/*.csv'.format(tempdir), index_col=0, chunk_bytes=50), concat=True)[0]
+            pd.testing.assert_frame_equal(df, mdf2)
+
+        finally:
+            shutil.rmtree(tempdir)

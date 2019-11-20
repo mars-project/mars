@@ -79,7 +79,7 @@ def _parse_from_path(parsed_uri):
 
 def get_fs(path, storage_options):
     parsed_result = urlparse(path)
-    if os.path.exists(path):
+    if os.path.exists(path) or local_glob.glob(path):
         scheme = 'file'
     else:
         scheme = parsed_result.scheme

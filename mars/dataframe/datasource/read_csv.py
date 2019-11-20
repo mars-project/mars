@@ -40,7 +40,7 @@ def _find_delimiter(f, block_size=2 ** 16):
         b = f.read(block_size)
         if not b:
             return f.tell()
-        if delimiter in b:
+        elif delimiter in b:
             return f.tell() - len(b) + b.index(delimiter) + 1
 
 
