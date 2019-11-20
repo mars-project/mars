@@ -20,7 +20,7 @@ from pyarrow import LocalFileSystem as ArrowLocalFileSystem
 from pyarrow import HadoopFileSystem
 try:
     import lz4, lz4.frame
-except ImportError:
+except ImportError:  # pragma: no cover
     lz4 = None
 
 from .compat import urlparse
