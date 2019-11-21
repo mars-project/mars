@@ -26,7 +26,7 @@ from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, ptp, diff, ediff1d, digitize, average, cov, corrcoef, \
-    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, to_gpu, to_cpu
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, sort, to_gpu, to_cpu
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
 from mars.tests.core import require_cupy
@@ -1116,3 +1116,116 @@ class Test(unittest.TestCase):
 
         res = self.executor.execute_tensor(cx, concat=True)[0]
         np.testing.assert_array_equal(res, raw)
+
+    def testSortExecution(self):
+        # only 1 chunk when axis = -1
+        raw = np.random.rand(100, 10)
+        x = tensor(raw, chunk_size=10)
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        # 1-d chunk
+        raw = np.random.rand(100)
+        x = tensor(raw, chunk_size=10)
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        # structured dtype
+        raw = np.empty(100, dtype=[('id', np.int32), ('size', np.int64)])
+        raw['id'] = np.random.randint(1000, size=100, dtype=np.int32)
+        raw['size'] = np.random.randint(1000, size=100, dtype=np.int64)
+        x = tensor(raw, chunk_size=10)
+
+        sx = sort(x, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+
+        # test flatten case
+        raw = np.random.rand(10, 10)
+        x = tensor(raw, chunk_size=5)
+
+        sx = sort(x, axis=None)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=None))
+
+        # test multi-dimension
+        raw = np.random.rand(10, 100)
+        x = tensor(raw, chunk_size=(2, 10))
+
+        sx = sort(x, psrs_kinds=['quicksort'] * 3)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        raw = np.random.rand(10, 99)
+        x = tensor(raw, chunk_size=(2, 10))
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        # test 3-d
+        raw = np.random.rand(20, 25, 28)
+        x = tensor(raw, chunk_size=(10, 5, 7))
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        sx = sort(x, axis=0)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0))
+
+        sx = sort(x, axis=1)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=1))
+
+        # test multi-dimension with structured type
+        raw = np.empty((10, 100), dtype=[('id', np.int32), ('size', np.int64)])
+        raw['id'] = np.random.randint(1000, size=(10, 100), dtype=np.int32)
+        raw['size'] = np.random.randint(1000, size=(10, 100), dtype=np.int64)
+        x = tensor(raw, chunk_size=(3, 10))
+
+        sx = sort(x)
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw))
+
+        sx = sort(x, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size', 'id']))
+
+        sx = sort(x, order=['size'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, order=['size']))
+
+        sx = sort(x, axis=0, order=['size', 'id'])
+
+        res = self.executor.execute_tensor(sx, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=0, order=['size', 'id']))
+
+        raw = np.random.rand(10, 12)
+        a = tensor(raw, chunk_size=(5, 4))
+        a.sort(axis=1)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(raw, axis=1))
+
+        a.sort(axis=0)
+
+        res = self.executor.execute_tensor(a, concat=True)[0]
+        np.testing.assert_array_equal(res, np.sort(np.sort(raw, axis=1), axis=0))
