@@ -998,6 +998,28 @@ class TestBinary(TestBase):
             self.assertIsInstance(cr.inputs[0].op, SeriesDataSource)
             self.assertEqual(cr.op.lhs, 789)
 
+    def testCheckInputs(self):
+        data = pd.DataFrame(np.random.rand(10, 3))
+        df = from_pandas(data)
+
+        with self.assertRaises(ValueError):
+            _ = df + np.random.rand(5, 3)
+
+        with self.assertRaises(ValueError):
+            _ = df + np.random.rand(10)
+
+        with self.assertRaises(ValueError):
+            _ = df + np.random.rand(10, 3, 2)
+
+        data = pd.Series(np.random.rand(10))
+        series = from_pandas_series(data)
+
+        with self.assertRaises(ValueError):
+            _ = series + np.random.rand(5, 3)
+
+        with self.assertRaises(ValueError):
+            _ = series + np.random.rand(5)
+
 
 class TestUnary(TestBase):
     def testAbs(self):
