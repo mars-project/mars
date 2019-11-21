@@ -19,8 +19,8 @@ jobs:
               no-deploy: 1, with-hdfs: "with hdfs" }
           - { os: windows-latest, python-version: 3.7, build-static: 1 }
         exclude:
-          - { os: windows-latest, python-version: 2.7 }
           - { os: macOS-latest, python-version: 3.7-hdfs }
+          - { os: windows-latest, python-version: 2.7 }
           - { os: windows-latest, python-version: 3.7-hdfs }
 
     steps:
