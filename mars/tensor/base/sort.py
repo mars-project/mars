@@ -113,8 +113,7 @@ class PSRSSorter(object):
         axis_chunk_shape = in_tensor.chunk_shape[op.axis]
 
         # rechunk to ensure all chunks on axis have rough same size
-        while axis_chunk_shape ** 2 > axis_shape:
-            axis_chunk_shape -= 1
+        axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
         chunk_size = int(axis_shape / axis_chunk_shape)
         chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
         if axis_shape % chunk_size > 0:
@@ -275,11 +274,7 @@ def _sort(a, op, xp, axis=None, kind=None, order=None, inplace=False):
     order = order if order is not None else op.order
     if xp is np:
         method = a.sort if inplace else partial(np.sort, a)
-        try:
-            return method(axis=axis, kind=kind, order=order)
-        except TypeError:  # pragma: no cover
-            # kind is added for numpy 1.15
-            return method(axis=axis, order=order)
+        return method(axis=axis, kind=kind, order=order)
     else:
         # cupy does not support structure type
         assert xp is cp
@@ -323,14 +318,6 @@ class PSRSSortRegularSample(TensorOperand, PSRSOperandMixin):
     def output_limit(self):
         # return sorted tensor and regular sampled tensor
         return 2
-
-    @classmethod
-    def _sort_cpu(cls, op, a, xp):
-        return xp.sort(a, kind='quicksort', order=op.order)
-
-    @classmethod
-    def _sort_gpu(cls, op, a, xp):
-        return xp.sort(a, axis=op.axis)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -622,6 +609,8 @@ def sort(a, axis=-1, kind=None, parallel_kind=None, psrs_kinds=None, order=None)
         and 'mergesort' use timsort or radix sort under the covers and, in general,
         the actual implementation will vary with data type. The 'mergesort' option
         is retained for backwards compatibility.
+        Note that this argument would not take effect if `a` has more than
+        1 chunk on the sorting axis.
     parallel_kind: {'PSRS'}, optional
         Parallel sorting algorithm, for the details, refer to:
         http://csweb.cs.wfu.edu/bigiron/LittleFE-PSRS/build/html/PSRSalgorithm.html
