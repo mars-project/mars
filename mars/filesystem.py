@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from pyarrow import LocalFileSystem as ArrowLocalFileSystem
 from pyarrow import HadoopFileSystem
 try:
     import lz4, lz4.frame
-except ImportError:
+except ImportError:  # pragma: no cover
     lz4 = None
 
 from .compat import urlparse
@@ -65,16 +65,30 @@ file_systems = {
 }
 
 
+def _parse_from_path(uri):
+    parsed_uri = urlparse(uri)
+    options = dict()
+    options['host'] = parsed_uri.netloc.rsplit("@", 1)[-1].rsplit(":", 1)[0]
+    if parsed_uri.port:
+        options["port"] = parsed_uri.port
+    if parsed_uri.username:
+        options["user"] = parsed_uri.username
+    if parsed_uri.password:
+        options["password"] = parsed_uri.password
+    return options
+
+
 def get_fs(path, storage_options):
-    parse_result = urlparse(path)
-    if os.path.exists(path):
+    if os.path.exists(path) or local_glob.glob(path):
         scheme = 'file'
     else:
-        scheme = parse_result.scheme
+        scheme = urlparse(path).scheme
     if scheme == 'file':
         return file_systems[scheme].get_instance()
     else:
+        options = _parse_from_path(path)
         storage_options = storage_options or dict()
+        storage_options.update(options)
         return file_systems[scheme](**storage_options)
 
 
@@ -90,8 +104,11 @@ def open_file(path, mode='rb', compression=None, storage_options=None):
 
 
 def glob(path, storage_options=None):
-    fs = get_fs(path, storage_options)
-    return fs.glob(path)
+    if '*' in path:
+        fs = get_fs(path, storage_options)
+        return fs.glob(path)
+    else:
+        return [path]
 
 
 def file_size(path, storage_options=None):

@@ -18,6 +18,7 @@ from io import BytesIO
 
 import pandas as pd
 import numpy as np
+from pyarrow import HdfsFile
 
 from ... import opcodes as OperandDef
 from ...config import options
@@ -31,7 +32,35 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
 cudf = lazy_import('cudf', globals=globals())
 
 
+def _find_delimiter(f, block_size=2 ** 16):
+    delimiter = b'\n'
+    if f.tell() == 0:
+        return 0
+    while True:
+        b = f.read(block_size)
+        if not b:
+            return f.tell()
+        elif delimiter in b:
+            return f.tell() - len(b) + b.index(delimiter) + 1
+
+
+def _find_hdfs_start_end(f, offset, size):
+    # As pyarrow doesn't support `readline` operation (https://github.com/apache/arrow/issues/3838),
+    # we need to find the start and end of file block manually.
+
+    # Be careful with HdfsFile's seek, it doesn't allow seek beyond EOF.
+    loc = min(offset, f.size())
+    f.seek(loc)
+    start = _find_delimiter(f)
+    loc = min(offset + size, f.size())
+    f.seek(loc)
+    end = _find_delimiter(f)
+    return start, end
+
+
 def _find_chunk_start_end(f, offset, size):
+    if isinstance(f, HdfsFile):
+        return _find_hdfs_start_end(f, offset, size)
     f.seek(offset)
     if f.tell() == 0:
         start = 0
@@ -128,7 +157,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
         chunk_bytes = df.extra_params.chunk_bytes
         chunk_bytes = int(parse_readable_size(chunk_bytes)[0])
 
-        paths = op.path if isinstance(op.path, (tuple, list)) else [op.path]
+        paths = op.path if isinstance(op.path, (tuple, list)) else glob(op.path, storage_options=op.storage_options)
 
         out_chunks = []
         index_num = 0
