@@ -221,16 +221,14 @@ class SenderActor(WorkerActor):
 
 
 class ReceiverDataMeta(object):
-    __slots__ = 'start_time', 'chunk_size', 'write_shared', 'checksum', \
-                'source_address', 'transfer_event_id', 'status', 'callback_args', \
-                'callback_kwargs'
+    __slots__ = 'start_time', 'chunk_size', 'checksum', 'source_address', \
+                'transfer_event_id', 'status', 'callback_args', 'callback_kwargs'
 
-    def __init__(self, start_time=None, chunk_size=None, write_shared=True, checksum=0,
+    def __init__(self, start_time=None, chunk_size=None, checksum=0,
                  source_address=None, transfer_event_id=None, status=None,
                  callback_args=None, callback_kwargs=None):
         self.start_time = start_time or time.time()
         self.chunk_size = chunk_size
-        self.write_shared = write_shared
         self.checksum = checksum
         self.source_address = source_address
         self.status = status
@@ -239,9 +237,9 @@ class ReceiverDataMeta(object):
         self.callback_kwargs = callback_kwargs or {}
 
 
-class ReceiverStatusActor(WorkerActor):
+class ReceiverManagerActor(WorkerActor):
     def __init__(self):
-        super(ReceiverStatusActor, self).__init__()
+        super(ReceiverManagerActor, self).__init__()
         self._receiver_callback_ids = dict()
         self._max_callback_id = 0
         self._callback_id_to_callbacks = dict()
@@ -288,7 +286,7 @@ class ReceiverActor(WorkerActor):
         super(ReceiverActor, self).__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
-        self._receiver_status_ref = None
+        self._receiver_manager_ref = None
         self._events_ref = None
         self._status_ref = None
 
@@ -312,9 +310,9 @@ class ReceiverActor(WorkerActor):
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-        self._receiver_status_ref = self.ctx.actor_ref(ReceiverStatusActor.default_uid())
-        if not self.ctx.has_actor(self._receiver_status_ref):
-            self._receiver_status_ref = None
+        self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_manager_ref):
+            self._receiver_manager_ref = None
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
@@ -403,7 +401,7 @@ class ReceiverActor(WorkerActor):
 
         self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
             chunk_size=data_size, source_address=sender_address,
-            write_shared=True, status=ReceiveStatus.RECEIVING)
+            status=ReceiveStatus.RECEIVING)
 
         # configure timeout callback
         if timeout:
@@ -591,8 +589,8 @@ class ReceiverActor(WorkerActor):
         for cb in self._finish_callbacks[session_chunk_key]:
             kwargs['_wait'] = False
             self.tell_promise(cb, *args, **kwargs)
-        if self._receiver_status_ref:
-            self._receiver_status_ref.notify_key_finish(session_id, chunk_key, *args, **kwargs)
+        if self._receiver_manager_ref:
+            self._receiver_manager_ref.notify_key_finish(session_id, chunk_key, *args, **kwargs)
         if session_chunk_key in self._finish_callbacks:
             del self._finish_callbacks[session_chunk_key]
 

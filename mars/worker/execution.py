@@ -29,7 +29,7 @@ from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
     calc_data_size, get_chunk_shuffle_key
 from .storage import DataStorageDevice
-from .transfer import ReceiverStatusActor
+from .transfer import ReceiverManagerActor
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys, \
     build_quota_key, change_quota_key_owner
 
@@ -127,7 +127,7 @@ class ExecutionActor(WorkerActor):
         self._mem_quota_ref = None
         self._status_ref = None
         self._daemon_ref = None
-        self._receiver_status_ref = None
+        self._receiver_manager_ref = None
 
         self._resource_ref = None
 
@@ -158,11 +158,11 @@ class ExecutionActor(WorkerActor):
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
-        self._receiver_status_ref = self.ctx.actor_ref(ReceiverStatusActor.default_uid())
-        if not self.ctx.has_actor(self._receiver_status_ref):
-            self._receiver_status_ref = None
+        self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_manager_ref):
+            self._receiver_manager_ref = None
         else:
-            self._receiver_status_ref = self.promise_ref(self._receiver_status_ref)
+            self._receiver_manager_ref = self.promise_ref(self._receiver_manager_ref)
 
         from ..scheduler import ResourceActor
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
@@ -623,8 +623,8 @@ class ExecutionActor(WorkerActor):
             promises.append(
                 self.storage_client.copy_to(
                     session_id, better_shared_keys, [graph_record.preferred_data_device],
-                    ensure=False, pin_token=graph_key) \
-                    .then(lambda *_: _release_copied_keys(better_shared_keys))
+                    ensure=False, pin_token=graph_key)
+                .then(lambda *_: _release_copied_keys(better_shared_keys))
             )
         return promises
 
@@ -634,13 +634,13 @@ class ExecutionActor(WorkerActor):
         graph_record = self._graph_records[(session_id, graph_key)]
 
         filtered_remote_keys = remote_keys
-        if self._receiver_status_ref:
-            transferring_keys = set(self._receiver_status_ref.filter_registered_keys(
+        if self._receiver_manager_ref:
+            transferring_keys = set(self._receiver_manager_ref.filter_registered_keys(
                 session_id, remote_keys))
             if transferring_keys:
                 logger.debug('Data %s already scheduled for fetch, just wait.', transferring_keys)
                 filtered_remote_keys = [k for k in remote_keys if k not in transferring_keys]
-                promises.append(self._receiver_status_ref.add_keys_callback(
+                promises.append(self._receiver_manager_ref.add_keys_callback(
                     session_id, transferring_keys, _promise=True,
                     _timeout=options.worker.prepare_data_timeout))
 
@@ -758,7 +758,7 @@ class ExecutionActor(WorkerActor):
                             .catch(lambda *_: None))
 
         for target, keys in address_to_data_keys.items():
-            self.ctx.actor_ref(ReceiverStatusActor.default_uid(), address=target) \
+            self.ctx.actor_ref(ReceiverManagerActor.default_uid(), address=target) \
                 .register_keys(session_id, keys, _tell=True, _wait=False)
 
         return promise.all_(promises)
