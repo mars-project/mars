@@ -17,11 +17,12 @@
 import unittest
 
 import numpy as np
+
 from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
-    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, to_gpu, to_cpu
+    atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
 
 
@@ -679,3 +680,53 @@ class Test(unittest.TestCase):
             self.assertEqual(counts.chunks[i].shape, (np.nan,))
             self.assertEqual(counts.chunks[i].dtype, raw.dtype)
             self.assertEqual(counts.chunks[i].index, (i,))
+
+    def testSort(self):
+        a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
+
+        sa = sort(a)
+        self.assertEqual(type(sa.op).__name__, 'TensorSort')
+
+        sa.tiles()
+
+        self.assertEqual(len(sa.chunks), 2)
+        for c in sa.chunks:
+            self.assertEqual(type(c.op).__name__, 'TensorSort')
+            self.assertEqual(type(c.inputs[0].op).__name__, 'ArrayDataSource')
+
+        a = tensor(np.random.rand(100), chunk_size=(10))
+
+        sa = sort(a)
+        self.assertEqual(type(sa.op).__name__, 'TensorSort')
+
+        sa.tiles()
+
+        for c in sa.chunks:
+            self.assertEqual(type(c.op).__name__, 'PSRSShuffleReduce')
+            self.assertEqual(c.shape, (np.nan,))
+
+        a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
+                   chunk_size=(10, 5))
+        sa = sort(a)
+        self.assertSequenceEqual(sa.op.order, ['id', 'size'])
+
+        with self.assertRaises(ValueError):
+            sort(a, order=['unknown_field'])
+
+        with self.assertRaises(np.AxisError):
+            sort(np.random.rand(100), axis=1)
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), kind='non_valid_kind')
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), parallel_kind='non_valid_parallel_kind')
+
+        with self.assertRaises(TypeError):
+            sort(np.random.rand(100), psrs_kinds='non_valid_psrs_kinds')
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=['quicksort'] * 2)
+
+        with self.assertRaises(ValueError):
+            sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
