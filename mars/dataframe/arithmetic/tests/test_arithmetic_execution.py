@@ -498,8 +498,8 @@ class TestBinary(TestBase):
         pd.testing.assert_series_equal(expected, result)
 
         # specify index, not the default range index
-        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(5, 15),
-                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
+        data1 = pd.DataFrame(np.random.rand(10, 7), index=np.arange(5, 15),
+                             columns=[4, 1, 3, 2, 5, 6, 7])
         df1 = from_pandas(data1, chunk_size=6)
         s1 = df1[2]
 

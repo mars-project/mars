@@ -211,7 +211,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             tensor = tensor.rechunk(other.nsplits).single_tiles()
         else:
             # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
-            tensor = tensor.rechunk((other.nsplits[1],)).single_tiles()
+            rechunk_size = other.nsplits[1] if op.axis == 'columns' or op.axis == 1 else other.nsplits[0]
+            tensor = tensor.rechunk((rechunk_size,)).single_tiles()
 
         out_chunks = []
         for out_index in itertools.product(*(map(range, other.chunk_shape))):
@@ -425,7 +426,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 if tensor.ndim == 2 and tensor.shape != other_shape:
                     raise ValueError(
                         'Unable to coerce to DataFrame, shape must be {}: given {}'.format(other_shape, tensor.shape))
-                elif tensor.ndim == 1 and tensor.shape[0] != other.shape[1]:
+                elif tensor.ndim == 1 and tensor.shape[0] != other_shape[1]:
                     raise ValueError(
                         'Unable to coerce to Series, length must be {}: given {}'.format(other_shape[1], tensor.shape[0]))
                 elif tensor.ndim > 2:
