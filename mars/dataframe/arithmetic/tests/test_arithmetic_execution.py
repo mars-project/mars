@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import operator
 
 import numpy as np
@@ -488,16 +487,6 @@ class TestBinary(TestBase):
         expected = getattr(data1, self.func_name)((1, 2, 3, 4, 5, 6, 7, 8, 9, 10), axis=0)
         pd.testing.assert_frame_equal(expected, result)
 
-        r = getattr(df1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = getattr(data1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
-        pd.testing.assert_frame_equal(expected, result)
-
-        r = getattr(df1, self.func_name)(from_array(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])), axis=0)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = getattr(data1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
-        pd.testing.assert_frame_equal(expected, result)
-
         r = getattr(s1, self.func_name)([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = getattr(data1[2], self.func_name)([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -508,6 +497,22 @@ class TestBinary(TestBase):
         expected = getattr(data1[2], self.func_name)((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
         pd.testing.assert_series_equal(expected, result)
 
+        # specify index, not the default range index
+        data1 = pd.DataFrame(np.random.rand(10, 7), index=np.arange(5, 15),
+                             columns=[4, 1, 3, 2, 5, 6, 7])
+        df1 = from_pandas(data1, chunk_size=6)
+        s1 = df1[2]
+
+        r = getattr(df1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = getattr(data1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
+        r = getattr(df1, self.func_name)(from_array(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])), axis=0)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = getattr(data1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), axis=0)
+        pd.testing.assert_frame_equal(expected, result)
+
         r = getattr(s1, self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = getattr(data1[2], self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
@@ -517,25 +522,6 @@ class TestBinary(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         expected = getattr(data1[2], self.func_name)(np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]))
         pd.testing.assert_series_equal(expected, result)
-
-    @unittest.expectedFailure
-    def testWithPlainValueUnaligned(self):
-        # When adding dataframe with a sequence value, pandas treats the sequence
-        # as a series using the index_value of the dataframe.
-        #
-        # In mars we cannot do such things because the index_value is not stored.
-        # We also cannot split the sequence using the nsplits of the dataframe since
-        # in many cases the shape of the dataframe chunks is np.nan.
-        #
-        # We record this case as `expectedFailure`.
-        data1 = pd.DataFrame(np.random.rand(10, 10), index=np.arange(10),
-                             columns=[4, 1, 3, 2, 10, 5, 9, 8, 6, 7])
-        df1 = from_pandas(data1, chunk_size=6)
-
-        r = getattr(df1, self.func_name)([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=1)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = getattr(data1, self.func_name)([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], axis=0)
-        pd.testing.assert_frame_equal(expected, result)
 
 
 class TestUnary(TestBase):
