@@ -16,14 +16,17 @@ import itertools
 import copy
 
 import numpy as np
-
+import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
+from ...tensor.datasource import tensor as astensor
 from ...serialize import AnyField, Float64Field
+
+from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...utils import classproperty
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
-from ..operands import DataFrameOperandMixin, DataFrameOperand, ObjectType
+from ..operands import DataFrameOperandMixin, ObjectType, DataFrameOperand
 from ..initializer import Series, DataFrame
 from ..utils import parse_index, infer_dtypes, infer_index_value
 
@@ -189,7 +192,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                                              columns_value=getattr(chunk, 'columns_value'))
             else:
                 out_chunk = out_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtype=chunk.dtype,
-                                            index_value=chunk.index_value, name=getattr(chunk, 'name'))
+                                             index_value=chunk.index_value, name=getattr(chunk, 'name'))
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
@@ -199,6 +202,44 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         else:
             return new_op.new_dataframes(op.inputs, df.shape, nsplits=tileable.nsplits, dtypes=df.dtypes,
                                          index_value=df.index_value, columns_value=df.columns_value, chunks=out_chunks)
+
+    @classmethod
+    def _tile_with_tensor(cls, op):
+        rhs_is_tensor = isinstance(op.rhs, TENSOR_TYPE)
+        tensor, other = (op.rhs, op.lhs) if rhs_is_tensor else (op.lhs, op.rhs)
+        if tensor.shape == other.shape:
+            tensor = tensor.rechunk(other.nsplits).single_tiles()
+        else:
+            # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
+            rechunk_size = other.nsplits[1] if op.axis == 'columns' or op.axis == 1 else other.nsplits[0]
+            tensor = tensor.rechunk((rechunk_size,)).single_tiles()
+
+        out_chunks = []
+        for out_index in itertools.product(*(map(range, other.chunk_shape))):
+            tensor_chunk = tensor.cix[out_index[:tensor.ndim]]
+            other_chunk = other.cix[out_index]
+            out_op = op.copy().reset_key()
+            inputs = [other_chunk, tensor_chunk] if rhs_is_tensor else [tensor_chunk, other_chunk]
+            if isinstance(other_chunk, DATAFRAME_CHUNK_TYPE):
+                out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
+                                             dtypes=other_chunk.dtypes,
+                                             index_value=other_chunk.index_value,
+                                             columns_value=other.columns_value)
+            else:
+                out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
+                                             dtype=other_chunk.dtype,
+                                             index_value=other_chunk.index_value,
+                                             name=other_chunk.name)
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        if isinstance(other, SERIES_TYPE):
+            return new_op.new_seriess(op.inputs, other.shape, nsplits=other.nsplits, dtype=other.dtype,
+                                      index_value=other.index_value, name=other.name, chunks=out_chunks)
+        else:
+            return new_op.new_dataframes(op.inputs, other.shape, nsplits=other.nsplits, dtypes=other.dtypes,
+                                         index_value=other.index_value, columns_value=other.columns_value,
+                                         chunks=out_chunks)
 
     @classmethod
     def tile(cls, op):
@@ -212,6 +253,8 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return cls._tile_dataframe_series(op)
         elif isinstance(op.inputs[0], SERIES_TYPE) and isinstance(op.inputs[1], DATAFRAME_TYPE):
             return cls._tile_series_dataframe(op)
+        elif isinstance(op.inputs[0], TENSOR_TYPE) or isinstance(op.inputs[1], TENSOR_TYPE):
+            return cls._tile_with_tensor(op)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -222,7 +265,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 func_name = getattr(cls, '_rfunc_name')
             else:
                 func_name = getattr(cls, '_func_name')
-        elif np.isscalar(op.lhs):
+        elif np.isscalar(op.lhs) or isinstance(op.lhs, np.ndarray):
             df = ctx[op.rhs.key]
             other = op.lhs
             func_name = getattr(cls, '_rfunc_name')
@@ -242,12 +285,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _calc_properties(cls, x1, x2=None, axis='columns'):
-        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and (x2 is None or np.isscalar(x2)):
+        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) \
+                and (x2 is None or np.isscalar(x2) or isinstance(x2, TENSOR_TYPE)):
             # FIXME infer the dtypes of result df properly
             return {'shape': x1.shape, 'dtypes': x1.dtypes,
                     'columns_value': x1.columns_value, 'index_value': x1.index_value}
 
-        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and (x2 is None or np.isscalar(x2)):
+        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) \
+                and (x2 is None or np.isscalar(x2) or isinstance(x2, TENSOR_TYPE)):
             dtype = find_common_type([x1.dtype, type(x2)])
             return {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
 
@@ -336,13 +381,15 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError('Unknown combination of parameters')
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if len(inputs) == 1:
-            properties = self._calc_properties(*inputs)
+        property_inputs = [inp for inp in inputs if isinstance(inp, (DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE))]
+        if len(property_inputs) == 1:
+            properties = self._calc_properties(*property_inputs)
         else:
-            df1 = inputs[0] if isinstance(inputs[0], DATAFRAME_CHUNK_TYPE) else inputs[1]
-            df2 = inputs[1] if isinstance(inputs[0], DATAFRAME_CHUNK_TYPE) else inputs[0]
+            df1, df2 = property_inputs if isinstance(property_inputs[0], DATAFRAME_CHUNK_TYPE) else \
+                reversed(property_inputs)
             properties = self._calc_properties(df1, df2, axis=self.axis)
 
+        inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
         shapes = [properties.pop('shape')]
         shapes.extend(kw_item.pop('shape') for kw_item in kws or ())
         if 'shape' in kw:
@@ -360,33 +407,56 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
     def _process_input(x):
         if isinstance(x, (DATAFRAME_TYPE, SERIES_TYPE)) or np.isscalar(x):
             return x
-        elif isinstance(x, (list, tuple)) or getattr(x, 'ndim', None) == 1:
+        elif isinstance(x, pd.Series):
             return Series(x)
-        elif getattr(x, 'ndim', None) == 2:
+        elif isinstance(x, pd.DataFrame):
             return DataFrame(x)
-        else:
-            raise NotImplementedError("Don't support type {}".format(type(x)))
+        elif isinstance(x, (list, tuple, np.ndarray, TENSOR_TYPE)):
+            return astensor(x)
+        raise NotImplementedError
+
+    def _check_inputs(self, x1, x2):
+        if isinstance(x1, TENSOR_TYPE) or isinstance(x2, TENSOR_TYPE):
+            tensor, other = (x1, x2) if isinstance(x1, TENSOR_TYPE) else (x2, x1)
+            if isinstance(other, DATAFRAME_TYPE):
+                if self.axis == 'index' or self.axis == 0:
+                    other_shape = tuple(reversed(other.shape))
+                else:
+                    other_shape = other.shape
+                if tensor.ndim == 2 and tensor.shape != other_shape:
+                    raise ValueError(
+                        'Unable to coerce to DataFrame, shape must be {}: given {}'.format(other_shape, tensor.shape))
+                elif tensor.ndim == 1 and tensor.shape[0] != other_shape[1]:
+                    raise ValueError(
+                        'Unable to coerce to Series, length must be {}: given {}'.format(other_shape[1], tensor.shape[0]))
+                elif tensor.ndim > 2:
+                    raise ValueError('Unable to coerce to Series/DataFrame, dim must be <= 2')
+            if isinstance(other, SERIES_TYPE):
+                if tensor.ndim == 1 and (tensor.shape[0] != other.shape[0]):
+                    raise ValueError(
+                        'Unable to coerce to Series, length must be {}: given {}'.format(other.shape[0], tensor.shape[0]))
+                elif tensor.ndim > 1:
+                    raise ValueError('Unable to coerce to Series, dim must be 1')
 
     def _call(self, x1, x2):
+        self._check_inputs(x1, x2)
         if isinstance(x1, DATAFRAME_TYPE) or isinstance(x2, DATAFRAME_TYPE):
-            df1 = x1 if isinstance(x1, DATAFRAME_TYPE) else x2
-            df2 = x2 if isinstance(x1, DATAFRAME_TYPE) else x1
+            df1, df2 = (x1, x2) if isinstance(x1, DATAFRAME_TYPE) else (x2, x1)
             setattr(self, '_object_type', ObjectType.dataframe)
             kw = self._calc_properties(df1, df2, axis=self.axis)
-            if isinstance(df2, (DATAFRAME_TYPE, SERIES_TYPE)):
+            if not np.isscalar(df2):
                 return self.new_dataframe([x1, x2], **kw)
             else:
                 return self.new_dataframe([df1], **kw)
         if isinstance(x1, SERIES_TYPE) or isinstance(x2, SERIES_TYPE):
-            s1 = x1 if isinstance(x1, SERIES_TYPE) else x2
-            s2 = x2 if isinstance(x1, SERIES_TYPE) else x1
+            s1, s2 = (x1, x2) if isinstance(x1, SERIES_TYPE) else (x2, x1)
             setattr(self, '_object_type', ObjectType.series)
             kw = self._calc_properties(s1, s2)
-            if isinstance(s2, SERIES_TYPE):
+            if not np.isscalar(s2):
                 return self.new_series([x1, x2], **kw)
             else:
                 return self.new_series([s1], **kw)
-        raise NotImplementedError('Only support add dataframe or scalar for now')
+        raise NotImplementedError('Only support add dataframe, series or scalar for now')
 
     def __call__(self, x1, x2):
         x1 = self._process_input(x1)
