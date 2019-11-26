@@ -21,4 +21,4 @@ from .prochelper import ProcessHelperActor
 from .quota import QuotaActor, MemQuotaActor
 from .storage import *
 from .status import StatusActor
-from .transfer import SenderActor, ReceiverActor
+from .transfer import SenderActor, ReceiverManagerActor, ReceiverWorkerActor

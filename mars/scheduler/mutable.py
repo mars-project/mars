@@ -17,6 +17,7 @@ import uuid
 
 import numpy as np
 
+from ..worker.transfer import ReceiverManagerActor
 from ..utils import log_unhandled, tokenize
 from .utils import SchedulerActor
 
@@ -131,7 +132,6 @@ class MutableTensorActor(SchedulerActor):
 
     @log_unhandled
     def _send_chunk_records(self, chunk_records_to_send):
-        from ..worker.dispatcher import DispatchActor
         from ..worker.transfer import put_remote_chunk
 
         chunk_records = []
@@ -139,10 +139,8 @@ class MutableTensorActor(SchedulerActor):
         for chunk_key, ep, records in chunk_records_to_send:
             record_chunk_key = tokenize(chunk_key, uuid.uuid4().hex)
             # send record chunk
-            dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid(), address=ep)
-            receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
-            receiver_ref = self.ctx.actor_ref(receiver_uid, address=ep)
-            put_remote_chunk(self._session_id, record_chunk_key, records, receiver_ref)
+            receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid(), address=ep)
+            put_remote_chunk(self._session_id, record_chunk_key, records, receiver_manager_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunks

@@ -60,10 +60,10 @@ class MockCpuCalcActor(WorkerActor):
 
 
 class MockSenderActor(WorkerActor):
-    def __init__(self, mock_data, mode=None):
+    def __init__(self, mock_data_list, mode=None):
         super(MockSenderActor, self).__init__()
         self._mode = mode or 'in'
-        self._mock_data = mock_data
+        self._mock_data_list = mock_data_list
         self._dispatch_ref = None
 
     def post_create(self):
@@ -72,17 +72,18 @@ class MockSenderActor(WorkerActor):
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
     @promise.reject_on_exception
-    def send_data(self, session_id, chunk_key, target_endpoints, target_slots=None,
+    def send_data(self, session_id, chunk_keys, target_endpoints, target_slots=None,
                   ensure_cached=True, compression=None, timeout=None, callback=None):
         if self._mode == 'in':
             self._dispatch_ref.register_free_slot(self.uid, 'sender')
             self.storage_client.put_objects(
-                session_id, [chunk_key], [self._mock_data], [DataStorageDevice.SHARED_MEMORY]) \
+                session_id, chunk_keys, self._mock_data_list, [DataStorageDevice.SHARED_MEMORY]) \
                 .then(lambda *_: self.tell_promise(callback))
         else:
-            data = self._shared_store.get(session_id, chunk_key)
-            assert_array_equal(self._mock_data, data)
-            self.tell_promise(callback, self._mock_data.nbytes)
+            for chunk_key, mock_data in zip(chunk_keys, self._mock_data_list):
+                data = self._shared_store.get(session_id, chunk_key)
+                assert_array_equal(mock_data, data)
+            self.tell_promise(callback, [md.nbytes for md in self._mock_data_list])
             self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
 
@@ -247,7 +248,7 @@ class Test(WorkerCase):
         with patch_method(SharedHolderActor.pin_data_keys, new=_mock_pin), \
                 create_actor_pool(n_process=1, backend='gevent', address=pool_address) as pool:
             self.create_standard_actors(pool, pool_address, with_daemon=False, with_status=False)
-            pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
+            pool.create_actor(MockSenderActor, [mock_data], 'in', uid='w:mock_sender')
             pool.create_actor(CpuCalcActor)
             pool.create_actor(InProcHolderActor)
             pool.actor_ref(WorkerClusterInfoActor.default_uid())
@@ -461,7 +462,7 @@ class Test(WorkerCase):
                                         with_resource=True)
             pool.create_actor(CpuCalcActor)
             pool.create_actor(InProcHolderActor)
-            pool.create_actor(MockSenderActor, mock_data, 'in', uid='w:mock_sender')
+            pool.create_actor(MockSenderActor, [mock_data], 'in', uid='w:mock_sender')
 
             import mars.tensor as mt
             from mars.tensor.fetch import TensorFetch
@@ -543,7 +544,7 @@ class Test(WorkerCase):
             result_tensor = get_tiled(result_tensor)
             result_key = result_tensor.chunks[0].key
 
-            pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
+            pool.create_actor(MockSenderActor, [mock_data + np.ones((4,))], 'out', uid='w:mock_sender')
             with self.run_actor_test(pool) as test_actor:
                 def _validate(_):
                     data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)

@@ -104,6 +104,9 @@ class BaseCalcActor(WorkerActor):
         context_dict = dict()
         storage_client = self.storage_client
 
+        if not keys_to_fetch:
+            return promise.finished(context_dict)
+
         def _handle_loaded(objs):
             data_locations = storage_client.get_data_locations(session_id, keys_to_fetch)
             shared_quota_keys = []

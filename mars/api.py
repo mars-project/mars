@@ -23,7 +23,7 @@ from .scheduler import SessionActor, GraphActor, GraphMetaActor, ResourceActor, 
     SessionManagerActor, ChunkMetaClient
 from .scheduler.node_info import NodeInfoActor
 from .scheduler.utils import SchedulerClusterInfoActor
-from .worker.transfer import ResultSenderActor
+from .worker.transfer import ResultSenderActor, ReceiverManagerActor
 from .tensor.utils import slice_split
 from .serialize import dataserializer
 from .utils import tokenize, merge_chunks
@@ -112,7 +112,6 @@ class MarsAPI(object):
         return session_ref.get_mutable_tensor(name)
 
     def send_chunk_records(self, session_id, name, chunk_records_to_send, directly=True):
-        from .worker.dispatcher import DispatchActor
         from .worker.quota import MemQuotaActor
         from .worker.transfer import put_remote_chunk
         session_uid = SessionActor.gen_uid(session_id)
@@ -125,10 +124,9 @@ class MarsAPI(object):
             quota_ref = self.actor_client.actor_ref(MemQuotaActor.default_uid(), address=endpoint)
             quota_ref.request_batch_quota({record_chunk_key: records.nbytes})
             # send record chunk
-            dispatch_ref = self.actor_client.actor_ref(DispatchActor.default_uid(), address=endpoint)
-            receiver_uid = dispatch_ref.get_hash_slot('receiver', chunk_key)
-            receiver_ref = self.actor_client.actor_ref(receiver_uid, address=endpoint)
-            put_remote_chunk(session_id, record_chunk_key, records, receiver_ref)
+            receiver_manager_ref = self.actor_client.actor_ref(
+                ReceiverManagerActor.default_uid(), address=endpoint)
+            put_remote_chunk(session_id, record_chunk_key, records, receiver_manager_ref)
             chunk_records.append((chunk_key, record_chunk_key))
 
         # register the record chunk to MutableTensorActor

@@ -145,8 +145,8 @@ class StorageClient(object):
         device_order = self._normalize_devices(device_order)
 
         def _action(handler, _keys, _promise=True):
-            logger.debug('Creating %s writer for (%s, %s) on %s', 'packed' if packed else 'bytes',
-                         session_id, data_key, handler.storage_type)
+            logger.debug('Creating %s writer for (%s, %s) with size %s on %s', 'packed' if packed else 'bytes',
+                         session_id, data_key, total_bytes, handler.storage_type)
             return handler.create_bytes_writer(
                 session_id, data_key, total_bytes, packed=packed,
                 packed_compression=packed_compression, _promise=_promise)
@@ -175,6 +175,8 @@ class StorageClient(object):
         source_devices = self._normalize_devices(source_devices)
         stored_dev_lists = self._manager_ref.get_data_locations(session_id, data_keys)
         dev_to_keys = defaultdict(list)
+        if any(not loc for loc in stored_dev_lists):
+            raise KeyError(next(k for k, loc in zip(data_keys, stored_dev_lists)))
         for key, devs in zip(data_keys, stored_dev_lists):
             first_dev = next((stored_dev for stored_dev in source_devices if stored_dev in devs),
                              None) or sorted(devs)[0]

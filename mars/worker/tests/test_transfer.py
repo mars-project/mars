@@ -29,16 +29,16 @@ from pyarrow import plasma
 from mars import promise
 from mars.compat import Empty, BrokenPipeError, TimeoutError
 from mars.config import options
-from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull,\
+from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull, \
     SpillNotConfigured, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
-from mars.worker import SenderActor, ReceiverActor, DispatchActor, QuotaActor, \
-    MemQuotaActor, StorageManagerActor, IORunnerActor, StatusActor, \
-    SharedHolderActor, InProcHolderActor
+from mars.worker import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, \
+    DispatchActor, QuotaActor, MemQuotaActor, StorageManagerActor, IORunnerActor, \
+    StatusActor, SharedHolderActor, InProcHolderActor
 from mars.worker.storage import DataStorageDevice
 from mars.worker.storage.sharedstore import PlasmaSharedStore, PlasmaKeyMapActor
 from mars.worker.tests.base import WorkerCase, StorageClientActor
@@ -91,8 +91,8 @@ class MockReceiverActor(WorkerActor):
         except KeyError:
             self._callbacks[query_key].append(callback)
 
-    def create_data_writer(self, session_id, chunk_key, data_size, sender_ref,
-                           ensure_cached=True, timeout=0, callback=None):
+    def create_data_writers(self, session_id, chunk_key, data_size, sender_ref,
+                            ensure_cached=True, timeout=0, callback=None):
         from mars.compat import BytesIO
         query_key = (session_id, chunk_key)
         if query_key in self._data_metas and \
@@ -142,6 +142,7 @@ def start_transfer_test_pool(**kwargs):
         pool.create_actor(IORunnerActor)
         pool.create_actor(StorageClientActor, uid=StorageClientActor.default_uid())
         pool.create_actor(InProcHolderActor)
+        pool.create_actor(ReceiverManagerActor, uid=ReceiverManagerActor.default_uid())
 
         try:
             yield pool
@@ -162,7 +163,7 @@ def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_que
 
             for _ in range(2):
                 pool.create_actor(SenderActor, uid='%s' % str(uuid.uuid4()))
-                pool.create_actor(ReceiverActor, uid='%s' % str(uuid.uuid4()))
+                pool.create_actor(ReceiverWorkerActor, uid='%s' % str(uuid.uuid4()))
 
             for idx in range(0, len(chunk_keys) - 7):
                 data = np.ones((640 * 1024,), dtype=np.int16) * idx
@@ -224,12 +225,12 @@ class Test(WorkerCase):
                 sp.create_actor(SenderActor, uid=SenderActor.default_uid())
                 with start_transfer_test_pool(
                         address=recv_pool_addr, plasma_size=self.plasma_storage_size) as rp:
-                    rp.create_actor(MockReceiverActor, uid=ReceiverActor.default_uid())
+                    rp.create_actor(MockReceiverActor, uid=ReceiverWorkerActor.default_uid())
                     yield sp, rp
 
         with start_send_recv_pool() as (send_pool, recv_pool):
             sender_ref = send_pool.actor_ref(SenderActor.default_uid())
-            receiver_ref = recv_pool.actor_ref(ReceiverActor.default_uid())
+            receiver_ref = recv_pool.actor_ref(ReceiverWorkerActor.default_uid())
 
             with self.run_actor_test(send_pool) as test_actor:
                 storage_client = test_actor.storage_client
@@ -273,7 +274,7 @@ class Test(WorkerCase):
                 # send data to multiple targets
                 with start_transfer_test_pool(
                         address=recv_pool_addr2, plasma_size=self.plasma_storage_size) as rp2:
-                    recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverActor.default_uid())
+                    recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverWorkerActor.default_uid())
 
                     self.waitp(
                         sender_ref_p.send_data(session_id, chunk_key1,
@@ -329,7 +330,7 @@ class Test(WorkerCase):
         chunk_key7 = str(uuid.uuid4())
 
         with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
-            receiver_ref = pool.create_actor(ReceiverActor, uid=str(uuid.uuid4()))
+            receiver_ref = pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4()))
 
             with self.run_actor_test(pool) as test_actor:
                 storage_client = test_actor.storage_client
@@ -359,26 +360,26 @@ class Test(WorkerCase):
                 receiver_ref_p = test_actor.promise_ref(receiver_ref)
 
                 # cancel on an un-run / missing result will result in nothing
-                receiver_ref_p.cancel_receive(session_id, chunk_key2)
+                receiver_ref_p.cancel_receive(session_id, [chunk_key2])
 
                 # start creating writer
-                receiver_ref_p.create_data_writer(session_id, chunk_key1, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key1], [data_size], test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
 
-                result = receiver_ref_p.create_data_writer(session_id, chunk_key1, data_size, test_actor,
-                                                           use_promise=False)
+                result = receiver_ref_p.create_data_writers(session_id, [chunk_key1], [data_size], test_actor,
+                                                            use_promise=False)
                 self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVED))
 
-                receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
-                result = receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor,
-                                                           use_promise=False)
+                result = receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor,
+                                                            use_promise=False)
                 self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVING))
 
-                receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVING))
 
@@ -387,7 +388,7 @@ class Test(WorkerCase):
                                  ReceiveStatus.NOT_STARTED)
 
                 # test checksum error on receive_data_part
-                receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key2], data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.get_result(5)
 
@@ -403,7 +404,7 @@ class Test(WorkerCase):
                 receiver_ref_p.cancel_receive(session_id, chunk_key2)
 
                 # test intermediate cancellation
-                receiver_ref_p.create_data_writer(session_id, chunk_key2, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key2], data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
@@ -424,7 +425,7 @@ class Test(WorkerCase):
                     .then(lambda *s: test_actor.set_result(s)) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
-                receiver_ref_p.create_data_writer(session_id, chunk_key3, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key3], data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
@@ -435,7 +436,7 @@ class Test(WorkerCase):
 
                 self.assertTupleEqual((), self.get_result(5))
 
-                receiver_ref_p.create_data_writer(session_id, chunk_key3, data_size, test_actor, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key3], data_size, test_actor, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
 
@@ -445,11 +446,11 @@ class Test(WorkerCase):
 
                 with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
                     with self.assertRaises(StorageFull):
-                        receiver_ref_p.create_data_writer(session_id, chunk_key4, data_size, test_actor,
-                                                          ensure_cached=True, use_promise=False)
+                        receiver_ref_p.create_data_writers(session_id, [chunk_key4], data_size, test_actor,
+                                                           ensure_cached=True, use_promise=False)
                     # test receive aborted
-                    receiver_ref_p.create_data_writer(
-                        session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
+                    receiver_ref_p.create_data_writers(
+                        session_id, [chunk_key4], data_size, test_actor, ensure_cached=False, _promise=True) \
                         .then(lambda *s: test_actor.set_result(s))
                     self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
@@ -464,8 +465,8 @@ class Test(WorkerCase):
                         self.get_result(5)
 
                     # test receive into spill
-                    receiver_ref_p.create_data_writer(
-                        session_id, chunk_key4, data_size, test_actor, ensure_cached=False, _promise=True) \
+                    receiver_ref_p.create_data_writers(
+                        session_id, [chunk_key4], data_size, test_actor, ensure_cached=False, _promise=True) \
                         .then(lambda *s: test_actor.set_result(s))
                     self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
 
@@ -482,8 +483,8 @@ class Test(WorkerCase):
                     raise SpillNotConfigured
 
                 with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
-                    receiver_ref_p.create_data_writer(
-                        session_id, chunk_key5, data_size, test_actor, ensure_cached=False, _promise=True) \
+                    receiver_ref_p.create_data_writers(
+                        session_id, [chunk_key5], data_size, test_actor, ensure_cached=False, _promise=True) \
                         .then(lambda *s: test_actor.set_result(s),
                               lambda *s: test_actor.set_result(s, accept=False))
 
@@ -495,8 +496,8 @@ class Test(WorkerCase):
                     .then(lambda *s: test_actor.set_result(s)) \
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
-                receiver_ref_p.create_data_writer(session_id, chunk_key6, data_size, test_actor,
-                                                  timeout=2, _promise=True) \
+                receiver_ref_p.create_data_writers(session_id, [chunk_key6], data_size, test_actor,
+                                                   timeout=2, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
                 receiver_ref_p.receive_data_part(session_id, chunk_key6, serialized_mock_data[:64],
@@ -511,8 +512,8 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
-                receiver_ref_p.create_data_writer(
-                    session_id, chunk_key7, data_size, mock_ref, _promise=True) \
+                receiver_ref_p.create_data_writers(
+                    session_id, [chunk_key7], data_size, mock_ref, _promise=True) \
                     .then(lambda *s: test_actor.set_result(s))
                 self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
                 receiver_ref_p.receive_data_part(session_id, chunk_key7, serialized_mock_data[:64],
@@ -548,7 +549,7 @@ class Test(WorkerCase):
             sender_refs, receiver_refs = [], []
             for _ in range(2):
                 sender_refs.append(pool.create_actor(SenderActor, uid=str(uuid.uuid4())))
-                receiver_refs.append(pool.create_actor(ReceiverActor, uid=str(uuid.uuid4())))
+                receiver_refs.append(pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4())))
 
             try:
                 for data_id in (-1, 0):
@@ -560,7 +561,8 @@ class Test(WorkerCase):
 
                         def _call_send_data(sender_uid):
                             sender_ref = test_actor.promise_ref(sender_uid, address=remote_pool_addr)
-                            return sender_ref.send_data(session_id, chunk_key, local_pool_addr, _promise=True)
+                            return sender_ref.send_data(
+                                session_id, [chunk_key], [local_pool_addr], _promise=True)
 
                         def _test_data_exist(*_):
                             local_client_ref = test_actor.promise_ref(StorageClientActor.default_uid())

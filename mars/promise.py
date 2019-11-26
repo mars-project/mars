@@ -279,7 +279,7 @@ class PromiseRefWrapper(object):
     Promise wrapper that enables promise call by adding _promise=True
     """
     def __init__(self, ref, caller):
-        self._ref = ref
+        self._ref = caller.ctx.actor_ref(ref)
         self._caller = caller  # type: PromiseActor
 
     def send(self, message):
@@ -298,6 +298,10 @@ class PromiseRefWrapper(object):
     @property
     def address(self):
         return self._ref.address
+
+    def __reduce__(self):
+        # when pickled, return original ActorRef
+        return ActorRef, (self._caller.address, self._ref.uid)
 
     def __getattr__(self, item):
         if item.startswith('_'):

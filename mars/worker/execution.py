@@ -338,12 +338,8 @@ class ExecutionActor(WorkerActor):
             logger.debug('Fetching chunk %s in %s to %s with slot %s',
                          chunk_key, remote_addr, self.address, sender_uid)
 
-            try:
-                target_slot = self._dispatch_ref.get_hash_slot('receiver', chunk_key)
-            except KeyError:
-                target_slot = None
             return sender_ref.send_data(
-                session_id, chunk_key, self.address, target_slot, ensure_cached=ensure_cached,
+                session_id, [chunk_key], [self.address], ensure_cached=ensure_cached,
                 timeout=timeout, _timeout=timeout, _promise=True
             ).then(_finish_fetch)
 
@@ -632,7 +628,7 @@ class ExecutionActor(WorkerActor):
 
         filtered_remote_keys = remote_keys
         if self._receiver_manager_ref:
-            transferring_keys = set(self._receiver_manager_ref.filter_registered_keys(
+            transferring_keys = set(self._receiver_manager_ref.filter_receiving_keys(
                 session_id, remote_keys))
             if transferring_keys:
                 logger.debug('Data %s already scheduled for fetch, just wait.', transferring_keys)
@@ -693,12 +689,11 @@ class ExecutionActor(WorkerActor):
                     target_allocs[quota_key] = graph_record.mem_request[quota_key]
 
             self._update_state(session_id, graph_key, ExecutionState.CALCULATING)
-            raw_calc_ref = self.ctx.actor_ref(calc_uid)
-            calc_ref = self.promise_ref(raw_calc_ref)
+            calc_ref = self.promise_ref(calc_uid)
 
             def _start_calc(*_):
                 logger.debug('Submit calculation for graph %s in actor %s', graph_key, calc_uid)
-                if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(raw_calc_ref):
+                if self._daemon_ref is None or self._daemon_ref.is_actor_process_alive(calc_ref):
                     return calc_ref.calc(
                         session_id, graph_key, graph_record.graph_serialized, graph_record.chunk_targets,
                         _promise=True
@@ -731,16 +726,16 @@ class ExecutionActor(WorkerActor):
 
         # transfer the result chunk to expected endpoints
         @log_unhandled
-        def _send_chunk(sender_uid, data_key, target_addrs):
+        def _send_chunk(sender_uid, data_keys, target_addr):
             if graph_record and graph_record.stop_requested:
                 self._dispatch_ref.register_free_slot(sender_uid, 'sender', _tell=True)
                 raise ExecutionInterrupted
 
             sender_ref = self.promise_ref(sender_uid)
             timeout = options.worker.prepare_data_timeout
-            logger.debug('Actively sending chunk %s to %s with slot %s',
-                         data_key, target_addrs, sender_uid)
-            return sender_ref.send_data(session_id, data_key, target_addrs, ensure_cached=False,
+            logger.debug('Actively sending chunks %r to %s with slot %s',
+                         data_keys, target_addr, sender_uid)
+            return sender_ref.send_data(session_id, data_keys, [target_addr], ensure_cached=False,
                                         timeout=timeout, _timeout=timeout, _promise=True)
 
         if graph_record:
@@ -753,9 +748,12 @@ class ExecutionActor(WorkerActor):
         for key, targets in data_to_addresses.items():
             for target in targets:
                 address_to_data_keys[target].add(key)
+        for target, keys in address_to_data_keys.items():
+            if target == self.address:
+                continue
             promises.append(promise.finished()
                             .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
-                            .then(functools.partial(_send_chunk, data_key=key, target_addrs=targets))
+                            .then(functools.partial(_send_chunk, data_keys=keys, target_addr=target))
                             .catch(lambda *_: None))
 
         for target, keys in address_to_data_keys.items():

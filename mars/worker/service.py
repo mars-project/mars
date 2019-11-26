@@ -31,7 +31,7 @@ from .dispatcher import DispatchActor
 from .events import EventsActor
 from .execution import ExecutionActor
 from .calc import CpuCalcActor, CudaCalcActor
-from .transfer import ReceiverActor, SenderActor, ReceiverManagerActor, ResultSenderActor
+from .transfer import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, ResultSenderActor
 from .prochelper import ProcessHelperActor
 from .storage import IORunnerActor, StorageManagerActor, SharedHolderActor, \
     InProcHolderActor, CudaHolderActor
@@ -268,7 +268,7 @@ class WorkerService(object):
         # Mutable requires ReceiverActor (with LocalClusterSession)
         for receiver_id in range(2 * self._n_net_process):
             uid = 'w:%d:mars-receiver-%d-%d' % (start_pid + receiver_id // 2, os.getpid(), receiver_id)
-            actor = actor_holder.create_actor(ReceiverActor, uid=uid)
+            actor = actor_holder.create_actor(ReceiverWorkerActor, uid=uid)
             self._receiver_actors.append(actor)
 
         # create ProcessHelperActor
