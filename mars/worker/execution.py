@@ -323,10 +323,7 @@ class ExecutionActor(WorkerActor):
                 six.reraise(*exc)
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
-                self._resource_ref.detach_dead_workers(
-                    [remote_addr],
-                    reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
-                    _tell=True, _wait=False)
+                self._resource_ref.detach_dead_workers([remote_addr], _tell=True, _wait=False)
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled
