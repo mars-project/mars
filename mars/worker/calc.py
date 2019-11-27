@@ -14,7 +14,6 @@
 
 import logging
 import time
-import functools
 from collections import defaultdict
 
 from .. import promise
@@ -42,6 +41,7 @@ class BaseCalcActor(WorkerActor):
         self._remove_intermediate = self._calc_intermediate_device not in self._calc_dest_devices
 
         self._dispatch_ref = None
+        self._mem_quota_ref = None
         self._events_ref = None
         self._status_ref = None
         self._resource_ref = None
@@ -92,47 +92,50 @@ class BaseCalcActor(WorkerActor):
             old_keys.append(build_quota_key(session_id, k, owner=graph_key))
             new_keys.append(build_quota_key(session_id, k, owner=self.proc_id))
         self._mem_quota_ref.alter_allocations(
-            old_keys, new_keys=new_keys, process_quota=process_quota, _tell=True, _wait=False)
+            old_keys, new_keys=new_keys, process_quota=process_quota)
         return new_keys
 
-    def _release_local_quota(self, session_id, data_key):
-        self._mem_quota_ref.release_quota(
-            build_quota_key(session_id, data_key, owner=self.proc_id), _tell=True, _wait=False)
+    def _release_local_quotas(self, session_id, data_keys):
+        self._mem_quota_ref.release_quotas(
+            [build_quota_key(session_id, k, owner=self.proc_id) for k in data_keys],
+            _tell=True, _wait=False)
 
     def _fetch_keys_to_process(self, session_id, keys_to_fetch):
         context_dict = dict()
-        failed = [False]
-        promises = []
         storage_client = self.storage_client
 
-        def _handle_single_loaded(k, obj):
-            locations = storage_client.get_data_locations(session_id, [k])[0]
-            quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-            if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
-                self._mem_quota_ref.release_quota(quota_key, _tell=True, _wait=False)
-            else:
-                self._mem_quota_ref.hold_quota(quota_key, _tell=True)
+        def _handle_loaded(objs):
+            data_locations = storage_client.get_data_locations(session_id, keys_to_fetch)
+            shared_quota_keys = []
+            inproc_keys = []
+            inproc_quota_keys = []
+
+            context_dict.update(zip(keys_to_fetch, objs))
+            for k, locations in zip(keys_to_fetch, data_locations):
+                quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+                if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
+                    shared_quota_keys.append(quota_key)
+                else:
+                    inproc_keys.append(k)
+                    inproc_quota_keys.append(quota_key)
+
+            if shared_quota_keys:
+                self._mem_quota_ref.release_quotas(shared_quota_keys, _tell=True, _wait=False)
+            if inproc_keys:
+                self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True)
                 if self._remove_intermediate:
-                    storage_client.delete(session_id, [k], [self._calc_intermediate_device])
-            if not failed[0]:
-                context_dict[k] = obj
+                    storage_client.delete(session_id, inproc_keys, [self._calc_intermediate_device])
 
-        def _handle_single_load_fail(*exc, **kwargs):
-            data_key = kwargs.pop('key')
+        def _handle_load_fail(*exc):
             if self._remove_intermediate:
-                storage_client.delete(session_id, [data_key], [self._calc_intermediate_device])
-            self._release_local_quota(session_id, data_key)
+                storage_client.delete(session_id, keys_to_fetch, [self._calc_intermediate_device])
+            self._release_local_quotas(session_id, keys_to_fetch)
 
-            failed[0] = True
             context_dict.clear()
             six.reraise(*exc)
 
-        for key in keys_to_fetch:
-            promises.append(storage_client.get_object(session_id, key, self._calc_source_devices)
-                            .then(functools.partial(_handle_single_loaded, key),
-                                  functools.partial(_handle_single_load_fail, key=key)))
-
-        return promise.all_(promises).then(lambda *_: context_dict)
+        return storage_client.get_objects(session_id, keys_to_fetch, self._calc_source_devices) \
+            .then(_handle_loaded, _handle_load_fail).then(lambda *_: context_dict)
 
     def _get_n_cpu(self):
         if self._n_cpu is None:
@@ -185,18 +188,20 @@ class BaseCalcActor(WorkerActor):
             raise KeyError([k for k in chunk_targets if k not in collected_chunk_keys])
 
         # adjust sizes in allocation
-        apply_alloc_sizes = defaultdict(lambda: 0)
+        apply_allocs = defaultdict(lambda: 0)
         for k, size in zip(result_keys, result_sizes):
-            apply_alloc_sizes[get_chunk_key(k)] += size
+            apply_allocs[get_chunk_key(k)] += size
 
-        for k, v in apply_alloc_sizes.items():
-            quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-            self._mem_quota_ref.alter_allocation(quota_key, v, _tell=True)
-            self._mem_quota_ref.hold_quota(quota_key, _tell=True)
+        apply_alloc_quota_keys, apply_alloc_sizes = [], []
+        for k, v in apply_allocs.items():
+            apply_alloc_quota_keys.append(build_quota_key(session_id, k, owner=self.proc_id))
+            apply_alloc_sizes.append(v)
+        self._mem_quota_ref.alter_allocations(apply_alloc_quota_keys, apply_alloc_sizes, _tell=True, _wait=False)
+        self._mem_quota_ref.hold_quotas(apply_alloc_quota_keys, _tell=True)
 
         if self._status_ref:
             self._status_ref.update_mean_stats(
-                'calc_speed.' + op_name, sum(apply_alloc_sizes.values()) * 1.0 / (end_time - start_time),
+                'calc_speed.' + op_name, sum(apply_alloc_sizes) * 1.0 / (end_time - start_time),
                 _tell=True, _wait=False)
 
         logger.debug('Finish calculating operand %s.', graph_key)
@@ -225,18 +230,18 @@ class BaseCalcActor(WorkerActor):
         target_quotas = self._make_quotas_local(session_id, graph_key, chunk_targets)
 
         def _start_calc(context_dict):
-            for k in target_quotas:
-                self._mem_quota_ref.process_quota(k, _tell=True, _wait=False)
+            self._mem_quota_ref.process_quotas(target_quotas, _tell=True, _wait=False)
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
             self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
+            keys_to_release = []
 
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
                     if self._remove_intermediate:
                         self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
-                    self._release_local_quota(session_id, k)
+                    keys_to_release.append(k)
 
             if not exc_info:
                 self.tell_promise(callback, keys)
@@ -244,8 +249,10 @@ class BaseCalcActor(WorkerActor):
                 for k in chunk_targets:
                     if self._remove_intermediate:
                         self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
-                    self._release_local_quota(session_id, k)
+                    keys_to_release.append(k)
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
+
+            self._release_local_quotas(session_id, keys_to_release)
 
         return self._fetch_keys_to_process(session_id, keys_to_fetch) \
             .then(lambda context_dict: _start_calc(context_dict)) \
@@ -275,8 +282,7 @@ class BaseCalcActor(WorkerActor):
             if self._remove_intermediate:
                 storage_client.delete(
                     session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)
-            quotas = [build_quota_key(session_id, k, owner=self.proc_id) for k in keys_to_store]
-            self._mem_quota_ref.release_quotas(quotas, _tell=True, _wait=False)
+            self._release_local_quotas(session_id, keys_to_store)
 
         return storage_client.copy_to(session_id, keys_to_store, self._calc_dest_devices) \
             .then(_delete_keys) \

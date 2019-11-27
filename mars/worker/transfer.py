@@ -221,22 +221,61 @@ class SenderActor(WorkerActor):
 
 
 class ReceiverDataMeta(object):
-    __slots__ = 'start_time', 'chunk_size', 'write_shared', 'checksum', \
-                'source_address', 'transfer_event_id', 'status', 'callback_args', \
-                'callback_kwargs'
+    __slots__ = 'start_time', 'chunk_size', 'checksum', 'source_address', \
+                'transfer_event_id', 'status', 'callback_args', 'callback_kwargs'
 
-    def __init__(self, start_time=None, chunk_size=None, write_shared=True, checksum=0,
+    def __init__(self, start_time=None, chunk_size=None, checksum=0,
                  source_address=None, transfer_event_id=None, status=None,
                  callback_args=None, callback_kwargs=None):
         self.start_time = start_time or time.time()
         self.chunk_size = chunk_size
-        self.write_shared = write_shared
         self.checksum = checksum
         self.source_address = source_address
         self.status = status
         self.transfer_event_id = transfer_event_id
         self.callback_args = callback_args or ()
         self.callback_kwargs = callback_kwargs or {}
+
+
+class ReceiverManagerActor(WorkerActor):
+    def __init__(self):
+        super(ReceiverManagerActor, self).__init__()
+        self._receiver_callback_ids = dict()
+        self._max_callback_id = 0
+        self._callback_id_to_callbacks = dict()
+        self._callback_id_to_keys = dict()
+
+    def register_keys(self, session_id, data_keys):
+        for key in data_keys:
+            self._receiver_callback_ids[(session_id, key)] = []
+
+    def filter_registered_keys(self, session_id, data_keys):
+        return [k for k in data_keys if (session_id, k) in self._receiver_callback_ids]
+
+    def add_keys_callback(self, session_id, data_keys, callback):
+        cb_id = self._max_callback_id
+        self._max_callback_id += 1
+
+        self._callback_id_to_callbacks[cb_id] = callback
+        self._callback_id_to_keys[cb_id] = set((session_id, k) for k in data_keys)
+
+        for k in data_keys:
+            self._receiver_callback_ids[(session_id, k)].append(cb_id)
+
+    def notify_key_finish(self, session_id, data_key, *args, **kwargs):
+        session_data_key = (session_id, data_key)
+        cb_ids = self._receiver_callback_ids.pop(session_data_key, [])
+        if not cb_ids:
+            return
+
+        kwargs['_wait'] = False
+        for cb_id in cb_ids:
+            cb_keys = self._callback_id_to_keys[cb_id]
+            cb_keys.remove(session_data_key)
+            if not cb_keys:
+                del self._callback_id_to_keys[cb_id]
+                cb = self._callback_id_to_callbacks.pop(cb_id)
+                self.tell_promise(cb, *args, **kwargs)
 
 
 class ReceiverActor(WorkerActor):
@@ -247,6 +286,7 @@ class ReceiverActor(WorkerActor):
         super(ReceiverActor, self).__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
+        self._receiver_manager_ref = None
         self._events_ref = None
         self._status_ref = None
 
@@ -269,6 +309,10 @@ class ReceiverActor(WorkerActor):
         self._status_ref = self.ctx.actor_ref(StatusActor.default_uid())
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
+
+        self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_manager_ref):
+            self._receiver_manager_ref = None
 
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
@@ -357,7 +401,7 @@ class ReceiverActor(WorkerActor):
 
         self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
             chunk_size=data_size, source_address=sender_address,
-            write_shared=True, status=ReceiveStatus.RECEIVING)
+            status=ReceiveStatus.RECEIVING)
 
         # configure timeout callback
         if timeout:
@@ -545,6 +589,8 @@ class ReceiverActor(WorkerActor):
         for cb in self._finish_callbacks[session_chunk_key]:
             kwargs['_wait'] = False
             self.tell_promise(cb, *args, **kwargs)
+        if self._receiver_manager_ref:
+            self._receiver_manager_ref.notify_key_finish(session_id, chunk_key, *args, **kwargs)
         if session_chunk_key in self._finish_callbacks:
             del self._finish_callbacks[session_chunk_key]
 

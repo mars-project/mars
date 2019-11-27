@@ -29,6 +29,7 @@ from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
     calc_data_size, get_chunk_shuffle_key
 from .storage import DataStorageDevice
+from .transfer import ReceiverManagerActor
 from .utils import WorkerActor, ExpiringCache, concat_operand_keys, \
     build_quota_key, change_quota_key_owner
 
@@ -126,6 +127,7 @@ class ExecutionActor(WorkerActor):
         self._mem_quota_ref = None
         self._status_ref = None
         self._daemon_ref = None
+        self._receiver_manager_ref = None
 
         self._resource_ref = None
 
@@ -156,6 +158,12 @@ class ExecutionActor(WorkerActor):
         if not self.ctx.has_actor(self._status_ref):
             self._status_ref = None
 
+        self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_manager_ref):
+            self._receiver_manager_ref = None
+        else:
+            self._receiver_manager_ref = self.promise_ref(self._receiver_manager_ref)
+
         from ..scheduler import ResourceActor
         self._resource_ref = self.get_actor_ref(ResourceActor.default_uid())
 
@@ -176,13 +184,15 @@ class ExecutionActor(WorkerActor):
 
     def _pin_data_keys(self, session_id, graph_key, data_keys):
         if not data_keys:
-            return
+            return []
         try:
             graph_record = self._graph_records[(session_id, graph_key)]
         except KeyError:
-            return
-        graph_record.pinned_keys.update(self.storage_client.pin_data_keys(
-            session_id, data_keys, graph_key, [graph_record.preferred_data_device]))
+            return []
+        pinned_keys = self.storage_client.pin_data_keys(
+            session_id, data_keys, graph_key, [graph_record.preferred_data_device])
+        graph_record.pinned_keys.update(pinned_keys)
+        return pinned_keys
 
     def _estimate_calc_memory(self, session_id, graph_key):
         graph_record = self._graph_records[(session_id, graph_key)]
@@ -290,8 +300,8 @@ class ExecutionActor(WorkerActor):
             locations = storage_client.get_data_locations(session_id, [chunk_key])[0]
             if (0, DataStorageDevice.SHARED_MEMORY) in locations:
                 self._pin_data_keys(session_id, graph_key, [chunk_key])
-                self._mem_quota_ref.release_quota(
-                    build_quota_key(session_id, chunk_key, owner=graph_key), _tell=True, _wait=False)
+                self._mem_quota_ref.release_quotas(
+                    [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
                 if (0, graph_record.preferred_data_device) not in locations:
                     return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
 
@@ -313,10 +323,7 @@ class ExecutionActor(WorkerActor):
                 six.reraise(*exc)
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
-                self._resource_ref.detach_dead_workers(
-                    [remote_addr],
-                    reporter='%s@%s:_fetch_remote_data()' % (self.uid, self.address),
-                    _tell=True, _wait=False)
+                self._resource_ref.detach_dead_workers([remote_addr], _tell=True, _wait=False)
                 raise DependencyMissing((session_id, chunk_key))
 
         @log_unhandled
@@ -548,14 +555,9 @@ class ExecutionActor(WorkerActor):
         if graph_record.stop_requested:
             raise ExecutionInterrupted
 
-        loaded_keys = []
-        move_keys = []
-        transfer_keys = []
-
         logger.debug('Start preparing input data for graph %s', graph_key)
         self._update_state(session_id, graph_key, ExecutionState.PREPARING_INPUTS)
         prepare_promises = []
-        shared_input_chunks = graph_record.shared_input_chunks
 
         input_keys = set()
         shuffle_keys = set()
@@ -570,53 +572,94 @@ class ExecutionActor(WorkerActor):
                     input_keys.add(part_key)
                     shuffle_keys.add(part_key)
 
-        for input_key in input_keys:
-            if input_key in graph_record.pinned_keys:
-                # already pinned, we continue
-                loaded_keys.append(input_key)
-                self._mem_quota_ref.release_quota(
-                    build_quota_key(session_id, input_key, owner=graph_key), _tell=True)
-            elif storage_client.get_data_locations(session_id, [input_key])[0]:
-                # load data from other devices
-                move_keys.append(input_key)
-                ensure_shared = input_key in graph_record.shared_input_chunks or input_key in shuffle_keys
-                if ensure_shared:
-                    self._mem_quota_ref.release_quota(
-                        build_quota_key(session_id, input_key, owner=graph_key), _tell=True)
+        local_keys = graph_record.pinned_keys & set(input_keys)
+        non_local_keys = [k for k in input_keys if k not in local_keys]
+        non_local_locations = storage_client.get_data_locations(session_id, non_local_keys)
+        copy_keys = set(k for k, loc in zip(non_local_keys, non_local_locations) if loc)
+        remote_keys = [k for k in non_local_keys if k not in copy_keys]
 
-                pin_fun = functools.partial(
-                    lambda k, *_: self._pin_data_keys(session_id, graph_key, [k]), input_key)
-                prepare_promises.append(
-                    storage_client.copy_to(
-                        session_id, [input_key], [graph_record.preferred_data_device], ensure=ensure_shared)
-                        .then(pin_fun, lambda *_: None)
-                )
-            else:
-                # load data from another worker
-                chunk_meta = input_metas.get(input_key) or graph_record.data_metas.get(input_key)
-                if chunk_meta:
-                    chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
+        # handle local keys
+        self._mem_quota_ref.release_quotas(
+            [build_quota_key(session_id, k, owner=graph_key) for k in local_keys], _tell=True)
+        # handle move keys
+        prepare_promises.extend(
+            self._prepare_copy_keys(session_id, graph_key, copy_keys))
+        # handle remote keys
+        prepare_promises.extend(
+            self._prepare_remote_keys(session_id, graph_key, remote_keys, input_metas))
 
-                if chunk_meta is None or not chunk_meta.workers:
-                    raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
-                worker_results = list(chunk_meta.workers)
-                random.shuffle(worker_results)
-
-                transfer_keys.append(input_key)
-
-                # fetch data from other workers, if one fails, try another
-                p = promise.finished(_accept=False)
-                for worker in worker_results:
-                    p = p.catch(functools.partial(
-                        self._fetch_remote_data, session_id, graph_key, input_key, worker,
-                        ensure_cached=input_key in shared_input_chunks))
-                prepare_promises.append(p)
-
-        logger.debug('Graph key %s: Targets %r, loaded keys %r, move keys %s, transfer keys %r',
-                     graph_key, graph_record.chunk_targets, loaded_keys, move_keys, transfer_keys)
+        logger.debug('Graph key %s: Targets %r, loaded keys %r, copy keys %s, remote keys %r',
+                     graph_key, graph_record.chunk_targets, local_keys, copy_keys, remote_keys)
         p = promise.all_(prepare_promises) \
             .then(lambda *_: logger.debug('Data preparation for graph %s finished', graph_key))
         return p
+
+    @log_unhandled
+    def _prepare_copy_keys(self, session_id, graph_key, copy_keys):
+        promises = []
+        graph_record = self._graph_records[(session_id, graph_key)]
+        ensure_shared_keys = [k for k in copy_keys if k in graph_record.shared_input_chunks]
+        better_shared_keys = [k for k in copy_keys if k not in graph_record.shared_input_chunks]
+
+        def _release_copied_keys(keys):
+            actual_moved_keys = self._pin_data_keys(session_id, graph_key, keys)
+            self._mem_quota_ref.release_quotas(
+                [build_quota_key(session_id, k, owner=graph_key) for k in actual_moved_keys],
+                _tell=True)
+
+        if ensure_shared_keys:
+            self._mem_quota_ref.release_quotas(
+                [build_quota_key(session_id, k, owner=graph_key) for k in ensure_shared_keys],
+                _tell=True)
+            promises.append(
+                self.storage_client.copy_to(
+                    session_id, ensure_shared_keys, [graph_record.preferred_data_device],
+                    ensure=True, pin_token=graph_key)
+            )
+        if better_shared_keys:
+            promises.append(
+                self.storage_client.copy_to(
+                    session_id, better_shared_keys, [graph_record.preferred_data_device],
+                    ensure=False, pin_token=graph_key)
+                .then(lambda *_: _release_copied_keys(better_shared_keys))
+            )
+        return promises
+
+    @log_unhandled
+    def _prepare_remote_keys(self, session_id, graph_key, remote_keys, input_metas):
+        promises = []
+        graph_record = self._graph_records[(session_id, graph_key)]
+
+        filtered_remote_keys = remote_keys
+        if self._receiver_manager_ref:
+            transferring_keys = set(self._receiver_manager_ref.filter_registered_keys(
+                session_id, remote_keys))
+            if transferring_keys:
+                logger.debug('Data %s already scheduled for fetch, just wait.', transferring_keys)
+                filtered_remote_keys = [k for k in remote_keys if k not in transferring_keys]
+                promises.append(self._receiver_manager_ref.add_keys_callback(
+                    session_id, transferring_keys, _promise=True,
+                    _timeout=options.worker.prepare_data_timeout))
+
+        for input_key in filtered_remote_keys:
+            # load data from another worker
+            chunk_meta = input_metas.get(input_key) or graph_record.data_metas.get(input_key)
+            if chunk_meta:
+                chunk_meta.workers = tuple(w for w in chunk_meta.workers if w != self.address)
+
+            if chunk_meta is None or not chunk_meta.workers:
+                raise DependencyMissing('Dependency %r not met on sending.' % (input_key,))
+            worker_results = list(chunk_meta.workers)
+            random.shuffle(worker_results)
+
+            # fetch data from other workers, if one fails, try another
+            p = promise.finished(_accept=False)
+            for worker in worker_results:
+                p = p.catch(functools.partial(
+                    self._fetch_remote_data, session_id, graph_key, input_key, worker,
+                    ensure_cached=input_key in graph_record.shared_input_chunks))
+            promises.append(p)
+        return promises
 
     @log_unhandled
     def _send_calc_request(self, session_id, graph_key, calc_uid):
@@ -702,11 +745,19 @@ class ExecutionActor(WorkerActor):
                 graph_record.mem_request = dict()
 
         promises = []
+        address_to_data_keys = defaultdict(set)
         for key, targets in data_to_addresses.items():
+            for target in targets:
+                address_to_data_keys[target].add(key)
             promises.append(promise.finished()
                             .then(lambda: self._dispatch_ref.get_free_slot('sender', _promise=True))
                             .then(functools.partial(_send_chunk, data_key=key, target_addrs=targets))
                             .catch(lambda *_: None))
+
+        for target, keys in address_to_data_keys.items():
+            self.ctx.actor_ref(ReceiverManagerActor.default_uid(), address=target) \
+                .register_keys(session_id, keys, _tell=True, _wait=False)
+
         return promise.all_(promises)
 
     @log_unhandled

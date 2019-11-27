@@ -36,9 +36,9 @@ class Test(WorkerCase):
 
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
-            quota_ref.process_quota('non_exist')
-            quota_ref.hold_quota('non_exist')
-            quota_ref.release_quota('non_exist')
+            quota_ref.process_quotas(['non_exist'])
+            quota_ref.hold_quotas(['non_exist'])
+            quota_ref.release_quotas(['non_exist'])
 
             with self.assertRaises(ValueError):
                 quota_ref.request_quota('ERROR', 1000)
@@ -47,12 +47,12 @@ class Test(WorkerCase):
             self.assertTrue(quota_ref.request_quota('0', 50))
             self.assertTrue(quota_ref.request_quota('0', 200))
 
-            quota_ref.process_quota('0')
+            quota_ref.process_quotas(['0'])
             self.assertIn('0', quota_ref.dump_data().proc_sizes)
             quota_ref.alter_allocation('0', 190, new_key=('0', 0))
             self.assertEqual(quota_ref.dump_data().allocations[('0', 0)], 190)
 
-            quota_ref.hold_quota(('0', 0))
+            quota_ref.hold_quotas([('0', 0)])
             self.assertIn(('0', 0), quota_ref.dump_data().hold_sizes)
             quota_ref.alter_allocation(('0', 0), new_key=('0', 1))
             self.assertEqual(quota_ref.dump_data().allocations[('0', 1)], 190)
@@ -106,7 +106,7 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, accept=False))
 
                 with patch_method(QuotaActor.alter_allocation, new=_raiser):
-                    quota_ref.release_quota('2')
+                    quota_ref.release_quotas(['2'])
 
                     with self.assertRaises(ValueError):
                         self.get_result(5)
@@ -122,7 +122,7 @@ class Test(WorkerCase):
                 ref = test_actor.promise_ref(QuotaActor.default_uid())
 
                 def actual_exec(x):
-                    ref.release_quota(x)
+                    ref.release_quotas([x])
                     end_time.append(time.time())
                     finished.add(x)
                     if len(finished) == 5:
@@ -154,7 +154,7 @@ class Test(WorkerCase):
 
                     def actual_exec(keys):
                         for k in keys:
-                            ref.release_quota(k)
+                            ref.release_quotas([k])
                         end_time.append(time.time())
                         test_actor.set_result(None)
 
@@ -190,7 +190,7 @@ class Test(WorkerCase):
                 time_recs.append(time.time())
 
                 def actual_exec(x):
-                    ref.release_quota(x)
+                    ref.release_quotas([x])
                     time_recs.append(time.time())
                     test_actor.set_result(None)
 

@@ -69,7 +69,7 @@ class OtherProcessTestActor(WorkerActor):
         proc_handler = self.storage_client.get_storage_handler((1, DataStorageDevice.PROC_MEMORY))
 
         def _verify_result(*_):
-            result = proc_handler.get_object(session_id, key1)
+            result = proc_handler.get_objects(session_id, [key1])[0]
             assert_allclose(result, data1)
 
             devices = self._manager_ref.get_data_locations(session_id, [key1])[0]
@@ -93,7 +93,7 @@ class OtherProcessTestActor(WorkerActor):
         proc_handler = self.storage_client.get_storage_handler((1, DataStorageDevice.PROC_MEMORY))
 
         def _verify_result(*_):
-            result = shared_handler.get_object(session_id, key1)
+            result = shared_handler.get_objects(session_id, [key1])[0]
             assert_allclose(result, data1)
 
             devices = self._manager_ref.get_data_locations(session_id, [key1])[0]
@@ -240,6 +240,11 @@ class Test(WorkerCase):
                     first_shared_key = loc_to_keys[DataStorageDevice.SHARED_MEMORY][0]
                     storage_client.get_object(session_id, first_shared_key,
                                               [DataStorageDevice.PROC_MEMORY], _promise=False)
+
+                shared_objs = storage_client.get_objects(
+                    session_id, [first_shared_key], [DataStorageDevice.SHARED_MEMORY], _promise=False)
+                self.assertEqual(len(shared_objs), 1)
+                assert_allclose(shared_objs[0], data_dict[first_shared_key])
 
                 storage_client.get_object(session_id, first_shared_key,
                                           [DataStorageDevice.PROC_MEMORY], _promise=True) \

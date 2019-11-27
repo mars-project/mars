@@ -143,9 +143,10 @@ def start_transfer_test_pool(**kwargs):
         pool.create_actor(StorageClientActor, uid=StorageClientActor.default_uid())
         pool.create_actor(InProcHolderActor)
 
-        yield pool
-
-        shared_holder_ref.destroy()
+        try:
+            yield pool
+        finally:
+            shared_holder_ref.destroy()
 
 
 def run_transfer_worker(pool_address, session_id, chunk_keys, spill_dir, msg_queue):

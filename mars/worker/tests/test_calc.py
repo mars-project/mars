@@ -134,7 +134,7 @@ class Test(WorkerCase):
 
             def _extract_value_ref(*_):
                 inproc_handler = storage_client.get_storage_handler((0, DataStorageDevice.PROC_MEMORY))
-                obj = inproc_handler.get_object(session_id, add_chunk.key)
+                obj = inproc_handler.get_objects(session_id, [add_chunk.key])[0]
                 ref_store.append(weakref.ref(obj))
                 del obj
 

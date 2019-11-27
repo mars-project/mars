@@ -65,17 +65,17 @@ class Test(WorkerCase):
                 handler.put_objects(session_id, [data_key1], [data])
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]),
                                  [(0, DataStorageDevice.CUDA)])
-                self.assertIsInstance(handler.get_object(session_id, data_key1), cuda_type)
-                assert_obj_equal(data, move_to_mem(handler.get_object(session_id, data_key1)))
+                self.assertIsInstance(handler.get_objects(session_id, [data_key1])[0], cuda_type)
+                assert_obj_equal(data, move_to_mem(handler.get_objects(session_id, [data_key1])[0]))
 
                 handler.delete(session_id, [data_key1])
                 self.assertEqual(sorted(storage_manager_ref.get_data_locations(session_id, [data_key1])[0]), [])
                 with self.assertRaises(KeyError):
-                    handler.get_object(session_id, data_key1)
+                    handler.get_objects(session_id, [data_key1])
 
-                handler.put_objects(session_id, [data_key2], [ser_data], serialized=True)
-                self.assertIsInstance(handler.get_object(session_id, data_key2), cuda_type)
-                assert_obj_equal(data, move_to_mem(handler.get_object(session_id, data_key2)))
+                handler.put_objects(session_id, [data_key2], [ser_data], serialize=True)
+                self.assertIsInstance(handler.get_objects(session_id, [data_key2])[0], cuda_type)
+                assert_obj_equal(data, move_to_mem(handler.get_objects(session_id, [data_key2])[0]))
                 handler.delete(session_id, [data_key2])
 
     def testCudaMemLoad(self):
@@ -118,7 +118,7 @@ class Test(WorkerCase):
 
             disk_handler.delete(session_id, [data_key1])
 
-            data_load = handler.get_object(session_id, data_key1)
+            data_load = handler.get_objects(session_id, [data_key1])[0]
             ref_data = weakref.ref(data_load)
             del data_load
             handler.delete(session_id, [data_key1])
@@ -137,7 +137,7 @@ class Test(WorkerCase):
 
             shared_handler.delete(session_id, [data_key2])
 
-            data_load = handler.get_object(session_id, data_key2)
+            data_load = handler.get_objects(session_id, [data_key2])[0]
             ref_data = weakref.ref(data_load)
             del data_load
             handler.delete(session_id, [data_key2])

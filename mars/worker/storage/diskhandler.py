@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import os
 import shutil
 import sys
@@ -206,14 +205,15 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
 
     @wrap_promised
     def create_bytes_writer(self, session_id, data_key, total_bytes, packed=False,
-                            packed_compression=None, _promise=False):
+                            packed_compression=None, auto_register=True, pin_token=None,
+                            _promise=False):
         return DiskIO(session_id, data_key, 'w', total_bytes, compress=self._compress,
                       packed=packed, handler=self)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _fallback(*_):
             return promise.all_(
-                src_handler.create_bytes_reader(session_id, k, _promise=True) \
+                src_handler.create_bytes_reader(session_id, k, _promise=True)
                 .then(lambda reader: self.create_bytes_writer(
                     session_id, k, reader.nbytes, _promise=True)
                       .then(lambda writer: self._copy_bytes_data(reader, writer),
@@ -229,19 +229,15 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
         else:
             return len(serialized_obj)
 
-    def load_from_object_io(self, session_id, data_keys, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _load_data(key, obj_data):
-            try:
-                data_size = self._get_serialized_data_size(obj_data)
-                writer = self.create_bytes_writer(session_id, key, data_size, _promise=False)
-                return self._copy_object_data(obj_data, writer)
-            finally:
-                del obj_data
+            data_size = self._get_serialized_data_size(obj_data)
+            return self.create_bytes_writer(session_id, key, data_size, _promise=True) \
+                .then(lambda writer: self._copy_object_data(obj_data, writer))
 
         def _fallback(*_):
-            return promise.all_(
-                src_handler.get_object(session_id, key, serialized=True, _promise=True)
-                .then(functools.partial(_load_data, key)) for key in data_keys)
+            return src_handler.get_objects(session_id, data_keys, serialize=True, _promise=True) \
+                .then(lambda objs: promise.all_(_load_data(k, o) for k, o in zip(data_keys, objs)))
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

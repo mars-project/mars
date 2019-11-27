@@ -132,7 +132,7 @@ class Test(WorkerCase):
             shared_handler.delete(session_id, [key_list[1]])
             shared_handler.put_objects(session_id, [key_list[last_idx]], [data_list[last_idx]])
             assert_allclose(data_list[last_idx],
-                            shared_handler.get_object(session_id, key_list[last_idx]))
+                            shared_handler.get_objects(session_id, [key_list[last_idx]])[0])
 
             pin_token2 = str(uuid.uuid4())
             pinned = shared_handler.pin_data_keys(session_id, key_list, pin_token2)
@@ -140,7 +140,7 @@ class Test(WorkerCase):
 
             shared_handler.put_objects(session_id, [key_list[last_idx]], [data_list[last_idx]])
             assert_allclose(data_list[last_idx],
-                            shared_handler.get_object(session_id, key_list[last_idx]))
+                            shared_handler.get_objects(session_id, [key_list[last_idx]])[0])
 
             unpinned = shared_handler.unpin_data_keys(session_id, key_list, pin_token1)
             self.assertEqual(sorted(key_list[2:last_idx]), sorted(unpinned))

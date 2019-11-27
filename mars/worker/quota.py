@@ -207,55 +207,34 @@ class QuotaActor(WorkerActor):
         self._process_requests()
 
     @log_unhandled
-    def process_quota(self, key):
+    def process_quotas(self, keys):
         """
         Mark request quota as being processed
-        :param key: request key
+        :param keys: request keys
         """
-        if key not in self._allocations:
-            return
-        alloc_size = self._allocations[key]
-        self._total_proc += alloc_size - self._proc_sizes.get(key, 0)
-        self._proc_sizes[key] = alloc_size
+        for key in keys:
+            try:
+                alloc_size = self._allocations[key]
+            except KeyError:
+                continue
+            self._total_proc += alloc_size - self._proc_sizes.get(key, 0)
+            self._proc_sizes[key] = alloc_size
 
     @log_unhandled
-    def hold_quota(self, key):
+    def hold_quotas(self, keys):
         """
         Mark request quota as already been hold
-        :param key: request key
+        :param keys: request keys
         """
-        if key not in self._allocations:
-            return
-        alloc_size = self._allocations[key]
-        self._total_hold += alloc_size - self._hold_sizes.get(key, 0)
-        self._hold_sizes[key] = alloc_size
+        for key in keys:
+            try:
+                alloc_size = self._allocations[key]
+            except KeyError:
+                continue
+            self._total_hold += alloc_size - self._hold_sizes.get(key, 0)
+            self._hold_sizes[key] = alloc_size
 
-        if key in self._proc_sizes:
-            self._total_proc -= self._proc_sizes[key]
-            del self._proc_sizes[key]
-
-    @log_unhandled
-    def release_quota(self, key):
-        """
-        Release allocated quota
-        :param key: request key
-        """
-        if key not in self._allocations:
-            return
-        alloc_size = self._allocations[key]
-        self._allocated_size -= alloc_size
-        del self._allocations[key]
-
-        if key in self._proc_sizes:
-            self._total_proc -= self._proc_sizes[key]
-            del self._proc_sizes[key]
-
-        if key in self._hold_sizes:
-            self._total_hold -= self._hold_sizes[key]
-            del self._hold_sizes[key]
-
-        self._process_requests()
-        self._log_allocate('Quota key %s released on %s.', key, self.uid)
+            self._total_proc -= self._proc_sizes.pop(key, 0)
 
     @log_unhandled
     def release_quotas(self, keys):
@@ -263,8 +242,22 @@ class QuotaActor(WorkerActor):
         Release allocated quota in batch
         :param keys: request keys
         """
-        for k in keys:
-            self.release_quota(k)
+        total_alloc_size = 0
+
+        for key in keys:
+            try:
+                alloc_size = self._allocations[key]
+                total_alloc_size += alloc_size
+                del self._allocations[key]
+            except KeyError:
+                continue
+            self._total_proc -= self._proc_sizes.pop(key, 0)
+            self._total_hold -= self._hold_sizes.pop(key, 0)
+
+        self._allocated_size -= total_alloc_size
+        if total_alloc_size:
+            self._process_requests()
+            self._log_allocate('Quota key %s released on %s.', keys, self.uid)
 
     def dump_data(self):
         return QuotaDumpType(self._allocations, self._requests, self._proc_sizes, self._hold_sizes)
@@ -282,7 +275,7 @@ class QuotaActor(WorkerActor):
         :param handle_shrink: if True and the quota size less than the original, process requests in the queue
         :param new_keys: new allocation keys to replace current keys, if None, no changes will be made
         :param allocate: if True, will allocate resources for new items
-        :param process_quota: call process_quota() after allocated
+        :param process_quota: call process_quotas() after allocated
         :return:
         """
         quota_sizes = quota_sizes or itertools.repeat(None)
@@ -305,7 +298,7 @@ class QuotaActor(WorkerActor):
         :param handle_shrink: if True and the quota size less than the original, process requests in the queue
         :param new_key: new allocation key to replace current key
         :param allocate: if True, will allocate resources for new items
-        :param process_quota: call process_quota() after allocated
+        :param process_quota: call process_quotas() after allocated
         """
         old_size = self._allocations.get(key, 0)
 
@@ -317,30 +310,25 @@ class QuotaActor(WorkerActor):
             size_diff = quota_size - old_size
             self._allocated_size += size_diff
             self._allocations[key] = quota_size
-            if key in self._proc_sizes:
+            try:
                 self._total_proc += quota_size - self._proc_sizes[key]
                 self._proc_sizes[key] = quota_size
-            if key in self._hold_sizes:
+            except KeyError:
+                pass
+            try:
                 self._total_hold += quota_size - self._hold_sizes[key]
                 self._hold_sizes[key] = quota_size
+            except KeyError:
+                pass
             self._log_allocate('Quota key %s applied on %s. Diff: %s,', key, self.uid, size_diff)
 
         if process_quota:
-            self.process_quota(key)
+            self.process_quotas([key])
 
         if new_key is not None and new_key != key:
-            self._allocations[new_key] = self._allocations[key]
-            del self._allocations[key]
-            try:
-                self._proc_sizes[new_key] = self._proc_sizes[key]
-                del self._proc_sizes[key]
-            except KeyError:
-                pass
-            try:
-                self._hold_sizes[new_key] = self._hold_sizes[key]
-                del self._hold_sizes[key]
-            except KeyError:
-                pass
+            self._allocations[new_key] = self._allocations.pop(key)
+            self._proc_sizes[new_key] = self._proc_sizes.pop(key, 0)
+            self._hold_sizes[new_key] = self._hold_sizes.pop(key, 0)
 
         if quota_size is not None and quota_size < old_size:
             if handle_shrink:
@@ -373,9 +361,8 @@ class QuotaActor(WorkerActor):
             except:  # noqa: E722
                 removed.append(k)
                 # just in case the quota is allocated
-                self.release_quota(k)
                 for cb in callbacks:
-                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False))
+                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False, _wait=False))
         for k in removed:
             self._requests.pop(k, None)
 
@@ -453,7 +440,7 @@ class MemQuotaActor(QuotaActor):
                 allocated=self._allocated_size, hold=self._total_hold, total=self._total_size)
         return ret
 
-    def release_quota(self, key):
-        ret = super(MemQuotaActor, self).release_quota(key)
+    def release_quotas(self, keys):
+        ret = super(MemQuotaActor, self).release_quotas(keys)
         self._update_status(allocated=self._allocated_size, total=self._total_size)
         return ret

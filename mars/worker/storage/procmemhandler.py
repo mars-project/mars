@@ -34,21 +34,22 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return self._inproc_store_ref_attr
 
     @wrap_promised
-    def get_object(self, session_id, data_key, serialized=False, _promise=False):
-        obj = self._inproc_store_ref.get_object(session_id, data_key)
-        if serialized:
-            obj = dataserializer.serialize(obj)
-        return obj
+    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
+        objs = self._inproc_store_ref.get_objects(session_id, data_keys)
+        if serialize:
+            objs = [dataserializer.serialize(o) for o in objs]
+        return objs
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, _promise=False):
-        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
+                    pin_token=None, _promise=False):
+        objs = [self._deserial(obj) if serialize else obj for obj in objs]
         sizes = sizes or [calc_data_size(obj) for obj in objs]
         shapes = [getattr(obj, 'shape', None) for obj in objs]
-        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes)
+        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin_token=pin_token)
         self.register_data(session_id, data_keys, sizes, shapes)
 
-    def load_from_bytes_io(self, session_id, data_keys, src_handler):
+    def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _read_serialized(reader):
             with reader:
                 return reader.get_io_pool().submit(reader.read).result()
@@ -57,16 +58,16 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
             return self._batch_load_objects(
                 session_id, data_keys,
                 lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
-                True
+                serialize=True
             )
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 
-    def load_from_object_io(self, session_id, data_keys, src_handler):
+    def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _fallback(*_):
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_object(session_id, k, _promise=True))
+                lambda k: src_handler.get_objects(session_id, k, _promise=True), batch_get=True)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

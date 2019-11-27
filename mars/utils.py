@@ -37,6 +37,7 @@ import pandas as pd
 from .compat import irange, functools32, getargspec
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register as register_tokenizer
 from .config import options
+from .lib.tblib import Traceback
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
@@ -406,7 +407,14 @@ def build_exc_info(exc_type, *args, **kwargs):
     try:
         raise exc_type(*args, **kwargs)
     except exc_type:
-        return sys.exc_info()
+        exc_info = sys.exc_info()
+        tb = exc_info[-1]
+        back_frame = tb.tb_frame.f_back
+        tb_builder = object.__new__(Traceback)
+        tb_builder.tb_frame = back_frame
+        tb_builder.tb_lineno = back_frame.f_lineno
+        tb_builder.tb_next = tb.tb_next
+        return exc_info[:2] + (tb_builder.as_traceback(),)
 
 
 class BlacklistSet(object):
