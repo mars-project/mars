@@ -167,11 +167,12 @@ class StorageHandler(object):
 
     def load_from(self, session_id, data_keys, src_handler, pin_token=None):
         """
-        :param session_id:
-        :param data_keys:
-        :param src_handler:
+        :param session_id: session id
+        :param data_keys: keys of data to load
+        :param src_handler: source data handler containing source data
         :type src_handler: StorageHandler
-        :param pin:
+        :param pin_token: if not None, this token is used to pin loaded data.
+                          pass this to unpin_data_keys() if unpin is needed
         """
         logger.debug('Try loading data %s from device %s into %s',
                      data_keys, src_handler.storage_type, self.storage_type)
@@ -319,7 +320,7 @@ class ObjectStorageMixin(object):
             return dataserializer.deserialize(obj)
 
     def _batch_load_objects(self, session_id, data_keys, key_loader,
-                            batch_get=False, store_serialized=False, pin_token=None):
+                            batch_get=False, serialize=False, pin_token=None):
         keys, objs = [], []
         sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
@@ -329,7 +330,7 @@ class ObjectStorageMixin(object):
 
         def _put_objects(*_):
             try:
-                return self.put_objects(session_id, keys, objs, sizes, serialized=store_serialized,
+                return self.put_objects(session_id, keys, objs, sizes, serialize=serialize,
                                         pin_token=pin_token, _promise=True)
             finally:
                 objs[:] = []
@@ -337,7 +338,7 @@ class ObjectStorageMixin(object):
         def _batch_put_objects(objs):
             try:
                 return self.put_objects(session_id, data_keys, objs, sizes,
-                                        serialized=store_serialized, pin_token=pin_token, _promise=True)
+                                        serialize=serialize, pin_token=pin_token, _promise=True)
             finally:
                 objs[:] = []
 
@@ -348,10 +349,10 @@ class ObjectStorageMixin(object):
                 key_loader(k).then(functools.partial(_record_data, k))
                 for k in data_keys).then(_put_objects)
 
-    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
+    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         raise NotImplementedError
 
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False, pin_token=False,
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False, pin_token=False,
                     _promise=False):
         raise NotImplementedError
 

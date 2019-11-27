@@ -34,16 +34,16 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
         return self._inproc_store_ref_attr
 
     @wrap_promised
-    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
+    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         objs = self._inproc_store_ref.get_objects(session_id, data_keys)
-        if serialized:
+        if serialize:
             objs = [dataserializer.serialize(o) for o in objs]
         return objs
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
-        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+        objs = [self._deserial(obj) if serialize else obj for obj in objs]
         sizes = sizes or [calc_data_size(obj) for obj in objs]
         shapes = [getattr(obj, 'shape', None) for obj in objs]
         self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin_token=pin_token)
@@ -58,7 +58,7 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
             return self._batch_load_objects(
                 session_id, data_keys,
                 lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
-                store_serialized=True
+                serialize=True
             )
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)

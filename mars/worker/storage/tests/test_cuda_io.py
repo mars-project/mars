@@ -73,7 +73,7 @@ class Test(WorkerCase):
                 with self.assertRaises(KeyError):
                     handler.get_objects(session_id, [data_key1])
 
-                handler.put_objects(session_id, [data_key2], [ser_data], serialized=True)
+                handler.put_objects(session_id, [data_key2], [ser_data], serialize=True)
                 self.assertIsInstance(handler.get_objects(session_id, [data_key2])[0], cuda_type)
                 assert_obj_equal(data, move_to_mem(handler.get_objects(session_id, [data_key2])[0]))
                 handler.delete(session_id, [data_key2])

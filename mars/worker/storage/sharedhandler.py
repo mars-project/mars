@@ -136,14 +136,14 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                                handler=self, pin_token=pin_token)
 
     @wrap_promised
-    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
-        if serialized:
+    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
+        if serialize:
             return [self._shared_store.get_buffer(session_id, k) for k in data_keys]
         else:
             return [self._shared_store.get(session_id, k) for k in data_keys]
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
         keys, shapes = [], []
         obj_refs = []
@@ -152,7 +152,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
 
         try:
             for key, obj in zip(data_keys, objs):
-                obj = self._deserial(obj) if serialized else obj
+                obj = self._deserial(obj) if serialize else obj
                 shape = getattr(obj, 'shape', None)
 
                 try:
@@ -225,8 +225,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                          (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
             return self._batch_load_objects(
                 session_id, data_keys,
-                lambda k: src_handler.get_objects(session_id, k, serialized=ser_needed, _promise=True),
-                store_serialized=ser_needed, pin_token=pin_token, batch_get=True)
+                lambda k: src_handler.get_objects(session_id, k, serialize=ser_needed, _promise=True),
+                serialize=ser_needed, pin_token=pin_token, batch_get=True)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

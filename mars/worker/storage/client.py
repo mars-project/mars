@@ -163,15 +163,15 @@ class StorageClient(object):
                     exc = ex
             raise exc
 
-    def get_object(self, session_id, data_key, source_devices, serialized=False, _promise=True):
+    def get_object(self, session_id, data_key, source_devices, serialize=False, _promise=True):
         if _promise:
-            return self.get_objects(session_id, [data_key], source_devices, serialized=serialized,
+            return self.get_objects(session_id, [data_key], source_devices, serialize=serialize,
                                     _promise=True).then(lambda objs: objs[0])
         else:
-            return self.get_objects(session_id, [data_key], source_devices, serialized=serialized,
+            return self.get_objects(session_id, [data_key], source_devices, serialize=serialize,
                                     _promise=False)[0]
 
-    def get_objects(self, session_id, data_keys, source_devices, serialized=False, _promise=True):
+    def get_objects(self, session_id, data_keys, source_devices, serialize=False, _promise=True):
         source_devices = self._normalize_devices(source_devices)
         stored_dev_lists = self._manager_ref.get_data_locations(session_id, data_keys)
         dev_to_keys = defaultdict(list)
@@ -187,7 +187,7 @@ class StorageClient(object):
             for stored_dev, keys in dev_to_keys.items():
                 handler = self.get_storage_handler(stored_dev)
                 data_dict.update(zip(keys, handler.get_objects(
-                    session_id, data_keys, serialized=serialized, _promise=False)))
+                    session_id, data_keys, serialize=serialize, _promise=False)))
             return [data_dict[k] for k in data_keys]
         else:
             promises = []
@@ -195,18 +195,18 @@ class StorageClient(object):
                 handler = self.get_storage_handler(stored_dev)
                 loc_getter = functools.partial(
                     lambda keys, *_: self.get_objects(
-                        session_id, keys, source_devices, serialized=serialized, _promise=True), keys)
+                        session_id, keys, source_devices, serialize=serialize, _promise=True), keys)
                 updater = functools.partial(lambda keys, objs: data_dict.update(zip(keys, objs)),
                                             keys)
                 if stored_dev in source_devices:
                     promises.append(handler.get_objects(
-                        session_id, keys, serialized=serialized, _promise=True).then(updater))
+                        session_id, keys, serialize=serialize, _promise=True).then(updater))
                 else:
                     promises.append(self.copy_to(session_id, keys, source_devices)
                         .then(loc_getter).then(updater))
             return promise.all_(promises).then(lambda *_: [data_dict[k] for k in data_keys])
 
-    def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialized=False):
+    def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialize=False):
         device_order = self._normalize_devices(device_order)
         if sizes:
             sizes_dict = dict(zip(data_keys, sizes))
@@ -219,7 +219,7 @@ class StorageClient(object):
             objects = [data_dict[k] for k in keys]
             data_sizes = [sizes_dict[k] for k in keys]
             try:
-                return h.put_objects(session_id, keys, objects, sizes=data_sizes, serialized=serialized,
+                return h.put_objects(session_id, keys, objects, sizes=data_sizes, serialize=serialize,
                                      _promise=True)
             finally:
                 objects[:] = []

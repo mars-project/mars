@@ -58,11 +58,11 @@ class Test(WorkerCase):
             with self.assertRaises(KeyError):
                 handler.get_objects(session_id, [data_key1])
 
-            handler.put_objects(session_id, [data_key2], [ser_data2], serialized=True)
+            handler.put_objects(session_id, [data_key2], [ser_data2], serialize=True)
             assert_allclose(data2, handler.get_objects(session_id, [data_key2])[0])
             handler.delete(session_id, [data_key2])
 
-            handler.put_objects(session_id, [data_key2], [bytes_data2], serialized=True)
+            handler.put_objects(session_id, [data_key2], [bytes_data2], serialize=True)
             assert_allclose(data2, handler.get_objects(session_id, [data_key2])[0])
             handler.delete(session_id, [data_key2])
 

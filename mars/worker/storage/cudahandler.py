@@ -58,16 +58,16 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
         return o
 
     @wrap_promised
-    def get_objects(self, session_id, data_keys, serialized=False, _promise=False):
+    def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         objs = self._cuda_store_ref.get_objects(session_id, data_keys)
-        if serialized:
+        if serialize:
             objs = [dataserializer.serialize(self._obj_to_mem(o)) for o in objs]
         return objs
 
     @wrap_promised
-    def put_objects(self, session_id, data_keys, objs, sizes=None, serialized=False,
+    def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
-        objs = [self._deserial(obj) if serialized else obj for obj in objs]
+        objs = [self._deserial(obj) if serialize else obj for obj in objs]
         sizes = sizes or [calc_data_size(obj) for obj in objs]
 
         objs = [self._obj_to_cuda(obj) for obj in objs]
@@ -89,7 +89,7 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
         return self._batch_load_objects(
             session_id, data_keys,
             lambda k: src_handler.create_bytes_reader(session_id, k, _promise=True).then(_read_serialized),
-            store_serialized=True, pin_token=pin_token,
+            serialize=True, pin_token=pin_token,
         )
 
     def delete(self, session_id, data_keys, _tell=False):

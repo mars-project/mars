@@ -236,7 +236,7 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
                 .then(lambda writer: self._copy_object_data(obj_data, writer))
 
         def _fallback(*_):
-            return src_handler.get_objects(session_id, data_keys, serialized=True, _promise=True) \
+            return src_handler.get_objects(session_id, data_keys, serialize=True, _promise=True) \
                 .then(lambda objs: promise.all_(_load_data(k, o) for k, o in zip(data_keys, objs)))
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
