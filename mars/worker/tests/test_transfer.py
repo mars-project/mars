@@ -19,7 +19,6 @@ import signal
 import tempfile
 import time
 import uuid
-import zlib
 from collections import defaultdict
 
 import numpy as np
@@ -27,41 +26,47 @@ from numpy.testing import assert_array_equal
 from pyarrow import plasma
 
 from mars import promise
-from mars.compat import Empty, BrokenPipeError, TimeoutError
+from mars.compat import Empty, ConnectionRefusedError, BrokenPipeError, TimeoutError
 from mars.config import options
-from mars.errors import ChecksumMismatch, DependencyMissing, StorageFull, \
-    SpillNotConfigured, ExecutionInterrupted, WorkerDead
+from mars.errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method, create_actor_pool
-from mars.utils import get_next_port
+from mars.utils import get_next_port, build_exc_info
 from mars.worker import SenderActor, ReceiverManagerActor, ReceiverWorkerActor, \
     DispatchActor, QuotaActor, MemQuotaActor, StorageManagerActor, IORunnerActor, \
     StatusActor, SharedHolderActor, InProcHolderActor
-from mars.worker.storage import DataStorageDevice
-from mars.worker.storage.sharedstore import PlasmaSharedStore, PlasmaKeyMapActor
+from mars.worker.storage import DataStorageDevice, StorageClient
+from mars.worker.storage.sharedstore import PlasmaKeyMapActor
 from mars.worker.tests.base import WorkerCase, StorageClientActor
 from mars.worker.transfer import ReceiveStatus, ReceiverDataMeta
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
 
 
-class MockReceiverActor(WorkerActor):
+class MockReceiverWorkerActor(WorkerActor):
     """
     Actor handling receiving data from a SenderActor
     """
     def __init__(self):
-        super(MockReceiverActor, self).__init__()
+        super(MockReceiverWorkerActor, self).__init__()
         self._dispatch_ref = None
+        self._receiver_manager_ref = None
 
         self._data_metas = dict()
         self._data_writers = dict()
         self._callbacks = defaultdict(list)
 
+        self._receive_delays = dict()
+        self._receive_errors = set()
+
     def post_create(self):
-        super(MockReceiverActor, self).post_create()
+        super(MockReceiverWorkerActor, self).post_create()
         self._dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'receiver')
+        self._receiver_manager_ref = self.ctx.actor_ref(ReceiverManagerActor.default_uid())
+        if not self.ctx.has_actor(self._receiver_manager_ref):
+            self._receiver_manager_ref = None
 
     def set_status(self, session_id, chunk_key, status):
         query_key = (session_id, chunk_key)
@@ -74,51 +79,56 @@ class MockReceiverActor(WorkerActor):
         buf = self._data_writers[(session_id, chunk_key)].getvalue()
         return dataserializer.loads(buf)
 
-    def check_status(self, session_id, chunk_key):
+    def set_receive_delay_key(self, session_id, chunk_key, delay):
+        self._receive_delays[(session_id, chunk_key)] = delay
+
+    def set_receive_error_key(self, session_id, chunk_key):
+        self._receive_errors.add((session_id, chunk_key))
+
+    def check_statuses(self, session_id, chunk_keys):
         try:
-            return self._data_metas[(session_id, chunk_key)].status
+            return [self._data_metas[(session_id, k)].status for k in chunk_keys]
         except KeyError:
             return ReceiveStatus.NOT_STARTED
 
-    def register_finish_callback(self, session_id, chunk_key, callback):
-        query_key = (session_id, chunk_key)
-        try:
-            meta = self._data_metas[query_key]
-            if meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.ERROR):
-                self.tell_promise(callback, *meta.callback_args, **meta.callback_kwargs)
-            else:
-                raise KeyError
-        except KeyError:
-            self._callbacks[query_key].append(callback)
-
-    def create_data_writers(self, session_id, chunk_key, data_size, sender_ref,
-                            ensure_cached=True, timeout=0, callback=None):
+    def create_data_writers(self, session_id, chunk_keys, data_sizes, sender_ref,
+                            ensure_cached=True, timeout=0, use_promise=True, callback=None):
         from mars.compat import BytesIO
-        query_key = (session_id, chunk_key)
-        if query_key in self._data_metas and \
-                self._data_metas[query_key].status in (ReceiveStatus.RECEIVED, ReceiveStatus.RECEIVING):
-            self.tell_promise(callback, self.address, self._data_metas[query_key].status)
-            return
-        self._data_metas[query_key] = ReceiverDataMeta(chunk_size=data_size, status=ReceiveStatus.RECEIVING)
-        self._data_writers[query_key] = BytesIO()
-        self.tell_promise(callback, self.address, None)
+        for chunk_key, data_size in zip(chunk_keys, data_sizes):
+            query_key = (session_id, chunk_key)
+            if query_key in self._data_metas and \
+                    self._data_metas[query_key].status in (ReceiveStatus.RECEIVED, ReceiveStatus.RECEIVING):
+                self.tell_promise(callback, self.address, self._data_metas[query_key].status)
+                return
+            self._data_metas[query_key] = ReceiverDataMeta(chunk_size=data_size, status=ReceiveStatus.RECEIVING)
+            self._data_writers[query_key] = BytesIO()
+        if callback:
+            self.tell_promise(callback)
 
-    def receive_data_part(self, session_id, chunk_key, data_part, checksum, is_last=False):
-        query_key = (session_id, chunk_key)
-        meta = self._data_metas[query_key]  # type: ReceiverDataMeta
-        if data_part:
-            new_checksum = zlib.crc32(data_part, meta.checksum)
-            if new_checksum != checksum:
-                raise ChecksumMismatch
-            meta.checksum = checksum
+    def receive_data_part(self, session_id, chunk_keys, end_marks, *data_parts):
+        finished_keys = []
+        for chunk_key, data_part, end_mark in zip(chunk_keys, data_parts, end_marks):
+            query_key = (session_id, chunk_key)
+            if query_key in self._receive_delays:
+                self.ctx.sleep(self._receive_delays[query_key])
+            if query_key in self._receive_errors:
+                raise ValueError
+            meta = self._data_metas[query_key]  # type: ReceiverDataMeta
             self._data_writers[query_key].write(data_part)
-        if is_last:
-            meta.status = ReceiveStatus.RECEIVED
-        for cb in self._callbacks[query_key]:
-            self.tell_promise(cb)
+            if end_mark:
+                finished_keys.append(chunk_key)
+                meta.status = ReceiveStatus.RECEIVED
+        if self._receiver_manager_ref:
+            self._receiver_manager_ref.notify_keys_finish(session_id, finished_keys, _tell=True)
 
-    def cancel_receive(self, session_id, chunk_key):
-        pass
+    def cancel_receive(self, session_id, chunk_keys, exc_info=None):
+        if exc_info is None:
+            exc_info = build_exc_info(ExecutionInterrupted)
+        for k in chunk_keys:
+            self._data_metas[(session_id, k)].status = ReceiveStatus.ERROR
+        if self._receiver_manager_ref:
+            self._receiver_manager_ref.notify_keys_finish(
+                session_id, chunk_keys, *exc_info, **dict(_accept=False, _tell=True))
 
 
 @contextlib.contextmanager
@@ -217,6 +227,10 @@ class Test(WorkerCase):
         mock_data = np.array([1, 2, 3, 4])
         chunk_key1 = str(uuid.uuid4())
         chunk_key2 = str(uuid.uuid4())
+        chunk_key3 = str(uuid.uuid4())
+        chunk_key4 = str(uuid.uuid4())
+        chunk_key5 = str(uuid.uuid4())
+        chunk_key6 = str(uuid.uuid4())
 
         @contextlib.contextmanager
         def start_send_recv_pool():
@@ -225,101 +239,79 @@ class Test(WorkerCase):
                 sp.create_actor(SenderActor, uid=SenderActor.default_uid())
                 with start_transfer_test_pool(
                         address=recv_pool_addr, plasma_size=self.plasma_storage_size) as rp:
-                    rp.create_actor(MockReceiverActor, uid=ReceiverWorkerActor.default_uid())
+                    rp.create_actor(MockReceiverWorkerActor, uid=ReceiverWorkerActor.default_uid())
                     yield sp, rp
 
-        with start_send_recv_pool() as (send_pool, recv_pool):
+        with start_send_recv_pool() as (send_pool, recv_pool), \
+                self.run_actor_test(send_pool) as test_actor:
             sender_ref = send_pool.actor_ref(SenderActor.default_uid())
-            receiver_ref = recv_pool.actor_ref(ReceiverWorkerActor.default_uid())
 
-            with self.run_actor_test(send_pool) as test_actor:
-                storage_client = test_actor.storage_client
+            storage_client = test_actor.storage_client
+            sender_ref_p = test_actor.promise_ref(sender_ref)
 
-                # send when data missing
-                sender_ref_p = test_actor.promise_ref(sender_ref)
-                sender_ref_p.send_data(session_id, str(uuid.uuid4()), recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                with self.assertRaises(DependencyMissing):
-                    self.get_result(5)
+            # SCENARIO 1: send when data missing
+            with self.assertRaises(DependencyMissing):
+                self.waitp(sender_ref_p.send_data(
+                    session_id, ['non_exist'], [recv_pool_addr], _promise=True))
 
-                # send data in spill
-                serialized = dataserializer.serialize(mock_data)
-                self.waitp(
-                    storage_client.create_writer(session_id, chunk_key1, serialized.total_bytes,
-                                                 [DataStorageDevice.DISK])
-                        .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized))
-                              .then(lambda *_: writer.close()))
-                )
+            # SCENARIO 2: send data to non-exist endpoint which causes error
+            self.waitp(storage_client.put_objects(
+                session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
+            with self.assertRaises((BrokenPipeError, ConnectionRefusedError)):
+                self.waitp(sender_ref_p.send_data(
+                    session_id, [chunk_key1], [recv_pool_addr2], _promise=True))
 
-                sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                self.get_result(5)
-                assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
-                storage_client.delete(session_id, [chunk_key1])
+            with start_transfer_test_pool(
+                    address=recv_pool_addr2, plasma_size=self.plasma_storage_size) as rp2:
+                mock_recv_ref2 = rp2.create_actor(
+                    MockReceiverWorkerActor, uid=ReceiverWorkerActor.default_uid())
 
-                # send data in plasma store
-                self.waitp(
-                    storage_client.put_objects(
-                        session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY])
-                )
+                # SCENARIO 3: send data to multiple targets
+                self.waitp(storage_client.put_objects(
+                    session_id, [chunk_key2], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
+                self.waitp(sender_ref_p.send_data(
+                    session_id, [chunk_key2], [recv_pool_addr, recv_pool_addr2],
+                    block_size=128, _promise=True))
+                # send data to already transferred / transferring
+                self.waitp(sender_ref_p.send_data(
+                    session_id, [chunk_key2], [recv_pool_addr, recv_pool_addr2], _promise=True))
+                assert_array_equal(mock_data, mock_recv_ref2.get_result_data(session_id, chunk_key2))
 
-                sender_ref_p.send_data(session_id, chunk_key1, recv_pool_addr, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                self.get_result(5)
-                assert_array_equal(mock_data, receiver_ref.get_result_data(session_id, chunk_key1))
+                # SCENARIO 4: send multiple data at one time
+                self.waitp(storage_client.put_objects(
+                    session_id, [chunk_key3, chunk_key4], [mock_data] * 2,
+                    [DataStorageDevice.SHARED_MEMORY]))
+                self.waitp(sender_ref_p.send_data(
+                    session_id, [chunk_key3, chunk_key4], [recv_pool_addr2], _promise=True))
+                assert_array_equal(mock_data, mock_recv_ref2.get_result_data(session_id, chunk_key3))
+                assert_array_equal(mock_data, mock_recv_ref2.get_result_data(session_id, chunk_key4))
 
-                # send data to multiple targets
-                with start_transfer_test_pool(
-                        address=recv_pool_addr2, plasma_size=self.plasma_storage_size) as rp2:
-                    recv_ref2 = rp2.create_actor(MockReceiverActor, uid=ReceiverWorkerActor.default_uid())
+                # SCENARIO 5: send chunks already under transfer
+                self.waitp(storage_client.put_objects(
+                    session_id, [chunk_key5], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
+                mock_recv_ref2.set_receive_delay_key(session_id, chunk_key5, 1)
+                sender_ref_p.send_data(
+                    session_id, [chunk_key2, chunk_key5], [recv_pool_addr2], _promise=True)
+                self.waitp(sender_ref_p.send_data(
+                    session_id, [chunk_key5], [recv_pool_addr2], _promise=True))
+                assert_array_equal(mock_data, mock_recv_ref2.get_result_data(session_id, chunk_key5))
 
-                    self.waitp(
-                        sender_ref_p.send_data(session_id, chunk_key1,
-                                               [recv_pool_addr, recv_pool_addr2], _promise=True)
-                    )
-                    # send data to already transferred / transferring
-                    sender_ref_p.send_data(session_id, chunk_key1,
-                                           [recv_pool_addr, recv_pool_addr2], _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                    self.get_result(5)
-                    assert_array_equal(mock_data, recv_ref2.get_result_data(session_id, chunk_key1))
+                # SCENARIO 6: send chunks already under transfer
+                self.waitp(storage_client.put_objects(
+                    session_id, [chunk_key6], [mock_data], [DataStorageDevice.SHARED_MEMORY]))
+                mock_recv_ref2.set_receive_error_key(session_id, chunk_key6)
+                with self.assertRaises(ValueError):
+                    self.waitp(sender_ref_p.send_data(
+                        session_id, [chunk_key6], [recv_pool_addr2], _promise=True))
 
-                # send data to non-exist endpoint which causes error
-                self.waitp(
-                    storage_client.put_objects(
-                        session_id, [chunk_key2], [mock_data], [DataStorageDevice.SHARED_MEMORY])
-                )
-
-                sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                with self.assertRaises(BrokenPipeError):
-                    self.get_result(5)
-
-                def mocked_receive_data_part(*_, **__):
-                    raise ChecksumMismatch
-
-                with patch_method(MockReceiverActor.receive_data_part, new=mocked_receive_data_part):
-                    sender_ref_p.send_data(session_id, chunk_key2, recv_pool_addr, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-                    with self.assertRaises(ChecksumMismatch):
-                        self.get_result(5)
-
-    def testReceiver(self):
+    def testReceiverManager(self):
         pool_addr = 'localhost:%d' % get_next_port()
-        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_receiver_')
         session_id = str(uuid.uuid4())
 
         mock_data = np.array([1, 2, 3, 4])
         serialized_arrow_data = dataserializer.serialize(mock_data)
         data_size = serialized_arrow_data.total_bytes
         serialized_mock_data = serialized_arrow_data.to_buffer()
-        serialized_crc32 = zlib.crc32(serialized_arrow_data.to_buffer())
 
         chunk_key1 = str(uuid.uuid4())
         chunk_key2 = str(uuid.uuid4())
@@ -329,199 +321,194 @@ class Test(WorkerCase):
         chunk_key6 = str(uuid.uuid4())
         chunk_key7 = str(uuid.uuid4())
 
-        with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool:
-            receiver_ref = pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4()))
+        with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool, \
+                self.run_actor_test(pool) as test_actor:
+            mock_receiver_ref = pool.create_actor(MockReceiverWorkerActor, uid=str(uuid.uuid4()))
+            storage_client = test_actor.storage_client
+            receiver_manager_ref = test_actor.promise_ref(ReceiverManagerActor.default_uid())
 
-            with self.run_actor_test(pool) as test_actor:
-                storage_client = test_actor.storage_client
+            # SCENARIO 1: test transferring existing keys
+            self.waitp(
+                storage_client.create_writer(session_id, chunk_key1, serialized_arrow_data.total_bytes,
+                                             [DataStorageDevice.DISK])
+                    .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized_arrow_data))
+                          .then(lambda *_: writer.close()))
+            )
+            result = self.waitp(receiver_manager_ref.create_data_writers(
+                    session_id, [chunk_key1], [data_size], test_actor, _promise=True))
+            self.assertEqual(result[0].uid, mock_receiver_ref.uid)
+            self.assertEqual(result[1][0], ReceiveStatus.RECEIVED)
 
-                # check_status on receiving and received
-                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                                 ReceiveStatus.NOT_STARTED)
+            # test adding callback for transferred key (should return immediately)
+            result = self.waitp(receiver_manager_ref.add_keys_callback(
+                session_id, [chunk_key1], _promise=True))
+            self.assertTupleEqual(result, ())
 
-                self.waitp(
-                    storage_client.create_writer(session_id, chunk_key1, serialized_arrow_data.total_bytes,
-                                                 [DataStorageDevice.DISK])
-                        .then(lambda writer: promise.finished().then(lambda *_: writer.write(serialized_arrow_data))
-                              .then(lambda *_: writer.close()))
-                )
-                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                                 ReceiveStatus.RECEIVED)
-                storage_client.delete(session_id, [chunk_key1])
+            receiver_manager_ref.register_pending_keys(session_id, [chunk_key1, chunk_key2])
+            self.assertEqual(receiver_manager_ref.filter_receiving_keys(
+                session_id, [chunk_key1, chunk_key2, 'non_exist']), [chunk_key2])
 
-                self.waitp(
-                    storage_client.put_objects(
-                        session_id, [chunk_key1], [mock_data], [DataStorageDevice.SHARED_MEMORY])
-                )
+            # SCENARIO 2: test transferring new keys and wait on listeners
+            result = self.waitp(receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor, _promise=True))
+            self.assertEqual(result[0].uid, mock_receiver_ref.uid)
+            self.assertIsNone(result[1][0])
 
-                self.assertEqual(receiver_ref.check_status(session_id, chunk_key1),
-                                 ReceiveStatus.RECEIVED)
+            # transfer with transferring keys will report RECEIVING
+            result = self.waitp(receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key2], [data_size], test_actor, _promise=True))
+            self.assertEqual(result[1][0], ReceiveStatus.RECEIVING)
 
-                receiver_ref_p = test_actor.promise_ref(receiver_ref)
+            # add listener and finish transfer
+            receiver_manager_ref.add_keys_callback(session_id, [chunk_key1, chunk_key2], _promise=True) \
+                .then(lambda *s: test_actor.set_result(s))
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key2], [True], serialized_mock_data)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key3], [True], serialized_mock_data)
+            self.get_result(5)
 
-                # cancel on an un-run / missing result will result in nothing
-                receiver_ref_p.cancel_receive(session_id, [chunk_key2])
+            # SCENARIO 3: test listening on multiple transfers
+            receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key4, chunk_key5], [data_size] * 2, test_actor, _promise=True) \
+                .then(lambda *s: test_actor.set_result(s))
+            self.get_result(5)
+            # add listener
+            receiver_manager_ref.add_keys_callback(session_id, [chunk_key4, chunk_key5], _promise=True) \
+                .then(lambda *s: test_actor.set_result(s))
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key4], [True], serialized_mock_data)
+            # when some chunks are not transferred, promise will not return
+            with self.assertRaises(TimeoutError):
+                self.get_result(0.5)
+            mock_receiver_ref.receive_data_part(session_id, [chunk_key5], [True], serialized_mock_data)
+            self.get_result(5)
 
-                # start creating writer
-                receiver_ref_p.create_data_writers(session_id, [chunk_key1], [data_size], test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
-
-                result = receiver_ref_p.create_data_writers(session_id, [chunk_key1], [data_size], test_actor,
-                                                            use_promise=False)
-                self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVED))
-
-                receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
-
-                result = receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor,
-                                                            use_promise=False)
-                self.assertTupleEqual(result, (receiver_ref.address, ReceiveStatus.RECEIVING))
-
-                receiver_ref_p.create_data_writers(session_id, [chunk_key2], [data_size], test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVING))
-
-                receiver_ref_p.cancel_receive(session_id, chunk_key2)
-                self.assertEqual(receiver_ref.check_status(session_id, chunk_key2),
-                                 ReceiveStatus.NOT_STARTED)
-
-                # test checksum error on receive_data_part
-                receiver_ref_p.create_data_writers(session_id, [chunk_key2], data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
+            # SCENARIO 4: test listening on transfer with errors
+            self.waitp(receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key6], [data_size], test_actor, _promise=True))
+            receiver_manager_ref.add_keys_callback(session_id, [chunk_key6], _promise=True) \
+                .then(lambda *s: test_actor.set_result(s)) \
+                .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+            mock_receiver_ref.cancel_receive(session_id, [chunk_key6])
+            with self.assertRaises(ExecutionInterrupted):
                 self.get_result(5)
 
-                receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+            # SCENARIO 5: test creating writers without promise
+            ref, statuses = receiver_manager_ref.create_data_writers(
+                session_id, [chunk_key7], [data_size], test_actor, use_promise=False)
+            self.assertIsNone(statuses[0])
+            self.assertEqual(ref.uid, mock_receiver_ref.uid)
 
-                receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data, 0)
+    def testReceiverWorker(self):
+        pool_addr = 'localhost:%d' % get_next_port()
+        options.worker.spill_directory = tempfile.mkdtemp(prefix='mars_test_receiver_')
+        session_id = str(uuid.uuid4())
 
-                with self.assertRaises(ChecksumMismatch):
-                    self.get_result(5)
+        mock_data = np.array([1, 2, 3, 4])
+        serialized_arrow_data = dataserializer.serialize(mock_data)
+        data_size = serialized_arrow_data.total_bytes
+        dumped_mock_data = dataserializer.dumps(mock_data)
 
-                receiver_ref_p.cancel_receive(session_id, chunk_key2)
+        chunk_key1 = str(uuid.uuid4())
+        chunk_key2 = str(uuid.uuid4())
+        chunk_key3 = str(uuid.uuid4())
+        chunk_key4 = str(uuid.uuid4())
+        chunk_key5 = str(uuid.uuid4())
+        chunk_key6 = str(uuid.uuid4())
+        chunk_key7 = str(uuid.uuid4())
+        chunk_key8 = str(uuid.uuid4())
+        chunk_key9 = str(uuid.uuid4())
 
-                # test intermediate cancellation
-                receiver_ref_p.create_data_writers(session_id, [chunk_key2], data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+        with start_transfer_test_pool(address=pool_addr, plasma_size=self.plasma_storage_size) as pool, \
+                self.run_actor_test(pool) as test_actor:
+            storage_client = test_actor.storage_client
+            receiver_ref = test_actor.promise_ref(
+                pool.create_actor(ReceiverWorkerActor, uid=str(uuid.uuid4())))
+            receiver_manager_ref = test_actor.promise_ref(ReceiverManagerActor.default_uid())
 
-                receiver_ref_p.register_finish_callback(session_id, chunk_key2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+            # SCENARIO 1: create two writers and write with chunks
+            self.waitp(receiver_ref.create_data_writers(
+                session_id, [chunk_key1, chunk_key2], [data_size] * 2, test_actor, _promise=True))
+            receiver_ref.receive_data_part(
+                session_id, [chunk_key1, chunk_key2], [True, False],
+                dumped_mock_data, dumped_mock_data[:len(dumped_mock_data) // 2])
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key1), ReceiveStatus.RECEIVED)
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key2), ReceiveStatus.RECEIVING)
+            receiver_ref.receive_data_part(
+                session_id, [chunk_key2], [True], dumped_mock_data[len(dumped_mock_data) // 2:])
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key2), ReceiveStatus.RECEIVED)
+            assert_array_equal(storage_client.get_object(
+                session_id, chunk_key1, [DataStorageDevice.SHARED_MEMORY], _promise=False), mock_data)
+            assert_array_equal(storage_client.get_object(
+                session_id, chunk_key2, [DataStorageDevice.SHARED_MEMORY], _promise=False), mock_data)
 
-                receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data[:64],
-                                                 zlib.crc32(serialized_mock_data[:64]))
-                receiver_ref_p.cancel_receive(session_id, chunk_key2)
-                receiver_ref_p.receive_data_part(session_id, chunk_key2, serialized_mock_data[64:],
-                                                 serialized_crc32)
-                with self.assertRaises(ExecutionInterrupted):
-                    self.get_result(5)
+            # SCENARIO 2: one of the writers failed to create,
+            # will test both existing and non-existing keys
+            old_create_writer = StorageClient.create_writer
 
-                # test transfer in memory
-                receiver_ref_p.register_finish_callback(session_id, chunk_key3, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
+            def _create_writer_with_fail(self, session_id, chunk_key, *args, **kwargs):
+                if chunk_key == fail_key:
+                    if kwargs.get('_promise', True):
+                        return promise.finished(*build_exc_info(ValueError), **dict(_accept=False))
+                    else:
+                        raise ValueError
+                return old_create_writer(self, session_id, chunk_key, *args, **kwargs)
 
-                receiver_ref_p.create_data_writers(session_id, [chunk_key3], data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+            with patch_method(StorageClient.create_writer, new=_create_writer_with_fail), \
+                    self.assertRaises(ValueError):
+                fail_key = chunk_key4
+                self.waitp(receiver_ref.create_data_writers(
+                    session_id, [chunk_key3, chunk_key4, chunk_key5],
+                    [data_size] * 3, test_actor, ensure_cached=False, _promise=True))
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key3), ReceiveStatus.NOT_STARTED)
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key4), ReceiveStatus.NOT_STARTED)
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key5), ReceiveStatus.NOT_STARTED)
 
-                receiver_ref_p.receive_data_part(session_id, chunk_key3, serialized_mock_data[:64],
-                                                 zlib.crc32(serialized_mock_data[:64]))
-                receiver_ref_p.receive_data_part(
-                    session_id, chunk_key3, serialized_mock_data[64:], serialized_crc32, is_last=True)
+            with patch_method(StorageClient.create_writer, new=_create_writer_with_fail):
+                fail_key = chunk_key2
+                self.waitp(receiver_ref.create_data_writers(
+                    session_id, [chunk_key2, chunk_key3], [data_size] * 2, test_actor,
+                    ensure_cached=False, _promise=True))
 
-                self.assertTupleEqual((), self.get_result(5))
+            # SCENARIO 3: transfer timeout
+            receiver_manager_ref.register_pending_keys(session_id, [chunk_key6])
+            self.waitp(receiver_ref.create_data_writers(
+                session_id, [chunk_key6], [data_size], test_actor, timeout=1, _promise=True))
+            with self.assertRaises(TimeoutError):
+                self.waitp(receiver_manager_ref.add_keys_callback(session_id, [chunk_key6], _promise=True))
 
-                receiver_ref_p.create_data_writers(session_id, [chunk_key3], data_size, test_actor, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, ReceiveStatus.RECEIVED))
+            # SCENARIO 4: cancelled transfer (both before and during transfer)
+            receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
+            self.waitp(receiver_ref.create_data_writers(
+                session_id, [chunk_key7], [data_size], test_actor, timeout=1, _promise=True))
+            receiver_ref.cancel_receive(session_id, [chunk_key2, chunk_key7])
+            with self.assertRaises(ExecutionInterrupted):
+                receiver_ref.receive_data_part(session_id, [chunk_key7], [False],
+                                               dumped_mock_data[:len(dumped_mock_data) // 2])
+            with self.assertRaises(ExecutionInterrupted):
+                self.waitp(receiver_manager_ref.add_keys_callback(session_id, [chunk_key7], _promise=True))
 
-                # test transfer in spill file
-                def mocked_store_create(*_):
-                    raise StorageFull
+            # SCENARIO 5: sender halt and receiver is notified (reusing previous unsuccessful key)
+            receiver_manager_ref.register_pending_keys(session_id, [chunk_key7])
+            mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
+            self.waitp(receiver_ref.create_data_writers(
+                session_id, [chunk_key7], [data_size], mock_ref, timeout=1, _promise=True))
+            receiver_ref.notify_dead_senders(['MOCK_ADDR'])
+            with self.assertRaises(WorkerDead):
+                self.waitp(receiver_manager_ref.add_keys_callback(session_id, [chunk_key7], _promise=True))
 
-                with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
-                    with self.assertRaises(StorageFull):
-                        receiver_ref_p.create_data_writers(session_id, [chunk_key4], data_size, test_actor,
-                                                           ensure_cached=True, use_promise=False)
-                    # test receive aborted
-                    receiver_ref_p.create_data_writers(
-                        session_id, [chunk_key4], data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s))
-                    self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
+            # SCENARIO 6: successful transfer without promise
+            receiver_ref.create_data_writers(session_id, [chunk_key8], [data_size], mock_ref,
+                                             use_promise=False)
+            receiver_ref.receive_data_part(session_id, [chunk_key8], [True], dumped_mock_data)
+            self.assertEqual(receiver_ref.check_status(session_id, chunk_key8), ReceiveStatus.RECEIVED)
+            assert_array_equal(storage_client.get_object(
+                session_id, chunk_key8, [DataStorageDevice.SHARED_MEMORY], _promise=False), mock_data)
 
-                    receiver_ref_p.register_finish_callback(session_id, chunk_key4, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-
-                    receiver_ref_p.receive_data_part(session_id, chunk_key4, serialized_mock_data[:64],
-                                                     zlib.crc32(serialized_mock_data[:64]))
-                    receiver_ref_p.cancel_receive(session_id, chunk_key4)
-                    with self.assertRaises(ExecutionInterrupted):
-                        self.get_result(5)
-
-                    # test receive into spill
-                    receiver_ref_p.create_data_writers(
-                        session_id, [chunk_key4], data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s))
-                    self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
-
-                    receiver_ref_p.register_finish_callback(session_id, chunk_key4, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s)) \
-                        .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-
-                    receiver_ref_p.receive_data_part(
-                        session_id, chunk_key4, serialized_mock_data, serialized_crc32, is_last=True)
-                    self.assertTupleEqual((), self.get_result(5))
-
-                # test intermediate error
-                def mocked_store_create(*_):
-                    raise SpillNotConfigured
-
-                with patch_method(PlasmaSharedStore.create, new=mocked_store_create):
-                    receiver_ref_p.create_data_writers(
-                        session_id, [chunk_key5], data_size, test_actor, ensure_cached=False, _promise=True) \
-                        .then(lambda *s: test_actor.set_result(s),
-                              lambda *s: test_actor.set_result(s, accept=False))
-
-                    with self.assertRaises(SpillNotConfigured):
-                        self.get_result(5)
-
-                # test receive timeout
-                receiver_ref_p.register_finish_callback(session_id, chunk_key6, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-
-                receiver_ref_p.create_data_writers(session_id, [chunk_key6], data_size, test_actor,
-                                                   timeout=2, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
-                receiver_ref_p.receive_data_part(session_id, chunk_key6, serialized_mock_data[:64],
-                                                 zlib.crc32(serialized_mock_data[:64]))
-
-                with self.assertRaises(TimeoutError):
-                    self.get_result(5)
-
-                # test sender halt
-                receiver_ref_p.register_finish_callback(session_id, chunk_key7, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s)) \
-                    .catch(lambda *exc: test_actor.set_result(exc, accept=False))
-
-                mock_ref = pool.actor_ref(test_actor.uid, address='MOCK_ADDR')
-                receiver_ref_p.create_data_writers(
-                    session_id, [chunk_key7], data_size, mock_ref, _promise=True) \
-                    .then(lambda *s: test_actor.set_result(s))
-                self.assertTupleEqual(self.get_result(5), (receiver_ref.address, None))
-                receiver_ref_p.receive_data_part(session_id, chunk_key7, serialized_mock_data[:64],
-                                                 zlib.crc32(serialized_mock_data[:64]))
-                receiver_ref_p.notify_dead_senders(['MOCK_ADDR'])
-
-                with self.assertRaises(WorkerDead):
-                    self.get_result(5)
+            # SCENARIO 7: failed transfer without promise
+            with patch_method(StorageClient.create_writer, new=_create_writer_with_fail), \
+                    self.assertRaises(ValueError):
+                fail_key = chunk_key9
+                receiver_ref.create_data_writers(session_id, [chunk_key9], [data_size], mock_ref,
+                                                 use_promise=False)
 
     def testSimpleTransfer(self):
         session_id = str(uuid.uuid4())

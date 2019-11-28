@@ -68,10 +68,6 @@ class StorageDataExists(MarsError):
     pass
 
 
-class ChecksumMismatch(MarsError):
-    pass
-
-
 class ExecutionInterrupted(MarsError):
     pass
 

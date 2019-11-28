@@ -139,7 +139,7 @@ class WorkerCase(unittest.TestCase):
             p = promises[0]
         p.then(lambda *s: self._test_actor_ref.set_result(s, _tell=True),
                lambda *exc: self._test_actor_ref.set_result(exc, accept=False, _tell=True))
-        self.get_result(timeout)
+        return self.get_result(timeout)
 
     def get_result(self, timeout=None):
         if not self._result_event.wait(timeout):

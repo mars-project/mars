@@ -758,7 +758,7 @@ class ExecutionActor(WorkerActor):
 
         for target, keys in address_to_data_keys.items():
             self.ctx.actor_ref(ReceiverManagerActor.default_uid(), address=target) \
-                .register_keys(session_id, keys, _tell=True, _wait=False)
+                .register_pending_keys(session_id, keys, _tell=True, _wait=False)
 
         return promise.all_(promises)
 
