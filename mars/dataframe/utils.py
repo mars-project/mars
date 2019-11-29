@@ -485,6 +485,22 @@ def indexing_index_value(index_value, indexes, store_data=False):
             return parse_index(pd_index[indexes], store_data=store_data)
 
 
+def merge_index_value(to_merge_index_values, store_data=False):
+    """
+    Merge index value according to their chunk index.
+    :param to_merge_index_values: Dict object. {index: index_value}
+    :return: Merged index_value
+    """
+    index_value = None
+    for _, chunk_index_value in sorted(to_merge_index_values.items()):
+        if index_value is None:
+            index_value = chunk_index_value.to_pandas()
+        else:
+            index_value = index_value.append(chunk_index_value.to_pandas())
+
+    return parse_index(index_value, store_data=store_data)
+
+
 def infer_dtypes(left_dtypes, right_dtypes, operator):
     left = build_empty_df(left_dtypes)
     right = build_empty_df(right_dtypes)

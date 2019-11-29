@@ -96,7 +96,8 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         else:
             return self.new_dataframe([df], shape=shape0 + shape1, dtypes=df.dtypes.iloc[self.indexes[1]],
                                       index_value=indexing_index_value(df.index_value, self.indexes[0]),
-                                      columns_value=indexing_index_value(df.columns_value, self.indexes[1], store_data=True))
+                                      columns_value=indexing_index_value(df.columns_value, self.indexes[1],
+                                                                         store_data=True))
 
     # FIXME The view behavior of DataFrame.iloc
     #
@@ -245,8 +246,8 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk],
-                                                shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
-                                                index_value=chunk.index_value, columns_value=chunk.columns_value)
+                                               shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
+                                               index_value=chunk.index_value, columns_value=chunk.columns_value)
                 out_chunks.append(out_chunk)
 
         new_op = op.copy()
