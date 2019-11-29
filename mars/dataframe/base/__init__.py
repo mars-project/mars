@@ -18,6 +18,7 @@ from mars.dataframe.base.to_cpu import to_cpu
 
 def _install():
     from ..core import DataFrameData, DataFrame, SeriesData, Series
+    from .rechunk import rechunk
 
     DataFrameData.to_gpu = to_gpu
     DataFrame.to_gpu = to_gpu
@@ -27,6 +28,9 @@ def _install():
     Series.to_gpu = to_gpu
     SeriesData.to_cpu = to_cpu
     Series.to_cpu = to_cpu
+
+    DataFrame.rechunk = rechunk
+    DataFrameData.rechunk = rechunk
 
 
 _install()

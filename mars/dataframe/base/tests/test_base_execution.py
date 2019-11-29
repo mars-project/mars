@@ -68,3 +68,17 @@ class Test(TestBase):
         res = self.executor.execute_dataframe(series2, concat=True)[0]
         self.assertIsInstance(res, pd.Series)
         pd.testing.assert_series_equal(res, pseries)
+
+    def testRechunkExecution(self):
+        data = pd.DataFrame(np.random.rand(8, 10))
+        df = from_pandas_df(pd.DataFrame(data), chunk_size=3)
+        df2 = df.rechunk((3, 4))
+        res = self.executor.execute_dataframe(df2, concat=True)[0]
+        pd.testing.assert_frame_equal(data, res)
+
+        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
+                            columns=[np.random.bytes(10) for _ in range(10)])
+        df = from_pandas_df(data)
+        df2 = df.rechunk(5)
+        res = self.executor.execute_dataframe(df2, concat=True)[0]
+        pd.testing.assert_frame_equal(data, res)
