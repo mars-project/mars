@@ -20,7 +20,7 @@ from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE, ObjectType
-from ..utils import indexing_index_value, parse_index
+from ..utils import indexing_index_value, merge_index_value
 
 
 class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
@@ -90,22 +90,10 @@ def _concat_index_and_columns(to_concat_chunks):
         index_value = to_concat_chunks[0].index_value
     else:
         idx_to_index_value = dict((c.index[0], c.index_value) for c in to_concat_chunks if c.index[1] == 0)
-        index = None
-        for _, chunk_index in sorted(idx_to_index_value.items()):
-            if index is None:
-                index = chunk_index.to_pandas()
-            else:
-                index = index.append(chunk_index.to_pandas())
-        index_value = parse_index(index)
+        index_value = merge_index_value(idx_to_index_value)
 
     idx_to_columns_value = dict((c.index[1], c.columns_value) for c in to_concat_chunks if c.index[0] == 0)
-    columns = None
-    for _, chunk_columns in sorted(idx_to_columns_value.items()):
-        if columns is None:
-            columns = chunk_columns.to_pandas()
-        else:
-            columns = columns.append(chunk_columns.to_pandas())
-    columns_value = parse_index(columns, store_data=True)
+    columns_value = merge_index_value(idx_to_columns_value, store_data=True)
     return index_value, columns_value
 
 
