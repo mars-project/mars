@@ -63,6 +63,20 @@ class Test(TestBase):
         df7 = df2.iloc[1, 2]
         self.assertEqual(expected, df7.execute())
 
+        # test Series
+        data = pd.Series(np.arange(10))
+        series = md.Series(data, chunk_size=3).iloc[:3]
+        pd.testing.assert_series_equal(series.execute(), data.iloc[:3])
+
+        series = md.Series(data, chunk_size=3).iloc[4]
+        self.assertEqual(series.execute(), data.iloc[4])
+
+        series = md.Series(data, chunk_size=3).iloc[[2, 3, 4, 9]]
+        pd.testing.assert_series_equal(series.execute(), data.iloc[[2, 3, 4, 9]])
+
+        series = md.Series(data).iloc[5:]
+        pd.testing.assert_series_equal(series.execute(), data.iloc[5:])
+
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                            index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
@@ -94,6 +108,25 @@ class Test(TestBase):
         expected.iloc[1, 2] = 4444
         df2.iloc[1, 2] = 4444
         pd.testing.assert_frame_equal(expected, df2.execute())
+
+        # test Series
+        data = pd.Series(np.arange(10))
+        series = md.Series(data, chunk_size=3)
+        series.iloc[:3] = 1
+        data.iloc[:3] = 1
+        pd.testing.assert_series_equal(series.execute(), data)
+
+        series.iloc[4] = 2
+        data.iloc[4] = 2
+        pd.testing.assert_series_equal(series.execute(), data)
+
+        series.iloc[[2, 3, 4, 9]] = 3
+        data.iloc[[2, 3, 4, 9]] = 3
+        pd.testing.assert_series_equal(series.execute(), data)
+
+        series.iloc[5:] = 4
+        data.iloc[5:] = 4
+        pd.testing.assert_series_equal(series.execute(), data)
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])

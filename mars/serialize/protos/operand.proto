@@ -352,6 +352,8 @@ message OperandDef {
         DATAFRAME_SET_INDEX = 2020;
         DATAFRAME_ILOC_GETITEM = 2021;
         DATAFRAME_ILOC_SETITEM = 2022;
+        SERIES_ILOC_GETITEM = 2023;
+        SERIES_ILOC_SETIMEM = 2024;
 
         // merge
         DATAFRAME_SHUFFLE_MERGE = 2010;

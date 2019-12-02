@@ -25,6 +25,7 @@ def _install():
         setattr(cls, 'set_index', set_index)
         setattr(cls, '__getitem__', dataframe_getitem)
     for cls in SERIES_TYPE:
+        setattr(cls, 'iloc', property(iloc))
         setattr(cls, '__getitem__', series_getitem)
 
 
