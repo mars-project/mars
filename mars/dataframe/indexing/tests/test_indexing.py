@@ -287,9 +287,9 @@ class Test(TestBase):
         self.assertEqual(series.shape, (10,))
         self.assertEqual(len(series.chunks), 4)
 
-        self.assertEqual(series.chunks[0].op.indexes[0], slice(None, None, None))
+        self.assertEqual(series.chunks[0].op.indexes, slice(None, None, None))
         self.assertEqual(series.chunks[0].op.value, 2)
-        self.assertEqual(series.chunks[1].op.indexes[0], slice(0, 1, 1))
+        self.assertEqual(series.chunks[1].op.indexes, slice(0, 1, 1))
         self.assertEqual(series.chunks[1].op.value, 2)
 
         # fancy index
@@ -301,14 +301,14 @@ class Test(TestBase):
 
         self.assertEqual(len(series.chunks), 4)
         self.assertEqual(series.chunks[0].index, (0,))
-        self.assertEqual(series.chunks[0].op.indexes[0], [2])
+        self.assertEqual(series.chunks[0].op.indexes, [2])
         self.assertEqual(series.chunks[0].op.value, 3)
         self.assertEqual(series.chunks[1].index, (1,))
-        self.assertEqual(series.chunks[1].op.indexes[0], [1])
+        self.assertEqual(series.chunks[1].op.indexes, [1])
         self.assertEqual(series.chunks[1].op.value, 3)
-        self.assertEqual(series.chunks[2].index, (2,))
-        self.assertEqual(series.chunks[2].op.indexes[0], [0])
-        self.assertEqual(series.chunks[2].op.value, 3)
+        self.assertEqual(series.chunks[3].index, (3,))
+        self.assertEqual(series.chunks[3].op.indexes, [0])
+        self.assertEqual(series.chunks[3].op.value, 3)
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
