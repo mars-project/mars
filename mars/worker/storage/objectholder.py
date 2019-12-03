@@ -316,6 +316,7 @@ class InProcHolderActor(SimpleObjectHolderActor):
 
 class CudaHolderActor(SimpleObjectHolderActor):
     _storage_device = DataStorageDevice.CUDA
+    _spill_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
 
     def __init__(self, size_limit=0, device_id=None):
         super(CudaHolderActor, self).__init__(size_limit=size_limit)

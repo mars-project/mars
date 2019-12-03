@@ -233,7 +233,10 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self.estimate_graph_finish_time(session_id, graph_key)
 
-        memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+        if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY:
+            memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+        else:
+            memory_estimations = dict()
 
         # collect potential allocation sizes
         for chunk in graph:
@@ -251,8 +254,11 @@ class ExecutionActor(WorkerActor):
                         pass
             elif chunk.key in graph_record.chunk_targets:
                 # use estimated size as potential allocation size
-                cache_batch, alloc_mem_batch[build_quota_key(session_id, chunk.key, owner=graph_key)] = \
-                    memory_estimations[chunk.key]
+                estimation_data = memory_estimations.get(chunk.key)
+                if not estimation_data:
+                    continue
+                quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
+                cache_batch, alloc_mem_batch[quota_key] = estimation_data
                 if not isinstance(chunk.key, tuple):
                     alloc_cache_batch[chunk.key] = cache_batch
 
@@ -269,8 +275,7 @@ class ExecutionActor(WorkerActor):
             # todo change when compute with gpu
             storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
-        if alloc_mem_batch:
-            graph_record.mem_request = alloc_mem_batch
+        graph_record.mem_request = alloc_mem_batch or dict()
         return alloc_mem_batch
 
     @log_unhandled
@@ -533,8 +538,9 @@ class ExecutionActor(WorkerActor):
                 return
 
             promise.finished() \
+                .then(lambda *_: self._mem_quota_ref.request_batch_quota(
+                    quota_request, _promise=True) if quota_request else None) \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
-                .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
                 .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
@@ -712,10 +718,14 @@ class ExecutionActor(WorkerActor):
             raise
 
         # make sure that memory suffices before actually run execution
-        logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
-        return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
-            .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
-            .then(_start_calc)
+        if target_allocs:
+            logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
+            return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
+                .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
+                .then(_start_calc)
+        else:
+            self._deallocate_scheduler_resource(session_id, graph_key, delay=2)
+            return _start_calc()
 
     @log_unhandled
     def _do_active_transfer(self, session_id, graph_key, data_to_addresses):

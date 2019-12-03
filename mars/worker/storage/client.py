@@ -277,7 +277,12 @@ class StorageClient(object):
         return promise.all_(promises)
 
     def delete(self, session_id, data_keys, devices=None, _tell=False):
-        devices = devices or reduce(operator.or_, self._manager_ref.get_data_locations(session_id, data_keys))
+        if not devices:
+            devices = reduce(operator.ior,
+                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+        else:
+            devices = self._normalize_devices(devices)
+
         devices = self._normalize_devices(devices)
         for dev_type in devices:
             handler = self.get_storage_handler(dev_type)
@@ -288,7 +293,12 @@ class StorageClient(object):
         return self.manager_ref.filter_exist_keys(session_id, data_keys, devices)
 
     def pin_data_keys(self, session_id, data_keys, token, devices=None):
-        devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())
+        if not devices:
+            devices = reduce(operator.ior,
+                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+        else:
+            devices = self._normalize_devices(devices)
+
         pinned = set()
         for dev in devices:
             handler = self.get_storage_handler(dev)
@@ -299,7 +309,12 @@ class StorageClient(object):
         return list(pinned)
 
     def unpin_data_keys(self, session_id, data_keys, token, devices=None):
-        devices = self._normalize_devices(devices or DataStorageDevice.__members__.values())
+        if not devices:
+            devices = reduce(operator.ior,
+                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+        else:
+            devices = self._normalize_devices(devices)
+
         for dev in devices:
             handler = self.get_storage_handler(dev)
             if not getattr(handler, '_spillable', False):

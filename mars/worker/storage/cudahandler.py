@@ -18,13 +18,13 @@ import pandas as pd
 from ...serialize import dataserializer
 from ...utils import calc_data_size, lazy_import
 from .core import StorageHandler, DataStorageDevice, ObjectStorageMixin, \
-    wrap_promised, register_storage_handler_cls
+    SpillableStorageMixin, wrap_promised, register_storage_handler_cls
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
 
 
-class CudaHandler(StorageHandler, ObjectStorageMixin):
+class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
     storage_type = DataStorageDevice.CUDA
 
     def __init__(self, storage_ctx, proc_id=None):
@@ -34,7 +34,7 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
     @property
     def _cuda_store_ref(self):
         if self._cuda_store_ref_attr is None:
-            self._cuda_store_ref_attr = self._storage_ctx.actor_ctx.actor_ref(
+            self._cuda_store_ref_attr = self._storage_ctx.promise_ref(
                 self._storage_ctx.manager_ref.get_process_holder(
                     self._proc_id, DataStorageDevice.CUDA))
         return self._cuda_store_ref_attr
@@ -95,6 +95,18 @@ class CudaHandler(StorageHandler, ObjectStorageMixin):
     def delete(self, session_id, data_keys, _tell=False):
         self._cuda_store_ref.delete_objects(session_id, data_keys, _tell=_tell)
         self.unregister_data(session_id, data_keys, _tell=_tell)
+
+    def spill_size(self, size, multiplier=1):
+        return self._cuda_store_ref.spill_size(size, multiplier, _promise=True)
+
+    def lift_data_keys(self, session_id, data_keys):
+        self._cuda_store_ref.lift_data_keys(session_id, data_keys, _tell=True)
+
+    def pin_data_keys(self, session_id, data_keys, token):
+        return self._cuda_store_ref.pin_data_keys(session_id, data_keys, token)
+
+    def unpin_data_keys(self, session_id, data_keys, token, _tell=False):
+        return self._cuda_store_ref.unpin_data_keys(session_id, data_keys, token, _tell=_tell)
 
 
 register_storage_handler_cls(DataStorageDevice.CUDA, CudaHandler)

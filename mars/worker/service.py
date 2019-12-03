@@ -247,7 +247,8 @@ class WorkerService(object):
             self._cuda_calc_actors.append(actor)
 
             uid = 'w:%d:mars-cuda-holder-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
-            actor = actor_holder.create_actor(CudaHolderActor, device_id=stat.index, uid=uid)
+            actor = actor_holder.create_actor(
+                CudaHolderActor, stat.fb_mem_info.total, device_id=stat.index, uid=uid)
             self._cuda_holder_actors.append(actor)
 
             actor = actor_holder.create_actor(
