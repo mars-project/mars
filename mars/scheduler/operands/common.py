@@ -105,6 +105,11 @@ class OperandActor(BaseOperandActor):
         return super(OperandActor, self).start_operand(state=state, **kwargs)
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+        """
+        This function shall return whether current node is ready. The return values will
+        be collected by the predecessor to judge if a node with lower-priority can be
+        scheduled.
+        """
         super(OperandActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
         if all(k in self._finish_preds for k in self._pred_keys):
             if self.state != OperandState.UNSCHEDULED:
@@ -451,21 +456,25 @@ class OperandActor(BaseOperandActor):
             self.start_operand(OperandState.CANCELLING)
             return
 
-        futures = []
+        succ_futures = []
         # update pred & succ finish records to trigger further actions
         # record if successors can be executed
         for out_key in self._succ_keys:
-            futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
-                self._op_key, self.worker, output_sizes=self._data_sizes,
-                _tell=True, _wait=False))
+            succ_futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
+                self._op_key, self.worker, output_sizes=self._data_sizes, _wait=False))
+
+        pred_futures = []
         for in_key in self._pred_keys:
-            futures.append(self._get_operand_actor(in_key).add_finished_successor(
+            pred_futures.append(self._get_operand_actor(in_key).add_finished_successor(
                 self._op_key, self.worker, _tell=True, _wait=False))
         # require more chunks to execute if the completion caused no successors to run
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.extend(self._add_finished_terminal())
-        [f.result() for f in futures]
+            pred_futures.extend(self._add_finished_terminal())
+        [f.result() for f in pred_futures]
+
+        if not any(f.result() for f in succ_futures):
+            self._assigner_ref.allocate_top_resources(1, _tell=True)
 
     @log_unhandled
     def _on_fatal(self):
