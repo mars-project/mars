@@ -322,3 +322,18 @@ class CudaHolderActor(SimpleObjectHolderActor):
         super(CudaHolderActor, self).__init__(size_limit=size_limit)
         if device_id is not None:
             os.environ['CUDA_VISIBLE_DEVICES'] = str(device_id)
+
+        # warm up cupy
+        try:
+            import cupy
+            cupy.zeros((10, 10)).sum()
+        except ImportError:
+            pass
+        # warm up cudf
+        try:
+            import cudf
+            import numpy as np
+            import pandas as pd
+            cudf.from_pandas(pd.DataFrame(np.zeros((10, 10))))
+        except ImportError:
+            pass
