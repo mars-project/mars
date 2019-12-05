@@ -108,24 +108,25 @@ Mars learn
 
 Mars learn provides a familiar interface like scikit-learn.
 
-+-----------------------------------------------------------------+--------------------------------------------------------------------+
-| **Scikit-learn**                                                | **Mars learn**                                                     |
-+-----------------------------------------------------------------+--------------------------------------------------------------------+
-|.. code-block:: python                                           |.. code-block:: python                                              |
-|                                                                 |                                                                    |
-|    from sklearn.datasets.samples_generator import make_blobs    |    from mars.learn.datasets.samples_generator import make_blobs    |
-|    from sklearn.decomposition.pca import PCA                    |    from mars.learn.decomposition.pca import PCA                    |
-|    X, y = make_blobs(n_samples=100000000, n_features=3,         |    X, y = make_blobs(n_samples=100000000, n_features=3,            |
-|                      centers=[[3, 3, 3], [0, 0, 0],             |                      centers=[[3, 3, 3], [0, 0, 0],                |
-|                               [1, 1, 1], [2, 2, 2]],            |                               [1, 1, 1], [2, 2, 2]],               |
-|                      cluster_std=[0.2, 0.1, 0.2, 0.2],          |                      cluster_std=[0.2, 0.1, 0.2, 0.2],             |
-|                      random_state=9)                            |                      random_state=9)                               |
-|    pca = PCA(n_components=3)                                    |    pca = PCA(n_components=3)                                       |
-|    pca.fit(X)                                                   |    pca.fit(X)                                                      |
-|    print(pca.explained_variance_ratio_)                         |    print(pca.explained_variance_ratio_.execute())                  |
-|    print(pca.explained_variance_)                               |    print(pca.explained_variance_.execute()                         |
-|                                                                 |                                                                    |
-+-----------------------------------------------------------------+--------------------------------------------------------------------+
++---------------------------------------------+----------------------------------------------------+
+| **Scikit-learn**                            | **Mars learn**                                     |
++---------------------------------------------+----------------------------------------------------+
+|.. code-block:: python                       |.. code-block:: python                              |
+|                                             |                                                    |
+|    from sklearn.datasets import make_blobs  |    from mars.learn.datasets import make_blobs      |
+|    from sklearn.decomposition import PCA    |    from mars.learn.decomposition import PCA        |
+|    X, y = make_blobs(                       |    X, y = make_blobs(                              |
+|        n_samples=100000000, n_features=3,   |        n_samples=100000000, n_features=3,          |
+|        centers=[[3, 3, 3], [0, 0, 0],       |        centers=[[3, 3, 3], [0, 0, 0],              |
+|                 [1, 1, 1], [2, 2, 2]],      |                  [1, 1, 1], [2, 2, 2]],            |
+|        cluster_std=[0.2, 0.1, 0.2, 0.2],    |        cluster_std=[0.2, 0.1, 0.2, 0.2],           |
+|        random_state=9)                      |        random_state=9)                             |
+|    pca = PCA(n_components=3)                |    pca = PCA(n_components=3)                       |
+|    pca.fit(X)                               |    pca.fit(X)                                      |
+|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_.execute())  |
+|    print(pca.explained_variance_)           |    print(pca.explained_variance_.execute())        |
+|                                             |                                                    |
++---------------------------------------------+----------------------------------------------------+
 
 
 Eager Mode
