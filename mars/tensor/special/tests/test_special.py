@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 from mars.tensor import tensor
+from mars.tiles import get_tiled
 
 try:
     import scipy
@@ -41,7 +42,8 @@ class Test(unittest.TestCase):
         self.assertEqual(r.shape, raw.shape)
         self.assertEqual(r.dtype, expect.dtype)
 
-        r.tiles()
+        r = r.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(r.nsplits, t.nsplits)
         for c in r.chunks:
@@ -59,7 +61,8 @@ class Test(unittest.TestCase):
         self.assertEqual(r.shape, raw.shape)
         self.assertEqual(r.dtype, expect.dtype)
 
-        r.tiles()
+        r = r.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(r.nsplits, t.nsplits)
         for c in r.chunks:

@@ -17,6 +17,7 @@ import unittest
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.session import new_session
+from mars.tiles import get_tiled
 from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
@@ -64,7 +65,7 @@ class Test(unittest.TestCase):
             new_X = mt.random.rand(1000, 10, chunk_size=(1000, 5))
             new_X, new_y = ToDMatrix(data=new_X, label=self.y, multi_output=True)()
             dmatrix = ToDMatrix(data=new_X, label=new_y)()
-            dmatrix.tiles()
+            dmatrix = dmatrix.tiles()
 
             self.assertEqual(len(dmatrix.chunks), 1)
 
@@ -83,9 +84,9 @@ class Test(unittest.TestCase):
     def testDistributedTile(self):
         X, y, w = self.X, self.y, self.weight
 
-        X.tiles()
-        y.tiles()
-        w.tiles()
+        X = X.tiles()
+        y = y.tiles()
+        w = w.tiles()
 
         workers = ['addr1:1', 'addr2:1']
         chunk_to_workers = dict()
@@ -116,7 +117,8 @@ class Test(unittest.TestCase):
         model = XGBTrain(dtrain=dmatrix)()
 
         with MockDistributedDictContext():
-            model.tiles()
+            model = model.tiles()
+            dmatrix = get_tiled(dmatrix)
 
             # 2 workers
             self.assertEqual(len(dmatrix.chunks), 2)

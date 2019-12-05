@@ -25,6 +25,7 @@ import gevent
 
 from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.config import options
+from mars.tiles import get_tiled
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ResourceActor, ChunkMetaActor
@@ -50,6 +51,7 @@ class WorkerProcessTestActor(PromiseActor):
         result = a.dot(b)
 
         graph = result.build_graph(tiled=True)
+        result = get_tiled(result)
 
         executor_ref = self.promise_ref(ExecutionActor.default_uid(), address=worker)
         io_meta = dict(chunks=[c.key for c in result.chunks])

@@ -377,7 +377,7 @@ def unify_nsplits(*tensor_axes):
     for t, axes in tensor_axes:
         new_chunk = dict((i, axes_unified_splits[ax]) for ax, i in zip(axes, range(t.ndim))
                          if ax in axes_unified_splits)
-        res.append(rechunk(t, new_chunk).single_tiles())
+        res.append(rechunk(t, new_chunk)._inplace_tile())
 
     return tuple(res)
 
@@ -419,7 +419,7 @@ def recursive_tile(tensor):
         if cs:
             q.extend(cs)
             continue
-        t.single_tiles()
+        t._inplace_tile()
         q.pop()
 
     return tensor

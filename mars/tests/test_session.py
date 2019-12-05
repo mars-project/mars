@@ -22,6 +22,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.tiles import get_tiled
 from mars.session import new_session, Session
 from mars.tensor.arithmetic import TensorAdd
 from mars.context import get_context, RunningMode
@@ -101,7 +102,7 @@ class Test(unittest.TestCase):
         # modify result
         sess = Session.default_or_local()
         executor = sess._sess._executor
-        executor.chunk_result[arr4.chunks[0].key] = data + 2
+        executor.chunk_result[get_tiled(arr4).chunks[0].key] = data + 2
 
         result3 = arr4.execute()
         np.testing.assert_array_equal(result3, data + 2)
@@ -127,7 +128,7 @@ class Test(unittest.TestCase):
         # modify result
         sess = Session.default_or_local()
         executor = sess._sess._executor
-        executor.chunk_result[arr2.chunks[0].key] = data + 2
+        executor.chunk_result[get_tiled(arr2).chunks[0].key] = data + 2
 
         results = sess.run(arr1, arr2)
         np.testing.assert_array_equal(results[0], data * 2)
@@ -146,7 +147,7 @@ class Test(unittest.TestCase):
 
         # modify result
         executor = sess._sess._executor
-        executor.chunk_result[arr1.chunks[0].key] = data[:2, :2] * 3
+        executor.chunk_result[get_tiled(arr1).chunks[0].key] = data[:2, :2] * 3
 
         expected = data * 2
         expected[:2, :2] = data[:2, :2] * 3
@@ -166,7 +167,7 @@ class Test(unittest.TestCase):
 
         # modify result
         executor = sess._sess._executor
-        executor.chunk_result[df1.chunks[0].key] = data1.iloc[:2, :2] * 3
+        executor.chunk_result[get_tiled(df1).chunks[0].key] = data1.iloc[:2, :2] * 3
 
         expected = data1
         expected.iloc[:2, :2] = data1.iloc[:2, :2] * 3
@@ -244,7 +245,7 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(r1, r2)
 
         executor = sess._sess._executor
-        executor.chunk_result[arr1.chunks[0].key] = np.ones((3, 3)) * 2
+        executor.chunk_result[get_tiled(arr1).chunks[0].key] = np.ones((3, 3)) * 2
         r3 = sess.run(arr1 + 1)
         np.testing.assert_array_equal(r3[:3, :3], np.ones((3, 3)) * 3)
 
@@ -400,3 +401,56 @@ class Test(unittest.TestCase):
                         pd.DataFrame(np.ones((10, 20), dtype=int)).memory_usage().sum() + \
                         sys.getsizeof(4)
         self.assertEqual(sess.run(f), expect_nbytes)
+
+    def testMultiOutputsOp(self):
+        sess = new_session()
+
+        rs = np.random.RandomState(0)
+        raw = rs.rand(20, 5)
+        a = mt.tensor(raw, chunk_size=5)
+        q = mt.abs(mt.linalg.qr(a)[0])
+
+        ret = sess.run(q)
+        np.testing.assert_almost_equal(ret, np.abs(np.linalg.qr(raw)[0]))
+        self.assertEqual(len(sess._sess.executor.chunk_result),
+                         len(get_tiled(q).chunks))
+
+    def testIterativeTiling(self):
+        sess = new_session()
+
+        rs = np.random.RandomState(0)
+        raw = rs.rand(100)
+        a = mt.tensor(raw, chunk_size=10)
+        a.sort()
+        c = a[:5]
+
+        ret = sess.run(c)
+        np.testing.assert_array_equal(ret, np.sort(raw)[:5])
+
+        executor = sess._sess.executor
+        self.assertEqual(len(executor.chunk_result), 1)
+        executor.chunk_result.clear()
+
+        raw1 = rs.rand(20)
+        raw2 = rs.rand(20)
+        a = mt.tensor(raw1, chunk_size=10)
+        a.sort()
+        b = mt.tensor(raw2, chunk_size=15) + 1
+        c = mt.concatenate([a[:10], b])
+        c.sort()
+        d = c[:5]
+
+        ret = sess.run(d)
+        expected = np.sort(np.concatenate([np.sort(raw1)[:10], raw2 + 1]))[:5]
+        np.testing.assert_array_equal(ret, expected)
+        self.assertEqual(len(executor.chunk_result), len(get_tiled(d).chunks))
+
+        raw = rs.rand(100)
+        a = mt.tensor(raw, chunk_size=10)
+        a.sort()
+        b = a + 1
+        c = b[:5]
+
+        ret = sess.run([b, c])
+        expected = np.sort(raw + 1)[:5]
+        np.testing.assert_array_equal(ret[1], expected)

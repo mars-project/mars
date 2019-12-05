@@ -25,7 +25,7 @@ from ...config import options
 from ...errors import ExecutionFailed
 from ...scheduler.graph import GraphState
 from ...serialize import dataserializer
-from ...utils import build_graph, sort_dataframe_result
+from ...utils import build_tileable_graph, sort_dataframe_result
 
 
 class LocalClusterSession(object):
@@ -119,7 +119,7 @@ class LocalClusterSession(object):
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
 
-        graph = build_graph(run_tileables, executed_keys=list(self._executed_tileables.keys()))
+        graph = build_tileable_graph(run_tileables, set(self._executed_tileables.keys()))
         targets = [t.key for t in run_tileables]
         graph_key = uuid.uuid4()
 

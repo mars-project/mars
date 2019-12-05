@@ -21,8 +21,16 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.tiles import get_tiled
 from mars.config import option_context
+from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.dataframe.datasource.dataframe import from_pandas
+
+
+class TileFailOp(TensorOperand, TensorOperandMixin):
+    @classmethod
+    def tile(cls, op):
+        raise ValueError
 
 
 class Test(unittest.TestCase):
@@ -128,7 +136,7 @@ class Test(unittest.TestCase):
 
             sess = Session.default_or_local()
             executor = sess._sess._executor
-            executor.chunk_result[arr1.chunks[0].key] = np.ones((4, 4)) * 2
+            executor.chunk_result[get_tiled(arr1).chunks[0].key] = np.ones((4, 4)) * 2
 
             arr2 = mt.ones((10, 5), chunk_size=4) - 1
             result = arr2.fetch()
@@ -136,6 +144,9 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
 
         arr3 = mt.ones((10, 5), chunk_size=4) - 1
+        # arr1's data is used by arr2,
+        # so if arr2 not deleted, arr1's data will not be gc collected
+        del arr2
 
         with self.assertRaises(ValueError):
             arr3.fetch()
@@ -189,22 +200,21 @@ class Test(unittest.TestCase):
         self.assertNotIn(str(x), str(a))
 
     def testRuntimeError(self):
-        from mars.utils import kernel_mode
-
-        @kernel_mode
-        def raise_error(*_):
-            raise ValueError
-
         with option_context({'eager_mode': True}):
             a = mt.zeros((10, 10))
             with self.assertRaises(ValueError):
-                raise_error(a)
+                op = TileFailOp()
+                b = op.new_tileable(None)
+                b.build_graph(tiled=True)
 
             r = a + 1
             self.assertIn(repr(np.zeros((10, 10)) + 1), repr(r))
             np.testing.assert_array_equal(r.fetch(), np.zeros((10, 10)) + 1)
 
         a = mt.zeros((10, 10))
+        # a's data is used by r,
+        # if not deleted, a's data would not be gc collected
+        del r
         with self.assertRaises(ValueError):
             a.fetch()
 

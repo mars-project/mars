@@ -20,7 +20,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import AnyField, Int32Field, BoolField
-from ...utils import tokenize
+from ...utils import tokenize, check_chunks_unknown_shape
+from ...tiles import TilesFail
 from ..align import align_dataframe_series
 from ..core import SERIES_TYPE
 from ..merge import DataFrameConcat
@@ -269,6 +270,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks.append(out_chunk)
 
         else:
+            check_chunks_unknown_shape([in_df], TilesFail)
             nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
             for idx in range(in_df.chunk_shape[0]):
                 for idxj in range(in_df.chunk_shape[1]):

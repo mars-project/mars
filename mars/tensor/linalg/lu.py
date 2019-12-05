@@ -20,6 +20,8 @@ from numpy.linalg import LinAlgError
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...core import ExecutableTuple
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesFail
 from ..utils import recursive_tile
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -103,10 +105,11 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
             in_tensor = vstack([in_tensor, zero_tensor])
             recursive_tile(in_tensor)
 
+        check_chunks_unknown_shape([in_tensor], TilesFail)
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]
-            in_tensor = in_tensor.rechunk([nsplits, nsplits]).single_tiles()
+            in_tensor = in_tensor.rechunk([nsplits, nsplits])._inplace_tile()
 
         p_chunks, p_invert_chunks, lower_chunks, l_permuted_chunks, upper_chunks = {}, {}, {}, {}, {}
         for i in range(in_tensor.chunk_shape[0]):
@@ -239,12 +242,12 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
 
         p, l, u = new_op.new_tensors(op.inputs, kws=kws)
         if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
-            l = l[:, :raw_in_tensor.shape[1]].single_tiles()
-            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]].single_tiles()
+            l = l[:, :raw_in_tensor.shape[1]]._inplace_tile()
+            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
         else:
-            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]].single_tiles()
-            l = l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]].single_tiles()
-            u = u[:raw_in_tensor.shape[0], :].single_tiles()
+            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
+            l = l[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
+            u = u[:raw_in_tensor.shape[0], :]._inplace_tile()
         kws = [
             {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype,
              'shape': p.shape, 'order': p.order},

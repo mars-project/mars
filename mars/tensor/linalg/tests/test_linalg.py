@@ -25,6 +25,7 @@ from mars.tensor import ones, tensor, dot, empty
 from mars.graph import DirectedGraph
 from mars.tensor.core import SparseTensor, Tensor
 from mars.tensor.linalg import matmul
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -35,7 +36,8 @@ class Test(unittest.TestCase):
         self.assertEqual(q.shape, (9, 6))
         self.assertEqual(r.shape, (6, 6))
 
-        q.tiles()
+        q = q.tiles()
+        r = get_tiled(r)
 
         self.assertEqual(len(q.chunks), 3)
         self.assertEqual(len(r.chunks), 1)
@@ -52,7 +54,8 @@ class Test(unittest.TestCase):
         self.assertEqual(q.shape, (18, 6))
         self.assertEqual(r.shape, (6, 6))
 
-        q.tiles()
+        q = q.tiles()
+        r = get_tiled(r)
 
         self.assertEqual(len(q.chunks), 2)
         self.assertEqual(len(r.chunks), 1)
@@ -69,7 +72,9 @@ class Test(unittest.TestCase):
 
         self.assertEqual(q.shape, (6, 6))
         self.assertEqual(r.shape, (6, 18))
-        q.tiles()
+
+        q = q.tiles()
+        r = get_tiled(r)
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 3)
@@ -83,7 +88,8 @@ class Test(unittest.TestCase):
         self.assertEqual(q.shape, (6, 6))
         self.assertEqual(r.shape, (6, 9))
 
-        q.tiles()
+        q = q.tiles()
+        r = get_tiled(r)
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 2)
@@ -96,7 +102,8 @@ class Test(unittest.TestCase):
         self.assertEqual(q.shape, (9, 6))
         self.assertEqual(r.shape, (6, 6))
 
-        q.tiles()
+        q = q.tiles()
+        r = get_tiled(r)
 
         self.assertEqual(len(q.chunks), 1)
         self.assertEqual(len(r.chunks), 1)
@@ -126,7 +133,9 @@ class Test(unittest.TestCase):
         self.assertEqual(s.shape, (6,))
         self.assertEqual(V.shape, (6, 6))
 
-        U.tiles()
+        U = U.tiles()
+        s, V = get_tiled(s), get_tiled(V)
+
         self.assertEqual(len(U.chunks), 3)
         self.assertEqual(U.chunks[0].shape, (3, 6))
         self.assertEqual(len(s.chunks), 1)
@@ -148,7 +157,9 @@ class Test(unittest.TestCase):
         self.assertEqual(s.shape, (6,))
         self.assertEqual(V.shape, (6, 6))
 
-        U.tiles()
+        U = U.tiles()
+        s, V = get_tiled(s), get_tiled(V)
+
         self.assertEqual(len(U.chunks), 1)
         self.assertEqual(U.chunks[0].shape, (9, 6))
         self.assertEqual(len(s.chunks), 1)
@@ -166,7 +177,9 @@ class Test(unittest.TestCase):
         self.assertEqual(s.shape, (6,))
         self.assertEqual(V.shape, (6, 20))
 
-        U.tiles()
+        U = U.tiles()
+        s, V = get_tiled(s), get_tiled(V)
+
         self.assertEqual(len(U.chunks), 1)
         self.assertEqual(U.chunks[0].shape, (6, 6))
         self.assertEqual(len(s.chunks), 1)
@@ -214,7 +227,9 @@ class Test(unittest.TestCase):
     def testLU(self):
         a = mt.random.randint(1, 10, (6, 6), chunk_size=3)
         p, l, u = mt.linalg.lu(a)
-        l.tiles()
+
+        l = l.tiles()
+        p, u = get_tiled(p), get_tiled(u)
 
         self.assertEqual(l.shape, (6, 6))
         self.assertEqual(u.shape, (6, 6))
@@ -222,7 +237,8 @@ class Test(unittest.TestCase):
 
         a = mt.random.randint(1, 10, (6, 6), chunk_size=(3, 2))
         p, l, u = mt.linalg.lu(a)
-        l.tiles()
+        l = l.tiles()
+        p, u = get_tiled(p), get_tiled(u)
 
         self.assertEqual(l.shape, (6, 6))
         self.assertEqual(u.shape, (6, 6))
@@ -234,7 +250,8 @@ class Test(unittest.TestCase):
 
         a = mt.random.randint(1, 10, (7, 7), chunk_size=4)
         p, l, u = mt.linalg.lu(a)
-        l.tiles()
+        l = l.tiles()
+        p, u = get_tiled(p), get_tiled(u)
 
         self.assertEqual(l.shape, (7, 7))
         self.assertEqual(u.shape, (7, 7))
@@ -246,7 +263,8 @@ class Test(unittest.TestCase):
 
         a = mt.random.randint(1, 10, (7, 5), chunk_size=4)
         p, l, u = mt.linalg.lu(a)
-        l.tiles()
+        l = l.tiles()
+        p, u = get_tiled(p), get_tiled(u)
 
         self.assertEqual(l.shape, (7, 5))
         self.assertEqual(u.shape, (5, 5))
@@ -254,7 +272,8 @@ class Test(unittest.TestCase):
 
         a = mt.random.randint(1, 10, (5, 7), chunk_size=4)
         p, l, u = mt.linalg.lu(a)
-        l.tiles()
+        l = l.tiles()
+        p, u = get_tiled(p), get_tiled(u)
 
         self.assertEqual(l.shape, (5, 5))
         self.assertEqual(u.shape, (5, 7))
@@ -277,7 +296,8 @@ class Test(unittest.TestCase):
         self.assertTrue(u.op.sparse)
         self.assertIsInstance(u, SparseTensor)
 
-        p.tiles()
+        p = p.tiles()
+        l, u = get_tiled(l), get_tiled(u)
         self.assertTrue(all(c.is_sparse() for c in p.chunks))
         self.assertTrue(all(c.is_sparse() for c in l.chunks))
         self.assertTrue(all(c.is_sparse() for c in u.chunks))
@@ -370,7 +390,7 @@ class Test(unittest.TestCase):
 
         self.assertEqual(t3.shape, (6, 5))
 
-        t3.tiles()
+        t3 = t3.tiles()
 
         self.assertEqual(t3.shape, (6, 5))
         self.assertEqual(len(t3.chunks), 9)
@@ -385,27 +405,27 @@ class Test(unittest.TestCase):
         b = ones((10, 20), chunk_size=2)
         c = dot(a, b)
         self.assertEqual(c.shape, (20,))
-        c.tiles()
+        c = c.tiles()
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
         a = ones((10, 20), chunk_size=2)
         b = ones(20, chunk_size=2)
         c = dot(a, b)
         self.assertEqual(c.shape, (10,))
-        c.tiles()
+        c = c.tiles()
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
         v = ones((100, 100), chunk_size=10)
         tv = v.dot(v)
         self.assertEqual(tv.shape, (100, 100))
-        tv.tiles()
+        tv = tv.tiles()
         self.assertEqual(tv.shape, tuple(sum(s) for s in tv.nsplits))
 
         a = ones((10, 20), chunk_size=2)
         b = ones((30, 20), chunk_size=2)
         c = inner(a, b)
         self.assertEqual(c.shape, (10, 30))
-        c.tiles()
+        c = c.tiles()
         self.assertEqual(c.shape, tuple(sum(s) for s in c.nsplits))
 
     def testDot(self):

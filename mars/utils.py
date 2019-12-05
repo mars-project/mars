@@ -30,6 +30,7 @@ import time
 import zlib
 import threading
 import itertools
+import weakref
 
 import numpy as np
 import pandas as pd
@@ -359,18 +360,6 @@ def log_unhandled(func):
     return _wrapped
 
 
-def build_graph(tensors, graph=None, executed_keys=None, tiled=False, compose=True):
-    from .graph import DirectedGraph
-
-    graph = graph or DirectedGraph()
-    executed_keys = executed_keys or []
-    tensors = tensors if isinstance(tensors, (tuple, list, set)) else [tensors]
-    for t in tensors:
-        graph = t.build_graph(graph=graph, tiled=tiled, compose=compose,
-                              executed_keys=executed_keys)
-    return graph
-
-
 _kernel_mode = threading.local()
 
 
@@ -401,6 +390,88 @@ def kernel_mode(func):
                 _kernel_mode.eager = None
 
     return _wrapped
+
+
+def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
+    from .tiles import TileableGraphBuilder
+
+    with build_mode():
+        node_to_copy = weakref.WeakKeyDictionary()
+        node_to_fetch = weakref.WeakKeyDictionary()
+        copied = weakref.WeakSet()
+
+        def replace_with_fetch_or_copy(n):
+            n = n.data if hasattr(n, 'data') else n
+            if n in copied:
+                return n
+            if n.key in executed_tileable_keys:
+                if n not in node_to_fetch:
+                    c = node_to_copy[n] = node_to_fetch[n] = build_fetch(n).data
+                    copied.add(c)
+                return node_to_fetch[n]
+            if n not in node_to_copy:
+                copy_op = n.op.copy()
+                params = []
+                for o in n.op.outputs:
+                    p = o.params.copy()
+                    p.update(o.extra_params)
+                    p['_key'] = o.key
+                    params.append(p)
+                copies = copy_op.new_tileables([replace_with_fetch_or_copy(inp) for inp in n.inputs],
+                                               kws=params, output_limit=len(params))
+                for o, copy in zip(n.op.outputs, copies):
+                    node_to_copy[o] = copy.data
+                    copied.add(copy.data)
+            return node_to_copy[n]
+
+        tileable_graph_builder = TileableGraphBuilder(
+            graph=graph, node_processor=replace_with_fetch_or_copy)
+        return tileable_graph_builder.build(tileables)
+
+
+_build_mode = threading.local()
+
+
+class BuildMode(object):
+    def __init__(self):
+        self.is_build_mode = False
+        self._old_mode = None
+        self._enter_times = 0
+
+    def __enter__(self):
+        if self._enter_times == 0:
+            # check to prevent nested enter and exit
+            self._old_mode = self.is_build_mode
+            self.is_build_mode = True
+        self._enter_times += 1
+
+    def __exit__(self, *_):
+        self._enter_times -= 1
+        if self._enter_times == 0:
+            self.is_build_mode = self._old_mode
+            self._old_mode = None
+
+
+def build_mode():
+    ret = getattr(_build_mode, 'build_mode', None)
+    if ret is None:
+        ret = BuildMode()
+        _build_mode.build_mode = ret
+
+    return ret
+
+
+def enter_build_mode(func):
+    """
+    Decorator version of build_mode.
+
+    :param func: function
+    :return: the result of function
+    """
+    def inner(*args, **kwargs):
+        with build_mode():
+            return func(*args, **kwargs)
+    return inner
 
 
 def build_exc_info(exc_type, *args, **kwargs):
@@ -478,8 +549,8 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
-def build_fetch_tileable(tileable, coarse=False):
-    if coarse or tileable.is_coarse():
+def build_fetch_tileable(tileable):
+    if tileable.is_coarse():
         chunks = None
     else:
         chunks = []
@@ -490,17 +561,17 @@ def build_fetch_tileable(tileable, coarse=False):
     tileable_op = tileable.op
     params = tileable.params.copy()
 
-    new_op = tileable_op.get_fetch_op_cls(tileable)()
+    new_op = tileable_op.get_fetch_op_cls(tileable)(_id=tileable_op.id)
     return new_op.new_tileables(None, chunks=chunks, nsplits=tileable.nsplits,
                                 _key=tileable.key, _id=tileable.id, **params)[0]
 
 
-def build_fetch(entity, coarse=False):
+def build_fetch(entity):
     from .core import Chunk, ChunkData
     if isinstance(entity, (Chunk, ChunkData)):
         return build_fetch_chunk(entity)
     elif hasattr(entity, 'tiles'):
-        return build_fetch_tileable(entity, coarse=coarse)
+        return build_fetch_tileable(entity)
     else:
         raise TypeError('Type %s not supported' % type(entity).__name__)
 
@@ -610,3 +681,21 @@ def numpy_dtype_from_descr_json(obj):
     if isinstance(obj, list):
         return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
     return obj
+
+
+def check_chunks_unknown_shape(tileables, error_cls):
+    for t in tileables:
+        for ns in t.nsplits:
+            if any(np.isnan(s) for s in ns):
+                raise error_cls(
+                    'Input tileable {} has chunks with unknown shape'.format(t))
+
+
+def has_unknown_shape(tiled):
+    if getattr(tiled, 'shape', None) is None:
+        return False
+    if any(np.isnan(s) for s in tiled.shape):
+        return True
+    if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
+        return True
+    return False

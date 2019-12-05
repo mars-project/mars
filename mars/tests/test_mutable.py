@@ -20,12 +20,15 @@ import unittest
 import numpy as np
 
 from mars.deploy.local.core import new_cluster
-from mars.session import new_session, LocalSession
+from mars.session import new_session, LocalSession, Session
 from mars.tests.core import mock
 
 
 @unittest.skipIf(sys.platform == 'win32', 'does not run in windows')
 class Test(unittest.TestCase):
+
+    def tearDown(self):
+        Session._default_session = None
 
     @mock.patch('webbrowser.open_new_tab', new=lambda *_, **__: True)
     def testMutableTensorCreateAndGet(self):
@@ -305,9 +308,6 @@ class Test(unittest.TestCase):
 
             # The arr should be executed after seal
             self.assertIn(arr.key, session._sess.executed_tileables)
-
-            # The arr should has chunks
-            self.assertNotEqual(arr.chunks, None)
 
             expected = np.zeros((4, 5), dtype='int32')
             expected[1:4, 2] = 8

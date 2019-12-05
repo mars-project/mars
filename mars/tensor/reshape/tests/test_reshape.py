@@ -25,21 +25,21 @@ class Test(unittest.TestCase):
         a = ones((10, 20, 30), chunk_size=5)
         b = a.reshape(10, 600)
 
-        b.tiles()
+        b = b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 600))
 
         a = ones((10, 600), chunk_size=5)
         b = a.reshape(10, 30, 20)
 
-        b.tiles()
+        b = b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 30, 20))
 
         a = ones((10, 600), chunk_size=5)
         a.shape = [10, 30, 20]
 
-        a.tiles()
+        a = a.tiles()
 
         self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
 
@@ -51,7 +51,7 @@ class Test(unittest.TestCase):
         b = a.reshape(27, 31)
         b.op.extra_params['_reshape_with_shuffle'] = True
 
-        b.tiles()
+        b = b.tiles()
 
         self.assertEqual(tuple(sum(s) for s in b.nsplits), (27, 31))
         self.assertIsInstance(b.chunks[0].op, TensorReshapeReduce)

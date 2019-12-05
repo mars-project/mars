@@ -45,7 +45,7 @@ class Test(TestBase):
 
         for kw in parameters:
             df = mdf1.merge(mdf2, **kw)
-            df.tiles()
+            df = df.tiles()
 
             self.assertEqual(df.chunk_shape, (2, 1))
             for chunk in df.chunks:
@@ -84,7 +84,7 @@ class Test(TestBase):
 
         for kw in parameters:
             df = mdf1.join(mdf2, **kw)
-            df.tiles()
+            df = df.tiles()
 
             self.assertEqual(df.chunk_shape, (3, 1))
             for chunk in df.chunks:
@@ -123,7 +123,7 @@ class Test(TestBase):
 
         for kw in parameters:
             df = mdf1.join(mdf2, **kw)
-            df.tiles()
+            df = df.tiles()
 
             self.assertEqual(df.chunk_shape, (3, 1))
             for chunk in df.chunks:

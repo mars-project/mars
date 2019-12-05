@@ -25,6 +25,7 @@ from mars.tensor.indexing import choose, unravel_index, nonzero, compress
 from mars.tensor.indexing.setitem import TensorIndexSetValue
 from mars.tensor.merge.concatenate import TensorConcatenate
 from mars.config import option_context
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -167,7 +168,8 @@ class Test(unittest.TestCase):
     def testBoolIndexingTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
         indexed = t[t < 2]
-        indexed.tiles()
+        indexed = indexed.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(len(indexed.chunks), 280)
         self.assertEqual(indexed.chunks[0].index, (0,))
@@ -177,7 +179,8 @@ class Test(unittest.TestCase):
 
         t2 = ones((100, 200), chunk_size=30)
         indexed2 = t[t2 < 2]
-        indexed2.tiles()
+        indexed2 = indexed2.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(len(indexed2.chunks), 280)
         self.assertEqual(len(indexed2.chunks[0].shape), 2)
@@ -189,7 +192,8 @@ class Test(unittest.TestCase):
     def testSliceTiles(self):
         t = ones((100, 200, 300), chunk_size=30)
         t2 = t[10: 40, 199:, -30: 303]
-        t2.tiles()
+        t2 = t2.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(t2.chunk_shape, (2, 1, 1))
         self.assertEqual(t2.chunks[0].inputs[0], t.cix[0, -1, -1].data)
@@ -202,14 +206,16 @@ class Test(unittest.TestCase):
     def testIndicesIndexingTiles(self):
         t = ones((10, 20, 30), chunk_size=(2, 20, 30))
         t2 = t[3]
-        t2.tiles()
+        t2 = t2.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(len(t2.chunks), 1)
         self.assertIs(t2.chunks[0].inputs[0], t.cix[1, 0, 0].data)
         self.assertEqual(t2.chunks[0].op.indexes[0], 1)
 
         t3 = t[4]
-        t3.tiles()
+        t3 = t3.tiles()
+        t = get_tiled(t)
 
         self.assertEqual(len(t3.chunks), 1)
         self.assertIs(t3.chunks[0].inputs[0], t.cix[2, 0, 0].data)
@@ -220,7 +226,8 @@ class Test(unittest.TestCase):
 
         cmp = ones(400, chunk_size=24) < 2
         t2 = t[10:90:3, 5, ..., None, cmp]
-        t2.tiles()
+        t2 = t2.tiles()
+        cmp = get_tiled(cmp)
 
         self.assertEqual(t2.shape[:-1], (27, 300, 1))
         self.assertTrue(np.isnan(t2.shape[-1]))
@@ -232,7 +239,8 @@ class Test(unittest.TestCase):
         cmp2 = ones((100, 200), chunk_size=24) < 2
         cmp3 = ones(400, chunk_size=24) < 2
         t4 = t3[cmp2, 5, None, cmp3]
-        t4.tiles()
+        t4 = t4.tiles()
+        cmp2, cmp3 = get_tiled(cmp2), get_tiled(cmp3)
 
         self.assertEqual(t4.shape[1], 1)
         self.assertTrue(np.isnan(t4.shape[0]))
@@ -249,7 +257,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t.shape, shape)
         self.assertIsInstance(t.inputs[0].op.outputs[0].op, TensorOnes)
 
-        t.tiles()
+        t = t.tiles()
         self.assertIsInstance(t.chunks[0].op, TensorOnes)
         self.assertIsInstance(t.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertEqual(t.cix[1, 1, 0, 0].op.value, 2.2)
@@ -258,7 +266,7 @@ class Test(unittest.TestCase):
         shape = t2[5:20:3, 5, ..., :-5].shape
         t2[5:20:3, 5, ..., :-5] = ones(shape, chunk_size=4, dtype='i4') * 2
 
-        t2.tiles()
+        t2 = t2.tiles()
         self.assertIsInstance(t2.chunks[0].op, TensorOnes)
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op, TensorIndexSetValue)
         self.assertIsInstance(t2.cix[1, 1, 0, 0].op.value.op, TensorConcatenate)
@@ -274,17 +282,17 @@ class Test(unittest.TestCase):
 
         # assign tuple to record
         t[1:4, 1] = (3, 4., (5, 6))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.cix[0, 0].op.value, (3, 4., (5, 6)))
 
         # assign scalar to record
         t[1:4, 2] = 8
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.cix[0, 0].op.value, 8)
 
         # assign scalar array to record array with broadcast
         t[1:3] = np.arange(5)
-        t.tiles()
+        t = t.tiles()
         slices_op = t.cix[0, 0].op.value.op
         self.assertEqual(slices_op.slices, (slice(None, None, None), slice(None, 3, None)))
         broadcast_op = slices_op.inputs[0].op.inputs[0].op
@@ -294,7 +302,7 @@ class Test(unittest.TestCase):
 
         # assign scalar array to record array of same shape, no broadcast
         t[2:4] = np.arange(10).reshape(2, 5)
-        t.tiles()
+        t = t.tiles()
         slices_op = t.cix[0, 0].op.value.op
         self.assertEqual(slices_op.slices, (slice(None, 1, None), slice(None, 3, None)))
         np.testing.assert_array_equal(slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5))
@@ -307,7 +315,7 @@ class Test(unittest.TestCase):
                        [20, 21, 22, 23], [30, 31, 32, 33]]
             a = choose([2, 3, 1, 0], choices)
 
-            a.tiles()
+            a = a.tiles()
             self.assertEqual(len(a.chunks), 2)
             self.assertIsInstance(a.chunks[0].op, type(a.op))
             self.assertEqual(len(a.chunks[0].inputs), 5)
@@ -325,6 +333,7 @@ class Test(unittest.TestCase):
         self.assertEqual(len(t), 2)
 
         [r.tiles() for r in t]
+        t = [get_tiled(r) for r in t]
 
         self.assertEqual(len(t[0].chunks), 3)
         self.assertEqual(len(t[1].chunks), 3)

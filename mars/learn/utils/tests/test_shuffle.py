@@ -21,6 +21,7 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -36,7 +37,8 @@ class Test(unittest.TestCase):
         self.assertEqual(new_b.shape, b.shape)
         self.assertNotEqual(b.index_value.key, new_b.index_value.key)
 
-        new_a.tiles()
+        new_a = new_a.tiles()
+        new_b = get_tiled(new_b)
 
         self.assertEqual(len(new_a.chunks), 10)
         self.assertTrue(np.isnan(new_a.chunks[0].shape[0]))
@@ -58,7 +60,8 @@ class Test(unittest.TestCase):
         self.assertFalse(np.all(new_d.dtypes.index[:-1] < new_d.dtypes.index[1:]))
         pd.testing.assert_series_equal(d.dtypes, new_d.dtypes.sort_index())
 
-        new_c.tiles()
+        new_c = new_c.tiles()
+        new_d = get_tiled(new_d)
 
         self.assertEqual(len(new_c.chunks), 5 * 1 * 2)
         self.assertTrue(np.isnan(new_c.chunks[0].shape[0]))

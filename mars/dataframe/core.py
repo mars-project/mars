@@ -21,7 +21,8 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
-from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, is_eager_mode
+from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
+    is_eager_mode, build_mode
 from ..core import ChunkData, Chunk, TileableEntity, TileableData, HasShapeTileableData
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int64Field, Int32Field, StringField, ListField, SliceField, \
@@ -513,6 +514,13 @@ class SeriesData(HasShapeTileableData):
     def index_value(self):
         return self._index_value
 
+    def _equal(self, o):
+        # FIXME We need to implemented a true `==` operator for Series
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -681,7 +689,6 @@ class DataFrameData(HasShapeTileableData):
         return self._columns_value
 
     def _equal(self, o):
-        from ..core import build_mode
         # FIXME We need to implemented a true `==` operator for DataFrame, current we just need
         # to do `self is o` under build mode to make the `iloc.__setitem__` happy.
         if build_mode().is_build_mode:
@@ -747,13 +754,27 @@ class DataFrameGroupByData(TileableData):
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
-    def __init__(self, op=None, shape=None, chunks=None, **kw):
-        super(DataFrameGroupByData, self).__init__(_op=op, _shape=shape, _chunks=chunks, **kw)
+    def __init__(self, op=None, chunks=None, **kw):
+        super(DataFrameGroupByData, self).__init__(_op=op, _chunks=chunks, **kw)
+
+    def _equal(self, o):
+        # FIXME We need to implemented a true `==` operator for DataFrameGroupby
+        if build_mode().is_build_mode:
+            return self is o
+        else:
+            return self == o
 
 
 class DataFrameGroupBy(TileableEntity):
     __slots__ = ()
     _allow_data_type_ = (DataFrameGroupByData,)
+
+    def __eq__(self, other):
+        return self._equal(other)
+
+    def __hash__(self):
+        # NB: we have customized __eq__ explicitly, thus we need define __hash__ explicitly as well.
+        return super(DataFrameGroupBy, self).__hash__()
 
 
 INDEX_TYPE = (Index, IndexData)

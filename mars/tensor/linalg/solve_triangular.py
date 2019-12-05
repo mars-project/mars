@@ -19,9 +19,12 @@ from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, KeyField
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesFail
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
+from ..utils import decide_unify_split
 from ..core import TensorOrder
 
 
@@ -67,13 +70,12 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
         from ..arithmetic.utils import tree_add
         from .dot import TensorDot
 
+        check_chunks_unknown_shape(op.inputs, TilesFail)
+
         a, b = op.a, op.b
-        if a.nsplits[0] != a.nsplits[1]:
-            raise LinAlgError("matrix a's splits of all axis must be equal, "
-                              'Use rechunk method to change the splits')
-        if a.nsplits[1] != b.nsplits[0]:
-            raise LinAlgError("matrix a's splits of axis 1 and matrix b's splits of axis 0 must be equal, "
-                              'Use rechunk method to change the splits')
+        unified_nsplit = decide_unify_split(a.nsplits[0], a.nsplits[1], b.nsplits[0])
+        a = a.rechunk((unified_nsplit, unified_nsplit))._inplace_tile()
+        b = b.rechunk((unified_nsplit,) + b.nsplits[1:])._inplace_tile()
 
         b_multi_dim = b.ndim > 1
         b_hsplits = b.chunk_shape[1] if b_multi_dim else 1

@@ -22,7 +22,8 @@ from ..utils import decide_chunk_sizes
 from ... import opcodes as OperandDef
 from ...compat import six, izip
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import get_shuffle_input_keys_idxes
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
+from ...tiles import TilesFail
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
@@ -217,10 +218,11 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
             result = result.transpose()
             return [recursive_tile(result)]
 
+        check_chunks_unknown_shape(op.inputs, TilesFail)
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
                 in_tensor.shape, tensor.shape, in_tensor.nsplits)
-            rechunked_tensor = in_tensor.rechunk(rechunk_nsplits).single_tiles()
+            rechunked_tensor = in_tensor.rechunk(rechunk_nsplits)._inplace_tile()
             in_idxes = itertools.product(*[range(len(s)) for s in rechunk_nsplits])
             out_idxes = itertools.product(*[range(len(s)) for s in reshape_nsplits])
             out_shape = itertools.product(*[s for s in reshape_nsplits])
@@ -242,8 +244,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1, order=tensor.op.order).single_tiles().reshape(
-                tensor.shape, order=tensor.op.order).single_tiles()]
+            return [in_tensor.reshape(-1, order=tensor.op.order)._inplace_tile().reshape(
+                tensor.shape, order=tensor.op.order)._inplace_tile()]
 
     @classmethod
     def execute(cls, ctx, op):

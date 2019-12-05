@@ -24,6 +24,7 @@ from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_spl
     split, squeeze, digitize, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, to_gpu, to_cpu
 from mars.tensor.base.searchsorted import Stage
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -119,7 +120,7 @@ class Test(unittest.TestCase):
         self.assertIs(a.inputs[0], b.data)
         self.assertIsInstance(a.inputs[1].op, tp)
 
-        a.tiles()
+        a = a.tiles()
 
         self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
         self.assertEqual(len(a.chunks[0].inputs), 2)
@@ -135,7 +136,7 @@ class Test(unittest.TestCase):
 
         self.assertIsNotNone(a.op.where)
 
-        a.tiles()
+        a = a.tiles()
 
         self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
         self.assertEqual(len(a.chunks[0].inputs), 3)
@@ -147,7 +148,7 @@ class Test(unittest.TestCase):
         arr = ones((10, 20, 30), chunk_size=3)
 
         arr2 = arr.astype(np.int32)
-        arr2.tiles()
+        arr2 = arr2.tiles()
 
         self.assertEqual(arr2.shape, (10, 20, 30))
         self.assertTrue(np.issubdtype(arr2.dtype, np.int32))
@@ -160,7 +161,7 @@ class Test(unittest.TestCase):
         self.assertTrue(arr3.flags['F_CONTIGUOUS'])
         self.assertFalse(arr3.flags['C_CONTIGUOUS'])
 
-        arr3.tiles()
+        arr3 = arr3.tiles()
 
         self.assertEqual(arr3.chunks[0].order.value, 'F')
 
@@ -168,7 +169,7 @@ class Test(unittest.TestCase):
         arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
 
         arr2 = transpose(arr)
-        arr2.tiles()
+        arr2 = arr2.tiles()
 
         self.assertEqual(arr2.shape, (30, 20, 10))
         self.assertEqual(len(arr2.chunks), 126)
@@ -179,7 +180,7 @@ class Test(unittest.TestCase):
             transpose(arr, axes=(1, 0))
 
         arr3 = transpose(arr, (-2, 2, 0))
-        arr3.tiles()
+        arr3 = arr3.tiles()
 
         self.assertEqual(arr3.shape, (20, 30, 10))
         self.assertEqual(len(arr3.chunks), 126)
@@ -187,7 +188,7 @@ class Test(unittest.TestCase):
         self.assertEqual(arr3.chunks[-1].shape, (2, 5, 2))
 
         arr4 = arr.transpose(-2, 2, 0)
-        arr4.tiles()
+        arr4 = arr4.tiles()
 
         self.assertEqual(arr4.shape, (20, 30, 10))
         self.assertEqual(len(arr4.chunks), 126)
@@ -195,7 +196,7 @@ class Test(unittest.TestCase):
         self.assertEqual(arr4.chunks[-1].shape, (2, 5, 2))
 
         arr5 = arr.T
-        arr5.tiles()
+        arr5 = arr5.tiles()
 
         self.assertEqual(arr5.shape, (30, 20, 10))
         self.assertEqual(len(arr5.chunks), 126)
@@ -205,7 +206,8 @@ class Test(unittest.TestCase):
     def testSwapaxes(self):
         arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
         arr2 = arr.swapaxes(0, 1)
-        arr2.tiles()
+        arr2 = arr2.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(arr2.shape, (20, 10, 30))
         self.assertEqual(len(arr.chunks), len(arr2.chunks))
@@ -213,7 +215,8 @@ class Test(unittest.TestCase):
     def testBroadcastTo(self):
         arr = ones((10, 5), chunk_size=2)
         arr2 = broadcast_to(arr, (20, 10, 5))
-        arr2.tiles()
+        arr2 = arr2.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(arr2.shape, (20, 10, 5))
         self.assertEqual(len(arr2.chunks), len(arr.chunks))
@@ -221,7 +224,8 @@ class Test(unittest.TestCase):
 
         arr = ones((10, 5, 1), chunk_size=2)
         arr3 = broadcast_to(arr, (5, 10, 5, 6))
-        arr3.tiles()
+        arr3 = arr3.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(arr3.shape, (5, 10, 5, 6))
         self.assertEqual(len(arr3.chunks), len(arr.chunks))
@@ -230,7 +234,8 @@ class Test(unittest.TestCase):
 
         arr = ones((10, 1), chunk_size=2)
         arr4 = broadcast_to(arr, (20, 10, 5))
-        arr4.tiles()
+        arr4 = arr4.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(arr4.shape, (20, 10, 5))
         self.assertEqual(len(arr4.chunks), len(arr.chunks))
@@ -242,13 +247,18 @@ class Test(unittest.TestCase):
         with self.assertRaises(ValueError):
             broadcast_to(arr, (5, 1))
 
+        arr = ones((4, 5), chunk_size=2)
+        with self.assertRaises((ValueError)):
+            broadcast_to(arr[arr < 2], (3, 20))
+
+
     def testWhere(self):
         cond = tensor([[True, False], [False, True]], chunk_size=1)
         x = tensor([1, 2], chunk_size=1)
         y = tensor([3, 4], chunk_size=1)
 
         arr = where(cond, x, y)
-        arr.tiles()
+        arr = arr.tiles()
 
         self.assertEqual(len(arr.chunks), 4)
         self.assertTrue(np.array_equal(arr.chunks[0].inputs[0].op.data, [[True]]))
@@ -279,7 +289,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indices.shape[0]))
         self.assertEqual(indices.shape[1], 2)
 
-        indices.tiles()
+        indices = indices.tiles()
 
         self.assertEqual(indices.nsplits[1], (1, 1))
 
@@ -291,7 +301,7 @@ class Test(unittest.TestCase):
         self.assertTrue(indices.flags['F_CONTIGUOUS'])
         self.assertFalse(indices.flags['C_CONTIGUOUS'])
 
-        indices.tiles()
+        indices = indices.tiles()
 
         self.assertEqual(indices.chunks[0].order.value, 'F')
 
@@ -303,6 +313,7 @@ class Test(unittest.TestCase):
         self.assertEqual([s.shape[0] for s in splits], [3, 3, 2])
 
         splits[0].tiles()
+        splits = [get_tiled(s) for s in splits]
         self.assertEqual(splits[0].nsplits, ((2, 1),))
         self.assertEqual(splits[1].nsplits, ((1, 2),))
         self.assertEqual(splits[2].nsplits, ((2,),))
@@ -314,6 +325,7 @@ class Test(unittest.TestCase):
         self.assertEqual([s.shape[0] for s in splits], [3, 2, 2])
 
         splits[0].tiles()
+        splits = [get_tiled(s) for s in splits]
         self.assertEqual(splits[0].nsplits, ((2, 1),))
         self.assertEqual(splits[1].nsplits, ((1, 1),))
         self.assertEqual(splits[2].nsplits, ((1, 1),))
@@ -326,6 +338,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all(s.shape == (3,) for s in splits))
 
         splits[0].tiles()
+        splits = [get_tiled(s) for s in splits]
         self.assertEqual(splits[0].nsplits, ((2, 1),))
         self.assertEqual(splits[1].nsplits, ((1, 2),))
         self.assertEqual(splits[2].nsplits, ((2, 1),))
@@ -341,6 +354,7 @@ class Test(unittest.TestCase):
         self.assertEqual(splits[4].shape, (0,))
 
         splits[0].tiles()
+        splits = [get_tiled(s) for s in splits]
         self.assertEqual(splits[0].nsplits, ((2, 1),))
         self.assertEqual(splits[1].nsplits, ((1, 1),))
         self.assertEqual(splits[2].nsplits, ((1,),))
@@ -381,7 +395,7 @@ class Test(unittest.TestCase):
         self.assertEqual(inds.shape, (4,))
         self.assertIsNotNone(inds.dtype)
 
-        inds.tiles()
+        inds = inds.tiles()
 
         self.assertEqual(len(inds.chunks), 2)
 
@@ -418,13 +432,13 @@ class Test(unittest.TestCase):
         a = tensor(np.random.randn(10), chunk_size=5)
 
         t = repeat(a, 3)
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(sum(t.nsplits[0]), 30)
 
         a = tensor(np.random.randn(100), chunk_size=10)
 
         t = repeat(a, 3)
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(sum(t.nsplits[0]), 300)
 
         a = tensor(np.random.randn(4))
@@ -432,7 +446,7 @@ class Test(unittest.TestCase):
 
         t = repeat(a, b)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(np.isnan(t.nsplits[0]))
 
     def testIsIn(self):
@@ -443,7 +457,8 @@ class Test(unittest.TestCase):
         self.assertEqual(mask.shape, (2, 2))
         self.assertEqual(mask.dtype, np.bool_)
 
-        mask.tiles()
+        mask = mask.tiles()
+        element = get_tiled(element)
 
         self.assertEqual(len(mask.chunks), len(element.chunks))
         self.assertEqual(len(mask.op.test_elements.chunks), 1)
@@ -456,7 +471,8 @@ class Test(unittest.TestCase):
         self.assertEqual(mask.shape, (2, 2))
         self.assertEqual(mask.dtype, np.bool_)
 
-        mask.tiles()
+        mask = mask.tiles()
+        element = get_tiled(element)
 
         self.assertEqual(len(mask.chunks), len(element.chunks))
         self.assertEqual(len(mask.op.test_elements.chunks), 1)
@@ -525,7 +541,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t1.flags['F_CONTIGUOUS'],
                          np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS'])
 
-        t1.tiles()
+        t1 = t1.tiles()
 
         self.assertEqual(t1.nsplits, ())
         self.assertEqual(len(t1.chunks), 1)
@@ -560,7 +576,8 @@ class Test(unittest.TestCase):
         self.assertEqual(gx.order, x.order)
         self.assertTrue(gx.op.gpu)
 
-        gx.tiles()
+        gx = gx.tiles()
+        x = get_tiled(x)
 
         self.assertEqual(gx.chunks[0].dtype, x.chunks[0].dtype)
         self.assertEqual(gx.chunks[0].order, x.chunks[0].order)
@@ -575,7 +592,8 @@ class Test(unittest.TestCase):
         self.assertEqual(cx.order, x.order)
         self.assertFalse(cx.op.gpu)
 
-        cx.tiles()
+        cx = cx.tiles()
+        x = get_tiled(x)
 
         self.assertEqual(cx.chunks[0].dtype, x.chunks[0].dtype)
         self.assertEqual(cx.chunks[0].order, x.chunks[0].order)
@@ -588,7 +606,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(x.shape[0]))
         self.assertEqual(x.dtype, np.dtype(np.int64))
 
-        x.tiles()
+        x = x.tiles()
 
         self.assertEqual(len(x.chunks), 1)
         self.assertEqual(len(x.chunks[0].shape), 1)
@@ -604,7 +622,8 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(indices.shape[0]))
         self.assertEqual(indices.dtype, np.dtype(np.intp))
 
-        x.tiles()
+        x = x.tiles()
+        indices = get_tiled(indices)
 
         self.assertEqual(len(x.chunks), 1)
         self.assertEqual(len(x.chunks[0].shape), 1)
@@ -627,7 +646,7 @@ class Test(unittest.TestCase):
         self.assertTrue(np.isnan(x.shape[0]))
         self.assertEqual(x.dtype, np.dtype(np.int64))
 
-        x.tiles()
+        x = x.tiles()
 
         self.assertEqual(len(x.chunks), 2)
         self.assertEqual(x.nsplits, ((np.nan, np.nan),))
@@ -651,7 +670,9 @@ class Test(unittest.TestCase):
         self.assertEqual(counts.shape, (np.nan,))
         self.assertEqual(counts.dtype, np.dtype(np.int64))
 
-        x.tiles()
+        x = x.tiles()
+        indices, inverse, counts = \
+            get_tiled(indices), get_tiled(inverse), get_tiled(counts)
 
         self.assertEqual(len(x.chunks), 2)
         self.assertEqual(x.nsplits, ((10,), (np.nan, np.nan)))
@@ -687,7 +708,7 @@ class Test(unittest.TestCase):
         sa = sort(a)
         self.assertEqual(type(sa.op).__name__, 'TensorSort')
 
-        sa.tiles()
+        sa = sa.tiles()
 
         self.assertEqual(len(sa.chunks), 2)
         for c in sa.chunks:
@@ -699,7 +720,7 @@ class Test(unittest.TestCase):
         sa = sort(a)
         self.assertEqual(type(sa.op).__name__, 'TensorSort')
 
-        sa.tiles()
+        sa = sa.tiles()
 
         for c in sa.chunks:
             self.assertEqual(type(c.op).__name__, 'PSRSShuffleReduce')

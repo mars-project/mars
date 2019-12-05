@@ -629,12 +629,12 @@ class Test(unittest.TestCase):
             session = cluster.session
             a = mt.ones((10, 10), chunk_size=3)
             b = a.dot(a)
-            b.tiles()
+            b = b.tiles()
 
             r = session.run(b, timeout=_exec_timeout)
             np.testing.assert_array_equal(r, np.ones((10, 10)) * 10)
 
-            a.tiles()
+            a = a.tiles()
             b = a + 1
 
             r = session.run(b, timeout=_exec_timeout)

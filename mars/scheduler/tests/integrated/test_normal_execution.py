@@ -265,3 +265,55 @@ class Test(SchedulerIntegratedTest):
 
         result = session_ref.fetch_result(graph_key, series1.key)
         pd.testing.assert_series_equal(s1, loads(result))
+
+    def testIterativeTilingWithoutEtcd(self):
+        self.start_processes(etcd=False)
+
+        session_id = uuid.uuid1()
+        actor_client = new_client()
+
+        session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
+
+        rs = np.random.RandomState(0)
+        raw = rs.rand(100)
+        a = mt.tensor(raw, chunk_size=10)
+        a.sort()
+        c = a[:5]
+
+        graph = c.build_graph()
+        targets = [c.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, c.key)
+        expected = np.sort(raw)[:5]
+        assert_allclose(loads(result), expected)
+
+        with self.assertRaises(TypeError):
+            session_ref.fetch_result(graph_key, a.key, check=False)
+
+        raw1 = rs.rand(20)
+        raw2 = rs.rand(20)
+        a = mt.tensor(raw1, chunk_size=10)
+        a.sort()
+        b = mt.tensor(raw2, chunk_size=15) + 1
+        c = mt.concatenate([a[:10], b])
+        c.sort()
+        d = c[:5]
+
+        graph = d.build_graph()
+        targets = [d.key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        result = session_ref.fetch_result(graph_key, d.key)
+        expected = np.sort(np.concatenate([np.sort(raw1)[:10], raw2 + 1]))[:5]
+        assert_allclose(loads(result), expected)

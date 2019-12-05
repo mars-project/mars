@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from mars.tests.core import TestBase
+from mars.tiles import get_tiled
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.base import to_gpu, to_cpu
@@ -34,7 +35,8 @@ class Test(TestBase):
         self.assertTrue(cdf.op.gpu)
         pd.testing.assert_series_equal(df.dtypes, cdf.dtypes)
 
-        cdf.tiles()
+        cdf = cdf.tiles()
+        df = get_tiled(df)
 
         self.assertEqual(df.nsplits, cdf.nsplits)
         self.assertEqual(df.chunks[0].index_value, cdf.chunks[0].index_value)
@@ -52,7 +54,8 @@ class Test(TestBase):
         self.assertEqual(series.index_value, cseries.index_value)
         self.assertTrue(cseries.op.gpu)
 
-        cseries.tiles()
+        cseries = cseries.tiles()
+        series = get_tiled(series)
 
         self.assertEqual(series.nsplits, cseries.nsplits)
         self.assertEqual(series.chunks[0].index_value, cseries.chunks[0].index_value)
@@ -72,7 +75,8 @@ class Test(TestBase):
         self.assertFalse(df2.op.gpu)
         pd.testing.assert_series_equal(df.dtypes, df2.dtypes)
 
-        df2.tiles()
+        df2 = df2.tiles()
+        df = get_tiled(df)
 
         self.assertEqual(df.nsplits, df2.nsplits)
         self.assertEqual(df.chunks[0].index_value, df2.chunks[0].index_value)

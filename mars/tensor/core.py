@@ -23,7 +23,6 @@ import numpy as np
 
 from ..core import Entity, TileableEntity, ChunkData, Chunk, HasShapeTileableData, \
     build_mode, Serializable
-from ..tiles import handler
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
 from ..compat import Enum
@@ -269,12 +268,6 @@ class Tensor(TileableEntity):
 
     def __len__(self):
         return len(self._data)
-
-    def tiles(self):
-        return handler.tiles(self)
-
-    def single_tiles(self):
-        return handler.single_tiles(self)
 
     @property
     def shape(self):
@@ -667,7 +660,7 @@ class MutableTensor(Entity):
         output_shape = calc_shape(self.shape, tensor_index)
 
         index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=tensor_index)
-        index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape)).single_tiles()
+        index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape))._inplace_tile()
         output_chunks = index_tensor.chunks
 
         is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields

@@ -16,6 +16,7 @@
 
 import unittest
 
+from mars.tiles import get_tiled
 from mars.tensor.datasource import ones
 from mars.tensor.indexing.slice import TensorSlice
 from mars.tensor.rechunk.rechunk import compute_rechunk
@@ -24,7 +25,7 @@ from mars.tensor.rechunk.rechunk import compute_rechunk
 class Test(unittest.TestCase):
     def testComputeRechunk(self):
         tensor = ones((12, 8), chunk_size=((4, 4, 3, 1), (3, 3, 2)))
-        tensor.tiles()
+        tensor = tensor.tiles()
         new_tensor = compute_rechunk(tensor, ((9, 2, 1), (2, 1, 4, 1)))
 
         self.assertEqual(len(new_tensor.chunks), 12)
@@ -46,10 +47,10 @@ class Test(unittest.TestCase):
     def testRechunk(self):
         tensor = ones((12, 9), chunk_size=4)
         new_tensor = tensor.rechunk(3)
-        new_tensor.tiles()
+        new_tensor = new_tensor.tiles()
 
         self.assertEqual(len(new_tensor.chunks), 12)
-        self.assertEqual(new_tensor.chunks[0].inputs[0], tensor.chunks[0].data)
+        self.assertEqual(new_tensor.chunks[0].inputs[0], get_tiled(tensor).chunks[0].data)
         self.assertEqual(len(new_tensor.chunks[1].inputs), 2)
         self.assertEqual(new_tensor.chunks[1].inputs[0].op.slices,
                          (slice(None, 3, None), slice(3, None, None)))
@@ -64,7 +65,7 @@ class Test(unittest.TestCase):
     def testSparse(self):
         tensor = ones((7, 12), chunk_size=4).tosparse()
         new_tensor = tensor.rechunk(5)
-        new_tensor.tiles()
+        new_tensor = new_tensor.tiles()
 
         self.assertTrue(new_tensor.issparse())
         self.assertTrue(all(c.issparse() for c in new_tensor.chunks))
