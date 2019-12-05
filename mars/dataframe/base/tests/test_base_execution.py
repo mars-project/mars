@@ -81,3 +81,14 @@ class Test(TestBase):
         df2 = df.rechunk(5)
         res = self.executor.execute_dataframe(df2, concat=True)[0]
         pd.testing.assert_frame_equal(data, res)
+
+        # test Series rechunk execution.
+        data = pd.Series(np.random.rand(10,))
+        series = from_pandas_series(data)
+        series2 = series.rechunk(3)
+        res = self.executor.execute_dataframe(series2, concat=True)[0]
+        pd.testing.assert_series_equal(data, res)
+
+        series2 = series.rechunk(1)
+        res = self.executor.execute_dataframe(series2, concat=True)[0]
+        pd.testing.assert_series_equal(data, res)

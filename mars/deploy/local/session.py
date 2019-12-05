@@ -160,7 +160,7 @@ class LocalClusterSession(object):
 
     def fetch(self, *tileables):
         from ...tensor.indexing import TensorIndex
-        from ...dataframe.indexing import DataFrameIlocGetItem
+        from ...dataframe.indexing.iloc import DataFrameIlocGetItem
 
         tileable_results = []
         for tileable in tileables:

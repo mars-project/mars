@@ -43,6 +43,8 @@ class Series(_Series):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None):
         if isinstance(data, TENSOR_TYPE):
+            if chunk_size is not None:
+                data = data.rechunk(chunk_size)
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
         elif isinstance(data, SERIES_TYPE):
             series = data
