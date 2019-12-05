@@ -43,8 +43,8 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(group, expected.get_group(key))
 
     def testGroupByAgg(self):
-        df1 = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4]})
+        df1 = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(100,)),
+                            'b': np.random.choice([2, 3, 4], size=(100,))})
         mdf = md.DataFrame(df1, chunk_size=3)
         r1 = mdf.groupby('a').agg('sum')
         pd.testing.assert_frame_equal(r1.execute(), df1.groupby('a').agg('sum'))
