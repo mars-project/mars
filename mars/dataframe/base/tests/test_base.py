@@ -152,5 +152,6 @@ class Test(TestBase):
 
         # no need to rechunk
         series2 = series.rechunk(3).tiles()
+        series = get_tiled(series)
         self.assertEqual(series2.chunk_shape, series.chunk_shape)
         self.assertEqual(series2.nsplits, series.nsplits)
