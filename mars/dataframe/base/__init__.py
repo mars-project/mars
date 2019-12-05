@@ -17,20 +17,13 @@ from mars.dataframe.base.to_cpu import to_cpu
 
 
 def _install():
-    from ..core import DataFrameData, DataFrame, SeriesData, Series
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE
     from .rechunk import rechunk
 
-    DataFrameData.to_gpu = to_gpu
-    DataFrame.to_gpu = to_gpu
-    DataFrameData.to_cpu = to_cpu
-    DataFrame.to_cpu = to_cpu
-    SeriesData.to_gpu = to_gpu
-    Series.to_gpu = to_gpu
-    SeriesData.to_cpu = to_cpu
-    Series.to_cpu = to_cpu
-
-    DataFrame.rechunk = rechunk
-    DataFrameData.rechunk = rechunk
+    for t in DATAFRAME_TYPE + SERIES_TYPE:
+        setattr(t, 'to_gpu', to_gpu)
+        setattr(t, 'to_cpu', to_cpu)
+        setattr(t, 'rechunk', rechunk)
 
 
 _install()

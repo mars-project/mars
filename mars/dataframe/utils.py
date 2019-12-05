@@ -529,6 +529,8 @@ def indexing_index_value(index_value, indexes, store_data=False):
     else:
         if isinstance(indexes, Integral):
             return parse_index(pd_index[[indexes]], store_data=store_data)
+        if isinstance(indexes, tuple):
+            return parse_index(pd_index[list(indexes)], store_data=store_data)
         else:
             return parse_index(pd_index[indexes], store_data=store_data)
 

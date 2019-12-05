@@ -700,7 +700,7 @@ class Executor(object):
     @kernel_mode
     def fetch_tileables(self, tileables, **kw):
         from .tensor.indexing import TensorIndex
-        from .dataframe.indexing import DataFrameIlocGetItem
+        from .dataframe.indexing.iloc import DataFrameIlocGetItem
 
         results = []
         to_concat_tileables = OrderedDict()

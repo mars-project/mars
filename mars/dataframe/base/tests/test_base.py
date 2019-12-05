@@ -117,3 +117,36 @@ class Test(TestBase):
         self.assertEqual(df2.chunks[1].shape, (4, 4))
         pd.testing.assert_index_equal(df2.chunks[1].index_value.to_pandas(), df.index_value.to_pandas())
         pd.testing.assert_index_equal(df2.chunks[1].columns_value.to_pandas(), pd.Index(columns[6:]))
+
+        # test Series rechunk
+        series = from_pandas_series(pd.Series(np.random.rand(10,)), chunk_size=3)
+        series2 = series.rechunk(4).tiles()
+
+        self.assertEqual(series2.shape, (10,))
+        self.assertEqual(len(series2.chunks), 3)
+        pd.testing.assert_index_equal(series2.index_value.to_pandas(), pd.RangeIndex(10))
+
+        self.assertEqual(series2.chunk_shape, (3,))
+        self.assertEqual(series2.nsplits, ((4, 4, 2), ))
+        self.assertEqual(series2.chunks[0].shape, (4,))
+        pd.testing.assert_index_equal(series2.chunks[0].index_value.to_pandas(), pd.RangeIndex(4))
+        self.assertEqual(series2.chunks[1].shape, (4,))
+        pd.testing.assert_index_equal(series2.chunks[1].index_value.to_pandas(), pd.RangeIndex(4, 8))
+        self.assertEqual(series2.chunks[2].shape, (2,))
+        pd.testing.assert_index_equal(series2.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10))
+
+        series2 = series.rechunk(1).tiles()
+
+        self.assertEqual(series2.shape, (10,))
+        self.assertEqual(len(series2.chunks), 10)
+        pd.testing.assert_index_equal(series2.index_value.to_pandas(), pd.RangeIndex(10))
+
+        self.assertEqual(series2.chunk_shape, (10,))
+        self.assertEqual(series2.nsplits, ((1,) * 10, ))
+        self.assertEqual(series2.chunks[0].shape, (1,))
+        pd.testing.assert_index_equal(series2.chunks[0].index_value.to_pandas(), pd.RangeIndex(1))
+
+        # no need to rechunk
+        series2 = series.rechunk(3).tiles()
+        self.assertEqual(series2.chunk_shape, series.chunk_shape)
+        self.assertEqual(series2.nsplits, series.nsplits)
