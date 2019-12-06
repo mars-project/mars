@@ -20,13 +20,20 @@ from collections import OrderedDict
 
 from ..actors import ActorNotExist
 from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
-from ..compat import OrderedDict3
+from ..compat import Enum, OrderedDict3
 from ..config import options
 from ..errors import WorkerProcessStopped
 from ..promise import PromiseActor
 from ..utils import build_exc_info
 
 logger = logging.getLogger(__name__)
+
+
+class ExecutionState(Enum):
+    ALLOCATING = 'allocating'
+    PREPARING_INPUTS = 'preparing_inputs'
+    CALCULATING = 'calculating'
+    STORING = 'storing'
 
 
 class WorkerClusterInfoActor(ClusterInfoActor):

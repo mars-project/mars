@@ -30,17 +30,10 @@ from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_in
     calc_data_size, get_chunk_shuffle_key
 from .storage import DataStorageDevice
 from .transfer import ReceiverManagerActor
-from .utils import WorkerActor, ExpiringCache, concat_operand_keys, \
+from .utils import WorkerActor, ExpiringCache, ExecutionState, concat_operand_keys, \
     build_quota_key, change_quota_key_owner
 
 logger = logging.getLogger(__name__)
-
-
-class ExecutionState(Enum):
-    ALLOCATING = 'allocating'
-    PREPARING_INPUTS = 'preparing_inputs'
-    CALCULATING = 'calculating'
-    STORING = 'storing'
 
 
 class GraphExecutionRecord(object):
@@ -52,14 +45,14 @@ class GraphExecutionRecord(object):
                  'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'retry_pending',
                  'finish_callbacks', 'stop_requested', 'calc_device',
-                 'preferred_data_device')
+                 'preferred_data_device', 'resource_released')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_metas=None, mem_request=None,
                  shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False, calc_device=None,
-                 preferred_data_device=None):
+                 preferred_data_device=None, resource_released=False):
 
         self.graph_serialized = graph_serialized
         graph = self.graph = deserialize_graph(graph_serialized)
@@ -82,6 +75,7 @@ class GraphExecutionRecord(object):
         self.stop_requested = stop_requested or False
         self.calc_device = calc_device
         self.preferred_data_device = preferred_data_device
+        self.resource_released = resource_released
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -424,8 +418,8 @@ class ExecutionActor(WorkerActor):
         record = self._graph_records[(session_id, key)]
         record.state = state
         if self._status_ref:
-            self._status_ref.update_progress(session_id, key, record.op_string, state.name,
-                                             _tell=True, _wait=False)
+            self._status_ref.update_progress(
+                session_id, key, record.op_string, state, _tell=True, _wait=False)
 
     @promise.reject_on_exception
     @log_unhandled
@@ -837,8 +831,11 @@ class ExecutionActor(WorkerActor):
 
     def _deallocate_scheduler_resource(self, session_id, graph_key, delay=0):
         try:
-            self._resource_ref.deallocate_resource(
-                session_id, graph_key, self.address, _delay=delay, _tell=True, _wait=False)
+            graph_record = self._graph_records[(session_id, graph_key)]
+            if not graph_record.resource_released:
+                graph_record.resource_released = True
+                self._resource_ref.deallocate_resource(
+                    session_id, graph_key, self.address, _delay=delay, _tell=True, _wait=False)
         except:  # noqa: E722
             pass
 
