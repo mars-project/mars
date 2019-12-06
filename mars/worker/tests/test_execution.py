@@ -73,7 +73,8 @@ class MockSenderActor(WorkerActor):
 
     @promise.reject_on_exception
     def send_data(self, session_id, chunk_keys, target_endpoints, target_slots=None,
-                  ensure_cached=True, compression=None, timeout=None, callback=None):
+                  ensure_cached=True, compression=None, pin_token=None, timeout=None,
+                  callback=None):
         if self._mode == 'in':
             self._dispatch_ref.register_free_slot(self.uid, 'sender')
             self.storage_client.put_objects(

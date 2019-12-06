@@ -20,7 +20,7 @@ from collections import defaultdict
 from ... import promise
 from ...compat import Enum, six
 from ...config import options
-from ...utils import classproperty
+from ...utils import classproperty, log_unhandled
 from ...serialize import dataserializer
 from .iorunner import IORunnerActor
 
@@ -270,26 +270,33 @@ class BytesStorageMixin(object):
         async_read_pool = reader.get_io_pool()
         async_write_pool = writer.get_io_pool()
 
-        def _copy():
-            with reader:
-                with_exc = False
-                try:
-                    write_future = None
-                    while True:
-                        block = async_read_pool.submit(reader.read, copy_block_size).result()
-                        if write_future:
-                            write_future.result()
-                        if not block:
-                            break
-                        write_future = async_write_pool.submit(writer.write, block)
-                except:  # noqa: E722
-                    with_exc = True
-                    raise
-                finally:
-                    if on_close:
-                        on_close(reader, writer, not with_exc)
-                    writer.close(finished=not with_exc)
-        return self.host_actor.spawn_promised(_copy)
+        @log_unhandled
+        def _copy(_reader, _writer):
+            with_exc = False
+            block = None
+            write_future = None
+            try:
+                while True:
+                    block = async_read_pool.submit(_reader.read, copy_block_size).result()
+                    if write_future:
+                        write_future.result()
+                    if not block:
+                        break
+                    write_future = async_write_pool.submit(_writer.write, block)
+            except:  # noqa: E722
+                with_exc = True
+                raise
+            finally:
+                if on_close:
+                    on_close(_reader, _writer, not with_exc)
+                _reader.close()
+                _writer.close(finished=not with_exc)
+                del _reader, _writer, block
+
+        try:
+            return self.host_actor.spawn_promised(_copy, reader, writer)
+        finally:
+            del reader, writer
 
     def _copy_object_data(self, serialized_obj, writer):
         def _copy(ser):
@@ -321,33 +328,46 @@ class ObjectStorageMixin(object):
 
     def _batch_load_objects(self, session_id, data_keys, key_loader,
                             batch_get=False, serialize=False, pin_token=None):
-        keys, objs = [], []
+        is_success = [True]
+        data_dict = dict()
         sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
         def _record_data(k, o):
-            keys.append(k)
-            objs.append(o)
+            try:
+                if is_success[0]:
+                    data_dict[k] = o
+            finally:
+                del o
 
         def _put_objects(*_):
+            keys, objs = zip(*data_dict.items())
+            data_dict.clear()
+            key_list, obj_list = list(keys), list(objs)
             try:
-                return self.put_objects(session_id, keys, objs, sizes, serialize=serialize,
+                return self.put_objects(session_id, key_list, obj_list, sizes, serialize=serialize,
                                         pin_token=pin_token, _promise=True)
             finally:
-                objs[:] = []
+                del objs
+                obj_list[:] = []
+
+        def _handle_err(*exc):
+            is_success[0] = False
+            data_dict.clear()
+            six.reraise(*exc)
 
         def _batch_put_objects(objs):
             try:
                 return self.put_objects(session_id, data_keys, objs, sizes,
                                         serialize=serialize, pin_token=pin_token, _promise=True)
             finally:
-                objs[:] = []
+                del objs
 
         if batch_get:
             return key_loader(data_keys).then(_batch_put_objects)
         else:
             return promise.all_(
-                key_loader(k).then(functools.partial(_record_data, k))
-                for k in data_keys).then(_put_objects)
+                key_loader(k).then(functools.partial(_record_data, k), _handle_err)
+                for k in data_keys).then(_put_objects, _handle_err)
 
     def get_objects(self, session_id, data_keys, serialize=False, _promise=False):
         raise NotImplementedError

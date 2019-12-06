@@ -162,15 +162,18 @@ class ObjectHolderActor(WorkerActor):
                 self.tell_promise(callback)
 
     @log_unhandled
-    def _internal_put_objects(self, session_id, data_key, obj, size):
-        session_data_key = (session_id, data_key)
-        if session_data_key in self._data_holder:
-            self._total_hold -= self._data_sizes[session_data_key]
-            del self._data_holder[session_data_key]
+    def _internal_put_object(self, session_id, data_key, obj, size):
+        try:
+            session_data_key = (session_id, data_key)
+            if session_data_key in self._data_holder:
+                self._total_hold -= self._data_sizes[session_data_key]
+                del self._data_holder[session_data_key]
 
-        self._data_holder[session_data_key] = obj
-        self._data_sizes[session_data_key] = size
-        self._total_hold += size
+            self._data_holder[session_data_key] = obj
+            self._data_sizes[session_data_key] = size
+            self._total_hold += size
+        finally:
+            del obj
 
     def _finish_put_objects(self, _session_id, data_keys):
         if logger.getEffectiveLevel() <= logging.DEBUG:  # pragma: no cover
@@ -220,7 +223,7 @@ class ObjectHolderActor(WorkerActor):
     def pin_data_keys(self, session_id, data_keys, token):
         spilling_keys = list(k for k in data_keys if (session_id, k) in self._spill_pending_keys)
         if spilling_keys:
-            logger.warning('Cannot pin data key %r', spilling_keys)
+            logger.warning('Cannot pin data key %r: under spilling', spilling_keys)
             raise PinDataKeyFailed
         pinned = []
         for k in data_keys:
@@ -262,11 +265,14 @@ class SimpleObjectHolderActor(ObjectHolderActor):
             self.proc_id, self._storage_device, self.ref())
 
     def put_objects(self, session_id, data_keys, data_objs, data_sizes, pin_token=None):
-        for data_key, obj, size in zip(data_keys, data_objs, data_sizes):
-            self._internal_put_objects(session_id, data_key, obj, size)
-        if pin_token:
-            self.pin_data_keys(session_id, data_keys, pin_token)
-        self._finish_put_objects(session_id, data_keys)
+        try:
+            for data_key, obj, size in zip(data_keys, data_objs, data_sizes):
+                self._internal_put_object(session_id, data_key, obj, size)
+            if pin_token:
+                self.pin_data_keys(session_id, data_keys, pin_token)
+            self._finish_put_objects(session_id, data_keys)
+        finally:
+            data_objs[:] = []
 
     def get_object(self, session_id, data_key):
         return self._data_holder[(session_id, data_key)]
@@ -302,9 +308,13 @@ class SharedHolderActor(ObjectHolderActor):
     def put_objects_by_keys(self, session_id, data_keys, shapes=None, pin_token=None):
         sizes = []
         for data_key in data_keys:
-            buf = self._shared_store.get_buffer(session_id, data_key)
-            size = len(buf)
-            self._internal_put_objects(session_id, data_key, buf, size)
+            buf = None
+            try:
+                buf = self._shared_store.get_buffer(session_id, data_key)
+                size = len(buf)
+                self._internal_put_object(session_id, data_key, buf, size)
+            finally:
+                del buf
             sizes.append(size)
         if pin_token:
             self.pin_data_keys(session_id, data_keys, pin_token)

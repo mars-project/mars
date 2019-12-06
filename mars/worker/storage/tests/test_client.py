@@ -252,6 +252,14 @@ class Test(WorkerCase):
                           lambda *exc: test_actor.set_result(exc, accept=False))
                 assert_allclose(self.get_result(5), data_dict[first_shared_key])
 
+                storage_client.delete(session_id, data_keys)
+                time.sleep(0.5)
+                ref = weakref.ref(data_dict[data_keys[0]])
+                storage_client.put_objects(session_id, data_keys[:1], [ref()],
+                                           [DataStorageDevice.SHARED_MEMORY])
+                data_dict.clear()
+                self.assertIsNone(ref())
+
     def testLoadStoreInOtherProcess(self):
         test_addr = '127.0.0.1:%d' % get_next_port()
         with self.create_pool(n_process=2, address=test_addr, distributor=MarsDistributor(2)) as pool:

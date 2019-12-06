@@ -247,6 +247,7 @@ class Promise(object):
         if self._accepted is not None:
             args_and_kwargs = [self._args, self._kwargs]
             args_and_kwargs[1]['_accept'] = self._accepted
+            _promise_pool.pop(self.id, None)
             self._clear_result_cache()
             self.step_next(args_and_kwargs)
         return promise
@@ -557,6 +558,8 @@ def all_(promises):
         def _then(*_, **__):
             finish_set.add(promise.id)
             if all(p.id in finish_set for p in promises):
+                for p in promises:
+                    _promise_pool.pop(p.id, None)
                 new_promise.step_next()
         return _then
 

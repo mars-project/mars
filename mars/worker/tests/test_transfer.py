@@ -92,7 +92,8 @@ class MockReceiverWorkerActor(WorkerActor):
             return ReceiveStatus.NOT_STARTED
 
     def create_data_writers(self, session_id, chunk_keys, data_sizes, sender_ref,
-                            ensure_cached=True, timeout=0, use_promise=True, callback=None):
+                            ensure_cached=True, pin_token=None, timeout=0,
+                            use_promise=True, callback=None):
         from mars.compat import BytesIO
         for chunk_key, data_size in zip(chunk_keys, data_sizes):
             query_key = (session_id, chunk_key)

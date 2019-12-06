@@ -176,7 +176,7 @@ class ExecutionActor(WorkerActor):
                 self._dump_execution_states()
         self.ref().periodical_dump(_tell=True, _delay=10)
 
-    def _pin_data_keys(self, session_id, graph_key, data_keys):
+    def _pin_shared_data_keys(self, session_id, graph_key, data_keys):
         if not data_keys:
             return []
         try:
@@ -258,7 +258,7 @@ class ExecutionActor(WorkerActor):
 
         keys_to_pin = list(input_chunk_keys.keys())
         graph_record.pinned_keys = set()
-        self._pin_data_keys(session_id, graph_key, keys_to_pin)
+        self._pin_shared_data_keys(session_id, graph_key, keys_to_pin)
 
         load_chunk_sizes = dict((k, v) for k, v in input_chunk_keys.items()
                                 if k not in graph_record.pinned_keys)
@@ -266,7 +266,6 @@ class ExecutionActor(WorkerActor):
                                for k, v in load_chunk_sizes.items()
                                if k not in graph_record.shared_input_chunks)
         if alloc_cache_batch:
-            # todo change when compute with gpu
             storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
         graph_record.mem_request = alloc_mem_batch or dict()
@@ -296,12 +295,12 @@ class ExecutionActor(WorkerActor):
 
         @log_unhandled
         def _finish_fetch(*_):
-            locations = storage_client.get_data_locations(session_id, [chunk_key])[0]
-            if (0, DataStorageDevice.SHARED_MEMORY) in locations:
-                self._pin_data_keys(session_id, graph_key, [chunk_key])
+            locations = set(l[1] for l in storage_client.get_data_locations(session_id, [chunk_key])[0])
+            if DataStorageDevice.PROC_MEMORY not in locations:
+                self._pin_shared_data_keys(session_id, graph_key, [chunk_key])
                 self._mem_quota_ref.release_quotas(
                     [build_quota_key(session_id, chunk_key, owner=graph_key)], _tell=True, _wait=False)
-                if (0, graph_record.preferred_data_device) not in locations:
+                if graph_record.preferred_data_device not in locations:
                     return storage_client.copy_to(session_id, [chunk_key], [graph_record.preferred_data_device])
 
         @log_unhandled
@@ -340,7 +339,7 @@ class ExecutionActor(WorkerActor):
 
             return sender_ref.send_data(
                 session_id, [chunk_key], [self.address], ensure_cached=ensure_cached,
-                timeout=timeout, _timeout=timeout, _promise=True
+                pin_token=graph_key, timeout=timeout, _timeout=timeout, _promise=True
             ).then(_finish_fetch)
 
         return promise.finished() \
@@ -531,6 +530,7 @@ class ExecutionActor(WorkerActor):
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(
                     quota_request, _promise=True) if quota_request else None) \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
+                .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
@@ -598,26 +598,26 @@ class ExecutionActor(WorkerActor):
         better_shared_keys = [k for k in copy_keys if k not in graph_record.shared_input_chunks]
 
         def _release_copied_keys(keys):
-            actual_moved_keys = self._pin_data_keys(session_id, graph_key, keys)
+            actual_moved_keys = self._pin_shared_data_keys(session_id, graph_key, keys)
             self._mem_quota_ref.release_quotas(
                 [build_quota_key(session_id, k, owner=graph_key) for k in actual_moved_keys],
                 _tell=True)
 
         if ensure_shared_keys:
-            self._mem_quota_ref.release_quotas(
-                [build_quota_key(session_id, k, owner=graph_key) for k in ensure_shared_keys],
-                _tell=True)
             promises.append(
                 self.storage_client.copy_to(
                     session_id, ensure_shared_keys, [graph_record.preferred_data_device],
                     ensure=True, pin_token=graph_key)
+                .then(lambda *_: _release_copied_keys(better_shared_keys),
+                      lambda *_: _release_copied_keys(better_shared_keys))
             )
         if better_shared_keys:
             promises.append(
                 self.storage_client.copy_to(
                     session_id, better_shared_keys, [graph_record.preferred_data_device],
                     ensure=False, pin_token=graph_key)
-                .then(lambda *_: _release_copied_keys(better_shared_keys))
+                .then(lambda *_: _release_copied_keys(better_shared_keys),
+                      lambda *_: _release_copied_keys(better_shared_keys))
             )
         return promises
 

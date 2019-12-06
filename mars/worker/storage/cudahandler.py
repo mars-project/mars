@@ -121,7 +121,8 @@ class CudaHandler(StorageHandler, ObjectStorageMixin, SpillableStorageMixin):
     def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
         return self._batch_load_objects(
             session_id, data_keys,
-            lambda k: src_handler.get_objects(session_id, k, _promise=True), pin_token=pin_token, batch_get=True)
+            lambda keys: src_handler.get_objects(session_id, keys, _promise=True),
+            pin_token=pin_token, batch_get=True)
 
     def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _read_serialized(reader):

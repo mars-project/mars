@@ -108,26 +108,29 @@ class BaseCalcActor(WorkerActor):
             return promise.finished(context_dict)
 
         def _handle_loaded(objs):
-            data_locations = storage_client.get_data_locations(session_id, keys_to_fetch)
-            shared_quota_keys = []
-            inproc_keys = []
-            inproc_quota_keys = []
+            try:
+                data_locations = storage_client.get_data_locations(session_id, keys_to_fetch)
+                shared_quota_keys = []
+                inproc_keys = []
+                inproc_quota_keys = []
 
-            context_dict.update(zip(keys_to_fetch, objs))
-            for k, locations in zip(keys_to_fetch, data_locations):
-                quota_key = build_quota_key(session_id, k, owner=self.proc_id)
-                if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
-                    shared_quota_keys.append(quota_key)
-                else:
-                    inproc_keys.append(k)
-                    inproc_quota_keys.append(quota_key)
+                context_dict.update(zip(keys_to_fetch, objs))
+                for k, locations in zip(keys_to_fetch, data_locations):
+                    quota_key = build_quota_key(session_id, k, owner=self.proc_id)
+                    if (self.proc_id, DataStorageDevice.PROC_MEMORY) not in locations:
+                        shared_quota_keys.append(quota_key)
+                    else:
+                        inproc_keys.append(k)
+                        inproc_quota_keys.append(quota_key)
 
-            if shared_quota_keys:
-                self._mem_quota_ref.release_quotas(shared_quota_keys, _tell=True, _wait=False)
-            if inproc_keys:
-                self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True)
-                if self._remove_intermediate:
-                    storage_client.delete(session_id, inproc_keys, [self._calc_intermediate_device])
+                if shared_quota_keys:
+                    self._mem_quota_ref.release_quotas(shared_quota_keys, _tell=True, _wait=False)
+                if inproc_keys:
+                    self._mem_quota_ref.hold_quotas(inproc_quota_keys, _tell=True)
+                    if self._remove_intermediate:
+                        storage_client.delete(session_id, inproc_keys, [self._calc_intermediate_device])
+            finally:
+                objs[:] = []
 
         def _handle_load_fail(*exc):
             if self._remove_intermediate:
@@ -229,11 +232,10 @@ class BaseCalcActor(WorkerActor):
         chunk_targets = set(chunk_targets)
         keys_to_fetch = self._get_keys_to_fetch(graph)
 
-        self._make_quotas_local(session_id, graph_key, keys_to_fetch, process_quota=True)
-        target_quotas = self._make_quotas_local(session_id, graph_key, chunk_targets)
+        self._make_quotas_local(session_id, graph_key, keys_to_fetch + list(chunk_targets),
+                                process_quota=True)
 
         def _start_calc(context_dict):
-            self._mem_quota_ref.process_quotas(target_quotas, _tell=True, _wait=False)
             return self._calc_results(session_id, graph_key, graph, context_dict, chunk_targets)
 
         def _finalize(keys, exc_info):
@@ -301,7 +303,9 @@ class BaseCalcActor(WorkerActor):
 class CpuCalcActor(BaseCalcActor):
     _slot_name = 'cpu'
     _calc_event_type = ProcedureEventType.CPU_CALC
-    _calc_source_devices = (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.PROC_MEMORY)
+    # PROC_MEMORY must come first to avoid loading to shared storage
+    # which will easily cause errors
+    _calc_source_devices = (DataStorageDevice.PROC_MEMORY, DataStorageDevice.SHARED_MEMORY)
     _calc_intermediate_device = DataStorageDevice.PROC_MEMORY
     _calc_dest_devices = (DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK)
 
