@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -257,7 +257,7 @@ def net_io_usage():
 
 
 _cuda_info = namedtuple('cuda_info', 'driver_version cuda_version products gpu_count')
-_cuda_card_stat = namedtuple('cuda_card_stat', 'product_name gpu_usage temperature fb_mem_info')
+_cuda_card_stat = namedtuple('cuda_card_stat', 'index product_name gpu_usage temperature fb_mem_info')
 
 
 def cuda_info():  # pragma: no cover
@@ -273,16 +273,21 @@ def cuda_info():  # pragma: no cover
     )
 
 
+def cuda_count():
+    return nvutils.get_device_count() or 0
+
+
 def cuda_card_stats():  # pragma: no cover
     infos = []
     device_count = nvutils.get_device_count()
     if not device_count:
-        return
+        return infos
     for device_idx in range(device_count):
         device_info = nvutils.get_device_info(device_idx)
         device_status = nvutils.get_device_status(device_idx)
 
         infos.append(_cuda_card_stat(
+            index=device_info.index,
             product_name=device_info.name,
             gpu_usage=device_status.gpu_util,
             temperature=device_status.temperature,

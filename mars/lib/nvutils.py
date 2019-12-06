@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 1999-2018 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -69,13 +69,13 @@ def _load_nv_library(*libnames):
 
 _cuda_lib = _nvml_lib = None
 
-_cu_device_info = namedtuple('_cu_device_info', 'uuid name multiprocessors cuda_cores threads')
+_cu_device_info = namedtuple('_cu_device_info', 'index uuid name multiprocessors cuda_cores threads')
 _nvml_driver_info = namedtuple('_nvml_driver_info', 'driver_version cuda_version')
 _nvml_device_status = namedtuple(
     '_nvml_device_status', 'gpu_util mem_util temperature fb_total_mem fb_used_mem fb_free_mem')
 
 
-_initialized = False
+_init_pid = None
 _gpu_count = None
 _driver_info = None
 _device_infos = dict()
@@ -92,12 +92,15 @@ def _cu_check_error(result):
         raise NVError('Device API Error %d: %s' % (result, _error_str.value.decode()))
 
 
-if _nvml_lib is not None:
-    _nvmlErrorString = _nvml_lib.nvmlErrorString
-    _nvmlErrorString.restype = c_char_p
+_nvmlErrorString = None
 
 
 def _nvml_check_error(result):
+    global _nvmlErrorString
+    if _nvmlErrorString is None:
+        _nvmlErrorString = _nvml_lib.nvmlErrorString
+        _nvmlErrorString.restype = c_char_p
+
     if result != NVML_SUCCESS:
         _error_str = _nvmlErrorString(result)
         if _error_str:
@@ -122,7 +125,7 @@ def _cu_get_processor_cores(major, minor):
 
 def _init_cp():
     global _cuda_lib
-    if _initialized:
+    if _init_pid == os.getpid():
         return
 
     _cuda_lib = _load_nv_library('libcuda.so', 'libcuda.dylib', 'cuda.dll')
@@ -138,7 +141,7 @@ def _init_cp():
 
 def _init_nvml():
     global _nvml_lib
-    if _initialized:
+    if _init_pid == os.getpid():
         return
 
     _nvml_lib = _load_nv_library('libnvidia-ml.so', 'libnvidia-ml.dylib', 'nvml.dll')
@@ -153,12 +156,13 @@ def _init_nvml():
 
 
 def _init():
-    global _initialized
+    global _init_pid
 
     _init_cp()
     _init_nvml()
 
-    _initialized = _nvml_lib is not None and _cuda_lib is not None
+    if _nvml_lib is not None and _cuda_lib is not None:
+        _init_pid = os.getpid()
 
 
 def get_device_count():
@@ -209,7 +213,7 @@ def get_device_info(dev_index):
         pass
 
     _init()
-    if not _initialized:
+    if _init_pid is None:
         return None
 
     device = c_int()
@@ -230,7 +234,13 @@ def get_device_info(dev_index):
     _cu_check_error(_cuda_lib.cuDeviceGetAttribute(
         byref(threads_per_core), CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR, device))
 
+    if 'CUDA_VISIBLE_DEVICES' in os.environ:
+        real_dev_index = [int(s) for s in os.environ['CUDA_VISIBLE_DEVICES'].split(',')][dev_index]
+    else:
+        real_dev_index = dev_index
+
     info = _device_infos[dev_index] = _cu_device_info(
+        index=real_dev_index,
         uuid=uuid.UUID(bytes=uuid_t.bytes),
         name=name_buf.value.decode(),
         multiprocessors=cores.value,
@@ -242,7 +252,7 @@ def get_device_info(dev_index):
 
 def get_device_status(dev_index):
     _init()
-    if not _initialized:
+    if _init_pid is None:
         return None
 
     device = _nvmlDevice_t()
