@@ -27,6 +27,18 @@ logger = logging.getLogger(__name__)
 QuotaDumpType = namedtuple('QuotaDumpType', 'allocations requests proc_sizes hold_sizes')
 
 
+class QuotaRequest(object):
+    __slots__ = 'req_size', 'delta', 'req_time', 'multiple', 'process_quota', 'callbacks'
+
+    def __init__(self, req_size, delta, req_time, multiple, process_quota, callbacks):
+        self.req_size = req_size
+        self.delta = delta
+        self.req_time = req_time
+        self.multiple = multiple
+        self.process_quota = process_quota
+        self.callbacks = callbacks
+
+
 class QuotaActor(WorkerActor):
     """
     Actor handling quota request and assignment
@@ -65,10 +77,11 @@ class QuotaActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def request_batch_quota(self, batch, callback=None):
+    def request_batch_quota(self, batch, process_quota=False, callback=None):
         """
         Request for resources in a batch
         :param batch: the request dict in form {request_key: request_size, ...}
+        :param process_quota: once handled, treat quota as processing
         :param callback: promise callback
         :return: if request is returned immediately, return True, otherwise False
         """
@@ -79,29 +92,33 @@ class QuotaActor(WorkerActor):
                 all_allocated = False
                 break
 
-        # if all requested and allocation can still be applied, apply directly
-        if all_allocated and self._has_space(0):
-            self._log_allocate('Quota request %r already allocated.', batch)
-            if callback is not None:
-                self.tell_promise(callback)
-            return True
-
         self._log_allocate('Receive batch quota request %r on %s.', batch, self.uid)
         sorted_req = sorted(batch.items(), key=lambda tp: tp[0])
         keys = tuple(tp[0] for tp in sorted_req)
         values = tuple(tp[1] for tp in sorted_req)
         delta = sum(v - self._allocations.get(k, 0) for k, v in batch.items())
+
+        # if all requested and allocation can still be applied, apply directly
+        if all_allocated and self._has_space(delta):
+            self._log_allocate('Quota request %r already allocated.', batch)
+            if process_quota:
+                self.process_quotas(list(batch.keys()))
+            if callback is not None:
+                self.tell_promise(callback)
+            return True
+
         # make allocated requests the highest priority to be allocated
         return self._request_quota(keys, values, delta, callback, multiple=True,
-                                   make_first=all_allocated)
+                                   make_first=all_allocated, process_quota=process_quota)
 
     @promise.reject_on_exception
     @log_unhandled
-    def request_quota(self, key, quota_size, callback=None):
+    def request_quota(self, key, quota_size, process_quota=False, callback=None):
         """
         Request for resource
         :param key: request key
         :param quota_size: size of request quota
+        :param process_quota: once handled, treat quota as processing
         :param callback: promise callback
         :return: if request is returned immediately, return True, otherwise False
         """
@@ -112,7 +129,9 @@ class QuotaActor(WorkerActor):
         if key in self._allocations:
             old_size = self._allocations[key]
             # if all requested and allocation can still be applied, apply directly
-            if old_size >= quota_size and self._has_space(0):
+            if old_size >= quota_size and self._has_space(quota_size - old_size):
+                if process_quota:
+                    self.process_quotas([key])
                 if callback is not None:
                     self.tell_promise(callback)
                 return True
@@ -122,10 +141,10 @@ class QuotaActor(WorkerActor):
         else:
             old_size = 0
         return self._request_quota(key, quota_size, quota_size - old_size, callback,
-                                   make_first=make_first)
+                                   make_first=make_first, process_quota=process_quota)
 
     def _request_quota(self, keys, quota_sizes, delta, callback, multiple=False,
-                       make_first=False):
+                       make_first=False, process_quota=False):
         """
         Actually process requests
         :param keys: request keys
@@ -133,6 +152,7 @@ class QuotaActor(WorkerActor):
         :param delta: increase of allocate size
         :param callback: promise callback
         :param make_first: whether to move request keys to the highest priority
+        :param process_quota: once handled, treat quota as processing
         :return: if request is returned immediately, return True, otherwise False
         """
         if delta > self._total_size:
@@ -141,7 +161,7 @@ class QuotaActor(WorkerActor):
         if keys in self._requests:
             # already in request queue, store callback and quit
             if callback is not None:
-                self._requests[keys][-1].append(callback)
+                self._requests[keys].callbacks.append(callback)
             if make_first:
                 self._requests.move_to_end(keys, False)
             return False
@@ -154,7 +174,7 @@ class QuotaActor(WorkerActor):
                 self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
 
                 alter_allocation = self.alter_allocations if multiple else self.alter_allocation
-                alter_allocation(keys, quota_sizes, allocate=True)
+                alter_allocation(keys, quota_sizes, allocate=True, process_quota=process_quota)
 
                 if callback:
                     self.tell_promise(callback)
@@ -163,23 +183,27 @@ class QuotaActor(WorkerActor):
                 allocated = False
 
                 self._log_allocate('Quota request queued for key %r on %s.', keys, self.uid)
-                self._enqueue_request(keys, (quota_sizes, delta, time.time(), multiple, []),
-                                      callback=callback, make_first=make_first)
+                quota_request = QuotaRequest(quota_sizes, delta, time.time(), multiple, process_quota, [])
+                self._enqueue_request(keys, quota_request, callback=callback, make_first=make_first)
 
             self._process_requests()
             return allocated
         else:
             # current free space cannot satisfy the request, the request is queued
             self._log_allocate('Quota request unmet for key %r on %s.', keys, self.uid)
-            self._enqueue_request(keys, (quota_sizes, delta, time.time(), multiple, []),
-                                  callback=callback, make_first=make_first)
+            quota_request = QuotaRequest(quota_sizes, delta, time.time(), multiple, process_quota, [])
+            self._enqueue_request(keys, quota_request, callback=callback, make_first=make_first)
             return False
 
-    def _enqueue_request(self, keys, items, callback=None, make_first=False):
-        if keys not in self._requests:
-            self._requests[keys] = items
+    def _enqueue_request(self, keys, request, callback=None, make_first=False):
+        process_quota = request.process_quota
+        try:
+            request = self._requests[keys]
+            request.process_quota = process_quota
+        except KeyError:
+            self._requests[keys] = request
         if callback is not None:
-            self._requests[keys][-1].append(callback)
+            request.callbacks.append(callback)
 
         if make_first:
             self._requests.move_to_end(keys, False)
@@ -198,7 +222,7 @@ class QuotaActor(WorkerActor):
         for k in keys:
             try:
                 if reject_exc:
-                    for cb in self._requests[k][-1]:
+                    for cb in self._requests[k].callbacks:
                         self.tell_promise(cb, *reject_exc, **dict(_accept=False))
                 del self._requests[k]
                 logger.debug('Quota request %s cancelled', k)
@@ -343,16 +367,16 @@ class QuotaActor(WorkerActor):
         """
         removed = []
         for k, req in self._requests.items():
-            req_size, delta, req_time, multiple, callbacks = req
             try:
-                if self._has_space(delta):
-                    alter_allocation = self.alter_allocations if multiple else self.alter_allocation
-                    alter_allocation(k, req_size, handle_shrink=False, allocate=True)
-                    for cb in callbacks:
+                if self._has_space(req.delta):
+                    alter_allocation = self.alter_allocations if req.multiple else self.alter_allocation
+                    alter_allocation(k, req.req_size, handle_shrink=False, allocate=True,
+                                     process_quota=req.process_quota)
+                    for cb in req.callbacks:
                         self.tell_promise(cb)
                     if self._status_ref:
                         self._status_ref.update_mean_stats(
-                            'wait_time.' + self.uid.replace('Actor', ''), time.time() - req_time,
+                            'wait_time.' + self.uid.replace('Actor', ''), time.time() - req.req_time,
                             _tell=True, _wait=False)
                     removed.append(k)
                 else:
@@ -361,7 +385,7 @@ class QuotaActor(WorkerActor):
             except:  # noqa: E722
                 removed.append(k)
                 # just in case the quota is allocated
-                for cb in callbacks:
+                for cb in req.callbacks:
                     self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False, _wait=False))
         for k in removed:
             self._requests.pop(k, None)
