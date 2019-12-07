@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
-from ...tiles import NotSupportTile, TilesFail
+from ...tiles import NotSupportTile, TilesError
 from ...utils import get_shuffle_input_keys_idxes
 from ..operands import TensorOperand, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy, TensorOrder
@@ -115,7 +115,7 @@ class PSRSSorter(object):
         # rechunk to ensure all chunks on axis have rough same size
         axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
         if np.isnan(axis_shape) or any(np.isnan(s) for s in in_tensor.nsplits[op.axis]):
-            raise TilesFail('fail to tile because either the shape of '
+            raise TilesError('fail to tile because either the shape of '
                             'input tensor on axis {} has unknown shape or chunk shape'.format(op.axis))
         chunk_size = int(axis_shape / axis_chunk_shape)
         chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]

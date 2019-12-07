@@ -24,7 +24,7 @@ from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds,
 from ...tensor.array_utils import get_array_module
 from ...dataframe.utils import parse_index
 from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ...compat import reduce
 from ...core import ExecutableTuple
 from ..operands import LearnOperand, LearnOperandMixin, OutputType, \
@@ -139,7 +139,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         inputs = op.inputs
-        check_chunks_unknown_shape(inputs, TilesFail)
+        check_chunks_unknown_shape(inputs, TilesError)
         axis_to_nsplits = defaultdict(list)
         has_dataframe = any(output_type == OutputType.dataframe
                             for output_type in op.output_types)

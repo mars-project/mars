@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, ListField, AnyField
 from ...core import Base, Entity
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
@@ -82,7 +82,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         to_check_tensors = [index_tensor]
         if is_value_tensor:
             to_check_tensors.append(value)
-        check_chunks_unknown_shape(to_check_tensors, TilesFail)
+        check_chunks_unknown_shape(to_check_tensors, TilesError)
 
         nsplits = index_tensor.nsplits
         if is_value_tensor:

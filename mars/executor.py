@@ -746,14 +746,14 @@ class Executor(object):
             else:
                 # update shape of tileable and its chunks
                 self._update_tileable_and_chunk_shape(
-                    tileable_graph, chunk_result, chunk_graph_builder.failed_ops)
+                    tileable_graph, chunk_result, chunk_graph_builder.interrupted_ops)
                 executed_keys.update(temp_result_keys)
                 intermediate_result_keys.update(temp_result_keys)
                 # add the node that failed
                 to_run_tileables = list(itertools.chain(
-                    *(op.outputs for op in chunk_graph_builder.failed_ops)))
+                    *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
                 to_run_tileables_set = set(to_run_tileables)
-                for op in chunk_graph_builder.failed_ops:
+                for op in chunk_graph_builder.interrupted_ops:
                     for inp in op.inputs:
                         if inp not in to_run_tileables_set:
                             to_run_tileables_set.add(inp)

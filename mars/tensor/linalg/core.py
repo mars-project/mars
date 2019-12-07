@@ -18,7 +18,7 @@ import numpy as np
 
 from ...compat import izip
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..core import TensorOrder
 from ..utils import decide_chunk_sizes
 from .utils import calc_svd_shapes
@@ -56,7 +56,7 @@ class SFQR(object):
                 rechunk_size[1] = a.shape[0]
 
         if check_nan_shape:
-            check_chunks_unknown_shape([a], TilesFail)
+            check_chunks_unknown_shape([a], TilesError)
 
         if rechunk_size:
             new_chunks = decide_chunk_sizes(a.shape, rechunk_size, a.dtype.itemsize)
@@ -111,7 +111,7 @@ class TSQR(object):
         q_dtype, r_dtype = tinyq.dtype, tinyr.dtype
 
         if a.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([a], TilesFail)
+            check_chunks_unknown_shape([a], TilesError)
             new_chunk_size = decide_chunk_sizes(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
             a = a.rechunk(new_chunk_size)._inplace_tile()
 

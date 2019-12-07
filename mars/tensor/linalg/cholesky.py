@@ -20,7 +20,7 @@ from numpy.linalg import LinAlgError
 from ...serialize import KeyField, BoolField
 from ... import opcodes as OperandDef
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..operands import TensorHasInput, TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -57,7 +57,7 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
 
         tensor = op.outputs[0]
         in_tensor = op.input
-        check_chunks_unknown_shape([in_tensor], TilesFail)
+        check_chunks_unknown_shape([in_tensor], TilesError)
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]

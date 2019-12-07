@@ -22,7 +22,7 @@ from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
 from ...config import options
 from ...compat import enum
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TENSOR_TYPE, TensorOrder
 from ..datasource.array import tensor as astensor
@@ -131,7 +131,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_tree_reduction(cls, op, a, v, out):
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
 
         combine_size = op.combine_size or options.combine_size
         input_len = len(op.inputs)

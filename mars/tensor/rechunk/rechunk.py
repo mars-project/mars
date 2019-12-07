@@ -18,7 +18,7 @@ from ...compat import izip, lzip
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
 from .core import plan_rechunks, get_nsplits, compute_rechunk_slices
@@ -57,7 +57,7 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
         new_chunk_size = op.chunk_size
         steps = plan_rechunks(op.inputs[0], new_chunk_size, op.inputs[0].dtype.itemsize,
                               threshold=op.threshold,

@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, StringField
 from ...compat import lrange
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..utils import unify_chunks, broadcast_shape
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -120,7 +120,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
         inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
         output = op.outputs[0]
 

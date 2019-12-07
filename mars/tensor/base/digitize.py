@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField
 from ...lib.sparse.core import get_array_module
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..operands import TensorHasInput, TensorOperandMixin, Tensor
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -70,7 +70,7 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
         bins = op.bins
         if len(op.inputs) == 2:
             # bins is TensorData
-            check_chunks_unknown_shape([bins], TilesFail)
+            check_chunks_unknown_shape([bins], TilesError)
             bins = bins.rechunk(tensor.shape)._inplace_tile().chunks[0]
 
         out_chunks = []

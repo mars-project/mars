@@ -22,7 +22,7 @@ from ...compat import lrange
 from ...core import ExecutableTuple
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
@@ -36,7 +36,7 @@ class TensorElementWise(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         if len(op.inputs) > 1:
-            check_chunks_unknown_shape(op.inputs, TilesFail)
+            check_chunks_unknown_shape(op.inputs, TilesError)
         inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
 
         chunk_shapes = [t.chunk_shape for t in inputs]

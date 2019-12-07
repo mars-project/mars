@@ -584,12 +584,12 @@ class GraphActor(SchedulerActor):
             # some TilesFail happens before
             # build tileable graph from failed ops and their inputs
             failed_tileable_set = set(itertools.chain(
-                *(op.outputs for op in chunk_graph_builder.failed_ops)))
+                *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
             tileable_graph_builder = TileableGraphBuilder(
                 inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
             to_run_tileable_graph = tileable_graph_builder.build(failed_tileable_set)
             to_fetch_tileables = []
-            for failed_op in chunk_graph_builder.failed_ops:
+            for failed_op in chunk_graph_builder.interrupted_ops:
                 for inp in failed_op.inputs:
                     if inp not in failed_tileable_set:
                         fetch_inp = build_fetch_tileable(inp).data

@@ -19,7 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, BoolField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -73,7 +73,7 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
         out_tensor = op.outputs[0]
 
         if len(test_elements.chunks) != 1:
-            check_chunks_unknown_shape([test_elements], TilesFail)
+            check_chunks_unknown_shape([test_elements], TilesError)
             test_elements = test_elements.rechunk(len(test_elements))._inplace_tile()
         test_elements_chunk = test_elements.chunks[0]
 

@@ -22,7 +22,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..core import Tensor, TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -102,7 +102,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         ax = axis or 0
         out = op.outputs[0]
 
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
 
         if isinstance(repeats, TENSOR_TYPE):
             a, repeats = unify_chunks(a, (repeats, (ax,)))

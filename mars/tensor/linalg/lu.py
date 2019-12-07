@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...serialize import KeyField
 from ...core import ExecutableTuple
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..utils import recursive_tile
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -105,7 +105,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
             in_tensor = vstack([in_tensor, zero_tensor])
             recursive_tile(in_tensor)
 
-        check_chunks_unknown_shape([in_tensor], TilesFail)
+        check_chunks_unknown_shape([in_tensor], TilesError)
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]

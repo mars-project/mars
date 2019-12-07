@@ -23,7 +23,7 @@ from ... import opcodes as OperandDef
 from ...compat import six, izip
 from ...serialize import KeyField, TupleField, StringField, ValueType
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorHasInput, TensorShuffleProxy, \
     TensorShuffleMap, TensorShuffleReduce
@@ -218,7 +218,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
             result = result.transpose()
             return [recursive_tile(result)]
 
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
                 in_tensor.shape, tensor.shape, in_tensor.nsplits)

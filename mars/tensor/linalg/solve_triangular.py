@@ -20,7 +20,7 @@ from numpy.linalg import LinAlgError
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, KeyField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesFail
+from ...tiles import TilesError
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -70,7 +70,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
         from ..arithmetic.utils import tree_add
         from .dot import TensorDot
 
-        check_chunks_unknown_shape(op.inputs, TilesFail)
+        check_chunks_unknown_shape(op.inputs, TilesError)
 
         a, b = op.a, op.b
         unified_nsplit = decide_unify_split(a.nsplits[0], a.nsplits[1], b.nsplits[0])
