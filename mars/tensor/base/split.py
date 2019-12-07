@@ -57,7 +57,8 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         axis = self._axis
         size = a.shape[axis]
         if np.isnan(size):
-            raise ValueError('cannot split array with unknown shape')
+            raise ValueError('cannot split array with unknown shape, '
+                             'call `.execute()` on input tensor first')
 
         if isinstance(indices_or_sections, Tensor) and hasattr(indices_or_sections.op, 'data') and \
                 indices_or_sections.op.data is not None:
@@ -106,13 +107,15 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         axis = op.axis
 
         if any(np.isnan(s.shape[axis]) for s in splits):
+            # TODO(xuye.qin): when iterative tiling is ready and we can retrieve data from context,
+            # this function would be available
             raise ValueError('Tensor chunk sizes are unknown: {0}'.format(splits))
 
         acc_shapes = np.cumsum([s.shape[axis] for s in splits])
         out_kws = [dict() for _ in splits]
         for i, split in enumerate(splits):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
-            new_s = in_tensor[(slice(None),) * axis + (slc,)].single_tiles()
+            new_s = in_tensor[(slice(None),) * axis + (slc,)]._inplace_tile()
             out_kws[i]['chunks'] = new_s.chunks
             out_kws[i]['nsplits'] = new_s.nsplits
             out_kws[i]['shape'] = split.shape

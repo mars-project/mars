@@ -23,7 +23,8 @@ from ...serialize import ValueType, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
 from ...dataframe.utils import parse_index
-from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import
+from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
+from ...tiles import TilesError
 from ...compat import reduce
 from ...core import ExecutableTuple
 from ..operands import LearnOperand, LearnOperandMixin, OutputType, \
@@ -83,7 +84,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
 
     def _calc_params(self, params):
         axes = set(self.axes)
-        for output_type, param in zip(self._output_types, params):
+        for i, output_type, param in zip(itertools.count(0), self._output_types, params):
             if output_type == OutputType.dataframe:
                 if 0 in axes:
                     param['index_value'] = self._shuffle_index_value(param['index_value'])
@@ -93,6 +94,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
             elif output_type == OutputType.series:
                 if 0 in axes:
                     param['index_value'] = self._shuffle_index_value(param['index_value'])
+            param['_position_'] = i
         return params
 
     @staticmethod
@@ -104,7 +106,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
             if tuple(tileable.nsplits[ax]) != tuple(nsplit):
                 do_rechunk = True
         if do_rechunk:
-            return tileable.rechunk(ax_nsplit).single_tiles()
+            return tileable.rechunk(ax_nsplit)._inplace_tile()
         else:
             return tileable
 
@@ -137,6 +139,7 @@ class LearnShuffle(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         inputs = op.inputs
+        check_chunks_unknown_shape(inputs, TilesError)
         axis_to_nsplits = defaultdict(list)
         has_dataframe = any(output_type == OutputType.dataframe
                             for output_type in op.output_types)

@@ -40,7 +40,7 @@ A,B,C,D,E
 """.strip()
 
 
-@unittest.skipIf(not os.environ['WITH_HDFS'], 'Only run when hdfs is installed')
+@unittest.skipIf(not os.environ.get('WITH_HDFS'), 'Only run when hdfs is installed')
 class TestHDFS(TestBase):
     def setUp(self):
         super(TestHDFS, self).setUp()

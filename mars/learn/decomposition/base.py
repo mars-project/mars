@@ -96,7 +96,7 @@ class _BasePCA(six.with_metaclass(ABCMeta, BaseEstimator, TransformerMixin)):
         return precision
 
     @abstractmethod
-    def fit(X, y=None, session=None):
+    def fit(X, y=None, session=None, run_kwargs=None):
         """Placeholder for fit. Subclasses should implement this method!
 
         Fit the model with X.

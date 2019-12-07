@@ -43,8 +43,8 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     def alpha(self):
         return self._alpha
 
-    def _get_shape(self, shapes):
-        shape = super(TensorDirichlet, self)._get_shape(shapes)
+    def _calc_shape(self, shapes):
+        shape = super(TensorDirichlet, self)._calc_shape(shapes)
         return shape + (len(self._alpha),)
 
     def __call__(self, chunk_size=None):

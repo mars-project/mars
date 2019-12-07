@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import threading
 import itertools
 from operator import attrgetter
 from weakref import WeakKeyDictionary, WeakSet, ref
@@ -23,11 +22,10 @@ import numpy as np
 
 from .compat import six, izip, builtins
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
-    on_deserialize_shape, on_serialize_nsplits, kernel_mode
+    on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField, OneOfField
 from .tiles import Tileable, handler
-from .graph import DAG
 
 
 class Base(HasKey):
@@ -149,6 +147,14 @@ class Entity(object):
     def copy_from(self, obj):
         self.data = obj.data
 
+    def tiles(self):
+        new_entity = self.copy()
+        new_entity.data = handler.tiles(self.data)
+        return new_entity
+
+    def _inplace_tile(self):
+        return handler.inplace_tile(self)
+
     def __getattr__(self, attr):
         return getattr(self._data, attr)
 
@@ -157,51 +163,6 @@ class Entity(object):
             super(Entity, self).__setattr__(key, value)
         except AttributeError:
             return setattr(self._data, key, value)
-
-
-_threading_local = threading.local()
-
-
-class BuildMode(object):
-    def __init__(self):
-        self.is_build_mode = False
-        self._old_mode = None
-        self._enter_times = 0
-
-    def __enter__(self):
-        if self._enter_times == 0:
-            # check to prevent nested enter and exit
-            self._old_mode = self.is_build_mode
-            self.is_build_mode = True
-        self._enter_times += 1
-
-    def __exit__(self, *_):
-        self._enter_times -= 1
-        if self._enter_times == 0:
-            self.is_build_mode = self._old_mode
-            self._old_mode = None
-
-
-def build_mode():
-    ret = getattr(_threading_local, 'build_mode', None)
-    if ret is None:
-        ret = BuildMode()
-        _threading_local.build_mode = ret
-
-    return ret
-
-
-def enter_build_mode(func):
-    """
-    Decorator version of build_mode.
-
-    :param func: function
-    :return: the result of function
-    """
-    def inner(*args, **kwargs):
-        with build_mode():
-            return func(*args, **kwargs)
-    return inner
 
 
 class SerializableWithKey(Base, Serializable):
@@ -438,9 +399,7 @@ class TileableData(SerializableWithKey, Tileable):
     @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
-        return {
-            'shape': self.shape
-        }
+        return dict()
 
     @property
     def extra_params(self):
@@ -465,16 +424,6 @@ class TileableData(SerializableWithKey, Tileable):
     def is_coarse(self):
         return not hasattr(self, '_chunks') or self._chunks is None or len(self._chunks) == 0
 
-    def to_coarse(self):
-        if self.is_coarse():
-            return self
-        new_entity = self.copy()
-        new_entity._obj_set('_id', self._id)
-        new_entity._chunks = None
-        if self.inputs is None or len(self.inputs) == 0:
-            new_entity.extra_params.update({'raw_chunk_size': self.nsplits})
-        return new_entity
-
     def is_sparse(self):
         return self.op.is_sparse()
 
@@ -487,94 +436,6 @@ class TileableData(SerializableWithKey, Tileable):
     @enter_build_mode
     def detach(self, entity):
         self._entities.discard(entity)
-
-    def tiles(self):
-        return handler.tiles(self)
-
-    def single_tiles(self):
-        return handler.single_tiles(self)
-
-    @kernel_mode
-    def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True, executed_keys=None):
-        from .utils import build_fetch
-
-        executed_keys = set(executed_keys or [])
-        if tiled and self.is_coarse():
-            self.tiles()
-
-        graph = graph if graph is not None else cls()
-        keys = None
-
-        if tiled:
-            nodes = list(c.data for c in self.chunks)
-            keys = list(c.key for c in self.chunks)
-        else:
-            nodes = list(self.op.outputs)
-
-        node_to_fetch = dict()
-
-        def _generate_fetch_node(n):
-            if n in node_to_fetch:
-                return node_to_fetch[n]
-            fn = build_fetch(n, coarse=True).data
-            node_to_fetch[n] = fn
-            return fn
-
-        visited = set()
-        while len(nodes) > 0:
-            node = nodes.pop()
-
-            # replace executed tensor/chunk by tensor/chunk with fetch op
-            if node.key in executed_keys:
-                node = _generate_fetch_node(node)
-
-            visited.add(node)
-            if not graph.contains(node):
-                graph.add_node(node)
-            children = node.inputs or []
-            for c in children:
-                if c.key in executed_keys:
-                    visited.add(c)
-                    c = _generate_fetch_node(c)
-                if not graph.contains(c):
-                    graph.add_node(c)
-                if not graph.has_successor(c, node):
-                    graph.add_edge(c, node)
-            nodes.extend([c for c in itertools.chain(*[inp.op.outputs for inp in node.inputs or []])
-                          if c not in visited])
-        if tiled and compose:
-            graph.compose(keys=keys)
-
-        if not tiled and any(not n.is_coarse() for n in graph):
-            return self._to_coarse_graph(graph)
-
-        return graph
-
-    @staticmethod
-    def _to_coarse_graph(graph):
-        new_graph = type(graph)()
-        visited = dict()
-        for n in graph:
-            if n not in visited:
-                new_node = n.to_coarse()
-                visited[n] = new_node
-                new_graph.add_node(new_node)
-            for succ in graph.successors(n):
-                if succ not in visited:
-                    new_node = succ.to_coarse()
-                    visited[succ] = new_node
-                    new_graph.add_node(new_node)
-                new_graph.add_edge(visited[n], visited[succ])
-        return new_graph
-
-    def visualize(self, graph_attrs=None, node_attrs=None, **kw):
-        from graphviz import Source
-
-        g = self.build_graph(**kw)
-        dot = g.to_dot(graph_attrs=graph_attrs, node_attrs=node_attrs,
-                       result_chunk_keys={c.key for c in self.chunks})
-
-        return Source(dot)
 
     def execute(self, session=None, **kw):
         from .session import Session
@@ -668,6 +529,13 @@ class HasShapeTileableData(TileableData):
     @property
     def size(self):
         return np.prod(self.shape).item()
+
+    @property
+    def params(self):
+        # params return the properties which useful to rebuild a new tileable object
+        return {
+            'shape': self.shape
+        }
 
 
 class ObjectData(TileableData):

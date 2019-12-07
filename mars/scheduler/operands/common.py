@@ -32,7 +32,7 @@ class OperandActor(BaseOperandActor):
     """
     Actor handling the whole lifecycle of a particular operand instance
     """
-    def __init__(self, session_id, graph_id, op_key, op_info, worker=None, **kwargs):
+    def __init__(self, session_id, graph_id, op_key, op_info, worker=None, allocated=False, **kwargs):
         super(OperandActor, self).__init__(
             session_id, graph_id, op_key, op_info, worker=worker, **kwargs)
 
@@ -59,7 +59,7 @@ class OperandActor(BaseOperandActor):
         self._input_worker_scores = dict()
         self._worker_scores = dict()
 
-        self._allocated = self._is_initial
+        self._allocated = allocated
         self._submit_promise = None
 
         # record the exception info when failed to execute the graph
@@ -345,7 +345,7 @@ class OperandActor(BaseOperandActor):
             input_chunks = self._input_chunks
 
         # submit job
-        if len(input_chunks) != self._input_chunks:
+        if set(input_chunks) != set(self._input_chunks) or self._executable_dag is None:
             exec_graph = self._graph_refs[0].get_executable_operand_dag(self._op_key, input_chunks)
         else:
             exec_graph = self._executable_dag

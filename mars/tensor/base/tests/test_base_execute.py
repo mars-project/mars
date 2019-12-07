@@ -223,9 +223,16 @@ class Test(unittest.TestCase):
         arr = tensor(raw, chunk_size=2)
         arr2 = broadcast_to(arr, (5, 10, 5, 6))
 
-        res = self.executor.execute_tensor(arr2, concat=True)
+        res = self.executor.execute_tensor(arr2, concat=True)[0]
+        np.testing.assert_array_equal(res, np.broadcast_to(raw, (5, 10, 5, 6)))
 
-        self.assertTrue(np.array_equal(res[0], np.broadcast_to(raw, (5, 10, 5, 6))))
+        # test chunk with unknown shape
+        arr1 = mt.random.rand(3, 4, chunk_size=2)
+        arr2 = mt.random.permutation(arr1)
+        arr3 = broadcast_to(arr2, (2, 3, 4))
+
+        res = self.executor.execute_tensor(arr3, concat=True)[0]
+        self.assertEqual(res.shape, (2, 3, 4))
 
     def testBroadcastArraysExecutions(self):
         x_data = [[1, 2, 3]]

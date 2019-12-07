@@ -478,6 +478,9 @@ cdef class DAG(DirectedGraph):
             set visited = set()
             list stack
 
+        if len(self) == 0:
+            return
+
         if reverse:
             preds, succs = self._successors, self._predecessors
         else:

@@ -21,6 +21,8 @@ import numpy as np
 from ...compat import lrange
 from ...core import ExecutableTuple
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
@@ -33,6 +35,8 @@ class TensorElementWise(TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        if len(op.inputs) > 1:
+            check_chunks_unknown_shape(op.inputs, TilesError)
         inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
 
         chunk_shapes = [t.chunk_shape for t in inputs]
@@ -538,7 +542,8 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
 
         inputs = filter_inputs([x, out1, out2, where])
         t1, t2 = self.new_tensors(inputs, shape, dtype=dtype,
-                                  kws=[{'order': order1}, {'order': order2}])
+                                  kws=[{'order': order1, 'side': 'left'},
+                                       {'order': order2, 'side': 'right'}])
 
         if out1 is None and out2 is None:
             return ExecutableTuple([t1, t2])

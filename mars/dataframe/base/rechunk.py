@@ -19,6 +19,8 @@ from ...compat import izip, lzip
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE, ObjectType
 from ..utils import indexing_index_value, merge_index_value
 
@@ -63,6 +65,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        check_chunks_unknown_shape(op.inputs, TilesError)
         out = op.outputs[0]
         new_chunk_size = op.chunk_size
         if isinstance(out, DATAFRAME_TYPE):

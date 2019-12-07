@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import contextlib
 import itertools
 import logging
@@ -20,7 +19,7 @@ import operator
 import os
 import random
 import time
-from collections import deque, defaultdict
+from collections import defaultdict
 
 import numpy as np
 
@@ -38,11 +37,11 @@ from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy, VirtualOperand
 from ..serialize import dataserializer
-from ..core import ChunkData
-from ..tiles import handler, DataNotReady
+from ..tiles import handler, IterativeChunkGraphBuilder, \
+    TileableGraphBuilder, get_tiled
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key
+    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape
 from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
@@ -243,20 +242,26 @@ class GraphActor(SchedulerActor):
         self._tileable_graph_cache = None
         self._chunk_graph_cache = None
 
-        self._op_key_to_chunk = defaultdict(list)
+        # chunk graph builder
+        self._chunk_graph_builder = None
 
         self._resource_actor = None
-        self._tileable_key_opid_to_tiled = defaultdict(list)
+        # generated once
+        self._target_tileable_keys = target_tileables
+        self._target_tileable_datas = []
         self._tileable_key_to_opid = dict()
-        self._terminal_chunk_op_tileable = defaultdict(set)
-        self._terminated_tileables = set()
+        # used over all iteration
+        self._tileable_key_opid_to_tiled = defaultdict(list)
+        self._chunk_key_id_to_chunk = dict()
+        self._all_terminated_tileable_keys = set()
+        # used only for current iteration
+        self._tileable_to_fetch = dict()
         self._operand_infos = dict()
-        if target_tileables:
-            self._target_tileable_chunk_ops = dict((k, set()) for k in target_tileables)
-            self._target_tileable_finished = dict((k, set()) for k in self._target_tileable_chunk_ops)
-        else:
-            self._target_tileable_chunk_ops = dict()
-            self._target_tileable_finished = dict()
+        self._op_key_to_chunk = defaultdict(list)
+        self._terminal_chunk_op_key_to_tileable_key = defaultdict(set)
+        self._terminal_tileable_key_to_chunk_op_keys = defaultdict(set)
+        self._terminated_tileable_keys = set()
+        self._target_tileable_finished = dict()
 
         self._assigned_workers = set()
         self._worker_adds = set()
@@ -339,30 +344,33 @@ class GraphActor(SchedulerActor):
         self._final_state = value
         self._graph_meta_ref.set_final_state(value, _tell=True, _wait=False)
 
+    def _detect_cancel(self, callback=None):
+        if self.reload_state() == GraphState.CANCELLING:
+            logger.info('Cancel detected, stopping')
+            if callback:
+                callback()
+            else:
+                self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
+                self.state = GraphState.CANCELLED
+            raise ExecutionInterrupted
+
     @log_unhandled
     def execute_graph(self, compose=True):
         """
         Start graph execution
         """
-        def _detect_cancel(callback=None):
-            if self.reload_state() == GraphState.CANCELLING:
-                logger.info('Cancel detected, stopping')
-                if callback:
-                    callback()
-                else:
-                    self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
-                    self.state = GraphState.CANCELLED
-                raise ExecutionInterrupted
 
         self._graph_meta_ref.set_graph_start(_tell=True, _wait=False)
         self.state = GraphState.PREPARING
+        self._execute_graph(compose=compose)
 
+    def _execute_graph(self, compose=True):
         try:
             self.prepare_graph(compose=compose)
-            _detect_cancel()
+            self._detect_cancel()
 
             with self._open_dump_file('graph') as outf:  # pragma: no cover
-                graph = self.get_chunk_graph()
+                graph = self._chunk_graph_cache
                 for n in graph:
                     outf.write(
                         '%s(%s)[%s] -> %s\n' % (
@@ -371,10 +379,10 @@ class GraphActor(SchedulerActor):
                     )
 
             self.analyze_graph()
-            _detect_cancel()
+            self._detect_cancel()
 
             self.create_operand_actors()
-            _detect_cancel(self.stop_graph)
+            self._detect_cancel(self.stop_graph)
         except ExecutionInterrupted:
             pass
         except:  # noqa: E722
@@ -400,7 +408,7 @@ class GraphActor(SchedulerActor):
 
         try:
             chunk_graph = self.get_chunk_graph()
-        except (KeyError, GraphNotExists):
+        except (KeyError, GraphNotExists, AttributeError):
             self.state = GraphState.CANCELLED
             return
 
@@ -421,165 +429,203 @@ class GraphActor(SchedulerActor):
             self._graph_meta_ref.set_graph_end(_tell=True, _wait=False)
 
     @log_unhandled
-    def reload_chunk_graph(self):
-        """
-        Reload chunk graph from kv store
-        """
-        if self._kv_store_ref is not None:
-            chunk_graph_ser = self._kv_store_ref.read('/sessions/%s/graphs/%s/chunk_graph'
-                                                      % (self._session_id, self._graph_key)).value
-        else:
-            raise GraphNotExists
-        self._chunk_graph_cache = deserialize_graph(base64.b64decode(chunk_graph_ser), graph_cls=DAG)
-
-        op_key_to_chunk = defaultdict(list)
-        for n in self._chunk_graph_cache:
-            op_key_to_chunk[n.op.key].append(n)
-        self._op_key_to_chunk = op_key_to_chunk
-
-    @log_unhandled
     def get_chunk_graph(self):
+        return self._chunk_graph_builder.iterative_chunk_graphs[-1]
+
+    def _gen_tileable_graph(self):
+        if self._tileable_graph_cache is None:
+            tileable_graph = deserialize_graph(self._serialized_tileable_graph, graph_cls=DAG)
+            self._tileable_graph_cache = tileable_graph
+
+            logger.debug('Begin preparing graph %s with %d tileables to chunk graph.',
+                         self._graph_key, len(tileable_graph))
+
+        return self._tileable_graph_cache
+
+    def _gen_chunk_graph(self):
         if self._chunk_graph_cache is None:
-            self.reload_chunk_graph()
+            self._chunk_graph_cache = DAG()
         return self._chunk_graph_cache
 
+    def _scan_tileable_graph(self):
+        tileable_graph = self._tileable_graph_cache
+        target_tileable_provided = self._target_tileable_keys is not None
+        if self._target_tileable_keys is None:
+            self._target_tileable_keys = []
+            self._target_tileable_datas = []
+        for tn in tileable_graph:
+            self._tileable_key_to_opid[tn.key] = tn.op.id
+            if tileable_graph.count_successors(tn) == 0:
+                # no successors
+                if not target_tileable_provided:
+                    self._target_tileable_keys.append(tn.key)
+                    self._target_tileable_datas.append(tn)
+            if target_tileable_provided and tn.key in self._target_tileable_keys:
+                self._target_tileable_datas.append(tn)
+
+    @classmethod
+    def _merge_chunk_graph(cls, chunk_graph, update_chunk_graph):
+        chunk_key_id_to_chunk = dict()
+        for c in chunk_graph:
+            chunk_key_id_to_chunk[c.key, c.id] = c
+        for update_c in update_chunk_graph:
+            if isinstance(update_c.op, Fetch):
+                continue
+            chunk_graph.add_node(update_c)
+            for inp in update_c.inputs or []:
+                if inp in chunk_graph:
+                    chunk_graph.add_edge(inp, update_c)
+                elif isinstance(inp.op, Fetch):
+                    if (inp.key, inp.id) in chunk_key_id_to_chunk:
+                        inp = chunk_key_id_to_chunk[inp.key, inp.id]
+                    else:
+                        chunk_graph.add_node(inp)
+                    chunk_graph.add_edge(inp, update_c)
+        return chunk_graph
+
+    @classmethod
+    def _prune_chunk_graph(cls, chunk_graph, result_chunk_keys):
+        reverse_chunk_graph = chunk_graph.build_reversed()
+        marked = set()
+        for c in reverse_chunk_graph.topological_iter():
+            if reverse_chunk_graph.count_predecessors(c) == 0 and \
+                    c.key in result_chunk_keys:
+                marked.add(c)
+            elif any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
+                marked.add(c)
+        for n in list(chunk_graph):
+            if n not in marked:
+                chunk_graph.remove_node(n)
+
+    def _clear_for_iteration(self):
+        self._tileable_to_fetch.clear()
+        self._operand_infos.clear()
+        self._op_key_to_chunk.clear()
+        self._terminal_chunk_op_key_to_tileable_key.clear()
+        self._terminal_tileable_key_to_chunk_op_keys.clear()
+        self._target_tileable_finished.clear()
+        self._terminated_tileable_keys.clear()
+
+    def _gen_target_info(self, target_chunk_keys):
+        chunk_graph_builder = self._chunk_graph_builder
+        is_done = chunk_graph_builder.done
+        cur_tileable_graph = chunk_graph_builder.prev_tileable_graph
+
+        for tn in cur_tileable_graph:
+            if is_done:
+                # only consider those target tileables
+                is_target = tn.key in self._target_tileable_keys
+            else:
+                is_target = tn.key in self._target_tileable_keys or \
+                            cur_tileable_graph.count_successors(tn) == 0
+            if is_target:
+                self._target_tileable_finished[tn.key] = set()
+                tiled_tn = self._tileable_key_opid_to_tiled[tn.key, tn.op.id][-1]
+                for c in tiled_tn.chunks:
+                    self._terminal_chunk_op_key_to_tileable_key[c.op.key].add(tn.key)
+                    self._terminal_tileable_key_to_chunk_op_keys[tn.key].add(c.op.key)
+                    target_chunk_keys.add(c.key)
+
     @log_unhandled
+    @enter_build_mode
     def prepare_graph(self, compose=True):
         """
         Tile and compose tileable graph into chunk graph
         :param compose: if True, do compose after tiling
         """
-        tileable_graph = deserialize_graph(self._serialized_tileable_graph)
-        self._tileable_graph_cache = tileable_graph
+        tileable_graph = self._gen_tileable_graph()
+        chunk_graph = self._gen_chunk_graph()
+        self._clear_for_iteration()
 
-        logger.debug('Begin preparing graph %s with %d tileables to chunk graph.',
-                     self._graph_key, len(tileable_graph))
+        if self._chunk_graph_builder is None:
+            # gen target tileable keys if not provided
+            self._scan_tileable_graph()
 
-        if not self._target_tileable_chunk_ops:
-            for tn in tileable_graph:
-                if not tileable_graph.count_successors(tn):
-                    self._target_tileable_chunk_ops[tn.key] = set()
-                    self._target_tileable_finished[tn.key] = set()
-
-        if self._serialized_chunk_graph:
-            serialized_chunk_graph = self._serialized_chunk_graph
-            chunk_graph = DAG.from_pb(serialized_chunk_graph)
-        else:
-            chunk_graph = DAG()
-
-        key_to_chunk = {c.key: c for c in chunk_graph}
-
-        tileable_key_opid_to_tiled = self._tileable_key_opid_to_tiled
-
-        for t in tileable_graph:
-            self._tileable_key_to_opid[t.key] = t.op.id
-            if (t.key, t.op.id) not in tileable_key_opid_to_tiled:
-                continue
-            t._chunks = [key_to_chunk[k] for k in [tileable_key_opid_to_tiled[(t.key, t.op.id)][-1]]]
-
-        tq = deque()
-        for t in tileable_graph:
-            if t.inputs and not all((ti.key, ti.op.id) in tileable_key_opid_to_tiled for ti in t.inputs):
-                continue
-            tq.append(t)
-
-        while tq:
-            tileable = tq.popleft()
-            if not tileable.is_coarse() or (tileable.key, tileable.op.id) in tileable_key_opid_to_tiled:
-                continue
-            inputs = [tileable_key_opid_to_tiled[(it.key, it.op.id)][-1] for it in tileable.inputs or ()]
-
-            op = tileable.op.copy()
-            _ = op.new_tileables(inputs,  # noqa: F841
-                                 kws=[o.params for o in tileable.op.outputs],
-                                 output_limit=len(tileable.op.outputs),
-                                 **tileable.extra_params)
-
-            total_tiled = []
-            for j, t, to_tile in zip(itertools.count(0), tileable.op.outputs, op.outputs):
-                # replace inputs with tiled ones
-                if not total_tiled:
-                    try:
-                        if isinstance(to_tile.op, Fetch):
-                            td = self.tile_fetch_tileable(tileable)
+            def on_tile(raw_tileables, tileds):
+                first = tileds[0]
+                if any(inp in self._tileable_to_fetch for inp in raw_tileables[0].inputs):
+                    new_inputs = []
+                    for inp in raw_tileables[0].inputs:
+                        if inp in self._tileable_to_fetch:
+                            tiled_inp = get_tiled(self._tileable_to_fetch[inp])
+                            new_inputs.append(tiled_inp)
                         else:
-                            td = self._graph_analyze_pool.submit(
-                                self.context.wraps(handler.dispatch), to_tile).result()
-                    except DataNotReady:
-                        continue
-
-                    if isinstance(td, (tuple, list)):
-                        total_tiled.extend(td)
+                            new_inputs.append(get_tiled(inp))
+                    first.op.inputs = new_inputs
+                if isinstance(first.op, Fetch):
+                    raw_first = raw_tileables[0]
+                    if (raw_first.key, raw_first.op.id) in self._tileable_key_opid_to_tiled:
+                        # fetch op generated by iterative tiling graph builder
+                        tiled = self._tileable_key_opid_to_tiled[raw_first.key, raw_first.op.id][-1]
+                        return [build_fetch_tileable(tiled)]
                     else:
-                        total_tiled.append(td)
+                        return [self.tile_fetch_tileable(first)]
+                else:
+                    return self._graph_analyze_pool.submit(
+                        self.context.wraps(handler.dispatch), first.op).result()
 
-                tiled = total_tiled[j]
-                tileable_key_opid_to_tiled[(t.key, t.op.id)].append(tiled)
+            def on_tile_success(tiled_before, tiled_after):
+                if not isinstance(tiled_before.op, Fetch):
+                    self._tileable_key_opid_to_tiled[
+                        tiled_before.key, tiled_before.op.id].append(tiled_after)
+                return tiled_after
 
-                # add chunks to fine grained graph
-                q = deque([tiled_c if isinstance(tiled_c, ChunkData) else tiled_c.data
-                           for tiled_c in tiled.chunks])
-                input_chunk_keys = set(itertools.chain(*([(it.key, it.id) for it in input.chunks]
-                                                         for input in to_tile.inputs)))
-                while len(q) > 0:
-                    c = q.popleft()
-                    if (c.key, c.id) in input_chunk_keys:
-                        continue
-                    if c not in chunk_graph:
-                        chunk_graph.add_node(c)
-                    for ic in c.inputs or []:
-                        if ic not in chunk_graph:
-                            chunk_graph.add_node(ic)
-                            q.append(ic)
-                        chunk_graph.add_edge(ic, c)
+            self._chunk_graph_builder = IterativeChunkGraphBuilder(
+                on_tile=on_tile, on_tile_success=on_tile_success, compose=compose)
 
-                for succ in tileable_graph.successors(t):
-                    if any((t.key, t.op.id) not in tileable_key_opid_to_tiled for t in succ.inputs):
-                        continue
-                    tq.append(succ)
+        chunk_graph_builder = self._chunk_graph_builder
+        if chunk_graph_builder.prev_tileable_graph is None:
+            # first tile
+            fetch_tileables = [t for t in tileable_graph if isinstance(t.op, Fetch)]
+            cur_chunk_graph = chunk_graph_builder.build(
+                # add fetch tileables to make sure that they won't be fused
+                self._target_tileable_datas + fetch_tileables, tileable_graph)
+        else:
+            # some TilesFail happens before
+            # build tileable graph from failed ops and their inputs
+            failed_tileable_set = set(itertools.chain(
+                *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
+            tileable_graph_builder = TileableGraphBuilder(
+                inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
+            to_run_tileable_graph = tileable_graph_builder.build(failed_tileable_set)
+            to_fetch_tileables = []
+            for failed_op in chunk_graph_builder.interrupted_ops:
+                for inp in failed_op.inputs:
+                    if inp not in failed_tileable_set:
+                        fetch_inp = build_fetch_tileable(inp).data
+                        self._tileable_to_fetch[inp] = fetch_inp
+                        to_fetch_tileables.append(fetch_inp)
+                        to_run_tileable_graph.add_node(fetch_inp)
+                        for o in failed_op.outputs:
+                            to_run_tileable_graph.add_edge(fetch_inp, o)
+            cur_chunk_graph = chunk_graph_builder.build(
+                # add to_fetch_tileables to make sure that fetch chunk would not be fused
+                self._target_tileable_datas + to_fetch_tileables,
+                tileable_graph=to_run_tileable_graph)
 
-        # record the chunk nodes in graph
-        reserve_chunk = set()
-        result_chunk_keys = list()
-        for tk, topid in tileable_key_opid_to_tiled:
-            if tk not in self._target_tileable_chunk_ops:
+        target_chunk_keys = set()
+        self._gen_target_info(target_chunk_keys)
+        if chunk_graph_builder.done:
+            self._prune_chunk_graph(cur_chunk_graph, target_chunk_keys)
+
+        for c in list(cur_chunk_graph):
+            if not isinstance(c.op, Fetch):
+                self._op_key_to_chunk[c.op.key].append(c)
+
+            # merge current chunk into self.chunk_graph_cache
+            if isinstance(c.op, Fetch):
                 continue
-            for n in [c.data for t in tileable_key_opid_to_tiled[(tk, topid)] for c in t.chunks]:
-                result_chunk_keys.append(n.key)
-                dq_predecessors = deque([n])
-                while dq_predecessors:
-                    current = dq_predecessors.popleft()
-                    reserve_chunk.update(n.op.outputs)
-                    predecessors = chunk_graph.predecessors(current)
-                    dq_predecessors.extend([p for p in predecessors if p not in reserve_chunk])
-                    reserve_chunk.update(predecessors)
-        # delete redundant chunk
-        for n in list(chunk_graph.iter_nodes()):
-            if n not in reserve_chunk:
-                chunk_graph.remove_node(n)
-            elif isinstance(n.op, Fetch):
-                chunk_graph.remove_node(n)
-
-        if compose:
-            chunk_graph.compose(keys=result_chunk_keys)
-
-        for tk, topid in tileable_key_opid_to_tiled:
-            if tk not in self._target_tileable_chunk_ops:
-                continue
-            for n in tileable_key_opid_to_tiled[(tk, topid)][-1].chunks:
-                self._terminal_chunk_op_tileable[n.op.key].add(tk)
-                self._target_tileable_chunk_ops[tk].add(n.op.key)
-
-        # sync chunk graph to kv store
-        if self._kv_store_ref is not None:
-            graph_path = '/sessions/%s/graphs/%s' % (self._session_id, self._graph_key)
-            self._kv_store_ref.write('%s/chunk_graph' % graph_path,
-                                     base64.b64encode(serialize_graph(chunk_graph, compress=True)),
-                                     _tell=True, _wait=False)
-
-        self._chunk_graph_cache = chunk_graph
-        for n in self._chunk_graph_cache:
-            self._op_key_to_chunk[n.op.key].append(n)
+            chunk_graph.add_node(c)
+            self._chunk_key_id_to_chunk[c.key, c.id] = c
+            for inp in cur_chunk_graph.iter_predecessors(c):
+                if inp in chunk_graph:
+                    chunk_graph.add_edge(inp, c)
+                elif isinstance(inp.op, Fetch):
+                    if (inp.key, inp.id) in self._chunk_key_id_to_chunk:
+                        inp = self._chunk_key_id_to_chunk[inp.key, inp.id]
+                    else:
+                        chunk_graph.add_node(inp)
+                    chunk_graph.add_edge(inp, c)
 
     def _get_worker_slots(self):
         metrics = self._resource_actor_ref.get_workers_meta()
@@ -632,6 +678,13 @@ class GraphActor(SchedulerActor):
     def analyze_graph(self, **kwargs):
         operand_infos = self._operand_infos
         chunk_graph = self.get_chunk_graph()
+
+        # remove fetch chunk if exists
+        if any(isinstance(c.op, Fetch) for c in chunk_graph):
+            chunk_graph = chunk_graph.copy()
+            for c in list(chunk_graph):
+                if isinstance(c.op, Fetch):
+                    chunk_graph.remove_node(c)
 
         if len(chunk_graph) == 0:
             return
@@ -708,7 +761,8 @@ class GraphActor(SchedulerActor):
         for c in chunks:
             # handling predecessor args
             for pn in graph.iter_predecessors(c):
-                predecessor_keys.add(pn.op.key)
+                if not isinstance(pn.op, Fetch):
+                    predecessor_keys.add(pn.op.key)
                 input_chunk_keys.add(pn.key)
                 if graph.count_successors(pn) > 1:
                     shared_input_chunk_keys.add(pn.key)
@@ -747,6 +801,7 @@ class GraphActor(SchedulerActor):
         op_refs = dict()
         meta_op_infos = dict()
         initial_keys = []
+        to_allocate_op_keys = set()
         for op_key in self._op_key_to_chunk:
             chunks = self._op_key_to_chunk[op_key]
             op = chunks[0].op
@@ -775,18 +830,23 @@ class GraphActor(SchedulerActor):
             meta_op_info['state'] = op_info['state'] = state
             meta_op_info['worker'] = op_info.get('worker')
 
-            if op_key in self._terminal_chunk_op_tileable:
+            if op_key in self._terminal_chunk_op_key_to_tileable_key:
                 op_info['is_terminal'] = True
 
             op_cls = get_operand_actor_class(type(op))
             op_uid = op_cls.gen_uid(session_id, op_key)
             scheduler_addr = self.get_scheduler(op_uid)
+            kw = {}
+            # for the **real** initial chunks, we do batch submitting
+            if chunk_graph.count_predecessors(chunks[0]) == 0:
+                kw['allocated'] = True
+                to_allocate_op_keys.add(op_key)
 
             op_refs[op_key] = self.ctx.create_actor(
                 op_cls, session_id, self._graph_key, op_key, op_info.copy(),
                 with_kvstore=self._kv_store_ref is not None,
                 schedulers=self.get_schedulers(),
-                uid=op_uid, address=scheduler_addr, wait=False
+                uid=op_uid, address=scheduler_addr, wait=False, **kw
             )
             if _clean_info:
                 op_info.pop('executable_dag', None)
@@ -821,7 +881,7 @@ class GraphActor(SchedulerActor):
             [future.result() for future in append_futures]
 
             res_applications = [(op_key, op_info) for op_key, op_info in operand_infos.items()
-                                if op_info.get('is_initial', False)]
+                                if op_key in to_allocate_op_keys]
             self._assigner_actor_ref.apply_for_multiple_resources(
                 session_id, res_applications, _tell=True)
 
@@ -833,7 +893,7 @@ class GraphActor(SchedulerActor):
         :param op_key: operand key
         :param final_state: state of the operand
         """
-        tileable_keys = self._terminal_chunk_op_tileable[op_key]
+        tileable_keys = self._terminal_chunk_op_key_to_tileable_key[op_key]
         for tileable_key in tileable_keys:
             self._target_tileable_finished[tileable_key].add(op_key)
             if final_state == GraphState.FAILED:
@@ -841,13 +901,51 @@ class GraphActor(SchedulerActor):
                     self.final_state = GraphState.FAILED
             elif final_state == GraphState.CANCELLED:
                 self.final_state = final_state
-            if self._target_tileable_finished[tileable_key] == self._target_tileable_chunk_ops[tileable_key]:
-                self._terminated_tileables.add(tileable_key)
-                if len(self._terminated_tileables) == len(self._target_tileable_chunk_ops):
-                    self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
-                    self._graph_meta_ref.set_graph_end(_tell=True)
+            if self._target_tileable_finished[tileable_key] == self._terminal_tileable_key_to_chunk_op_keys[tileable_key]:
+                self._terminated_tileable_keys.add(tileable_key)
+                self._all_terminated_tileable_keys.add(tileable_key)
+                if len(self._terminated_tileable_keys) == len(self._terminal_tileable_key_to_chunk_op_keys):
+                    # update shape if tileable or its chunks have unknown shape
+                    self._update_tileable_and_its_chunk_shapes()
+                    if self._chunk_graph_builder.done:
+                        if self._chunk_graph_builder.prev_tileable_graph is not None:
+                            # if failed before, clear intermediate data
+                            to_free_tileable_keys = \
+                                self._all_terminated_tileable_keys - set(self._target_tileable_keys)
+                            [self.free_tileable_data(k) for k in to_free_tileable_keys]
+                        self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
+                        self._graph_meta_ref.set_graph_end(_tell=True)
+                    else:
+                        self._execute_graph(compose=self._chunk_graph_builder.is_compose)
         if exc is not None:
             self._graph_meta_ref.set_exc_info(exc, _tell=True, _wait=False)
+
+    def _update_tileable_and_its_chunk_shapes(self):
+        need_update_tileable_to_tiled = dict()
+        for tileable in self._chunk_graph_builder.prev_tileable_graph:
+            if tileable.key in self._target_tileable_finished:
+                tiled = self._tileable_key_opid_to_tiled[tileable.key, tileable.op.id][-1]
+                if not has_unknown_shape(tiled):
+                    continue
+                need_update_tileable_to_tiled[tileable] = tiled
+
+        if len(need_update_tileable_to_tiled) == 0:
+            return
+
+        need_update_chunks = list(c for t in need_update_tileable_to_tiled.values() for c in t.chunks)
+        chunk_metas = self.chunk_meta.batch_get_chunk_meta(
+            self._session_id, list(c.key for c in need_update_chunks))
+        for chunk, chunk_meta in zip(need_update_chunks, chunk_metas):
+            chunk.data._shape = chunk_meta.chunk_shape
+
+        for tileable, tiled in need_update_tileable_to_tiled.items():
+            chunk_idx_to_shape = {c.index: c.shape for c in tiled.chunks}
+            nsplits = calc_nsplits(chunk_idx_to_shape)
+            tiled._nsplits = nsplits
+            if any(np.isnan(s) for s in tileable.shape):
+                shape = tuple(sum(ns) for ns in nsplits)
+                tileable._update_shape(shape)
+                tiled._update_shape(shape)
 
     @log_unhandled
     def remove_finished_terminal(self, op_key):
@@ -855,17 +953,17 @@ class GraphActor(SchedulerActor):
         Remove a terminal operand from finished set as the data is lost.
         :param op_key: operand key
         """
-        tileable_keys = self._terminal_chunk_op_tileable[op_key]
+        tileable_keys = self._terminal_chunk_op_key_to_tileable_key[op_key]
         for tileable_key in tileable_keys:
             self._target_tileable_finished[tileable_key].difference_update([op_key])
-            self._terminated_tileables.difference_update([tileable_key])
+            self._terminated_tileable_keys.difference_update([tileable_key])
 
     def dump_unfinished_terminals(self):  # pragma: no cover
         """
         Dump unfinished terminal chunks into logger, only for debug purposes.
         """
         unfinished_dict = dict()
-        for tileable_key, chunk_ops in self._target_tileable_chunk_ops.items():
+        for tileable_key, chunk_ops in self._terminal_tileable_key_to_chunk_op_keys.items():
             executed_ops = self._target_tileable_finished.get(tileable_key, ())
             unfinished = sorted(set(chunk_ops) - set(executed_ops))
             if unfinished:
@@ -970,30 +1068,34 @@ class GraphActor(SchedulerActor):
         return list(fetch_graph)[0]
 
     @log_unhandled
-    def fetch_tileable_result(self, tileable_key):
+    @enter_build_mode
+    def fetch_tileable_result(self, tileable_key, _check=True):
+        # this function is for test usage
         from ..executor import Executor
         from ..worker.transfer import ResultSenderActor
 
-        # TODO for test
         tileable = self._get_tileable_by_key(tileable_key)
-        if tileable_key not in self._terminated_tileables:
+        if _check and tileable_key not in self._terminated_tileable_keys:
             return None
 
         ctx = dict()
-        for chunk_key in [c.key for c in tileable.chunks]:
-            if chunk_key in ctx:
-                continue
-            endpoints = self.chunk_meta.get_workers(self._session_id, chunk_key)
+        for chunk in tileable.chunks:
+            endpoints = self.chunk_meta.get_workers(self._session_id, chunk.key)
             sender_ref = self.ctx.actor_ref(ResultSenderActor.default_uid(), address=endpoints[-1])
-            ctx[chunk_key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk_key))
+            ctx[chunk.key] = dataserializer.loads(sender_ref.fetch_data(self._session_id, chunk.key))
 
         if len(tileable.chunks) == 1:
             return dataserializer.dumps(ctx[tileable.chunks[0].key])
 
-        tileable = build_fetch_tileable(tileable)
-
+        fetch_tileable = build_fetch_tileable(tileable)
+        concat_chunk = fetch_tileable.op.concat_tileable_chunks(fetch_tileable).chunks[0].data
+        chunk_graph = DAG()
+        chunk_graph.add_node(concat_chunk)
+        for fetch_chunk in fetch_tileable.chunks:
+            chunk_graph.add_node(fetch_chunk.data)
+            chunk_graph.add_edge(fetch_chunk.data, concat_chunk)
         executor = Executor(storage=ctx)
-        concat_result = executor.execute_tileable(tileable, concat=True)[0]
+        concat_result = executor.execute_graph(chunk_graph, keys=[concat_chunk.key])[0]
         return dataserializer.dumps(concat_result)
 
     @log_unhandled

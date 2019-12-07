@@ -25,6 +25,7 @@ from numpy.testing import assert_array_equal
 from mars import promise
 from mars.compat import six
 from mars.config import options
+from mars.tiles import get_tiled
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ChunkMetaActor, ResourceActor
@@ -100,6 +101,7 @@ class ExecutionTestActor(WorkerActor):
         arr = mt.ones((4,), chunk_size=4) + 1
         graph = arr.build_graph(compose=False, tiled=True)
 
+        arr = get_tiled(arr)
         self._array_key = arr.chunks[0].key
 
         graph_key = self._graph_key = str(uuid.uuid4())
@@ -179,6 +181,9 @@ class Test(WorkerCase):
             arr2 = arr + arr_add
             graph = arr2.build_graph(compose=False, tiled=True)
 
+            arr = get_tiled(arr)
+            arr2 = get_tiled(arr2)
+
             metas = dict()
             for chunk in graph:
                 if isinstance(chunk.op, TensorOnes):
@@ -254,6 +259,9 @@ class Test(WorkerCase):
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
 
+            arr_add = get_tiled(arr_add)
+            result_tensor = get_tiled(result_tensor)
+
             modified_chunk = arr_add.chunks[0]
             arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
@@ -303,6 +311,9 @@ class Test(WorkerCase):
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
+
+            arr_add = get_tiled(arr_add)
+            result_tensor = get_tiled(result_tensor)
 
             modified_chunk = arr_add.chunks[0]
             arr_add.chunks[0]._op = TensorFetch(
@@ -363,6 +374,8 @@ class Test(WorkerCase):
             import mars.tensor as mt
             arr = mt.ones((10, 8), chunk_size=10)
             graph = arr.build_graph(compose=False, tiled=True)
+
+            arr = get_tiled(arr)
 
             graph_key = str(uuid.uuid4())
 
@@ -457,6 +470,9 @@ class Test(WorkerCase):
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
 
+            arr_add = get_tiled(arr_add)
+            result_tensor = get_tiled(result_tensor)
+
             modified_chunk = arr_add.chunks[0]
             arr_add.chunks[0]._op = TensorFetch(
                 dtype=modified_chunk.dtype, _outputs=[weakref.ref(o) for o in modified_chunk.op.outputs],
@@ -524,6 +540,7 @@ class Test(WorkerCase):
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
+            result_tensor = get_tiled(result_tensor)
             result_key = result_tensor.chunks[0].key
 
             pool.create_actor(MockSenderActor, mock_data + np.ones((4,)), 'out', uid='w:mock_sender')
@@ -562,6 +579,8 @@ class Test(WorkerCase):
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
             graph = result_tensor.build_graph(compose=False, tiled=True)
+
+            result_tensor = get_tiled(result_tensor)
 
             def _validate(_):
                 data = test_actor.shared_store.get(session_id, result_tensor.chunks[0].key)

@@ -20,7 +20,7 @@ from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
 from ...lib.sparse import SparseNDArray
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ...serialize import ValueType, NDArrayField, TupleField
-from ..core import TENSOR_TYPE, TensorOrder
+from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
 from ..utils import get_chunk_slices
 from ..array_utils import array_module
 from .core import TensorNoInput
@@ -145,6 +145,8 @@ def _from_spmatrix(spmatrix, dtype=None, chunk_size=None, gpu=None):
 def tensor(data, dtype=None, order='K', chunk_size=None, gpu=None, sparse=False):
     order = order or 'K'
     if isinstance(data, TENSOR_TYPE):
+        if isinstance(data, TensorData):
+            data = Tensor(data)
         return data.astype(dtype or data.dtype, order=order, copy=False)
     elif isinstance(data, (tuple, list)) and len(data) > 0 and \
             all(isinstance(d, TENSOR_TYPE) for d in data):

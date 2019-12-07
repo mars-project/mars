@@ -18,6 +18,7 @@ import unittest
 
 import numpy as np
 
+from mars.tiles import get_tiled
 from mars.tensor.datasource import ones, empty
 from mars.tensor.merge import concatenate, stack
 
@@ -52,6 +53,7 @@ class Test(unittest.TestCase):
         b = ones((20, 20, 30), chunk_size=10)
 
         c = concatenate([a, b]).tiles()
+        a = get_tiled(a)
         self.assertEqual(c.chunk_shape[0], 4)
         self.assertEqual(c.chunk_shape[1], 4)
         self.assertEqual(c.chunk_shape[2], 6)
@@ -65,21 +67,21 @@ class Test(unittest.TestCase):
 
         self.assertEqual(arr2.shape, (10, 3, 4))
 
-        arr2.tiles()
+        arr2 = arr2.tiles()
         self.assertEqual(arr2.nsplits, ((1,) * 10, (2, 1), (2, 2)))
 
         arr3 = stack(raw_arrs, axis=1)
 
         self.assertEqual(arr3.shape, (3, 10, 4))
 
-        arr3.tiles()
+        arr3 = arr3.tiles()
         self.assertEqual(arr3.nsplits, ((2, 1), (1,) * 10, (2, 2)))
 
         arr4 = stack(raw_arrs, axis=2)
 
         self.assertEqual(arr4.shape, (3, 4, 10))
 
-        arr4.tiles()
+        arr4 = arr4.tiles()
         self.assertEqual(arr4.nsplits, ((2, 1), (2, 2), (1,) * 10))
 
         with self.assertRaises(ValueError):

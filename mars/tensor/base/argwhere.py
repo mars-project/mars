@@ -20,6 +20,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..utils import recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -51,7 +53,9 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
         in_tensor = op.input
         out_tensor = op.outputs[0]
 
-        flattened = ravel(in_tensor).single_tiles()
+        check_chunks_unknown_shape([in_tensor], TilesError)
+
+        flattened = ravel(in_tensor)._inplace_tile()
         indices = arange(flattened.size, dtype=np.intp, chunks=flattened.nsplits)
         indices = indices[flattened]
         dim_indices = unravel_index(indices, in_tensor.shape)

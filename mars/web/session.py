@@ -29,7 +29,7 @@ from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
 from ..serialize import dataserializer
 from ..tensor.core import Indexes
-from ..utils import build_graph, sort_dataframe_result, numpy_dtype_from_descr_json
+from ..utils import build_tileable_graph, sort_dataframe_result, numpy_dtype_from_descr_json
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class Session(object):
         # those executed tileables should fetch data directly, submit the others
         run_tileables = [t for t in tileables if t.key not in self._executed_tileables]
 
-        graph = build_graph(run_tileables, executed_keys=list(self._executed_tileables.keys()))
+        graph = build_tileable_graph(run_tileables, set(self._executed_tileables.keys()))
         targets = [t.key for t in run_tileables]
 
         targets_join = ','.join(targets)

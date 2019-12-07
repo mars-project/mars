@@ -18,8 +18,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, Int32Field, Int64Field
-from ...utils import get_shuffle_input_keys_idxes
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...config import options
+from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
 from ..array_utils import as_same_device, device
@@ -159,8 +160,12 @@ class TensorUnique(TensorOperand, TensorOperandMixin):
             for axis in range(inp.ndim):
                 if axis == op.axis:
                     continue
+                if np.isnan(inp.shape[axis]):
+                    raise TilesError('input tensor has unknown shape '
+                                    'on axis {}'.format(axis))
                 new_chunk_size[axis] = inp.shape[axis]
-            inp = inp.rechunk(new_chunk_size).single_tiles()
+            check_chunks_unknown_shape([inp], TilesError)
+            inp = inp.rechunk(new_chunk_size)._inplace_tile()
 
         aggregate_size = op.aggregate_size
         if aggregate_size is None:

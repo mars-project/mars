@@ -23,7 +23,7 @@ class Test(unittest.TestCase):
     def testIndexTricks(self):
         mgrid = nd_grid()
         g = mgrid[0:5, 0:5]
-        g.tiles()  # tilesable means no loop exists
+        g.tiles()  # tileable means no loop exists
 
         ogrid = nd_grid(sparse=True)
         o = ogrid[0:5, 0:5]

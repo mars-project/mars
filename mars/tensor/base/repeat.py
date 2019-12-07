@@ -21,6 +21,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..core import Tensor, TENSOR_TYPE, CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -100,6 +102,8 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         ax = axis or 0
         out = op.outputs[0]
 
+        check_chunks_unknown_shape(op.inputs, TilesError)
+
         if isinstance(repeats, TENSOR_TYPE):
             a, repeats = unify_chunks(a, (repeats, (ax,)))
 
@@ -114,7 +118,7 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 if split % s != 0:
                     new_nsplit.append(split % s)
 
-            a = a.rechunk({ax: new_nsplit}).single_tiles()
+            a = a.rechunk({ax: new_nsplit})._inplace_tile()
 
         out_chunks = []
         ax_cum_count = np.cumsum((0,) + a.nsplits[ax])

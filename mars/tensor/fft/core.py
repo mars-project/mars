@@ -19,6 +19,8 @@ from collections import Iterable
 from ...compat import izip
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, ListField
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..utils import validate_axis, decide_chunk_sizes, recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import get_array_module
@@ -37,10 +39,11 @@ class TensorFFTBaseMixin(TensorOperandMixin):
         out_tensor = op.outputs[0]
 
         if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
+            check_chunks_unknown_shape([in_tensor], TilesError)
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
             chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes}
             new_chunks = decide_chunk_sizes(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
-            in_tensor = in_tensor.rechunk(new_chunks).single_tiles()
+            in_tensor = in_tensor.rechunk(new_chunks)._inplace_tile()
 
         out_chunks = []
         for c in in_tensor.chunks:
@@ -165,6 +168,8 @@ class TensorFFTShiftMixin(TensorOperandMixin):
         axes = op.axes
         in_tensor = op.input
         is_inverse = cls._is_inverse()
+
+        check_chunks_unknown_shape([in_tensor], TilesError)
 
         x = in_tensor
         for axis in axes:

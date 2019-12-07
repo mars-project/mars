@@ -85,7 +85,7 @@ class Test(TestBase):
         self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(series.shape, ())
 
-        series.tiles()
+        series = series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
         self.assertIsInstance(series.chunks[0].op, self.op)
@@ -100,7 +100,7 @@ class Test(TestBase):
         self.assertIsInstance(series.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(series.shape, ())
 
-        series.tiles()
+        series = series.tiles()
 
         self.assertEqual(len(series.chunks), 1)
         self.assertIsInstance(series.chunks[0].op, self.op)
@@ -155,7 +155,7 @@ class Test(TestBase):
         self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.Index)
         self.assertEqual(reduction_df.shape, (2,))
 
-        reduction_df.tiles()
+        reduction_df = reduction_df.tiles()
 
         self.assertEqual(len(reduction_df.chunks), 1)
         self.assertIsInstance(reduction_df.chunks[0].op, self.op)
@@ -169,7 +169,7 @@ class Test(TestBase):
         self.assertIsInstance(reduction_df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(reduction_df.shape, (10,))
 
-        reduction_df.tiles()
+        reduction_df = reduction_df.tiles()
 
         self.assertEqual(len(reduction_df.chunks), 4)
         self.assertEqual(reduction_df.nsplits, ((3, 3, 3, 1),))
@@ -182,7 +182,7 @@ class Test(TestBase):
 
         self.assertEqual(reduction_df.shape, (20,))
 
-        reduction_df.tiles()
+        reduction_df = reduction_df.tiles()
 
         self.assertEqual(len(reduction_df.chunks), 5)
         self.assertEqual(reduction_df.nsplits, ((np.nan,) * 5,))

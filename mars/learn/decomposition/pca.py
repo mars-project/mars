@@ -305,7 +305,7 @@ class PCA(_BasePCA):
         self.iterated_power = iterated_power
         self.random_state = random_state
 
-    def fit(self, X, y=None, session=None):
+    def fit(self, X, y=None, session=None, run_kwargs=None):
         """Fit the model with X.
 
         Parameters
@@ -321,7 +321,7 @@ class PCA(_BasePCA):
         self : object
             Returns the instance itself.
         """
-        self._fit(X, session=session, run=True)
+        self._fit(X, session=session, run=True, run_kwargs=run_kwargs)
         return self
 
     def fit_transform(self, X, y=None, session=None):
@@ -353,7 +353,7 @@ class PCA(_BasePCA):
         self._run([U], session=session)
         return U
 
-    def _run(self, result, session=None):
+    def _run(self, result, session=None, run_kwargs=None):
         to_run_tensors = list(result)
         if isinstance(self.noise_variance_, TENSOR_TYPE):
             to_run_tensors.append(self.noise_variance_)
@@ -362,9 +362,9 @@ class PCA(_BasePCA):
         to_run_tensors.append(self.explained_variance_ratio_)
         to_run_tensors.append(self.singular_values_)
 
-        ExecutableTuple(to_run_tensors).execute(session=session, fetch=False)
+        ExecutableTuple(to_run_tensors).execute(session=session, fetch=False, **(run_kwargs or {}))
 
-    def _fit(self, X, session=None, run=True):
+    def _fit(self, X, session=None, run=True, run_kwargs=None):
         """Dispatch to the right submethod depending on the chosen solver."""
 
         # Raise an error for sparse input.
@@ -407,7 +407,7 @@ class PCA(_BasePCA):
                              "".format(self._fit_svd_solver))
 
         if run:
-            self._run(ret, session=session)
+            self._run(ret, session=session, run_kwargs=run_kwargs)
         return ret
 
     def _fit_full(self, X, n_components, session=None):

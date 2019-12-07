@@ -20,6 +20,7 @@ from mars.tensor.random import RandomState, beta, rand, choice, multivariate_nor
     randint, randn, permutation, TensorPermutation, shuffle
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.tests.core import TestBase
+from mars.tiles import get_tiled
 
 
 class Test(TestBase):
@@ -66,13 +67,13 @@ class Test(TestBase):
     def testChoice(self):
         t = choice(5, chunk_size=1)
         self.assertEqual(t.shape, ())
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.nsplits, ())
         self.assertEqual(len(t.chunks), 1)
 
         t = choice(5, 3, chunk_size=1)
         self.assertEqual(t.shape, (3,))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.nsplits, ((1, 1, 1),))
 
         t = choice(5, 3, replace=False)
@@ -86,7 +87,7 @@ class Test(TestBase):
         self.assertEqual(t.shape, (5000, 2))
         self.assertEqual(t.op.size, (5000,))
 
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.nsplits, ((500,) * 10, (2,)))
         self.assertEqual(len(t.chunks), 10)
         c = t.chunks[0]
@@ -117,7 +118,7 @@ class Test(TestBase):
         self.assertEqual(x.shape, (10,))
         self.assertIsInstance(x.op, TensorPermutation)
 
-        x.tiles()
+        x = x.tiles()
 
         self.assertEqual(len(x.chunks), 1)
         self.assertIsInstance(x.chunks[0].op, TensorPermutation)
@@ -128,7 +129,8 @@ class Test(TestBase):
         self.assertEqual(x.shape, (5,))
         self.assertIsInstance(x.op, TensorPermutation)
 
-        x.tiles()
+        x = x.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(len(x.chunks), 3)
         self.assertTrue(np.isnan(x.chunks[0].shape[0]))
@@ -140,7 +142,8 @@ class Test(TestBase):
         self.assertEqual(x.shape, (3, 3))
         self.assertIsInstance(x.op, TensorPermutation)
 
-        x.tiles()
+        x = x.tiles()
+        arr = get_tiled(arr)
 
         self.assertEqual(len(x.chunks), 4)
         self.assertTrue(np.isnan(x.chunks[0].shape[0]))

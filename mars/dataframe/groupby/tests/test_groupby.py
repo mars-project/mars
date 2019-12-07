@@ -34,7 +34,7 @@ class Test(TestBase):
         self.assertIsInstance(grouped, DataFrameGroupBy)
         self.assertIsInstance(grouped.op, DataFrameGroupByOperand)
 
-        grouped.tiles()
+        grouped = grouped.tiles()
         self.assertEqual(len(grouped.chunks), 5)
         for chunk in grouped.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByOperand)
@@ -49,7 +49,7 @@ class Test(TestBase):
         self.assertIsInstance(r.op, DataFrameGroupByAgg)
         self.assertIsInstance(r, DataFrame)
 
-        r.tiles()
+        r = r.tiles()
         self.assertEqual(len(r.chunks), 5)
         for chunk in r.chunks:
             self.assertIsInstance(chunk.op, DataFrameGroupByAgg)

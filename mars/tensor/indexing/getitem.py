@@ -21,13 +21,14 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ...core import Base, Entity
+from ...tiles import TilesError
+from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...compat import OrderedDict, Enum, reduce
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs
 from ..operands import TensorHasInput, TensorOperandMixin, \
     TensorShuffleMap, TensorShuffleReduce, TensorShuffleProxy
-from ...utils import get_shuffle_input_keys_idxes
 from ..array_utils import get_array_module
 from .core import process_index, calc_shape
 
@@ -174,6 +175,7 @@ class TensorIndexTilesHandler(object):
         for raw_index_obj in self._op.indexes:
             if _is_bool_index(raw_index_obj):
                 # bool indexing
+                check_chunks_unknown_shape([self._in_tensor, raw_index_obj], TilesError)
                 # unify chunk first
                 index_obj_axes = (raw_index_obj,
                                   tuple(in_axis + i_dim for i_dim in range(raw_index_obj.ndim)))
@@ -199,6 +201,8 @@ class TensorIndexTilesHandler(object):
                 if first_fancy_index:
                     out_axis += 1
             elif isinstance(raw_index_obj, slice):
+                # check if inputs do not have chunks with unknown shape
+                check_chunks_unknown_shape([self._in_tensor], TilesError)
                 reverse = (raw_index_obj.step or 0) < 0
                 idx_to_slices = sorted(slice_split(raw_index_obj, self._in_tensor.nsplits[in_axis]).items(),
                                        key=operator.itemgetter(0), reverse=reverse)
@@ -211,6 +215,7 @@ class TensorIndexTilesHandler(object):
                 in_axis += 1
                 out_axis += 1
             elif isinstance(raw_index_obj, Integral):
+                check_chunks_unknown_shape([self._in_tensor], TilesError)
                 index_obj = slice_split(raw_index_obj, self._in_tensor.nsplits[in_axis])
                 self._index_infos.append(IndexInfo(raw_index_obj, index_obj, IndexType.integral,
                                                    in_axis, out_axis))
@@ -236,7 +241,7 @@ class TensorIndexTilesHandler(object):
             self._fancy_index_info.chunk_unified_fancy_indexes = \
                 [np.broadcast_to(fancy_index, shape) for fancy_index in fancy_indexes]
         else:
-            broadcast_fancy_indexes = [broadcast_to(fancy_index, shape).single_tiles()
+            broadcast_fancy_indexes = [broadcast_to(fancy_index, shape)._inplace_tile()
                                        for fancy_index in fancy_indexes]
             broadcast_fancy_indexes = unify_chunks(*broadcast_fancy_indexes)
             self._fancy_index_info.chunk_unified_fancy_indexes = broadcast_fancy_indexes
@@ -270,7 +275,7 @@ class TensorIndexTilesHandler(object):
 
         # stack fancy indexes into one
         concat_fancy_index = recursive_tile(stack(fancy_indexes))
-        concat_fancy_index = concat_fancy_index.rechunk({0: len(fancy_indexes)}).single_tiles()
+        concat_fancy_index = concat_fancy_index.rechunk({0: len(fancy_indexes)})._inplace_tile()
 
         # generate shuffle map, for concatenated fancy index,
         # calculated a counterpart index chunk for each chunk of input tensor
