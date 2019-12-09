@@ -23,7 +23,6 @@ from mars.dataframe.groupby.core import DataFrameGroupByOperand,\
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 
 
-
 class Test(TestBase):
     def testGroupBy(self):
         df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
@@ -40,11 +39,24 @@ class Test(TestBase):
             self.assertIsInstance(chunk.op, DataFrameGroupByOperand)
 
     def testGroupByAgg(self):
+        df = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(20,)),
+                           'b': np.random.choice([2, 3, 4], size=(20,))})
+        mdf = md.DataFrame(df, chunk_size=3)
+        r = mdf.groupby('a').agg('sum')
+        self.assertIsInstance(r.op, DataFrameGroupByAgg)
+        self.assertIsInstance(r, DataFrame)
+        self.assertEqual(r.op.method, 'tree')
+        r = r.tiles()
+        self.assertEqual(len(r.chunks), 1)
+        self.assertEqual(r.chunks[0].op.stage.value, 'combine')
+        self.assertEqual(len(r.chunks[0].inputs), 1)
+        self.assertEqual(len(r.chunks[0].inputs[0].inputs), 2)
+
         df = pd.DataFrame({'c1': range(10),
                            'c2': np.random.choice(['a', 'b', 'c'], (10,)),
                            'c3': np.random.rand(10)})
         mdf = md.DataFrame(df, chunk_size=2)
-        r = mdf.groupby('c2').sum()
+        r = mdf.groupby('c2').sum(method='shuffle')
 
         self.assertIsInstance(r.op, DataFrameGroupByAgg)
         self.assertIsInstance(r, DataFrame)
@@ -59,4 +71,8 @@ class Test(TestBase):
             self.assertIsInstance(chunk.inputs[0].inputs[0].inputs[0].op, DataFrameGroupByMap)
 
             agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
-            self.assertEqual(agg_chunk.op.stage.value, 'agg')
+            self.assertEqual(agg_chunk.op.stage.value, 'map')
+
+        # test unknown method
+        with self.assertRaises(NotImplementedError):
+            mdf.groupby('c2').sum(method='not_exist')
