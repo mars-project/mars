@@ -229,6 +229,9 @@ def agg(groupby, func, method='tree'):
     elif isinstance(func, list):
         raise NotImplementedError('Function list is not supported now.')
 
+    if method not in ['shuffle', 'tree']:
+        raise NotImplementedError('Method %s has not been implemented' % method)
+
     if isinstance(func, six.string_types):
         funcs = [func]
     elif isinstance(func, dict):
