@@ -152,7 +152,7 @@ def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=Fal
     except IndexError:
         col_num = 1
     gpu = tensor.op.gpu if gpu is None else gpu
-    op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num), gpu=gpu, sparse=sparse)
+    op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num, index=columns), gpu=gpu, sparse=sparse)
     return op(tensor, index, columns)
 
 
