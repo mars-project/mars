@@ -245,8 +245,7 @@ class StorageHandler(object):
             else:
                 return promise.finished()
         else:
-            raise NotImplementedError('Copying from %r to %r not supported now' %
-                                      (src_handler.storage_type, self.storage_type))
+            return fallback() if fallback is not None else promise.finished()
 
     def unregister_data(self, session_id, data_keys, _tell=False):
         self._storage_ctx.manager_ref \

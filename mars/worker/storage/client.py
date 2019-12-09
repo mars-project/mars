@@ -261,7 +261,7 @@ class StorageClient(object):
             sizes_dict = dict((k, calc_data_size(obj)) for k, obj in zip(data_keys, objs))
 
         data_dict = dict(zip(data_keys, objs))
-        objs[:] = []
+        del objs
 
         def _action(h, keys):
             objects = [data_dict[k] for k in keys]
@@ -294,10 +294,6 @@ class StorageClient(object):
         device_total_size = defaultdict(lambda: 0)
         lift_reqs = defaultdict(list)
         for k, devices, size in zip(data_keys, existing_devs, data_sizes):
-            # currently copy across non-zero processes is not allowed.
-            if self.proc_id != 0:
-                devices = [d for d in devices if d[0] in (0, self.proc_id)]
-
             if not devices or not size:
                 return promise.finished(
                     *build_exc_info(KeyError, 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)),

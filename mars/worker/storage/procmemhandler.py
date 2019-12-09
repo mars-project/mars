@@ -43,7 +43,6 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     @wrap_promised
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
-        raw_objs = objs
         objs = [self._deserial(obj) if serialize else obj for obj in objs]
         obj = None
         try:
@@ -52,7 +51,6 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
             self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin_token=pin_token)
             self.register_data(session_id, data_keys, sizes, shapes)
         finally:
-            raw_objs[:] = []
             objs[:] = []
             del obj
 

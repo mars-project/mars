@@ -94,7 +94,7 @@ class StorageManagerActor(WorkerActor):
                 pass
 
     def get_data_locations(self, session_id, data_keys):
-        return [self._data_to_locations.get((session_id, key)) or set() for key in data_keys]
+        return [set(self._data_to_locations.get((session_id, key)) or ()) for key in data_keys]
 
     def get_data_sizes(self, session_id, data_keys):
         return [a.size if a is not None else None

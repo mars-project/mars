@@ -150,7 +150,6 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
         affected_keys = []
         request_size, capacity = 0, 0
 
-        raw_objs = objs
         objs = [self._deserial(obj) if serialize else obj for obj in objs]
         obj_refs = []
         obj = None
@@ -177,7 +176,6 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                                   affected_keys=affected_keys)
         finally:
             del obj
-            raw_objs[:] = []
             objs[:] = []
             obj_refs[:] = []
 

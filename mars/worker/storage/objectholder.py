@@ -272,7 +272,7 @@ class SimpleObjectHolderActor(ObjectHolderActor):
                 self.pin_data_keys(session_id, data_keys, pin_token)
             self._finish_put_objects(session_id, data_keys)
         finally:
-            data_objs[:] = []
+            del data_objs
 
     def get_object(self, session_id, data_key):
         return self._data_holder[(session_id, data_key)]

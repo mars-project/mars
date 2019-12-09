@@ -530,7 +530,6 @@ class ExecutionActor(WorkerActor):
                 .then(lambda *_: self._mem_quota_ref.request_batch_quota(
                     quota_request, _promise=True) if quota_request else None) \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
-                .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
                 .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
