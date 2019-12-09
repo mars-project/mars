@@ -213,6 +213,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
 
 def agg(groupby, func, method='tree'):
+    """
+    Aggregate using one or more operations on grouped data.
+    :param groupby: Groupby data.
+    :param func: Aggregation functions.
+    :param method: 'shuffle' or 'tree', 'tree' method provide a better performance, 'shuffle' is recommended
+    if aggregated result is very large.
+    :return: Aggregated result.
+    """
+
     # When perform a computation on the grouped data, we won't shuffle
     # the data in the stage of groupby and do shuffle after aggregation.
     if not isinstance(groupby, GROUPBY_TYPE):
