@@ -85,7 +85,7 @@ class Test(TestBase):
                 tiledb.DenseArray(ctx=ctx, uri=tempdir)
 
             # tiledb array is created in the tile
-            saved.tiles()
+            saved = saved.tiles()
 
             # no error
             tiledb.DenseArray(ctx=ctx, uri=tempdir)

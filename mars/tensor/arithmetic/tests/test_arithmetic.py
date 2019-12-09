@@ -25,6 +25,7 @@ from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, around, \
 from mars.tensor.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
 from mars.core import build_mode
+from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -34,7 +35,8 @@ class Test(unittest.TestCase):
         t3 = t1 + t2
         k1 = t3.key
         self.assertFalse(t3.op.gpu)
-        t3.tiles()
+        t3 = t3.tiles()
+        t1, t2 = get_tiled(t1), get_tiled(t2)
         self.assertNotEqual(t3.key, k1)
         self.assertEqual(t3.shape, (3, 4))
         self.assertEqual(len(t3.chunks), 4)
@@ -46,7 +48,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t3.chunks[0].op.dtype, np.dtype('f8'))
 
         t4 = t1 + 1
-        t4.tiles()
+        t4 = t4.tiles()
         self.assertEqual(t4.shape, (3, 4))
         self.assertEqual(len(t3.chunks), 4)
         self.assertEqual(t4.chunks[0].inputs, [t1.chunks[0].data])
@@ -59,18 +61,18 @@ class Test(unittest.TestCase):
         self.assertEqual(t4.chunks[3].op.rhs, 1)
 
         t5 = add([1, 2, 3, 4], 1)
-        t5.tiles()
+        t5 = t5.tiles()
         self.assertEqual(t4.chunks[0].inputs, [t1.chunks[0].data])
 
         t6 = ones((3, 4), chunk_size=2, gpu=True)
         t7 = ones(4, chunk_size=2, gpu=True)
         t8 = t6 + t7
         self.assertTrue(t8.op.gpu)
-        t8.tiles()
+        t8 = t8.tiles()
         self.assertTrue(t8.chunks[0].op.gpu)
         t9 = t6 + t2
         self.assertIsNone(t9.op.gpu)
-        t9.tiles()
+        t9 = t9.tiles()
         self.assertIsNone(t9.chunks[0].op.gpu)
 
         # sparse tests
@@ -81,7 +83,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
         t = t1 + 0
@@ -94,7 +96,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
         t3 = tensor([1, 1, 1], chunk_size=2)
@@ -102,7 +104,7 @@ class Test(unittest.TestCase):
         self.assertFalse(t.issparse())
         self.assertIs(type(t), Tensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertFalse(t.chunks[0].op.sparse)
 
     def testAddOrder(self):
@@ -143,7 +145,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
         t2 = tensor([[1, 0, 0]], chunk_size=2).tosparse()
@@ -152,7 +154,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
         t3 = tensor([1, 1, 1], chunk_size=2)
@@ -160,7 +162,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
     def testDivide(self):
@@ -170,7 +172,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
         t2 = tensor([[1, 0, 0]], chunk_size=2).tosparse()
@@ -179,7 +181,7 @@ class Test(unittest.TestCase):
         self.assertFalse(t.issparse())
         self.assertIs(type(t), Tensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertFalse(t.chunks[0].op.sparse)
 
         t3 = tensor([1, 1, 1], chunk_size=2)
@@ -187,14 +189,14 @@ class Test(unittest.TestCase):
         self.assertFalse(t.issparse())
         self.assertIs(type(t), Tensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertFalse(t.chunks[0].op.sparse)
 
         t = t3 / t1
         self.assertFalse(t.issparse())
         self.assertIs(type(t), Tensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertFalse(t.chunks[0].op.sparse)
 
     def testDatatimeArith(self):
@@ -231,6 +233,7 @@ class Test(unittest.TestCase):
         self.assertNotEqual(t3.key, t3.op.lhs.key)
 
         t3.tiles()
+        t1 = get_tiled(t1)
 
         self.assertIsInstance(t1.chunks[0].op, TensorAdd)
         self.assertEqual(t1.chunks[0].op.out.key, t1.chunks[0].op.lhs.key)
@@ -280,7 +283,7 @@ class Test(unittest.TestCase):
         t1 = ones((3, 4), chunk_size=2)
         t2 = ones(4, chunk_size=2)
         t3 = t1 + t2
-        t3.tiles()
+        t3 = t3.tiles()
 
         c = t3.chunks[0]
         inputs = c.op.lhs, TensorFetch().new_chunk(
@@ -294,7 +297,7 @@ class Test(unittest.TestCase):
         t1 = ones(4, chunk_size=2) * 2
         t2 = ones(4, chunk_size=2)
         t3 = t1 > t2
-        t3.tiles()
+        t3 = t3.tiles()
         self.assertEqual(len(t3.chunks), 2)
         self.assertIsInstance(t3.op, TensorGreaterThan)
 
@@ -303,7 +306,8 @@ class Test(unittest.TestCase):
         t2 = ones(1, chunk_size=1)
 
         t3 = t1 + t2
-        t3.tiles()
+        t3 = t3.tiles()
+        t1, t2 = get_tiled(t1), get_tiled(t2)
         self.assertEqual(len(t3.chunks), 2)
         self.assertEqual(t3.chunks[0].inputs[0], t1.chunks[0].data)
         self.assertEqual(t3.chunks[0].inputs[1], t2.chunks[0].data)
@@ -369,7 +373,7 @@ class Test(unittest.TestCase):
         self.assertTrue(t.issparse())
         self.assertIs(type(t), SparseTensor)
 
-        t.tiles()
+        t = t.tiles()
         self.assertTrue(t.chunks[0].op.sparse)
 
     def testNegativeOrder(self):
@@ -415,7 +419,7 @@ class Test(unittest.TestCase):
         self.assertFalse(t.issparse())
         self.assertEqual(t.op.decimals, 3)
 
-        t.tiles()
+        t = t.tiles()
 
         self.assertEqual(t.chunks[0].op.decimals, 3)
 
@@ -433,7 +437,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
 
-        t.tiles()
+        t = t.tiles()
 
         self.assertIsInstance(t.chunks[0].op, TensorIsclose)
         self.assertEqual(t.chunks[0].op.atol, atol)
@@ -454,7 +458,7 @@ class Test(unittest.TestCase):
         self.assertEqual(t.op.rtol, rtol)
         self.assertEqual(t.op.equal_nan, equal_nan)
 
-        t.tiles()
+        t = t.tiles()
 
         self.assertIsInstance(t.chunks[0].op, TensorIsclose)
         self.assertEqual(t.chunks[0].op.atol, atol)
@@ -471,7 +475,7 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2, 2))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
 
         b_data = [1, 2]
@@ -480,13 +484,13 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2,))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
 
         t = matmul(b, a)
 
         self.assertEqual(t.shape, (2,))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
 
         a_data = np.arange(2 * 2 * 4).reshape((2, 2, 4))
@@ -498,13 +502,13 @@ class Test(unittest.TestCase):
         t = matmul(a, b)
 
         self.assertEqual(t.shape, (2, 2, 2))
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
 
         t = matmul(tensor([2j, 3j], chunk_size=1), tensor([2j, 3j], chunk_size=1))
 
         self.assertEqual(t.shape, ())
-        t.tiles()
+        t = t.tiles()
         self.assertEqual(t.shape, tuple(sum(s) for s in t.nsplits))
 
         with self.assertRaises(ValueError):
@@ -520,7 +524,7 @@ class Test(unittest.TestCase):
         v = ones((100, 100), chunk_size=10)
         tv = matmul(v, v)
         self.assertEqual(tv.shape, (100, 100))
-        tv.tiles()
+        tv = tv.tiles()
         self.assertEqual(tv.shape, tuple(sum(s) for s in tv.nsplits))
 
     def testGetSetReal(self):

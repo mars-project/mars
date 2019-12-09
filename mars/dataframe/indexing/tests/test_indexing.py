@@ -29,13 +29,13 @@ class Test(TestBase):
         df2 = md.DataFrame(df1, chunk_size=2)
 
         df3 = df2.set_index('y', drop=True)
-        df3.tiles()
+        df3 = df3.tiles()
         self.assertEqual(df3.chunk_shape, (2, 2))
         pd.testing.assert_index_equal(df3.chunks[0].columns_value.to_pandas(), pd.Index(['x']))
         pd.testing.assert_index_equal(df3.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
 
         df4 = df2.set_index('y', drop=False)
-        df4.tiles()
+        df4 = df4.tiles()
         self.assertEqual(df4.chunk_shape, (2, 2))
         pd.testing.assert_index_equal(df4.chunks[0].columns_value.to_pandas(), pd.Index(['x', 'y']))
         pd.testing.assert_index_equal(df4.chunks[1].columns_value.to_pandas(), pd.Index(['z']))
@@ -47,7 +47,7 @@ class Test(TestBase):
 
         # plain index
         df3 = df2.iloc[1]
-        df3.tiles()
+        df3 = df3.tiles()
         self.assertIsInstance(df3, Series)
         self.assertIsInstance(df3.op, DataFrameIlocGetItem)
         self.assertEqual(df3.shape, (3,))
@@ -63,7 +63,7 @@ class Test(TestBase):
 
         # slice index
         df4 = df2.iloc[:, 2:4]
-        df4.tiles()
+        df4 = df4.tiles()
         self.assertIsInstance(df4, DataFrame)
         self.assertIsInstance(df4.op, DataFrameIlocGetItem)
         self.assertEqual(df4.shape, (3, 1))
@@ -79,7 +79,7 @@ class Test(TestBase):
 
         # plain fancy index
         df5 = df2.iloc[[0], [0, 1, 2]]
-        df5.tiles()
+        df5 = df5.tiles()
         self.assertIsInstance(df5, DataFrame)
         self.assertIsInstance(df5.op, DataFrameIlocGetItem)
         self.assertEqual(df5.shape, (1, 3))
@@ -97,7 +97,7 @@ class Test(TestBase):
 
         # fancy index
         df6 = df2.iloc[[1, 2], [0, 1, 2]]
-        df6.tiles()
+        df6 = df6.tiles()
         self.assertIsInstance(df6, DataFrame)
         self.assertIsInstance(df6.op, DataFrameIlocGetItem)
         self.assertEqual(df6.shape, (2, 3))
@@ -125,7 +125,7 @@ class Test(TestBase):
 
         # plain index
         df7 = df2.iloc[1, 2]
-        df7.tiles()
+        df7 = df7.tiles()
         self.assertIsInstance(df7, Series)
         self.assertIsInstance(df7.op, DataFrameIlocGetItem)
         self.assertEqual(df7.shape, ())
@@ -136,16 +136,49 @@ class Test(TestBase):
         self.assertEqual(df7.chunks[0].inputs[0].index, (0, 1))
         self.assertEqual(df7.chunks[0].inputs[0].shape, (2, 1))
 
+        # test Series iloc getitem
+
+        # slice
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3).iloc[4:8]
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (4,))
+
+        self.assertEqual(len(series.chunks), 2)
+        self.assertEqual(series.chunks[0].shape, (2,))
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes, slice(1, 3, 1))
+        self.assertEqual(series.chunks[1].shape, (2,))
+        self.assertEqual(series.chunks[1].op.indexes, slice(0, 2, 1))
+        self.assertEqual(series.chunks[1].index, (1,))
+
+        # fancy index
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3).iloc[[2, 4, 8]]
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (3,))
+
+        self.assertEqual(len(series.chunks), 3)
+        self.assertEqual(series.chunks[0].shape, (1,))
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes[0], [2])
+        self.assertEqual(series.chunks[1].shape, (1,))
+        self.assertEqual(series.chunks[1].op.indexes[0], [1])
+        self.assertEqual(series.chunks[1].index, (1,))
+        self.assertEqual(series.chunks[2].shape, (1,))
+        self.assertEqual(series.chunks[2].op.indexes[0], [2])
+        self.assertEqual(series.chunks[2].index, (2,))
+
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
                             index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
         df2 = md.DataFrame(df1, chunk_size=2)
-        df2.tiles()
+        df2 = df2.tiles()
 
         # plain index
         df3 = md.DataFrame(df1, chunk_size=2)
         df3.iloc[1] = 100
-        df3.tiles()
+        df3 = df3.tiles()
         self.assertIsInstance(df3.op, DataFrameIlocSetItem)
         self.assertEqual(df3.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df3.index_value.to_pandas())
@@ -164,7 +197,7 @@ class Test(TestBase):
         # # slice index
         df4 = md.DataFrame(df1, chunk_size=2)
         df4.iloc[:, 2:4] = 1111
-        df4.tiles()
+        df4 = df4.tiles()
         self.assertIsInstance(df4.op, DataFrameIlocSetItem)
         self.assertEqual(df4.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df4.index_value.to_pandas())
@@ -183,7 +216,7 @@ class Test(TestBase):
         # plain fancy index
         df5 = md.DataFrame(df1, chunk_size=2)
         df5.iloc[[0], [0, 1, 2]] = 2222
-        df5.tiles()
+        df5 = df5.tiles()
         self.assertIsInstance(df5.op, DataFrameIlocSetItem)
         self.assertEqual(df5.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df5.index_value.to_pandas())
@@ -204,7 +237,7 @@ class Test(TestBase):
         # fancy index
         df6 = md.DataFrame(df1, chunk_size=2)
         df6.iloc[[1, 2], [0, 1, 2]] = 3333
-        df6.tiles()
+        df6 = df6.tiles()
         self.assertIsInstance(df6.op, DataFrameIlocSetItem)
         self.assertEqual(df6.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df6.index_value.to_pandas())
@@ -229,7 +262,7 @@ class Test(TestBase):
         # plain index
         df7 = md.DataFrame(df1, chunk_size=2)
         df7.iloc[1, 2] = 4444
-        df7.tiles()
+        df7 = df7.tiles()
         self.assertIsInstance(df7.op, DataFrameIlocSetItem)
         self.assertEqual(df7.chunk_shape, df2.chunk_shape)
         pd.testing.assert_index_equal(df2.index_value.to_pandas(), df7.index_value.to_pandas())
@@ -244,6 +277,39 @@ class Test(TestBase):
                 self.assertEqual(c1.key, c2.key)
         self.assertEqual(df7.chunks[1].op.indexes, (1, 0))
 
+        # test Series
+
+        # slice
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3)
+        series.iloc[:4] = 2
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (10,))
+        self.assertEqual(len(series.chunks), 4)
+
+        self.assertEqual(series.chunks[0].op.indexes, slice(None, None, None))
+        self.assertEqual(series.chunks[0].op.value, 2)
+        self.assertEqual(series.chunks[1].op.indexes, slice(0, 1, 1))
+        self.assertEqual(series.chunks[1].op.value, 2)
+
+        # fancy index
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3)
+        series.iloc[[2, 4, 9]] = 3
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (10,))
+
+        self.assertEqual(len(series.chunks), 4)
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes, [2])
+        self.assertEqual(series.chunks[0].op.value, 3)
+        self.assertEqual(series.chunks[1].index, (1,))
+        self.assertEqual(series.chunks[1].op.indexes, [1])
+        self.assertEqual(series.chunks[1].op.value, 3)
+        self.assertEqual(series.chunks[3].index, (3,))
+        self.assertEqual(series.chunks[3].op.indexes, [0])
+        self.assertEqual(series.chunks[3].op.value, 3)
+
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])
         df = md.DataFrame(data, chunk_size=2)
@@ -255,7 +321,7 @@ class Test(TestBase):
         self.assertEqual(series.dtype, data['c3'].dtype)
         self.assertEqual(series.index_value, df.index_value)
 
-        series.tiles()
+        series = series.tiles()
         self.assertEqual(series.nsplits, ((2, 2, 2, 2, 2),))
         self.assertEqual(len(series.chunks), 5)
         for i, c in enumerate(series.chunks):
@@ -270,7 +336,7 @@ class Test(TestBase):
         pd.testing.assert_index_equal(df1.columns_value.to_pandas(), data[['c1', 'c2', 'c3']].columns)
         pd.testing.assert_series_equal(df1.dtypes, data[['c1', 'c2', 'c3']].dtypes)
 
-        df1.tiles()
+        df1 = df1.tiles()
         self.assertEqual(df1.nsplits, ((2, 2, 2, 2, 2), (2, 1)))
         self.assertEqual(len(df1.chunks), 10)
         for i, c in enumerate(df1.chunks[slice(0, 10, 2)]):
@@ -315,7 +381,7 @@ class Test(TestBase):
         result1 = series[2]
         self.assertEqual(result1.shape, ())
 
-        result1.tiles()
+        result1 = result1.tiles()
         self.assertEqual(result1.nsplits, ())
         self.assertEqual(len(result1.chunks), 1)
         self.assertIsInstance(result1.chunks[0], TENSOR_CHUNK_TYPE)
@@ -325,7 +391,7 @@ class Test(TestBase):
         result2 = series[[4, 5, 1, 2, 3]]
         self.assertEqual(result2.shape, (5,))
 
-        result2.tiles()
+        result2 = result2.tiles()
         self.assertEqual(result2.nsplits, ((2, 2, 1),))
         self.assertEqual(len(result2.chunks), 3)
         self.assertEqual(result2.chunks[0].op.labels, [4, 5])
@@ -338,7 +404,7 @@ class Test(TestBase):
         result1 = series['i2']
         self.assertEqual(result1.shape, ())
 
-        result1.tiles()
+        result1 = result1.tiles()
         self.assertEqual(result1.nsplits, ())
         self.assertEqual(result1.chunks[0].dtype, data.dtype)
         self.assertTrue(result1.chunks[0].op.labels, ['i2'])
@@ -346,7 +412,7 @@ class Test(TestBase):
         result2 = series[['i2', 'i4']]
         self.assertEqual(result2.shape, (2,))
 
-        result2.tiles()
+        result2 = result2.tiles()
         self.assertEqual(result2.nsplits, ((2,),))
         self.assertEqual(result2.chunks[0].dtype, data.dtype)
         self.assertTrue(result2.chunks[0].op.labels, [['i2', 'i4']])

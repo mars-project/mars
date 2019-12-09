@@ -56,25 +56,25 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         is_sparse = in_tensor.is_sparse()
 
         b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits, sparse=is_sparse)
-        b_eye.single_tiles()
+        b_eye._inplace_tile()
 
         p, l, u = lu(in_tensor)
-        p.single_tiles()
+        p._inplace_tile()
 
         # transposed p equals to inverse of p
         p_transpose = TensorTranspose(
             dtype=p.dtype, sparse=p.op.sparse, axes=list(range(in_tensor.ndim))[::-1]).new_tensor([p], p.shape)
-        p_transpose.single_tiles()
+        p_transpose._inplace_tile()
 
         b = tensordot(p_transpose, b_eye, axes=((p_transpose.ndim - 1,), (b_eye.ndim - 2,)))
-        b.single_tiles()
+        b._inplace_tile()
 
         # as `l` is a lower matrix, `lower=True` should be specified.
         uy = solve_triangular(l, b, lower=True, sparse=op.sparse)
-        uy.single_tiles()
+        uy._inplace_tile()
 
         a_inv = solve_triangular(u, uy, sparse=op.sparse)
-        a_inv.single_tiles()
+        a_inv._inplace_tile()
         return [a_inv]
 
 

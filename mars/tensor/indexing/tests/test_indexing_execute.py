@@ -20,6 +20,7 @@ import numpy as np
 import scipy.sparse as sps
 
 from mars.executor import Executor
+from mars.tiles import get_tiled
 from mars.tensor.datasource import tensor, arange
 from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero
@@ -102,7 +103,7 @@ class Test(unittest.TestCase):
         res = self.executor.execute_tensor(arr6, concat=True)
         np.testing.assert_array_equal(res[0], raw[index1, :, index2])
         # fancy index is ordered, no concat required
-        self.assertGreater(len(arr6.nsplits[0]), 1)
+        self.assertGreater(len(get_tiled(arr6).nsplits[0]), 1)
 
         index1 = [[8, 10, 3], [1, 9, 10]]
         index2 = [[1, 3, 9], [10, 2, 7]]

@@ -130,15 +130,15 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
         if data.chunk_shape[1] > 1:
             # make sure data's second dimension has only 1 chunk
-            data = data.rechunk({1: data.shape[1]}).single_tiles()
+            data = data.rechunk({1: data.shape[1]})._inplace_tile()
 
         nsplit = data.nsplits[0]
         # rechunk label
         if label is not None:
-            label = label.rechunk({0: nsplit}).single_tiles()
+            label = label.rechunk({0: nsplit})._inplace_tile()
         # rechunk weight
         if weight is not None:
-            weight = weight.rechunk({0: nsplit}).single_tiles()
+            weight = weight.rechunk({0: nsplit})._inplace_tile()
 
         out_chunkss = [[] for _ in range(op.output_limit)]
         for i in range(len(nsplit)):

@@ -138,7 +138,7 @@ class Test(TestBase):
         self.assertEqual(df.index_value.max_val, 9)
         np.testing.assert_equal(df.columns_value._index_value._data, data.columns.values)
 
-        df.tiles()
+        df = df.tiles()
 
         self.assertEqual(len(df.chunks), 9)
         pd.testing.assert_frame_equal(df.chunks[0].op.data, df.op.data.iloc[:4, :4])
@@ -194,7 +194,7 @@ class Test(TestBase):
         self.assertIsInstance(df2.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(df2.index_value._index_value._slice, slice(0, 10, 2))
 
-        df2.tiles()
+        df2 = df2.tiles()
 
         self.assertEqual(len(df2.chunks), 6)
         pd.testing.assert_frame_equal(df2.chunks[0].op.data, df2.op.data.iloc[:4, :4])
@@ -223,7 +223,7 @@ class Test(TestBase):
         self.assertEqual(series.index_value.min_val, 0)
         self.assertEqual(series.index_value.max_val, 9)
 
-        series.tiles()
+        series = series.tiles()
 
         self.assertEqual(len(series.chunks), 3)
         pd.testing.assert_series_equal(series.chunks[0].op.data, series.op.data.iloc[:4])
@@ -247,7 +247,7 @@ class Test(TestBase):
         # pb
         tensor = mt.random.rand(10, 10)
         df = dataframe_from_tensor(tensor)
-        df.tiles()
+        df = df.tiles()
         chunk = df.chunks[0]
         serials = self._pb_serial(chunk)
         op, pb = serials[chunk.op, chunk.data]
@@ -283,7 +283,7 @@ class Test(TestBase):
         self.assertIsInstance(df.index_value._index_value, IndexValue.RangeIndex)
         self.assertEqual(df.op.dtypes[0], tensor.dtype, 'DataFrame converted from tensor have the wrong dtype')
 
-        df.tiles()
+        df = df.tiles()
         self.assertEqual(len(df.chunks), 4)
         self.assertIsInstance(df.chunks[0].index_value._index_value, IndexValue.RangeIndex)
         self.assertIsInstance(df.chunks[0].index_value, IndexValue)
@@ -295,8 +295,8 @@ class Test(TestBase):
 
         df2 = dataframe_from_tensor(tensor2)
         df3 = dataframe_from_tensor(tensor3)
-        df2.tiles()
-        df3.tiles()
+        df2 = df2.tiles()
+        df3 = df3.tiles()
         np.testing.assert_equal(df2.chunks[0].index, (0, 0))
         np.testing.assert_equal(df3.chunks[0].index, (0, 0))
 
@@ -308,7 +308,7 @@ class Test(TestBase):
 
         # from tensor with given index
         df = dataframe_from_tensor(tensor, index=np.arange(0, 20, 2))
-        df.tiles()
+        df = df.tiles()
         pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
         pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
         pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
@@ -316,7 +316,7 @@ class Test(TestBase):
 
         # from tensor with given columns
         df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
-        df.tiles()
+        df = df.tiles()
         pd.testing.assert_index_equal(df.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
         pd.testing.assert_index_equal(df.chunks[1].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
         pd.testing.assert_index_equal(df.chunks[2].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
@@ -330,7 +330,7 @@ class Test(TestBase):
         self.assertEqual(series.name, 'a')
         pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(10))
 
-        series.tiles()
+        series = series.tiles()
         self.assertEqual(len(series.chunks), 3)
         pd.testing.assert_index_equal(series.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 4))
         self.assertEqual(series.chunks[0].name, 'a')
@@ -347,7 +347,7 @@ class Test(TestBase):
 
         tensor = mt.ones((10,), dtype=dtype, chunk_size=3)
         df = from_records(tensor)
-        df.tiles()
+        df = df.tiles()
 
         self.assertEqual(df.chunk_shape, (4, 1))
         self.assertEqual(df.chunks[0].shape, (3, 3))
@@ -387,7 +387,7 @@ class Test(TestBase):
             self.assertEqual(mdf.shape[1], 3)
             pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
 
-            mdf.tiles()
+            mdf = mdf.tiles()
             self.assertEqual(len(mdf.chunks), 4)
             for chunk in mdf.chunks:
                 pd.testing.assert_index_equal(df.columns, chunk.columns_value.to_pandas())

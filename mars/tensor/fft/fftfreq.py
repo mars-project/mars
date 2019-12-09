@@ -50,7 +50,7 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         in_tensor = arange(op.n, gpu=op.gpu, dtype=op.dtype,
-                           chunks=tensor.extra_params.raw_chunk_size).single_tiles()
+                           chunks=tensor.extra_params.raw_chunk_size)._inplace_tile()
 
         out_chunks = []
         for c in in_tensor.chunks:

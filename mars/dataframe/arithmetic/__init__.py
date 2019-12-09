@@ -21,9 +21,9 @@ from .truediv import truediv, rtruediv, DataFrameTrueDiv
 
 
 def _install():
-    from ..core import DataFrame, Series
+    from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
-    for entity in (DataFrame, Series):
+    for entity in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(entity, 'abs', abs)
 
         setattr(entity, '__add__', wrap_notimplemented_exception(add))

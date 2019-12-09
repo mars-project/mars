@@ -713,7 +713,7 @@ class ExecutionActor(WorkerActor):
 
         # make sure that memory suffices before actually run execution
         logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
-        return self._mem_quota_ref.request_batch_quota(target_allocs, _promise=True) \
+        return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
             .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
             .then(_start_calc)
 

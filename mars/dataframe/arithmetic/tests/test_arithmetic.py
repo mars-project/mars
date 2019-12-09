@@ -29,6 +29,7 @@ from mars.dataframe.arithmetic import abs, DataFrameAbs, DataFrameAdd, DataFrame
     DataFrameFloorDiv, DataFrameTrueDiv
 from mars.dataframe.align import DataFrameIndexAlignMap, \
     DataFrameIndexAlignReduce, DataFrameShuffleProxy
+from mars.tiles import get_tiled
 from mars.tests.core import TestBase, parameterized
 
 
@@ -71,7 +72,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 11)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         # test df3's index and columns after tiling
         pd.testing.assert_index_equal(df3.columns_value.to_pandas(), self.func(data1, data2).columns)
@@ -154,7 +156,8 @@ class TestBinary(TestBase):
         s1 = df1[3]
 
         df2 = self.func(df1, s1)
-        df2.tiles()
+        df2 = df2.tiles()
+        df1, s1 = get_tiled(df1), get_tiled(s1)
 
         self.assertEqual(df2.shape, (df1.shape[0], np.nan))
         self.assertEqual(df2.index_value.key, df1.index_value.key)
@@ -208,7 +211,8 @@ class TestBinary(TestBase):
         s1 = from_pandas_series(data1[3], chunk_size=5)
 
         df2 = self.func(df1, s1)
-        df2.tiles()
+        df2 = df2.tiles()
+        df1, s1 = get_tiled(df1), get_tiled(s1)
 
         self.assertEqual(df2.shape, (10, 10))
         self.assertEqual(df2.index_value.key, df1.index_value.key)
@@ -251,7 +255,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df2.columns_value.key, df1.columns_value.key)
         self.assertTrue(df2.columns_value.should_be_monotonic)
 
-        df2.tiles()
+        df2 = df2.tiles()
+        df1, s1 = get_tiled(df1), get_tiled(s1)
 
         self.assertEqual(df2.chunk_shape, (2, 2))
         for c in df2.chunks:
@@ -308,7 +313,8 @@ class TestBinary(TestBase):
         s2 = df1[3]
 
         s3 = self.func(s1, s2)
-        s3.tiles()
+        s3 = s3.tiles()
+        s1, s2 = get_tiled(s1), get_tiled(s2)
 
         self.assertEqual(s3.shape, (np.nan,))
 
@@ -364,7 +370,8 @@ class TestBinary(TestBase):
         s2 = from_pandas_series(data1[3], chunk_size=5)
 
         s3 = self.func(s1, s2)
-        s3.tiles()
+        s3 = s3.tiles()
+        s1, s2 = get_tiled(s1), get_tiled(s2)
 
         self.assertEqual(s3.shape, (10,))
         self.assertEqual(s3.index_value.key, s1.index_value.key)
@@ -402,7 +409,8 @@ class TestBinary(TestBase):
         pd.testing.assert_index_equal(s3.index_value.to_pandas(), pd.Int64Index([]))
         self.assertTrue(s3.index_value.should_be_monotonic)
 
-        s3.tiles()
+        s3 = s3.tiles()
+        s1, s2 = get_tiled(s1), get_tiled(s2)
 
         self.assertEqual(s3.chunk_shape, (2,))
         for c in s3.chunks:
@@ -455,7 +463,8 @@ class TestBinary(TestBase):
         self.assertEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape, (10, 10))  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         self.assertEqual(df3.chunk_shape, (2, 2))
         for c in df3.chunks:
@@ -498,7 +507,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
         data2_index_min_max = [(2, True, 5, True), (6, True, 11, True)]
@@ -599,7 +609,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         self.assertEqual(df3.chunk_shape, (2, 2))
         proxy_keys = set()
@@ -671,7 +682,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df6.index_value.key, df5.index_value.key)
         self.assertEqual(df6.shape[1], 20)  # columns is recorded, so we can get it
 
-        df6.tiles()
+        df6 = df6.tiles()
+        df4, df5 = get_tiled(df4), get_tiled(df5)
 
         self.assertEqual(df6.chunk_shape, (4, 4))
         proxy_keys = set()
@@ -746,7 +758,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
         data2_index_min_max = [(2, True, 5, True), (6, True, 11, True)]
@@ -821,7 +834,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         self.assertEqual(df3.chunk_shape, (1, 1))
         for c in df3.chunks:
@@ -853,7 +867,8 @@ class TestBinary(TestBase):
         self.assertNotEqual(df3.index_value.key, df2.index_value.key)
         self.assertEqual(df3.shape[1], 12)  # columns is recorded, so we can get it
 
-        df3.tiles()
+        df3 = df3.tiles()
+        df1, df2 = get_tiled(df1), get_tiled(df2)
 
         self.assertEqual(df3.chunk_shape, (2, 1))
         proxy_keys = set()
@@ -920,7 +935,8 @@ class TestBinary(TestBase):
         self.assertEqual(df2.columns_value.key, df.columns_value.key)
         self.assertEqual(df2.shape[1], 10)
 
-        df2.tiles()
+        df2 = df2.tiles()
+        df = get_tiled(df)
 
         self.assertEqual(df2.chunk_shape, df.chunk_shape)
         for c in df2.chunks:
@@ -971,7 +987,8 @@ class TestBinary(TestBase):
         data = pd.Series(range(10), index=[1, 3, 4, 2, 9, 10, 33, 23, 999, 123])
         s1 = from_pandas_series(data, chunk_size=3)
         r = getattr(s1, self.func_name)(456)
-        r.tiles()
+        r = r.tiles()
+        s1 = get_tiled(s1)
 
         self.assertEqual(r.index_value.key, s1.index_value.key)
         self.assertEqual(r.chunk_shape, s1.chunk_shape)
@@ -985,7 +1002,8 @@ class TestBinary(TestBase):
             self.assertEqual(cr.op.rhs, 456)
 
         r = getattr(s1, self.rfunc_name)(789)
-        r.tiles()
+        r = r.tiles()
+        s1 = get_tiled(s1)
 
         self.assertEqual(r.index_value.key, s1.index_value.key)
         self.assertEqual(r.chunk_shape, s1.chunk_shape)
@@ -1034,7 +1052,8 @@ class TestUnary(TestBase):
         self.assertIsInstance(df2.index_value.value, IndexValue.Int64Index)
         self.assertEqual(df2.shape, (10, 10))
 
-        df2.tiles()
+        df2 = df2.tiles()
+        df1 = get_tiled(df1)
 
         self.assertEqual(df2.chunk_shape, (2, 1))
         for c2, c1 in zip(df2.chunks, df1.chunks):

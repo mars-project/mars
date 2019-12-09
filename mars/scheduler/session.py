@@ -164,10 +164,10 @@ class SessionActor(SchedulerActor):
     def graph_state(self, graph_key):
         return self._graph_refs[graph_key].get_state()
 
-    def fetch_result(self, graph_key, tileable_key):
+    def fetch_result(self, graph_key, tileable_key, check=False):
         # TODO just for test, should move to web handler
         graph_ref = self._graph_refs[graph_key]
-        return graph_ref.fetch_tileable_result(tileable_key)
+        return graph_ref.fetch_tileable_result(tileable_key, _check=check)
 
     @log_unhandled
     def handle_worker_change(self, adds, removes):

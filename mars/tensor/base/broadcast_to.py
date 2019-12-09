@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 
 from ...compat import izip
 from ... import opcodes as OperandDef
@@ -65,8 +66,16 @@ class TensorBroadcastTo(TensorHasInput, TensorOperandMixin):
         xp = get_array_module(ctx[op.input.key])
         input_data = ctx[op.input.key]
         device_id = input_data.device.id if hasattr(input_data, 'device') else -1
+
         with device(device_id):
-            ctx[op.outputs[0].key] = xp.broadcast_to(input_data, op.shape)
+            shape = op.shape
+            if any(np.isnan(s) for s in shape):
+                shape = list(shape)
+                new_dim = len(shape) - input_data.ndim
+                for i in range(input_data.ndim):
+                    if np.isnan(shape[i + new_dim]):
+                        shape[i + new_dim] = input_data.shape[i]
+            ctx[op.outputs[0].key] = xp.broadcast_to(input_data, shape)
 
 
 def broadcast_to(tensor, shape):
@@ -103,6 +112,10 @@ def broadcast_to(tensor, shape):
 
     tensor = tensor if isinstance(tensor, Tensor) else astensor(tensor)
     shape = tuple(shape) if isinstance(shape, (list, tuple)) else (shape,)
+
+    if any(np.isnan(s) for s in tensor.shape):
+        raise ValueError('input tensor has unknown shape, '
+                         'need to call `.execute()` first')
 
     if tensor.shape == shape:
         return tensor

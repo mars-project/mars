@@ -19,6 +19,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, ListField, AnyField
 from ...core import Base, Entity
+from ...utils import check_chunks_unknown_shape
+from ...tiles import TilesError
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
@@ -75,14 +77,16 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
         index_tensor_op = TensorIndex(dtype=tensor.dtype, sparse=op.sparse, indexes=op.indexes)
         index_tensor_inputs = filter_inputs([op.input] + op.indexes)
-        index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape).single_tiles()
+        index_tensor = index_tensor_op.new_tensor(index_tensor_inputs, tensor.shape)._inplace_tile()
+
+        to_check_tensors = [index_tensor]
+        if is_value_tensor:
+            to_check_tensors.append(value)
+        check_chunks_unknown_shape(to_check_tensors, TilesError)
 
         nsplits = index_tensor.nsplits
-        if any(any(np.isnan(ns) for ns in nsplit) for nsplit in nsplits):
-            raise NotImplementedError
-
         if is_value_tensor:
-            value = op.value.rechunk(nsplits).single_tiles()
+            value = value.rechunk(nsplits)._inplace_tile()
 
         chunk_mapping = {c.op.input.index: c for c in index_tensor.chunks}
         out_chunks = []

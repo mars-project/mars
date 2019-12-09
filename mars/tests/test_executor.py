@@ -23,6 +23,7 @@ from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.graph import DirectedGraph
 from mars.actors import Distributor, Actor
+from mars.tiles import get_tiled
 from mars.tests.core import create_actor_pool
 
 
@@ -176,6 +177,7 @@ class Test(unittest.TestCase):
         assigner = GraphDeviceAssigner(graph, list(n.op for n in graph.iter_indep()), devices=[0, 1])
         assigner.assign()
 
+        a = get_tiled(a)
         self.assertEqual(a.cix[0, 0].device, a.cix[0, 1].device)
         self.assertEqual(a.cix[1, 0].device, a.cix[1, 1].device)
         self.assertNotEqual(a.cix[0, 0].device, a.cix[1, 0].device)

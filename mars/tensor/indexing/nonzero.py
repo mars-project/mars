@@ -39,9 +39,9 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
         return float('inf')
 
     def __call__(self, a):
-        return ExecutableTuple(self.new_tensors([a], shape=(np.nan,),
-                                                order=TensorOrder.C_ORDER,
-                                                output_limit=a.ndim))
+        kws = [{'shape': (np.nan,), 'order': TensorOrder.C_ORDER, '_idx_': i}
+               for i in range(a.ndim)]
+        return ExecutableTuple(self.new_tensors([a], kws=kws, output_limit=len(kws)))
 
     @classmethod
     def tile(cls, op):

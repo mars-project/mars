@@ -80,9 +80,54 @@ Any contribution from community is sincerely welcomed. The main feature not impl
 
 - Tensor with unknown shape does not support all operations.
 - Only small subset of ``np.linalg`` are implemented.
-- Operations like ``sort`` which is hard to execute in parallel are not implemented.
 - Mars tensor doesn't implement interface like ``tolist`` and ``nditer`` etc,
   because the iteration or loops over a large tensor is very inefficient.
+
+
+Mars DataFrame
+--------------
+
+Mars DataFrame provides a familiar interface like pandas.
+
++-----------------------------------------------------+-----------------------------------------------------+
+| **Pandas**                                          | **Mars DataFrame**                                  |
++-----------------------------------------------------+-----------------------------------------------------+
+|.. code-block:: python                               |.. code-block:: python                               |
+|                                                     |                                                     |
+|    import numpy as np                               |    import mars.tensor as mt                         |
+|    import pandas as pd                              |    import mars.dataframe as md                      |
+|    df = pd.DataFrame(np.random.rand(100000000, 4),  |    df = md.DataFrame(mt.random.rand(100000000, 4),  |
+|                      columns=list('abcd')           |                      columns=list('abcd')           |
+|    print(df.sum())                                  |    print(df.sum().execute())                        |
+|                                                     |                                                     |
++-----------------------------------------------------+-----------------------------------------------------+
+
+
+Mars learn
+----------
+
+Mars learn provides a familiar interface like scikit-learn.
+
++---------------------------------------------+----------------------------------------------------+
+| **Scikit-learn**                            | **Mars learn**                                     |
++---------------------------------------------+----------------------------------------------------+
+|.. code-block:: python                       |.. code-block:: python                              |
+|                                             |                                                    |
+|    from sklearn.datasets import make_blobs  |    from mars.learn.datasets import make_blobs      |
+|    from sklearn.decomposition import PCA    |    from mars.learn.decomposition import PCA        |
+|    X, y = make_blobs(                       |    X, y = make_blobs(                              |
+|        n_samples=100000000, n_features=3,   |        n_samples=100000000, n_features=3,          |
+|        centers=[[3, 3, 3], [0, 0, 0],       |        centers=[[3, 3, 3], [0, 0, 0],              |
+|                 [1, 1, 1], [2, 2, 2]],      |                  [1, 1, 1], [2, 2, 2]],            |
+|        cluster_std=[0.2, 0.1, 0.2, 0.2],    |        cluster_std=[0.2, 0.1, 0.2, 0.2],           |
+|        random_state=9)                      |        random_state=9)                             |
+|    pca = PCA(n_components=3)                |    pca = PCA(n_components=3)                       |
+|    pca.fit(X)                               |    pca.fit(X)                                      |
+|    print(pca.explained_variance_ratio_)     |    print(pca.explained_variance_ratio_.execute())  |
+|    print(pca.explained_variance_)           |    print(pca.explained_variance_.execute())        |
+|                                             |                                                    |
++---------------------------------------------+----------------------------------------------------+
+
 
 Eager Mode
 ```````````

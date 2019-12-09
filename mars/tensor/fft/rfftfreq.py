@@ -49,9 +49,9 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         t = arange(tensor.shape[0], dtype=op.dtype, gpu=op.gpu,
-                   chunk_size=tensor.extra_params.raw_chunk_size).single_tiles()
+                   chunk_size=tensor.extra_params.raw_chunk_size)._inplace_tile()
         t = t / (op.n * op.d)
-        t.single_tiles()
+        t._inplace_tile()
 
         new_op = op.copy()
         return new_op.new_tensors(None, tensor.shape, order=tensor.order,

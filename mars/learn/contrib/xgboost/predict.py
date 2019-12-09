@@ -93,7 +93,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         out_chunks = []
         data = op.data
         if data.chunk_shape[1] > 1:
-            data = data.rechunk({1: op.data.shape[1]}).single_tiles()
+            data = data.rechunk({1: op.data.shape[1]})._inplace_tile()
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)
