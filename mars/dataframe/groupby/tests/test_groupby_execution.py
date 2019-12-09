@@ -77,3 +77,27 @@ class Test(TestBase):
 
         r7 = mdf2.groupby('c2').max()
         pd.testing.assert_frame_equal(r7.execute(), df2.groupby('c2').max())
+
+        # test shuffle method
+        df1 = pd.DataFrame({'a': np.random.choice([2, 3, 4], size=(100,)),
+                            'b': np.random.choice([2, 3, 4], size=(100,))})
+        mdf = md.DataFrame(df1, chunk_size=3)
+        r1 = mdf.groupby('a').agg('sum', method='shuffle')
+        pd.testing.assert_frame_equal(r1.execute(), df1.groupby('a').agg('sum'))
+        r2 = mdf.groupby('b').agg('min', method='shuffle')
+        pd.testing.assert_frame_equal(r2.execute(), df1.groupby('b').agg('min'))
+
+        df2 = pd.DataFrame({'c1': range(10),
+                            'c2': np.random.choice(['a', 'b', 'c'], (10,)),
+                            'c3': np.random.rand(10)})
+        mdf2 = md.DataFrame(df2, chunk_size=2)
+        r1 = mdf2.groupby('c2').agg('prod', method='shuffle')
+        pd.testing.assert_frame_equal(r1.execute(), df2.groupby('c2').agg('prod'))
+        r2 = mdf2.groupby('c2').agg('max', method='shuffle')
+        pd.testing.assert_frame_equal(r2.execute(), df2.groupby('c2').agg('max'))
+
+        r3 = mdf2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}, method='shuffle')
+        pd.testing.assert_frame_equal(r3.execute(), df2.groupby('c2').agg({'c1': 'min', 'c3': 'sum'}))
+
+        r3 = mdf2.groupby('c2').agg({'c1': 'min'}, method='shuffle')
+        pd.testing.assert_frame_equal(r3.execute(), df2.groupby('c2').agg({'c1': 'min'}))
