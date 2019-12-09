@@ -72,3 +72,7 @@ class Test(TestBase):
 
             agg_chunk = chunk.inputs[0].inputs[0].inputs[0].inputs[0]
             self.assertEqual(agg_chunk.op.stage.value, 'map')
+
+        # test unknown method
+        with self.assertRaises(NotImplementedError):
+            _ = mdf.groupby('c2').sum(method='adaptive')
