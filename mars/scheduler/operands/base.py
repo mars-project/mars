@@ -49,6 +49,8 @@ class BaseOperandActor(SchedulerActor):
 
         self._executable_dag = op_info.pop('executable_dag', None)
 
+        # set of running predecessors, used to broadcast priority changes
+        self._running_preds = set()
         # set of finished predecessors, used to decide whether we should move the operand to ready
         self._finish_preds = set()
         # set of finished successors, used to detect whether we can do clean up
@@ -212,6 +214,9 @@ class BaseOperandActor(SchedulerActor):
             return
         if self.state != state:
             self.start_operand(state)
+
+    def add_running_predecessor(self, op_key, worker):
+        self._running_preds.add(op_key)
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)
