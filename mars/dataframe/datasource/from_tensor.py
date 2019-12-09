@@ -105,11 +105,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 i, = in_chunk.index
                 column_stop = 1
                 index = (in_chunk.index[0], 0)
+                dtypes = out_df.dtypes
                 columns_value = parse_index(out_df.columns_value.to_pandas()[0:1], store_data=True)
             else:
                 i, j = in_chunk.index
                 column_stop = cum_size[1][j]
                 index = in_chunk.index
+                dtypes = out_df.dtypes[column_stop - in_chunk.shape[1]:column_stop]
                 columns_value = parse_index(
                     out_df.columns_value.to_pandas()[column_stop - in_chunk.shape[1]:column_stop], store_data=True)
 
@@ -122,7 +124,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
             out_op.extra_params['index_stop'] = index_stop
             out_op.extra_params['column_stop'] = column_stop
-            out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=index,
+            out_chunk = out_op.new_chunk([in_chunk], shape=in_chunk.shape, index=index, dtypes=dtypes,
                                          index_value=index_value, columns_value=columns_value)
             out_chunks.append(out_chunk)
 
@@ -152,7 +154,8 @@ def dataframe_from_tensor(tensor, index=None, columns=None, gpu=None, sparse=Fal
     except IndexError:
         col_num = 1
     gpu = tensor.op.gpu if gpu is None else gpu
-    op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num, index=columns), gpu=gpu, sparse=sparse)
+    op = DataFrameFromTensor(dtypes=pd.Series([tensor.dtype] * col_num, index=columns),
+                             gpu=gpu, sparse=sparse)
     return op(tensor, index, columns)
 
 

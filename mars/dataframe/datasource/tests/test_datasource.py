@@ -317,10 +317,15 @@ class Test(TestBase):
         # from tensor with given columns
         df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
         df = df.tiles()
+        pd.testing.assert_index_equal(df.dtypes.index, pd.Index(list('abcdefghij')))
         pd.testing.assert_index_equal(df.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[0].dtypes.index, pd.Index(['a', 'b', 'c', 'd', 'e']))
         pd.testing.assert_index_equal(df.chunks[1].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[1].dtypes.index, pd.Index(['f', 'g', 'h', 'i', 'j']))
         pd.testing.assert_index_equal(df.chunks[2].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
+        pd.testing.assert_index_equal(df.chunks[2].dtypes.index, pd.Index(['a', 'b', 'c', 'd', 'e']))
         pd.testing.assert_index_equal(df.chunks[3].columns_value.to_pandas(), pd.Index(['f', 'g', 'h', 'i', 'j']))
+        pd.testing.assert_index_equal(df.chunks[3].dtypes.index, pd.Index(['f', 'g', 'h', 'i', 'j']))
 
         # test series from tensor
         tensor = mt.random.rand(10, chunk_size=4)
