@@ -75,4 +75,4 @@ class Test(TestBase):
 
         # test unknown method
         with self.assertRaises(NotImplementedError):
-            _ = mdf.groupby('c2').sum(method='adaptive')
+            mdf.groupby('c2').sum(method='not_exist')
