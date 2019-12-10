@@ -24,10 +24,6 @@ from copy import deepcopy
 from .compat import six
 
 
-DEFAULT_CHUNK_SIZE = 1496
-DEFAULT_CONNECT_RETRY_TIMES = 4
-DEFAULT_CONNECT_TIMEOUT = 5
-DEFAULT_READ_TIMEOUT = 120
 _DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and might be removed in a future release.'
 
 

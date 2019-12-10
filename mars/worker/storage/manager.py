@@ -25,6 +25,14 @@ class DataAttrs(object):
         self.size = size
         self.shape = shape
 
+    def __reduce__(self):
+        return DataAttrs, (self.size, self.shape)
+
+    def __repr__(self):  # pragma: no cover
+        cls = type(self)
+        return '<%s.%s size=%r shape=%r at 0x%x>' \
+               % (cls.__module__, cls.__name__, self.size, self.shape, id(self))
+
 
 class StorageManagerActor(WorkerActor):
     def __init__(self):
@@ -89,19 +97,18 @@ class StorageManagerActor(WorkerActor):
         return [self._data_to_locations.get((session_id, key)) or set() for key in data_keys]
 
     def get_data_sizes(self, session_id, data_keys):
-        res = [None] * len(data_keys)
-        for idx, k in enumerate(data_keys):
-            try:
-                res[idx] = self._data_attrs[(session_id, k)].size
-            except KeyError:
-                pass
-        return res
+        return [a.size if a is not None else None
+                for a in self.get_data_attrs(session_id, data_keys)]
 
     def get_data_shapes(self, session_id, data_keys):
+        return [a.shape if a is not None else None
+                for a in self.get_data_attrs(session_id, data_keys)]
+
+    def get_data_attrs(self, session_id, data_keys):
         res = [None] * len(data_keys)
         for idx, k in enumerate(data_keys):
             try:
-                res[idx] = self._data_attrs[(session_id, k)].shape
+                res[idx] = self._data_attrs[(session_id, k)]
             except KeyError:
                 pass
         return res

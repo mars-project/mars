@@ -19,8 +19,8 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import reduce, six, Enum, BrokenPipeError, \
-    ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
+from ..compat import reduce, six, BrokenPipeError, ConnectionRefusedError, \
+    TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
@@ -798,33 +798,34 @@ class ExecutionActor(WorkerActor):
         storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
         self._dump_execution_states()
 
+        data_attrs = storage_client.get_data_attrs(session_id, saved_keys)
+
         if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_calc_ref):
             raise WorkerProcessStopped
 
         def _cache_result(*_):
-            sizes = storage_client.get_data_sizes(session_id, saved_keys)
-            save_sizes = dict((k, v) for k, v in zip(saved_keys, sizes) if v)
+            save_sizes = dict((k, v.size) for k, v in zip(saved_keys, data_attrs) if v)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if not send_addresses:
             # no endpoints to send, dump keys into shared memory and return
-            logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma...',
+            logger.debug('Worker graph %s(%s) finished execution. Dumping results...',
                          graph_key, graph_record.op_string)
-            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
+            return calc_ref.store_results(session_id, graph_key, saved_keys, data_attrs, _promise=True) \
                 .then(_cache_result)
         else:
             # dump keys into shared memory and send
             all_addresses = [{v} if isinstance(v, six.string_types) else set(v)
                              for v in send_addresses.values()]
             all_addresses = list(reduce(lambda a, b: a | b, all_addresses, set()))
-            logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma '
+            logger.debug('Worker graph %s(%s) finished execution. Dumping results '
                          'while actively transferring into %r...',
                          graph_key, graph_record.op_string, all_addresses)
 
             data_to_addresses = dict((k, v) for k, v in send_addresses.items()
                                      if k in saved_keys)
 
-            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
+            return calc_ref.store_results(session_id, graph_key, saved_keys, data_attrs, _promise=True) \
                 .then(_cache_result) \
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses))

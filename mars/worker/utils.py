@@ -95,7 +95,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
 
     def get_meta_client(self):
         from ..scheduler.chunkmeta import ChunkMetaClient
-        return ChunkMetaClient(self.ctx, self._cluster_info_ref)
+        return ChunkMetaClient(self.ctx, self._cluster_info_ref, has_local_cache=False)
 
     def handle_actors_down(self, halt_refs):
         """

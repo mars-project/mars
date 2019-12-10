@@ -97,12 +97,7 @@ class WorkerDaemonActor(WorkerActor):
         pid = self._proc_pids[proc_idx]
         if pid in self._killed_pids:
             return False
-        try:
-            psutil.Process(pid)
-        except psutil.NoSuchProcess:
-            return False
-        else:
-            return True
+        return psutil.pid_exists(pid)
 
     def handle_process_down(self, proc_indices):
         """

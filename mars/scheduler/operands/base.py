@@ -108,13 +108,11 @@ class BaseOperandActor(SchedulerActor):
                          self._last_state, value)
         self._state = value
         self._info['state'] = value.name
-        futures = []
         for graph_ref in self._graph_refs:
-            futures.append(graph_ref.set_operand_state(self._op_key, value, _tell=True, _wait=False))
+            graph_ref.set_operand_state(self._op_key, value, _tell=True, _wait=False)
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write(
-                '%s/state' % self._op_path, value.name, _tell=True, _wait=False))
-        [f.result() for f in futures]
+            self._kv_store_ref.write(
+                '%s/state' % self._op_path, value.name, _tell=True, _wait=False)
 
     @property
     def worker(self):

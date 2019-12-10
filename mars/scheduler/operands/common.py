@@ -397,7 +397,8 @@ class OperandActor(BaseOperandActor):
             self._allocated = False
             if not self._is_worker_alive():
                 return
-            self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
+            self._resource_ref.deallocate_resource(
+                self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             self._data_sizes = data_sizes
             self._io_meta['data_targets'] = list(data_sizes)
@@ -408,7 +409,8 @@ class OperandActor(BaseOperandActor):
             self._allocated = False
             # handling exception occurrence of operand execution
             exc_type = exc[0]
-            self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
+            self._resource_ref.deallocate_resource(
+                self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             if self.state == OperandState.CANCELLING:
                 logger.warning('Execution of operand %s cancelled.', self._op_key)

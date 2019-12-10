@@ -18,7 +18,7 @@ import time
 import logging
 from collections import defaultdict
 
-from .utils import WorkerActor, ExpMeanHolder, ExecutionState
+from .utils import WorkerActor, ExpMeanHolder
 from .. import resource
 from ..config import options
 from ..compat import six
