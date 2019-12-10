@@ -457,6 +457,8 @@ class OperandActor(BaseOperandActor):
             self.start_operand(OperandState.CANCELLING)
             return
 
+        use_aggressive_assign = options.scheduler.aggressive_assign
+
         succ_futures = []
         # update pred & succ finish records to trigger further actions
         # record if successors can be executed
@@ -474,7 +476,7 @@ class OperandActor(BaseOperandActor):
             pred_futures.extend(self._add_finished_terminal())
         [f.result() for f in pred_futures]
 
-        if not any(f.result() for f in succ_futures):
+        if use_aggressive_assign and not any(f.result() for f in succ_futures):
             self._assigner_ref.allocate_top_resources(1, _tell=True)
 
     @log_unhandled

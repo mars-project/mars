@@ -143,7 +143,8 @@ class Test(WorkerCase):
                     calc_ref.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
                                   [add_chunk.key], _promise=True)
                         .then(_extract_value_ref)
-                        .then(lambda *_: calc_ref.store_results(session_id, [add_chunk.key], _promise=True))
+                        .then(lambda *_: calc_ref.store_results(
+                            session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
                 )
 
             self.assertIsNone(ref_store[-1]())
@@ -187,5 +188,6 @@ class Test(WorkerCase):
                 self.waitp(
                     calc_ref.calc(session_id, add_chunk.op.key, serialize_graph(exec_graph),
                                   [add_chunk.key], _promise=True)
-                        .then(lambda *_: calc_ref.store_results(session_id, [add_chunk.key], _promise=True))
+                        .then(lambda *_: calc_ref.store_results(
+                            session_id, add_chunk.op.key, [add_chunk.key], None, _promise=True))
                 )

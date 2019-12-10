@@ -318,7 +318,7 @@ default_options.register_option('scheduler.enable_active_push', True, validator=
 default_options.register_option('scheduler.enable_chunk_relocation', False, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.check_interval', 1, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_integer, is_float), serialize=True)
-default_options.register_option('scheduler.default_cuda_usage', 1, validator=(is_integer, is_float), serialize=True)
+default_options.register_option('scheduler.default_cuda_usage', 0.5, validator=(is_integer, is_float), serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
@@ -329,6 +329,11 @@ default_options.register_option('scheduler.dump_graph_data', False, validator=is
 default_options.register_option('scheduler.enable_failover', True, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.status_timeout', 60, validator=is_numeric, serialize=True)
 default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_numeric, serialize=True)
+
+# enqueue operands in a batch when creating OperandActors
+default_options.register_option('scheduler.batch_enqueue_initials', True, validator=is_bool, serialize=True)
+# invoke assigning when where there is no ready descendants
+default_options.register_option('scheduler.aggressive_assign', False, validator=is_bool, serialize=True)
 
 # Worker
 default_options.register_option('worker.spill_directory', None, validator=(is_null, is_string, is_list))

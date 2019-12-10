@@ -272,7 +272,7 @@ class AssignEvaluationActor(SchedulerActor):
 
     def periodical_allocate(self):
         self.allocate_top_resources()
-        self.ref().periodical_allocate(_tell=True, _delay=2)
+        self.ref().periodical_allocate(_tell=True, _delay=0.5)
 
     def allocate_top_resources(self, fetch_requests=False):
         """

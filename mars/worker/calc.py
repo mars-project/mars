@@ -270,6 +270,9 @@ class BaseCalcActor(WorkerActor):
         storage_client = self.storage_client
         store_keys, store_metas = [], []
 
+        if data_attrs is None:
+            data_attrs = storage_client.get_data_attrs(session_id, keys_to_store)
+
         for k, attr in zip(keys_to_store, data_attrs):
             if attr is None or isinstance(k, tuple):
                 continue
