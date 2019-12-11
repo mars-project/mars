@@ -9,23 +9,24 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.7-kubernetes, 3.7-hdfs]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs]
         include:
           - { os: ubuntu-16.04, python-version: 2.7, python-abis: "cp27-cp27m:cp27-cp27mu" }
           - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
-          - { os: ubuntu-16.04, python-version: 3.7-kubernetes, no-common-tests: 1,
+          - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38m" }
+          - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-16.04, python-version: 3.7-hdfs, no-common-tests: 1,
+          - { os: ubuntu-16.04, python-version: 3.8-hdfs, no-common-tests: 1,
               no-deploy: 1, with-hdfs: "with hdfs" }
-          - { os: windows-latest, python-version: 3.7, build-static: 1 }
+          - { os: windows-latest, python-version: 3.8, build-static: 1 }
         exclude:
-          - { os: macOS-latest, python-version: 3.7-kubernetes }
-          - { os: macOS-latest, python-version: 3.7-hdfs }
+          - { os: macOS-latest, python-version: 3.8-kubernetes }
+          - { os: macOS-latest, python-version: 3.8-hdfs }
           - { os: windows-latest, python-version: 2.7 }
-          - { os: windows-latest, python-version: 3.7-kubernetes }
-          - { os: windows-latest, python-version: 3.7-hdfs }
+          - { os: windows-latest, python-version: 3.8-kubernetes }
+          - { os: windows-latest, python-version: 3.8-hdfs }
 
     steps:
     - name: Check out code
@@ -52,6 +53,13 @@ jobs:
       run: |
         source ./.github/workflows/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
+        if [[ "$PYTHON" =~ "3.8" ]]; then
+          conda install -n test --quiet --yes python=$PYTHON numpy pyarrow
+          # remove three lines below once gevent 1.5 is released
+          # resolve compatibility issue in tblib inside gevent
+          GEVENT_TBLIB_FILE=$(python -c "from gevent import _tblib; print(_tblib.__file__)")
+          curl https://raw.githubusercontent.com/gevent/gevent/1.5a2/src/gevent/_tblib.py -o "$GEVENT_TBLIB_FILE"
+        fi
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         pip install git+https://github.com/wjsi/coveralls-python.git
@@ -61,32 +69,33 @@ jobs:
           pip install virtualenv flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
-              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true;
-              conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi;
+              conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true
+              conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
             fi
             if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
-              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost;
+              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
-              pip install tensorflow;
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "2.7" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
+              pip install tensorflow
             fi
-            virtualenv testenv && source testenv/bin/activate;
-            pip install -r requirements.txt && pip install pytest pytest-timeout;
+            virtualenv testenv && source testenv/bin/activate
+            pip install -r requirements.txt && pip install pytest pytest-timeout
             if [ -z "$DEFAULT_VENV" ]; then
-              deactivate;
+              deactivate
             else
-              source $DEFAULT_VENV/bin/activate;
+              source $DEFAULT_VENV/bin/activate
             fi
           fi
           source ./.github/workflows/download-etcd.sh
           if [ -n "$WITH_KUBERNETES" ]; then
-            ./.github/workflows/install-minikube.sh;
-            pip install kubernetes;
+            ./.github/workflows/install-minikube.sh
+            pip install kubernetes
           fi
           if [ -n "$WITH_HDFS" ]; then
-            ./.github/workflows/install-hdfs.sh;
+            ./.github/workflows/install-hdfs.sh
           fi
         fi
+        conda list
 
     - name: Build cython extensions
       env:

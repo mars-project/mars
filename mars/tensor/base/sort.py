@@ -134,7 +134,7 @@ class PSRSSorter(object):
         # another shuffle would be required to make sure each axis except to sort
         # has elements with identical size
         extra_shape = [s for i, s in enumerate(in_tensor.shape) if i != op.axis]
-        need_align = np.prod(extra_shape, dtype=int) != 1
+        need_align = bool(np.prod(extra_shape, dtype=int) != 1)
 
         out_chunks = []
         for out_idx in out_idxes:

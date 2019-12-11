@@ -1,7 +1,7 @@
 ARG BASE_CONTAINER=marsproject/mars-base
 FROM ${BASE_CONTAINER}
 
-RUN /srv/retry.sh 3 /opt/conda/bin/conda install -c anaconda \
+RUN /srv/retry.sh 3 /opt/conda/bin/conda install -c pkgs/main \
     coverage \
   && conda clean --all -f -y
 
