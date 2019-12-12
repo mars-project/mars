@@ -121,6 +121,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 ret = xdf.concat(concats, sort=False)
             else:
                 ret = xdf.concat(concats)
+                # cuDF will lost index name when concat two seriess.
+                ret.index.name = concats[0].index.name
             if getattr(chunk.index_value, 'should_be_monotonic', False):
                 ret.sort_index(inplace=True)
             if getattr(chunk.columns_value, 'should_be_monotonic', False):
