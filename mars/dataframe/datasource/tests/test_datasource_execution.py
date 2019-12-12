@@ -283,14 +283,18 @@ class Test(TestBase):
         tempdir = tempfile.mkdtemp()
         file_path = os.path.join(tempdir, 'test.csv')
         try:
-            df = pd.DataFrame([[1, 2.0, 'v1'], [4, 5.0, 'v2'], [7, 8.0, 'v3']], columns=['a', 'b', 'c'])
+            df = pd.DataFrame({
+                'col1': np.random.rand(100),
+                'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+                'col3': np.arange(100)
+            })
             df.to_csv(file_path, index=False)
 
             pdf = pd.read_csv(file_path)
             mdf = self.executor.execute_dataframe(md.read_csv(file_path, gpu=True), concat=True)[0]
             pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf.to_pandas().reset_index(drop=True))
 
-            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, gpu=True, chunk_bytes=10),
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, gpu=True, chunk_bytes=200),
                                                    concat=True)[0]
             pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf2.to_pandas().reset_index(drop=True))
 

@@ -213,8 +213,11 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _cudf_read_csv(cls, op):
         csv_kwargs = op.extra_params
-        df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
-                           dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
+        if op.offset == 0:
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, **csv_kwargs)
+        else:
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
+                               dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
         return df
 
     @classmethod
