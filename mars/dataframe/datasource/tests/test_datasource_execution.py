@@ -22,7 +22,7 @@ import pandas as pd
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.executor import Executor
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, require_cudf
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor
@@ -274,6 +274,25 @@ class Test(TestBase):
             mdf2 = self.executor.execute_dataframe(
                 md.read_csv('{}/*.csv'.format(tempdir), index_col=0, chunk_bytes=50), concat=True)[0]
             pd.testing.assert_frame_equal(df, mdf2.sort_index())
+
+        finally:
+            shutil.rmtree(tempdir)
+
+    @require_cudf
+    def testReadCSVGPUExecution(self):
+        tempdir = tempfile.mkdtemp()
+        file_path = os.path.join(tempdir, 'test.csv')
+        try:
+            df = pd.DataFrame([[1, 2.0, 'v1'], [4, 5.0, 'v2'], [7, 8.0, 'v3']], columns=['a', 'b', 'c'])
+            df.to_csv(file_path, index=False)
+
+            pdf = pd.read_csv(file_path)
+            mdf = self.executor.execute_dataframe(md.read_csv(file_path, gpu=True), concat=True)[0]
+            pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf.to_pandas().reset_index(drop=True))
+
+            mdf2 = self.executor.execute_dataframe(md.read_csv(file_path, gpu=True, chunk_bytes=10),
+                                                   concat=True)[0]
+            pd.testing.assert_frame_equal(pdf.reset_index(drop=True), mdf2.to_pandas().reset_index(drop=True))
 
         finally:
             shutil.rmtree(tempdir)
