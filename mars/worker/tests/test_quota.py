@@ -36,6 +36,7 @@ class Test(WorkerCase):
 
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
+            # test quota options with non-existing keys
             quota_ref.process_quota('non_exist')
             quota_ref.hold_quota('non_exist')
             quota_ref.release_quota('non_exist')
@@ -43,13 +44,15 @@ class Test(WorkerCase):
             with self.assertRaises(ValueError):
                 quota_ref.request_quota('ERROR', 1000)
 
+            # test quota request with immediate return
             self.assertTrue(quota_ref.request_quota('0', 100))
             self.assertTrue(quota_ref.request_quota('0', 50))
             self.assertTrue(quota_ref.request_quota('0', 200))
 
-            quota_ref.process_quota('0')
+            # test request with process_quota=True
+            quota_ref.request_quota('0', 200, process_quota=True)
             self.assertIn('0', quota_ref.dump_data().proc_sizes)
-            quota_ref.alter_allocation('0', 190, new_key=('0', 0))
+            quota_ref.alter_allocation('0', 190, new_key=('0', 0), process_quota=True)
             self.assertEqual(quota_ref.dump_data().allocations[('0', 0)], 190)
 
             quota_ref.hold_quota(('0', 0))
@@ -89,9 +92,9 @@ class Test(WorkerCase):
                     with self.assertRaises(ValueError):
                         self.get_result(5)
 
-            self.assertNotIn('1', quota_ref.dump_data().requests)
-            self.assertIn('2', quota_ref.dump_data().allocations)
-            self.assertNotIn('3', quota_ref.dump_data().allocations)
+                self.assertNotIn('1', quota_ref.dump_data().requests)
+                self.assertIn('2', quota_ref.dump_data().allocations)
+                self.assertNotIn('3', quota_ref.dump_data().allocations)
 
             quota_ref.release_quotas([('0', 1)])
             self.assertIn('3', quota_ref.dump_data().allocations)
@@ -147,22 +150,29 @@ class Test(WorkerCase):
             quota_ref = pool.create_actor(QuotaActor, 300, uid=QuotaActor.default_uid())
 
             end_time = []
-            for idx in range(2):
-                x = str(idx)
-                with self.run_actor_test(pool) as test_actor:
+
+            with self.run_actor_test(pool) as test_actor:
+                for idx in (0, 1):
+                    x = str(idx)
                     ref = test_actor.promise_ref(QuotaActor.default_uid())
 
-                    def actual_exec(keys):
-                        for k in keys:
+                    def actual_exec(b, set_result):
+                        self.assertTrue(ref.request_batch_quota(b, process_quota=True))
+                        self.assertEqual(set(b.keys()), set(quota_ref.dump_data().proc_sizes.keys()))
+                        for k in b.keys():
                             ref.release_quota(k)
                         end_time.append(time.time())
-                        test_actor.set_result(None)
+                        if set_result:
+                            test_actor.set_result(None)
 
                     keys = [x + '_0', x + '_1']
                     batch = dict((k, 100) for k in keys)
                     ref.request_batch_quota(batch, _promise=True) \
-                        .then(functools.partial(test_actor.run_later, actual_exec, keys, _delay=0.5))
-                    self.get_result(10)
+                        .then(functools.partial(test_actor.run_later, actual_exec, batch,
+                                                set_result=(idx == 1), _delay=0.5),
+                              lambda *exc: test_actor.set_result(exc, accept=False))
+
+                self.get_result(10)
 
             self.assertGreater(abs(end_time[0] - end_time[1]), 0.4)
             self.assertEqual(quota_ref.get_allocated_size(), 0)
