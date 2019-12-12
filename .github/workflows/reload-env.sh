@@ -10,7 +10,8 @@ fi
 
 if [[ $UNAME == "mingw"* ]]; then
   CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
-  export PATH="$CONDA/envs/test/Scripts:$CONDA/envs/test:$CONDA/Scripts:$CONDA:$PATH"
+  export PATH="$CONDA/Library:$CONDA/Library/bin:$CONDA/Scripts:$CONDA:$PATH"
+  export PATH="$CONDA/envs/test/Library:$CONDA/envs/test/Library/bin:$CONDA/envs/test/Scripts:$CONDA/envs/test:$PATH"
 else
   export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"
 fi

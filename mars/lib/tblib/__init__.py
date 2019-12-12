@@ -15,7 +15,7 @@ except ImportError:
 if not tb_set_next and not tproxy:
     raise ImportError("Cannot use tblib. Runtime not supported.")
 
-__version__ = '1.3.2'
+__version__ = '1.6.0'
 __all__ = 'Traceback',
 
 PY3 = sys.version_info[0] == 3
@@ -37,6 +37,9 @@ class TracebackParseError(Exception):
 
 
 class Code(object):
+
+    co_code = None
+
     def __init__(self, code):
         self.co_filename = code.co_filename
         self.co_name = code.co_name
@@ -92,7 +95,12 @@ class Traceback(object):
         while current:
             f_code = current.tb_frame.f_code
             code = compile('\n' * (current.tb_lineno - 1) + 'raise __traceback_maker', current.tb_frame.f_code.co_filename, 'exec')
-            if PY3:
+            if hasattr(code, "replace"):
+                # Python 3.8 and newer
+                code = code.replace(co_argcount=0,
+                                    co_filename=f_code.co_filename, co_name=f_code.co_name,
+                                    co_freevars=(), co_cellvars=())
+            elif PY3:
                 code = CodeType(
                     0, code.co_kwonlyargcount,
                     code.co_nlocals, code.co_stacksize, code.co_flags,

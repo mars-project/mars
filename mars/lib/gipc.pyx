@@ -425,7 +425,13 @@ def _child(target, args, kwargs):
             pass
 
 
-class _GProcess(multiprocessing.Process):
+try:
+    from multiprocessing.context import ForkProcess
+except ImportError:
+    ForkProcess = multiprocessing.Process
+
+
+class _GProcess(ForkProcess):
     """
     Compatible with the ``multiprocessing.Process`` API.
 
