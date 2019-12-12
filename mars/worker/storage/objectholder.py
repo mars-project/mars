@@ -80,6 +80,9 @@ class ObjectHolderActor(WorkerActor):
     def post_delete(self, session_id, data_keys):
         raise NotImplementedError
 
+    def get_size_limit(self):
+        return self._size_limit
+
     @promise.reject_on_exception
     @log_unhandled
     def spill_size(self, size, multiplier=1, callback=None):
