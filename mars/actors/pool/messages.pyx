@@ -837,7 +837,7 @@ cdef inline bytes _wrap_read_func(object read_func, size_t size):
     except ConnectionResetError:
         raise BrokenPipeError('The remote server is closed')
     except socket.error as ex:
-        if ex.errno == errno.ECONNRESET:
+        if ex.errno in (errno.EPIPE, errno.ECONNRESET):
             raise BrokenPipeError('The remote server is closed')
         else:
             raise
@@ -892,7 +892,7 @@ if PY_MAJOR_VERSION < 3:  # pragma: no cover
         try:
             return _write_remote_message(*args, **kwargs)
         except socket.error as ex:
-            if ex.errno == errno.EPIPE:
+            if ex.errno in (errno.ECONNRESET, errno.EPIPE):
                 raise BrokenPipeError
             else:
                 raise
