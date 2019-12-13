@@ -274,6 +274,7 @@ message OperandDef {
         COPYTO = 422;
         ISIN = 423;
         SEARCHSORTED = 428;
+        SORT = 429;
         // fancy index, distributed phase is a shuffle operation that
         // the fancy indexes will be distributed to the left chunks
         // the concat phase will concat back the indexed left chunks and index
@@ -362,6 +363,14 @@ message OperandDef {
         GROUPBY_MAP = 2031;
         GROUPBY_REDUCE = 2032;
         GROUPBY_AGG = 2033;
+
+        // parallel sorting by regular sampling
+        PSRS_SORT_REGULAR_SMAPLE = 2040;
+        PSRS_CONCAT_PIVOT = 2041;
+        PSRS_SHUFFLE_MAP = 2042;
+        PSRS_SHUFFLE_REDUCE = 2043;
+        PSRS_ALIGN_MAP = 2044;
+        PSRS_ALIGN_REDUCE = 2045;
 
         // store
         READ_CSV = 2100;
