@@ -736,7 +736,10 @@ def kill_process_tree(pid, include_parent=True):
         shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
-def copy_tileables(*tileables, inputs=None, copy_key=True, copy_id=True):
+def copy_tileables(*tileables, **kwargs):
+    inputs = kwargs.pop('inputs', None)
+    copy_key = kwargs.pop('copy_key', None)
+    copy_id = kwargs.pop('copy_id', None)
     if len(tileables) == 1:
         tileable = tileables[0]
         op = tileable.op.copy().reset_key()
