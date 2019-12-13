@@ -36,7 +36,8 @@ import numpy as np
 import pandas as pd
 
 from .compat import irange, functools32, getargspec
-from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register as register_tokenizer
+from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
+    insert_reversed_tuple
 from .config import options
 from .lib.tblib import Traceback
 
@@ -44,8 +45,10 @@ logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
 
 
+# make flake8 happy by referencing these imports
 tokenize = tokenize
 register_tokenizer = register_tokenizer
+insert_reversed_tuple = insert_reversed_tuple
 
 
 # fix encoding conversion problem under windows

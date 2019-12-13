@@ -242,12 +242,14 @@ class WorkerService(object):
 
         stats = resource.cuda_card_stats() if self._n_cuda_process else []
         for cuda_id, stat in enumerate(stats):
-            uid = 'w:%d:mars-cuda-calc-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
-            actor = actor_holder.create_actor(CudaCalcActor, uid=uid)
-            self._cuda_calc_actors.append(actor)
+            for thread_no in range(options.worker.cuda_thread_num):
+                uid = 'w:%d:mars-cuda-calc-%d-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id, thread_no)
+                actor = actor_holder.create_actor(CudaCalcActor, uid=uid)
+                self._cuda_calc_actors.append(actor)
 
             uid = 'w:%d:mars-cuda-holder-%d-%d' % (start_pid + cuda_id, os.getpid(), cuda_id)
-            actor = actor_holder.create_actor(CudaHolderActor, device_id=stat.index, uid=uid)
+            actor = actor_holder.create_actor(
+                CudaHolderActor, stat.fb_mem_info.total, device_id=stat.index, uid=uid)
             self._cuda_holder_actors.append(actor)
 
             actor = actor_holder.create_actor(

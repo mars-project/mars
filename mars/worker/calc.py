@@ -235,12 +235,13 @@ class BaseCalcActor(WorkerActor):
 
         def _finalize(keys, exc_info):
             self._dispatch_ref.register_free_slot(self.uid, self._slot_name, _tell=True, _wait=False)
+            keys_to_delete = []
             keys_to_release = []
 
             for k in keys_to_fetch:
                 if get_chunk_key(k) not in chunk_targets:
                     if self._remove_intermediate:
-                        self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
+                        keys_to_delete.append(k)
                     keys_to_release.append(k)
 
             if not exc_info:
@@ -248,10 +249,12 @@ class BaseCalcActor(WorkerActor):
             else:
                 for k in chunk_targets:
                     if self._remove_intermediate:
-                        self.storage_client.delete(session_id, [k], [self._calc_intermediate_device])
+                        keys_to_delete.append(k)
                     keys_to_release.append(k)
                 self.tell_promise(callback, *exc_info, **dict(_accept=False))
 
+            if keys_to_delete:
+                self.storage_client.delete(session_id, keys_to_delete, [self._calc_intermediate_device])
             self._release_local_quotas(session_id, keys_to_release)
 
         return self._fetch_keys_to_process(session_id, keys_to_fetch) \
@@ -260,25 +263,26 @@ class BaseCalcActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def store_results(self, session_id, keys_to_store, callback):
+    def store_results(self, session_id, graph_key, keys_to_store, data_attrs, callback):
+        logger.debug('Start dumping keys for graph %s', graph_key)
         from ..scheduler.chunkmeta import WorkerMeta
 
         storage_client = self.storage_client
-
-        sizes = storage_client.get_data_sizes(session_id, keys_to_store)
-        shapes = storage_client.get_data_shapes(session_id, keys_to_store)
-
         store_keys, store_metas = [], []
 
-        for k, size, shape in zip(keys_to_store, sizes, shapes):
-            if size is None or isinstance(k, tuple):
+        if data_attrs is None:
+            data_attrs = storage_client.get_data_attrs(session_id, keys_to_store)
+
+        for k, attr in zip(keys_to_store, data_attrs):
+            if attr is None or isinstance(k, tuple):
                 continue
             store_keys.append(k)
-            store_metas.append(WorkerMeta(size, shape, (self.address,)))
+            store_metas.append(WorkerMeta(attr.size, attr.shape, (self.address,)))
         meta_future = self.get_meta_client().batch_set_chunk_meta(
             session_id, store_keys, store_metas, _wait=False)
 
         def _delete_keys(*_):
+            logger.debug('Finish dumping keys for graph %s', graph_key)
             if self._remove_intermediate:
                 storage_client.delete(
                     session_id, keys_to_store, [self._calc_intermediate_device], _tell=True)

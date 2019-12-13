@@ -390,12 +390,12 @@ class ChunkMetaClient(object):
     """
     Actor dispatches chunk meta requests to different scheduler hosts
     """
-    def __init__(self, ctx, cluster_info_ref):
+    def __init__(self, ctx, cluster_info_ref, has_local_cache=True):
         self._cluster_info = cluster_info_ref
         self.ctx = ctx
         self._local_meta_store_ref = ctx.actor_ref(
             ChunkMetaActor.default_uid(), address=cluster_info_ref.address)
-        if not ctx.has_actor(self._local_meta_store_ref):
+        if not has_local_cache or not ctx.has_actor(self._local_meta_store_ref):
             self._local_meta_store_ref = None
 
     def get_scheduler(self, key):

@@ -180,7 +180,7 @@ class Test(SchedulerIntegratedTest):
         from mars.dataframe.datasource.series import from_pandas as from_pandas_series
         from mars.dataframe.arithmetic import add
 
-        self.start_processes(etcd=False)
+        self.start_processes(etcd=False, scheduler_args=['-Dscheduler.aggressive_assign=true'])
 
         session_id = uuid.uuid1()
         actor_client = new_client()

@@ -145,7 +145,7 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
     @wrap_promised
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
-        keys, shapes = [], []
+        succ_keys, succ_shapes = [], []
         obj_refs = []
         affected_keys = []
         request_size, capacity = 0, 0
@@ -157,15 +157,15 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
 
                 try:
                     obj_refs.append(self._shared_store.put(session_id, key, obj))
-                    keys.append(key)
-                    shapes.append(shape)
+                    succ_keys.append(key)
+                    succ_shapes.append(shape)
                 except StorageFull as ex:
                     affected_keys.extend(ex.affected_keys)
                     request_size += ex.request_size
                     capacity = ex.capacity
                 finally:
                     del obj
-            self._holder_ref.put_objects_by_keys(session_id, keys, shapes=shapes, pin_token=pin_token)
+            self._holder_ref.put_objects_by_keys(session_id, succ_keys, shapes=succ_shapes, pin_token=pin_token)
             if affected_keys:
                 raise StorageFull(request_size=request_size, capacity=capacity,
                                   affected_keys=affected_keys)

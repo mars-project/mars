@@ -38,12 +38,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _func = AnyField('func')
     _by = AnyField('by')
     _as_index = BoolField('as_index')
+    _sort = BoolField('sort')
     _method = StringField('method')
     _stage = StringField('stage', on_serialize=lambda x: getattr(x, 'value', None),
                          on_deserialize=Stage)
 
-    def __init__(self, func=None, by=None, as_index=None, method=None, stage=None, **kw):
-        super(DataFrameGroupByAgg, self).__init__(_func=func, _by=by, _as_index=as_index, _method=method,
+    def __init__(self, func=None, by=None, as_index=None, sort=None, method=None, stage=None, **kw):
+        super(DataFrameGroupByAgg, self).__init__(_func=func, _by=by, _as_index=as_index, _sort=sort, _method=method,
                                                   _stage=stage, _object_type=ObjectType.dataframe, **kw)
 
     @property
@@ -57,6 +58,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @property
     def as_index(self):
         return self._as_index
+
+    @property
+    def sort(self):
+        return self._sort
 
     @property
     def method(self):
@@ -200,14 +205,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_map(cls, df, op):
         if isinstance(op.func, (six.string_types, dict)):
-            return df.groupby(op.by, as_index=op.as_index).agg(op.func)
+            return df.groupby(op.by, as_index=op.as_index, sort=False).agg(op.func)
         else:
             raise NotImplementedError
 
     @classmethod
     def _execute_combine(cls, df, op):
         if isinstance(op.func, (six.string_types, dict)):
-            return df.groupby(op.by, as_index=op.as_index).agg(op.func)
+            return df.groupby(level=0, as_index=op.as_index, sort=op.sort).agg(op.func)
         else:
             raise NotImplementedError
 
@@ -243,5 +248,6 @@ def agg(groupby, func, method='tree'):
             raise NotImplementedError('Aggregation function %s has not been supported' % f)
 
     in_df = groupby.inputs[0]
-    agg_op = DataFrameGroupByAgg(func=func, by=groupby.op.by, method=method, as_index=groupby.op.as_index)
+    agg_op = DataFrameGroupByAgg(func=func, by=groupby.op.by, method=method,
+                                 as_index=groupby.op.as_index, sort=groupby.op.sort)
     return agg_op(in_df)
