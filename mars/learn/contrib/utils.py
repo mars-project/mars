@@ -16,6 +16,21 @@ import numpy as np
 
 
 def pick_workers(workers, size):
+    """
+    Pick workers from a list.
+
+    This method will try to pick workers as balanced as it can.
+
+    1. If size <= len(workers), randomly pick workers from the list.
+    2. If size > len(workers), just select all workers in a random order,
+       then see the rest size, if it's still more than the workers size,
+       return all workers in a random order, if not,
+       randomly select workers from the list.
+
+    :param workers: workers list
+    :param size: number to pick from workers list
+    :return: ndarray of selected workers whose length is `size`
+    """
     result = np.empty(size, dtype=object)
     rest = size
     while rest > 0:
