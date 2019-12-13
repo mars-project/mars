@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import weakref
-from collections import defaultdict, deque
+from collections import defaultdict
 
 from ...config import options
 from ...graph import DAG
