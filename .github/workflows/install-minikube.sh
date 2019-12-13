@@ -5,8 +5,8 @@ export CHANGE_MINIKUBE_NONE_USER=true
 sudo apt-get remove -y docker.io || true
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt-get update
-sudo apt-get install -y docker-ce
+sudo apt-get -q update || true
+sudo apt-get install -yq docker-ce
 
 K8S_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
 
