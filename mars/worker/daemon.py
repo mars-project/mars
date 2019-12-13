@@ -19,6 +19,7 @@ from collections import defaultdict
 import psutil
 
 from .utils import WorkerActor
+from ..utils import kill_process_tree
 
 
 class WorkerDaemonActor(WorkerActor):
@@ -85,7 +86,7 @@ class WorkerDaemonActor(WorkerActor):
         try:
             pid = self._proc_pids[proc_idx]
             self._killed_pids.add(pid)
-            os.kill(pid, signal.SIGKILL)
+            kill_process_tree(pid)
         except (KeyError, OSError):
             pass
 
