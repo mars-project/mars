@@ -37,10 +37,11 @@ from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
 from ..operands import Fetch, ShuffleProxy, VirtualOperand
 from ..serialize import dataserializer
-from ..tiles import handler, IterativeChunkGraphBuilder, get_tiled
+from ..tiles import handler, IterativeChunkGraphBuilder, \
+    TileableGraphBuilder, get_tiled
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape, get_tileable_graph_builer
+    get_chunk_shuffle_key, enter_build_mode, has_unknown_shape
 from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
@@ -584,7 +585,7 @@ class GraphActor(SchedulerActor):
             # build tileable graph from failed ops and their inputs
             failed_tileable_set = set(itertools.chain(
                 *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
-            tileable_graph_builder = get_tileable_graph_builer()(
+            tileable_graph_builder = TileableGraphBuilder(
                 inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
             to_run_tileable_graph = tileable_graph_builder.build(failed_tileable_set)
             to_fetch_tileables = []

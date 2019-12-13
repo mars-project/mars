@@ -18,9 +18,10 @@ import sys
 import weakref
 
 from .graph import DAG
-from .graph_builder import GraphBuilder
+from .graph_builder import GraphBuilder, TileableGraphBuilder
 from .compat import six
-from .utils import kernel_mode, enter_build_mode, get_tileable_graph_builer
+from .config import options
+from .utils import kernel_mode, enter_build_mode
 
 
 class Tileable(object):
@@ -54,7 +55,7 @@ class Tileable(object):
     def build_graph(self, graph=None, cls=DAG, tiled=False, compose=True,
                     **build_chunk_graph_kwargs):
         tileable_graph = graph if not tiled else None
-        tileable_graph_builder = get_tileable_graph_builer()(graph=tileable_graph, graph_cls=cls)
+        tileable_graph_builder = TileableGraphBuilder(graph=tileable_graph, graph_cls=cls)
         tileable_graph = tileable_graph_builder.build([self])
         if not tiled:
             return tileable_graph
@@ -144,7 +145,7 @@ _tileable_data_to_tiled = weakref.WeakKeyDictionary()
 def get_tiled(tileable, mapping=None, raise_err_if_not_tiled=True):
     tileable_data = tileable.data if hasattr(tileable, 'data') else tileable
     if mapping:
-        tileable_data = mapping[tileable_data]
+        tileable_data = mapping.get(tileable_data, tileable_data)
     if raise_err_if_not_tiled:
         return _tileable_data_to_tiled[tileable_data]
     else:
@@ -202,10 +203,16 @@ class ChunkGraphBuilder(GraphBuilder):
         return tds
 
     def _get_tileable_data_graph(self, tileables, tileable_graph):
+        from .optimizes.tileable_graph.core import OptimizeIntegratedTileableGraphBuilder
+
         if tileable_graph is None:
             # if tileable_data graph not provided
             # create a new one via GraphBuilder
-            tileable_graph_builder = get_tileable_graph_builer()(
+            if options.optimize_tileable_graph:
+                builder_cls = OptimizeIntegratedTileableGraphBuilder
+            else:
+                builder_cls = TileableGraphBuilder
+            tileable_graph_builder = builder_cls(
                 graph_cls=type(self._graph),
                 node_processor=self._node_processor)
             tileable_graph = tileable_graph_builder.build(tileables)

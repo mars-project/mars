@@ -21,9 +21,10 @@ import tempfile
 import pandas as pd
 
 import mars.dataframe as md
+from mars.core import ExecutableTuple
 from mars.config import option_context
 from mars.tests.core import TestBase
-from mars.optimizes.tileable_graph.core import get_tileable_mapping
+from mars.optimizes.tileable_graph.core import optimized_result_tileable
 
 
 class Test(TestBase):
@@ -33,7 +34,8 @@ class Test(TestBase):
         try:
             df = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
                                'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                               'c': list('aabaaddce')})
+                               'c': list('aabaaddce'),
+                               'd': list('abaaaddce')})
             df.to_csv(file_path, index=False)
 
             mdf = md.read_csv(file_path).groupby('c').agg({'a': 'sum'})
@@ -41,29 +43,45 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(mdf.execute(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
-            optimized_df = get_tileable_mapping()[mdf.data]
-            self.assertEqual(set(optimized_df.inputs[0].op.usecols), {'a', 'c'})
+            optimized_df = optimized_result_tileable[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.usecols, ['a', 'c'])
 
             mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'})
             expected = df.groupby('c').agg({'b': 'sum'})
             pd.testing.assert_frame_equal(mdf.execute(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
-            optimized_df = get_tileable_mapping()[mdf.data]
-            self.assertEqual(set(optimized_df.inputs[0].op.usecols), {'b', 'c'})
+            optimized_df = optimized_result_tileable[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.usecols, ['b', 'c'])
 
             mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'}) + 1
             expected = df.groupby('c').agg({'b': 'sum'}) + 1
             pd.testing.assert_frame_equal(mdf.execute(), expected)
             pd.testing.assert_frame_equal(mdf.fetch(), expected)
 
-            with option_context({'tileable.optimize': False}):
+            mdf = md.read_csv(file_path, usecols=['a', 'b', 'c']).groupby('c').agg({'b': 'sum'})
+            expected = df.groupby('c').agg({'b': 'sum'})
+            pd.testing.assert_frame_equal(mdf.execute(), expected)
+            pd.testing.assert_frame_equal(mdf.fetch(), expected)
+            optimized_df = optimized_result_tileable[mdf.data]
+            self.assertEqual(optimized_df.inputs[0].op.usecols, ['b', 'c'])
+
+            in_df = md.read_csv(file_path)
+            df1 = in_df.groupby('c').agg({'b': 'sum'})
+            df2 = in_df.groupby('b').agg({'a': 'sum'})
+
+            dfs = ExecutableTuple((df1, df2))
+            results = dfs.execute()
+            expected1 = df.groupby('c').agg({'b': 'sum'})
+            expected2 = df.groupby('b').agg({'a': 'sum'})
+            pd.testing.assert_frame_equal(results[0], expected1)
+            pd.testing.assert_frame_equal(results[1], expected2)
+
+            with option_context({'optimize_tileable_graph': False}):
                 mdf = md.read_csv(file_path).groupby('c').agg({'b': 'sum'})
                 expected = df.groupby('c').agg({'b': 'sum'})
                 pd.testing.assert_frame_equal(mdf.execute(), expected)
                 pd.testing.assert_frame_equal(mdf.fetch(), expected)
-
-                self.assertIsNone(get_tileable_mapping())
 
                 tileable_graph = mdf.build_graph()
                 self.assertIsNone(list(tileable_graph)[0].inputs[0].op.usecols)

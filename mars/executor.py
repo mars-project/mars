@@ -39,9 +39,10 @@ from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .compat import six, futures, OrderedDict, enum
 from .optimizes.runtime.optimizers.core import Optimizer
-from .optimizes.tileable_graph.core import get_tileable_mapping
+from .optimizes.tileable_graph.core import optimized_result_tileable, OptimizeIntegratedTileableGraphBuilder
+from .graph_builder import TileableGraphBuilder
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
-    has_unknown_shape, get_tileable_graph_builer
+    has_unknown_shape
 
 if gevent:
     from .actors.pool.gevent_pool import GeventThreadPool
@@ -630,7 +631,7 @@ class Executor(object):
 
         # shallow copy
         chunk_result = self._chunk_result.copy()
-        tileable_graph_builder = get_tileable_graph_builer()()
+        tileable_graph_builder = TileableGraphBuilder()
         tileable_graph = tileable_graph_builder.build([tileable])
         chunk_graph_builder = ChunkGraphBuilder(graph_cls=DirectedGraph, compose=compose,
                                                 on_tile_success=_on_tile_success)
@@ -711,8 +712,14 @@ class Executor(object):
                 tileable_data_to_concat_keys[before_tile_data] = after_tile_data.chunks[0].key
             return after_tile_data
 
+        def _get_tileable_graph_builder(**kwargs):
+            if options.optimize_tileable_graph:
+                return OptimizeIntegratedTileableGraphBuilder(**kwargs)
+            else:
+                return TileableGraphBuilder(**kwargs)
+
         # build tileable graph
-        tileable_graph_builder = get_tileable_graph_builer()()
+        tileable_graph_builder = _get_tileable_graph_builder()
         tileable_graph = tileable_graph_builder.build(tileables)
         chunk_graph_builder = IterativeChunkGraphBuilder(
             graph_cls=DirectedGraph, node_processor=_generate_fetch_if_executed,
@@ -755,7 +762,7 @@ class Executor(object):
                     for inp in op.inputs:
                         if inp not in to_run_tileables_set:
                             to_run_tileables_set.add(inp)
-                tileable_graph_builder = get_tileable_graph_builer()(
+                tileable_graph_builder = _get_tileable_graph_builder(
                     inputs_selector=lambda inps: [inp for inp in inps if inp in to_run_tileables_set])
                 tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
 
@@ -763,19 +770,12 @@ class Executor(object):
             if tileable.key in self.stored_tileables:
                 self.stored_tileables[tileable.key][0].add(tileable.id)
             else:
-                if options.tileable.optimize:
-                    chunk_keys = tileable_data_to_chunk_keys[
-                        tileable_graph_builder.get_before_optimized_tileable(tileable)]
-                else:
-                    chunk_keys = tileable_data_to_chunk_keys[tileable]
+                chunk_keys = tileable_data_to_chunk_keys[optimized_result_tileable.get(tileable, tileable)]
                 self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
         try:
             if fetch:
-                if options.tileable.optimize:
-                    concat_keys = [tileable_data_to_concat_keys[
-                                       tileable_graph_builder.get_before_optimized_tileable(t)] for t in tileables]
-                else:
-                    concat_keys = [tileable_data_to_concat_keys[t] for t in tileables]
+                concat_keys = [
+                    tileable_data_to_concat_keys[optimized_result_tileable.get(t, t)] for t in tileables]
                 return [chunk_result[k] for k in concat_keys]
             else:
                 return
@@ -829,7 +829,7 @@ class Executor(object):
 
     def get_tileable_nsplits(self, tileable, chunk_result=None):
         chunk_idx_to_shape = OrderedDict()
-        tiled = get_tiled(tileable, mapping=get_tileable_mapping())
+        tiled = get_tiled(tileable, mapping=optimized_result_tileable)
         chunk_result = chunk_result if chunk_result is not None else self._chunk_result
         for chunk in tiled.chunks:
             chunk_idx_to_shape[chunk.index] = chunk_result[chunk.key].shape

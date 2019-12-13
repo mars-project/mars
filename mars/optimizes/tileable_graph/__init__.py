@@ -14,5 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .column_pruning import GroupByPruningReadCSV
-from .core import OptimizedTileableGraphBuilder
+from .column_pruning import GroupbyPruneReadCSV
+from .core import OptimizeIntegratedTileableGraphBuilder
