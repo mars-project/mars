@@ -14,7 +14,6 @@
 
 import logging
 import os
-import shutil
 import signal
 import subprocess
 import sys
@@ -27,7 +26,7 @@ import gevent
 from mars import resource
 from mars.config import options
 from mars.tests.core import EtcdProcessHelper
-from mars.utils import get_next_port
+from mars.utils import get_next_port, kill_process_tree
 from mars.actors.core import new_client
 from mars.scheduler import SessionManagerActor, ResourceActor
 from mars.scheduler.graph import GraphState
@@ -106,23 +105,7 @@ class SchedulerIntegratedTest(unittest.TestCase):
     def kill_process_tree(self, proc, intentional=True):
         if intentional:
             self.intentional_death_pids.add(proc.pid)
-
-        import psutil
-        proc = psutil.Process(proc.pid)
-        plasma_sock_dir = None
-        for p in proc.children(recursive=True):
-            try:
-                if 'plasma' in p.name():
-                    socks = [conn.laddr for conn in p.connections('unix')
-                             if 'plasma' in conn.laddr]
-                    if socks:
-                        plasma_sock_dir = os.path.dirname(socks[0])
-                p.kill()
-            except psutil.NoSuchProcess:
-                continue
-        proc.kill()
-        if plasma_sock_dir:
-            shutil.rmtree(plasma_sock_dir, ignore_errors=True)
+        kill_process_tree(proc.pid)
 
     def add_state_file(self, environ):
         fn = os.environ[environ] = os.path.join(
