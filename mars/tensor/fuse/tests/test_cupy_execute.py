@@ -20,6 +20,7 @@ from mars.executor import Executor
 from mars.tensor.fuse.cp import _evaluate
 from mars.tensor.datasource import ones
 from mars.tensor import sqrt
+from mars.optimizes.runtime.optimizers.core import Optimizer
 
 
 class Test(unittest.TestCase):
@@ -32,8 +33,8 @@ class Test(unittest.TestCase):
         t = (t1 - t2) / sqrt(t2 * (1 - t2) * len(t2))
 
         g = t.build_graph(tiled=True)
-        graph = self.executor._preprocess(g, [])
-        self.assertTrue(any(n.op.__class__.__name__ == 'TensorCpFuseChunk' for n in graph))
+        Optimizer(g, self.executor._engine).optimize([])
+        self.assertTrue(any(n.op.__class__.__name__ == 'TensorCpFuseChunk' for n in g))
 
-        c = next(n for n in graph if n.op.__class__.__name__ == 'TensorCpFuseChunk')
+        c = next(n for n in g if n.op.__class__.__name__ == 'TensorCpFuseChunk')
         print(_evaluate(c))

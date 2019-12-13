@@ -393,8 +393,6 @@ def kernel_mode(func):
 
 
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
-    from .tiles import TileableGraphBuilder
-
     with build_mode():
         node_to_copy = weakref.WeakKeyDictionary()
         node_to_fetch = weakref.WeakKeyDictionary()
@@ -424,7 +422,7 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
                     copied.add(copy.data)
             return node_to_copy[n]
 
-        tileable_graph_builder = TileableGraphBuilder(
+        tileable_graph_builder = get_tileable_graph_builer()(
             graph=graph, node_processor=replace_with_fetch_or_copy)
         return tileable_graph_builder.build(tileables)
 
@@ -699,3 +697,13 @@ def has_unknown_shape(tiled):
     if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
         return True
     return False
+
+
+def get_tileable_graph_builer():
+    from .graph_builder import TileableGraphBuilder
+    from .optimizes.tileable_graph.core import OptimizedTileableGraphBuilder
+
+    if options.tileable.optimize:
+        return OptimizedTileableGraphBuilder
+    else:
+        return TileableGraphBuilder

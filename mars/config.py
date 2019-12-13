@@ -355,6 +355,8 @@ default_options.register_option('optimize.min_stats_count', 10, validator=is_int
 default_options.register_option('optimize.stats_sufficient_ratio', 0.9, validator=is_float, serialize=True)
 default_options.register_option('optimize.default_disk_io_speed', 10 * 1024 ** 2, validator=is_integer)
 
+default_options.register_option('tileable.optimize', True, validator=is_bool)
+
 # eager mode
 default_options.register_option('eager_mode', False, validator=is_bool)
 
