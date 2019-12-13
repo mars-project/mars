@@ -20,7 +20,7 @@ from ...compat import six
 from ...config import options
 from ...errors import ExecutionInterrupted, DependencyMissing, WorkerDead
 from ...operands import Operand
-from ...utils import log_unhandled
+from ...utils import log_unhandled, insert_reversed_tuple
 from ..utils import GraphState, array_to_bytes
 from .base import BaseOperandActor
 from .core import OperandState, register_operand_class, rewrite_worker_errors
@@ -104,15 +104,22 @@ class OperandActor(BaseOperandActor):
             self._target_worker = target_worker
         return super(OperandActor, self).start_operand(state=state, **kwargs)
 
+    def add_running_predecessor(self, op_key, worker):
+        super(OperandActor, self).add_running_predecessor(op_key, worker)
+        self.update_demand_depths(self._info.get('optimize', {}).get('depth', 0))
+
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
+        """
+        This function shall return whether current node is ready. The return values will
+        be collected by the predecessor to judge if a node with lower-priority can be
+        scheduled.
+        """
         super(OperandActor, self).add_finished_predecessor(op_key, worker, output_sizes=output_sizes)
         if all(k in self._finish_preds for k in self._pred_keys):
-            if self.state != OperandState.UNSCHEDULED:
-                return True
             # all predecessors done, the operand can be executed now
-            self.start_operand(OperandState.READY)
+            if self.state == OperandState.UNSCHEDULED:
+                self.start_operand(OperandState.READY)
             return True
-        self.ref().update_demand_depths(self._info.get('optimize', {}).get('depth', 0), _tell=True)
         return False
 
     def add_finished_successor(self, op_key, worker):
@@ -133,29 +140,20 @@ class OperandActor(BaseOperandActor):
         produced by the current operand
         :param depth: depth to update
         """
-        demand_depths = list(self._info.get('optimize', {}).get('demand_depths', ()))
-        if not demand_depths:
-            demand_depths = [depth]
-        else:
-            idx = 0
-            for idx, v in enumerate(demand_depths):
-                if v <= depth:
-                    break
-            if demand_depths[idx] == depth:
-                return
-            elif demand_depths[idx] > depth:
-                demand_depths.append(depth)
-            else:
-                demand_depths.insert(idx, depth)
         try:
             optimize_data = self._info['optimize']
         except KeyError:
             optimize_data = self._info['optimize'] = dict()
-        optimize_data['demand_depths'] = tuple(demand_depths)
+
+        demand_depths = optimize_data.get('demand_depths', ())
+        new_demand_depths = insert_reversed_tuple(demand_depths, depth)
+        if demand_depths == new_demand_depths:
+            return
+        optimize_data['demand_depths'] = new_demand_depths
         if self._kv_store_ref is not None:
             self._kv_store_ref.write(
                 '%s/optimize/demand_depths' % self._op_path,
-                base64.b64encode(array_to_bytes('I', demand_depths)), _tell=True, _wait=False)
+                base64.b64encode(array_to_bytes('I', new_demand_depths)), _tell=True, _wait=False)
 
         if self.state == OperandState.READY:
             # if the operand is already submitted to AssignerActor, we need to update the priority
@@ -163,7 +161,8 @@ class OperandActor(BaseOperandActor):
         else:
             # send update command to predecessors
             for in_key in self._pred_keys:
-                self._get_operand_actor(in_key).update_demand_depths(depth, _tell=True, _wait=False)
+                if in_key not in self._finish_preds and in_key not in self._running_preds:
+                    self._get_operand_actor(in_key).update_demand_depths(depth, _tell=True, _wait=False)
 
     def propose_descendant_workers(self, input_key, worker_scores, depth=1):
         """
@@ -388,12 +387,18 @@ class OperandActor(BaseOperandActor):
     def _on_running(self):
         self._execution_ref = self._get_execution_ref()
 
+        # notify successors to propagate priority changes
+        for out_key in self._succ_keys:
+            self._get_operand_actor(out_key).add_running_predecessor(
+                self._op_key, self.worker, _tell=True, _wait=False)
+
         @log_unhandled
         def _acceptor(data_sizes):
             self._allocated = False
             if not self._is_worker_alive():
                 return
-            self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
+            self._resource_ref.deallocate_resource(
+                self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             self._data_sizes = data_sizes
             self._io_meta['data_targets'] = list(data_sizes)
@@ -404,7 +409,8 @@ class OperandActor(BaseOperandActor):
             self._allocated = False
             # handling exception occurrence of operand execution
             exc_type = exc[0]
-            self._resource_ref.deallocate_resource(self._session_id, self._op_key, self.worker, _tell=True)
+            self._resource_ref.deallocate_resource(
+                self._session_id, self._op_key, self.worker, _tell=True, _wait=False)
 
             if self.state == OperandState.CANCELLING:
                 logger.warning('Execution of operand %s cancelled.', self._op_key)
@@ -451,21 +457,27 @@ class OperandActor(BaseOperandActor):
             self.start_operand(OperandState.CANCELLING)
             return
 
-        futures = []
+        use_aggressive_assign = options.scheduler.aggressive_assign
+
+        succ_futures = []
         # update pred & succ finish records to trigger further actions
         # record if successors can be executed
         for out_key in self._succ_keys:
-            futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
-                self._op_key, self.worker, output_sizes=self._data_sizes,
-                _tell=True, _wait=False))
+            succ_futures.append(self._get_operand_actor(out_key).add_finished_predecessor(
+                self._op_key, self.worker, output_sizes=self._data_sizes, _wait=False))
+
+        pred_futures = []
         for in_key in self._pred_keys:
-            futures.append(self._get_operand_actor(in_key).add_finished_successor(
+            pred_futures.append(self._get_operand_actor(in_key).add_finished_successor(
                 self._op_key, self.worker, _tell=True, _wait=False))
         # require more chunks to execute if the completion caused no successors to run
         if self._is_terminal:
             # update records in GraphActor to help decide if the whole graph finished execution
-            futures.extend(self._add_finished_terminal())
-        [f.result() for f in futures]
+            pred_futures.extend(self._add_finished_terminal())
+        [f.result() for f in pred_futures]
+
+        if use_aggressive_assign and not any(f.result() for f in succ_futures):
+            self._assigner_ref.allocate_top_resources(1, _tell=True)
 
     @log_unhandled
     def _on_fatal(self):

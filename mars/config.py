@@ -24,10 +24,6 @@ from copy import deepcopy
 from .compat import six
 
 
-DEFAULT_CHUNK_SIZE = 1496
-DEFAULT_CONNECT_RETRY_TIMES = 4
-DEFAULT_CONNECT_TIMEOUT = 5
-DEFAULT_READ_TIMEOUT = 120
 _DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and might be removed in a future release.'
 
 
@@ -322,7 +318,7 @@ default_options.register_option('scheduler.enable_active_push', True, validator=
 default_options.register_option('scheduler.enable_chunk_relocation', False, validator=is_bool, serialize=True)
 default_options.register_option('scheduler.check_interval', 1, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.default_cpu_usage', 1, validator=(is_integer, is_float), serialize=True)
-default_options.register_option('scheduler.default_cuda_usage', 1, validator=(is_integer, is_float), serialize=True)
+default_options.register_option('scheduler.default_cuda_usage', 0.5, validator=(is_integer, is_float), serialize=True)
 default_options.register_option('scheduler.execution_timeout', 600, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.retry_num', 4, validator=is_integer, serialize=True)
 default_options.register_option('scheduler.fetch_limit', 10 * 1024 ** 2, validator=is_integer, serialize=True)
@@ -334,6 +330,11 @@ default_options.register_option('scheduler.enable_failover', True, validator=is_
 default_options.register_option('scheduler.status_timeout', 60, validator=is_numeric, serialize=True)
 default_options.register_option('scheduler.worker_blacklist_time', 3600, validator=is_numeric, serialize=True)
 
+# enqueue operands in a batch when creating OperandActors
+default_options.register_option('scheduler.batch_enqueue_initials', True, validator=is_bool, serialize=True)
+# invoke assigning when where there is no ready descendants
+default_options.register_option('scheduler.aggressive_assign', False, validator=is_bool, serialize=True)
+
 # Worker
 default_options.register_option('worker.spill_directory', None, validator=(is_null, is_string, is_list))
 default_options.register_option('worker.disk_compression', 'lz4', validator=is_string, serialize=True)
@@ -342,6 +343,7 @@ default_options.register_option('worker.max_spill_size', '95%', validator=(is_st
 default_options.register_option('worker.callback_preserve_time', 3600 * 24, validator=is_integer)
 default_options.register_option('worker.event_preserve_time', 3600 * 24, validator=(is_integer, is_float))
 default_options.register_option('worker.copy_block_size', 64 * 1024, validator=is_integer)
+default_options.register_option('worker.cuda_thread_num', 2, validator=is_integer)
 default_options.register_option('worker.transfer_block_size', 1 * 1024 ** 2, validator=is_integer)
 default_options.register_option('worker.transfer_compression', 'lz4', validator=is_string, serialize=True)
 default_options.register_option('worker.prepare_data_timeout', 600, validator=is_integer)

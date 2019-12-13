@@ -221,7 +221,32 @@ tokenize_handler.register(pd.Index, tokenize_pandas_index)
 tokenize_handler.register(pd.Series, tokenize_pandas_series)
 tokenize_handler.register(pd.DataFrame, tokenize_pandas_dataframe)
 
-cpdef register(cls, handler):
+cpdef register_tokenizer(cls, handler):
     tokenize_handler.register(cls, handler)
 
-__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int', 'register']
+
+cpdef tuple insert_reversed_tuple(tuple a, object x):
+    cdef int mid, lo = 0, hi = len(a), len_a = hi
+    cdef object el
+
+    if len_a == 0:
+        return x,
+
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if a[mid] > x: lo = mid + 1
+        else: hi = mid
+
+    if lo == len_a:
+        return a + (x,)
+    el = a[lo]
+    if el == x:
+        return a
+    elif lo == 0 and el < x:
+        return (x,) + a
+    else:
+        return a[:lo] + (x,) + a[lo:]
+
+
+__all__ = ['to_str', 'to_binary', 'to_text', 'tokenize', 'tokenize_int', 'register_tokenizer',
+           'insert_reversed_tuple']

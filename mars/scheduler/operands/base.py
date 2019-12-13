@@ -49,6 +49,8 @@ class BaseOperandActor(SchedulerActor):
 
         self._executable_dag = op_info.pop('executable_dag', None)
 
+        # set of running predecessors, used to broadcast priority changes
+        self._running_preds = set()
         # set of finished predecessors, used to decide whether we should move the operand to ready
         self._finish_preds = set()
         # set of finished successors, used to detect whether we can do clean up
@@ -106,13 +108,11 @@ class BaseOperandActor(SchedulerActor):
                          self._last_state, value)
         self._state = value
         self._info['state'] = value.name
-        futures = []
         for graph_ref in self._graph_refs:
-            futures.append(graph_ref.set_operand_state(self._op_key, value, _tell=True, _wait=False))
+            graph_ref.set_operand_state(self._op_key, value, _tell=True, _wait=False)
         if self._kv_store_ref is not None:
-            futures.append(self._kv_store_ref.write(
-                '%s/state' % self._op_path, value.name, _tell=True, _wait=False))
-        [f.result() for f in futures]
+            self._kv_store_ref.write(
+                '%s/state' % self._op_path, value.name, _tell=True, _wait=False)
 
     @property
     def worker(self):
@@ -212,6 +212,9 @@ class BaseOperandActor(SchedulerActor):
             return
         if self.state != state:
             self.start_operand(state)
+
+    def add_running_predecessor(self, op_key, worker):
+        self._running_preds.add(op_key)
 
     def add_finished_predecessor(self, op_key, worker, output_sizes=None):
         self._finish_preds.add(op_key)

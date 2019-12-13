@@ -201,13 +201,13 @@ class StatusActor(WorkerActor):
     def get_progress(self):
         return copy.deepcopy(self._progress)
 
-    def update_progress(self, session_id, graph_key, ops, stage):
+    def update_progress(self, session_id, graph_key, op_name, state):
         """
         Update statuses of operands
         :param session_id: session id
         :param graph_key: graph key
-        :param ops: operand name
-        :param stage: operand stage
+        :param op_name: operand name
+        :param state: operand execution state
         """
         session_id = str(session_id)
         graph_key = str(graph_key)
@@ -220,7 +220,7 @@ class StatusActor(WorkerActor):
             graph_dict = session_dict[graph_key]
         except KeyError:
             graph_dict = session_dict[graph_key] = dict()
-        graph_dict.update(dict(operands=ops, stage=stage))
+        graph_dict.update(dict(operands=op_name, stage=state.name))
 
     def remove_progress(self, session_id, graph_key):
         try:

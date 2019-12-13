@@ -317,3 +317,10 @@ class Test(unittest.TestCase):
             mt.random.shuffle(a)
             a = a.tiles()
             utils.check_chunks_unknown_shape([a], ValueError)
+
+    def testInsertReversedTuple(self):
+        self.assertTupleEqual(utils.insert_reversed_tuple((), 9), (9,))
+        self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 9), (9, 7, 4, 3, 1))
+        self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 6), (7, 6, 4, 3, 1))
+        self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 4), (7, 4, 3, 1))
+        self.assertTupleEqual(utils.insert_reversed_tuple((7, 4, 3, 1), 0), (7, 4, 3, 1, 0))

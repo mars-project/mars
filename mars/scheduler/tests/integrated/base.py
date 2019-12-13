@@ -131,7 +131,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
         return fn
 
     def start_processes(self, n_schedulers=2, n_workers=2, etcd=False, cuda=False, modules=None,
-                        log_scheduler=True, log_worker=True, env=None):
+                        log_scheduler=True, log_worker=True, env=None, scheduler_args=None,
+                        worker_args=None):
         old_not_errors = gevent.hub.Hub.NOT_ERROR
         gevent.hub.Hub.NOT_ERROR = (Exception,)
 
@@ -139,8 +140,8 @@ class SchedulerIntegratedTest(unittest.TestCase):
         self.scheduler_endpoints = ['127.0.0.1:' + p for p in scheduler_ports]
 
         append_args = []
-        append_args_scheduler = []
-        append_args_worker = []
+        append_args_scheduler = scheduler_args or []
+        append_args_worker = worker_args or []
         if modules:
             append_args.extend(['--load-modules', ','.join(modules)])
 

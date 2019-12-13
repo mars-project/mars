@@ -20,13 +20,20 @@ from collections import OrderedDict
 
 from ..actors import ActorNotExist
 from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
-from ..compat import OrderedDict3
+from ..compat import Enum, OrderedDict3
 from ..config import options
 from ..errors import WorkerProcessStopped
 from ..promise import PromiseActor
 from ..utils import build_exc_info
 
 logger = logging.getLogger(__name__)
+
+
+class ExecutionState(Enum):
+    ALLOCATING = 'allocating'
+    PREPARING_INPUTS = 'preparing_inputs'
+    CALCULATING = 'calculating'
+    STORING = 'storing'
 
 
 class WorkerClusterInfoActor(ClusterInfoActor):
@@ -88,7 +95,7 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
 
     def get_meta_client(self):
         from ..scheduler.chunkmeta import ChunkMetaClient
-        return ChunkMetaClient(self.ctx, self._cluster_info_ref)
+        return ChunkMetaClient(self.ctx, self._cluster_info_ref, has_local_cache=False)
 
     def handle_actors_down(self, halt_refs):
         """

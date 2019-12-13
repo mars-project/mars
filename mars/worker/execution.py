@@ -19,8 +19,8 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import reduce, six, Enum, BrokenPipeError, \
-    ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
+from ..compat import reduce, six, BrokenPipeError, ConnectionRefusedError, \
+    TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
@@ -30,17 +30,10 @@ from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_in
     calc_data_size, get_chunk_shuffle_key
 from .storage import DataStorageDevice
 from .transfer import ReceiverManagerActor
-from .utils import WorkerActor, ExpiringCache, concat_operand_keys, \
+from .utils import WorkerActor, ExpiringCache, ExecutionState, concat_operand_keys, \
     build_quota_key, change_quota_key_owner
 
 logger = logging.getLogger(__name__)
-
-
-class ExecutionState(Enum):
-    ALLOCATING = 'allocating'
-    PREPARING_INPUTS = 'preparing_inputs'
-    CALCULATING = 'calculating'
-    STORING = 'storing'
 
 
 class GraphExecutionRecord(object):
@@ -52,14 +45,14 @@ class GraphExecutionRecord(object):
                  'state_time', 'mem_request', 'pinned_keys', 'est_finish_time',
                  'calc_actor_uid', 'send_addresses', 'retry_delay', 'retry_pending',
                  'finish_callbacks', 'stop_requested', 'calc_device',
-                 'preferred_data_device')
+                 'preferred_data_device', 'resource_released')
 
     def __init__(self, graph_serialized, state, chunk_targets=None, data_targets=None,
                  io_meta=None, data_metas=None, mem_request=None,
                  shared_input_chunks=None, pinned_keys=None, est_finish_time=None,
                  calc_actor_uid=None, send_addresses=None, retry_delay=None,
                  finish_callbacks=None, stop_requested=False, calc_device=None,
-                 preferred_data_device=None):
+                 preferred_data_device=None, resource_released=False):
 
         self.graph_serialized = graph_serialized
         graph = self.graph = deserialize_graph(graph_serialized)
@@ -82,6 +75,7 @@ class GraphExecutionRecord(object):
         self.stop_requested = stop_requested or False
         self.calc_device = calc_device
         self.preferred_data_device = preferred_data_device
+        self.resource_released = resource_released
 
         _, self.op_string = concat_operand_keys(graph)
 
@@ -233,7 +227,10 @@ class ExecutionActor(WorkerActor):
         if self._status_ref:
             self.estimate_graph_finish_time(session_id, graph_key)
 
-        memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+        if graph_record.preferred_data_device == DataStorageDevice.SHARED_MEMORY:
+            memory_estimations = self._estimate_calc_memory(session_id, graph_key)
+        else:
+            memory_estimations = dict()
 
         # collect potential allocation sizes
         for chunk in graph:
@@ -251,8 +248,11 @@ class ExecutionActor(WorkerActor):
                         pass
             elif chunk.key in graph_record.chunk_targets:
                 # use estimated size as potential allocation size
-                cache_batch, alloc_mem_batch[build_quota_key(session_id, chunk.key, owner=graph_key)] = \
-                    memory_estimations[chunk.key]
+                estimation_data = memory_estimations.get(chunk.key)
+                if not estimation_data:
+                    continue
+                quota_key = build_quota_key(session_id, chunk.key, owner=graph_key)
+                cache_batch, alloc_mem_batch[quota_key] = estimation_data
                 if not isinstance(chunk.key, tuple):
                     alloc_cache_batch[chunk.key] = cache_batch
 
@@ -269,8 +269,7 @@ class ExecutionActor(WorkerActor):
             # todo change when compute with gpu
             storage_client.spill_size(sum(alloc_cache_batch.values()), [graph_record.preferred_data_device])
 
-        if alloc_mem_batch:
-            graph_record.mem_request = alloc_mem_batch
+        graph_record.mem_request = alloc_mem_batch or dict()
         return alloc_mem_batch
 
     @log_unhandled
@@ -419,8 +418,8 @@ class ExecutionActor(WorkerActor):
         record = self._graph_records[(session_id, key)]
         record.state = state
         if self._status_ref:
-            self._status_ref.update_progress(session_id, key, record.op_string, state.name,
-                                             _tell=True, _wait=False)
+            self._status_ref.update_progress(
+                session_id, key, record.op_string, state, _tell=True, _wait=False)
 
     @promise.reject_on_exception
     @log_unhandled
@@ -533,8 +532,9 @@ class ExecutionActor(WorkerActor):
                 return
 
             promise.finished() \
+                .then(lambda *_: self._mem_quota_ref.request_batch_quota(
+                    quota_request, _promise=True) if quota_request else None) \
                 .then(lambda *_: self._prepare_graph_inputs(session_id, graph_key)) \
-                .then(lambda *_: self._mem_quota_ref.request_batch_quota(quota_request, _promise=True)) \
                 .then(lambda *_: self._dispatch_ref.get_free_slot(calc_device, _promise=True)) \
                 .then(lambda uid: self._send_calc_request(session_id, graph_key, uid)) \
                 .then(lambda saved_keys: self._store_results(session_id, graph_key, saved_keys)) \
@@ -712,10 +712,14 @@ class ExecutionActor(WorkerActor):
             raise
 
         # make sure that memory suffices before actually run execution
-        logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
-        return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
-            .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
-            .then(_start_calc)
+        if target_allocs:
+            logger.debug('Ensuring resource %r for graph %s', target_allocs, graph_key)
+            return self._mem_quota_ref.request_batch_quota(target_allocs, process_quota=True, _promise=True) \
+                .then(lambda *_: self._deallocate_scheduler_resource(session_id, graph_key, delay=2)) \
+                .then(_start_calc)
+        else:
+            self._deallocate_scheduler_resource(session_id, graph_key, delay=2)
+            return _start_calc()
 
     @log_unhandled
     def _do_active_transfer(self, session_id, graph_key, data_to_addresses):
@@ -794,41 +798,45 @@ class ExecutionActor(WorkerActor):
         storage_client.unpin_data_keys(session_id, graph_record.pinned_keys, graph_key)
         self._dump_execution_states()
 
+        data_attrs = storage_client.get_data_attrs(session_id, saved_keys)
+
         if self._daemon_ref is not None and not self._daemon_ref.is_actor_process_alive(raw_calc_ref):
             raise WorkerProcessStopped
 
         def _cache_result(*_):
-            sizes = storage_client.get_data_sizes(session_id, saved_keys)
-            save_sizes = dict((k, v) for k, v in zip(saved_keys, sizes) if v)
+            save_sizes = dict((k, v.size) for k, v in zip(saved_keys, data_attrs) if v)
             self._result_cache[(session_id, graph_key)] = GraphResultRecord(save_sizes)
 
         if not send_addresses:
             # no endpoints to send, dump keys into shared memory and return
-            logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma...',
+            logger.debug('Worker graph %s(%s) finished execution. Dumping results...',
                          graph_key, graph_record.op_string)
-            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
+            return calc_ref.store_results(session_id, graph_key, saved_keys, data_attrs, _promise=True) \
                 .then(_cache_result)
         else:
             # dump keys into shared memory and send
             all_addresses = [{v} if isinstance(v, six.string_types) else set(v)
                              for v in send_addresses.values()]
             all_addresses = list(reduce(lambda a, b: a | b, all_addresses, set()))
-            logger.debug('Worker graph %s(%s) finished execution. Dumping results into plasma '
+            logger.debug('Worker graph %s(%s) finished execution. Dumping results '
                          'while actively transferring into %r...',
                          graph_key, graph_record.op_string, all_addresses)
 
             data_to_addresses = dict((k, v) for k, v in send_addresses.items()
                                      if k in saved_keys)
 
-            return calc_ref.store_results(session_id, saved_keys, _promise=True) \
+            return calc_ref.store_results(session_id, graph_key, saved_keys, data_attrs, _promise=True) \
                 .then(_cache_result) \
                 .then(lambda *_: functools.partial(self._do_active_transfer,
                                                    session_id, graph_key, data_to_addresses))
 
     def _deallocate_scheduler_resource(self, session_id, graph_key, delay=0):
         try:
-            self._resource_ref.deallocate_resource(
-                session_id, graph_key, self.address, _delay=delay, _tell=True, _wait=False)
+            graph_record = self._graph_records[(session_id, graph_key)]
+            if not graph_record.resource_released:
+                graph_record.resource_released = True
+                self._resource_ref.deallocate_resource(
+                    session_id, graph_key, self.address, _delay=delay, _tell=True, _wait=False)
         except:  # noqa: E722
             pass
 

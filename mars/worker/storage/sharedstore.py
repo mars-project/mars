@@ -71,6 +71,7 @@ class PlasmaSharedStore(object):
         self._serialize_context = mars_serialize_context()
 
         self._mapper_ref = mapper_ref
+        self._pool = mapper_ref.ctx.threadpool(1)
 
     def get_actual_capacity(self, store_limit):
         """
@@ -216,7 +217,7 @@ class PlasmaSharedStore(object):
                 buffer = self._plasma_client.create(obj_id, serialized.total_bytes)
                 stream = pyarrow.FixedSizeBufferWriter(buffer)
                 stream.set_memcopy_threads(6)
-                serialized.write_to(stream)
+                self._pool.submit(serialized.write_to, stream).result()
                 self._plasma_client.seal(obj_id)
             finally:
                 del serialized

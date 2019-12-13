@@ -838,7 +838,8 @@ class GraphActor(SchedulerActor):
             scheduler_addr = self.get_scheduler(op_uid)
             kw = {}
             # for the **real** initial chunks, we do batch submitting
-            if chunk_graph.count_predecessors(chunks[0]) == 0:
+            if options.scheduler.batch_enqueue_initials \
+                    and chunk_graph.count_predecessors(chunks[0]) == 0:
                 kw['allocated'] = True
                 to_allocate_op_keys.add(op_key)
 
