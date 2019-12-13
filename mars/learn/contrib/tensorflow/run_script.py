@@ -27,6 +27,7 @@ from .... import opcodes as OperandDef
 from ....serialize import BytesField, Int32Field, DictField, StringField, ListField
 from ....utils import to_binary
 from ...operands import LearnMergeDictOperand, OutputType
+from ..utils import pick_workers
 
 
 class RunTensorFlow(LearnMergeDictOperand):
@@ -35,7 +36,7 @@ class RunTensorFlow(LearnMergeDictOperand):
     _code = BytesField('code')
     _n_workers = Int32Field('n_workers')
     _n_ps = Int32Field('n_ps')
-    _command_args = ListField('comamnd_args')
+    _command_args = ListField('command_args')
     _tf_config = DictField('tf_config')
     _port = Int32Field('port')
     # used for chunk op
@@ -91,15 +92,6 @@ class RunTensorFlow(LearnMergeDictOperand):
     def __call__(self):
         return self.new_tileable(None)
 
-    @staticmethod
-    def pick_workers(workers, size):
-        if size <= len(workers):
-            return np.random.permutation(workers)[:size]
-        else:
-            workers = np.asarray(workers)
-            indexes = np.random.randint(len(workers), size=size)
-            return workers[indexes]
-
     @classmethod
     def tile(cls, op):
         ctx = get_context()
@@ -126,7 +118,7 @@ class RunTensorFlow(LearnMergeDictOperand):
                 out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
         else:
             worker_addresses = ctx.get_worker_addresses()
-            picked_workers = cls.pick_workers(worker_addresses, op.n_roles)
+            picked_workers = pick_workers(worker_addresses, op.n_roles)
             worker_to_port_iter = defaultdict(lambda: itertools.count(port))
 
             for i, worker in enumerate(picked_workers):
@@ -179,7 +171,7 @@ class RunTensorFlow(LearnMergeDictOperand):
 def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None,
                           session=None, run_kwargs=None, port=None):
     """
-    Run tensorflow script in Mars cluster.
+    Run TensorFlow script in Mars cluster.
 
     :param script: script to run
     :type script: str or file-like object

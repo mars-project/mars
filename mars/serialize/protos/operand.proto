@@ -388,6 +388,9 @@ message OperandDef {
         // TensorFlow
         RUN_TENSORFLOW = 3010;
 
+        // PyTorch
+        RUN_PYTORCH = 3011;
+
         CHOLESKY_FUSE = 999988;
 
         // fetches

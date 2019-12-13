@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .contrib.xgboost import register_op
-register_op()
-from .utils.shuffle import shuffle
-del shuffle
-from .contrib.tensorflow import register_op
-register_op()
-from .contrib.pytorch import register_op
-register_op()
-del register_op
+import numpy as np
 
+
+def pick_workers(workers, size):
+    result = np.empty(size, dtype=object)
+    rest = size
+    while rest > 0:
+        start = size - rest
+        to_pick_size = min(size - start, len(workers))
+        result[start: start + to_pick_size] = \
+            np.random.permutation(workers)[:to_pick_size]
+        rest = rest - to_pick_size
+    return result
