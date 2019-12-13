@@ -11,15 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# register operands
-from .contrib.xgboost import register_op
-register_op()
-from .utils.shuffle import shuffle
-del shuffle
-from .contrib.tensorflow import register_op
-register_op()
-from .contrib.pytorch import register_op
-register_op()
-del register_op
-

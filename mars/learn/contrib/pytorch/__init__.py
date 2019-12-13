@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# register operands
-from .contrib.xgboost import register_op
-register_op()
-from .utils.shuffle import shuffle
-del shuffle
-from .contrib.tensorflow import register_op
-register_op()
-from .contrib.pytorch import register_op
-register_op()
-del register_op
+from .run_script import run_pytorch_script
 
+
+def register_op():
+    from .run_script import RunPyTorch
+    del RunPyTorch
