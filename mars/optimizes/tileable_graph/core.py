@@ -41,16 +41,16 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     def __init__(self, **kw):
         self._optimizer_context = weakref.WeakKeyDictionary()
         super(OptimizeIntegratedTileableGraphBuilder, self).__init__(**kw)
-        self._node_processor = self._apply_rules(self._node_processor)
+        self._node_processor = self._apply_rules(self._node_processor, self._optimizer_context)
 
-    def _apply_rules(self, node_processor):
+    def _apply_rules(self, node_processor, optimizer_context):
         def inner(node):
             node = node_processor(node) if node_processor is not None else node
             if type(node.op) in _rules:
                 for rule in _rules[type(node.op)]:
-                    ruler = rule(self._optimizer_context)
+                    ruler = rule(optimizer_context)
                     if ruler.match(node):
-                        node = rule(self._optimizer_context).apply(node)
+                        node = rule(optimizer_context).apply(node)
             return node
 
         return inner
