@@ -24,10 +24,10 @@ def _install():
         setattr(cls, 'agg', agg)
         setattr(cls, 'aggregate', agg)
 
-        setattr(cls, 'sum', lambda groupby: agg(groupby, 'sum'))
-        setattr(cls, 'prod', lambda groupby: agg(groupby, 'prod'))
-        setattr(cls, 'max', lambda groupby: agg(groupby, 'max'))
-        setattr(cls, 'min', lambda groupby: agg(groupby, 'min'))
+        setattr(cls, 'sum', lambda groupby, **kw: agg(groupby, 'sum', **kw))
+        setattr(cls, 'prod', lambda groupby, **kw: agg(groupby, 'prod', **kw))
+        setattr(cls, 'max', lambda groupby, **kw: agg(groupby, 'max', **kw))
+        setattr(cls, 'min', lambda groupby, **kw: agg(groupby, 'min', **kw))
 
 
 _install()
