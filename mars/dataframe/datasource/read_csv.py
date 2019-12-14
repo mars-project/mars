@@ -149,6 +149,14 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=[new_chunk], nsplits=nsplits)
 
     @classmethod
+    def _validate_dtypes(cls, dtypes, is_gpu):
+        dtypes = dtypes.to_dict()
+        # CuDF doesn't support object type, turn it to 'str'.
+        if is_gpu:
+            dtypes = dict((n, dt.name if dt != np.dtype('object') else 'str') for n, dt in dtypes.items())
+        return dtypes
+
+    @classmethod
     def tile(cls, op):
         if op.compression:
             return cls._tile_compressed(op)
@@ -184,6 +192,35 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                      chunks=out_chunks, nsplits=nsplits)
 
     @classmethod
+    def _pandas_read_csv(cls, f, op):
+        csv_kwargs = op.extra_params.copy()
+        out_df = op.outputs[0]
+        start, end = _find_chunk_start_end(f, op.offset, op.size)
+        f.seek(start)
+        b = BytesIO(f.read(end - start))
+        if end == start:
+            # the last chunk may be empty
+            df = build_empty_df(out_df.dtypes)
+        else:
+            if start == 0:
+                # The first chunk contains header
+                # As we specify names and dtype, we need to skip header rows
+                csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
+            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
+                             dtype=out_df.dtypes.to_dict(), **csv_kwargs)
+        return df
+
+    @classmethod
+    def _cudf_read_csv(cls, op):
+        csv_kwargs = op.extra_params
+        if op.offset == 0:
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, **csv_kwargs)
+        else:
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
+                               dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
+        return df
+
+    @classmethod
     def execute(cls, ctx, op):
         xdf = cudf if op.gpu else pd
         out_df = op.outputs[0]
@@ -194,21 +231,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
                 df = xdf.read_csv(BytesIO(f.read()), sep=op.sep, names=op.names, index_col=op.index_col,
-                                  dtype=out_df.dtypes.to_dict(), **csv_kwargs)
+                                  dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
             else:
-                start, end = _find_chunk_start_end(f, op.offset, op.size)
-                f.seek(start)
-                b = BytesIO(f.read(end - start))
-                if end == start:
-                    # the last chunk may be empty
-                    df = build_empty_df(out_df.dtypes)
-                else:
-                    if start == 0:
-                        # The first chunk contains header
-                        # As we specify names and dtype, we need to skip header rows
-                        csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-                    df = xdf.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
-                                      dtype=out_df.dtypes.to_dict(), **csv_kwargs)
+                df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
+
         ctx[out_df.key] = df
 
     def __call__(self, index_value=None, columns_value=None, dtypes=None, chunk_bytes=None):

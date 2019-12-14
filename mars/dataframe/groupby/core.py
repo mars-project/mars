@@ -94,9 +94,10 @@ class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
 
     _by = AnyField('by')
     _as_index = BoolField('as_index')
+    _sort = BoolField('sort')
 
-    def __init__(self, by=None, as_index=None, object_type=ObjectType.groupby, **kw):
-        super(DataFrameGroupByOperand, self).__init__(_by=by, _as_index=as_index,
+    def __init__(self, by=None, as_index=None, sort=None, object_type=ObjectType.groupby, **kw):
+        super(DataFrameGroupByOperand, self).__init__(_by=by, _as_index=as_index, _sort=sort,
                                                       _object_type=object_type, **kw)
 
     @property
@@ -106,6 +107,10 @@ class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
     @property
     def as_index(self):
         return self._as_index
+
+    @property
+    def sort(self):
+        return self._sort
 
     def __call__(self, df):
         return self.new_tileable([df])
@@ -147,8 +152,8 @@ class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = list(df.groupby(op.by))
 
 
-def dataframe_groupby(df, by, as_index=True):
+def dataframe_groupby(df, by, as_index=True, sort=True):
     if isinstance(by, six.string_types):
         by = [by]
-    op = DataFrameGroupByOperand(by=by, as_index=as_index)
+    op = DataFrameGroupByOperand(by=by, as_index=as_index, sort=sort)
     return op(df)
