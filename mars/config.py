@@ -306,13 +306,15 @@ default_options.register_option('combine_size', 4, validator=is_integer, seriali
 # the default chunk store size
 default_options.register_option('chunk_store_limit', 128 * 1024 ** 2, validator=is_numeric)
 
+# rechunk
+default_options.register_option('rechunk.threshold', 4, validator=is_integer, serialize=True)
+default_options.register_option('rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
+
 # deploy
 default_options.register_option('deploy.open_browser', True, validator=is_bool)
 
 # Tensor
 default_options.register_option('tensor.chunk_size', None, validator=any_validator(is_null, is_integer), serialize=True)
-default_options.register_option('tensor.rechunk.threshold', 4, validator=is_integer, serialize=True)
-default_options.register_option('tensor.rechunk.chunk_size_limit', int(1e8), validator=is_integer, serialize=True)
 
 # Scheduler
 default_options.register_option('scheduler.assign_chunk_workers', False, validator=is_bool, serialize=True)
@@ -377,3 +379,5 @@ class OptionsProxy(object):
 options = OptionsProxy()
 
 options.redirect_option('tensor.chunk_store_limit', 'chunk_store_limit')
+options.redirect_option('tensor.rechunk.threshold', 'rechunk.threshold')
+options.redirect_option('tensor.rechunk.chunk_size_limit', 'rechunk.chunk_size_limit')
