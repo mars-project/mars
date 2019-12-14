@@ -136,6 +136,39 @@ class Test(TestBase):
         self.assertEqual(df7.chunks[0].inputs[0].index, (0, 1))
         self.assertEqual(df7.chunks[0].inputs[0].shape, (2, 1))
 
+        # test Series iloc getitem
+
+        # slice
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3).iloc[4:8]
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (4,))
+
+        self.assertEqual(len(series.chunks), 2)
+        self.assertEqual(series.chunks[0].shape, (2,))
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes, slice(1, 3, 1))
+        self.assertEqual(series.chunks[1].shape, (2,))
+        self.assertEqual(series.chunks[1].op.indexes, slice(0, 2, 1))
+        self.assertEqual(series.chunks[1].index, (1,))
+
+        # fancy index
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3).iloc[[2, 4, 8]]
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (3,))
+
+        self.assertEqual(len(series.chunks), 3)
+        self.assertEqual(series.chunks[0].shape, (1,))
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes[0], [2])
+        self.assertEqual(series.chunks[1].shape, (1,))
+        self.assertEqual(series.chunks[1].op.indexes[0], [1])
+        self.assertEqual(series.chunks[1].index, (1,))
+        self.assertEqual(series.chunks[2].shape, (1,))
+        self.assertEqual(series.chunks[2].op.indexes[0], [2])
+        self.assertEqual(series.chunks[2].index, (2,))
+
     def testILocSetItem(self):
         df1 = pd.DataFrame([[1,3,3], [4,2,6], [7, 8, 9]],
                             index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
@@ -243,6 +276,39 @@ class Test(TestBase):
             else:
                 self.assertEqual(c1.key, c2.key)
         self.assertEqual(df7.chunks[1].op.indexes, (1, 0))
+
+        # test Series
+
+        # slice
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3)
+        series.iloc[:4] = 2
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (10,))
+        self.assertEqual(len(series.chunks), 4)
+
+        self.assertEqual(series.chunks[0].op.indexes, slice(None, None, None))
+        self.assertEqual(series.chunks[0].op.value, 2)
+        self.assertEqual(series.chunks[1].op.indexes, slice(0, 1, 1))
+        self.assertEqual(series.chunks[1].op.value, 2)
+
+        # fancy index
+        series = md.Series(pd.Series(np.arange(10)), chunk_size=3)
+        series.iloc[[2, 4, 9]] = 3
+        series = series.tiles()
+
+        self.assertEqual(series.shape, (10,))
+
+        self.assertEqual(len(series.chunks), 4)
+        self.assertEqual(series.chunks[0].index, (0,))
+        self.assertEqual(series.chunks[0].op.indexes, [2])
+        self.assertEqual(series.chunks[0].op.value, 3)
+        self.assertEqual(series.chunks[1].index, (1,))
+        self.assertEqual(series.chunks[1].op.indexes, [1])
+        self.assertEqual(series.chunks[1].op.value, 3)
+        self.assertEqual(series.chunks[3].index, (3,))
+        self.assertEqual(series.chunks[3].op.indexes, [0])
+        self.assertEqual(series.chunks[3].op.value, 3)
 
     def testDataFrameGetitem(self):
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])

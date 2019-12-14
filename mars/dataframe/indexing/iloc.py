@@ -24,7 +24,7 @@ from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape, process_index
 from ...serialize import AnyField, ListField
 from ... import opcodes as OperandDef
-from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
+from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
 
 
@@ -33,14 +33,21 @@ class DataFrameIloc(object):
         self._obj = obj
 
     def __getitem__(self, indexes):
-        op = DataFrameIlocGetItem(indexes=process_index(self._obj.ndim, indexes), object_type=ObjectType.dataframe)
+        if isinstance(self._obj, DATAFRAME_TYPE):
+            op = DataFrameIlocGetItem(indexes=process_index(self._obj.ndim, indexes))
+        else:
+            op = SeriesIlocGetItem(indexes=process_index(self._obj.ndim, indexes))
         return op(self._obj)
 
     def __setitem__(self, indexes, value):
         if not np.isscalar(value):
             raise NotImplementedError('Only scalar value is supported to set by iloc')
 
-        op = DataFrameIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value, object_type=ObjectType.dataframe)
+        if isinstance(self._obj, DATAFRAME_TYPE):
+            op = DataFrameIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value)
+        else:
+            op = SeriesIlocSetItem(indexes=process_index(self._obj.ndim, indexes), value=value)
+
         ret = op(self._obj)
         self._obj.data = ret.data
 
@@ -50,7 +57,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     _indexes = ListField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=None, **kw):
+    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
         super(DataFrameIlocGetItem, self).__init__(_indexes=indexes,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=object_type, **kw)
@@ -72,7 +79,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         # 1  1.0  1.0
         # 2  1.0  1.0
         #
-        # Thus, we processing the index along two axis of DataFrame seperately.
+        # Thus, we processing the index along two axis of DataFrame separately.
 
         if isinstance(self.indexes[0], TENSOR_TYPE) or isinstance(self.indexes[1], TENSOR_TYPE):
             raise NotImplementedError('The index value cannot be unexecuted mars tensor')
@@ -205,7 +212,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _indexes = ListField('indexes')
     _value = AnyField('value')
 
-    def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=None, **kw):
+    def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
         super(DataFrameIlocSetItem, self).__init__(_indexes=indexes, _value=value,
                                                    _gpu=gpu, _sparse=sparse,
                                                    _object_type=object_type, **kw)
@@ -263,5 +270,115 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         ctx[chunk.key] = r
 
 
-def iloc(df):
-    return DataFrameIloc(df)
+class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.SERIES_ILOC_GETITEM
+
+    _indexes = AnyField('indexes')
+
+    def __init__(self, indexes=None, gpu=False, sparse=False, **kw):
+        super(SeriesIlocGetItem, self).__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse,
+                                                _object_type=ObjectType.series, **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @classmethod
+    def tile(cls, op):
+        in_series = op.inputs[0]
+        out = op.outputs[0]
+
+        # Reuse the logic of fancy indexing in tensor module.
+        tensor = empty(in_series.shape, chunk_size=(in_series.nsplits[0],))[op.indexes].tiles()
+
+        out_chunks = []
+        for index_chunk in tensor.chunks:
+            in_chunk = in_series.cix[index_chunk.inputs[0].index or (0,)]
+
+            chunk_op = op.copy().reset_key()
+            chunk_op._indexes = index_chunk.op.indexes[0]
+            index_value = indexing_index_value(in_chunk.index_value, index_chunk.op.indexes)
+            out_chunk = chunk_op.new_chunk([in_chunk], shape=index_chunk.shape, index=index_chunk.index,
+                                           dtype=out.dtype, index_value=index_value)
+            out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+
+        return new_op.new_seriess(op.inputs, out.shape, dtype=out.dtype,
+                                  index_value=out.index_value, chunks=out_chunks, nsplits=tensor.nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        ctx[chunk.key] = ctx[op.inputs[0].key].iloc[op.indexes]
+
+    def __call__(self, series):
+        if isinstance(self.indexes, TENSOR_TYPE):
+            raise NotImplementedError('The index value cannot be mars tensor')
+        shape = tuple(calc_shape(series.shape, self.indexes))
+        index_value = indexing_index_value(series.index_value, self.indexes)
+        return self.new_series([series], shape=shape, dtype=series.dtype, index_value=index_value)
+
+
+class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.SERIES_ILOC_SETIMEM
+
+    _indexes = AnyField('indexes')
+    _value = AnyField('value')
+
+    def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
+        super(SeriesIlocSetItem, self).__init__(_indexes=indexes, _value=value, _gpu=gpu, _sparse=sparse,
+                                                _object_type=ObjectType.series, **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @property
+    def value(self):
+        return self._value
+
+    def __call__(self, series):
+        if isinstance(self.indexes, TENSOR_TYPE):
+            raise NotImplementedError('The index value cannot be mars tensor')
+        return self.new_series([series], shape=series.shape, dtype=series.dtype,
+                               index_value=series.index_value, name=series.name)
+
+    @classmethod
+    def tile(cls, op):
+        in_series = op.inputs[0]
+        out = op.outputs[0]
+
+        # Reuse the logic of fancy indexing in tensor module.
+        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes].tiles()
+
+        chunk_mapping = dict((c.inputs[0].index, c) for c in tensor.chunks)
+
+        out_chunks = []
+        for chunk in in_series.chunks:
+            if chunk.index not in chunk_mapping:
+                out_chunks.append(chunk)
+            else:
+                chunk_op = op.copy().reset_key()
+                index_chunk = chunk_mapping[chunk.index]
+                chunk_op._indexes = index_chunk.op.indexes[0]
+                chunk_op._value = op.value
+                out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, index=chunk.index, dtype=chunk.dtype,
+                                               index_value=chunk.index_value, name=chunk.name)
+                out_chunks.append(out_chunk)
+
+        new_op = op.copy()
+        return new_op.new_seriess(op.inputs, shape=out.shape, dtype=out.dtype,
+                                  index_value=out.index_value, name=out.name,
+                                  chunks=out_chunks, nsplits=in_series.nsplits)
+
+    @classmethod
+    def execute(cls, ctx, op):
+        chunk = op.outputs[0]
+        r = ctx[op.inputs[0].key].copy(deep=True)
+        r.iloc[op.indexes] = op.value
+        ctx[chunk.key] = r
+
+
+def iloc(a):
+    return DataFrameIloc(a)
