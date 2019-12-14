@@ -753,6 +753,8 @@ def copy_tileables(*tileables, **kwargs):
     copied = op.new_tileables(inputs, kws=kws, output_limit=len(kws))
     if len(tileables) == 1:
         return copied[0]
+    else:
+        return copied
 
 
 
