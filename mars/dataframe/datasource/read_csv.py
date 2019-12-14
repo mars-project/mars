@@ -82,16 +82,17 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     _header = AnyField('header')
     _index_col = Int32Field('index_col')
     _compression = StringField('compression')
+    _usecols = ListField('usecols')
     _offset = Int64Field('offset')
     _size = Int64Field('size')
 
     _storage_options = DictField('storage_options')
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None, compression=None,
-                 offset=None, size=None, gpu=None, storage_options=None, **kw):
+                 usecols=None, offset=None, size=None, gpu=None, storage_options=None, **kw):
         super(DataFrameReadCSV, self).__init__(_path=path, _names=names, _sep=sep, _header=header,
                                                _index_col=index_col, _compression=compression,
-                                               _offset=offset, _size=size, _gpu=gpu,
+                                               _usecols=usecols, _offset=offset, _size=size, _gpu=gpu,
                                                _storage_options=storage_options,
                                                _object_type=ObjectType.dataframe, **kw)
 
@@ -118,6 +119,10 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     @property
     def compression(self):
         return self._compression
+
+    @property
+    def usecols(self):
+        return self._usecols
 
     @property
     def offset(self):
@@ -206,7 +211,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # The first chunk contains header
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
-            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col,
+            df = pd.read_csv(b, sep=op.sep, names=op.names, index_col=op.index_col, usecols=op.usecols,
                              dtype=out_df.dtypes.to_dict(), **csv_kwargs)
         return df
 
@@ -214,10 +219,11 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
     def _cudf_read_csv(cls, op):
         csv_kwargs = op.extra_params
         if op.offset == 0:
-            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, **csv_kwargs)
+            df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, usecols=op.usecols, **csv_kwargs)
         else:
             df = cudf.read_csv(op.path, byte_range=(op.offset, op.size), sep=op.sep, names=op.names,
-                               dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
+                               usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
+                               **csv_kwargs)
         return df
 
     @classmethod
@@ -231,7 +237,8 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                 # As we specify names and dtype, we need to skip header rows
                 csv_kwargs['skiprows'] = 1 if op.header == 'infer' else op.header
                 df = xdf.read_csv(BytesIO(f.read()), sep=op.sep, names=op.names, index_col=op.index_col,
-                                  dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu), **csv_kwargs)
+                                  usecols=op.usecols, dtype=cls._validate_dtypes(op.outputs[0].dtypes, op.gpu),
+                                  **csv_kwargs)
             else:
                 df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
 
@@ -243,7 +250,7 @@ class DataFrameReadCSV(DataFrameOperand, DataFrameOperandMixin):
                                   columns_value=columns_value, chunk_bytes=chunk_bytes)
 
 
-def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer', dtype=None,
+def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer', dtype=None, usecols=None,
              chunk_bytes=None, gpu=None, head_bytes='100k', head_lines=None, storage_options=None, **kwargs):
     """
     Read comma-separated values (csv) file(s) into DataFrame.
@@ -256,6 +263,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     :param header: Row number(s) to use as the column names, and the start of the data.
     :param dtype: Data type for data or columns. E.g. {'a': np.float64, 'b': np.int32, 'c': 'Int64'}
     Use str or object together with suitable na_values settings to preserve and not interpret dtype.
+    :param usecols: Return a subset of the columns.
     :param chunk_bytes: Number of chunk bytes.
     :param gpu: If read into cudf DataFrame.
     :param head_bytes: Number of bytes to use in the head of file, mainly for data inference.
@@ -287,7 +295,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     if index_col and not isinstance(index_col, int):
         index_col = list(mini_df.columns).index(index_col)
     names = list(mini_df.columns)
-    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col,
+    op = DataFrameReadCSV(path=path, names=names, sep=sep, header=header, index_col=index_col, usecols=usecols,
                           compression=compression, gpu=gpu, storage_options=storage_options, **kwargs)
     chunk_bytes = chunk_bytes or options.chunk_store_limit
     return op(index_value=index_value, columns_value=columns_value,

@@ -729,3 +729,32 @@ def kill_process_tree(pid, include_parent=True):
             pass
     if plasma_sock_dir:
         shutil.rmtree(plasma_sock_dir, ignore_errors=True)
+
+
+def copy_tileables(*tileables, **kwargs):
+    inputs = kwargs.pop('inputs', None)
+    copy_key = kwargs.pop('copy_key', True)
+    copy_id = kwargs.pop('copy_id', True)
+    if len(tileables) > 1:
+        if set([t.op for t in tileables]) != 1:
+            raise TypeError("All tileables' operands should be same.")
+
+    op = tileables[0].op.copy().reset_key()
+    kws = []
+    for t in tileables:
+        params = t.params.copy()
+        if copy_key:
+            params['_key'] = t.key
+        if copy_id:
+            params['_id'] = t.id
+        params.update(t.extra_params)
+        kws.append(params)
+    inputs = inputs or op.inputs
+    copied = op.new_tileables(inputs, kws=kws, output_limit=len(kws))
+    if len(tileables) == 1:
+        return copied[0]
+    else:
+        return copied
+
+
+

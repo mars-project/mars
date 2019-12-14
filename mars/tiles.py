@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import sys
 import weakref
 
 from .graph import DAG
+from .graph_builder import GraphBuilder, TileableGraphBuilder
 from .compat import six
+from .config import options
 from .utils import kernel_mode, enter_build_mode
 
 
@@ -141,74 +142,14 @@ _tileable_data_to_tiled = weakref.WeakKeyDictionary()
 
 
 @enter_build_mode
-def get_tiled(tileable, raise_err_if_not_tiled=True):
+def get_tiled(tileable, mapping=None, raise_err_if_not_tiled=True):
     tileable_data = tileable.data if hasattr(tileable, 'data') else tileable
+    if mapping:
+        tileable_data = mapping.get(tileable_data, tileable_data)
     if raise_err_if_not_tiled:
         return _tileable_data_to_tiled[tileable_data]
     else:
         return _tileable_data_to_tiled.get(tileable_data)
-
-
-class GraphBuilder(object):
-    def __init__(self, graph=None, graph_cls=DAG, node_processor=None,
-                 inputs_selector=None):
-        self._graph_cls = graph_cls
-        if graph is not None:
-            self._graph = graph
-        else:
-            self._graph = graph_cls()
-        self._node_processor = node_processor
-        if inputs_selector is None:
-            inputs_selector = lambda x: x
-        self._inputs_selector = inputs_selector
-
-    def _add_nodes(self, nodes, visited):
-        graph = self._graph
-        visited.update(nodes)
-
-        while len(nodes) > 0:
-            node = nodes.pop()
-            if self._node_processor:
-                # if node processor registered, process the node first
-                node = self._node_processor(node)
-
-            visited.add(node)
-            if not graph.contains(node):
-                graph.add_node(node)
-            children = self._inputs_selector(node.inputs or [])
-            for c in children:
-                if self._node_processor:
-                    c = self._node_processor(c)
-                if not graph.contains(c):
-                    graph.add_node(c)
-                if not graph.has_successor(c, node):
-                    graph.add_edge(c, node)
-                for n in c.op.outputs:
-                    if n not in visited:
-                        nodes.append(n)
-
-    def build(self, tileables, tileable_graph=None):
-        raise NotImplementedError
-
-
-class TileableGraphBuilder(GraphBuilder):
-    def __init__(self, graph=None, graph_cls=DAG, node_processor=None,
-                 inputs_selector=None):
-        super(TileableGraphBuilder, self).__init__(graph=graph, graph_cls=graph_cls,
-                                                   node_processor=node_processor,
-                                                   inputs_selector=inputs_selector)
-
-    @kernel_mode
-    @enter_build_mode
-    def build(self, tileables, tileable_graph=None):
-        if tileable_graph is not None:  # pragma: no cover
-            return tileable_graph
-
-        visited = set()
-        nodes = list(itertools.chain(
-            *(tileable.op.outputs for tileable in tileables)))
-        self._add_nodes(nodes, visited)
-        return self._graph
 
 
 class ChunkGraphBuilder(GraphBuilder):
@@ -262,10 +203,16 @@ class ChunkGraphBuilder(GraphBuilder):
         return tds
 
     def _get_tileable_data_graph(self, tileables, tileable_graph):
+        from .optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
+
         if tileable_graph is None:
             # if tileable_data graph not provided
             # create a new one via GraphBuilder
-            tileable_graph_builder = TileableGraphBuilder(
+            if options.optimize_tileable_graph:
+                builder_cls = OptimizeIntegratedTileableGraphBuilder
+            else:
+                builder_cls = TileableGraphBuilder
+            tileable_graph_builder = builder_cls(
                 graph_cls=type(self._graph),
                 node_processor=self._node_processor)
             tileable_graph = tileable_graph_builder.build(tileables)
