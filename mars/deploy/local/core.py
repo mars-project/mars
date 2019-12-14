@@ -30,7 +30,7 @@ from ...lib import gipc
 from ...resource import cpu_count
 from ...scheduler.service import SchedulerService
 from ...session import new_session
-from ...utils import get_next_port
+from ...utils import get_next_port, kill_process_tree
 from ...worker.service import WorkerService
 from .distributor import gen_distributor
 
@@ -260,20 +260,7 @@ class LocalDistributedClusterClient(object):
         if proc is None or not proc.is_alive():
             return
         proc.join(3)
-
-        # in case the process does not finish
-        if proc.is_alive():  # pragma: no cover
-            try:
-                import psutil
-                for subproc in psutil.Process(proc.pid).children(recursive=True):
-                    try:
-                        subproc.kill()
-                    except psutil.NoSuchProcess:  # pragma: no cover
-                        pass
-            except ImportError:
-                pass
-            finally:
-                proc.terminate()
+        kill_process_tree(proc.pid)
 
     def stop(self):
         try:
