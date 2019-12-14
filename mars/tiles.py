@@ -203,7 +203,7 @@ class ChunkGraphBuilder(GraphBuilder):
         return tds
 
     def _get_tileable_data_graph(self, tileables, tileable_graph):
-        from .optimizes.tileable_graph.core import OptimizeIntegratedTileableGraphBuilder
+        from .optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
 
         if tileable_graph is None:
             # if tileable_data graph not provided

@@ -28,7 +28,8 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
     we can prune the columns that not used by the following operations when read the files.
     """
     def match(self, node):
-        if isinstance(node.inputs[0].op, DataFrameReadCSV):
+        if isinstance(node.inputs[0].op, DataFrameReadCSV) and \
+                node.inputs[0] not in self._optimizer_context.result_tileables:
             by_columns = node.op.by if isinstance(node.op.by, (list, tuple)) else [node.op.by]
             if isinstance(node.op.func, (six.string_types, list)):
                 # Passing func name(s) means perform on all columns.

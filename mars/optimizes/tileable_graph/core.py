@@ -23,7 +23,7 @@ from ...utils import copy_tileables, kernel_mode, enter_build_mode
 
 _rules = defaultdict(list)
 
-optimized_result_tileable = weakref.WeakKeyDictionary()
+tileable_optimized = weakref.WeakKeyDictionary()
 
 
 class TileableOptimizeRule(object):
@@ -37,13 +37,27 @@ class TileableOptimizeRule(object):
         raise NotImplementedError
 
 
+class OptimizeContext(weakref.WeakKeyDictionary):
+    def __init__(self, dict=None):
+        weakref.WeakKeyDictionary.__init__(self, dict=dict)
+        self._result_tileables = []
+
+    @property
+    def result_tileables(self):
+        return self._result_tileables
+
+    def append_result_tileables(self, tileables):
+        self._result_tileables.extend(tileables)
+
+
 class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     def __init__(self, **kw):
-        self._optimizer_context = weakref.WeakKeyDictionary()
+        self._optimizer_context = OptimizeContext()
         super(OptimizeIntegratedTileableGraphBuilder, self).__init__(**kw)
         self._node_processor = self._apply_rules(self._node_processor, self._optimizer_context)
 
-    def _apply_rules(self, node_processor, optimizer_context):
+    @staticmethod
+    def _apply_rules(node_processor, optimizer_context):
         def inner(node):
             node = node_processor(node) if node_processor is not None else node
             if type(node.op) in _rules:
@@ -58,15 +72,16 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     def _mapping_tileables(self, tileables):
         for t in tileables:
             if t in self._optimizer_context:
-                optimized_result_tileable[t] = self._optimizer_context[t]
+                tileable_optimized[t] = self._optimizer_context[t]
 
     def _replace_copied_tilebale(self, graph):
         if len(self._optimizer_context) == 0:
             return graph
 
         new_graph = DAG()
+        reversed_mapping = weakref.WeakKeyDictionary((v, k) for k, v in self._optimizer_context.items())
         for n in graph.topological_iter():
-            if n in self._optimizer_context.values():
+            if n in reversed_mapping:
                 new_node = n
             elif any(inp in self._optimizer_context for inp in n.inputs):
                 new_inputs = [self._optimizer_context.get(i, i) for i in n.inputs]
@@ -86,6 +101,7 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
     @kernel_mode
     @enter_build_mode
     def build(self, tileables, tileable_graph=None):
+        self._optimizer_context.append_result_tileables(tileables)
         graph = super(OptimizeIntegratedTileableGraphBuilder, self).build(tileables, tileable_graph=tileable_graph)
         graph = self._replace_copied_tilebale(graph)
         self._mapping_tileables(tileables)

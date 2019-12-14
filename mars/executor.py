@@ -39,7 +39,7 @@ from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .compat import six, futures, OrderedDict, enum
 from .optimizes.runtime.optimizers.core import Optimizer
-from .optimizes.tileable_graph.core import optimized_result_tileable, OptimizeIntegratedTileableGraphBuilder
+from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
 from .utils import kernel_mode, enter_build_mode, build_fetch, calc_nsplits,\
     has_unknown_shape
@@ -770,12 +770,12 @@ class Executor(object):
             if tileable.key in self.stored_tileables:
                 self.stored_tileables[tileable.key][0].add(tileable.id)
             else:
-                chunk_keys = tileable_data_to_chunk_keys[optimized_result_tileable.get(tileable, tileable)]
+                chunk_keys = tileable_data_to_chunk_keys[tileable_optimized.get(tileable, tileable)]
                 self.stored_tileables[tileable.key] = tuple([{tileable.id}, set(chunk_keys)])
         try:
             if fetch:
                 concat_keys = [
-                    tileable_data_to_concat_keys[optimized_result_tileable.get(t, t)] for t in tileables]
+                    tileable_data_to_concat_keys[tileable_optimized.get(t, t)] for t in tileables]
                 return [chunk_result[k] for k in concat_keys]
             else:
                 return
@@ -829,7 +829,7 @@ class Executor(object):
 
     def get_tileable_nsplits(self, tileable, chunk_result=None):
         chunk_idx_to_shape = OrderedDict()
-        tiled = get_tiled(tileable, mapping=optimized_result_tileable)
+        tiled = get_tiled(tileable, mapping=tileable_optimized)
         chunk_result = chunk_result if chunk_result is not None else self._chunk_result
         for chunk in tiled.chunks:
             chunk_idx_to_shape[chunk.index] = chunk_result[chunk.key].shape

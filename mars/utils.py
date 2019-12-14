@@ -398,7 +398,6 @@ def kernel_mode(func):
 
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
     from .tiles import TileableGraphBuilder
-    from .optimizes.tileable_graph.core import OptimizeIntegratedTileableGraphBuilder
 
     with build_mode():
         node_to_copy = weakref.WeakKeyDictionary()
@@ -429,12 +428,8 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
                     copied.add(copy.data)
             return node_to_copy[n]
 
-        if options.optimize_tileable_graph:
-            tileable_graph_builder = OptimizeIntegratedTileableGraphBuilder(
-                graph=graph, node_processor=replace_with_fetch_or_copy)
-        else:
-            tileable_graph_builder = TileableGraphBuilder(
-                graph=graph, node_processor=replace_with_fetch_or_copy)
+        tileable_graph_builder = TileableGraphBuilder(
+            graph=graph, node_processor=replace_with_fetch_or_copy)
         return tileable_graph_builder.build(tileables)
 
 
@@ -740,31 +735,24 @@ def copy_tileables(*tileables, **kwargs):
     inputs = kwargs.pop('inputs', None)
     copy_key = kwargs.pop('copy_key', True)
     copy_id = kwargs.pop('copy_id', True)
-    if len(tileables) == 1:
-        tileable = tileables[0]
-        op = tileable.op.copy().reset_key()
-        params = tileable.extra_params
-        if copy_key:
-            params['_key'] = tileable.key
-        if copy_id:
-            params['_id'] = tileable.id
-        inputs = inputs or tileable.inputs
-        return op.new_tileables(inputs, kws=[tileable.params.copy()], **params)[0]
-    else:
+    if len(tileables) > 1:
         if set([t.op for t in tileables]) != 1:
             raise TypeError("All tileables' operands should be same.")
-        op = tileables[0].op.copy().reset_key()
-        kws = []
-        for t in tileables:
-            params = t.params.copy()
-            if copy_key:
-                params['_key'] = t.key
-            if copy_id:
-                params['_id'] = t.id
-            params.update(t.extra_params)
-            kws.append(params)
-        inputs = inputs or op.inputs
-        return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
+
+    op = tileables[0].op.copy().reset_key()
+    kws = []
+    for t in tileables:
+        params = t.params.copy()
+        if copy_key:
+            params['_key'] = t.key
+        if copy_id:
+            params['_id'] = t.id
+        params.update(t.extra_params)
+        kws.append(params)
+    inputs = inputs or op.inputs
+    copied = op.new_tileables(inputs, kws=kws, output_limit=len(kws))
+    if len(tileables) == 1:
+        return copied[0]
 
 
 

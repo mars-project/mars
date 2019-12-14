@@ -91,10 +91,10 @@ class LocalSession(object):
             return res
 
     def _update_tileable_shape(self, tileable):
-        from .optimizes.tileable_graph.core import optimized_result_tileable
+        from .optimizes.tileable_graph import tileable_optimized
 
         new_nsplits = self._executor.get_tileable_nsplits(tileable)
-        tiled = get_tiled(tileable, mapping=optimized_result_tileable)
+        tiled = get_tiled(tileable, mapping=tileable_optimized)
         for t in (tileable, tiled):
             t._update_shape(tuple(sum(nsplit) for nsplit in new_nsplits))
         tiled.nsplits = new_nsplits

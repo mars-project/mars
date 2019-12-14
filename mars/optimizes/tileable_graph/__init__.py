@@ -15,4 +15,4 @@
 # limitations under the License.
 
 from .column_pruning import GroupbyPruneReadCSV
-from .core import OptimizeIntegratedTileableGraphBuilder
+from .core import OptimizeIntegratedTileableGraphBuilder, tileable_optimized
