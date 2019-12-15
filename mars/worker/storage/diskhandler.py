@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import os
 import shutil
 import sys
@@ -224,20 +225,32 @@ class DiskHandler(StorageHandler, BytesStorageMixin):
 
     @staticmethod
     def _get_serialized_data_size(serialized_obj):
-        if hasattr(serialized_obj, 'total_bytes'):
-            return serialized_obj.total_bytes
-        else:
-            return len(serialized_obj)
+        try:
+            if hasattr(serialized_obj, 'total_bytes'):
+                return int(serialized_obj.total_bytes)
+            else:
+                return len(serialized_obj)
+        finally:
+            del serialized_obj
 
     def load_from_object_io(self, session_id, data_keys, src_handler, pin_token=None):
-        def _load_data(key, obj_data):
-            data_size = self._get_serialized_data_size(obj_data)
+        data_dict = dict()
+
+        def _load_single_data(key):
+            data_size = self._get_serialized_data_size(data_dict[key])
             return self.create_bytes_writer(session_id, key, data_size, _promise=True) \
-                .then(lambda writer: self._copy_object_data(obj_data, writer))
+                .then(lambda writer: self._copy_object_data(data_dict.pop(key), writer),
+                      lambda *exc: self.pass_on_exc(functools.partial(data_dict.pop, key), exc))
+
+        def _load_all_data(objs):
+            data_dict.update(zip(data_keys, objs))
+            objs[:] = []
+            return promise.all_(_load_single_data(k) for k in data_keys) \
+                .catch(lambda *exc: self.pass_on_exc(data_dict.clear, exc))
 
         def _fallback(*_):
             return src_handler.get_objects(session_id, data_keys, serialize=True, _promise=True) \
-                .then(lambda objs: promise.all_(_load_data(k, o) for k, o in zip(data_keys, objs)))
+                .then(_load_all_data, lambda *exc: self.pass_on_exc(data_dict.clear, exc))
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

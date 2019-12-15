@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import logging
 from collections import deque
 
@@ -91,7 +90,7 @@ class IORunnerActor(WorkerActor):
             return
 
         @log_unhandled
-        def _finalize(exc, *_):
+        def _finalize(*exc):
             del self._cur_work_items[work_item_id]
             if not exc:
                 self.tell_promise(cb)
@@ -104,4 +103,4 @@ class IORunnerActor(WorkerActor):
         src_handler = self.storage_client.get_storage_handler(src_device)
         dest_handler = self.storage_client.get_storage_handler(dest_device)
         dest_handler.load_from(session_id, data_keys, src_handler) \
-            .then(functools.partial(_finalize, None), lambda *exc: _finalize(exc))
+            .then(lambda *_: _finalize(), _finalize)

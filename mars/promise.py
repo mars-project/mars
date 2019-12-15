@@ -247,6 +247,7 @@ class Promise(object):
         if self._accepted is not None:
             args_and_kwargs = [self._args, self._kwargs]
             args_and_kwargs[1]['_accept'] = self._accepted
+            _promise_pool.pop(self.id, None)
             self._clear_result_cache()
             self.step_next(args_and_kwargs)
         return promise
@@ -279,7 +280,7 @@ class PromiseRefWrapper(object):
     Promise wrapper that enables promise call by adding _promise=True
     """
     def __init__(self, ref, caller):
-        self._ref = ref
+        self._ref = caller.ctx.actor_ref(ref)
         self._caller = caller  # type: PromiseActor
 
     def send(self, message):
@@ -298,6 +299,10 @@ class PromiseRefWrapper(object):
     @property
     def address(self):
         return self._ref.address
+
+    def __reduce__(self):
+        # when pickled, return original ActorRef
+        return ActorRef, (self._caller.address, self._ref.uid)
 
     def __getattr__(self, item):
         if item.startswith('_'):
@@ -553,6 +558,8 @@ def all_(promises):
         def _then(*_, **__):
             finish_set.add(promise.id)
             if all(p.id in finish_set for p in promises):
+                for p in promises:
+                    _promise_pool.pop(p.id, None)
                 new_promise.step_next()
         return _then
 

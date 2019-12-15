@@ -158,7 +158,7 @@ class Test(WorkerCase):
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[0].key])[0]),
                              [(0, DataStorageDevice.SHARED_MEMORY)])
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[1].key])[0]),
-                             [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
+                             [(0, DataStorageDevice.DISK)])
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [fetch_chunks[2].key])[0]),
                              [(0, DataStorageDevice.DISK)])
             self.assertEqual(sorted(storage_client.get_data_locations(session_id, [add_chunk.key])[0]),

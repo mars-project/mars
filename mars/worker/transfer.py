@@ -13,19 +13,18 @@
 # limitations under the License.
 
 import functools
+import operator
 import logging
 import sys
 import time
-import zlib
 from collections import defaultdict
-
-import pandas as pd
 
 from .. import promise
 from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
 from ..config import options
-from ..errors import *
+from ..errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from ..serialize import dataserializer
+from ..scheduler.chunkmeta import WorkerMeta
 from ..utils import log_unhandled, build_exc_info
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
@@ -36,9 +35,27 @@ logger = logging.getLogger(__name__)
 
 class ReceiveStatus(Enum):
     NOT_STARTED = 0
-    RECEIVING = 1
-    RECEIVED = 2
-    ERROR = 3
+    PENDING = 1
+    RECEIVING = 2
+    RECEIVED = 3
+    ERROR = 4
+
+
+class EndpointTransferState(object):
+    """
+    Structure providing transfer status in an endpoint
+    """
+    __slots__ = 'parts', 'total_size', 'keys', 'end_marks', 'send_future'
+
+    def __init__(self):
+        self.reset()
+        self.send_future = None
+
+    def reset(self):
+        self.parts = []
+        self.total_size = 0
+        self.keys = []
+        self.end_marks = []
 
 
 class SenderActor(WorkerActor):
@@ -63,110 +80,105 @@ class SenderActor(WorkerActor):
         self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
         self._dispatch_ref.register_free_slot(self.uid, 'sender')
 
-    def _read_data_size(self, session_id, chunk_key):
-        """
-        Obtain decompressed data size for a certain chunk
-        :param session_id: session id
-        :param chunk_key: chunk key
-        :return: size of data
-        """
-        nbytes = self.storage_client.get_data_sizes(session_id, [chunk_key])[0]
-        if nbytes is None:
-            raise DependencyMissing('Dependency %s not met on sending.' % chunk_key)
-        return nbytes
-
-    def _collect_receiver_refs(self, chunk_key, target_endpoints, target_slots, timeout):
-        from .dispatcher import DispatchActor
-
-        if isinstance(target_endpoints, six.string_types):
-            target_endpoints, target_slots = [target_endpoints], [target_slots]
-        if target_slots is None:
-            target_slots = [None] * len(target_endpoints)
-
-        refs, slot_futures = [], []
-        for ep, slot in zip(target_endpoints, target_slots):
-            if slot is None:
-                dispatch_ref = self.ctx.actor_ref(DispatchActor.default_uid(), address=ep)
-                slot_futures.append((ep, dispatch_ref.get_hash_slot('receiver', chunk_key, _wait=False)))
-            else:
-                refs.append(self.promise_ref(slot, address=ep))
-        refs.extend([self.promise_ref(f.result(timeout), address=ep)
-                     for ep, f in slot_futures])
-        return refs
-
     @promise.reject_on_exception
     @log_unhandled
-    def send_data(self, session_id, chunk_key, target_endpoints, target_slots=None,
-                  ensure_cached=True, compression=None, timeout=None, callback=None):
+    def send_data(self, session_id, chunk_keys, target_endpoints, ensure_cached=True,
+                  compression=None, block_size=None, pin_token=None, timeout=None, callback=None):
         """
         Send data to other workers
         :param session_id: session id
-        :param chunk_key: chunk to be sent
+        :param chunk_keys: chunks to be sent
         :param target_endpoints: endpoints to receive this chunk
-        :param target_slots: slots for receivers, None if not fixed
         :param ensure_cached: if True, make sure the data is in the shared storage of the target worker
         :param compression: compression type when transfer in network
+        :param block_size: size of data block
+        :param pin_token: token to pin the data
         :param timeout: timeout of data sending
         :param callback: promise callback
         """
-        already_started = set()
-        data_size_bin = [self._read_data_size(session_id, chunk_key)]
-        wait_refs = []
+        chunk_keys = list(chunk_keys)
+        target_endpoints = list(target_endpoints)
+        block_size = block_size or options.worker.transfer_block_size
+
+        data_sizes_bin = [self.storage_client.get_data_sizes(session_id, chunk_keys)]
+        if any(s is None for s in data_sizes_bin[0]):
+            raise DependencyMissing('Dependencies %r not met when sending.'
+                                    % [k for k, s in zip(chunk_keys, data_sizes_bin[0]) if s is None])
         compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
-        try:
-            receiver_refs = self._collect_receiver_refs(
-                chunk_key, target_endpoints, target_slots, timeout)
-        except:  # noqa: E722
-            self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
-            raise
+        wait_refs = []
+        addrs_to_chunks = dict()
+        keys_to_readers = dict()
+        receiver_refs = []
+        receiver_manager_ref_dict = dict(
+            (ep, self.promise_ref(ReceiverManagerActor.default_uid(), address=ep))
+            for ep in target_endpoints)
 
         @log_unhandled
-        def _create_writers(reader):
+        def _create_local_readers():
+            promises = []
+            for k in chunk_keys:
+                promises.append(self.storage_client.create_reader(
+                    session_id, k, source_devices, packed=True, packed_compression=compression)
+                    .then(functools.partial(operator.setitem, keys_to_readers, k)))
+            return promise.all_(promises)
+
+        @log_unhandled
+        def _create_remote_writers():
             create_write_promises = []
-            data_size = data_size_bin[0] = self._read_data_size(session_id, chunk_key)
-            for ref in receiver_refs:
+            data_sizes = data_sizes_bin[0] = self.storage_client.get_data_sizes(session_id, chunk_keys)
+            for ref in receiver_manager_ref_dict.values():
                 # register transfer actions
                 create_write_promises.append(
-                    ref.create_data_writer(
-                        session_id, chunk_key, data_size, self.ref(), ensure_cached=ensure_cached,
-                        timeout=timeout, _timeout=timeout, _promise=True
-                    ).then(functools.partial(_handle_created, ref))
+                    ref.create_data_writers(
+                        session_id, chunk_keys, data_sizes, self.ref(), ensure_cached=ensure_cached,
+                        timeout=timeout, pin_token=pin_token, _timeout=timeout, _promise=True
+                    ).then(_handle_created)
                 )
-            return promise.all_(create_write_promises).then(lambda *_: reader)
+            return promise.all_(create_write_promises).then(lambda *_: keys_to_readers)
 
         @log_unhandled
-        def _handle_created(ref, address, status):
+        def _handle_created(ref, statuses):
+            manager_ref = receiver_manager_ref_dict[ref.address]
             # filter out endpoints already transferred or already started transfer
-            if status == ReceiveStatus.RECEIVED:
-                already_started.add(address)
-            elif status == ReceiveStatus.RECEIVING:
-                already_started.add(address)
-                wait_refs.append(ref.register_finish_callback(
-                    session_id, chunk_key, _timeout=timeout, _promise=True))
+            keys_receiving, keys_to_receive = [], []
+            for k, status in zip(chunk_keys, statuses):
+                if status == ReceiveStatus.RECEIVING:
+                    keys_receiving.append(k)
+                elif status is None:
+                    keys_to_receive.append(k)
+
+            if keys_to_receive:
+                addrs_to_chunks[ref.address] = keys_to_receive
+                receiver_refs.append(self.promise_ref(ref))
+            if keys_receiving:
+                wait_refs.append(manager_ref.add_keys_callback(
+                    session_id, keys_receiving, _timeout=timeout, _promise=True))
 
         @log_unhandled
         def _finalize(*_):
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
-            self.tell_promise(callback, data_size_bin[0])
+            self.tell_promise(callback, data_sizes_bin[0])
 
         @log_unhandled
         def _handle_rejection(*exc):
-            logger.exception('Transfer chunk %s to %r failed', chunk_key, target_endpoints, exc_info=exc)
+            logger.exception('Transfer chunks %r to %r failed', chunk_keys, target_endpoints, exc_info=exc)
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
+
+            for reader in keys_to_readers.values():
+                reader.close()
+            keys_to_readers.clear()
+
             for ref in receiver_refs:
-                ref.cancel_receive(session_id, chunk_key, _tell=True, _wait=False)
+                ref.cancel_receive(session_id, addrs_to_chunks[ref.address], _tell=True, _wait=False)
             self.tell_promise(callback, *exc, **dict(_accept=False))
 
         try:
             source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
-            self.storage_client.create_reader(
-                session_id, chunk_key, source_devices, packed=True, packed_compression=compression) \
-                .then(_create_writers) \
-                .then(lambda reader: self._compress_and_send(
-                    session_id, chunk_key,
-                    [ref for ref in receiver_refs if ref.address not in already_started],
-                    reader, timeout=timeout,
+            _create_local_readers().then(_create_remote_writers) \
+                .then(lambda *_: self._compress_and_send(
+                    session_id, addrs_to_chunks, receiver_refs, keys_to_readers,
+                    block_size=block_size, timeout=timeout,
                 )) \
                 .then(lambda *_: promise.all_(wait_refs)) \
                 .then(_finalize, _handle_rejection)
@@ -175,122 +187,286 @@ class SenderActor(WorkerActor):
             return
 
     @log_unhandled
-    def _compress_and_send(self, session_id, chunk_key, target_refs, reader, timeout=None):
+    def _compress_and_send(self, session_id, addrs_to_chunks, receiver_refs, keys_to_readers,
+                           block_size, timeout=None):
         """
         Compress and send data to receivers in chunked manner
         :param session_id: session id
-        :param chunk_key: chunk key
-        :param target_refs: refs to send data to
+        :param addrs_to_chunks: dict mapping endpoints to chunks to send
+        :param receiver_refs: refs to send data to
         """
+        # collect data targets
+        chunks_to_addrs = defaultdict(set)
+        for addr, chunks in addrs_to_chunks.items():
+            for key in chunks:
+                chunks_to_addrs[key].add(addr)
+        all_chunk_keys = sorted(chunks_to_addrs.keys(), key=lambda k: len(chunks_to_addrs[k]))
+        addr_statuses = dict((k, EndpointTransferState()) for k in addrs_to_chunks.keys())
+        addr_to_refs = dict((ref.address, ref) for ref in receiver_refs)
+
         # start compress and send data into targets
-        logger.debug('Data writer for chunk %s allocated at targets, start transmission', chunk_key)
-        block_size = options.worker.transfer_block_size
+        logger.debug('Data writer for chunks %r allocated at targets, start transmission', all_chunk_keys)
 
         # filter out endpoints we need to send to
         try:
-            if not target_refs:
+            if not receiver_refs:
                 self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True, _wait=False)
                 return
-
-            futures = []
-            checksum = 0
+            cur_key_id = 0
+            cur_key = all_chunk_keys[cur_key_id]
+            cur_reader = keys_to_readers[cur_key]
             with EventContext(self._events_ref, EventCategory.PROCEDURE, EventLevel.NORMAL,
                               ProcedureEventType.NETWORK, self.uid):
-                while True:
+                while cur_key_id < len(all_chunk_keys):
                     # read a data part from reader we defined above
-                    pool = reader.get_io_pool()
-                    next_chunk = pool.submit(reader.read, block_size).result()
-                    is_last = not next_chunk or len(next_chunk) < block_size
-                    # make sure all previous transfers finished
-                    [f.result(timeout=timeout) for f in futures]
-                    checksum = zlib.crc32(next_chunk, checksum)
-                    futures = []
-                    for ref in target_refs:
-                        # we perform async transfer and wait after next part is loaded and compressed
-                        futures.append(ref.receive_data_part(
-                            session_id, chunk_key, next_chunk, checksum, is_last=is_last, _wait=False))
-                    if is_last:
-                        [f.result(timeout=timeout) for f in futures]
-                        break
+                    pool = cur_reader.get_io_pool()
+                    next_part = pool.submit(cur_reader.read, block_size).result()
+                    file_eof = len(next_part) < block_size
+
+                    for addr in chunks_to_addrs[cur_key]:
+                        addr_status = addr_statuses[addr]
+                        addr_status.parts.append(next_part)
+                        addr_status.keys.append(cur_key)
+                        addr_status.total_size += len(next_part)
+                        addr_status.end_marks.append(file_eof)
+
+                        if addr_status.total_size >= block_size:
+                            if addr_status.send_future:
+                                addr_status.send_future.result(timeout=timeout)
+                            addr_status.send_future = addr_to_refs[addr].receive_data_part(
+                                session_id, addr_status.keys, addr_status.end_marks,
+                                *addr_status.parts, _wait=False)
+                            addr_status.reset()
+
+                    # when some part goes to end, move to the next chunk
+                    if file_eof:
+                        cur_reader.close()
+                        cur_key_id += 1
+                        if cur_key_id < len(all_chunk_keys):
+                            # still some chunks left unhandled
+                            cur_key = all_chunk_keys[cur_key_id]
+                            cur_reader = keys_to_readers[cur_key]
+                        else:
+                            # all chunks handled
+                            for addr, addr_status in addr_statuses.items():
+                                if addr_status.send_future:
+                                    addr_status.send_future.result(timeout=timeout)
+                                if addr_status.parts:
+                                    # send remaining chunks
+                                    addr_status.end_marks[-1] = True
+                                    addr_status.send_future = addr_to_refs[addr].receive_data_part(
+                                        session_id, addr_status.keys, addr_status.end_marks,
+                                        *addr_status.parts, _wait=False)
+                                addr_status.reset()
+                            for addr_status in addr_statuses.values():
+                                if addr_status.send_future:
+                                    addr_status.send_future.result(timeout=timeout)
+                                addr_status.reset()
+
         except:  # noqa: E722
-            for ref in target_refs:
-                ref.cancel_receive(session_id, chunk_key, _tell=True, _wait=False)
+            for ref in receiver_refs:
+                ref.cancel_receive(session_id, addrs_to_chunks[ref.address], _tell=True, _wait=False)
             raise
         finally:
-            reader.close()
+            for reader in keys_to_readers.values():
+                reader.close()
 
 
 class ReceiverDataMeta(object):
-    __slots__ = 'start_time', 'chunk_size', 'checksum', 'source_address', \
-                'transfer_event_id', 'status', 'callback_args', 'callback_kwargs'
+    __slots__ = 'start_time', 'chunk_size', 'source_address',\
+                'status', 'transfer_event_id', 'receiver_worker_uid', \
+                'callback_ids', 'callback_args', 'callback_kwargs'
 
-    def __init__(self, start_time=None, chunk_size=None, checksum=0,
-                 source_address=None, transfer_event_id=None, status=None,
-                 callback_args=None, callback_kwargs=None):
-        self.start_time = start_time or time.time()
+    def __init__(self, start_time=None, chunk_size=None, source_address=None,
+                 transfer_event_id=None, receiver_worker_uid=None, status=None,
+                 callback_ids=None, callback_args=None, callback_kwargs=None):
+        self.start_time = start_time
         self.chunk_size = chunk_size
-        self.checksum = checksum
         self.source_address = source_address
         self.status = status
         self.transfer_event_id = transfer_event_id
+        self.receiver_worker_uid = receiver_worker_uid
+        self.callback_ids = callback_ids or []
         self.callback_args = callback_args or ()
         self.callback_kwargs = callback_kwargs or {}
+
+    def update(self, **kwargs):
+        kwargs['callback_ids'] = list(set(self.callback_ids) | set(kwargs.get('callback_ids') or ()))
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 class ReceiverManagerActor(WorkerActor):
     def __init__(self):
         super(ReceiverManagerActor, self).__init__()
-        self._receiver_callback_ids = dict()
+        self._data_meta_cache = ExpiringCache()
         self._max_callback_id = 0
         self._callback_id_to_callbacks = dict()
         self._callback_id_to_keys = dict()
 
-    def register_keys(self, session_id, data_keys):
-        for key in data_keys:
-            self._receiver_callback_ids[(session_id, key)] = []
+        self._dispatch_ref = None
 
-    def filter_registered_keys(self, session_id, data_keys):
-        return [k for k in data_keys if (session_id, k) in self._receiver_callback_ids]
+    def post_create(self):
+        super(ReceiverManagerActor, self).post_create()
+
+        from .dispatcher import DispatchActor
+        self._dispatch_ref = self.promise_ref(DispatchActor.default_uid())
+
+    def _update_data_meta(self, session_id, data_key, **kwargs):
+        try:
+            self._data_meta_cache[(session_id, data_key)].update(**kwargs)
+        except KeyError:
+            self._data_meta_cache[(session_id, data_key)] = ReceiverDataMeta(**kwargs)
+
+    @promise.reject_on_exception
+    @log_unhandled
+    def create_data_writers(self, session_id, data_keys, data_sizes, sender_ref,
+                            ensure_cached=True, pin_token=None, timeout=0,
+                            use_promise=True, callback=None):
+        sender_address = None if sender_ref is None else sender_ref.address
+        logger.debug('Begin creating transmission data writer for chunks %r from %s',
+                     data_keys, sender_address)
+        data_locations = dict(zip(
+            data_keys, self.storage_client.get_data_locations(session_id, data_keys)))
+        keys_to_fetch = []
+        sizes_to_fetch = []
+        statuses = []
+
+        slot_ref = self.promise_ref(self._dispatch_ref.get_hash_slot('receiver', repr(data_keys)))
+        for chunk_key, data_size in zip(data_keys, data_sizes):
+            session_chunk_key = (session_id, chunk_key)
+            try:
+                data_meta = self._data_meta_cache[session_chunk_key]
+            except KeyError:
+                data_meta = self._data_meta_cache[session_chunk_key] = \
+                    ReceiverDataMeta(chunk_size=data_size, source_address=sender_address,
+                                     status=ReceiveStatus.NOT_STARTED)
+
+            if data_locations.get(chunk_key) or data_meta.status == ReceiveStatus.RECEIVED:
+                data_meta.status = ReceiveStatus.RECEIVED
+                statuses.append(ReceiveStatus.RECEIVED)
+                self._update_data_meta(session_id, chunk_key, status=ReceiveStatus.RECEIVED)
+                continue
+            if data_meta.status == ReceiveStatus.RECEIVING:
+                # data transfer already started
+                logger.debug('Chunk %s already started transmission', chunk_key)
+                statuses.append(ReceiveStatus.RECEIVING)
+                continue
+
+            data_meta.start_time = time.time()
+            data_meta.receiver_worker_uid = slot_ref.uid
+            data_meta.source_address = sender_address
+            data_meta.status = ReceiveStatus.RECEIVING
+
+            self._update_data_meta(session_id, chunk_key, chunk_size=data_size,
+                                   source_address=sender_address, status=ReceiveStatus.RECEIVING)
+            keys_to_fetch.append(chunk_key)
+            sizes_to_fetch.append(data_size)
+            statuses.append(None)  # this notifies the sender to transmit data
+
+        if use_promise:
+            if keys_to_fetch:
+                slot_ref.create_data_writers(
+                    session_id, keys_to_fetch, sizes_to_fetch, sender_ref, ensure_cached=ensure_cached,
+                    timeout=timeout, pin_token=pin_token, use_promise=use_promise, _promise=True) \
+                    .then(lambda *_: self.tell_promise(callback, slot_ref, statuses))
+            else:
+                self.tell_promise(callback, slot_ref, statuses)
+        else:
+            slot_ref.create_data_writers(
+                session_id, keys_to_fetch, sizes_to_fetch, sender_ref, ensure_cached=ensure_cached,
+                timeout=timeout, pin_token=pin_token, use_promise=use_promise)
+            return slot_ref, statuses
+
+    def register_pending_keys(self, session_id, data_keys):
+        for key in data_keys:
+            session_data_key = (session_id, key)
+            if session_data_key not in self._data_meta_cache \
+                    or self._data_meta_cache[session_data_key].status == ReceiveStatus.ERROR:
+                self._update_data_meta(session_id, key, status=ReceiveStatus.PENDING,
+                                       callback_args=(), callback_kwargs={})
+
+    def filter_receiving_keys(self, session_id, data_keys):
+        keys = []
+        receiving_status = (ReceiveStatus.PENDING, ReceiveStatus.RECEIVING)
+        for k in data_keys:
+            try:
+                if self._data_meta_cache[(session_id, k)].status in receiving_status:
+                    keys.append(k)
+            except KeyError:
+                pass
+        return keys
 
     def add_keys_callback(self, session_id, data_keys, callback):
         cb_id = self._max_callback_id
         self._max_callback_id += 1
 
-        self._callback_id_to_callbacks[cb_id] = callback
-        self._callback_id_to_keys[cb_id] = set((session_id, k) for k in data_keys)
-
+        receiving_status = (ReceiveStatus.PENDING, ReceiveStatus.RECEIVING)
+        registered_session_keys = []
+        args, kwargs = (), {}
         for k in data_keys:
-            self._receiver_callback_ids[(session_id, k)].append(cb_id)
+            session_data_key = (session_id, k)
+            data_meta = self._data_meta_cache[session_data_key]  # type: ReceiverDataMeta
+            if data_meta.status in receiving_status:
+                registered_session_keys.append(session_data_key)
+                data_meta.callback_ids.append(cb_id)
+            else:
+                args, kwargs = data_meta.callback_args, data_meta.callback_kwargs
 
-    def notify_key_finish(self, session_id, data_key, *args, **kwargs):
-        session_data_key = (session_id, data_key)
-        cb_ids = self._receiver_callback_ids.pop(session_data_key, [])
-        if not cb_ids:
-            return
+        if registered_session_keys:
+            self._callback_id_to_callbacks[cb_id] = callback
+            self._callback_id_to_keys[cb_id] = set(registered_session_keys)
+            logger.debug('Callback for transferring %r registered', registered_session_keys)
+        else:
+            self._max_callback_id = cb_id
+            self.tell_promise(callback, *args, **kwargs)
 
-        kwargs['_wait'] = False
-        for cb_id in cb_ids:
-            cb_keys = self._callback_id_to_keys[cb_id]
-            cb_keys.remove(session_data_key)
-            if not cb_keys:
-                del self._callback_id_to_keys[cb_id]
-                cb = self._callback_id_to_callbacks.pop(cb_id)
-                self.tell_promise(cb, *args, **kwargs)
+    def notify_keys_finish(self, session_id, data_keys, *args, **kwargs):
+        for data_key in data_keys:
+            session_data_key = (session_id, data_key)
+            try:
+                data_meta = self._data_meta_cache[session_data_key]  # type: ReceiverDataMeta
+            except KeyError:
+                logger.debug('Record of %s not found.', data_key)
+                continue
+
+            data_meta.callback_args = args
+            data_meta.callback_kwargs = kwargs
+            if kwargs.get('_accept', True):
+                data_meta.status = ReceiveStatus.RECEIVED
+            else:
+                data_meta.status = ReceiveStatus.ERROR
+
+            cb_ids = data_meta.callback_ids
+            data_meta.callback_ids = []
+            if not cb_ids:
+                continue
+
+            kwargs['_wait'] = False
+            notified = 0
+            for cb_id in cb_ids:
+                cb_keys = self._callback_id_to_keys[cb_id]
+                cb_keys.remove(session_data_key)
+                if not cb_keys:
+                    del self._callback_id_to_keys[cb_id]
+                    cb = self._callback_id_to_callbacks.pop(cb_id)
+                    notified += 1
+                    self.tell_promise(cb, *args, **kwargs)
+            logger.debug('%d transfer listeners of %s notified.', notified, data_key)
 
 
-class ReceiverActor(WorkerActor):
+class ReceiverWorkerActor(WorkerActor):
     """
     Actor handling receiving data from a SenderActor
     """
     def __init__(self):
-        super(ReceiverActor, self).__init__()
+        super(ReceiverWorkerActor, self).__init__()
         self._chunk_holder_ref = None
         self._dispatch_ref = None
         self._receiver_manager_ref = None
         self._events_ref = None
         self._status_ref = None
 
-        self._finish_callbacks = defaultdict(list)
         self._data_writers = dict()
         self._writing_futures = dict()
         self._data_meta_cache = ExpiringCache()
@@ -300,7 +476,7 @@ class ReceiverActor(WorkerActor):
         from .status import StatusActor
         from .dispatcher import DispatchActor
 
-        super(ReceiverActor, self).post_create()
+        super(ReceiverWorkerActor, self).post_create()
 
         self._events_ref = self.ctx.actor_ref(EventsActor.default_uid())
         if not self.ctx.has_actor(self._events_ref):
@@ -335,113 +511,75 @@ class ReceiverActor(WorkerActor):
 
     @promise.reject_on_exception
     @log_unhandled
-    def register_finish_callback(self, session_id, chunk_key, callback):
-        """
-        Register a promise callback to handle transfer termination.
-        If the chunk has already been transferred or error occurred,
-        the existing results are sent.
-        :param session_id: session id
-        :param chunk_key: chunk key
-        :param callback: promise callback
-        """
-        session_chunk_key = (session_id, chunk_key)
-        if session_chunk_key not in self._data_meta_cache:
-            self._finish_callbacks[session_chunk_key].append(callback)
-            return
-        data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-        if data_meta.status in (ReceiveStatus.RECEIVED, ReceiveStatus.ERROR):
-            # invoke callback directly when transfer finishes
-            self.tell_promise(callback, *data_meta.callback_args, **data_meta.callback_kwargs)
-        else:
-            self._finish_callbacks[session_chunk_key].append(callback)
-
-    @promise.reject_on_exception
-    @log_unhandled
-    def create_data_writer(self, session_id, chunk_key, data_size, sender_ref,
-                           ensure_cached=True, timeout=0, use_promise=True, callback=None):
+    def create_data_writers(self, session_id, chunk_keys, data_sizes, sender_ref,
+                            ensure_cached=True, timeout=0, pin_token=None,
+                            use_promise=True, callback=None):
         """
         Create a data writer for subsequent data transfer. The writer can either work on
         shared storage or spill.
+
         :param session_id: session id
-        :param chunk_key: chunk key
-        :param data_size: uncompressed data size
+        :param chunk_keys: chunk keys
+        :param data_sizes: uncompressed data sizes
         :param sender_ref: ActorRef of SenderActor
-        :param ensure_cached: if True, the data should be stored in shared memory, otherwise spill is acceptable
+        :param ensure_cached: if True, the data should be stored in shared memory,
+                              otherwise spill is acceptable
         :param timeout: timeout if the chunk receiver does not close
-        :param use_promise: if True, we use promise callback to notify accomplishment of writer creation,
-            otherwise the function returns directly and when sill is needed, a StorageFull will be raised instead.
+        :param pin_token: token to pin the data
+        :param use_promise: if True, we use promise callback to notify accomplishment
+                            of writer creation, otherwise the function returns directly
+                            and when sill is needed, a StorageFull will be raised instead.
         :param callback: promise callback
         """
-        sender_address = None if sender_ref is None else sender_ref.address
-
-        logger.debug('Begin creating transmission data writer for chunk %s from %s',
-                     chunk_key, sender_address)
-        session_chunk_key = (session_id, chunk_key)
-
-        data_status = self.check_status(session_id, chunk_key)
-
-        if data_status == ReceiveStatus.RECEIVING:
-            # data transfer already started
-            logger.debug('Chunk %s already started transmission', chunk_key)
-            if callback:
-                self.tell_promise(callback, self.address, ReceiveStatus.RECEIVING)
-            return self.address, ReceiveStatus.RECEIVING
-
-        # build meta data for data transfer
-        if session_chunk_key in self._data_meta_cache:
-            if data_status == ReceiveStatus.RECEIVED:
-                # already received: callback directly
-                logger.debug('Chunk %s already received', chunk_key)
-                if callback:
-                    self.tell_promise(callback, self.address, ReceiveStatus.RECEIVED)
-                self._invoke_finish_callbacks(session_id, chunk_key)
-                return self.address, ReceiveStatus.RECEIVED
-            else:
-                del self._data_meta_cache[session_chunk_key]
-
-        self._data_meta_cache[session_chunk_key] = ReceiverDataMeta(
-            chunk_size=data_size, source_address=sender_address,
-            status=ReceiveStatus.RECEIVING)
-
-        # configure timeout callback
-        if timeout:
-            self.ref().handle_receive_timeout(session_id, chunk_key, _delay=timeout, _tell=True)
-
+        promises = []
+        failed_container = [False]
         device_order = [DataStorageDevice.SHARED_MEMORY]
+        source_address = sender_ref.address if sender_ref is not None else None
         if not ensure_cached:
             device_order += [DataStorageDevice.DISK]
 
-        def _handle_accept(writer):
-            self._data_writers[session_chunk_key] = writer
-            if callback is not None:
-                self.tell_promise(callback, self.address, None)
+        def _handle_accept_key(key, writer):
+            if failed_container[0]:
+                writer.close(finished=False)
+            else:
+                self._data_writers[(session_id, key)] = writer
 
         @log_unhandled
-        def _handle_reject(*exc):
-            if self.check_status(session_id, chunk_key) == ReceiveStatus.RECEIVED:
-                logger.debug('Chunk %s already received', chunk_key)
-                self._invoke_finish_callbacks(session_id, chunk_key)
-                if callback is not None:
-                    self.tell_promise(callback, self.address, ReceiveStatus.RECEIVED)
+        def _handle_reject_key(key, *exc):
+            if self.check_status(session_id, key) == ReceiveStatus.RECEIVED:
+                logger.debug('Chunk %s already received', key)
             else:
-                logger.debug('Rejecting %s from putting into plasma.', chunk_key)
-                self._stop_transfer_with_exc(session_id, chunk_key, exc)
+                logger.debug('Rejecting %s from putting into plasma.', key)
+                failed_container[0] = True
+                self._stop_transfer_with_exc(session_id, chunk_keys, exc)
                 if callback is not None:
                     self.tell_promise(callback, *exc, **dict(_accept=False))
 
-        if use_promise:
-            self.storage_client.create_writer(
-                session_id, chunk_key, data_size, device_order, packed=True) \
-                .then(_handle_accept, _handle_reject)
-        else:
-            try:
-                writer = self.storage_client.create_writer(
-                    session_id, chunk_key, data_size, device_order, packed=True, _promise=False)
-                _handle_accept(writer)
-                return self.address, None
-            except:  # noqa: E722
-                _handle_reject(*sys.exc_info())
-                raise
+        # configure timeout callback
+        if timeout:
+            self.ref().handle_receive_timeout(session_id, chunk_keys, _delay=timeout, _tell=True)
+
+        for chunk_key, data_size in zip(chunk_keys, data_sizes):
+            self._data_meta_cache[(session_id, chunk_key)] = ReceiverDataMeta(
+                start_time=time.time(), chunk_size=data_size, source_address=source_address)
+            if use_promise:
+                promises.append(self.storage_client.create_writer(
+                    session_id, chunk_key, data_size, device_order, packed=True,
+                    pin_token=pin_token, _promise=True)
+                    .then(functools.partial(_handle_accept_key, chunk_key),
+                          functools.partial(_handle_reject_key, chunk_key)))
+            else:
+                try:
+                    _writer = self.storage_client.create_writer(
+                        session_id, chunk_key, data_size, device_order, packed=True,
+                        pin_token=pin_token, _promise=False)
+                    _handle_accept_key(chunk_key, _writer)
+                    return self.address, None
+                except:  # noqa: E722
+                    _handle_reject_key(*sys.exc_info())
+                    raise
+
+        promise.all_(promises).then(lambda *_: self.tell_promise(callback))
 
     def _wait_unfinished_writing(self, session_id, data_key):
         try:
@@ -451,88 +589,93 @@ class ReceiverActor(WorkerActor):
             pass
 
     @log_unhandled
-    def receive_data_part(self, session_id, chunk_key, data_part, checksum, is_last=False):
+    def receive_data_part(self, session_id, chunk_keys, end_marks, *data_parts):
         """
         Receive data part from sender
         :param session_id: session id
-        :param chunk_key: chunk key
-        :param data_part: data to be written
-        :param checksum: checksum up to now
-        :param is_last: if True, after writing this chunk, a
+        :param chunk_keys: chunk keys
+        :param end_marks: array with same number of boolean elements as chunk keys.
+                          if one element is True, the corresponding data in data_parts
+                          is the last part of the chunk.
+        :param data_parts: data parts to be written
         """
-        self._wait_unfinished_writing(session_id, chunk_key)
-
-        session_chunk_key = (session_id, chunk_key)
         try:
-            data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-            meta_future = None
-
-            if data_part:
-                # check if checksum matches
-                local_checksum = zlib.crc32(data_part, data_meta.checksum)
-                if local_checksum != checksum:
-                    raise ChecksumMismatch
-                data_meta.checksum = local_checksum
-
-                # if error occurred, interrupts
-                if data_meta.status == ReceiveStatus.ERROR:
-                    six.reraise(*data_meta.callback_args)
-                    return  # pragma: no cover
-                writer = self._data_writers[session_chunk_key]
-                pool = writer.get_io_pool()
-                self._writing_futures[session_chunk_key] = pool.submit(writer.write, data_part)
-                if meta_future:
-                    meta_future.result()
-
-            if is_last:
+            finished_keys, finished_meta_keys, finished_metas = [], [], []
+            for chunk_key, data_part, end_mark in zip(chunk_keys, data_parts, end_marks):
                 self._wait_unfinished_writing(session_id, chunk_key)
-                # update transfer speed stats
-                if self._status_ref:
-                    time_delta = time.time() - data_meta.start_time
-                    self._status_ref.update_mean_stats(
-                        'net_transfer_speed', data_meta.chunk_size * 1.0 / time_delta,
-                        _tell=True, _wait=False)
+                session_chunk_key = (session_id, chunk_key)
+                try:
+                    data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
 
-                self._data_writers[session_chunk_key].close()
-                del self._data_writers[session_chunk_key]
+                    # if error occurred, interrupts
+                    if data_meta.status == ReceiveStatus.ERROR:
+                        six.reraise(*data_meta.callback_args)
+                        return  # pragma: no cover
+                    writer = self._data_writers[session_chunk_key]
+                    pool = writer.get_io_pool()
+                    self._writing_futures[session_chunk_key] = pool.submit(
+                        writer.write, data_part)
 
-                if not isinstance(chunk_key, tuple):
-                    self.get_meta_client().set_chunk_meta(
-                        session_id, chunk_key, size=data_meta.chunk_size, workers=(self.address,))
+                    if end_mark:
+                        finished_keys.append(chunk_key)
+                        if not isinstance(chunk_key, tuple):
+                            finished_meta_keys.append(chunk_key)
+                            finished_metas.append(WorkerMeta(chunk_size=data_meta.chunk_size,
+                                                             workers=(self.address,)))
+                except:  # noqa: E722
+                    self._stop_transfer_with_exc(session_id, chunk_keys, sys.exc_info())
+                    raise
 
-                data_meta.status = ReceiveStatus.RECEIVED
-                self._invoke_finish_callbacks(session_id, chunk_key)
-                logger.debug('Transfer for data %s finished.', chunk_key)
-        except:  # noqa: E722
-            self._stop_transfer_with_exc(session_id, chunk_key, sys.exc_info())
+            if finished_keys:
+                for chunk_key in finished_keys:
+                    session_chunk_key = (session_id, chunk_key)
+                    data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
+
+                    self._wait_unfinished_writing(session_id, chunk_key)
+                    # update transfer speed stats
+                    if self._status_ref:
+                        time_delta = time.time() - data_meta.start_time
+                        self._status_ref.update_mean_stats(
+                            'net_transfer_speed', data_meta.chunk_size * 1.0 / time_delta,
+                            _tell=True, _wait=False)
+                    self._data_writers[session_chunk_key].close()
+                    data_meta.status = ReceiveStatus.RECEIVED
+                    logger.debug('Transfer for data %s finished.', chunk_key)
+                    del self._data_writers[session_chunk_key]
+
+                self._invoke_finish_callbacks(session_id, finished_keys)
+            if finished_meta_keys:
+                self.get_meta_client().batch_set_chunk_meta(session_id, finished_meta_keys, finished_metas)
+        finally:
+            del data_parts
 
     def _is_receive_running(self, session_id, chunk_key):
-        session_chunk_key = (session_id, chunk_key)
-        if session_chunk_key not in self._data_meta_cache:
+        receive_done_statuses = (ReceiveStatus.ERROR, ReceiveStatus.RECEIVED)
+        try:
+            return self._data_meta_cache[(session_id, chunk_key)].status not in receive_done_statuses
+        except KeyError:
             return False
-        if self._data_meta_cache[session_chunk_key].status in (ReceiveStatus.ERROR, ReceiveStatus.RECEIVED):
-            # already terminated, we do nothing
-            return False
-        return True
 
     @log_unhandled
-    def cancel_receive(self, session_id, chunk_key, exc_info=None):
+    def cancel_receive(self, session_id, chunk_keys, exc_info=None):
         """
         Cancel data receive by returning an ExecutionInterrupted
         :param session_id: session id
-        :param chunk_key: chunk key
+        :param chunk_keys: chunk keys
         :param exc_info: exception to raise
         """
-        self._wait_unfinished_writing(session_id, chunk_key)
+        receiving_keys = []
+        for k in chunk_keys:
+            if self._is_receive_running(session_id, k):
+                receiving_keys.append(k)
+            self._wait_unfinished_writing(session_id, k)
 
-        logger.debug('Transfer for %s cancelled.', chunk_key)
-        if not self._is_receive_running(session_id, chunk_key):
-            return
+        logger.debug('Transfer for %r cancelled.', chunk_keys)
 
         if exc_info is None:
             exc_info = build_exc_info(ExecutionInterrupted)
 
-        self._stop_transfer_with_exc(session_id, chunk_key, exc_info)
+        self._stop_transfer_with_exc(session_id, receiving_keys, exc_info)
 
     @log_unhandled
     def notify_dead_senders(self, dead_workers):
@@ -542,57 +685,72 @@ class ReceiverActor(WorkerActor):
         """
         dead_workers = set(dead_workers)
         exc_info = build_exc_info(WorkerDead)
+        session_to_keys = defaultdict(set)
         for session_chunk_key in self._data_writers.keys():
             if self._data_meta_cache[session_chunk_key].source_address in dead_workers:
-                self.ref().cancel_receive(*session_chunk_key, **dict(exc_info=exc_info, _tell=True))
+                session_to_keys[session_chunk_key[0]].add(session_chunk_key[1])
+        for session_id, data_keys in session_to_keys.items():
+            self.ref().cancel_receive(session_id, list(data_keys), exc_info=exc_info, _tell=True)
 
     @log_unhandled
-    def handle_receive_timeout(self, session_id, chunk_key):
-        if not self._is_receive_running(session_id, chunk_key):
+    def handle_receive_timeout(self, session_id, chunk_keys):
+        if not any(self._is_receive_running(session_id, k) for k in chunk_keys):
             # if transfer already finishes, no needs to report timeout
             return
-        logger.debug('Transfer for %s timed out, cancelling.', chunk_key)
-        self._stop_transfer_with_exc(session_id, chunk_key, build_exc_info(TimeoutError))
+        logger.debug('Transfer for %r timed out, cancelling.', chunk_keys)
+        self._stop_transfer_with_exc(session_id, chunk_keys, build_exc_info(TimeoutError))
 
-    def _stop_transfer_with_exc(self, session_id, chunk_key, exc):
-        self._wait_unfinished_writing(session_id, chunk_key)
+    def _stop_transfer_with_exc(self, session_id, chunk_keys, exc):
+        for chunk_key in chunk_keys:
+            self._wait_unfinished_writing(session_id, chunk_key)
 
         if not isinstance(exc[1], ExecutionInterrupted):
-            logger.exception('Error occurred in receiving %s. Cancelling transfer.',
-                             chunk_key, exc_info=exc)
+            logger.exception('Error occurred in receiving %r. Cancelling transfer.',
+                             chunk_keys, exc_info=exc)
 
-        session_chunk_key = (session_id, chunk_key)
+        for chunk_key in chunk_keys:
+            session_chunk_key = (session_id, chunk_key)
 
-        # stop and close data writer
-        try:
-            # transfer is not finished yet, we need to clean up unfinished stuffs
-            self._data_writers[session_chunk_key].close(finished=False)
-            del self._data_writers[session_chunk_key]
-        except KeyError:
-            # transfer finished and writer cleaned, no need to clean up
-            pass
+            # stop and close data writer
+            try:
+                # transfer is not finished yet, we need to clean up unfinished stuffs
+                self._data_writers[session_chunk_key].close(finished=False)
+                del self._data_writers[session_chunk_key]
+            except KeyError:
+                # transfer finished and writer cleaned, no need to clean up
+                pass
 
-        data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-        data_meta.status = ReceiveStatus.ERROR
-        self._invoke_finish_callbacks(session_id, chunk_key, *exc, **dict(_accept=False))
+            try:
+                data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
+                data_meta.status = ReceiveStatus.ERROR
+            except KeyError:
+                pass
 
-    def _invoke_finish_callbacks(self, session_id, chunk_key, *args, **kwargs):
+        self._invoke_finish_callbacks(session_id, chunk_keys, *exc, **dict(_accept=False))
+
+    def _invoke_finish_callbacks(self, session_id, chunk_keys, *args, **kwargs):
         # invoke registered callbacks for chunk
-        session_chunk_key = (session_id, chunk_key)
-        data_meta = self._data_meta_cache[session_chunk_key]  # type: ReceiverDataMeta
-        data_meta.callback_args = args
-        data_meta.callback_kwargs = kwargs
+        for k in chunk_keys:
+            try:
+                data_meta = self._data_meta_cache[(session_id, k)]  # type: ReceiverDataMeta
+            except KeyError:
+                continue
 
-        if data_meta.transfer_event_id is not None and self._events_ref is not None:
-            self._events_ref.close_event(data_meta.transfer_event_id, _tell=True)
-
-        for cb in self._finish_callbacks[session_chunk_key]:
-            kwargs['_wait'] = False
-            self.tell_promise(cb, *args, **kwargs)
+            if data_meta.transfer_event_id is not None and self._events_ref is not None:
+                self._events_ref.close_event(data_meta.transfer_event_id, _tell=True, _wait=False)
+            if not kwargs.get('_accept', True):
+                if not data_meta.callback_args or data_meta.callback_args[0] is ExecutionInterrupted:
+                    data_meta.callback_args = args
+                    data_meta.callback_kwargs = kwargs
+                else:
+                    args = data_meta.callback_args
+                    kwargs = data_meta.callback_kwargs
+            else:
+                data_meta.callback_args = args
+                data_meta.callback_kwargs = kwargs
+        kwargs['_tell'] = True
         if self._receiver_manager_ref:
-            self._receiver_manager_ref.notify_key_finish(session_id, chunk_key, *args, **kwargs)
-        if session_chunk_key in self._finish_callbacks:
-            del self._finish_callbacks[session_chunk_key]
+            self._receiver_manager_ref.notify_keys_finish(session_id, chunk_keys, *args, **kwargs)
 
 
 class ResultCopyActor(WorkerActor):
@@ -650,42 +808,41 @@ class ResultSenderActor(WorkerActor):
                     pool = reader.get_io_pool()
                     value = dataserializer.deserialize(pool.submit(reader.read).result())
 
-            if isinstance(value, (pd.DataFrame, pd.Series)):
+            try:
                 sliced_value = value.iloc[index_obj]
-            else:
+            except AttributeError:
                 sliced_value = value[index_obj]
 
             return self._serialize_pool.submit(
                 dataserializer.dumps, sliced_value, compression_type).result()
 
 
-def put_remote_chunk(session_id, chunk_key, data, receiver_ref):
+def put_remote_chunk(session_id, chunk_key, data, receiver_manager_ref):
     """
     Put a chunk to target machine using given receiver_ref
     """
     from .dataio import ArrowBufferIO
     buf = dataserializer.serialize(data).to_buffer()
-    receiver_ref.create_data_writer(session_id, chunk_key, buf.size, None,
-                                    ensure_cached=False, use_promise=False)
+    receiver_ref, _ = receiver_manager_ref.create_data_writers(
+        session_id, [chunk_key], [buf.size], None, ensure_cached=False, use_promise=False)
+    receiver_ref = receiver_manager_ref.ctx.actor_ref(receiver_ref)
     block_size = options.worker.transfer_block_size
 
     reader = None
     try:
         reader = ArrowBufferIO(buf, 'r', block_size=block_size)
-        checksum = 0
         futures = []
         while True:
-            next_chunk = reader.read(block_size)
-            is_last = not next_chunk or len(next_chunk) < block_size
+            next_part = reader.read(block_size)
+            is_last = not next_part or len(next_part) < block_size
             [f.result() for f in futures]
-            checksum = zlib.crc32(next_chunk, checksum)
             futures.append(receiver_ref.receive_data_part(
-                session_id, chunk_key, next_chunk, checksum, is_last=is_last, _wait=False))
+                session_id, [chunk_key], [is_last], next_part, _wait=False))
             if is_last:
                 [f.result() for f in futures]
                 break
     except:  # noqa: E722
-        receiver_ref.cancel_receive(session_id, chunk_key)
+        receiver_ref.cancel_receive(session_id, [chunk_key])
         raise
     finally:
         if reader:

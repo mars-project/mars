@@ -44,10 +44,15 @@ class ProcMemHandler(StorageHandler, ObjectStorageMixin):
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
         objs = [self._deserial(obj) if serialize else obj for obj in objs]
-        sizes = sizes or [calc_data_size(obj) for obj in objs]
-        shapes = [getattr(obj, 'shape', None) for obj in objs]
-        self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin_token=pin_token)
-        self.register_data(session_id, data_keys, sizes, shapes)
+        obj = None
+        try:
+            sizes = sizes or [calc_data_size(obj) for obj in objs]
+            shapes = [getattr(obj, 'shape', None) for obj in objs]
+            self._inproc_store_ref.put_objects(session_id, data_keys, objs, sizes, pin_token=pin_token)
+            self.register_data(session_id, data_keys, sizes, shapes)
+        finally:
+            objs[:] = []
+            del obj
 
     def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
         def _read_serialized(reader):

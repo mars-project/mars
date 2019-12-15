@@ -83,14 +83,19 @@ class StorageClient(object):
                 for d in devices] if devices is not None else None
 
     def _do_with_spill(self, action, data_keys, total_bytes, device_order,
-                       device_pos=0, spill_multiplier=1.0, ensure=True):
+                       device_pos=0, spill_multiplier=1.0, ensure=True, data_cleaner=None):
         def _handle_err(*exc_info):
             if issubclass(exc_info[0], StorageFull):
                 req_bytes = max(total_bytes, exc_info[1].request_size)
+
+                if data_cleaner and exc_info[1].affected_keys:
+                    affected_keys = set(exc_info[1].affected_keys)
+                    data_cleaner([k for k in data_keys if k not in affected_keys])
+
                 if device_pos < len(device_order) - 1:
                     return self._do_with_spill(
                         action, exc_info[1].affected_keys, req_bytes, device_order,
-                        device_pos=device_pos + 1, spill_multiplier=1.0, ensure=ensure,
+                        device_pos=device_pos + 1, spill_multiplier=1.0, ensure=ensure
                     )
                 elif ensure:
                     new_multiplier = min(spill_multiplier + 0.1, 10)
@@ -99,6 +104,8 @@ class StorageClient(object):
                             action, exc_info[1].affected_keys, req_bytes, device_order,
                             device_pos=device_pos, spill_multiplier=new_multiplier, ensure=ensure,
                         ))
+            elif data_cleaner:
+                data_cleaner(data_keys)
             six.reraise(*exc_info)
 
         cur_device = device_order[device_pos]
@@ -141,15 +148,15 @@ class StorageClient(object):
             raise IOError('Cannot return a non-promise result')
 
     def create_writer(self, session_id, data_key, total_bytes, device_order, packed=False,
-                      packed_compression=None, _promise=True):
+                      packed_compression=None, pin_token=None, _promise=True):
         device_order = self._normalize_devices(device_order)
 
         def _action(handler, _keys, _promise=True):
-            logger.debug('Creating %s writer for (%s, %s) on %s', 'packed' if packed else 'bytes',
-                         session_id, data_key, handler.storage_type)
+            logger.debug('Creating %s writer for (%s, %s) with size %s on %s', 'packed' if packed else 'bytes',
+                         session_id, data_key, total_bytes, handler.storage_type)
             return handler.create_bytes_writer(
-                session_id, data_key, total_bytes, packed=packed,
-                packed_compression=packed_compression, _promise=_promise)
+                session_id, data_key, total_bytes, packed=packed, packed_compression=packed_compression,
+                pin_token=pin_token, _promise=_promise)
 
         if _promise:
             return self._do_with_spill(_action, [data_key], total_bytes, device_order)
@@ -164,47 +171,87 @@ class StorageClient(object):
             raise exc
 
     def get_object(self, session_id, data_key, source_devices, serialize=False, _promise=True):
+        def _extract_obj(objs):
+            try:
+                return objs[0]
+            finally:
+                objs[:] = []
+
         if _promise:
             return self.get_objects(session_id, [data_key], source_devices, serialize=serialize,
-                                    _promise=True).then(lambda objs: objs[0])
+                                    _promise=True).then(_extract_obj)
         else:
-            return self.get_objects(session_id, [data_key], source_devices, serialize=serialize,
-                                    _promise=False)[0]
+            return _extract_obj(self.get_objects(session_id, [data_key], source_devices, serialize=serialize,
+                                                 _promise=False))
 
     def get_objects(self, session_id, data_keys, source_devices, serialize=False, _promise=True):
         source_devices = self._normalize_devices(source_devices)
         stored_dev_lists = self._manager_ref.get_data_locations(session_id, data_keys)
         dev_to_keys = defaultdict(list)
+        if any(not loc for loc in stored_dev_lists):
+            raise KeyError(next(k for k, loc in zip(data_keys, stored_dev_lists)))
         for key, devs in zip(data_keys, stored_dev_lists):
             first_dev = next((stored_dev for stored_dev in source_devices if stored_dev in devs),
                              None) or sorted(devs)[0]
             dev_to_keys[first_dev].append(key)
 
+        is_success = [True]
         data_dict = dict()
         if not _promise:
-            if any(dev not in source_devices for dev in dev_to_keys.keys()):
-                raise IOError('Getting objects without promise not supported')
-            for stored_dev, keys in dev_to_keys.items():
-                handler = self.get_storage_handler(stored_dev)
-                data_dict.update(zip(keys, handler.get_objects(
-                    session_id, data_keys, serialize=serialize, _promise=False)))
-            return [data_dict[k] for k in data_keys]
+            try:
+                if any(dev not in source_devices for dev in dev_to_keys.keys()):
+                    raise IOError('Getting objects without promise not supported')
+                for stored_dev, keys in dev_to_keys.items():
+                    handler = self.get_storage_handler(stored_dev)
+                    data_dict.update(zip(keys, handler.get_objects(
+                        session_id, data_keys, serialize=serialize, _promise=False)))
+                return [data_dict.pop(k) for k in data_keys]
+            finally:
+                data_dict.clear()
         else:
-            promises = []
-            for stored_dev, keys in dev_to_keys.items():
-                handler = self.get_storage_handler(stored_dev)
-                loc_getter = functools.partial(
-                    lambda keys, *_: self.get_objects(
-                        session_id, keys, source_devices, serialize=serialize, _promise=True), keys)
-                updater = functools.partial(lambda keys, objs: data_dict.update(zip(keys, objs)),
-                                            keys)
-                if stored_dev in source_devices:
-                    promises.append(handler.get_objects(
-                        session_id, keys, serialize=serialize, _promise=True).then(updater))
-                else:
-                    promises.append(self.copy_to(session_id, keys, source_devices)
-                        .then(loc_getter).then(updater))
-            return promise.all_(promises).then(lambda *_: [data_dict[k] for k in data_keys])
+            def _update_key_items(keys, objs):
+                try:
+                    if is_success[0]:
+                        data_dict.update(zip(keys, objs))
+                finally:
+                    objs[:] = []
+
+            def _handle_key_error(*exc):
+                is_success[0] = False
+                data_dict.clear()
+                six.reraise(*exc)
+
+            def _finalize(*exc):
+                try:
+                    if not exc:
+                        return [data_dict.pop(k) for k in data_keys]
+                    else:
+                        six.reraise(*exc)
+                finally:
+                    data_dict.clear()
+
+            try:
+                promises = []
+                for stored_dev, keys in dev_to_keys.items():
+                    handler = self.get_storage_handler(stored_dev)
+                    loc_getter = functools.partial(
+                        lambda keys, *_: self.get_objects(
+                            session_id, keys, source_devices, serialize=serialize, _promise=True), keys)
+                    updater = functools.partial(_update_key_items, keys)
+                    if stored_dev in source_devices:
+                        promises.append(
+                            handler.get_objects(session_id, keys, serialize=serialize, _promise=True)
+                                .then(updater, _handle_key_error)
+                        )
+                    else:
+                        promises.append(
+                            self.copy_to(session_id, keys, source_devices).then(loc_getter)
+                                .then(updater, _handle_key_error)
+                        )
+                return promise.all_(promises).then(lambda *_: _finalize(), _finalize)
+            except:  # noqa: E722
+                data_dict.clear()
+                raise
 
     def put_objects(self, session_id, data_keys, objs, device_order, sizes=None, serialize=False):
         device_order = self._normalize_devices(device_order)
@@ -214,6 +261,7 @@ class StorageClient(object):
             sizes_dict = dict((k, calc_data_size(obj)) for k, obj in zip(data_keys, objs))
 
         data_dict = dict(zip(data_keys, objs))
+        del objs
 
         def _action(h, keys):
             objects = [data_dict[k] for k in keys]
@@ -222,9 +270,20 @@ class StorageClient(object):
                 return h.put_objects(session_id, keys, objects, sizes=data_sizes, serialize=serialize,
                                      _promise=True)
             finally:
-                objects[:] = []
+                del objects
 
-        return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order)
+        def _clean_succeeded(keys):
+            for k in keys:
+                data_dict.pop(k, None)
+
+        def _clean_all(*exc):
+            data_dict.clear()
+            if exc:
+                six.reraise(*exc)
+
+        return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order,
+                                   data_cleaner=_clean_succeeded) \
+            .then(lambda *_: _clean_all(), _clean_all)
 
     def copy_to(self, session_id, data_keys, device_order, ensure=True, pin_token=None):
         device_order = self._normalize_devices(device_order)
@@ -237,7 +296,7 @@ class StorageClient(object):
         for k, devices, size in zip(data_keys, existing_devs, data_sizes):
             if not devices or not size:
                 return promise.finished(
-                    *build_exc_info(KeyError, 'Data key (%s, %s) does not exist.' % (session_id, k)),
+                    *build_exc_info(KeyError, 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)),
                     **dict(_accept=False)
                 )
 

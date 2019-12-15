@@ -17,8 +17,9 @@ import functools
 import pyarrow
 
 from ... import promise
+from ...compat import six
 from ...config import options
-from ...errors import StorageFull
+from ...errors import StorageFull, StorageDataExists
 from ...serialize import dataserializer
 from ..dataio import ArrowBufferIO
 from .core import StorageHandler, BytesStorageMixin, ObjectStorageMixin, \
@@ -146,15 +147,15 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
     def put_objects(self, session_id, data_keys, objs, sizes=None, serialize=False,
                     pin_token=None, _promise=False):
         succ_keys, succ_shapes = [], []
-        obj_refs = []
         affected_keys = []
         request_size, capacity = 0, 0
 
+        objs = [self._deserial(obj) if serialize else obj for obj in objs]
+        obj_refs = []
+        obj = None
         try:
             for key, obj in zip(data_keys, objs):
-                obj = self._deserial(obj) if serialize else obj
                 shape = getattr(obj, 'shape', None)
-
                 try:
                     obj_refs.append(self._shared_store.put(session_id, key, obj))
                     succ_keys.append(key)
@@ -163,17 +164,23 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                     affected_keys.extend(ex.affected_keys)
                     request_size += ex.request_size
                     capacity = ex.capacity
-                finally:
-                    del obj
+                except StorageDataExists:
+                    if self.location in self.storage_ctx.get_data_locations(session_id, [key])[0]:
+                        succ_keys.append(key)
+                        succ_shapes.append(shape)
+                    else:
+                        raise
             self._holder_ref.put_objects_by_keys(session_id, succ_keys, shapes=succ_shapes, pin_token=pin_token)
             if affected_keys:
                 raise StorageFull(request_size=request_size, capacity=capacity,
                                   affected_keys=affected_keys)
         finally:
+            del obj
+            objs[:] = []
             obj_refs[:] = []
-            del objs
 
     def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
+        is_success = [True]
         shared_bufs = []
         failed_keys = set()
         storage_full_sizes = [0, 0]
@@ -186,19 +193,24 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                 storage_full_sizes[0] += exc.request_size
                 storage_full_sizes[1] = exc.capacity
             else:
+                is_success[0] = False
+                shared_bufs[:] = []
                 self.pass_on_exc(reader.close, exc_info)
 
         def _on_file_close(key, _reader, writer, finished):
             if finished:
-                shared_bufs.append(writer.get_shared_buffer())
+                if is_success[0]:
+                    shared_bufs.append(writer.get_shared_buffer())
             else:
                 failed_keys.add(key)
 
-        def _finalize_load(*_):
+        def _finalize_load(*exc):
             try:
                 success_keys = [k for k in data_keys if k not in failed_keys]
                 if success_keys:
                     self._holder_ref.put_objects_by_keys(session_id, success_keys, pin_token=pin_token)
+                if exc:
+                    six.reraise(*exc)
                 if failed_keys:
                     raise StorageFull(request_size=storage_full_sizes[0], capacity=storage_full_sizes[1],
                                       affected_keys=list(failed_keys))
@@ -215,7 +227,8 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                               lambda *exc: handle_worker_create_fail(reader, exc)))
 
         def _fallback(*_):
-            return promise.all_(_load_single_key(k) for k in data_keys).then(_finalize_load)
+            return promise.all_(_load_single_key(k) for k in data_keys) \
+                .then(lambda *_: _finalize_load(), _finalize_load)
 
         return self.transfer_in_runner(session_id, data_keys, src_handler, _fallback)
 

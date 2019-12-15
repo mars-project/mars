@@ -44,9 +44,9 @@ $(function() {
                 $('#' + refInfo.id + ' table').bootstrapTable();
             });
         }, 'text');
-        window.setTimeout(refresh_tables, 10000);
+        window.setTimeout(refresh_tables, 5000);
     };
     if ($('.auto-refresh').length > 0) {
-        window.setTimeout(refresh_tables, 10000);
+        window.setTimeout(refresh_tables, 5000);
     }
 });
