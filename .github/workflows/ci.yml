@@ -15,7 +15,7 @@ jobs:
           - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
-          - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38m" }
+          - { os: ubuntu-16.04, python-version: 3.8, python-abis: "cp38-cp38" }
           - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
           - { os: ubuntu-16.04, python-version: 3.8-hdfs, no-common-tests: 1,
