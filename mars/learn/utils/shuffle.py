@@ -14,6 +14,7 @@
 
 import itertools
 from collections import defaultdict, Iterable
+from functools import reduce
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,6 @@ from ...tensor.array_utils import get_array_module
 from ...dataframe.utils import parse_index
 from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
 from ...tiles import TilesError
-from ...compat import reduce
 from ...core import ExecutableTuple
 from ..operands import LearnOperand, LearnOperandMixin, OutputType, \
     LearnShuffleMap as LearnShuffleMapBase, LearnShuffleReduce as LearnShuffleReduceBase, LearnShuffleProxy

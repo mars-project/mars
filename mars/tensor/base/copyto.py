@@ -20,7 +20,6 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, StringField
-from ...compat import lrange
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..utils import unify_chunks, broadcast_shape
@@ -121,7 +120,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
+        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
         output = op.outputs[0]
 
         chunk_shapes = [t.chunk_shape if hasattr(t, 'chunk_shape') else t

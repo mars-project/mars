@@ -17,7 +17,6 @@ import itertools
 
 import numpy as np
 
-from ...compat import izip
 from ...config import options
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOrder
@@ -47,8 +46,8 @@ class TensorDataSource(TensorOperand, TensorOperandMixin):
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
-        for chunk_shape, chunk_idx in izip(itertools.product(*chunk_size),
-                                           itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
+                                          itertools.product(*chunk_size_idxes)):
             chunk_op = op.to_chunk_op(chunk_shape, chunk_idx, chunk_size)
             out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
                                            order=tensor.order)

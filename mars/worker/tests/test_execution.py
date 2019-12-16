@@ -23,7 +23,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from mars import promise
-from mars.compat import six
 from mars.config import options
 from mars.tiles import get_tiled
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
@@ -124,7 +123,8 @@ class ExecutionTestActor(WorkerActor):
         if self._results[0][0]:
             return self._shared_store.get(self._session_id, self._array_key)
         else:
-            six.reraise(*self._results[0][1])
+            exc_info = self._results[0][1]
+            raise exc_info[1].with_traceback(exc_info[2])
 
 
 class Test(WorkerCase):
@@ -233,13 +233,13 @@ class Test(WorkerCase):
             self.get_result()
 
     def testPrepareQuota(self, *_):
-        pinned = [True]
+        pinned = True
 
         orig_pin = SharedHolderActor.pin_data_keys
 
         def _mock_pin(self, session_id, chunk_keys, token):
             from mars.errors import PinDataKeyFailed
-            if pinned[0]:
+            if pinned:
                 raise PinDataKeyFailed
             return orig_pin(self, session_id, chunk_keys, token)
 
@@ -286,8 +286,9 @@ class Test(WorkerCase):
                     .catch(lambda *exc: test_actor.set_result(exc, False))
 
                 def _delay_fun():
+                    nonlocal pinned
                     time.sleep(0.5)
-                    pinned[0] = False
+                    pinned = False
 
                 threading.Thread(target=_delay_fun).start()
 

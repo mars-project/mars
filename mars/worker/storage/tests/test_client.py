@@ -23,7 +23,6 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from mars import promise
-from mars.compat import TimeoutError, six
 from mars.config import options
 from mars.distributor import MarsDistributor
 from mars.errors import StorageFull
@@ -56,7 +55,7 @@ class OtherProcessTestActor(WorkerActor):
         elif self._accept:
             return self._result
         else:
-            six.reraise(*self._result)
+            raise self._result[1].with_traceback(self._result[2])
 
     def run_copy_test(self, src_location, dest_location):
         self._accept, self._result = None, None
@@ -335,7 +334,7 @@ class Test(WorkerCase):
 
                 # test unsuccessful copy when no data at target
                 def _mock_load_from(*_, **__):
-                    return promise.finished(*build_exc_info(SystemError), **dict(_accept=False))
+                    return promise.finished(*build_exc_info(SystemError), _accept=False)
 
                 with patch_method(StorageHandler.load_from, _mock_load_from), \
                         self.assertRaises(SystemError):

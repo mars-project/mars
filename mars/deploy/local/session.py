@@ -20,7 +20,6 @@ import time
 from numbers import Integral
 
 from ...api import MarsAPI
-from ...compat import six, TimeoutError  # pylint: disable=W0622
 from ...config import options
 from ...errors import ExecutionFailed
 from ...scheduler.graph import GraphState
@@ -140,7 +139,7 @@ class LocalClusterSession(object):
                 exc_info = self._api.get_graph_exc_info(self._session_id, graph_key)
                 if exc_info is not None:
                     try:
-                        six.reraise(*exc_info)
+                        raise exc_info[1].with_traceback(exc_info[2]) from None
                     except:  # noqa: E722
                         raise ExecutionFailed('Graph execution failed.')
                 else:

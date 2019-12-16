@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import operator
+from enum import Enum
+from functools import reduce
 
 import numpy as np
 import pandas as pd
 
 from .core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, GROUPBY_TYPE
-from ..compat import Enum, reduce
 from ..core import FuseChunkData, FuseChunk
 from ..operands import Operand, TileableOperandMixin, ShuffleMap, ShuffleReduce, Fuse
 from ..operands import ShuffleProxy, FuseChunkMixin

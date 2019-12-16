@@ -18,9 +18,9 @@ import threading
 import time
 import unittest
 import weakref
+from queue import Queue
 
 from mars.tests.core import create_actor_pool
-from mars.compat import Queue, TimeoutError
 from mars.utils import build_exc_info
 from mars import promise
 

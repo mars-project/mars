@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import inspect
 import logging
 import struct
 import sys
@@ -20,11 +22,10 @@ import weakref
 
 import numpy as np
 
-from .compat import getargspec
 from .actors import FunctionActor
 from .actors.core import ActorRef
 from .errors import PromiseTimeout
-from .utils import wraps, build_exc_info
+from .utils import build_exc_info
 
 logger = logging.getLogger(__name__)
 _promise_pool = dict()
@@ -90,7 +91,7 @@ class Promise(object):
         if func is None:
             return None
 
-        @wraps(func)
+        @functools.wraps(func)
         def _wrapped(*args, **kwargs):
             _promise_pool.pop(self.id, None)
 
@@ -329,7 +330,7 @@ class PromiseRefWrapper(object):
                     ref_fun(*args, **kwargs)
                 except:  # noqa: E722
                     self._caller.ref().handle_promise(
-                        promise_id, *sys.exc_info(), **dict(_accept=False, _tell=True))
+                        promise_id, *sys.exc_info(), _accept=False, _tell=True)
 
             if spawn:
                 self._caller.async_group.spawn(_promise_runner)
@@ -351,7 +352,7 @@ def reject_on_exception(func):
     sending it to caller as promise rejections. The function should have
     an argument called ``callback``.
     """
-    arg_names = getargspec(func).args
+    arg_names = inspect.getfullargspec(func).args
     callback_pos = None
     if arg_names:
         for idx, name in enumerate(arg_names):
@@ -359,7 +360,7 @@ def reject_on_exception(func):
                 callback_pos = idx
                 break
 
-    @wraps(func)
+    @functools.wraps(func)
     def _wrapped(*args, **kwargs):
         callback = None
         if 'callback' in kwargs:
@@ -373,7 +374,7 @@ def reject_on_exception(func):
             actor = args[0]
             logger.exception('Unhandled exception in promise call')
             if callback:
-                actor.tell_promise(callback, *sys.exc_info(), **dict(_accept=False))
+                actor.tell_promise(callback, *sys.exc_info(), _accept=False)
             else:
                 raise
     return _wrapped
@@ -427,7 +428,7 @@ class PromiseActor(FunctionActor):
             try:
                 result = func(*a, **kw)
             except:  # noqa: E722
-                ref.handle_promise(p.id, *sys.exc_info(), **dict(_accept=False, _tell=True))
+                ref.handle_promise(p.id, *sys.exc_info(), _accept=False, _tell=True)
             else:
                 ref.handle_promise(p.id, result, _tell=True)
             finally:

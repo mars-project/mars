@@ -23,7 +23,6 @@ import sys
 
 import gevent
 
-from mars.compat import six, BrokenPipeError
 from mars.actors import create_actor_pool as new_actor_pool, Actor, FunctionActor, \
     ActorPoolNotStarted, ActorAlreadyExist, ActorNotExist, Distributor, new_client, \
     register_actor_implementation, unregister_actor_implementation
@@ -42,7 +41,7 @@ def create_actor_pool(*args, **kwargs):
     if not address:
         return new_actor_pool(*args, **kwargs)
 
-    if isinstance(address, six.string_types):
+    if isinstance(address, str):
         port = int(address.rsplit(':', 1)[1])
     else:
         port = DEFAULT_PORT
@@ -69,7 +68,7 @@ class DummyActor(Actor):
 
     def on_receive(self, message):  # noqa: C901
         if message[0] == 'add':
-            if not isinstance(message[1], six.integer_types):
+            if not isinstance(message[1], int):
                 raise TypeError('add number must be int')
             self.value += message[1]
             return self.value

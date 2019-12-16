@@ -24,7 +24,6 @@ except ImportError:  # pragma: no cover
 from ..config import options
 from .. import resource
 from ..utils import parse_readable_size, readable_size
-from ..compat import six
 from .status import StatusActor
 from .quota import QuotaActor, MemQuotaActor
 from .dispatcher import DispatchActor
@@ -87,7 +86,7 @@ class WorkerService(object):
 
         self._spill_dirs = kwargs.pop('spill_dirs', None)
         if self._spill_dirs:
-            if isinstance(self._spill_dirs, six.string_types):
+            if isinstance(self._spill_dirs, str):
                 from .utils import parse_spill_dirs
                 self._spill_dirs = options.worker.spill_directory = parse_spill_dirs(self._spill_dirs)
             else:

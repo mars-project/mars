@@ -15,12 +15,11 @@
 import os
 import pickle
 import uuid
-from binascii import hexlify
-from datetime import date, datetime, timedelta
 from collections import deque
+from datetime import date, datetime, timedelta
+from enum import Enum
 
 from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes
-from .compat import Enum
 
 import numpy as np
 try:
@@ -28,16 +27,12 @@ try:
 except ImportError:  # pragma: no cover
     pd = None
 
-from cpython.version cimport PY_MAJOR_VERSION
-
 
 cpdef str to_str(s, encoding='utf-8'):
     if type(s) is str:
         return <str>s
-    elif PY_MAJOR_VERSION >= 3 and isinstance(s, bytes):
+    elif isinstance(s, bytes):
         return (<bytes>s).decode(encoding)
-    elif PY_MAJOR_VERSION < 3 and isinstance(s, unicode):
-        return (<unicode>s).encode(encoding)
     elif isinstance(s, str):
         return str(s)
     elif s is None:
@@ -79,18 +74,11 @@ cdef inline build_canonical_bytes(tuple args, kwargs):
 
 
 def tokenize(*args, **kwargs):
-    return to_hex(mmh_hash_bytes(build_canonical_bytes(args, kwargs)))
+    return mmh_hash_bytes(build_canonical_bytes(args, kwargs)).hex()
 
 
 def tokenize_int(*args, **kwargs):
     return mmh_hash(build_canonical_bytes(args, kwargs))
-
-
-cdef inline to_hex(bytes s):
-    if PY_MAJOR_VERSION >= 3:
-        return s.hex()
-    else:
-        return hexlify(s)
 
 
 cdef class Tokenizer:
@@ -151,20 +139,20 @@ cdef inline tuple tokenize_numpy(ob):
                 ob.shape, ob.strides, offset)
     if ob.dtype.hasobject:
         try:
-            data = to_hex(mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')))
+            data = mmh_hash_bytes('-'.join(ob.flat).encode('utf-8', errors='surrogatepass')).hex()
         except UnicodeDecodeError:
-            data = to_hex(mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat])))
+            data = mmh_hash_bytes(b'-'.join([to_binary(x) for x in ob.flat])).hex()
         except TypeError:
             try:
-                data = to_hex(mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)))
+                data = mmh_hash_bytes(pickle.dumps(ob, pickle.HIGHEST_PROTOCOL)).hex()
             except:
                 # nothing can do, generate uuid
                 data = uuid.uuid4().hex
     else:
         try:
-            data = to_hex(mmh_hash_bytes(ob.ravel().view('i1').data))
+            data = mmh_hash_bytes(ob.ravel().view('i1').data).hex()
         except (BufferError, AttributeError, ValueError):
-            data = to_hex(mmh_hash_bytes(ob.copy().ravel().view('i1').data))
+            data = mmh_hash_bytes(ob.copy().ravel().view('i1').data).hex()
     return data, ob.dtype, ob.shape, ob.strides
 
 
@@ -201,7 +189,7 @@ cdef list tokenize_pandas_dataframe(ob):
 
 cdef Tokenizer tokenize_handler = Tokenizer()
 
-base_types = (int, long, float, str, unicode, bytes, complex,
+base_types = (int, float, str, unicode, bytes, complex,
               type(None), type, slice, date, datetime, timedelta)
 for t in base_types:
     tokenize_handler.register(t, lambda ob: ob)

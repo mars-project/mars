@@ -24,6 +24,7 @@ import errno
 import socket
 import struct
 import itertools
+from collections import OrderedDict
 
 import gevent
 import gevent.queue
@@ -38,7 +39,6 @@ import gevent.threadpool
 from gevent._tblib import _init as gevent_init_tblib
 
 from ...lib import gipc
-from ...compat import six, OrderedDict, TimeoutError, BrokenPipeError, ConnectionRefusedError
 from ..errors import ActorPoolNotStarted, ActorNotExist, ActorAlreadyExist
 from ..distributor cimport Distributor
 from ..core cimport ActorRef, Actor
@@ -368,7 +368,7 @@ class Connections(object):
     addrs = 0
 
     def __init__(self, address):
-        if isinstance(address, six.string_types):
+        if isinstance(address, str):
             self.address = address.split(':', 1)
         else:
             self.address = address
@@ -381,7 +381,7 @@ class Connections(object):
 
     @property
     def conn(self):
-        return [conn_lock[0] for conn_lock in six.itervalues(self.conn_locks)]
+        return [conn_lock[0] for conn_lock in self.conn_locks.values()]
 
     def _connect(self, conn, lock):
         return Connection(conn, lock)
@@ -395,7 +395,7 @@ class Connections(object):
         cdef object lock
 
         with self.lock:
-            for conn, lock in six.itervalues(self.conn_locks):
+            for conn, lock in self.conn_locks.values():
                 # try to reuse the connections before
                 locked = lock.acquire(blocking=False)
                 if not locked:
@@ -408,16 +408,7 @@ class Connections(object):
                 # create a new connection
                 lock = gevent.lock.Semaphore()
                 lock.acquire()
-                try:
-                    conn = gevent.socket.create_connection(self.address)
-                except socket.error as exc:  # pragma: no cover
-                    if exc.errno == errno.ECONNREFUSED:
-                        raise ConnectionRefusedError
-                    elif exc.errno == errno.ETIMEDOUT:
-                        raise TimeoutError
-                    else:
-                        raise
-
+                conn = gevent.socket.create_connection(self.address)
                 self.conn_locks[conn.fileno()] = (conn, lock)
                 return self._connect(conn, lock)
 
@@ -426,16 +417,16 @@ class Connections(object):
                     c.close()
 
             ps = [gevent.spawn(close, c, l) for c, l in
-                  itertools.islice(six.itervalues(self.conn_locks), maxlen, len(self.conn_locks))]
+                  itertools.islice(self.conn_locks.values(), maxlen, len(self.conn_locks))]
 
             i = random.randint(0, maxlen - 1)
-            fd = next(itertools.islice(six.iterkeys(self.conn_locks), i, i + 1))
+            fd = next(itertools.islice(self.conn_locks.keys(), i, i + 1))
             conn, lock = self.conn_locks[fd]
             lock.acquire()
 
             # wait for conn finished
             gevent.joinall(ps)
-            self.conn_locks = OrderedDict(itertools.islice(six.iteritems(self.conn_locks), maxlen))
+            self.conn_locks = OrderedDict(itertools.islice(self.conn_locks.items(), maxlen))
 
             return self._connect(conn, lock)
 
@@ -486,19 +477,13 @@ cdef class ActorRemoteHelper:
                 message_type = unpack_message_type(res_binary)
                 if message_type == MessageType.error:
                     error_message = unpack_error_message(res_binary)
-                    six.reraise(error_message.error_type, error_message.error, error_message.traceback)
+                    raise error_message.error.with_traceback(error_message.traceback) from None
                 else:
                     assert message_type == MessageType.result
                     return unpack_result_message(res_binary).result
             except BrokenPipeError:
                 self._connections[address].got_broken_pipe(sock.fileno())
                 raise
-            except socket.error as exc:  # pragma: no cover
-                if exc.errno == errno.EPIPE:
-                    self._connections[address].got_broken_pipe(sock.fileno())
-                    raise BrokenPipeError
-                else:
-                    raise
 
     def create_actor(self, str address, object uid, object actor_cls, *args, **kwargs):
         cdef bint wait

@@ -16,8 +16,9 @@
 
 import logging
 from collections import deque
+from enum import Enum
+from io import StringIO
 
-from .compat import six, Enum
 from .serialize import Serializable
 from .serialize.core cimport ValueType, ProviderType, \
     OneOfField, ListField, Int8Field
@@ -360,12 +361,12 @@ cdef class DirectedGraph:
     def _repr_in_dot(cls, val):
         if isinstance(val, bool):
             return 'true' if val else 'false'
-        if isinstance(val, six.string_types):
+        if isinstance(val, str):
             return '"{0}"'.format(val)
         return val
 
     def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5, result_chunk_keys=None):
-        sio = six.StringIO()
+        sio = StringIO()
         sio.write('digraph {\n')
         sio.write('splines=curved\n')
         sio.write('rankdir=BT\n')
@@ -373,11 +374,11 @@ cdef class DirectedGraph:
         if graph_attrs:
             sio.write('graph [{0}];\n'.format(
                 ' '.join('{0}={1}'.format(k, self._repr_in_dot(v))
-                         for k, v in six.iteritems(graph_attrs))))
+                         for k, v in graph_attrs.items())))
         if node_attrs:
             sio.write('node [{0}];\n'.format(
                 ' '.join('{0}={1}'.format(k, self._repr_in_dot(v))
-                         for k, v in six.iteritems(node_attrs))))
+                         for k, v in node_attrs.items())))
 
         chunk_style = '[shape=box]'
         operand_style = '[shape=circle]'

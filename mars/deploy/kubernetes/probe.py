@@ -17,7 +17,6 @@ import os
 import sys
 
 from ...actors import ActorNotExist, new_client
-from ...compat import ConnectionRefusedError  # pylint: disable=W0622
 from .core import ReadinessActor
 
 

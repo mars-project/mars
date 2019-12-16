@@ -63,7 +63,7 @@ class FakeExecutionActor(SchedulerActor):
             exc = build_exc_info(ExecutionInterrupted)
             self._results[graph_key] = (exc, dict(_accept=False))
             for cb in rec.finish_callbacks:
-                self.tell_promise(cb, *exc, **dict(_accept=False))
+                self.tell_promise(cb, *exc, _accept=False)
             rec.finish_callbacks = []
             return
         elif self._fail_count and self._retries[graph_key] < self._fail_count:
@@ -74,7 +74,7 @@ class FakeExecutionActor(SchedulerActor):
             del self._graph_records[(session_id, graph_key)]
             self._results[graph_key] = (exc, dict(_accept=False))
             for cb in rec.finish_callbacks:
-                self.tell_promise(cb, *exc, **dict(_accept=False))
+                self.tell_promise(cb, *exc, _accept=False)
             rec.finish_callbacks = []
             return
 

@@ -15,7 +15,6 @@
 import os
 
 from mars.tests.core import create_actor_pool
-from mars.compat import six
 from mars.errors import WorkerProcessStopped
 from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, DispatchActor, ProcessHelperActor
@@ -54,7 +53,7 @@ class DaemonTestActor(WorkerActor):
             raise ValueError
         val, accept = self._result
         if not accept:
-            six.reraise(*val)
+            raise val[1].with_traceback(val[2])
         else:
             return val
 

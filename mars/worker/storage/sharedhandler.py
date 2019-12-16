@@ -17,7 +17,6 @@ import functools
 import pyarrow
 
 from ... import promise
-from ...compat import six
 from ...config import options
 from ...errors import StorageFull, StorageDataExists
 from ...serialize import dataserializer
@@ -180,12 +179,13 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
             obj_refs[:] = []
 
     def load_from_bytes_io(self, session_id, data_keys, src_handler, pin_token=None):
-        is_success = [True]
+        is_success = True
         shared_bufs = []
         failed_keys = set()
         storage_full_sizes = [0, 0]
 
         def _handle_writer_create_fail(key, reader, exc_info):
+            nonlocal is_success
             reader.close()
             failed_keys.add(key)
             exc = exc_info[1]
@@ -193,24 +193,24 @@ class SharedStorageHandler(StorageHandler, BytesStorageMixin, ObjectStorageMixin
                 storage_full_sizes[0] += exc.request_size
                 storage_full_sizes[1] = exc.capacity
             else:
-                is_success[0] = False
+                is_success = False
                 shared_bufs[:] = []
                 self.pass_on_exc(reader.close, exc_info)
 
         def _on_file_close(key, _reader, writer, finished):
             if finished:
-                if is_success[0]:
+                if is_success:
                     shared_bufs.append(writer.get_shared_buffer())
             else:
                 failed_keys.add(key)
 
-        def _finalize_load(*exc):
+        def _finalize_load(*exc_info):
             try:
                 success_keys = [k for k in data_keys if k not in failed_keys]
                 if success_keys:
                     self._holder_ref.put_objects_by_keys(session_id, success_keys, pin_token=pin_token)
-                if exc:
-                    six.reraise(*exc)
+                if exc_info:
+                    raise exc_info[1].with_traceback(exc_info[2]) from None
                 if failed_keys:
                     raise StorageFull(request_size=storage_full_sizes[0], capacity=storage_full_sizes[1],
                                       affected_keys=list(failed_keys))

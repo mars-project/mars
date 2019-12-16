@@ -21,6 +21,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+from enum import Enum
 
 import numpy as np
 try:
@@ -29,14 +30,8 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from mars import utils
-from mars.compat import Enum
 from mars.tensor.fetch import TensorFetch
 import mars.tensor as mt
-
-try:
-    unicode  # noqa F821
-except NameError:
-    unicode = str
 
 
 class Test(unittest.TestCase):
@@ -51,7 +46,7 @@ class Test(unittest.TestCase):
         self.assertEqual(utils.to_binary(s), b'abcdefg')
         self.assertIsInstance(utils.to_str(s), str)
         self.assertEqual(utils.to_str(s), 'abcdefg')
-        self.assertIsInstance(utils.to_text(s), unicode)
+        self.assertIsInstance(utils.to_text(s), str)
         self.assertEqual(utils.to_text(s), u'abcdefg')
 
         ustr = type('ustr', (str,), {})
@@ -63,7 +58,7 @@ class Test(unittest.TestCase):
         self.assertEqual(utils.to_binary(s), b'abcdefg')
         self.assertIsInstance(utils.to_str(s), str)
         self.assertEqual(utils.to_str(s), 'abcdefg')
-        self.assertIsInstance(utils.to_text(s), unicode)
+        self.assertIsInstance(utils.to_text(s), str)
         self.assertEqual(utils.to_text(s), u'abcdefg')
 
         ubytes = type('ubytes', (bytes,), {})
@@ -75,11 +70,11 @@ class Test(unittest.TestCase):
         self.assertEqual(utils.to_binary(s), b'abcdefg')
         self.assertIsInstance(utils.to_str(s), str)
         self.assertEqual(utils.to_str(s), 'abcdefg')
-        self.assertIsInstance(utils.to_text(s), unicode)
+        self.assertIsInstance(utils.to_text(s), str)
         self.assertEqual(utils.to_text(s), u'abcdefg')
 
-        uunicode = type('uunicode', (unicode,), {})
-        self.assertIsInstance(utils.to_text(uunicode(s)), unicode)
+        uunicode = type('uunicode', (str,), {})
+        self.assertIsInstance(utils.to_text(uunicode(s)), str)
         self.assertEqual(utils.to_text(uunicode(s)), u'abcdefg')
 
         with self.assertRaises(TypeError):

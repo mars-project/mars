@@ -26,7 +26,6 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 import mars.tensor as mt
-from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.deploy.kubernetes import new_cluster
 from mars.deploy.kubernetes.config import HostPathVolumeConfig
 from mars.tests.core import mock

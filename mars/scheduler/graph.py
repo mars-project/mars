@@ -19,7 +19,8 @@ import operator
 import os
 import random
 import time
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
+from functools import lru_cache, reduce
 
 import numpy as np
 
@@ -31,7 +32,6 @@ from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
 from ..actors.errors import ActorAlreadyExist
-from ..compat import functools32, reduce, OrderedDict
 from ..config import options
 from ..errors import ExecutionInterrupted, GraphNotExists
 from ..graph import DAG
@@ -1010,7 +1010,7 @@ class GraphActor(SchedulerActor):
         self._graph_meta_ref.update_op_worker(op_key, op_info['op_name'], worker,
                                               _tell=True, _wait=False)
 
-    @functools32.lru_cache(1000)
+    @lru_cache(1000)
     def _get_operand_ref(self, key):
         from .operands import OperandActor
         op_uid = OperandActor.gen_uid(self._session_id, key)

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import BytesIO
+
 import pyarrow
 
-from ..compat import BytesIO
 from ..serialize.dataserializer import CompressType, get_compressobj, get_decompressobj, \
     HEADER_LENGTH, file_header, read_file_header, write_file_header, SERIAL_VERSION
 

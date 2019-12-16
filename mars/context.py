@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import threading
 from collections import namedtuple
-import sys
-
-from .compat import Enum
+from enum import Enum
 
 
 _context_factory = threading.local()

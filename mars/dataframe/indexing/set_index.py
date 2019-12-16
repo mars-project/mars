@@ -14,7 +14,6 @@
 
 import numpy as np
 import pandas as pd
-import six
 
 from ...serialize import AnyField, BoolField
 from ... import opcodes as OperandDef
@@ -63,7 +62,7 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
         in_df = op.inputs[0]
         out_df = op.outputs[0]
 
-        if not isinstance(op.keys, six.string_types):
+        if not isinstance(op.keys, str):
             raise NotImplementedError('DataFrame.set_index only support label')
         if op.verify_integrity:
             raise NotImplementedError('DataFrame.set_index not support verify_integrity yet')

@@ -16,14 +16,14 @@ import base64
 import json
 import time
 import logging
-from numbers import Integral
 import pickle
 import sys
 import uuid
+from io import BytesIO
+from numbers import Integral
 
 import numpy as np
 
-from ..compat import six, TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
@@ -124,7 +124,8 @@ class Session(object):
         elif resp_json['state'] == 'failed':
             if 'exc_info' in resp_json:
                 try:
-                    six.reraise(*pickle.loads(base64.b64decode(resp_json['exc_info'])))
+                    exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
+                    raise exc_info[1].with_traceback(exc_info[2])
                 except:  # noqa: E722
                     raise ExecutionFailed('Graph execution failed.')
             else:
@@ -239,7 +240,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
         shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
         return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
@@ -252,7 +253,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
         shape, dtype, chunk_size, chunk_keys, chunk_eps = json.loads(resp.text)
         return create_mutable_tensor(name, chunk_size, shape, numpy_dtype_from_descr_json(dtype),
                                      chunk_keys, chunk_eps)
@@ -269,7 +270,6 @@ class Session(object):
             * pyarrow serialized bytes of `value`
         """
         from ..tensor.core import Indexes
-        from ..compat import BytesIO
         from ..serialize import dataserializer
 
         index = Indexes(_indexes=index)
@@ -286,7 +286,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
 
     def seal(self, tensor):
         from ..tensor.utils import create_fetch_tensor
@@ -296,7 +296,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
         graph_key_hex, tensor_key, tensor_id, tensor_meta = json.loads(resp.text)
         self._executed_tileables[tensor_key] = uuid.UUID(graph_key_hex), {tensor_id}
 
@@ -355,7 +355,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
         resp_json = json.loads(resp.text)
         return resp_json
 
@@ -365,7 +365,7 @@ class Session(object):
         if resp.status_code >= 400:
             resp_json = json.loads(resp.text)
             exc_info = pickle.loads(base64.b64decode(resp_json['exc_info']))
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
         resp_json = json.loads(resp.text)
         return resp_json
 

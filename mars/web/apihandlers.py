@@ -19,12 +19,12 @@ import logging
 import pickle
 import traceback
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
-from tornado import gen, concurrent, web, ioloop
+from tornado import gen, web
 
 from ..tensor.core import Indexes
 from ..actors import new_client
-from ..compat import six, futures
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import CompressType
@@ -35,20 +35,6 @@ pickling_support.install()
 _actor_client = new_client()
 
 logger = logging.getLogger(__name__)
-
-
-def _patch_futures():  # pragma: no cover
-    _FUTURES = concurrent.FUTURES + (futures.Future, )
-
-    def _is_future(x):
-        return isinstance(x, _FUTURES)
-
-    gen.is_future = _is_future
-    ioloop.is_future = _is_future
-
-
-if six.PY2:  # pragma: no cover
-    _patch_futures()
 
 
 class MarsApiRequestHandler(MarsRequestHandler):
@@ -125,7 +111,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
 
 
 class GraphApiHandler(MarsApiRequestHandler):
-    _executor = futures.ThreadPoolExecutor(1)
+    _executor = ThreadPoolExecutor(1)
 
     @gen.coroutine
     def get(self, session_id, graph_key):
@@ -164,7 +150,7 @@ class GraphApiHandler(MarsApiRequestHandler):
 
 
 class GraphDataApiHandler(MarsApiRequestHandler):
-    _executor = futures.ThreadPoolExecutor(1)
+    _executor = ThreadPoolExecutor(1)
 
     @gen.coroutine
     def get(self, session_id, graph_key, tileable_key):

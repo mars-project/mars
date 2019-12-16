@@ -15,7 +15,6 @@
 
 import logging
 import os
-import sys
 import uuid
 from collections import namedtuple
 from ctypes import c_char, c_char_p, c_int, c_uint, c_ulonglong, byref,\
@@ -262,9 +261,7 @@ def get_device_status(dev_index):
 
     dev_uuid = get_device_info(dev_index).uuid
 
-    uuid_str = 'GPU-' + str(dev_uuid)
-    if sys.version_info[0] >= 3:
-        uuid_str = uuid_str.encode()
+    uuid_str = ('GPU-' + str(dev_uuid)).encode()
 
     _nvml_check_error(_nvml_lib.nvmlDeviceGetHandleByUUID(uuid_str, byref(device)))
     _nvml_check_error(_nvml_lib.nvmlDeviceGetUtilizationRates(device, byref(utils)))

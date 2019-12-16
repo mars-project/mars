@@ -18,7 +18,6 @@ from collections import deque, OrderedDict
 from .utils import WorkerActor
 from .. import promise
 from ..actors import ActorNotExist
-from ..compat import BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ..utils import mod_hash, log_unhandled
 
 logger = logging.getLogger(__name__)

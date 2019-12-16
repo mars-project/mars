@@ -22,7 +22,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import TupleField
 from ...config import options
-from ...compat import irange, izip
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorDistribution
 
@@ -57,11 +56,11 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
         nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize)
         nsplits += ((len(op.alpha),),)
 
-        idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
+        idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
         seeds = gen_random_seeds(len(idxes), op.state)
 
         out_chunks = []
-        for seed, idx, shape in izip(seeds, idxes, itertools.product(*nsplits)):
+        for seed, idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
             inputs = [inp.cix[idx] for inp in op.inputs]
             size = shape[:-1]
 

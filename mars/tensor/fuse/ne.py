@@ -22,7 +22,6 @@ except ImportError:
     NUMEXPR_INSTALLED = False
 import numpy as np
 
-from ...compat import six, izip
 from ...serialize import DataTypeField
 from ..operands import TensorFuse
 from .. import arithmetic, reduction
@@ -46,8 +45,8 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         inputs = as_same_device([ctx[c.key] for c in op.inputs], device=op.device)
-        for c, i in izip(op.inputs, inputs):
-            six.exec_('V_' + c.key + ' = i')
+        for c, i in zip(op.inputs, inputs):
+            exec('V_' + c.key + ' = i')
         expr = _evaluate(chunk)
         res = ne.evaluate(expr)
         res = _maybe_keepdims(chunk, res)

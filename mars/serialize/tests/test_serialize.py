@@ -19,6 +19,8 @@ import json
 import os
 import tempfile
 import unittest
+from collections import OrderedDict
+from io import BytesIO
 
 import numpy as np
 try:
@@ -30,7 +32,6 @@ try:
 except ImportError:
     pd = None
 
-from mars.compat import six, OrderedDict, BytesIO
 from mars.lib import sparse
 from mars.serialize.core import Serializable, IdentityField, StringField, UnicodeField, \
     BytesField, Int8Field, Int16Field, Int32Field, Int64Field, UInt8Field, UInt16Field, \
@@ -213,7 +214,7 @@ class Test(unittest.TestCase):
         self.assertIsNot(node3.value.g, d_node3.value.g)
         self.assertEqual(node3.value.g.a, d_node3.value.g.a)
         self.assertEqual(node3.value.h[0], d_node3.value.h[0])
-        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertNotIsInstance(d_node3.value.h[1], str)
         self.assertIs(d_node3.value.h[1], d_node3.value.f)
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
@@ -272,7 +273,7 @@ class Test(unittest.TestCase):
         self.assertIsNot(node3.value.g, d_node3.value.g)
         self.assertEqual(node3.value.g.a, d_node3.value.g.a)
         self.assertEqual(node3.value.h[0], d_node3.value.h[0])
-        self.assertNotIsInstance(d_node3.value.h[1], six.string_types)
+        self.assertNotIsInstance(d_node3.value.h[1], str)
         self.assertIs(d_node3.value.h[1], d_node3.value.f)
         self.assertEqual(node3.value.h[2], True)
         self.assertAlmostEqual(node3.value.h[6], d_node3.value.h[6])
@@ -537,33 +538,29 @@ class Test(unittest.TestCase):
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.CompressType.LZ4)))
-            if not six.PY2:
-                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                    array, compress=dataserializer.CompressType.GZIP)))
+            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                array, compress=dataserializer.CompressType.GZIP)))
 
             array = np.random.rand(1000, 100)
             assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(array))))
             assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
                 array, compress=dataserializer.CompressType.LZ4))))
-            if not six.PY2:
-                assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
-                    array, compress=dataserializer.CompressType.GZIP))))
+            assert_array_equal(array, dataserializer.load(BytesIO(dataserializer.dumps(
+                array, compress=dataserializer.CompressType.GZIP))))
 
             array = np.random.rand(1000, 100).T  # test non c-contiguous
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.CompressType.LZ4)))
-            if not six.PY2:
-                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                    array, compress=dataserializer.CompressType.GZIP)))
+            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                array, compress=dataserializer.CompressType.GZIP)))
 
             array = np.float64(0.2345)
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(array)))
             assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
                 array, compress=dataserializer.CompressType.LZ4)))
-            if not six.PY2:
-                assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
-                    array, compress=dataserializer.CompressType.GZIP)))
+            assert_array_equal(array, dataserializer.loads(dataserializer.dumps(
+                array, compress=dataserializer.CompressType.GZIP)))
 
             # test structured arrays.
             rec_dtype = np.dtype([('a', 'int64'), ('b', 'double'), ('c', '<U8')])
@@ -586,12 +583,11 @@ class Test(unittest.TestCase):
                 with open(fn, 'rb') as dump_file:
                     assert_array_equal(array, dataserializer.load(dump_file))
 
-                if not six.PY2:
-                    with open(fn, 'wb') as dump_file:
-                        dataserializer.dump(array, dump_file,
-                                            compress=dataserializer.CompressType.GZIP)
-                    with open(fn, 'rb') as dump_file:
-                        assert_array_equal(array, dataserializer.load(dump_file))
+                with open(fn, 'wb') as dump_file:
+                    dataserializer.dump(array, dump_file,
+                                        compress=dataserializer.CompressType.GZIP)
+                with open(fn, 'rb') as dump_file:
+                    assert_array_equal(array, dataserializer.load(dump_file))
             finally:
                 if os.path.exists(fn):
                     os.unlink(fn)
@@ -605,10 +601,9 @@ class Test(unittest.TestCase):
                 mat, compress=dataserializer.CompressType.LZ4))
             self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
 
-            if not six.PY2:
-                des_mat = dataserializer.loads(dataserializer.dumps(
-                    mat, compress=dataserializer.CompressType.GZIP))
-                self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
+            des_mat = dataserializer.loads(dataserializer.dumps(
+                mat, compress=dataserializer.CompressType.GZIP))
+            self.assertTrue((mat.spmatrix != des_mat.spmatrix).nnz == 0)
 
             vector = sparse.SparseVector(sps.csr_matrix(np.random.rand(2)), shape=(2,))
             des_vector = dataserializer.loads(dataserializer.dumps(vector))
@@ -618,10 +613,9 @@ class Test(unittest.TestCase):
                 vector, compress=dataserializer.CompressType.LZ4))
             self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
-            if not six.PY2:
-                des_vector = dataserializer.loads(dataserializer.dumps(
-                    vector, compress=dataserializer.CompressType.GZIP))
-                self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
+            des_vector = dataserializer.loads(dataserializer.dumps(
+                vector, compress=dataserializer.CompressType.GZIP))
+            self.assertTrue((vector.spmatrix != des_vector.spmatrix).nnz == 0)
 
     @unittest.skipIf(pyarrow is None, 'PyArrow is not installed.')
     def testArrowSerialize(self):

@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...compat import six
 from ...utils import copy_tileables
 from ...dataframe.groupby.aggregation import DataFrameGroupByAgg
 from ...dataframe.datasource.read_csv import DataFrameReadCSV
@@ -31,7 +30,7 @@ class GroupbyPruneReadCSV(TileableOptimizeRule):
         if isinstance(node.inputs[0].op, DataFrameReadCSV) and \
                 node.inputs[0] not in self._optimizer_context.result_tileables:
             by_columns = node.op.by if isinstance(node.op.by, (list, tuple)) else [node.op.by]
-            if isinstance(node.op.func, (six.string_types, list)):
+            if isinstance(node.op.func, (str, list)):
                 # Passing func name(s) means perform on all columns.
                 return False
             elif len(set(by_columns + list(node.op.func))) == len(node.inputs[0].op.usecols or node.inputs[0].dtypes):

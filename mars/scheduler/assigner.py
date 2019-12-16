@@ -311,7 +311,7 @@ class AssignEvaluationActor(SchedulerActor):
             except:  # noqa: E722
                 logger.exception('Unexpected error occurred in %s', self.uid)
                 if item.callback:  # pragma: no branch
-                    self.tell_promise(item.callback, *sys.exc_info(), **dict(_accept=False))
+                    self.tell_promise(item.callback, *sys.exc_info(), _accept=False)
                 continue
 
             # collect workers failed to assign operand to

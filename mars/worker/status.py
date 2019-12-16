@@ -21,7 +21,6 @@ from collections import defaultdict
 from .utils import WorkerActor, ExpMeanHolder
 from .. import resource
 from ..config import options
-from ..compat import six
 from ..node_info import gather_node_info
 
 logger = logging.getLogger(__name__)
@@ -101,7 +100,7 @@ class StatusReporterActor(WorkerActor):
             hw_metrics['mem_quota_hold'] = int(mem_quota_allocations.get('hold', 0))
 
             if options.worker.spill_directory:
-                if isinstance(options.worker.spill_directory, six.string_types):
+                if isinstance(options.worker.spill_directory, str):
                     spill_dirs = options.worker.spill_directory.split(':')
                 else:
                     spill_dirs = options.worker.spill_directory
@@ -142,11 +141,11 @@ class StatusReporterActor(WorkerActor):
             meta_dict['slots'] = dict()
 
             status_data = self._status_ref.get_stats()
-            for k, v in six.iteritems(status_data):
+            for k, v in status_data.items():
                 meta_dict['stats'][k] = v
 
             slots_data = self._status_ref.get_slots()
-            for k, v in six.iteritems(slots_data):
+            for k, v in slots_data.items():
                 meta_dict['slots'][k] = v
 
             meta_dict['progress'] = self._status_ref.get_progress()

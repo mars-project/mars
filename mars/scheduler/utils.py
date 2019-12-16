@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import array
+from enum import Enum
 
-from ..compat import six, Enum
 from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
 from ..utils import classproperty
 from ..promise import PromiseActor
@@ -70,9 +70,5 @@ class CombinedFutureWaiter(object):
         return [f.result() for f in self._futures]
 
 
-if six.PY3:
-    def array_to_bytes(typecode, initializer):
-        return array.array(typecode, initializer).tobytes()
-else:
-    def array_to_bytes(typecode, initializer):
-        return array.array(typecode, initializer).tostring()
+def array_to_bytes(typecode, initializer):
+    return array.array(typecode, initializer).tobytes()

@@ -21,7 +21,6 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, TupleField
-from ...compat import izip
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..utils import unify_chunks
@@ -117,9 +116,9 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
             tensordot_chunks = []
             for contract_indexes in itertools.product(*[range(len(a.nsplits[ax])) for ax in a_axes]):
                 a_indices, b_indices = list(a_indexes), list(b_indexes)
-                for a_axis, contract_index in izip(a_axes, contract_indexes):
+                for a_axis, contract_index in zip(a_axes, contract_indexes):
                     a_indices[a_axis] = contract_index
-                for b_axis, contract_index in izip(b_axes, contract_indexes):
+                for b_axis, contract_index in zip(b_axes, contract_indexes):
                     b_indices[b_axis] = contract_index
 
                 tensordot_chunk_op = op.copy().reset_key()

@@ -18,7 +18,6 @@ from collections import Iterable
 
 import numpy as np
 
-from ...compat import six
 from ..utils import validate_axis
 from ..datasource import tensor as astensor
 from .ravel import ravel
@@ -113,7 +112,7 @@ def roll(a, shift, axis=None):
     for s, ax in broadcasted:
         shifts[ax] += s
 
-    for ax, s in six.iteritems(shifts):
+    for ax, s in shifts.items():
         if s == 0:
             continue
 

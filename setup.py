@@ -41,12 +41,11 @@ if sys.platform == 'darwin':
 
 repo_root = os.path.dirname(os.path.abspath(__file__))
 
-try:
-    execfile
-except NameError:
-    def execfile(fname, globs, locs=None):
-        locs = locs or globs
-        exec(compile(open(fname).read(), fname, "exec"), globs, locs)
+
+def execfile(fname, globs, locs=None):
+    locs = locs or globs
+    exec(compile(open(fname).read(), fname, "exec"), globs, locs)
+
 
 version_file_path = os.path.join(repo_root, 'mars', '_version.py')
 version_ns = {'__file__': version_file_path}

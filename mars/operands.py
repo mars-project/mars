@@ -18,7 +18,6 @@ import weakref
 
 import numpy as np
 
-from .compat import six
 from .serialize import SerializableMetaclass, ValueType, ProviderType, \
     IdentityField, ListField, DictField, Int32Field, BoolField, StringField
 from .core import Entity, AttributeAsDictKey, ExecutableTuple, FuseChunkData, FuseChunk
@@ -49,7 +48,7 @@ class OperandMetaclass(SerializableMetaclass):
         return cls
 
 
-class Operand(six.with_metaclass(OperandMetaclass, AttributeAsDictKey)):
+class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
     `sparse` indicates that if the operand is applied on a sparse tensor/chunk.

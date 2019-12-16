@@ -17,7 +17,6 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import six
 from ..executor import Executor
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
     get_chunk_shuffle_key
@@ -138,7 +137,7 @@ class BaseCalcActor(WorkerActor):
             self._release_local_quotas(session_id, keys_to_fetch)
 
             context_dict.clear()
-            six.reraise(*exc)
+            raise exc[1].with_traceback(exc[2])
 
         return storage_client.get_objects(session_id, keys_to_fetch, self._calc_source_devices) \
             .then(_handle_loaded, _handle_load_fail).then(lambda *_: context_dict)
@@ -256,7 +255,7 @@ class BaseCalcActor(WorkerActor):
                     if self._remove_intermediate:
                         keys_to_delete.append(k)
                     keys_to_release.append(k)
-                self.tell_promise(callback, *exc_info, **dict(_accept=False))
+                self.tell_promise(callback, *exc_info, _accept=False)
 
             if keys_to_delete:
                 self.storage_client.delete(session_id, keys_to_delete, [self._calc_intermediate_device])
@@ -297,7 +296,7 @@ class BaseCalcActor(WorkerActor):
             .then(_delete_keys) \
             .then(lambda *_: meta_future.result()) \
             .then(lambda *_: self.tell_promise(callback),
-                  lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
+                  lambda *exc: self.tell_promise(callback, *exc, _accept=False))
 
 
 class CpuCalcActor(BaseCalcActor):

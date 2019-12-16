@@ -19,7 +19,6 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.compat import six
 from mars.config import option_context
 from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor, zeros
@@ -71,7 +70,7 @@ class Test(unittest.TestCase):
 
     @staticmethod
     def _get_func(op):
-        if isinstance(op, six.string_types):
+        if isinstance(op, str):
             return getattr(np, op)
         return op
 
@@ -146,7 +145,7 @@ class Test(unittest.TestCase):
     def _get_sparse_func(op):
         from mars.lib.sparse.core import issparse
 
-        if isinstance(op, six.string_types):
+        if isinstance(op, str):
             op = getattr(np, op)
 
         def func(*args):

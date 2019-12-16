@@ -25,10 +25,8 @@ cimport numpy as np
 cimport cython
 from libc.string cimport memcpy
 from cpython.bytearray cimport PyByteArray_AS_STRING, PyByteArray_GET_SIZE, PyByteArray_Resize
-from cpython.version cimport PY_MAJOR_VERSION
 
 from ..core cimport ActorRef
-from ...compat import BrokenPipeError, ConnectionResetError
 from ...lib.tblib import pickling_support
 
 pickling_support.install()
@@ -836,11 +834,6 @@ cdef inline bytes _wrap_read_func(object read_func, size_t size):
          read_bytes = read_func(size)
     except ConnectionResetError:
         raise BrokenPipeError('The remote server is closed')
-    except socket.error as ex:
-        if ex.errno in (errno.EPIPE, errno.ECONNRESET):
-            raise BrokenPipeError('The remote server is closed')
-        else:
-            raise
 
     if len(read_bytes) == 0:
         raise BrokenPipeError('The remote server is closed')
@@ -883,16 +876,3 @@ def write_remote_message(write_func, *binary):
 
     for b in binary:
         write_func(b)
-
-
-if PY_MAJOR_VERSION < 3:  # pragma: no cover
-    _write_remote_message = write_remote_message
-
-    def write_remote_message(*args, **kwargs):
-        try:
-            return _write_remote_message(*args, **kwargs)
-        except socket.error as ex:
-            if ex.errno in (errno.ECONNRESET, errno.EPIPE):
-                raise BrokenPipeError
-            else:
-                raise

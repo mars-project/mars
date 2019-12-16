@@ -16,10 +16,9 @@ import itertools
 import logging
 import sys
 import time
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 from .. import resource, promise
-from ..compat import OrderedDict3
 from ..utils import log_unhandled
 from .utils import WorkerActor
 
@@ -47,7 +46,7 @@ class QuotaActor(WorkerActor):
         super(QuotaActor, self).__init__()
         self._status_ref = None
 
-        self._requests = OrderedDict3()
+        self._requests = OrderedDict()
 
         self._total_size = total_size
         self._allocations = dict()
@@ -223,7 +222,7 @@ class QuotaActor(WorkerActor):
             try:
                 if reject_exc:
                     for cb in self._requests[k].callbacks:
-                        self.tell_promise(cb, *reject_exc, **dict(_accept=False))
+                        self.tell_promise(cb, *reject_exc, _accept=False)
                 del self._requests[k]
                 logger.debug('Quota request %s cancelled', k)
             except KeyError:
@@ -386,7 +385,7 @@ class QuotaActor(WorkerActor):
                 removed.append(k)
                 # just in case the quota is allocated
                 for cb in req.callbacks:
-                    self.tell_promise(cb, *sys.exc_info(), **dict(_accept=False, _wait=False))
+                    self.tell_promise(cb, *sys.exc_info(), _accept=False, _wait=False)
         for k in removed:
             self._requests.pop(k, None)
 

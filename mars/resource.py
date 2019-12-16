@@ -22,7 +22,6 @@ from collections import namedtuple
 import psutil
 
 from .lib import nvutils
-from .compat import long_type
 
 CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.stat'
 CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
@@ -140,7 +139,7 @@ def cpu_percent():
     if _cpu_use_cgroup_stat:
         # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
         with open(CGROUP_CPU_STAT_FILE, 'r') as cgroup_file:
-            cpu_acct = long_type(cgroup_file.read())
+            cpu_acct = int(cgroup_file.read())
             sample_time = _timer()
         if _last_cgroup_cpu_measure is None:
             _last_cgroup_cpu_measure = (cpu_acct, sample_time)

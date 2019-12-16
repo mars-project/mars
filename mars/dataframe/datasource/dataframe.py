@@ -17,7 +17,6 @@ import itertools
 from ... import opcodes as OperandDef
 from ...serialize import DataFrameField, SeriesField
 from ...config import options
-from ...compat import izip
 from ...tensor.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType
@@ -66,8 +65,8 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         chunk_size_idxes = (range(len(size)) for size in chunk_size)
 
         out_chunks = []
-        for chunk_shape, chunk_idx in izip(itertools.product(*chunk_size),
-                                           itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(itertools.product(*chunk_size),
+                                          itertools.product(*chunk_size_idxes)):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_idx)
             chunk_op._data = raw_df.iloc[slc]

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import contextlib
+from enum import Enum
 
 from ...actors import ActorNotExist
-from ...compat import Enum, BrokenPipeError, ConnectionRefusedError, TimeoutError  # pylint: disable=W0622
 from ...errors import WorkerDead
 from ...utils import classproperty
 

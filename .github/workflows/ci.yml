@@ -9,9 +9,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, macOS-latest, windows-latest]
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs]
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.8-kubernetes, 3.8-hdfs]
         include:
-          - { os: ubuntu-16.04, python-version: 2.7, python-abis: "cp27-cp27m:cp27-cp27mu" }
           - { os: ubuntu-16.04, python-version: 3.5, python-abis: "cp35-cp35m", cython-trace: 1 }
           - { os: ubuntu-16.04, python-version: 3.6, python-abis: "cp36-cp36m" }
           - { os: ubuntu-16.04, python-version: 3.7, python-abis: "cp37-cp37m" }
@@ -24,7 +23,6 @@ jobs:
         exclude:
           - { os: macOS-latest, python-version: 3.8-kubernetes }
           - { os: macOS-latest, python-version: 3.8-hdfs }
-          - { os: windows-latest, python-version: 2.7 }
           - { os: windows-latest, python-version: 3.8-kubernetes }
           - { os: windows-latest, python-version: 3.8-hdfs }
 
@@ -38,11 +36,7 @@ jobs:
       shell: bash
       run: |
         source ./.github/workflows/install-conda.sh
-        if [[ "$PYTHON" =~ "2" ]]; then
-          python -m pip install --upgrade pip\<19 setuptools\<40.7 wheel coverage;
-        else
-          python -m pip install --upgrade pip setuptools wheel coverage;
-        fi
+        python -m pip install --upgrade pip setuptools wheel coverage;
 
     - name: Install dependencies
       env:
@@ -72,10 +66,10 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON "tiledb-py>=0.4.3" || true
               conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]] && [[ ! "$PYTHON" =~ "2.7" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.5" ]]; then
               conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON libxgboost py-xgboost xgboost
             fi
-            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "2.7" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
+            if [[ $UNAME == "linux" ]] && [[ ! "$PYTHON" =~ "3.8" ]]; then
               pip install tensorflow
               pip install torch torchvision
             fi

@@ -14,13 +14,13 @@
 
 import itertools
 import operator
+from enum import Enum
 
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
 from ...config import options
-from ...compat import enum
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
@@ -29,7 +29,7 @@ from ..datasource.array import tensor as astensor
 from ..array_utils import as_same_device, device
 
 
-class Stage(enum.Enum):
+class Stage(Enum):
     map = 'map'
     combine = 'combine'
     reduce = 'reduce'

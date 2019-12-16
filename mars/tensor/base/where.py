@@ -20,7 +20,6 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...compat import lrange
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..utils import broadcast_shape, unify_chunks
@@ -66,7 +65,7 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
+        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
         chunk_shapes = [t.chunk_shape if isinstance(t, TENSOR_TYPE) else t
                         for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)

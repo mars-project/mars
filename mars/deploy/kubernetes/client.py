@@ -17,8 +17,8 @@ import logging
 import random
 import time
 import uuid
+from urllib.parse import urlparse
 
-from ...compat import TimeoutError, urlparse  # pylint: disable=W0622
 from ...session import new_session
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSchedulersConfig, MarsWorkersConfig, MarsWebsConfig

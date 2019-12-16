@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from io import BytesIO
 
 import numpy as np
 try:
@@ -20,7 +21,6 @@ try:
 except ImportError:
     pyarrow = None
 
-from mars.compat import BytesIO
 from mars.serialize import dataserializer
 from mars.worker.dataio import ArrowBufferIO, FileBufferIO
 

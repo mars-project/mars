@@ -14,9 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import copy
+import inspect
 import itertools
 import operator
+from functools import reduce
 from math import ceil, log
 try:
     from collections.abc import Iterable
@@ -25,7 +28,6 @@ except ImportError:  # pragma: no cover
 
 import numpy as np
 
-from ...compat import lrange, izip, irange, builtins, six, getargspec, reduce
 from ...config import options
 from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
 from ..core import Tensor, TensorOrder
@@ -72,7 +74,7 @@ class TensorReductionMixin(TensorOperandMixin):
                 setattr(self, '_axis', axis)
             shape = a.shape
         else:
-            axis = lrange(len(a.shape)) if axis is None else axis
+            axis = list(range(len(a.shape))) if axis is None else axis
             if not isinstance(axis, Iterable):
                 axis = (validate_axis(a.ndim, axis),)
             axis = set(axis)
@@ -123,7 +125,7 @@ class TensorReductionMixin(TensorOperandMixin):
     @staticmethod
     def _concatenate_shape(tensor, combine_block):
         return tuple(builtins.sum(nsplit[i] for i in cb)
-                     for nsplit, cb in izip(tensor.nsplits, combine_block))
+                     for nsplit, cb in zip(tensor.nsplits, combine_block))
 
     @staticmethod
     def _combine_split(ax, combine_size, chunk_shape):
@@ -133,7 +135,7 @@ class TensorReductionMixin(TensorOperandMixin):
             size = combine_size[ax]
             shape = chunk_shape[ax]
             index = tuple(range(shape))
-            return tuple(index[i:i + size] for i in irange(0, shape, size))
+            return tuple(index[i:i + size] for i in range(0, shape, size))
 
     def _get_op_kw(self):
         return None
@@ -158,7 +160,7 @@ class TensorReductionMixin(TensorOperandMixin):
         if isinstance(combine_size, dict):
             combine_size = dict((ax, combine_size.get(ax)) for ax in axis)
         else:
-            assert isinstance(combine_size, six.integer_types)
+            assert isinstance(combine_size, int)
             n = builtins.max(int(combine_size ** (1.0 / (len(axis) or 1))), 2)
             combine_size = dict((ax, n) for ax in axis)
 
@@ -184,8 +186,8 @@ class TensorReductionMixin(TensorOperandMixin):
         combine_blocks_idxes = [range(len(blocks)) for blocks in combine_blocks]
 
         chunks = []
-        for combine_block_idx, combine_block in izip(itertools.product(*combine_blocks_idxes),
-                                                     itertools.product(*combine_blocks)):
+        for combine_block_idx, combine_block in zip(itertools.product(*combine_blocks_idxes),
+                                                    itertools.product(*combine_blocks)):
             chks = [tensor.cix[idx] for idx in itertools.product(*combine_block)]
             if len(chks) > 1:
                 op = TensorConcatenate(axis=axes, dtype=chks[0].dtype)
@@ -215,7 +217,7 @@ class TensorReductionMixin(TensorOperandMixin):
         in_tensor = op.inputs[0]
         out_tensor = op.outputs[0]
         axis = tuple(range(in_tensor.ndim)) if op.axis is None else op.axis
-        if isinstance(axis, six.integer_types):
+        if isinstance(axis, int):
             axis = (axis,)
         axis = tuple(validate_axis(in_tensor.ndim, ax) for ax in axis)
 
@@ -261,7 +263,7 @@ class TensorReductionMixin(TensorOperandMixin):
         reduce_func = getattr(xp, func_name)
         out = op.outputs[0]
         with device(device_id):
-            if "dtype" in getargspec(reduce_func).args:
+            if "dtype" in inspect.getfullargspec(reduce_func).args:
                 ret = reduce_func(input_chunk, axis=axis,
                                   dtype=op.dtype,
                                   keepdims=bool(op.keepdims))
@@ -280,7 +282,7 @@ class TensorArgReductionMixin(TensorReductionMixin):
         if axis is None:
             axis = tuple(range(ndim))
             ravel = True
-        elif isinstance(axis, six.integer_types):
+        elif isinstance(axis, int):
             axis = validate_axis(ndim, axis)
             axis = (axis,)
             ravel = ndim == 1
@@ -437,7 +439,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
         in_tensor = op.inputs[0]
         out_tensor = op.outputs[0]
         axis = op.axis
-        if not isinstance(axis, six.integer_types):
+        if not isinstance(axis, int):
             raise ValueError("axis must be a integer")
         axis = validate_axis(in_tensor.ndim, axis)
         if axis is None:

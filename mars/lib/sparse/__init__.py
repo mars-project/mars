@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import operator
+from functools import reduce
 try:
     from collections.abc import Iterable
 except ImportError:
     from collections import Iterable
 
-from ...compat import reduce, builtins
 from .array import SparseNDArray
 from .matrix import SparseMatrix
 from .vector import SparseVector

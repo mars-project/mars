@@ -15,9 +15,9 @@
 # limitations under the License.
 
 import numpy as np
+from functools import reduce
 
 from ... import opcodes as OperandDef
-from ...compat import reduce
 from ..array_utils import device, as_same_device
 from ..utils import infer_dtype
 from .core import TensorOperand

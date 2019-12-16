@@ -22,14 +22,12 @@ import time
 import traceback
 import unittest
 import uuid
-import platform
 
 import numpy as np
 import pandas as pd
 
 from mars import tensor as mt
 from mars import dataframe as md
-from mars.compat import six, PY27
 from mars.tensor.operands import TensorOperand
 from mars.tensor.arithmetic.core import TensorElementWise
 from mars.tensor.arithmetic.abs import TensorAbs
@@ -140,12 +138,11 @@ class Test(unittest.TestCase):
                         etype, exp, tb = sys.exc_info()
                         self.assertEqual(etype, ExecutionFailed)
                         self.assertIsInstance(exp, ExecutionFailed)
-                        if six.PY3:
-                            formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
-                            self.assertIn('TypeError', formatted_tb)
-                            self.assertIn('ufunc', formatted_tb)
-                            self.assertIn('add', formatted_tb)
-                            self.assertIn('signature matching types', formatted_tb)
+                        formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
+                        self.assertIn('TypeError', formatted_tb)
+                        self.assertIn('ufunc', formatted_tb)
+                        self.assertIn('add', formatted_tb)
+                        self.assertIn('signature matching types', formatted_tb)
 
                 with new_session('http://' + cluster._web_endpoint) as session:
                     t = mt.array(["1", "2", "3", "4"])
@@ -155,12 +152,11 @@ class Test(unittest.TestCase):
                         etype, exp, tb = sys.exc_info()
                         self.assertEqual(etype, ExecutionFailed)
                         self.assertIsInstance(exp, ExecutionFailed)
-                        if six.PY3:
-                            formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
-                            self.assertIn('TypeError', formatted_tb)
-                            self.assertIn('ufunc', formatted_tb)
-                            self.assertIn('add', formatted_tb)
-                            self.assertIn('signature matching types', formatted_tb)
+                        formatted_tb = '\n'.join(traceback.format_exception(etype, exp, tb))
+                        self.assertIn('TypeError', formatted_tb)
+                        self.assertIn('ufunc', formatted_tb)
+                        self.assertIn('add', formatted_tb)
+                        self.assertIn('signature matching types', formatted_tb)
 
     def testNSchedulersNWorkers(self, *_):
         calc_cpu_cnt = functools.partial(lambda: 4)
@@ -795,7 +791,6 @@ class Test(unittest.TestCase):
             self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
             self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
 
-    @unittest.skipIf(platform.system() == 'Darwin' and PY27, 'skip when OS is Mac OS and python version == 2.7')
     def testDataFrameShuffle(self, *_):
         from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
         from mars.dataframe.merge.merge import merge

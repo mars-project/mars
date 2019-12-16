@@ -18,9 +18,9 @@ import logging
 import sys
 import time
 from collections import defaultdict
+from enum import Enum
 
 from .. import promise
-from ..compat import six, Enum, TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from ..serialize import dataserializer
@@ -100,10 +100,10 @@ class SenderActor(WorkerActor):
         target_endpoints = list(target_endpoints)
         block_size = block_size or options.worker.transfer_block_size
 
-        data_sizes_bin = [self.storage_client.get_data_sizes(session_id, chunk_keys)]
-        if any(s is None for s in data_sizes_bin[0]):
+        data_sizes = self.storage_client.get_data_sizes(session_id, chunk_keys)
+        if any(s is None for s in data_sizes):
             raise DependencyMissing('Dependencies %r not met when sending.'
-                                    % [k for k, s in zip(chunk_keys, data_sizes_bin[0]) if s is None])
+                                    % [k for k, s in zip(chunk_keys, data_sizes) if s is None])
         compression = compression or dataserializer.CompressType(options.worker.transfer_compression)
 
         wait_refs = []
@@ -125,8 +125,9 @@ class SenderActor(WorkerActor):
 
         @log_unhandled
         def _create_remote_writers():
+            nonlocal data_sizes
             create_write_promises = []
-            data_sizes = data_sizes_bin[0] = self.storage_client.get_data_sizes(session_id, chunk_keys)
+            data_sizes = self.storage_client.get_data_sizes(session_id, chunk_keys)
             for ref in receiver_manager_ref_dict.values():
                 # register transfer actions
                 create_write_promises.append(
@@ -158,7 +159,7 @@ class SenderActor(WorkerActor):
         @log_unhandled
         def _finalize(*_):
             self._dispatch_ref.register_free_slot(self.uid, 'sender', _tell=True)
-            self.tell_promise(callback, data_sizes_bin[0])
+            self.tell_promise(callback, data_sizes)
 
         @log_unhandled
         def _handle_rejection(*exc):
@@ -171,7 +172,7 @@ class SenderActor(WorkerActor):
 
             for ref in receiver_refs:
                 ref.cancel_receive(session_id, addrs_to_chunks[ref.address], _tell=True, _wait=False)
-            self.tell_promise(callback, *exc, **dict(_accept=False))
+            self.tell_promise(callback, *exc, _accept=False)
 
         try:
             source_devices = [DataStorageDevice.SHARED_MEMORY, DataStorageDevice.DISK]
@@ -532,28 +533,29 @@ class ReceiverWorkerActor(WorkerActor):
         :param callback: promise callback
         """
         promises = []
-        failed_container = [False]
+        failed = False
         device_order = [DataStorageDevice.SHARED_MEMORY]
         source_address = sender_ref.address if sender_ref is not None else None
         if not ensure_cached:
             device_order += [DataStorageDevice.DISK]
 
         def _handle_accept_key(key, writer):
-            if failed_container[0]:
+            if failed:
                 writer.close(finished=False)
             else:
                 self._data_writers[(session_id, key)] = writer
 
         @log_unhandled
         def _handle_reject_key(key, *exc):
+            nonlocal failed
             if self.check_status(session_id, key) == ReceiveStatus.RECEIVED:
                 logger.debug('Chunk %s already received', key)
             else:
                 logger.debug('Rejecting %s from putting into plasma.', key)
-                failed_container[0] = True
+                failed = True
                 self._stop_transfer_with_exc(session_id, chunk_keys, exc)
                 if callback is not None:
-                    self.tell_promise(callback, *exc, **dict(_accept=False))
+                    self.tell_promise(callback, *exc, _accept=False)
 
         # configure timeout callback
         if timeout:
@@ -609,8 +611,7 @@ class ReceiverWorkerActor(WorkerActor):
 
                     # if error occurred, interrupts
                     if data_meta.status == ReceiveStatus.ERROR:
-                        six.reraise(*data_meta.callback_args)
-                        return  # pragma: no cover
+                        raise data_meta.callback_args[1].with_traceback(data_meta.callback_args[2])
                     writer = self._data_writers[session_chunk_key]
                     pool = writer.get_io_pool()
                     self._writing_futures[session_chunk_key] = pool.submit(

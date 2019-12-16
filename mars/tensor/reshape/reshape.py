@@ -20,7 +20,6 @@ import numpy as np
 
 from ..utils import decide_chunk_sizes
 from ... import opcodes as OperandDef
-from ...compat import six, izip
 from ...serialize import KeyField, TupleField, StringField, ValueType
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ...tiles import TilesError
@@ -194,8 +193,8 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
         proxy_chunk = TensorShuffleProxy(dtype=in_tensor.dtype, _tensor_keys=[in_tensor.op.key]) \
             .new_chunk(shuffle_inputs, shape=())
 
-        for chunk_shape, chunk_idx in izip(itertools.product(*out_nsplits),
-                                           itertools.product(*chunk_size_idxes)):
+        for chunk_shape, chunk_idx in zip(itertools.product(*out_nsplits),
+                                          itertools.product(*chunk_size_idxes)):
             shuffle_key = ','.join(str(o) for o in chunk_idx)
             chunk_op = TensorReshapeReduce(_dtype=tensor.dtype, _shuffle_key=shuffle_key)
             shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
@@ -227,7 +226,7 @@ class TensorReshape(TensorHasInput, TensorOperandMixin):
             out_idxes = itertools.product(*[range(len(s)) for s in reshape_nsplits])
             out_shape = itertools.product(*[s for s in reshape_nsplits])
             out_chunks = []
-            for input_idx, out_idx, out_shape in izip(in_idxes, out_idxes, out_shape):
+            for input_idx, out_idx, out_shape in zip(in_idxes, out_idxes, out_shape):
                 in_chunk = rechunked_tensor.cix[input_idx]
                 chunk_op = op.copy().reset_key()
                 chunk_op._newshape = out_shape
@@ -411,7 +410,7 @@ class TensorReshapeReduce(TensorShuffleReduce, TensorOperandMixin):
 
 
 def calc_shape(size, newshape):
-    if isinstance(newshape, six.integer_types):
+    if isinstance(newshape, int):
         newshape = (newshape,)
     else:
         newshape = tuple(int(s) for s in newshape)

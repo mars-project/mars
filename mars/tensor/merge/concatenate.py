@@ -19,7 +19,6 @@ from collections import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...compat import six, lrange, lmap
 from ...serialize import AnyField
 from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
@@ -38,7 +37,7 @@ def _get_index(chunk):
 
 
 def _norm_axis(axis):
-    if isinstance(axis, six.integer_types):
+    if isinstance(axis, int):
         return axis, True
     if isinstance(axis, Iterable):
         axis = sorted(tuple(axis))
@@ -139,17 +138,17 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                 with device(device_id):
                     res = xp.concatenate(tuple(inputs), axis=axis)
             else:
-                axes = axis or lrange(chunk.ndim)
+                axes = axis or list(range(chunk.ndim))
                 chunks = [(_get_index(input), data) for input, data in zip(chunk.inputs, inputs)]
                 with device(device_id):
                     for i in range(len(axes) - 1):
                         new_chunks = []
                         for idx, cs in itertools.groupby(chunks, key=lambda t: t[0][:-1]):
-                            cs = lmap(operator.itemgetter(1), cs)
+                            cs = list(map(operator.itemgetter(1), cs))
                             new_chunks.append((idx, xp.concatenate(cs, axis=len(axes) - i - 1)))
                         chunks = new_chunks
                     try:
-                        res = xp.concatenate(lmap(operator.itemgetter(1), chunks), axis=axes[0])
+                        res = xp.concatenate(list(map(operator.itemgetter(1), chunks)), axis=axes[0])
                     except ValueError:
                         raise
             return res
