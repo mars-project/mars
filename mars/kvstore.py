@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta
-from gevent.event import Event
+from urllib.parse import urlparse
 
-from .compat import urlparse, TimeoutError  # pylint: disable=W0622
+from gevent.event import Event
 
 
 def _normalize_path(path):

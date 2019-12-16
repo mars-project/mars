@@ -17,17 +17,16 @@
 import base64
 import pickle
 import weakref
+from collections import OrderedDict
+from io import BytesIO
 
 import numpy as np
 cimport numpy as np
-from cpython.version cimport PY_MAJOR_VERSION
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
     pd = None
 
-from ..compat import six, OrderedDict, izip
-from .._utils cimport to_str
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
     ReferenceField, OneOfField, ListField
@@ -183,10 +182,7 @@ cdef class JsonSerializeProvider(Provider):
         }
 
     cdef inline KeyPlaceholder _deserialize_key(self, object obj, list callbacks):
-        if PY_MAJOR_VERSION >= 3:
-            return KeyPlaceholder(*obj['value'])
-        else:
-            return KeyPlaceholder(*(to_str(v) for v in obj['value']))
+        return KeyPlaceholder(*obj['value'])
 
     cdef inline dict _serialize_list(self, list value, tp=None, bint weak_ref=False):
         return {
@@ -230,7 +226,7 @@ cdef class JsonSerializeProvider(Provider):
                 'type': _get_name(ValueType.tuple),
                 'value': [self._serialize_value(val if not weak_ref else val(),
                                                 it_type)
-                          for val, it_type in izip(value, tp.type)]
+                          for val, it_type in zip(value, tp.type)]
             }
 
     cdef inline tuple _deserialize_tuple(self, object obj, list callbacks, bint weak_ref):
@@ -266,7 +262,7 @@ cdef class JsonSerializeProvider(Provider):
         return res
 
     cdef inline dict _serialize_datetime64_timedelta64(self, value, tp):
-        bio = six.BytesIO()
+        bio = BytesIO()
         np.save(bio, value)
         return {
             'type': _get_name(tp),
@@ -280,7 +276,7 @@ cdef class JsonSerializeProvider(Provider):
         v = base64.b64decode(value)
 
         if v is not None:
-            return np.load(six.BytesIO(v))
+            return np.load(BytesIO(v))
         return None
 
     cdef inline dict _serialize_datetime64(self, value):
@@ -370,7 +366,7 @@ cdef class JsonSerializeProvider(Provider):
             }
         elif isinstance(value, unicode):
             return value
-        elif isinstance(value, (int, long)):
+        elif isinstance(value, int):
             return value
         elif isinstance(value, float):
             return value
@@ -485,11 +481,7 @@ cdef class JsonSerializeProvider(Provider):
             return obj
 
         ref = lambda x: weakref.ref(x) if weak_ref else x
-
-        if PY_MAJOR_VERSION >= 3:
-            tp = _get_type(obj['type'])
-        else:
-            tp = _get_type(to_str(obj['type']))
+        tp = _get_type(obj['type'])
 
         if tp is ValueType.bytes:
             return ref(base64.b64decode(obj['value']))

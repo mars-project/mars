@@ -7,13 +7,6 @@ yum install -y atlas-devel
 # Install requirements
 PYBIN=/opt/python/${PYABI}/bin
 REQ_FILE=/io/requirements-wheel.txt
-
-# install packages without pandas first
-# todo remove this section when dropping support for Python 2.7
-REQ_FILE_NO_PD=/tmp/requirements-no-pd.txt
-grep -v "pandas" $REQ_FILE > $REQ_FILE_NO_PD
-"${PYBIN}/pip" install -r $REQ_FILE_NO_PD
-
 "${PYBIN}/pip" install -r $REQ_FILE
 
 # Compile wheels

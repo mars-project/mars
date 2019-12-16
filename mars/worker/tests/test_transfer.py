@@ -20,13 +20,14 @@ import tempfile
 import time
 import uuid
 from collections import defaultdict
+from io import BytesIO
+from queue import Empty
 
 import numpy as np
 from numpy.testing import assert_array_equal
 from pyarrow import plasma
 
 from mars import promise
-from mars.compat import Empty, ConnectionRefusedError, BrokenPipeError, TimeoutError
 from mars.config import options
 from mars.errors import DependencyMissing, ExecutionInterrupted, WorkerDead
 from mars.scheduler import ChunkMetaActor
@@ -94,7 +95,6 @@ class MockReceiverWorkerActor(WorkerActor):
     def create_data_writers(self, session_id, chunk_keys, data_sizes, sender_ref,
                             ensure_cached=True, pin_token=None, timeout=0,
                             use_promise=True, callback=None):
-        from mars.compat import BytesIO
         for chunk_key, data_size in zip(chunk_keys, data_sizes):
             query_key = (session_id, chunk_key)
             if query_key in self._data_metas and \

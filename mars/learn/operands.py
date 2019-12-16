@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from enum import Enum
+
 from ..operands import Operand, TileableOperandMixin, Fetch, FetchMixin, \
     Fuse, FuseChunkMixin, ShuffleMap, ShuffleReduce, ShuffleProxy
-from ..compat import enum
 from ..serialize import ValueType, ListField, BoolField
 from ..tensor.core import TensorChunkData, TensorChunk, TensorData, Tensor, \
     TENSOR_TYPE, CHUNK_TYPE as TENSOR_CHUNK_TYPE
@@ -29,7 +30,7 @@ from ..dataframe.fetch import DataFrameFetch
 from ..core import ObjectChunkData, ObjectChunk, ObjectData, Object
 
 
-class OutputType(enum.Enum):
+class OutputType(Enum):
     object = 1
     tensor = 2
     dataframe = 3

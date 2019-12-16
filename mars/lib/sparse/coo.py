@@ -16,7 +16,6 @@
 
 import numpy as np
 from .array import SparseNDArray
-from .. import six
 
 
 class COONDArray(SparseNDArray):
@@ -299,16 +298,10 @@ class COONDArray(SparseNDArray):
         """
 
         if isinstance(other, COONDArray):
-            if six.PY2:
-                return np.true_divide(self.toarray(), other.toarray())
-            else:
-                return self.toarray() / other.toarray()
+            return self.toarray() / other.toarray()
 
         elif isinstance(other, np.ndarray):
-            if six.PY2:
-                return np.true_divide(self.toarray(), other)
-            else:
-                return self.toarray() / other
+            return self.toarray() / other
 
         elif isinstance(other, (int, float, np.int, np.float)):
             if other == 0 or other == 0.0:
@@ -321,21 +314,13 @@ class COONDArray(SparseNDArray):
                                   np.asarray(self.data, dtype=type(other)), self.shape)
 
             else:
-                if six.PY2:
-                    data = np.true_divide(self.data, float(other))
-                else:
-                    data = np.asarray(self.data) / float(other)
+                data = np.asarray(self.data) / float(other)
                 return COONDArray(self.indices, data, self.shape)
 
         else:
             return NotImplemented
             # Equivalent to:
             # raise TypeError("The divisor is not (dense)np.ndarray, (sparse)COONDArray or (constant)int/float. ")
-
-    # Support function for python 2.7
-    # IN THE FUTURE: __div__ returns the result of the function call to __floordiv__
-    def __div__(self, other):
-        return self.__truediv__(other)
 
     def transpose(self, axes=None):
         """

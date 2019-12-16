@@ -15,6 +15,7 @@
 import os
 import glob as local_glob
 from gzip import GzipFile
+from urllib.parse import urlparse
 
 from pyarrow import LocalFileSystem as ArrowLocalFileSystem
 from pyarrow import HadoopFileSystem
@@ -22,8 +23,6 @@ try:
     import lz4, lz4.frame
 except ImportError:  # pragma: no cover
     lz4 = None
-
-from .compat import urlparse
 
 
 compressions = {

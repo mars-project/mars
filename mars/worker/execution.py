@@ -19,8 +19,6 @@ import time
 from collections import defaultdict
 
 from .. import promise
-from ..compat import reduce, six, BrokenPipeError, ConnectionRefusedError, \
-    TimeoutError  # pylint: disable=W0622
 from ..config import options
 from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
@@ -318,7 +316,7 @@ class ExecutionActor(WorkerActor):
                     _finish_fetch()
                     return
 
-                six.reraise(*exc)
+                raise exc[1].with_traceback(exc[2])
             except (BrokenPipeError, ConnectionRefusedError, TimeoutError,
                     WorkerDead, promise.PromiseTimeout):
                 self._resource_ref.detach_dead_workers([remote_addr], _tell=True, _wait=False)
@@ -497,7 +495,7 @@ class ExecutionActor(WorkerActor):
             else:
                 logger.exception('Unexpected error occurred in executing graph %s', graph_key, exc_info=exc)
 
-            self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, **dict(succeeded=False))
+            self._result_cache[(session_id, graph_key)] = GraphResultRecord(*exc, succeeded=False)
             self._invoke_finish_callbacks(session_id, graph_key)
 
         # collect target data already computed
@@ -812,9 +810,9 @@ class ExecutionActor(WorkerActor):
                 .then(_cache_result)
         else:
             # dump keys into shared memory and send
-            all_addresses = [{v} if isinstance(v, six.string_types) else set(v)
+            all_addresses = [{v} if isinstance(v, str) else set(v)
                              for v in send_addresses.values()]
-            all_addresses = list(reduce(lambda a, b: a | b, all_addresses, set()))
+            all_addresses = list(functools.reduce(lambda a, b: a | b, all_addresses, set()))
             logger.debug('Worker graph %s(%s) finished execution. Dumping results '
                          'while actively transferring into %r...',
                          graph_key, graph_record.op_string, all_addresses)
@@ -894,7 +892,7 @@ class ExecutionActor(WorkerActor):
         """
         self._do_active_transfer(session_id, None, data_to_addresses) \
             .then(lambda *_: self.tell_promise(callback) if callback else None) \
-            .catch(lambda *exc: self.tell_promise(*exc, **dict(_accept=False)) if callback else None)
+            .catch(lambda *exc: self.tell_promise(*exc, _accept=False) if callback else None)
 
     @log_unhandled
     def stop_execution(self, session_id, graph_key):

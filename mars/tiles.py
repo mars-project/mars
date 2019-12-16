@@ -19,7 +19,6 @@ import weakref
 
 from .graph import DAG
 from .graph_builder import GraphBuilder, TileableGraphBuilder
-from .compat import six
 from .config import options
 from .utils import kernel_mode, enter_build_mode
 
@@ -282,7 +281,7 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
                 if on_tile_failure is not None:
                     on_tile_failure(op, exc_info)
                 else:
-                    six.reraise(*exc_info)
+                    raise exc_info[1].with_traceback(exc_info[2]) from None
         return inner
 
     def _wrap_on_tile_success(self, on_tile_success):

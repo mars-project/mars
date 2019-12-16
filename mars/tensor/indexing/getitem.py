@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from numbers import Integral
 import operator
 import itertools
+from collections import OrderedDict
+from enum import Enum
+from functools import reduce
+from numbers import Integral
 
 import numpy as np
 
@@ -23,7 +26,6 @@ from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ...core import Base, Entity
 from ...tiles import TilesError
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
-from ...compat import OrderedDict, Enum, reduce
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import unify_chunks, slice_split, split_indexes_into_chunks, \
     calc_pos, broadcast_shape, calc_sliced_size, recursive_tile, filter_inputs

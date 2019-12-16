@@ -21,7 +21,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, TupleField, StringField
 from ...core import ExecutableTuple
-from ...compat import izip
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -91,7 +90,7 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
 
         with device(device_id):
             outputs = xp.unravel_index(indices, op.dims, order=op.order)
-            for o, output in izip(op.outputs, outputs):
+            for o, output in zip(op.outputs, outputs):
                 ctx[o.key] = output
 
 

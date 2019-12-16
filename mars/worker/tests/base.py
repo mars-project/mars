@@ -22,7 +22,6 @@ import gevent.event
 from mars import promise
 from mars.tests.core import create_actor_pool
 from mars.config import options
-from mars.compat import six, TimeoutError  # pylint: disable=W0622
 from mars.utils import classproperty
 from mars.worker.utils import WorkerActor, parse_spill_dirs
 
@@ -149,7 +148,7 @@ class WorkerCase(unittest.TestCase):
         if accept:
             return r
         else:
-            six.reraise(*r)
+            raise r[1].with_traceback(r[2]) from None
 
     @staticmethod
     def rm_spill_dirs(spill_dirs=None):

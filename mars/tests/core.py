@@ -27,8 +27,6 @@ from weakref import ReferenceType
 
 import numpy as np
 
-from mars import compat
-from mars.compat import six, zip_longest
 from mars.serialize import serializes, deserializes, \
     ProtobufSerializeProvider, JsonSerializeProvider
 from mars.utils import lazy_import
@@ -38,14 +36,8 @@ try:
 except ImportError:
     pytest = None
 
-if compat.PY27:
-    try:
-        import mock  # noqa F821
-    except ImportError:
-        mock = None
-else:
-    from unittest import mock
-    _mock = mock
+from unittest import mock
+_mock = mock
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
@@ -159,10 +151,10 @@ class TestBase(unittest.TestCase):
             if isinstance(obj1, np.ndarray):
                 return np.array_equal(obj1, obj2)
             elif isinstance(obj1, Iterable) and \
-                    not isinstance(obj1, six.string_types) and \
+                    not isinstance(obj1, str) and \
                     isinstance(obj2, Iterable) and \
-                    not isinstance(obj2, six.string_types):
-                return all(cmp(it1, it2) for it1, it2 in zip_longest(obj1, obj2))
+                    not isinstance(obj2, str):
+                return all(cmp(it1, it2) for it1, it2 in itertools.zip_longest(obj1, obj2))
             elif hasattr(obj1, 'key') and hasattr(obj2, 'key'):
                 return obj1.key == obj2.key
             elif isinstance(obj1, ReferenceType) and isinstance(obj2, ReferenceType):
@@ -321,7 +313,7 @@ def create_actor_pool(*args, **kwargs):
     if not address:
         return new_actor_pool(*args, **kwargs)
 
-    if isinstance(address, six.string_types):
+    if isinstance(address, str):
         host = address.rsplit(':')[0]
         port = int(address.rsplit(':', 1)[1])
     else:

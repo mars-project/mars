@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from ... import __version__ as mars_version
-from ...compat import six
 from ...utils import parse_readable_size
 
 DEFAULT_IMAGE = 'marsproject/mars:v' + mars_version
@@ -387,7 +386,7 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
 
-        if isinstance(modules, six.string_types):
+        if isinstance(modules, str):
             self._modules = modules.split(',')
         else:
             self._modules = modules
@@ -461,7 +460,7 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
 
         self._spill_volumes = []
         for idx, vol in enumerate(spill_volumes):
-            if isinstance(vol, six.string_types):
+            if isinstance(vol, str):
                 path = '/mnt/hostpath%d' % idx
                 self.add_volume(HostPathVolumeConfig('host-path-vol-%d' % idx, path, vol))
                 self._spill_volumes.append(path)

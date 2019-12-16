@@ -15,7 +15,6 @@
 import itertools
 
 from ... import opcodes as OperandDef
-from ...compat import izip, lzip
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
@@ -125,11 +124,11 @@ def compute_rechunk(a, chunk_size):
     chunk_slices = itertools.product(*result_slices)
     chunk_shapes = itertools.product(*chunk_size)
     is_dataframe = isinstance(a, DATAFRAME_TYPE)
-    for idx, chunk_slice, chunk_shape in izip(idxes, chunk_slices, chunk_shapes):
+    for idx, chunk_slice, chunk_shape in zip(idxes, chunk_slices, chunk_shapes):
         to_merge = []
         merge_idxes = itertools.product(*[range(len(i)) for i in chunk_slice])
-        for merge_idx, index_slices in izip(merge_idxes, itertools.product(*chunk_slice)):
-            chunk_index, chunk_slice = lzip(*index_slices)
+        for merge_idx, index_slices in zip(merge_idxes, itertools.product(*chunk_slice)):
+            chunk_index, chunk_slice = zip(*index_slices)
             old_chunk = a.cix[chunk_index]
             merge_chunk_shape = tuple(calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape)
             new_index_value = indexing_index_value(old_chunk.index_value, chunk_slice[0])

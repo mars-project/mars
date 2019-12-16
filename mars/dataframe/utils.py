@@ -21,10 +21,9 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
-from ..compat import sbytes
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize
+from ..utils import tokenize, sbytes
 from .core import IndexValue
 
 

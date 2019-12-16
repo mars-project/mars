@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 import itertools
 from operator import attrgetter
 from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
-from .compat import six, izip, builtins
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
     on_deserialize_shape, on_serialize_nsplits, enter_build_mode, build_mode
 from .serialize import HasKey, ValueType, ProviderType, Serializable, AttributeAsDict, \
@@ -34,10 +34,10 @@ class Base(HasKey):
     _init_update_key_ = True
 
     def __init__(self, *args, **kwargs):
-        for slot, arg in izip(self.__slots__, args):
+        for slot, arg in zip(self.__slots__, args):
             object.__setattr__(self, slot, arg)
 
-        for key, val in six.iteritems(kwargs):
+        for key, val in kwargs.items():
             object.__setattr__(self, key, val)
 
         if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
@@ -109,8 +109,7 @@ class Entity(object):
         self._data = data
 
     def __dir__(self):
-        from .lib.lib_utils import dir2
-        obj_dir = dir2(self)
+        obj_dir = object.__dir__(self)
         if self._data is not None:
             obj_dir = sorted(set(dir(self._data) + obj_dir))
         return obj_dir

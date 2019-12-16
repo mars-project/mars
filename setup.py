@@ -41,12 +41,11 @@ if sys.platform == 'darwin':
 
 repo_root = os.path.dirname(os.path.abspath(__file__))
 
-try:
-    execfile
-except NameError:
-    def execfile(fname, globs, locs=None):
-        locs = locs or globs
-        exec(compile(open(fname).read(), fname, "exec"), globs, locs)
+
+def execfile(fname, globs, locs=None):
+    locs = locs or globs
+    exec(compile(open(fname).read(), fname, "exec"), globs, locs)
+
 
 version_file_path = os.path.join(repo_root, 'mars', '_version.py')
 version_ns = {'__file__': version_file_path}
@@ -130,12 +129,11 @@ setup_options = dict(
     classifiers=[
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Software Development :: Libraries',
     ],

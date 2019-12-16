@@ -16,8 +16,8 @@
 
 import sys
 import unittest
+from collections import OrderedDict
 
-from mars.compat import OrderedDict
 from mars.utils import get_next_port
 from mars.scheduler import GraphActor, ResourceActor, SessionManagerActor,\
     GraphState, ChunkMetaClient, ChunkMetaActor

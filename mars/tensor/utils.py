@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import Iterable
-from math import ceil
-from numbers import Integral
-import operator
 import inspect
 import itertools
-from functools import wraps
+import operator
 import uuid
+from collections import Iterable, OrderedDict
+from functools import lru_cache, reduce, wraps
+from math import ceil
+from numbers import Integral
 
 import numpy as np
 try:
@@ -31,8 +31,6 @@ except (ImportError, OSError):  # pragma: no cover
 
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
-from ..compat import zip_longest, izip, six, reduce, lkeys, \
-    OrderedDict, functools32
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 
@@ -49,7 +47,7 @@ def normalize_chunk_sizes(shape, chunk_size):
     if not isinstance(chunk_size, tuple):
         if isinstance(chunk_size, Iterable):
             chunk_size = tuple(chunk_size)
-        elif isinstance(chunk_size, six.integer_types):
+        elif isinstance(chunk_size, int):
             chunk_size = (chunk_size,) * len(shape)
 
     if len(shape) != len(chunk_size):
@@ -57,7 +55,7 @@ def normalize_chunk_sizes(shape, chunk_size):
                          'got shape: %s, chunks: %s' % (shape, chunk_size))
 
     chunk_sizes = []
-    for size, chunk in izip(shape, chunk_size):
+    for size, chunk in zip(shape, chunk_size):
         if isinstance(chunk, Iterable):
             if not isinstance(chunk, tuple):
                 chunk = tuple(chunk)
@@ -67,7 +65,7 @@ def normalize_chunk_sizes(shape, chunk_size):
                                  'got shape: %s, chunks: %s' % (size, chunk))
             chunk_sizes.append(chunk)
         else:
-            assert isinstance(chunk, six.integer_types)
+            assert isinstance(chunk, int)
 
             sizes = tuple(chunk for _ in range(int(size / chunk))) + \
                     (tuple() if size % chunk == 0 else (size % chunk,))
@@ -81,7 +79,7 @@ def broadcast_shape(*shapes):
         return shapes[0]
 
     out_shapes = []
-    for ss in zip_longest(*[reversed(s) for s in shapes], fillvalue=-1):
+    for ss in itertools.zip_longest(*[reversed(s) for s in shapes], fillvalue=-1):
         shape = max(ss)
         if any(i != -1 and i != 1 and i != shape and not np.isnan(i) for i in ss):
             raise ValueError('Operands could not be broadcast together '
@@ -146,7 +144,7 @@ def infer_dtype(np_func, empty=True, reverse=False, check=True):
             if reverse:
                 args = args[::-1]
             np_kw = dict((k, make_arg(v) if hasattr(v, 'ndim') and hasattr(v, 'dtype') else v)
-                         for k, v in six.iteritems(kw) if k != 'out')
+                         for k, v in kw.items() if k != 'out')
             try:
                 with np.errstate(all='ignore'):
                     dtype = np_func(*args, **np_kw).dtype
@@ -364,9 +362,9 @@ def decide_unify_split(*splits):
 def unify_nsplits(*tensor_axes):
     from .rechunk import rechunk
 
-    tensor_splits = [dict((a, split) for a, split in izip(axes, t.nsplits) if split != (1,))
+    tensor_splits = [dict((a, split) for a, split in zip(axes, t.nsplits) if split != (1,))
                      for t, axes in tensor_axes if t.nsplits]
-    common_axes = reduce(operator.and_, [set(lkeys(ts)) for ts in tensor_splits]) if tensor_splits else set()
+    common_axes = reduce(operator.and_, [set(ts.keys()) for ts in tensor_splits]) if tensor_splits else set()
     axes_unified_splits = dict((ax, decide_unify_split(*(t[ax] for t in tensor_splits)))
                                for ax in common_axes)
 
@@ -438,7 +436,7 @@ def dictify_chunk_size(shape, chunk_size):
         if isinstance(chunk_size, Iterable):
             if not isinstance(chunk_size, dict):
                 chunk_size = {i: c for i, c in enumerate(chunk_size)}
-        elif isinstance(chunk_size, six.integer_types):
+        elif isinstance(chunk_size, int):
             chunk_size = {i: chunk_size for i in range(len(shape))}
         else:
             raise TypeError('chunks must be iterable, got {0}'.format(type(chunk_size)))
@@ -474,14 +472,14 @@ def decide_chunk_sizes(shape, chunk_size, itemsize):
 
     # normalize the dimension which specified first
     dim_to_normalized = {i: normalize_chunk_sizes((shape[i],), (c,))[0]
-                         for i, c in six.iteritems(chunk_size)}
+                         for i, c in chunk_size.items()}
 
     left = {j: [] for j in range(len(shape)) if j not in dim_to_normalized}
     left_unsplit = {j: shape[j] for j in left}
     while True:
-        nbytes_occupied = np.prod([max(c) for c in six.itervalues(dim_to_normalized)]) * itemsize
+        nbytes_occupied = np.prod([max(c) for c in dim_to_normalized.values()]) * itemsize
         dim_size = np.maximum(int(np.power(max_chunk_size / nbytes_occupied, 1 / float(len(left)))), 1)
-        for j, ns in six.iteritems(left.copy()):
+        for j, ns in left.copy().items():
             unsplit = left_unsplit[j]
             ns.append(int(np.minimum(unsplit, dim_size)))
             left_unsplit[j] -= ns[-1]
@@ -542,9 +540,9 @@ def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=Non
     fetch_op = TensorFetch(dtype=dtype).reset_key()
 
     chunks = []
-    for chunk_shape, chunk_idx, chunk_key in izip(itertools.product(*chunk_size),
-                                                  itertools.product(*chunk_size_idxes),
-                                                  chunk_keys):
+    for chunk_shape, chunk_idx, chunk_key in zip(itertools.product(*chunk_size),
+                                                 itertools.product(*chunk_size_idxes),
+                                                 chunk_keys):
         chunk = fetch_op.copy().reset_key().new_chunk(None, shape=chunk_shape, index=chunk_idx,
                                                       _key=chunk_key, hex=uuid.uuid4().hex)
         chunks.append(chunk)
@@ -625,7 +623,7 @@ def filter_inputs(inputs):
 # As TileDB Ctx's creation is a bit time-consuming,
 # we just cache the Ctx
 # also remember the arguments should be hashable
-@functools32.lru_cache(10)
+@lru_cache(10)
 def _create_tiledb_ctx(conf_tuple):
     if conf_tuple is not None:
         return tiledb.Ctx(dict(conf_tuple))

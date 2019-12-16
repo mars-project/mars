@@ -23,7 +23,6 @@ import uuid
 
 import gevent
 
-from mars.compat import TimeoutError  # pylint: disable=W0622
 from mars.config import options
 from mars.tiles import get_tiled
 from mars.promise import PromiseActor

@@ -16,7 +16,6 @@
 import unittest
 
 from mars.worker.service import WorkerService
-from mars.compat import long_type
 from mars.config import options
 
 
@@ -30,9 +29,9 @@ class Test(unittest.TestCase):
     def testServiceArgs(self):
         svc = WorkerService(ignore_avail_mem=True)
         self.assertGreaterEqual(svc._cache_mem_limit, 0)
-        self.assertIsInstance(svc._soft_mem_limit, (long_type, int))
-        self.assertIsInstance(svc._hard_mem_limit, (long_type, int))
-        self.assertIsInstance(svc._cache_mem_limit, (long_type, int))
+        self.assertIsInstance(svc._soft_mem_limit, int)
+        self.assertIsInstance(svc._hard_mem_limit, int)
+        self.assertIsInstance(svc._cache_mem_limit, int)
 
         svc = WorkerService(ignore_avail_mem=True, total_mem=256 * 1024 * 1024)
         self.assertEqual(svc._total_mem, 256 * 1024 ** 2)

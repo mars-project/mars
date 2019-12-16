@@ -17,6 +17,7 @@
 
 from collections import Iterable, defaultdict
 from datetime import datetime
+from enum import Enum
 from operator import attrgetter
 
 import numpy as np
@@ -25,7 +26,6 @@ from ..core import Entity, TileableEntity, ChunkData, Chunk, HasShapeTileableDat
     build_mode, Serializable
 from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
     BoolField, StringField, AnyField
-from ..compat import Enum
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_eager_mode
 from .utils import get_chunk_slices
 

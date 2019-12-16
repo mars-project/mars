@@ -20,7 +20,6 @@ from contextlib import contextmanager
 import numpy as np
 
 from ...config import options
-from ...compat import irange, izip
 from ...serialize import ValueType, TupleField, Int32Field
 from ...utils import tokenize
 from ..core import TENSOR_TYPE, CHUNK_TYPE
@@ -121,11 +120,11 @@ class TensorRandomOperandMixin(TensorOperandMixin):
         if changed:
             op.inputs = new_inputs
 
-        idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
+        idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
         seeds = gen_random_seeds(len(idxes), op.state)
 
         out_chunks = []
-        for seed, idx, shape in izip(seeds, idxes, itertools.product(*nsplits)):
+        for seed, idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
             inputs = []
             for inp in op.inputs:
                 if len(inp.chunks) == 1:

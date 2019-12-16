@@ -95,7 +95,7 @@ class IORunnerActor(WorkerActor):
             if not exc:
                 self.tell_promise(cb)
             else:
-                self.tell_promise(cb, *exc, **dict(_accept=False))
+                self.tell_promise(cb, *exc, _accept=False)
             self._submit_next()
 
         logger.debug('Start copying %r from %s into %s in %s',

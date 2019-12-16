@@ -16,6 +16,8 @@
 
 import pickle
 import weakref
+from collections import OrderedDict
+from io import BytesIO
 
 import numpy as np
 cimport numpy as np
@@ -25,10 +27,6 @@ try:
 except ImportError:  # pragma: no cover
     pd = None
 
-from cpython.version cimport PY_MAJOR_VERSION
-
-from ..compat import six, OrderedDict
-from .._utils cimport to_str
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
     Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
     OneOfField, ReferenceField, IdentityField, \
@@ -133,13 +131,10 @@ cdef class ProtobufSerializeProvider(Provider):
     cdef inline KeyPlaceholder _get_key(self, obj):
         if obj.key.key is None or len(obj.key.key) == 0:
             return
-        if PY_MAJOR_VERSION >= 3:
-            return KeyPlaceholder(obj.key.key, obj.key.id)
-        else:
-            return KeyPlaceholder(to_str(obj.key.key), to_str(obj.key.id))
+        return KeyPlaceholder(obj.key.key, obj.key.id)
 
     cdef inline void _set_datetime64(self, value, obj, tp=None):
-        bio = six.BytesIO()
+        bio = BytesIO()
         np.save(bio, value)
         obj.datetime64 = bio.getvalue()
 
@@ -147,10 +142,10 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object x
 
         x = obj.datetime64
-        return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
+        return np.load(BytesIO(x)) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_timedelta64(self, value, obj, tp=None):
-        bio = six.BytesIO()
+        bio = BytesIO()
         np.save(bio, value)
         obj.timedelta64 = bio.getvalue()
 
@@ -158,7 +153,7 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef object x
 
         x = obj.timedelta64
-        return np.load(six.BytesIO(x)) if x is not None and len(x) > 0 else None
+        return np.load(BytesIO(x)) if x is not None and len(x) > 0 else None
 
     cdef inline void _set_complex(self, value, obj, tp=None):
         obj.c.real = value.real
@@ -427,8 +422,6 @@ cdef class ProtobufSerializeProvider(Provider):
             self._set_timedelta64(value, obj)
         elif isinstance(value, np.number):
             self._set_untyped_value(value.item(), obj)
-        elif PY_MAJOR_VERSION < 3 and isinstance(value, long):
-            obj.i = value
         else:
             raise TypeError('Unknown type to serialize: {0}'.format(type(value)))
 
@@ -787,7 +780,7 @@ cdef class ProtobufSerializeProvider(Provider):
         model_instance = model_cls(**kw.asdict())
 
         tag_to_fields = dict()
-        for field in six.itervalues(model_instance._FIELDS):
+        for field in model_instance._FIELDS.values():
             if isinstance(field, OneOfField):
                 oneoffield = <OneOfField> field
                 for f in oneoffield.fields:

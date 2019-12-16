@@ -16,7 +16,6 @@ import base64
 import logging
 import time
 
-from ...compat import six
 from ...config import options
 from ...errors import ExecutionInterrupted, DependencyMissing, WorkerDead
 from ...operands import Operand
@@ -373,7 +372,7 @@ class OperandActor(BaseOperandActor):
                 self.worker = None
                 self.ref().start_operand(OperandState.UNSCHEDULED, _tell=True)
             else:
-                six.reraise(*exc_info)
+                raise exc_info[1].with_traceback(exc_info[2]) from None
 
         # if under retry, give application a delay
         delay = options.scheduler.retry_delay if self.retries else 0

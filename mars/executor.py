@@ -19,7 +19,9 @@ import sys
 import threading
 import weakref
 import operator
-from collections import deque, defaultdict
+from collections import deque, defaultdict, OrderedDict
+from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
 from numbers import Integral
 
 import numpy as np
@@ -37,7 +39,6 @@ from .operands import Fetch, ShuffleProxy
 from .graph import DirectedGraph
 from .config import options
 from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
-from .compat import six, futures, OrderedDict, enum
 from .optimizes.runtime.optimizers.core import Optimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .graph_builder import TileableGraphBuilder
@@ -75,7 +76,7 @@ class ExecutorSyncProvider(object):
 class ThreadExecutorSyncProvider(ExecutorSyncProvider):
     @classmethod
     def thread_pool_executor(cls, n_workers):
-        return futures.ThreadPoolExecutor(n_workers)
+        return ThreadPoolExecutor(n_workers)
 
     @classmethod
     def semaphore(cls, value):
@@ -128,7 +129,7 @@ class MockThreadPoolExecutor(object):
 
         def result(self, *_):
             if self._exc_info is not None:
-                six.reraise(*self._exc_info)
+                raise self._exc_info[1] from None
             else:
                 return self._result
 
@@ -508,7 +509,7 @@ class Executor(object):
     _op_runners = {}
     _op_size_estimators = {}
 
-    class SyncProviderType(enum.Enum):
+    class SyncProviderType(Enum):
         THREAD = 0
         GEVENT = 1
         MOCK = 2
@@ -562,7 +563,7 @@ class Executor(object):
                 try:
                     return runner(results, op)
                 except UFuncTypeError as e:
-                    six.reraise(TypeError, TypeError(str(e)), sys.exc_info()[2])
+                    raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None
         except NotImplementedError:
             for op_cls in mapper.keys():
                 if isinstance(op, op_cls):

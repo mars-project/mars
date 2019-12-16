@@ -14,7 +14,6 @@
 
 import numpy as np
 
-from ...compat import izip
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, TupleField
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -123,7 +122,7 @@ def broadcast_to(tensor, shape):
     new_ndim = len(shape) - tensor.ndim
     if new_ndim < 0:
         raise ValueError('input operand has more dimensions than allowed by the axis remapping')
-    if any(o != n for o, n in izip(tensor.shape, shape[new_ndim:]) if o != 1):
+    if any(o != n for o, n in zip(tensor.shape, shape[new_ndim:]) if o != 1):
         raise ValueError('operands could not be broadcast together '
                          'with remapped shapes [original->remapped]: {0} '
                          'and requested shape {1}'.format(tensor.shape, shape))

@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import itertools
+from enum import Enum
 
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
 from ...serialize import BoolField, AnyField, StringField
-from ...compat import enum, six
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleProxy, ObjectType
 from ..core import GROUPBY_TYPE
@@ -27,7 +27,7 @@ from ..utils import build_empty_df, parse_index, build_concated_rows_frame
 from .core import DataFrameGroupByMap, DataFrameGroupByReduce
 
 
-class Stage(enum.Enum):
+class Stage(Enum):
     map = 'map'
     combine = 'combine'
 
@@ -204,14 +204,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _execute_map(cls, df, op):
-        if isinstance(op.func, (six.string_types, dict)):
+        if isinstance(op.func, (str, dict)):
             return df.groupby(op.by, as_index=op.as_index, sort=False).agg(op.func)
         else:
             raise NotImplementedError
 
     @classmethod
     def _execute_combine(cls, df, op):
-        if isinstance(op.func, (six.string_types, dict)):
+        if isinstance(op.func, (str, dict)):
             return df.groupby(level=0, as_index=op.as_index, sort=op.sort).agg(op.func)
         else:
             raise NotImplementedError
@@ -237,7 +237,7 @@ def agg(groupby, func, method='tree'):
     if method not in ['shuffle', 'tree']:
         raise NotImplementedError('Method %s has not been implemented' % method)
 
-    if isinstance(func, six.string_types):
+    if isinstance(func, str):
         funcs = [func]
     elif isinstance(func, dict):
         funcs = func.values()

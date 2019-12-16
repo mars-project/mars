@@ -16,7 +16,6 @@
 
 import numpy as np
 
-from ...compat import izip
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..core import TensorOrder
@@ -154,7 +153,7 @@ class TSQR(object):
                                                       order=TensorOrder.C_ORDER,
                                                       shape=(slice_length, stage2_q_chunk.shape[1])))
         stage3_q_chunks = []
-        for c1, c2 in izip(stage1_q_chunks, stage2_q_chunks):
+        for c1, c2 in zip(stage1_q_chunks, stage2_q_chunks):
             dot_op = TensorDot(dtype=q_dtype)
             shape = (c1.shape[0], c2.shape[1])
             stage3_q_chunks.append(dot_op.new_chunk([c1, c2], shape=shape, index=c1.index,

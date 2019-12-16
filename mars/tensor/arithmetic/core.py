@@ -18,7 +18,6 @@ import itertools
 
 import numpy as np
 
-from ...compat import lrange
 from ...core import ExecutableTuple
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField
 from ...utils import check_chunks_unknown_shape
@@ -37,7 +36,7 @@ class TensorElementWise(TensorOperandMixin):
     def tile(cls, op):
         if len(op.inputs) > 1:
             check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, lrange(input.ndim)[::-1]) for input in op.inputs])
+        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
 
         chunk_shapes = [t.chunk_shape for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)

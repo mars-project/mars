@@ -15,11 +15,10 @@
 import itertools
 import logging
 import os
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from .kvstore import KVStoreActor
 from .utils import SchedulerActor, CombinedFutureWaiter
-from ..compat import PY27, OrderedDict3
 from ..config import options
 from ..utils import BlacklistSet
 
@@ -42,13 +41,6 @@ class WorkerMeta(object):
 
     def __repr__(self):
         return 'WorkerMeta(%r, %r ,%r)' % (self.chunk_size, self.chunk_shape, self.workers)
-
-    if PY27:
-        def __getstate__(self):
-            return tuple(getattr(self, s) for s in self.__slots__)
-
-        def __setstate__(self, state):
-            self.__init__(**dict(zip(self.__slots__, state)))
 
 
 class ChunkMetaStore(object):
@@ -138,7 +130,7 @@ class ChunkMetaCache(ChunkMetaStore):
     """
     def __init__(self, limit=_META_CACHE_SIZE):
         super(ChunkMetaCache, self).__init__()
-        self._chunk_metas = OrderedDict3()
+        self._chunk_metas = OrderedDict()
         self._limit = limit
 
     def __getitem__(self, item):

@@ -59,13 +59,13 @@ class MockIORunnerActor(WorkerActor):
             return
 
         if exc_info is not None:
-            self.tell_promise(cb, *exc_info, **dict(_accept=False))
+            self.tell_promise(cb, *exc_info, _accept=False)
         else:
             src_handler = self.storage_client.get_storage_handler(src_device)
             dest_handler = self.storage_client.get_storage_handler(dest_device)
             dest_handler.load_from(session_id, [data_key], src_handler) \
                 .then(lambda *_: self.tell_promise(cb),
-                      lambda *exc: self.tell_promise(cb, *exc, **dict(_accept=False)))
+                      lambda *exc: self.tell_promise(cb, *exc, _accept=False))
 
     def get_request_keys(self):
         return [tp[1] for tp in self._work_items.keys()]

@@ -144,7 +144,7 @@ class Test(unittest.TestCase):
     def testMultipleAddPreparation(self, *_):
         import numpy as np
         import operator
-        from mars.compat import reduce
+        from functools import reduce
 
         base_arr = np.random.random((100, 100))
         a = mt.array(base_arr)

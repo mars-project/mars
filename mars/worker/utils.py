@@ -17,10 +17,10 @@ import math
 import os
 import time
 from collections import OrderedDict
+from enum import Enum
 
 from ..actors import ActorNotExist
 from ..cluster_info import ClusterInfoActor, HasClusterInfoActor
-from ..compat import Enum, OrderedDict3
 from ..config import options
 from ..errors import WorkerProcessStopped
 from ..promise import PromiseActor
@@ -155,7 +155,7 @@ class ExpiringCache(dict):
         super(ExpiringCache, self).__init__(*args, **kwargs)
 
         self._expire_time = expire_time
-        self._insert_times = OrderedDict3()
+        self._insert_times = OrderedDict()
 
     def __setitem__(self, key, value):
         super(ExpiringCache, self).__setitem__(key, value)

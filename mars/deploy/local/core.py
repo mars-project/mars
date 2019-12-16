@@ -25,7 +25,6 @@ import time
 
 from ...actors import create_actor_pool
 from ...cluster_info import StaticSchedulerDiscoverer
-from ...compat import six, TimeoutError  # pylint: disable=W0622
 from ...config import options
 from ...lib import gipc
 from ...resource import cpu_count
@@ -290,7 +289,7 @@ def new_cluster(address='0.0.0.0', web=False, n_process=None, shared_memory=None
     web_endpoint = None
     if web is True:
         web_endpoint = gen_endpoint('0.0.0.0')
-    elif isinstance(web, six.string_types):
+    elif isinstance(web, str):
         if ':' in web:
             web_endpoint = web
         else:

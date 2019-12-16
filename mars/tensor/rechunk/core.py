@@ -16,11 +16,11 @@
 import operator
 import heapq
 import itertools
+from functools import reduce
 
 import numpy as np
 
 from ...config import options
-from ...compat import six, izip, reduce
 from ..utils import decide_chunk_sizes
 
 # -----------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ from ..utils import decide_chunk_sizes
 def get_nsplits(tileable, new_chunk_size, itemsize):
     if isinstance(new_chunk_size, dict):
         chunk_size = list(tileable.nsplits)
-        for idx, c in six.iteritems(new_chunk_size):
+        for idx, c in new_chunk_size.items():
             chunk_size[idx] = c
     else:
         chunk_size = new_chunk_size
@@ -305,7 +305,7 @@ def compute_rechunk_slices(tileable, chunk_size):
     nsplits = tileable.nsplits
     truncated = [[0, None] for _ in range(tileable.ndim)]
     result_slices = []
-    for dim, old_chunk_size, new_chunk_size in izip(itertools.count(0), nsplits, chunk_size):
+    for dim, old_chunk_size, new_chunk_size in zip(itertools.count(0), nsplits, chunk_size):
         slices = []
         for rest in new_chunk_size:
             dim_slices = []

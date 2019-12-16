@@ -14,7 +14,6 @@
 
 import itertools
 
-from ...compat import izip, lzip
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...utils import check_chunks_unknown_shape
@@ -88,11 +87,11 @@ def compute_rechunk(tensor, chunk_size):
     idxes = itertools.product(*[range(len(c)) for c in chunk_size])
     chunk_slices = itertools.product(*result_slices)
     chunk_shapes = itertools.product(*chunk_size)
-    for idx, chunk_slice, chunk_shape in izip(idxes, chunk_slices, chunk_shapes):
+    for idx, chunk_slice, chunk_shape in zip(idxes, chunk_slices, chunk_shapes):
         to_merge = []
         merge_idxes = itertools.product(*[range(len(i)) for i in chunk_slice])
-        for merge_idx, index_slices in izip(merge_idxes, itertools.product(*chunk_slice)):
-            chunk_index, chunk_slice = lzip(*index_slices)
+        for merge_idx, index_slices in zip(merge_idxes, itertools.product(*chunk_slice)):
+            chunk_index, chunk_slice = zip(*index_slices)
             old_chunk = tensor.cix[chunk_index]
             merge_chunk_shape = tuple(calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape)
             merge_chunk_op = TensorSlice(chunk_slice, dtype=old_chunk.dtype, sparse=old_chunk.op.sparse)

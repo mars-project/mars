@@ -1,6 +1,4 @@
 #!/bin/bash
-function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
-
 PYTHON=$(cut -d '-' -f 1 <<< "$PYTHON")
 UNAME="$(uname | awk '{print tolower($0)}')"
 FILE_EXT="sh"
@@ -33,12 +31,7 @@ elif [[ $UNAME == "mingw"* ]]; then
   fi
 fi
 
-
-if version_gt "3.0" "$PYTHON" ; then
-  CONDA_FILE="Miniconda2-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
-else
-  CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
-fi
+CONDA_FILE="Miniconda3-latest-${CONDA_OS}-x86_64.${FILE_EXT}"
 
 TEST_PACKAGES="virtualenv gevent psutil pyyaml lz4"
 

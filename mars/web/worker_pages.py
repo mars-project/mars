@@ -181,9 +181,9 @@ class WorkerTimelineHandler(MarsRequestHandler):
         worker_ep = to_str(doc.session_context.request.arguments.get('endpoint')[0])
         web_api = MarsWebAPI(scheduler_ip)
 
-        last_query_time = [time.time()]
+        last_query_time = time.time()
         events = web_api.query_worker_events(
-            worker_ep, EventCategory.PROCEDURE, time_end=last_query_time[0])
+            worker_ep, EventCategory.PROCEDURE, time_end=last_query_time)
 
         updater = EventUpdater()
         data_sources = dict()
@@ -224,10 +224,11 @@ class WorkerTimelineHandler(MarsRequestHandler):
         doc.add_root(p)
 
         def _refresher():
+            nonlocal last_query_time
             query_time = time.time()
             events = web_api.query_worker_events(
-                worker_ep, EventCategory.PROCEDURE, time_start=last_query_time[0], time_end=query_time)
-            last_query_time[0] = query_time
+                worker_ep, EventCategory.PROCEDURE, time_start=last_query_time, time_end=query_time)
+            last_query_time = query_time
 
             dfs, patches = updater.update_events(events)
             for ev_type, df in dfs.items():

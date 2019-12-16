@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...compat import functools32, six
+import functools
+
 from ...actors import Distributor
 from ...distributor import MarsDistributor
 
@@ -28,9 +29,9 @@ def gen_distributor(scheduler_n_process, worker_n_process):
 
         @staticmethod
         def _is_worker_uid(uid):
-            return isinstance(uid, six.string_types) and uid.startswith('w:')
+            return isinstance(uid, str) and uid.startswith('w:')
 
-        @functools32.lru_cache(100)
+        @functools.lru_cache(100)
         def distribute(self, uid):
             if self._is_worker_uid(uid):
                 return self._worker_distributor.distribute(uid) + scheduler_n_process

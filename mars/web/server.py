@@ -27,7 +27,6 @@ from bokeh.server.server import Server
 import jinja2
 from tornado import web, ioloop
 
-from ..compat import six
 from ..utils import get_next_port
 from ..scheduler import ResourceActor, SessionActor
 from ..api import MarsAPI
@@ -89,7 +88,7 @@ class MarsWebAPI(MarsAPI):
         from ..scheduler import GraphState
 
         sessions = defaultdict(dict)
-        for session_id, session_ref in six.iteritems(self.session_manager.get_sessions()):
+        for session_id, session_ref in self.session_manager.get_sessions().items():
             if select_session_id and session_id != select_session_id:
                 continue
             session_desc = sessions[session_id]
@@ -97,7 +96,7 @@ class MarsWebAPI(MarsAPI):
             session_desc['name'] = session_id
             session_desc['tasks'] = dict()
             session_ref = self.actor_client.actor_ref(session_ref)
-            for graph_key, graph_meta_ref in six.iteritems(session_ref.get_graph_meta_refs()):
+            for graph_key, graph_meta_ref in session_ref.get_graph_meta_refs().items():
                 task_desc = dict()
 
                 state = self.get_graph_state(session_id, graph_key)
@@ -180,17 +179,14 @@ class MarsWeb(object):
         try:
             ioloop.IOLoop.current()
         except RuntimeError:
-            if six.PY3:
-                import asyncio
-                asyncio.set_event_loop(asyncio.new_event_loop())
-                loop = None
-                try:
-                    loop = ioloop.IOLoop.current()
-                except:  # noqa: E722
-                    pass
-                if loop is None:
-                    raise
-            else:
+            import asyncio
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            loop = None
+            try:
+                loop = ioloop.IOLoop.current()
+            except:  # noqa: E722
+                pass
+            if loop is None:
                 raise
 
     def _try_start_web_server(self):

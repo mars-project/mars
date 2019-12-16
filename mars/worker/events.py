@@ -17,8 +17,8 @@ import itertools
 import time
 import uuid
 from collections import defaultdict, deque
+from enum import Enum
 
-from ..compat import Enum, PY27
 from ..config import options
 from ..utils import tokenize
 from .utils import WorkerActor
@@ -63,13 +63,6 @@ class WorkerEvent(object):
 
         self.event_id = event_id or tokenize(
             uuid.getnode(), time.time(), category, level, event_type, owner)
-
-    if PY27:
-        def __getstate__(self):
-            return tuple(getattr(self, s) for s in self.__slots__)
-
-        def __setstate__(self, state):
-            self.__init__(**dict(zip(self.__slots__, state)))
 
 
 class EventsActor(WorkerActor):

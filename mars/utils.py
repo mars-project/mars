@@ -36,7 +36,6 @@ import weakref
 import numpy as np
 import pandas as pd
 
-from .compat import irange, functools32, getargspec
 from ._utils import to_binary, to_str, to_text, tokenize, tokenize_int, register_tokenizer,\
     insert_reversed_tuple
 from .config import options
@@ -165,17 +164,14 @@ _local_occupied_ports = set()
 
 
 def _get_ports_from_netstat():
-    import psutil
     import subprocess
     while True:
         p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
-        # in python 2, subprocess does not support waiting for fixed seconds
-        ps_proc = psutil.Process(p.pid)
         try:
-            ps_proc.wait(5)
+            p.wait(5)
             break
-        except:  # noqa: E721  # pragma: no cover
-            ps_proc.terminate()
+        except subprocess.TimeoutExpired:
+            p.terminate()
             continue
     occupied = set()
     for line in p.stdout:
@@ -208,7 +204,7 @@ def get_next_port(typ=None):
     occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
-    for i in irange(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
+    for i in range(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
         if i in occupied:
             continue
         if idx == 0:
@@ -218,7 +214,7 @@ def get_next_port(typ=None):
     raise SystemError('No ports available.')
 
 
-@functools32.lru_cache(200)
+@functools.lru_cache(200)
 def mod_hash(val, modulus):
     return tokenize_int(val) % modulus
 
@@ -280,15 +276,6 @@ def deserialize_graph(ser_graph, graph_cls=None):
         return graph_cls.from_json(json_obj)
 
 
-if sys.version_info[0] < 3:
-    def wraps(fun):
-        if isinstance(fun, functools.partial):
-            return lambda f: f
-        return functools.wraps(fun)
-else:
-    wraps = functools.wraps
-
-
 def calc_data_size(dt):
     if dt is None:
         return 0
@@ -336,9 +323,9 @@ def log_unhandled(func):
         return func
 
     func_name = getattr(func, '__qualname__', func.__module__ + func.__name__)
-    func_args = getargspec(func)
+    func_args = inspect.getfullargspec(func)
 
-    @wraps(func)
+    @functools.wraps(func)
     def _wrapped(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -703,6 +690,21 @@ def has_unknown_shape(tiled):
     if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
         return True
     return False
+
+
+def sbytes(x):
+    # NB: bytes() in Python 3 has different semantic with Python 2, see: help(bytes)
+    from numbers import Number
+    if x is None or isinstance(x, Number):
+        return bytes(str(x), encoding='ascii')
+    elif isinstance(x, list):
+        return bytes('[' + ', '.join([str(k) for k in x]) + ']', encoding='utf-8')
+    elif isinstance(x, tuple):
+        return bytes('(' + ', '.join([str(k) for k in x]) + ')', encoding='utf-8')
+    elif isinstance(x, str):
+        return bytes(x, encoding='utf-8')
+    else:
+        return bytes(x)
 
 
 def kill_process_tree(pid, include_parent=True):

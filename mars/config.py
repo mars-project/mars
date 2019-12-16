@@ -21,8 +21,6 @@ import warnings
 import threading
 from copy import deepcopy
 
-from .compat import six
-
 
 _DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and might be removed in a future release.'
 
@@ -92,7 +90,7 @@ class AttributeDict(dict):
         return object.__getattribute__(self, item)
 
     def __dir__(self):
-        return list(six.iterkeys(self))
+        return list(self.keys())
 
     def register(self, key, value, validator=None):
         if isinstance(validator, tuple):
@@ -153,7 +151,7 @@ class Config(object):
         self._serialize_options = []
 
     def __dir__(self):
-        return list(six.iterkeys(self._config))
+        return list(self._config.keys())
 
     def __getattr__(self, item):
         return getattr(self._config, item)
@@ -226,7 +224,7 @@ class Config(object):
         return d
 
     def fill_serialized(self, d):
-        for k, v in six.iteritems(d):
+        for k, v in d.items():
             parts = k.split('.')
             cf = self
             for p in parts[:-1]:
@@ -241,7 +239,7 @@ def option_context(config=None):
     try:
         config = config or dict()
         local_options = Config(deepcopy(global_options._config))
-        for option, value in six.iteritems(config):
+        for option, value in config.items():
             try:
                 local_options.register_option(option, value)
             except AttributeError:
@@ -276,10 +274,10 @@ def _instance_check(typ, v):
 
 is_null = functools.partial(operator.is_, None)
 is_bool = functools.partial(_instance_check, bool)
-is_integer = functools.partial(_instance_check, six.integer_types)
+is_integer = functools.partial(_instance_check, int)
 is_float = functools.partial(_instance_check, float)
-is_numeric = functools.partial(_instance_check, (float, six.integer_types))
-is_string = functools.partial(_instance_check, six.string_types)
+is_numeric = functools.partial(_instance_check, (float, int))
+is_string = functools.partial(_instance_check, str)
 is_dict = functools.partial(_instance_check, dict)
 is_list = functools.partial(_instance_check, list)
 

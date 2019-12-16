@@ -21,7 +21,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import NDArrayField, StringField, Float64Field
 from ...config import options
-from ...compat import irange, izip
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from ..array_utils import array_module, device
 from .core import TensorRandomOperandMixin, TensorDistribution, CHUNK_TYPE
@@ -81,11 +80,11 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
         mean_chunk = op.mean.chunks[0] if hasattr(op.mean, 'chunks') else op.mean
         cov_chunk = op.cov.chunks[0] if hasattr(op.cov, 'chunks') else op.cov
 
-        idxes = list(itertools.product(*[irange(len(s)) for s in nsplits]))
+        idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
         seeds = gen_random_seeds(len(idxes), op.state)
 
         out_chunks = []
-        for seed, out_idx, shape in izip(seeds, idxes, itertools.product(*nsplits)):
+        for seed, out_idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
             chunk_op = op.copy().reset_key()
             chunk_op._state = None
             chunk_op._seed = seed

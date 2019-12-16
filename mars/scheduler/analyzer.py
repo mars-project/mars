@@ -16,10 +16,10 @@ import logging
 import operator
 import random
 from collections import defaultdict, OrderedDict
+from functools import reduce
 
 import numpy as np
 
-from ..compat import reduce
 from ..operands import VirtualOperand
 from .operands import OperandState
 

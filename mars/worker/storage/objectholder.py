@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 import os
 import time
+from collections import OrderedDict
 
 from ... import promise
-from ...compat import OrderedDict3, six, functools32
 from ...config import options
 from ...utils import parse_readable_size, log_unhandled, readable_size, tokenize
 from ...errors import *
@@ -36,7 +37,7 @@ class ObjectHolderActor(WorkerActor):
         super(ObjectHolderActor, self).__init__()
         self._size_limit = size_limit
 
-        self._data_holder = OrderedDict3()
+        self._data_holder = OrderedDict()
         self._data_sizes = dict()
 
         self._total_hold = 0
@@ -130,7 +131,7 @@ class ObjectHolderActor(WorkerActor):
             def _handle_spill_reject(*exc, **kwargs):
                 key = kwargs['session_data_key']
                 self._remove_spill_pending(*key)
-                six.reraise(*exc)
+                raise exc[1].with_traceback(exc[2])
 
             @log_unhandled
             def _spill_key(key):
@@ -140,7 +141,7 @@ class ObjectHolderActor(WorkerActor):
                 logger.debug('Spilling key %s in %s. ref_key=%s', key, self.uid, spill_ref_key)
                 return self.storage_client.copy_to(key[0], [key[1]], self._spill_devices) \
                     .then(lambda *_: _release_spill_allocations(key),
-                          functools32.partial(_handle_spill_reject, session_data_key=key))
+                          functools.partial(_handle_spill_reject, session_data_key=key))
 
             @log_unhandled
             def _finalize_spill(*_):
@@ -152,7 +153,7 @@ class ObjectHolderActor(WorkerActor):
                 self.update_cache_status()
 
             promise.all_(_spill_key(k) for k in free_keys).then(_finalize_spill) \
-                .catch(lambda *exc: self.tell_promise(callback, *exc, **dict(_accept=False)))
+                .catch(lambda *exc: self.tell_promise(callback, *exc, _accept=False))
         else:
             logger.debug('No need to spill in %s. request=%d ref_key=%s',
                          self.uid, request_size, spill_ref_key)

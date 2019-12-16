@@ -19,13 +19,13 @@ import os
 import sys
 import unittest
 import uuid
+from functools import reduce
 
 import numpy as np
 from numpy.testing import assert_allclose
 
 from mars import tensor as mt
 from mars.actors.core import new_client
-from mars.compat import reduce
 from mars.scheduler.graph import GraphState
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
 from mars.serialize.dataserializer import loads

@@ -30,7 +30,7 @@ def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
         domain = (0, extent - 1)
         tile = max(nsplits[d])
         dims.append(tiledb.Dim(name="", domain=domain, tile=tile, dtype=np.int64, ctx=ctx))
-    dom = tiledb.Domain(*dims, **dict(ctx=ctx))
+    dom = tiledb.Domain(*dims, ctx=ctx)
     att = tiledb.Attr(ctx=ctx, dtype=tensor.dtype)
     cell_order = 'C' if tensor.order == TensorOrder.C_ORDER else 'F'
     return tiledb.ArraySchema(ctx=ctx, domain=dom, attrs=(att,),

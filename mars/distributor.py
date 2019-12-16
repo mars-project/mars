@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import logging
 
 from .actors import Distributor
-from .compat import six, functools32
 from .lib.mmh3 import hash as mmh_hash
 from .utils import to_binary, to_str
 
@@ -41,9 +41,9 @@ class MarsDistributor(Distributor):
         super(MarsDistributor, self).__init__(n_process)
         self._default_prefix = to_str(default_prefix)
 
-    @functools32.lru_cache(100)
+    @functools.lru_cache(100)
     def distribute(self, uid):
-        if not isinstance(uid, six.string_types) or self.n_process == 1:
+        if not isinstance(uid, str) or self.n_process == 1:
             return 0
         uid = to_str(uid)
         id_parts = uid.split(':')

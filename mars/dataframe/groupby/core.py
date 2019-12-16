@@ -19,7 +19,6 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...serialize import BoolField, Int32Field, AnyField
-from ...compat import six
 from ...utils import get_shuffle_input_keys_idxes
 from ..utils import build_concated_rows_frame, hash_dataframe_on
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffleMap, \
@@ -153,7 +152,7 @@ class DataFrameGroupByOperand(DataFrameOperand, DataFrameOperandMixin):
 
 
 def dataframe_groupby(df, by, as_index=True, sort=True):
-    if isinstance(by, six.string_types):
+    if isinstance(by, str):
         by = [by]
     op = DataFrameGroupByOperand(by=by, as_index=as_index, sort=sort)
     return op(df)

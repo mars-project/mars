@@ -87,15 +87,11 @@ except ImportError:  # pragma: no cover
         signal.signal(signal.SIGTERM, _sigterm_handler)
 
 cdef:
-    bint WINDOWS, PY2
+    bint WINDOWS
     int PIPE_BUF_SIZE
 
 WINDOWS = sys.platform == "win32"
-PY2 = sys.version_info[0] == 2
-if PY2 and sys.platform == 'darwin':
-    PIPE_BUF_SIZE = 16384
-else:
-    PIPE_BUF_SIZE = 65536
+PIPE_BUF_SIZE = 65536
 
 if WINDOWS:
     import multiprocessing.reduction
@@ -633,10 +629,7 @@ cdef class _GIPCHandle:
     def __init__(self):
         global _all_handles
         # Generate label of text/unicode type from three random bytes.
-        if PY2:
-            self._id = codecs.encode(os.urandom(3), "hex_codec")
-        else:
-            self._id = codecs.encode(os.urandom(3), "hex_codec").decode("ascii")
+        self._id = codecs.encode(os.urandom(3), "hex_codec").decode("ascii")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._lock = gevent.lock.Semaphore(value=1)
@@ -1161,35 +1154,12 @@ def _reset_signal_handlers():
     signal.signal(signal.SIGINT, signal.default_int_handler)
 
 
-PY3 = sys.version_info[0] == 3
-
-
 # Define reraise which works for both Python 2, and 3. Taken from project six.
 # The core issue here is that Python 2's raise syntax (with three arguments)
 # is a syntax error in Python 3, which is why a workaround requires exec.
-if PY3:
-    def _reraise(tp, value, tb=None):
-        if value is None:
-            value = tp()
-        if value.__traceback__ is not tb:
-            raise value.with_traceback(tb)
-        raise value
-else:
-    def __exec(_code_, _globs_=None, _locs_=None):
-        """Execute code in a namespace."""
-        if _globs_ is None:
-            frame = sys._getframe(1)
-            _globs_ = frame.f_globals
-            if _locs_ is None:
-                _locs_ = frame.f_locals
-            del frame
-        elif _locs_ is None:
-            _locs_ = _globs_
-        exec("""exec _code_ in _globs_, _locs_""")
-
-    __exec("""def _reraise(tp, value, tb=None):
-    try:
-        raise tp, value, tb
-    finally:
-        tb = None
-""")
+def _reraise(tp, value, tb=None):
+    if value is None:
+        value = tp()
+    if value.__traceback__ is not tb:
+        raise value.with_traceback(tb)
+    raise value

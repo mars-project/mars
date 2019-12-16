@@ -16,7 +16,6 @@
 
 import unittest
 
-from mars.compat import lmap
 from mars.executor import Executor
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
@@ -40,7 +39,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(3)]
         graph = DirectedGraph()
-        lmap(graph.add_node, chunks[:3])
+        list(map(graph.add_node, chunks[:3]))
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunks[2])
 
@@ -62,7 +61,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
         graph = DirectedGraph()
-        lmap(graph.add_node, chunks[:6])
+        list(map(graph.add_node, chunks[:6]))
 
         chunks[2].op._inputs = [chunks[0], chunks[1]]
         chunks[3].op._inputs = [chunks[2]]
@@ -111,7 +110,7 @@ class Test(unittest.TestCase):
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
         chunk_slice = TensorSlice().new_chunk([None], None)
         graph = DirectedGraph()
-        lmap(graph.add_node, chunks[:6])
+        list(map(graph.add_node, chunks[:6]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[2])
         graph.add_edge(chunks[1], chunks[2])
@@ -132,7 +131,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
         graph = DirectedGraph()
-        lmap(graph.add_node, chunks[:3])
+        list(map(graph.add_node, chunks[:3]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunk_slice)
@@ -151,7 +150,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
         graph = DirectedGraph()
-        lmap(graph.add_node, chunks[:4])
+        list(map(graph.add_node, chunks[:4]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunk_slice)

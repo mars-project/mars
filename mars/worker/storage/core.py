@@ -16,9 +16,9 @@ import functools
 import logging
 import sys
 from collections import defaultdict
+from enum import Enum
 
 from ... import promise
-from ...compat import Enum, six
 from ...config import options
 from ...utils import classproperty, log_unhandled
 from ...serialize import dataserializer
@@ -135,7 +135,7 @@ class StorageHandler(object):
     @staticmethod
     def pass_on_exc(func, exc):
         func()
-        six.reraise(*exc)
+        raise exc[1].with_traceback(exc[2]) from None
 
     @property
     def storage_ctx(self):
@@ -234,7 +234,7 @@ class StorageHandler(object):
                 def _unlocker(uid, *exc, **kwargs):
                     self.promise_ref(uid).unlock(uid_to_work_item_ids[uid])
                     if not kwargs.get('accept', True):
-                        six.reraise(*exc)
+                        raise exc[1].with_traceback(exc[2])
 
                 return promise.all_(
                     self.promise_ref(uid).lock(session_id, keys, _promise=True)
@@ -327,13 +327,13 @@ class ObjectStorageMixin(object):
 
     def _batch_load_objects(self, session_id, data_keys, key_loader,
                             batch_get=False, serialize=False, pin_token=None):
-        is_success = [True]
+        is_success = True
         data_dict = dict()
         sizes = self._storage_ctx.manager_ref.get_data_sizes(session_id, data_keys)
 
         def _record_data(k, o):
             try:
-                if is_success[0]:
+                if is_success:
                     data_dict[k] = o
             finally:
                 del o
@@ -349,10 +349,11 @@ class ObjectStorageMixin(object):
                 del objs
                 obj_list[:] = []
 
-        def _handle_err(*exc):
-            is_success[0] = False
+        def _handle_err(*exc_info):
+            nonlocal is_success
+            is_success = False
             data_dict.clear()
-            six.reraise(*exc)
+            raise exc_info[1].with_traceback(exc_info[2]) from None
 
         def _batch_put_objects(objs):
             try:
@@ -407,7 +408,7 @@ def wrap_promised(func):
                     else:
                         return promise.finished(val)
                 except:  # noqa: E722
-                    return promise.finished(*sys.exc_info(), **dict(_accept=False))
+                    return promise.finished(*sys.exc_info(), _accept=False)
         finally:
             del args, kwargs
 

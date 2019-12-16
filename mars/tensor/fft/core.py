@@ -16,7 +16,6 @@
 
 from collections import Iterable
 
-from ...compat import izip
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, ListField
 from ...utils import check_chunks_unknown_shape
@@ -98,7 +97,7 @@ class TensorFFTNMixin(TensorFFTBaseMixin):
     def _merge_shape(op, shape):
         new_shape = list(shape)
         if op.shape is not None:
-            for ss, axis in izip(op.shape, op.axes):
+            for ss, axis in zip(op.shape, op.axes):
                 new_shape[axis] = ss
         return new_shape
 

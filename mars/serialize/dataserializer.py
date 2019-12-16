@@ -15,11 +15,10 @@
 import functools
 import gzip
 import struct
-import sys
 import zlib
 from collections import namedtuple
-
-from ..compat import BytesIO, Enum
+from enum import Enum
+from io import BytesIO
 
 try:
     import numpy as np
@@ -73,20 +72,13 @@ except ImportError:  # pragma: no cover
     lz4_compress, lz4_compressobj = None, None
     lz4_decompress, lz4_decompressobj = None, None
 
-if sys.version_info[0] < 3:
-    # we don't support gzip in Python 2.7 as
-    # there are many limitations in the gzip module
-    gz_open = None
-    gz_compressobj = gz_decompressobj = None
-    gz_compress = gz_decompress = None
-else:
-    gz_open = gzip.open
-    gz_compressobj = functools.partial(
-        lambda level=-1: zlib.compressobj(level, zlib.DEFLATED, 16 + zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0)
-    )
-    gz_decompressobj = functools.partial(lambda: zlib.decompressobj(16 + zlib.MAX_WBITS))
-    gz_compress = gzip.compress
-    gz_decompress = gzip.decompress
+gz_open = gzip.open
+gz_compressobj = functools.partial(
+    lambda level=-1: zlib.compressobj(level, zlib.DEFLATED, 16 + zlib.MAX_WBITS, zlib.DEF_MEM_LEVEL, 0)
+)
+gz_decompressobj = functools.partial(lambda: zlib.decompressobj(16 + zlib.MAX_WBITS))
+gz_compress = gzip.compress
+gz_decompress = gzip.decompress
 
 SERIAL_VERSION = 0
 
@@ -316,14 +308,93 @@ def _deserialize_sparse_csr_list(data):
 _serialize_context = None
 
 
+def _apply_pyarrow_serialization_patch(serialization_context):
+    """
+    Fix the bug about dtype serialization in pyarrow (pyarrow#4953).
+
+    From the JIRA of arrow, the fixed version of this bug is 1.0, so we only apply
+    the patch for pyarrow less than version 1.0.
+    """
+    from distutils.version import LooseVersion
+    import numpy as np
+    import pyarrow
+
+    try:
+        # This function is available after numpy-0.16.0.
+        # See also: https://github.com/numpy/numpy/blob/master/numpy/lib/format.py
+        from numpy.lib.format import descr_to_dtype
+    except ImportError:
+        def descr_to_dtype(descr):
+            '''
+            descr may be stored as dtype.descr, which is a list of
+            (name, format, [shape]) tuples where format may be a str or a tuple.
+            Offsets are not explicitly saved, rather empty fields with
+            name, format == '', '|Vn' are added as padding.
+            This function reverses the process, eliminating the empty padding fields.
+            '''
+            if isinstance(descr, str):
+                # No padding removal needed
+                return np.dtype(descr)
+            elif isinstance(descr, tuple):
+                # subtype, will always have a shape descr[1]
+                dt = descr_to_dtype(descr[0])
+                return np.dtype((dt, descr[1]))
+            fields = []
+            offset = 0
+            for field in descr:
+                if len(field) == 2:
+                    name, descr_str = field
+                    dt = descr_to_dtype(descr_str)
+                else:
+                    name, descr_str, shape = field
+                    dt = np.dtype((descr_to_dtype(descr_str), shape))
+
+                # Ignore padding bytes, which will be void bytes with '' as name
+                # Once support for blank names is removed, only "if name == ''" needed)
+                is_pad = (name == '' and dt.type is np.void and dt.names is None)
+                if not is_pad:
+                    fields.append((name, dt, offset))
+
+                offset += dt.itemsize
+
+            names, formats, offsets = zip(*fields)
+            # names may be (title, names) tuples
+            nametups = (n  if isinstance(n, tuple) else (None, n) for n in names)
+            titles, names = zip(*nametups)
+            return np.dtype({'names': names, 'formats': formats, 'titles': titles,
+                             'offsets': offsets, 'itemsize': offset})
+
+    def _serialize_numpy_array_list(obj):
+        if obj.dtype.str != '|O':
+            # Make the array c_contiguous if necessary so that we can call change
+            # the view.
+            if not obj.flags.c_contiguous:
+                obj = np.ascontiguousarray(obj)
+            return obj.view('uint8'), np.lib.format.dtype_to_descr(obj.dtype)
+        else:
+            return obj.tolist(), np.lib.format.dtype_to_descr(obj.dtype)
+
+    def _deserialize_numpy_array_list(data):
+        if data[1] != '|O':
+            assert data[0].dtype == np.uint8
+            return data[0].view(descr_to_dtype(data[1]))
+        else:
+            return np.array(data[0], dtype=np.dtype(data[1]))
+
+    if LooseVersion(pyarrow.__version__) < LooseVersion('1.0'):
+        serialization_context.register_type(
+            np.ndarray, 'np.array',
+            custom_serializer=_serialize_numpy_array_list,
+            custom_deserializer=_deserialize_numpy_array_list)
+
+
 def mars_serialize_context():
     global _serialize_context
     if _serialize_context is None:
-        from ..compat import apply_pyarrow_serialization_patch
         ctx = pyarrow.default_serialization_context()
         ctx.register_type(SparseNDArray, 'mars.SparseNDArray',
                           custom_serializer=_serialize_sparse_csr_list,
                           custom_deserializer=_deserialize_sparse_csr_list)
-        apply_pyarrow_serialization_patch(ctx)
+        _apply_pyarrow_serialization_patch(ctx)
         _serialize_context = ctx
     return _serialize_context

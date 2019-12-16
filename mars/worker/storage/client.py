@@ -18,7 +18,6 @@ import operator
 from collections import defaultdict
 
 from ... import promise
-from ...compat import six, reduce
 from ...errors import StorageFull
 from ...utils import calc_data_size, build_exc_info
 from .core import DataStorageDevice, get_storage_handler_cls
@@ -106,7 +105,7 @@ class StorageClient(object):
                         ))
             elif data_cleaner:
                 data_cleaner(data_keys)
-            six.reraise(*exc_info)
+            raise exc_info[1].with_traceback(exc_info[2])
 
         cur_device = device_order[device_pos]
         handler = self.get_storage_handler(cur_device)
@@ -195,7 +194,7 @@ class StorageClient(object):
                              None) or sorted(devs)[0]
             dev_to_keys[first_dev].append(key)
 
-        is_success = [True]
+        is_success = True
         data_dict = dict()
         if not _promise:
             try:
@@ -211,22 +210,23 @@ class StorageClient(object):
         else:
             def _update_key_items(keys, objs):
                 try:
-                    if is_success[0]:
+                    if is_success:
                         data_dict.update(zip(keys, objs))
                 finally:
                     objs[:] = []
 
-            def _handle_key_error(*exc):
-                is_success[0] = False
+            def _handle_key_error(*exc_info):
+                nonlocal is_success
+                is_success = False
                 data_dict.clear()
-                six.reraise(*exc)
+                raise exc_info[1].with_traceback(exc_info[2]) from None
 
-            def _finalize(*exc):
+            def _finalize(*exc_info):
                 try:
-                    if not exc:
+                    if not exc_info:
                         return [data_dict.pop(k) for k in data_keys]
                     else:
-                        six.reraise(*exc)
+                        raise exc_info[1].with_traceback(exc_info[2]) from None
                 finally:
                     data_dict.clear()
 
@@ -276,10 +276,10 @@ class StorageClient(object):
             for k in keys:
                 data_dict.pop(k, None)
 
-        def _clean_all(*exc):
+        def _clean_all(*exc_info):
             data_dict.clear()
-            if exc:
-                six.reraise(*exc)
+            if exc_info:
+                raise exc_info[1].with_traceback(exc_info[2]) from None
 
         return self._do_with_spill(_action, data_keys, sum(sizes_dict.values()), device_order,
                                    data_cleaner=_clean_succeeded) \
@@ -295,10 +295,8 @@ class StorageClient(object):
         lift_reqs = defaultdict(list)
         for k, devices, size in zip(data_keys, existing_devs, data_sizes):
             if not devices or not size:
-                return promise.finished(
-                    *build_exc_info(KeyError, 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)),
-                    **dict(_accept=False)
-                )
+                err_msg = 'Data key (%s, %s) not exist, proc_id=%s' % (session_id, k, self.proc_id)
+                return promise.finished(*build_exc_info(KeyError, err_msg), _accept=False)
 
             target = next((d for d in device_order if d in devices), None)
             if target is not None:
@@ -322,7 +320,7 @@ class StorageClient(object):
             existing = self._manager_ref.get_data_locations(session_id, keys)
             for devices in existing:
                 if not any(d for d in device_order if d in devices):
-                    six.reraise(*exc)
+                    raise exc[1].with_traceback(exc[2]) from None
 
         promises = []
         for d in device_to_keys.keys():
@@ -337,8 +335,8 @@ class StorageClient(object):
 
     def delete(self, session_id, data_keys, devices=None, _tell=False):
         if not devices:
-            devices = reduce(operator.ior,
-                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+            devices = functools.reduce(
+                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 
@@ -353,8 +351,8 @@ class StorageClient(object):
 
     def pin_data_keys(self, session_id, data_keys, token, devices=None):
         if not devices:
-            devices = reduce(operator.ior,
-                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+            devices = functools.reduce(
+                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 
@@ -369,8 +367,8 @@ class StorageClient(object):
 
     def unpin_data_keys(self, session_id, data_keys, token, devices=None):
         if not devices:
-            devices = reduce(operator.ior,
-                             self._manager_ref.get_data_locations(session_id, data_keys), set())
+            devices = functools.reduce(
+                operator.ior, self._manager_ref.get_data_locations(session_id, data_keys), set())
         else:
             devices = self._normalize_devices(devices)
 

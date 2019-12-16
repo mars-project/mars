@@ -15,11 +15,11 @@
 import functools
 import uuid
 import weakref
+from io import BytesIO
 
 import numpy as np
 from numpy.testing import assert_allclose
 
-from mars.compat import BytesIO
 from mars.errors import StorageFull
 from mars.serialize import dataserializer
 from mars.tests.core import patch_method

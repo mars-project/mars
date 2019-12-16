@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import os
 import tempfile
 import time
 import unittest
-
-from mars.compat import reload_module
 
 _cpu_stat_first = '8678870951786'
 _cpu_stat_last = '8679429771672'
@@ -39,7 +38,7 @@ hierarchical_memory_limit 1073741824
 class Test(unittest.TestCase):
     def testStats(self):
         from mars import resource
-        resource = reload_module(resource)
+        resource = importlib.reload(resource)
         resource.cpu_percent()
 
         mem_stats = resource.virtual_memory()
@@ -75,7 +74,7 @@ class Test(unittest.TestCase):
             os.environ['MARS_CPU_TOTAL'] = str(cpu_total)
             os.environ['MARS_MEMORY_TOTAL'] = str(mem_total)
 
-            resource = reload_module(resource)
+            resource = importlib.reload(resource)
             resource.cpu_percent()
             time.sleep(0.5)
 
@@ -94,7 +93,7 @@ class Test(unittest.TestCase):
             del os.environ['MARS_USE_PROCESS_STAT']
             del os.environ['MARS_CPU_TOTAL']
             del os.environ['MARS_MEMORY_TOTAL']
-            reload_module(resource)
+            importlib.reload(resource)
 
     def testUseCGroupStats(self):
         from mars import resource
@@ -111,7 +110,7 @@ class Test(unittest.TestCase):
         try:
             os.environ['MARS_USE_CGROUP_STAT'] = '1'
 
-            resource = reload_module(resource)
+            resource = importlib.reload(resource)
             resource.CGROUP_CPU_STAT_FILE = cpu_stat_path
             resource.CGROUP_MEM_STAT_FILE = mem_stat_path
             resource._shm_path = None
@@ -133,4 +132,4 @@ class Test(unittest.TestCase):
             del os.environ['MARS_USE_CGROUP_STAT']
             os.unlink(cpu_stat_path)
             os.unlink(mem_stat_path)
-            reload_module(resource)
+            importlib.reload(resource)

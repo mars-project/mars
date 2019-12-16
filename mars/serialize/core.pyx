@@ -17,21 +17,13 @@
 import importlib
 import inspect
 import copy
-from collections import Iterable
-
-from ..compat import six, OrderedDict
-
-
-from cpython.version cimport PY_MAJOR_VERSION
-
-cdef bint PY2 = PY_MAJOR_VERSION == 2
-cdef bint PY3 = PY_MAJOR_VERSION == 3
+from collections import Iterable, OrderedDict
 
 
 cdef class Identity:
     def __init__(self, tp=None):
         if tp is None:
-            tp = PrimitiveType.unicode if six.PY3 else PrimitiveType.bytes
+            tp = PrimitiveType.unicode
         self.type = tp
         self.name = 'id'
 
@@ -99,7 +91,7 @@ cdef class ValueType:
     float64 = PrimitiveType.float64
     bytes = PrimitiveType.bytes
     unicode = PrimitiveType.unicode
-    string = PrimitiveType.unicode if PY3 else PrimitiveType.bytes
+    string = PrimitiveType.unicode
     complex64 = PrimitiveType.complex64
     complex128 = PrimitiveType.complex128
     slice = ExtendType.slice
@@ -301,7 +293,7 @@ cdef class StringField(Field):
         super(StringField, self).__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
-        self._type = ValueType.bytes if PY2 else ValueType.unicode
+        self._type = ValueType.unicode
 
 
 cdef class BytesField(Field):
@@ -601,7 +593,7 @@ class SerializableMetaclass(type):
         return cls
 
 
-class Serializable(six.with_metaclass(SerializableMetaclass)):
+class Serializable(metaclass=SerializableMetaclass):
     __slots__ = ()
 
     def __init__(self, *args, **kwargs):
