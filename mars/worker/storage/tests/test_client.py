@@ -109,6 +109,7 @@ class Test(WorkerCase):
 
             session_id = str(uuid.uuid4())
             data_key1 = str(uuid.uuid4())
+            data_key2 = str(uuid.uuid4())
 
             with self.run_actor_test(pool) as test_actor:
                 storage_client = test_actor.storage_client
@@ -134,14 +135,11 @@ class Test(WorkerCase):
 
                 # test creating promised writer and write
                 file_names[:] = []
-                storage_client.create_writer(
-                        session_id, data_key1, ser_data1.total_bytes, (DataStorageDevice.DISK,)) \
-                    .then(functools.partial(_write_data, ser_data1)) \
-                    .then(lambda *_: test_actor.set_result(None),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                self.get_result(5)
+                self.waitp(storage_client.create_writer(
+                        session_id, data_key2, ser_data1.total_bytes, (DataStorageDevice.DISK,))
+                    .then(functools.partial(_write_data, ser_data1)))
                 self.assertTrue(os.path.exists(file_names[0]))
-                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key1])[0]),
+                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key2])[0]),
                                  [(0, DataStorageDevice.DISK)])
 
                 def _read_data(reader):
@@ -149,27 +147,24 @@ class Test(WorkerCase):
                         return dataserializer.deserialize(reader.read())
 
                 # test creating reader when data exist in location
-                storage_client.create_reader(session_id, data_key1, (DataStorageDevice.DISK,)) \
-                    .then(_read_data) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                assert_allclose(self.get_result(5), data1)
+                result = self.waitp(
+                    storage_client.create_reader(session_id, data_key2, (DataStorageDevice.DISK,))
+                    .then(_read_data))[0]
+                assert_allclose(result, data1)
 
                 # test creating reader when no data in location (should raise)
                 with self.assertRaises(IOError):
-                    storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,),
+                    storage_client.create_reader(session_id, data_key2, (DataStorageDevice.SHARED_MEMORY,),
                                                  _promise=False)
 
                 # test creating reader when copy needed
-                storage_client.create_reader(session_id, data_key1, (DataStorageDevice.SHARED_MEMORY,)) \
-                    .then(_read_data) \
-                    .then(functools.partial(test_actor.set_result),
-                          lambda *exc: test_actor.set_result(exc, accept=False))
-                self.get_result(5)
-                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key1])[0]),
+                self.waitp(
+                    storage_client.create_reader(session_id, data_key2, (DataStorageDevice.SHARED_MEMORY,))
+                    .then(_read_data))
+                self.assertEqual(sorted(storage_client.get_data_locations(session_id, [data_key2])[0]),
                                  [(0, DataStorageDevice.SHARED_MEMORY), (0, DataStorageDevice.DISK)])
 
-                storage_client.delete(session_id, [data_key1])
+                storage_client.delete(session_id, [data_key2])
                 while os.path.exists(file_names[0]):
                     test_actor.ctx.sleep(0.05)
                 self.assertFalse(os.path.exists(file_names[0]))
