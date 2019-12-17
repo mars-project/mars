@@ -20,6 +20,11 @@ import copy
 from collections import OrderedDict
 from collections.abc import Iterable
 
+from .._utils cimport to_binary
+from ..lib.mmh3 import hash as mmh_hash
+
+cdef dict _serializable_registry = dict()
+
 
 cdef class Identity:
     def __init__(self, tp=None):
@@ -457,7 +462,10 @@ cdef class ReferenceField(Field):
         super().__init__(
             tag, default=default, weak_ref=weak_ref,
             on_serialize=on_serialize, on_deserialize=on_deserialize)
-        if not isinstance(model, str):
+        if model is None:
+            self._type = ValueType.reference(None)
+            self._model = None
+        elif not isinstance(model, str):
             self._type = ValueType.reference(model)
         else:
             self._type = None
@@ -552,8 +560,8 @@ class SerializableMetaclass(type):
         cdef set sslots
         cdef object props
         cdef dict fields
-        cdef str k
-        cdef object v
+        cdef str k, ser_name
+        cdef object v, ser_index, mod_name
 
         slots = list(kv.pop('__slots__', ()))
         sslots = set(slots)
@@ -591,6 +599,15 @@ class SerializableMetaclass(type):
 
         cls = type.__new__(mcs, name, bases, kv)
         set_model(fields, cls)
+        try:
+            ser_index = kv['__serializable_index__']
+        except KeyError:
+            ser_name = name
+            mod_name = kv.get('__module__', None)
+            if mod_name:
+                ser_name = mod_name.split('.', 1)[0] + '.' + ser_name
+            ser_index = cls.__serializable_index__ = mmh_hash(to_binary(ser_name), signed=False)
+        _serializable_registry[ser_index] = cls
         return cls
 
 
@@ -720,6 +737,10 @@ cpdef list deserializes(Provider provider, list models, list objects):
         objs.append(model.deserialize(provider, pb_obj, callbacks, key_to_instance))
     [cb(key_to_instance) for cb in callbacks]
     return objs
+
+
+cpdef object get_serializable_by_index(object index):
+    return _serializable_registry.get(index)
 
 
 cdef class Provider:

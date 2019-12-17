@@ -29,7 +29,7 @@ except ImportError:  # pragma: no cover
 
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
-    ReferenceField, OneOfField, ListField
+    ReferenceField, OneOfField, ListField, get_serializable_by_index
 from .core import HasKey
 from .dataserializer import dumps as datadumps, loads as dataloads
 
@@ -411,6 +411,19 @@ cdef class JsonSerializeProvider(Provider):
         x = x if x is not None else field.default
         return field.on_serialize(x) if field.on_serialize is not None else x
 
+    cdef object _serialize_reference(self, tag, model, value, new_obj):
+        if value is None:
+            return None
+        if model is None:
+            new_obj['type_id'] = value.__serializable_index__
+            new_obj['value'] = value.serialize(self, dict())
+        else:
+            if not isinstance(value, model):
+                raise TypeError('Does not match type for reference field {0}: '
+                                'expect {1}, got {2}'.format(tag, model, type(value)))
+            value.serialize(self, new_obj)
+        return new_obj
+
     cpdef serialize_field(self, Field field, model_instance, obj):
         cdef str tag
         cdef object new_obj
@@ -420,17 +433,14 @@ cdef class JsonSerializeProvider(Provider):
 
         if isinstance(field, ReferenceField):
             tag = field.tag_name(self)
-            new_obj = obj[tag] = dict()
             if hasattr(model_instance, field.attr):
                 field_val = getattr(model_instance, field.attr)
                 if field.weak_ref:
                     field_val = field_val()
                 if field_val is not None:
-                    if not isinstance(field_val, field.type.model):
-                        raise TypeError('Does not match type for reference field {0}: '
-                                        'expect {1}, got {2}'.format(tag, field.type.model, type(field_val)))
+                    new_obj = obj[tag] = dict()
                     value = self._on_serial(field, field_val)
-                    value.serialize(self, new_obj)
+                    self._serialize_reference(tag, field.type.model, value, new_obj)
         elif isinstance(field, OneOfField):
             has_val = False
             field_val = getattr(model_instance, field.attr, None)
@@ -461,14 +471,7 @@ cdef class JsonSerializeProvider(Provider):
             for val in value:
                 if field.weak_ref:
                     val = val()
-                if val is not None:
-                    if isinstance(val, field.type.type.model):
-                        new_obj.append(val.serialize(self, dict()))
-                    else:
-                        raise TypeError('Does not match type for reference in list field {0}: '
-                                        'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
-                else:
-                    new_obj.append(None)
+                new_obj.append(self._serialize_reference(tag, field.type.type.model, val, dict()))
         else:
             tag = field.tag_name(self)
             val = self._on_serial(field, getattr(model_instance, field.attr, None))
@@ -514,6 +517,12 @@ cdef class JsonSerializeProvider(Provider):
         x = x if x is not None else field.default
         return field.on_deserialize(x) if field.on_deserialize is not None else x
 
+    cdef object _deserialize_reference(self, model, val, list callbacks, dict key_to_instance):
+        if model is None:
+            model = get_serializable_by_index(val['type_id'])
+            val = val['value']
+        return model.deserialize(self, val, callbacks, key_to_instance)
+
     def deserialize_field(self, Field field, model_instance, obj, list callbacks, dict key_to_instance):
         cdef str tag
         cdef object val
@@ -526,7 +535,8 @@ cdef class JsonSerializeProvider(Provider):
             if val is None:
                 return
             setattr(model_instance, field.attr,
-                    self._on_deserial(field, field.type.model.deserialize(self, val, callbacks, key_to_instance)))
+                    self._on_deserial(field, self._deserialize_reference(
+                        field.type.model, val, callbacks, key_to_instance)))
         elif isinstance(field, OneOfField):
             oneoffield = <OneOfField>field
             has_val = False
@@ -549,7 +559,7 @@ cdef class JsonSerializeProvider(Provider):
                 return
             setattr(model_instance, field.attr,
                     self._on_deserial(
-                        field, [field.type.type.model.deserialize(self, it_obj, callbacks, key_to_instance)
+                        field, [self._deserialize_reference(field.type.type.model, it_obj, callbacks, key_to_instance)
                                 if it_obj is not None else None
                                 for it_obj in obj[tag]]))
         else:

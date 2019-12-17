@@ -1,28 +1,16 @@
 syntax = "proto3";
 
+import "mars/serialize/protos/anyref.proto";
 import "mars/serialize/protos/value.proto";
-import "mars/serialize/protos/dataframe.proto";
-import "mars/serialize/protos/tensor.proto";
-import "mars/serialize/protos/object.proto";
 
 
 message FuseChunkDef {
-    message ChunkDef {
-        oneof chunk {
-            TensorChunkDef tensor_chunk = 1;
-            IndexChunkDef index_chunk = 2;
-            SeriesChunkDef series_chunk = 3;
-            DataFrameChunkDef dataframe_chunk = 4;
-            ObjectChunkDef object_chunk = 5;
-        }
-    }
-
     string key = 1;
     repeated uint32 index = 2 [packed = true];
     repeated int64 shape = 3;
     Value op = 4;  // just store key here
     bool cached = 5;
-    repeated ChunkDef composed = 7;
+    repeated AnyReference composed = 7;
     Value extra_params = 8;
     string id = 9;
 }

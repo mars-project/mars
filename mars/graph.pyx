@@ -20,8 +20,7 @@ from enum import Enum
 from io import StringIO
 
 from .serialize import Serializable
-from .serialize.core cimport ValueType, ProviderType, \
-    OneOfField, ListField, Int8Field
+from .serialize.core cimport ValueType, ProviderType, ListField, Int8Field
 
 logger = logging.getLogger(__name__)
 
@@ -318,10 +317,7 @@ cdef class DirectedGraph:
             set visited = set()
             list nodes = []
 
-        from .tensor.core import CHUNK_TYPE as TENSOR_CHUNK_TYPE, TENSOR_TYPE, Chunk, Tensor
-        from .dataframe.core import CHUNK_TYPE as DATAFRAME_CHUNK_TYPE, \
-            TILEABLE_TYPE as DATAFRAME_TYPE, DataFrame
-        from .core import FUSE_CHUNK_TYPE, OBJECT_TYPE, OBJECT_CHUNK_TYPE
+        from .core import CHUNK_TYPE, TILEABLE_TYPE, Chunk, TileableEntity
 
         level = None
 
@@ -329,22 +325,21 @@ cdef class DirectedGraph:
             # we only record the op key in serialized chunk or tensor,
             # so the op should be added as a serializable node
             if c.op not in visited:
-                nodes.append(SerializableGraphNode(_node=c.op))
+                nodes.append(c.op)
                 visited.add(c.op)
             if c not in visited:
-                nodes.append(SerializableGraphNode(_node=c))
+                nodes.append(c)
                 visited.add(c)
 
         for node in self.iter_nodes():
-            if isinstance(node, (TENSOR_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE,
-                                 FUSE_CHUNK_TYPE, OBJECT_CHUNK_TYPE)):
+            if isinstance(node, CHUNK_TYPE):
                 node = node.data if isinstance(node, Chunk) else node
                 add_obj(node)
                 if node.composed:
                     for c in node.composed:
-                        nodes.append(SerializableGraphNode(_node=c.op))
-            elif isinstance(node, (TENSOR_TYPE, DATAFRAME_TYPE, OBJECT_TYPE)):
-                node = node.data if isinstance(node, (Tensor, DataFrame)) else node
+                        nodes.append(c.op)
+            elif isinstance(node, TILEABLE_TYPE):
+                node = node.data if isinstance(node, TileableEntity) else node
                 if level is None:
                     level = SerializableGraph.Level.ENTITY
                 for c in (node.chunks or ()):
@@ -514,40 +509,12 @@ cdef class DAG(DirectedGraph):
             raise GraphContainsCycleError
 
 
-class SerializableGraphNode(Serializable):
-    _node = OneOfField('node', op='mars.operands.Operand',
-                       tensor_chunk='mars.tensor.core.TensorChunkData',
-                       tensor='mars.tensor.core.TensorData',
-                       dataframe_chunk='mars.dataframe.core.DataFrameChunkData',
-                       dataframe='mars.dataframe.core.DataFrameData',
-                       index_chunk='mars.dataframe.core.IndexChunkData',
-                       index='mars.dataframe.core.IndexData',
-                       series_chunk='mars.dataframe.core.SeriesChunkData',
-                       series='mars.dataframe.core.SeriesData',
-                       object_chunk='mars.core.ObjectChunkData',
-                       object='mars.core.ObjectData',
-                       fuse_chunk='mars.core.FuseChunkData')
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from .serialize.protos.graph_pb2 import GraphDef
-
-            return GraphDef.NodeDef
-
-        return super().cls(provider)
-
-    @property
-    def node(self):
-        return getattr(self, '_node', None)
-
-
 class SerializableGraph(Serializable):
     class Level(Enum):
         CHUNK = 0
         ENTITY = 1
 
-    _nodes = ListField('node', ValueType.reference(SerializableGraphNode))
+    _nodes = ListField('node', ValueType.reference(None))
     _level = Int8Field('level')
 
     @classmethod
@@ -569,5 +536,4 @@ class SerializableGraph(Serializable):
 
     @property
     def nodes(self):
-        for n in self._nodes:
-            yield n.node
+        return self._nodes

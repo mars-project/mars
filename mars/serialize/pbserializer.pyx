@@ -28,9 +28,9 @@ except ImportError:  # pragma: no cover
     pd = None
 
 from .core cimport ProviderType, ValueType, Identity, List, Tuple, Dict, \
-    Reference, KeyPlaceholder, AttrWrapper, Provider, Field, \
-    OneOfField, ReferenceField, IdentityField, \
-    ListField, TupleField
+    Reference, KeyPlaceholder, AttrWrapper, Provider, Field, OneOfField, \
+    ReferenceField, IdentityField, ListField, TupleField, \
+    get_serializable_by_index
 from .core import HasKey
 from .protos.value_pb2 import Value
 from .dataserializer import dumps as datadumps, loads as dataloads
@@ -431,6 +431,25 @@ cdef class ProtobufSerializeProvider(Provider):
         else:
             cls._set_typed_value(value, obj, tp, weak_ref=weak_ref)
 
+    cdef inline void _serial_reference_value(self, tag, model, value, value_pb) except *:
+        cdef object field_obj
+
+        if model is None:
+            if type(value_pb) is Value:
+                value_pb.typed.type_id = value.__serializable_index__
+                value.serialize(self, value_pb.typed.value)
+            else:
+                field_obj = value.cls(self)()
+                value.serialize(self, obj=field_obj)
+                value_pb.type_id = value.__serializable_index__
+                value_pb.value = field_obj.SerializeToString()
+        else:
+            if isinstance(value, model):
+                value.serialize(self, obj=value_pb)
+            else:
+                raise TypeError('Does not match type for reference field {0}: '
+                                'expect {1}, got {2}'.format(tag, model, type(value)))
+
     cpdef serialize_field(self, Field field, model_instance, obj):
         cdef object value
         cdef object val
@@ -468,10 +487,7 @@ cdef class ProtobufSerializeProvider(Provider):
         if isinstance(field, ReferenceField):
             if field.weak_ref:
                 field_obj = field_obj()
-            if not isinstance(value, field.type.model):
-                raise TypeError('Does not match type for reference field {0}: '
-                                'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
-            value.serialize(self, obj=field_obj)
+            self._serial_reference_value(tag, field.type.model, value, field_obj)
         elif isinstance(field, ListField):
             if type(field.type.type) == Reference:
                 add = field_obj.list.value.add if isinstance(field_obj, Value) else field_obj.add
@@ -480,11 +496,7 @@ cdef class ProtobufSerializeProvider(Provider):
                         val = val()
                     it_obj = add()
                     if val is not None:
-                        if isinstance(val, field.type.type.model):
-                            val.serialize(self, obj=it_obj)
-                        else:
-                            raise TypeError('Does not match type for reference in list field {0}: '
-                                            'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
+                        self._serial_reference_value(tag, field.type.type.model, val, it_obj)
                     elif isinstance(it_obj, Value):
                         it_obj.is_null = True
             else:
@@ -535,22 +547,14 @@ cdef class ProtobufSerializeProvider(Provider):
                 if isinstance(field, ReferenceField):
                     if field.weak_ref:
                         value = value()
-                    if isinstance(value, field.type.model):
-                        value.serialize(self, obj=v)
-                    else:
-                        raise TypeError('Does not match type for reference field {0}: '
-                                        'expect {1}, got {2}'.format(tag, field.type.model, type(value)))
+                    self._serial_reference_value(tag, field.type.model, value, v)
                 elif isinstance(field, ListField) and type(field.type.type) == Reference:
                     for val in value:
                         if field.weak_ref:
                             val = val()
                         it_obj = v.list.value.add()
                         if val is not None:
-                            if isinstance(val, field.type.type.model):
-                                val.serialize(self, obj=it_obj)
-                            else:
-                                raise TypeError('Does not match type for reference in list field {0}: '
-                                                'expect {1}, got {2}'.format(tag, field.type.type.model, type(val)))
+                            self._serial_reference_value(tag, field.type.type.model, val, it_obj)
                         elif isinstance(it_obj, Value):
                             it_obj.is_null = True
                 else:
@@ -683,12 +687,33 @@ cdef class ProtobufSerializeProvider(Provider):
             return x
         return field.on_deserialize(x)
 
+    cdef object _deserial_reference_value(self, model, value_pb, list callbacks, dict key_to_instance):
+        cdef object f_obj
+
+        if model is None:
+            if type(value_pb) is Value:
+                if value_pb.typed.type_id == 0:
+                    return None
+                model = get_serializable_by_index(value_pb.typed.type_id)
+                f_obj = value_pb.typed.value
+            else:
+                if value_pb.type_id == 0:
+                    return None
+                model = get_serializable_by_index(value_pb.type_id)
+                f_obj = model.cls(self)()
+                f_obj.ParseFromString(value_pb.value)
+        else:
+            f_obj = value_pb
+        return model.deserialize(self, f_obj, callbacks, key_to_instance)
+
     def deserialize_field(self, Field field, model_instance, obj, list callbacks, dict key_to_instance):
         cdef str tag
         cdef str f_tag
         cdef Field f
         cdef object f_obj
+        cdef object it_obj
         cdef object field_obj
+        cdef object value
         cdef OneOfField oneoffield
 
         if isinstance(field, OneOfField):
@@ -707,16 +732,16 @@ cdef class ProtobufSerializeProvider(Provider):
         field_obj = getattr(obj, tag)
 
         if isinstance(field, ReferenceField):
-            setattr(model_instance, field.attr,
-                    self._on_deserial(
-                        field, field.type.model.deserialize(self, field_obj, callbacks, key_to_instance)))
+            value = self._deserial_reference_value(field.type.model, field_obj, callbacks, key_to_instance)
+            if value is None:
+                return
+            setattr(model_instance, field.attr, self._on_deserial(field, value))
         elif isinstance(field, ListField):
             if type(field.type.type) == Reference:
                 field_obj = field_obj.list.value if isinstance(field_obj, Value) else field_obj
-                setattr(model_instance, field.attr,
-                        self._on_deserial(
-                            field, [field.type.type.model.deserialize(self, it_obj, callbacks, key_to_instance)
-                                    for it_obj in field_obj]))
+                value = [self._deserial_reference_value(
+                    field.type.type.model, it_obj, callbacks, key_to_instance) for it_obj in field_obj]
+                setattr(model_instance, field.attr, self._on_deserial(field, value))
             else:
                 setattr(model_instance, field.attr,
                         self._get_list(field_obj, field.type, callbacks, field.weak_ref))
@@ -754,6 +779,7 @@ cdef class ProtobufSerializeProvider(Provider):
         cdef Field it_field
         cdef str tag
         cdef object o_tag
+        cdef object value
 
         attr = getattr(model_cls, 'attr_tag', None)
         if attr:
@@ -795,15 +821,15 @@ cdef class ProtobufSerializeProvider(Provider):
                 tag = self._get_value(k, ValueType.string, callbacks, False)
                 it_field = tag_to_fields[tag]
                 if isinstance(it_field, ReferenceField):
-                    setattr(model_instance, it_field.attr,
-                        self._on_deserial(
-                            it_field, it_field.type.model.deserialize(self, v, callbacks, key_to_instance)))
+                    value = self._deserial_reference_value(it_field.type.model, v, callbacks, key_to_instance)
+                    if value is None:
+                        return
+                    setattr(model_instance, it_field.attr, self._on_deserial(it_field, value))
                 elif isinstance(it_field, ListField) and type(it_field.type.type) == Reference:
-                    setattr(model_instance, it_field.attr,
-                            self._on_deserial(
-                                it_field,
-                                [it_field.type.type.model.deserialize(self, it_obj, callbacks, key_to_instance)
-                                 for it_obj in v.list.value]))
+                    value = [self._deserial_reference_value(
+                        it_field.type.type.model, it_obj, callbacks, key_to_instance)
+                        for it_obj in v.list.value]
+                    setattr(model_instance, it_field.attr, self._on_deserial(it_field, value))
                 else:
                     setattr(model_instance, it_field.attr,
                             self._get_value(v, it_field.type, callbacks, it_field.weak_ref))

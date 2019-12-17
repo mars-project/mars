@@ -67,6 +67,8 @@ class Node1(Serializable):
     g = ReferenceField('g', 'Node2')
     h = ListField('h')
     i = ListField('i', ValueType.reference('self'))
+    j = ReferenceField('j', None)
+    k = ListField('k', ValueType.reference(None))
 
     def __new__(cls, *args, **kwargs):
         if 'a' in kwargs and kwargs['a'] == 'test1':
@@ -152,11 +154,13 @@ class Node4(AttributeAsDict):
     j = ReferenceField('k', Node5)
     k = ListField('l', ValueType.reference('Node5'))
     l = OneOfField('m', n5=Node5, n6=Node6)
-    m = IndexField('n')
-    mm = IndexField('mn')
-    n = SeriesField('o')
-    o = DataFrameField('p')
-    p = ListField('q')
+    m = ReferenceField('n', None)
+    n = ListField('o', ValueType.reference(None))
+    w = IndexField('v')
+    ww = IndexField('vw')
+    x = SeriesField('w')
+    y = DataFrameField('x')
+    z = ListField('y')
 
     @classmethod
     def cls(cls, provider):
@@ -181,7 +185,9 @@ class Test(unittest.TestCase):
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
-                      i=[Node8(b1=111), Node8(b1=222)])
+                      i=[Node8(b1=111), Node8(b1=222)],
+                      j=Node2(a=[['u'], ['v']]),
+                      k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -221,6 +227,15 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
+        self.assertIsInstance(d_node3.value.j, Node2)
+        self.assertEqual(node3.value.j.a, d_node3.value.j.a)
+        self.assertIsInstance(d_node3.value.k[0], Node5)
+        self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
+        self.assertIsInstance(d_node3.value.k[1], Node8)
+        self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
+        self.assertIsInstance(d_node3.value.k[1].j, Node5)
+        self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
+        self.assertIsNone(node3.value.k[2])
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])
@@ -239,7 +254,9 @@ class Test(unittest.TestCase):
                       g=Node2(a=[['1', '2'], ['3', '4']]),
                       h=[[2, 3], node2, True, {1: node2}, np.datetime64('1066-10-13'),
                          np.timedelta64(1, 'D'), np.complex64(1+2j), np.complex128(2+3j)],
-                      i=[Node8(b1=111), Node8(b1=222)])
+                      i=[Node8(b1=111), Node8(b1=222)],
+                      j=Node2(a=[['u'], ['v']]),
+                      k=[Node5(a='uvw'), Node8(b1=222, j=Node5(a='xyz')), None])
         node3 = Node3(value=node1)
 
         serials = serializes(provider, [node2, node3])
@@ -280,6 +297,15 @@ class Test(unittest.TestCase):
         self.assertAlmostEqual(node3.value.h[7], d_node3.value.h[7])
         self.assertEqual([n.b1 for n in node3.value.i], [n.b1 for n in d_node3.value.i])
         self.assertIsInstance(d_node3.value.i[0], Node8)
+        self.assertIsInstance(d_node3.value.j, Node2)
+        self.assertEqual(node3.value.j.a, d_node3.value.j.a)
+        self.assertIsInstance(d_node3.value.k[0], Node5)
+        self.assertEqual(node3.value.k[0].a, d_node3.value.k[0].a)
+        self.assertIsInstance(d_node3.value.k[1], Node8)
+        self.assertEqual(node3.value.k[1].b1, d_node3.value.k[1].b1)
+        self.assertIsInstance(d_node3.value.k[1].j, Node5)
+        self.assertEqual(node3.value.k[1].j.a, d_node3.value.k[1].j.a)
+        self.assertIsNone(node3.value.k[2])
 
         with self.assertRaises(ValueError):
             serializes(provider, [Node3(value='sth else')])
@@ -377,11 +403,11 @@ class Test(unittest.TestCase):
         if pd:
             df = pd.DataFrame({'a': [1, 2, 3], 'b': [to_text('测试'), to_binary('属性'), 'c']},
                               index=[[0, 0, 1], ['测试', '属性', '测试']])
-            other_data['m'] = df.columns
-            other_data['mm'] = df.index
-            other_data['n'] = df['b']
-            other_data['o'] = df
-            other_data['p'] = [df.columns, df.index, df['a'], df]
+            other_data['w'] = df.columns
+            other_data['ww'] = df.index
+            other_data['x'] = df['b']
+            other_data['y'] = df
+            other_data['z'] = [df.columns, df.index, df['a'], df]
         node4 = Node4(a=to_binary('中文'),
                       b=np.random.randint(4, size=(3, 4)),
                       c=np.datetime64(datetime.datetime.now()),
@@ -393,7 +419,10 @@ class Test(unittest.TestCase):
                       i=(slice(10), slice(0, 2), None, slice(2, 0, -1)),
                       j=Node5(a='aa', b=slice(1, 100, 3)),
                       k=[Node5(a='bb', b=slice(200, -1, -4)), None],
-                      l=Node6(b=3, nid=1), **other_data)
+                      l=Node6(b=3, nid=1),
+                      m=Node6(b=4, nid=2),
+                      n=[Node5(a='cc', b=slice(100, -2, -5)), None],
+                      **other_data)
 
         pbs = ProtobufSerializeProvider()
 
@@ -415,16 +444,22 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.k[0].b, d_node4.k[0].b)
         self.assertIsNone(d_node4.k[1])
         self.assertIsInstance(d_node4.l, Node7)
-        self.assertEqual(d_node4.l.b, 3)
+        self.assertEqual(node4.l.b, d_node4.l.b)
+        self.assertIsInstance(d_node4.m, Node7)
+        self.assertEqual(node4.m.b, d_node4.m.b)
+        self.assertIsInstance(d_node4.n[0], Node5)
+        self.assertEqual(node4.n[0].a, d_node4.n[0].a)
+        self.assertEqual(node4.n[0].b, d_node4.n[0].b)
+        self.assertIsNone(d_node4.n[1])
         if pd:
-            pd.testing.assert_index_equal(node4.m, d_node4.m)
-            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
-            pd.testing.assert_series_equal(node4.n, d_node4.n)
-            pd.testing.assert_frame_equal(node4.o, d_node4.o)
-            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
-            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
-            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
-            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
+            pd.testing.assert_index_equal(node4.w, d_node4.w)
+            pd.testing.assert_index_equal(node4.ww, d_node4.ww)
+            pd.testing.assert_series_equal(node4.x, d_node4.x)
+            pd.testing.assert_frame_equal(node4.y, d_node4.y)
+            pd.testing.assert_index_equal(node4.z[0], d_node4.z[0])
+            pd.testing.assert_index_equal(node4.z[1], d_node4.z[1])
+            pd.testing.assert_series_equal(node4.z[2], d_node4.z[2])
+            pd.testing.assert_frame_equal(node4.z[3], d_node4.z[3])
 
         with self.assertRaises(TypeError):
             node42 = Node4(j=Node6())
@@ -471,16 +506,22 @@ class Test(unittest.TestCase):
         self.assertEqual(node4.k[0].a, d_node4.k[0].a)
         self.assertIsNone(d_node4.k[1])
         self.assertIsInstance(d_node4.l, Node7)
-        self.assertEqual(d_node4.l.b, 3)
+        self.assertEqual(node4.l.b, d_node4.l.b)
+        self.assertIsInstance(d_node4.m, Node7)
+        self.assertEqual(node4.m.b, d_node4.m.b)
+        self.assertIsInstance(d_node4.n[0], Node5)
+        self.assertEqual(node4.n[0].a, d_node4.n[0].a)
+        self.assertEqual(node4.n[0].b, d_node4.n[0].b)
+        self.assertIsNone(d_node4.n[1])
         if pd:
-            pd.testing.assert_index_equal(node4.m, d_node4.m)
-            pd.testing.assert_index_equal(node4.mm, d_node4.mm)
-            pd.testing.assert_series_equal(node4.n, d_node4.n)
-            pd.testing.assert_frame_equal(node4.o, d_node4.o)
-            pd.testing.assert_index_equal(node4.p[0], d_node4.p[0])
-            pd.testing.assert_index_equal(node4.p[1], d_node4.p[1])
-            pd.testing.assert_series_equal(node4.p[2], d_node4.p[2])
-            pd.testing.assert_frame_equal(node4.p[3], d_node4.p[3])
+            pd.testing.assert_index_equal(node4.w, d_node4.w)
+            pd.testing.assert_index_equal(node4.ww, d_node4.ww)
+            pd.testing.assert_series_equal(node4.x, d_node4.x)
+            pd.testing.assert_frame_equal(node4.y, d_node4.y)
+            pd.testing.assert_index_equal(node4.z[0], d_node4.z[0])
+            pd.testing.assert_index_equal(node4.z[1], d_node4.z[1])
+            pd.testing.assert_series_equal(node4.z[2], d_node4.z[2])
+            pd.testing.assert_frame_equal(node4.z[3], d_node4.z[3])
 
         with self.assertRaises(TypeError):
             node42 = Node4(j=Node6())

@@ -29,6 +29,11 @@ message Value {
         string id = 2;  // since different object may have the same key, we need an identity
     }
 
+    message TypedValue {
+        uint32 type_id = 1;
+        Value value = 2;
+    }
+
     oneof value {
         bool is_null = 1; // NULL
         bool b = 2;  // bool
@@ -48,6 +53,7 @@ message Value {
         bytes index = 15; // pandas Index
         bytes series = 16;  // pandas Series
         bytes dataframe = 17;  // pandas DataFrame
+        TypedValue typed = 18;
     }
 
 }

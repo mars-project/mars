@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "mars/serialize/protos/anyref.proto";
 import "mars/serialize/protos/value.proto";
 
 
@@ -23,6 +24,8 @@ message Node1Def {
     Node2Def g = 15;
     repeated Value h = 16;
     repeated Node1Def i = 17;
+    AnyReference j = 20;
+    repeated AnyReference k = 21;
 }
 
 

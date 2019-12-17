@@ -245,6 +245,9 @@ cpdef enum ProviderType:
     json = 2
 
 
+cpdef object get_serializable_by_index(object index)
+
+
 cdef class Provider:
     cdef public object type
 
