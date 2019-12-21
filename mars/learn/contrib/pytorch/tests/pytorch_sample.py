@@ -14,14 +14,9 @@
 
 import sys
 
-import torch
-import torch.nn as nn
-import torch.distributed as dist
-import torch.optim as optim
-import torch.utils.data
-
 
 def get_model():
+    import torch.nn as nn
     return nn.Sequential(
         nn.Linear(32, 64),
         nn.ReLU(),
@@ -32,11 +27,12 @@ def get_model():
     )
 
 
-assert len(sys.argv) == 2
-assert sys.argv[1] == 'multiple'
-
-
 def main():
+    import torch.nn as nn
+    import torch.distributed as dist
+    import torch.optim as optim
+    import torch.utils.data
+
     dist.init_process_group(backend='gloo')
     torch.manual_seed(42)
 
@@ -66,4 +62,6 @@ def main():
 
 
 if __name__ == "__main__":
+    assert len(sys.argv) == 2
+    assert sys.argv[1] == 'multiple'
     main()

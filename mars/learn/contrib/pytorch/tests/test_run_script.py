@@ -16,14 +16,12 @@ import os
 import unittest
 
 from mars.learn.contrib.pytorch import run_pytorch_script
+from mars.utils import lazy_import
 
-try:
-    import torch
-except ImportError:
-    torch = None
+torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
-@unittest.skipIf(torch is None, 'pytorch not installed')
+@unittest.skipIf(not torch_installed, 'pytorch not installed')
 class Test(unittest.TestCase):
     def testLocalRunPyTorchScript(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pytorch_sample.py')

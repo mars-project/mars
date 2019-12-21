@@ -64,12 +64,8 @@ import codecs
 import logging
 import multiprocessing
 import multiprocessing.process
+import pickle
 from itertools import chain
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 try:
     from pytest_cov.embed import cleanup_on_sigterm

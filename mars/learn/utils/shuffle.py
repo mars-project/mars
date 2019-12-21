@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import itertools
-from collections import defaultdict, Iterable
+from collections import defaultdict
+from collections.abc import Iterable
 from functools import reduce
 
 import numpy as np

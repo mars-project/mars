@@ -14,7 +14,7 @@
 
 
 import itertools
-from collections import Iterable
+from collections.abc import Iterable
 from contextlib import contextmanager
 
 import numpy as np

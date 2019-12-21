@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import Iterable
+from collections.abc import Iterable
 
 from ...serialize import ValueType, KeyField, TupleField
 from ... import opcodes as OperandDef

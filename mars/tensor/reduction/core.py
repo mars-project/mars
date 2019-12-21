@@ -19,12 +19,9 @@ import copy
 import inspect
 import itertools
 import operator
+from collections.abc import Iterable
 from functools import reduce
 from math import ceil, log
-try:
-    from collections.abc import Iterable
-except ImportError:  # pragma: no cover
-    from collections import Iterable
 
 import numpy as np
 

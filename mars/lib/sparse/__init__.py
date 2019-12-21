@@ -17,10 +17,7 @@
 import builtins
 import operator
 from functools import reduce
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
+from collections.abc import Iterable
 
 from .array import SparseNDArray
 from .matrix import SparseMatrix

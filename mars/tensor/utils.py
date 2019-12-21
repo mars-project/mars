@@ -18,7 +18,8 @@ import inspect
 import itertools
 import operator
 import uuid
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
+from collections.abc import Iterable
 from functools import lru_cache, reduce, wraps
 from math import ceil
 from numbers import Integral

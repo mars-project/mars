@@ -14,7 +14,7 @@
 
 import itertools
 import operator
-from collections import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 
