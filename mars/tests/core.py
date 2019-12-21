@@ -22,7 +22,7 @@ import tempfile
 import time
 import itertools
 import unittest
-from collections import Iterable
+from collections.abc import Iterable
 from weakref import ReferenceType
 
 import numpy as np

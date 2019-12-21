@@ -15,7 +15,8 @@
 # limitations under the License.
 
 
-from collections import Iterable, defaultdict
+from collections import defaultdict
+from collections.abc import Iterable
 from datetime import datetime
 from enum import Enum
 from operator import attrgetter
