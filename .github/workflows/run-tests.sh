@@ -10,7 +10,7 @@ if [ -n "$WITH_KUBERNETES" ]; then
   coverage report
 fi
 if [ -n "$WITH_CYTHON" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local mars/serialize \
+  pytest $PYTEST_CONFIG --forked mars/actors mars/deploy/local mars/serialize \
     mars/optimizes mars/scheduler mars/tests mars/web
   coverage report
 fi
