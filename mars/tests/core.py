@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import functools
 import os
 import sys
 import logging
@@ -304,6 +306,19 @@ def require_cudf(func):
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
     return func
+
+
+def aio_case(obj):
+    @functools.wraps(obj)
+    def func_wrapper(*args, **kwargs):
+        asyncio.run(obj(*args, **kwargs))
+
+    if isinstance(obj, type):
+        for name, val in obj.__dict__.items():
+            if name.startswith('test') and asyncio.iscoroutinefunction(val):
+                setattr(obj, name, aio_case(val))
+        return obj
+    return func_wrapper
 
 
 def create_actor_pool(*args, **kwargs):

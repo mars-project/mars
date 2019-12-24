@@ -20,11 +20,6 @@ cdef class ActorRef:
     cdef public object uid
     cdef public object _ctx
 
-    cpdef object send(self, object message, bint wait=*, object callback=*)
-    cpdef object tell(self, object message, object delay=*, bint wait=*,
-                      object callback=*)
-    cpdef object destroy(self, bint wait=*, object callback=*)
-
 
 cdef class Actor:
     cdef str _address
@@ -32,15 +27,10 @@ cdef class Actor:
     cdef object _ctx
 
     cpdef ActorRef ref(self)
-    cpdef post_create(self)
-    cpdef on_receive(self, message)
-    cpdef pre_destroy(self)
 
 
 cdef class _FunctionActor(Actor):
-    cpdef on_receive(self, message)
+    pass
 
 
-cpdef object create_actor_pool(str address=*, int n_process=*, object distributor=*,
-                               object parallel=*, str backend=*, str advertise_address=*)
-cpdef object new_client(object parallel=*, str backend=*)
+cpdef object new_client(object parallel=*)

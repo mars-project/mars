@@ -17,9 +17,9 @@
 from pickle import dumps, loads
 
 import numpy as np
-cimport numpy as np
 cimport cython
 from libc.string cimport memcpy
+from libc.stdint cimport int64_t, int32_t, int16_t, int8_t
 from cpython.bytearray cimport PyByteArray_AS_STRING, PyByteArray_GET_SIZE, PyByteArray_Resize
 
 from ..core cimport ActorRef
@@ -35,13 +35,13 @@ pickling_support.install()
 # 5) error that throws back by the actor in a different process or machine
 # 6) send all, the send actor message
 # 7) tell all, the tell actor message
-cpdef BYTE_t CREATE_ACTOR = MessageType.create_actor
-cpdef BYTE_t DESTROY_ACTOR = MessageType.destroy_actor
-cpdef BYTE_t HAS_ACTOR = MessageType.has_actor
-cpdef BYTE_t RESULT = MessageType.result
-cpdef BYTE_t ERROR = MessageType.error
-cpdef BYTE_t SEND_ALL = MessageType.send_all
-cpdef BYTE_t TELL_ALL = MessageType.tell_all
+cpdef int8_t CREATE_ACTOR = MessageType.create_actor
+cpdef int8_t DESTROY_ACTOR = MessageType.destroy_actor
+cpdef int8_t HAS_ACTOR = MessageType.has_actor
+cpdef int8_t RESULT = MessageType.result
+cpdef int8_t ERROR = MessageType.error
+cpdef int8_t SEND_ALL = MessageType.send_all
+cpdef int8_t TELL_ALL = MessageType.tell_all
 
 
 cpdef enum MessageSerialType:
@@ -51,19 +51,19 @@ cpdef enum MessageSerialType:
     pickle = 2
 
 
-cdef BYTE_t NONE = MessageSerialType.null
-cdef BYTE_t RAW_BYTES = MessageSerialType.raw_bytes
-cdef BYTE_t PICKLE = MessageSerialType.pickle
+cdef int8_t NONE = MessageSerialType.null
+cdef int8_t RAW_BYTES = MessageSerialType.raw_bytes
+cdef int8_t PICKLE = MessageSerialType.pickle
 
 
-cdef INT32_t DEFAULT_PROTOCOL = 0
+cdef int32_t DEFAULT_PROTOCOL = 0
 
 
 cdef class _BASE_ACTOR_MESSAGE:
-    cdef public INT32_t message_type
+    cdef public int32_t message_type
     cdef public bytes message_id
-    cdef public INT32_t from_index
-    cdef public INT32_t to_index
+    cdef public int32_t from_index
+    cdef public int32_t to_index
 
 
 cdef class CREATE_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
@@ -72,8 +72,8 @@ cdef class CREATE_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public tuple args
     cdef public dict kwargs
 
-    def __init__(self, INT32_t message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, ActorRef actor_ref=None,
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None,
                  object actor_cls=None, tuple args=None, dict kwargs=None):
         self.message_type = message_type
         self.message_id = message_id
@@ -88,8 +88,8 @@ cdef class CREATE_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
 cdef class DESTROY_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
 
-    def __init__(self, INT32_t message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, object actor_ref=None):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object actor_ref=None):
         self.message_type = message_type
         self.message_id = message_id
         self.from_index = from_index
@@ -100,8 +100,8 @@ cdef class DESTROY_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
 cdef class HAS_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public ActorRef actor_ref
 
-    def __init__(self, INT32_t message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, ActorRef actor_ref=None):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None):
         self.message_type = message_type
         self.message_id = message_id
         self.from_index = from_index
@@ -112,8 +112,8 @@ cdef class HAS_ACTOR_MESSAGE(_BASE_ACTOR_MESSAGE):
 cdef class RESULT_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public object result
 
-    def __init__(self, INT32_t message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, object result=None):
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object result=None):
         self.message_type = message_type
         self.message_id = message_id
         self.from_index = from_index
@@ -126,8 +126,8 @@ cdef class ERROR_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public object error
     cdef public object traceback
 
-    def __init__(self, INT32_t message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, object error_type=None,
+    def __init__(self, int32_t message_type=-1, bytes message_id=None,
+                 int32_t from_index=0, int32_t to_index=0, object error_type=None,
                  object error=None, object traceback=None):
         self.message_type = message_type
         self.message_id = message_id
@@ -143,7 +143,7 @@ cdef class SEND_MESSAGE(_BASE_ACTOR_MESSAGE):
     cdef public object message
 
     def __init__(self, object message_type=-1, bytes message_id=None,
-                 INT32_t from_index=0, INT32_t to_index=0, ActorRef actor_ref=None,
+                 int32_t from_index=0, int32_t to_index=0, ActorRef actor_ref=None,
                  object message=None):
         self.message_type = message_type
         self.message_id = message_id
@@ -155,7 +155,7 @@ cdef class SEND_MESSAGE(_BASE_ACTOR_MESSAGE):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline void _pack_byte(BYTE_t val, bytearray arr):
+cdef inline void _pack_byte(int8_t val, bytearray arr):
     cdef char *ptr
     cdef Py_ssize_t size = PyByteArray_GET_SIZE(arr)
     PyByteArray_Resize(arr, size + 1)
@@ -165,61 +165,61 @@ cdef inline void _pack_byte(BYTE_t val, bytearray arr):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline BYTE_t _unpack_byte(const char *s) nogil:
+cdef inline int8_t _unpack_byte(const char *s) nogil:
     return s[0]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline void _pack_short(INT16_t val, bytearray arr):
+cdef inline void _pack_short(int16_t val, bytearray arr):
     cdef char *ptr
     cdef Py_ssize_t size = PyByteArray_GET_SIZE(arr)
-    PyByteArray_Resize(arr, size + sizeof(INT16_t))
+    PyByteArray_Resize(arr, size + sizeof(int16_t))
     ptr = PyByteArray_AS_STRING(arr) + size
-    memcpy(ptr, &val, sizeof(INT16_t))
+    memcpy(ptr, &val, sizeof(int16_t))
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline INT16_t _unpack_short(const char *s) nogil:
-    cdef INT16_t ret
-    memcpy(&ret, s, sizeof(INT16_t))
+cdef inline int16_t _unpack_short(const char *s) nogil:
+    cdef int16_t ret
+    memcpy(&ret, s, sizeof(int16_t))
     return ret
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline void _pack_int(INT32_t val, bytearray arr):
+cdef inline void _pack_int(int32_t val, bytearray arr):
     cdef char *ptr
     cdef Py_ssize_t size = PyByteArray_GET_SIZE(arr)
-    PyByteArray_Resize(arr, size + sizeof(INT32_t))
+    PyByteArray_Resize(arr, size + sizeof(int32_t))
     ptr = PyByteArray_AS_STRING(arr) + size
-    memcpy(ptr, &val, sizeof(INT32_t))
+    memcpy(ptr, &val, sizeof(int32_t))
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline INT32_t _unpack_int(const char *s) nogil:
-    cdef INT32_t ret
-    memcpy(&ret, s, sizeof(INT32_t))
+cdef inline int32_t _unpack_int(const char *s) nogil:
+    cdef int32_t ret
+    memcpy(&ret, s, sizeof(int32_t))
     return ret
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline void _pack_long(INT64_t val, bytearray arr):
+cdef inline void _pack_long(int64_t val, bytearray arr):
     cdef char *ptr
     cdef Py_ssize_t size = PyByteArray_GET_SIZE(arr)
-    PyByteArray_Resize(arr, size + sizeof(INT64_t))
+    PyByteArray_Resize(arr, size + sizeof(int64_t))
     ptr = PyByteArray_AS_STRING(arr) + size
-    memcpy(ptr, &val, sizeof(INT64_t))
+    memcpy(ptr, &val, sizeof(int64_t))
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef inline INT64_t _unpack_long(const char *s) nogil:
-    cdef INT64_t ret
-    memcpy(&ret, s, sizeof(INT64_t))
+cdef inline int64_t _unpack_long(const char *s) nogil:
+    cdef int64_t ret
+    memcpy(&ret, s, sizeof(int64_t))
     return ret
 
 
@@ -230,17 +230,17 @@ cdef inline bytes new_message_id():
     return np_random_bytes(32)
 
 
-cdef inline void _pack_message_type(INT32_t message_type, bytearray buf, INT32_t protocol=DEFAULT_PROTOCOL):
-    cdef INT32_t value
+cdef inline void _pack_message_type(int32_t message_type, bytearray buf, int32_t protocol=DEFAULT_PROTOCOL):
+    cdef int32_t value
 
     # use 1 byte to represent protocol and message type, from left to right, 0-2, protocol, 3-7 message_type
     value = (protocol << 5) | message_type
     _pack_byte(value, buf)
 
 
-cdef inline INT32_t _unpack_message_type_value(const char *binary, size_t* pos) nogil:
-    cdef INT32_t value
-    cdef INT32_t protocol
+cdef inline int32_t _unpack_message_type_value(const char *binary, size_t* pos) nogil:
+    cdef int32_t value
+    cdef int32_t protocol
 
     value = binary[pos[0]]
     pos[0] += 1
@@ -255,7 +255,7 @@ cdef inline object _unpack_message_type(const char *binary, size_t* pos):
     return MessageType(_unpack_message_type_value(binary, pos))
 
 
-cpdef INT32_t unpack_message_type_value(bytes binary):
+cpdef int32_t unpack_message_type_value(bytes binary):
     cdef size_t pos = 0
     return _unpack_message_type_value(binary, &pos)
 
@@ -290,7 +290,7 @@ cdef inline void _skip_message_id(const char *buf, size_t* pos) nogil:
 
 
 cdef inline void _pack_object(object obj, bytearray buf) except *:
-    cdef BYTE_t st
+    cdef int8_t st
     cdef bytes m
 
     if obj is None:
@@ -310,7 +310,7 @@ cdef inline void _pack_object(object obj, bytearray buf) except *:
 
 
 cdef inline object _unpack_object(const char *binary, size_t* pos):
-    cdef BYTE_t st
+    cdef int8_t st
     cdef size_t size
     cdef bytes ret_bytes
 
@@ -323,7 +323,11 @@ cdef inline object _unpack_object(const char *binary, size_t* pos):
     size = _unpack_long(binary + pos[0])
     pos[0] += 8
 
-    ret_bytes = binary[pos[0]:pos[0] + size]
+    try:
+        ret_bytes = binary[pos[0]:pos[0] + size]
+    except MemoryError:
+        print('Size caused memory error:', size)
+        raise
     pos[0] += size
     if st == RAW_BYTES:
         return ret_bytes
@@ -332,7 +336,7 @@ cdef inline object _unpack_object(const char *binary, size_t* pos):
 
 
 cdef inline void _skip_object(const char *binary, size_t* pos) nogil:
-    cdef BYTE_t st
+    cdef int8_t st
     cdef size_t size
 
     st = binary[pos[0]]
@@ -342,16 +346,16 @@ cdef inline void _skip_object(const char *binary, size_t* pos) nogil:
         return
 
     size = _unpack_long(binary + pos[0])
-    pos[0] += size + sizeof(INT64_t)
+    pos[0] += size + sizeof(int64_t)
 
 
-cdef inline void _pack_index(INT32_t index, bytearray buf):
+cdef inline void _pack_index(int32_t index, bytearray buf):
     # 2 bytes
     _pack_short(index, buf)
 
 
-cdef inline INT32_t _unpack_index(const char *binary, size_t* pos) nogil:
-    cdef INT32_t ret = _unpack_short(binary + pos[0])
+cdef inline int32_t _unpack_index(const char *binary, size_t* pos) nogil:
+    cdef int32_t ret = _unpack_short(binary + pos[0])
     pos[0] += 2
     return ret
 
@@ -410,8 +414,8 @@ cdef inline void _pack_message_size(size_t size, bytearray buf):
     _pack_long(size, buf)
 
 
-cdef inline INT32_t _unpack_message_size(const char *binary, size_t* pos) nogil:
-    cdef INT32_t ret = _unpack_long(binary + pos[0])
+cdef inline int32_t _unpack_message_size(const char *binary, size_t* pos) nogil:
+    cdef int32_t ret = _unpack_long(binary + pos[0])
     pos[0] += 8
     return ret
 
@@ -420,7 +424,7 @@ cdef inline INT32_t _unpack_message_size(const char *binary, size_t* pos) nogil:
 cdef inline list _pack_tuple_message(tuple messages):
     cdef list ret
     cdef bytearray bio
-    cdef BYTE_t st
+    cdef int8_t st
     cdef bytes m
 
     ret = []
@@ -444,7 +448,7 @@ cdef inline list _pack_tuple_message(tuple messages):
 
 
 cdef inline bytes _pack_sole_message(object message, bytearray buf):
-    cdef BYTE_t st
+    cdef int8_t st
     cdef bytes m
 
     # use 1 byte to record the serialize type
@@ -477,7 +481,7 @@ cdef inline tuple _unpack_tuple_message(const char *buf, size_t size, size_t* po
 
 
 cdef inline object _unpack_sole_message(const char *binary, size_t* pos):
-    cdef BYTE_t st
+    cdef int8_t st
     cdef size_t size
     cdef bytes ret_bytes
 
@@ -506,10 +510,10 @@ cdef inline object _unpack_message(const char *buf, size_t* pos):
         return _unpack_sole_message(buf, pos)
 
 
-cdef inline object _pack_send_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref, object message,
-                                      bint send, object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cdef inline object _pack_send_message(int32_t from_index, int32_t to_index, ActorRef actor_ref, object message,
+                                      bint send, object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytes message_id
-    cdef INT32_t message_type
+    cdef int32_t message_type
     cdef bytearray buf
     cdef object m
 
@@ -535,8 +539,8 @@ cdef inline object _pack_send_message(INT32_t from_index, INT32_t to_index, Acto
 cdef inline object _unpack_send_message(bytes binary, bint send=True):
     cdef object message_type
     cdef bytes message_id
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef ActorRef actor_ref
     cdef object message
     cdef size_t pos = 0
@@ -555,8 +559,8 @@ cdef inline object _unpack_send_message(bytes binary, bint send=True):
                         actor_ref=actor_ref, message=message)
 
 
-cpdef object pack_send_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref, object message,
-                               object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_send_message(int32_t from_index, int32_t to_index, ActorRef actor_ref, object message,
+                               object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     return _pack_send_message(from_index, to_index, actor_ref, message, True,
                               write=write, protocol=protocol)
 
@@ -565,8 +569,8 @@ cpdef object unpack_send_message(bytes message):
     return _unpack_send_message(message)
 
 
-cpdef object pack_tell_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref, object message,
-                               object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_tell_message(int32_t from_index, int32_t to_index, ActorRef actor_ref, object message,
+                               object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     return _pack_send_message(from_index, to_index, actor_ref, message, False,
                               write=write, protocol=protocol)
 
@@ -577,8 +581,8 @@ cpdef object unpack_tell_message(bytes message):
 
 cpdef tuple get_index(bytes binary, object calc_from_uid):
     cdef object buf
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef object uid
     cdef size_t pos = 0
     cdef const char *binary_ptr = binary
@@ -597,8 +601,8 @@ cpdef tuple get_index(bytes binary, object calc_from_uid):
     return from_index, calc_from_uid(uid)
 
 
-cpdef object pack_create_actor_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref, object actor_cls,
-                                       tuple args, dict kw, object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_create_actor_message(int32_t from_index, int32_t to_index, ActorRef actor_ref, object actor_cls,
+                                       tuple args, dict kw, object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytes message_id
     cdef bytearray buf
 
@@ -626,8 +630,8 @@ cpdef object unpack_create_actor_message(bytes binary):
     cdef object buf
     cdef object message_type
     cdef bytes message_id
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef ActorRef actor_ref
     cdef object actor_cls
     cdef tuple args
@@ -651,8 +655,8 @@ cpdef object unpack_create_actor_message(bytes binary):
                                 args=args, kwargs=kw)
 
 
-cpdef object pack_destroy_actor_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref,
-                                        object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_destroy_actor_message(int32_t from_index, int32_t to_index, ActorRef actor_ref,
+                                        object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytes message_id
     cdef bytearray buf
 
@@ -677,8 +681,8 @@ cpdef object unpack_destroy_actor_message(bytes binary):
     cdef object buf
     cdef object message_type
     cdef bytes message_id
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef ActorRef actor_ref
     cdef size_t pos = 0
     cdef const char *binary_ptr = binary
@@ -694,8 +698,8 @@ cpdef object unpack_destroy_actor_message(bytes binary):
                                  actor_ref=actor_ref)
 
 
-cpdef object pack_has_actor_message(INT32_t from_index, INT32_t to_index, ActorRef actor_ref,
-                                    object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_has_actor_message(int32_t from_index, int32_t to_index, ActorRef actor_ref,
+                                    object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytearray buf
 
     # from_index -1 means main process, -2 means remote, other is the subprocess id
@@ -718,8 +722,8 @@ cpdef object pack_has_actor_message(INT32_t from_index, INT32_t to_index, ActorR
 cpdef object unpack_has_actor_message(bytes binary):
     cdef object message_type
     cdef bytes message_id
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef ActorRef actor_ref
     cdef size_t pos = 0
     cdef const char *binary_ptr = binary
@@ -735,8 +739,8 @@ cpdef object unpack_has_actor_message(bytes binary):
                              actor_ref=actor_ref)
 
 
-cpdef object pack_result_message(bytes message_id, INT32_t from_index, INT32_t to_index, object result,
-                                 object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+cpdef object pack_result_message(bytes message_id, int32_t from_index, int32_t to_index, object result,
+                                 object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytearray buf
 
     buf = bytearray()
@@ -778,9 +782,9 @@ cpdef object unpack_result_message(bytes binary, object from_index=None, object 
                           result=result)
 
 
-cpdef object pack_error_message(bytes message_id, INT32_t from_index, INT32_t to_index,
+cpdef object pack_error_message(bytes message_id, int32_t from_index, int32_t to_index,
                                 object error_type, object error, object tb,
-                                object write=None, INT32_t protocol=DEFAULT_PROTOCOL):
+                                object write=None, int32_t protocol=DEFAULT_PROTOCOL):
     cdef bytearray buf
 
     buf = bytearray()
@@ -802,8 +806,8 @@ cpdef object pack_error_message(bytes message_id, INT32_t from_index, INT32_t to
 cpdef object unpack_error_message(bytes binary):
     cdef object message_type
     cdef bytes message_id
-    cdef INT32_t from_index
-    cdef INT32_t to_index
+    cdef int32_t from_index
+    cdef int32_t to_index
     cdef object error_type
     cdef object error
     cdef object tb
@@ -821,54 +825,3 @@ cpdef object unpack_error_message(bytes binary):
     return ERROR_MESSAGE(message_type=message_type, message_id=message_id,
                          from_index=from_index, to_index=to_index,
                          error_type=error_type, error=error, traceback=tb)
-
-
-cdef inline bytes _wrap_read_func(object read_func, size_t size):
-    cdef bytes read_bytes
-
-    try:
-         read_bytes = read_func(size)
-    except ConnectionResetError:
-        raise BrokenPipeError('The remote server is closed')
-
-    if len(read_bytes) == 0:
-        raise BrokenPipeError('The remote server is closed')
-
-    return read_bytes
-
-
-cpdef bytes read_remote_message(object read_func):
-    cdef size_t size
-    cdef bytearray buf
-    cdef INT32_t received_size
-    cdef INT32_t left
-    cdef bytes read_bytes
-
-    read_bytes = _wrap_read_func(read_func, 8)
-    size = _unpack_long(read_bytes)
-    buf = bytearray()
-    received_size = 0
-    left = size
-
-    while True:
-        read_bytes = _wrap_read_func(read_func, left)
-        buf.extend(read_bytes)
-        received_size += len(read_bytes)
-        if received_size >= size:
-            break
-        left = size - received_size
-
-    return bytes(buf)
-
-
-def write_remote_message(write_func, *binary):
-    cdef bytes size_bytes
-    cdef INT64_t size = 0
-
-    for b in binary:
-        size += len(b)
-    size_bytes = (<char *>&size)[:sizeof(INT64_t)]
-    write_func(size_bytes)
-
-    for b in binary:
-        write_func(b)
