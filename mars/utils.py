@@ -734,11 +734,18 @@ def kill_process_tree(pid, include_parent=True):
 
 
 def copy_tileables(*tileables, **kwargs):
+    if isinstance(tileables, (list, tuple)) and len(tileables) == 1 and \
+            isinstance(tileables[0], (list, tuple)):
+        tileables = tileables[0]
     inputs = kwargs.pop('inputs', None)
     copy_key = kwargs.pop('copy_key', True)
     copy_id = kwargs.pop('copy_id', True)
+    force_ret_list = kwargs.pop('force_ret_list', False)
+    if kwargs:
+        raise TypeError("got un unexpected "
+                        "keyword argument '{}'".format(next(iter(kwargs))))
     if len(tileables) > 1:
-        if set([t.op for t in tileables]) != 1:
+        if len({t.op for t in tileables}) != 1:
             raise TypeError("All tileables' operands should be same.")
 
     op = tileables[0].op.copy().reset_key()
@@ -753,7 +760,7 @@ def copy_tileables(*tileables, **kwargs):
         kws.append(params)
     inputs = inputs or op.inputs
     copied = op.new_tileables(inputs, kws=kws, output_limit=len(kws))
-    if len(tileables) == 1:
+    if not force_ret_list and len(tileables) == 1:
         return copied[0]
     else:
         return copied

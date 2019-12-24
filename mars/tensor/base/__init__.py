@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .result_type import result_type
+from .ndim import ndim
 from .astype import TensorAstype
 from .copyto import copyto, TensorCopyTo
 from .transpose import transpose, TensorTranspose
@@ -52,6 +53,8 @@ from .isin import isin, TensorIsIn
 from .searchsorted import searchsorted, TensorSearchsorted
 from .unique import unique
 from .sort import sort
+from .histogram import histogram_bin_edges, TensorHistogramBinEdges, \
+    histogram, TensorHistogram
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 
@@ -60,22 +63,16 @@ def _install():
     from ..core import Tensor, TensorData
     from .astype import _astype
 
-    setattr(Tensor, 'astype', _astype)
-    setattr(Tensor, 'swapaxes', swapaxes)
-    setattr(Tensor, 'squeeze', squeeze)
-    setattr(Tensor, 'repeat', repeat)
-    setattr(Tensor, 'ravel', ravel)
-    setattr(Tensor, 'flatten', flatten)
-    setattr(Tensor, 'to_gpu', to_gpu)
-    setattr(Tensor, 'to_cpu', to_cpu)
-    setattr(TensorData, 'astype', _astype)
-    setattr(TensorData, 'swapaxes', swapaxes)
-    setattr(TensorData, 'squeeze', squeeze)
-    setattr(TensorData, 'repeat', repeat)
-    setattr(TensorData, 'ravel', ravel)
-    setattr(TensorData, 'flatten', flatten)
-    setattr(TensorData, 'to_gpu', to_gpu)
-    setattr(TensorData, 'to_cpu', to_cpu)
+    for cls in (Tensor, TensorData):
+        setattr(cls, 'astype', _astype)
+        setattr(cls, 'swapaxes', swapaxes)
+        setattr(cls, 'squeeze', squeeze)
+        setattr(cls, 'repeat', repeat)
+        setattr(cls, 'ravel', ravel)
+        setattr(cls, 'flatten', flatten)
+        setattr(cls, 'ptp', ptp)
+        setattr(cls, 'to_gpu', to_gpu)
+        setattr(cls, 'to_cpu', to_cpu)
 
 
 _install()

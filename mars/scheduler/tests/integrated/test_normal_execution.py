@@ -28,6 +28,7 @@ from mars import tensor as mt
 from mars.actors.core import new_client
 from mars.scheduler.graph import GraphState
 from mars.scheduler.tests.integrated.base import SchedulerIntegratedTest
+from mars.utils import build_tileable_graph
 from mars.serialize.dataserializer import loads
 from mars.tests.core import EtcdProcessHelper, require_cupy, require_cudf
 
@@ -271,10 +272,10 @@ class Test(SchedulerIntegratedTest):
 
         session_id = uuid.uuid1()
         actor_client = new_client()
+        rs = np.random.RandomState(0)
 
         session_ref = actor_client.actor_ref(self.session_manager_ref.create_session(session_id))
 
-        rs = np.random.RandomState(0)
         raw = rs.rand(100)
         a = mt.tensor(raw, chunk_size=10)
         a.sort()
@@ -317,3 +318,24 @@ class Test(SchedulerIntegratedTest):
         result = session_ref.fetch_result(graph_key, d.key)
         expected = np.sort(np.concatenate([np.sort(raw1)[:10], raw2 + 1]))[:5]
         assert_allclose(loads(result), expected)
+
+        raw = rs.randint(100, size=(100,))
+        a = mt.tensor(raw, chunk_size=53)
+        a.sort()
+        b = mt.histogram(a, bins='scott')
+
+        graph = build_tileable_graph(b, set())
+        targets = [b[0].key, b[1].key]
+        graph_key = uuid.uuid1()
+        session_ref.submit_tileable_graph(json.dumps(graph.to_json()),
+                                          graph_key, target_tileables=targets)
+
+        state = self.wait_for_termination(actor_client, session_ref, graph_key)
+        self.assertEqual(state, GraphState.SUCCEEDED)
+
+        res = session_ref.fetch_result(graph_key, b[0].key), \
+              session_ref.fetch_result(graph_key, b[1].key)
+        expected = np.histogram(np.sort(raw), bins='scott')
+        assert_allclose(loads(res[0]), expected[0])
+        assert_allclose(loads(res[1]), expected[1])
+

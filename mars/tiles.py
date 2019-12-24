@@ -20,7 +20,7 @@ import weakref
 from .graph import DAG
 from .graph_builder import GraphBuilder, TileableGraphBuilder
 from .config import options
-from .utils import kernel_mode, enter_build_mode
+from .utils import kernel_mode, enter_build_mode, copy_tileables
 
 
 class Tileable(object):
@@ -138,6 +138,7 @@ handler = OperandTilesHandler()
 register = OperandTilesHandler.register
 
 _tileable_data_to_tiled = weakref.WeakKeyDictionary()
+_op_to_copied = weakref.WeakKeyDictionary()
 
 
 @enter_build_mode
@@ -174,15 +175,13 @@ class ChunkGraphBuilder(GraphBuilder):
             return [cache[o] for o in tileable_data.op.outputs]
 
         # copy tileable
-        op = tileable_data.op.copy()
-        params = []
-        for o in tileable_data.op.outputs:
-            p = o.params.copy()
-            p.update(o.extra_params)
-            p['_key'] = o.key
-            params.append(p)
-        tds = op.new_tileables([cache[inp] for inp in tileable_data.inputs],
-                               kws=params, output_limit=len(params))
+        if tileable_data.op in _op_to_copied:
+            tds = _op_to_copied[tileable_data.op]
+        else:
+            tds = copy_tileables(tileable_data.op.outputs,
+                                 inputs=[cache[inp] for inp in tileable_data.inputs],
+                                 copy_key=True, copy_id=False, force_ret_list=True)
+            _op_to_copied[tileable_data.op] = tds
         if not tileable_data.is_coarse():
             # the tileable is already tiled
             # could only happen when executor.execute_tileable(tileable.tiles())
@@ -248,7 +247,14 @@ class ChunkGraphBuilder(GraphBuilder):
             except:  # noqa: E722
                 exc_info = sys.exc_info()
                 if self._on_tile_failure:
-                    self._on_tile_failure(tileable_data.op, exc_info)
+                    # partial tiled chunks can be returned
+                    # here they will be added to the chunk graph
+                    # for further execution
+                    partial_tiled_chunks = \
+                        self._on_tile_failure(tileable_data.op, exc_info)
+                    if partial_tiled_chunks is not None and \
+                            len(partial_tiled_chunks) > 0:
+                        self._add_nodes(partial_tiled_chunks, visited)
                 else:
                     raise
         if self._compose:
@@ -276,6 +282,9 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
         def inner(op, exc_info):
             if isinstance(exc_info[1], TilesError):
                 self._interrupted_ops.add(op)
+                partial_tiled_chunks = getattr(exc_info[1], 'partial_tiled_chunks', None)
+                if partial_tiled_chunks is not None:
+                    return partial_tiled_chunks
             else:
                 if on_tile_failure is not None:
                     on_tile_failure(op, exc_info)
