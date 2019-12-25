@@ -327,7 +327,7 @@ def _on_deserialize_index_value(index_value):
     try:
         getattr(index_value, 'value')
         return index_value
-    except:
+    except AttributeError:
         return
 
 

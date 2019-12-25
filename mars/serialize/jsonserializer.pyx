@@ -16,10 +16,10 @@
 
 import base64
 import pickle
+import sys
 import weakref
 from collections import OrderedDict
 from io import BytesIO
-import sys
 
 import numpy as np
 cimport numpy as np
