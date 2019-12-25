@@ -110,7 +110,7 @@ class TensorStack(TensorOperand, TensorOperandMixin):
             for i in range(input_tuple_len):
                 ret = xp.stack([inp[i] for inp in inputs], axis=axis)
                 # make sure order is identical to out's order
-                ret = ret.astype(ret.dtype, order=out.order, copy=False)
+                ret = ret.astype(ret.dtype, order=out.order.value, copy=False)
                 rets.append(ret)
             ctx[out.key] = rets if is_input_tuple else rets[0]
 
