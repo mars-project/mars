@@ -90,10 +90,10 @@ class Test(unittest.TestCase):
 
         r"""
         Proper initial allocation should divide the graph like
-        
-        U   U U   U  |  U   U U   U  |  U   U U   U 
-         \ /   \ /   |   \ /   \ /   |   \ /   \ /  
-          U     U    |    U     U    |    U     U   
+
+        U   U U   U  |  U   U U   U  |  U   U U   U
+         \ /   \ /   |   \ /   \ /   |   \ /   \ /
+          U     U    |    U     U    |    U     U
         """
 
         inputs = [
@@ -123,10 +123,10 @@ class Test(unittest.TestCase):
 
         r"""
         Proper initial allocation should divide the graph like
-        
-         U   U   |   U   U   |   U   U  
-        | | | |  |  | | | |  |  | | | | 
-         U   U   |   U   U   |   U   U  
+
+         U   U   |   U   U   |   U   U
+        | | | |  |  | | | |  |  | | | |
+         U   U   |   U   U   |   U   U
         """
 
         inputs = [
@@ -156,7 +156,7 @@ class Test(unittest.TestCase):
 
         r"""
         Proper initial allocation should divide the graph like
-        
+
          U   U  |  U   U  |  U   U
           \ /   |   \ /   |   \ /
            U    |    U    |    U
@@ -258,11 +258,11 @@ class Test(unittest.TestCase):
 
         r"""
         Proper initial allocation should divide the graph like
-        
-        F   F R   R  |  F   F R   R  |  R   R R   R 
+
+        F   F R   R  |  F   F R   R  |  R   R R   R
         | x | | x |  |  | x | | x |  |  | x | | x |
         R   R U   U  |  R   R U   U  |  U   U U   U
-        
+
         U: UNSCHEDULED  F: FINISHED  R: READY
         """
 
@@ -323,11 +323,11 @@ class Test(unittest.TestCase):
 
         r"""
         Proper initial allocation should divide the graph like
-        
+
         FL  FL F   F R   R  |  FL  FL F   F R   R
         | x |  | x | | x |  |  | x |  | x | | x |
         R   R  R   R U   U  |  R   R  R   R U   U
-        
+
         U: UNSCHEDULED  F: FINISHED  R: READY  L: LOST
         """
 

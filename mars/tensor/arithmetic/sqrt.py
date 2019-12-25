@@ -79,4 +79,3 @@ def sqrt(x, out=None, where=None, **kwargs):
     """
     op = TensorSqrt(**kwargs)
     return op(x, out=out, where=where)
-

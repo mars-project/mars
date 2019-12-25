@@ -359,7 +359,7 @@ def _apply_pyarrow_serialization_patch(serialization_context):
 
             names, formats, offsets = zip(*fields)
             # names may be (title, names) tuples
-            nametups = (n  if isinstance(n, tuple) else (None, n) for n in names)
+            nametups = (n if isinstance(n, tuple) else (None, n) for n in names)
             titles, names = zip(*nametups)
             return np.dtype({'names': names, 'formats': formats, 'titles': titles,
                              'offsets': offsets, 'itemsize': offset})

@@ -61,7 +61,6 @@ if xgboost:
             """
             raise NotImplementedError
 
-
     def evaluation_matrices(validation_set, sample_weights, session=None, run_kwargs=None):
         """
         Parameters

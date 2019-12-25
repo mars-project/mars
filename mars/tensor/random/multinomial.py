@@ -142,4 +142,3 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dt
     op = TensorMultinomial(n=n, pvals=pvals, state=random_state.to_numpy(),
                            size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)
-

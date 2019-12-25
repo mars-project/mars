@@ -123,7 +123,7 @@ class WorkerCase(unittest.TestCase):
         try:
             self._test_actor = next(gen)
             yield self._test_actor
-        except:
+        except:  # noqa: E722
             self._result_store = (sys.exc_info(), False)
             self._result_event.set()
             raise

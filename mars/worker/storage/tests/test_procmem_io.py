@@ -22,7 +22,8 @@ from mars.serialize import dataserializer
 from mars.utils import get_next_port
 from mars.worker import DispatchActor, WorkerDaemonActor, QuotaActor, MemQuotaActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, InProcHolderActor, IORunnerActor, \
+    PlasmaKeyMapActor, SharedHolderActor, DataStorageDevice
 
 
 class Test(WorkerCase):
@@ -132,4 +133,3 @@ class Test(WorkerCase):
             del data_load
             handler.delete(session_id, [data_key2])
             self.assertIsNone(ref_data())
-

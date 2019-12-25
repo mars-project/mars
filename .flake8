@@ -5,9 +5,6 @@ exclude =
     *_pb2.py
     __init__.py
     __pycache__
-    mars/lib/enum.py
-    mars/lib/six.py
-    mars/lib/functools32/*
-    mars/lib/futures/*
+    mars/lib/nvutils.py
     mars/lib/uhashring/*
     mars/compat.py

@@ -219,6 +219,7 @@ class LearnShuffleReduce(ShuffleReduce):
     def output_types(self):
         return self._output_types
 
+
 class LearnMergeDictOperand(LearnOperand, LearnOperandMixin):
     _merge = BoolField('merge')
 

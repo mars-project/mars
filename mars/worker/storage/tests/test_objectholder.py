@@ -24,7 +24,8 @@ from mars.utils import get_next_port
 from mars.worker import WorkerDaemonActor, StatusActor, DispatchActor
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor, build_exc_info
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, PlasmaKeyMapActor, SharedHolderActor, \
+    DataStorageDevice
 
 
 class MockIORunnerActor(WorkerActor):

@@ -21,7 +21,7 @@ from numpy.testing import assert_allclose
 from mars.tests.core import create_actor_pool
 from mars.errors import StorageDataExists, StorageFull
 from mars.utils import get_next_port
-from mars.worker.storage import *
+from mars.worker.storage import PlasmaKeyMapActor
 from mars.worker.storage.sharedstore import PlasmaSharedStore
 
 

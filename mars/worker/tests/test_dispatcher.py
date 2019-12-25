@@ -21,7 +21,7 @@ from mars import promise
 from mars.tests.core import patch_method, create_actor_pool
 from mars.utils import get_next_port
 from mars.promise import PromiseActor
-from mars.worker import *
+from mars.worker import DispatchActor
 from mars.worker.tests.base import WorkerCase
 
 

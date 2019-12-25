@@ -134,7 +134,7 @@ class Test(unittest.TestCase):
                     t = mt.array(["1", "2", "3", "4"])
                     try:
                         session.run(t + 1)
-                    except:
+                    except:  # noqa: E722
                         etype, exp, tb = sys.exc_info()
                         self.assertEqual(etype, ExecutionFailed)
                         self.assertIsInstance(exp, ExecutionFailed)

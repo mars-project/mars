@@ -14,6 +14,7 @@
 
 import itertools
 import operator
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -1063,3 +1064,7 @@ class TestUnary(TestBase):
             self.assertEqual(c2.index, c1.index)
             pd.testing.assert_index_equal(c2.columns_value.to_pandas(), c1.columns_value.to_pandas())
             pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
+
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

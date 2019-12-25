@@ -646,4 +646,3 @@ class Test(unittest.TestCase):
             des_tp = dataserializer.deserialize(dataserializer.serialize(tp).to_buffer())
             assert_array_equal(tp[0], des_tp[0])
             self.assertTrue((tp[1].spmatrix != des_tp[1].spmatrix).nnz == 0)
-

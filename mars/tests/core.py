@@ -50,9 +50,9 @@ class TestCase(unittest.TestCase):
 class MultiGetDict(dict):
     def __getitem__(self, item):
         if isinstance(item, tuple):
-            return tuple(super().__getitem__(it)
+            return tuple(super(MultiGetDict, self).__getitem__(it)
                          for it in item)
-        return super().__getitem__(item)
+        return super(MultiGetDict, self).__getitem__(item)
 
 
 def parameterized(**params):

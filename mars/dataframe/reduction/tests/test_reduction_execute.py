@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import pandas as pd
 import numpy as np
 
@@ -126,3 +128,6 @@ class Test(TestBase):
         reduction_df = self.compute(from_pandas_df(data, chunk_size=3), axis='index', numeric_only=True)
         pd.testing.assert_series_equal(self.compute(data, axis='index', numeric_only=True), reduction_df.execute())
 
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

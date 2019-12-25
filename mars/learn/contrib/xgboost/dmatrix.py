@@ -150,14 +150,14 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             data_kw['index'] = data_chunk.index
             kws.append(data_kw)
             if label is not None:
-                label_chunk = chunk_op._label = label.cix[i,]
+                label_chunk = chunk_op._label = label.cix[i, ]
                 inps.append(label_chunk)
                 kw = cls._get_kw(label_chunk)
                 kw['index'] = label_chunk.index
                 kw['type'] = 'label'
                 kws.append(kw)
             if weight is not None:
-                weight_chunk = chunk_op._weight = weight.cix[i,]
+                weight_chunk = chunk_op._weight = weight.cix[i, ]
                 inps.append(weight_chunk)
                 kw = cls._get_kw(weight_chunk)
                 kw['index'] = weight_chunk.index

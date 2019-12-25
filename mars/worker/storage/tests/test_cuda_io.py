@@ -24,7 +24,8 @@ from mars.tests.core import require_cupy, require_cudf
 from mars.utils import get_next_port, lazy_import
 from mars.worker import WorkerDaemonActor, QuotaActor, MemQuotaActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, CudaHolderActor, PlasmaKeyMapActor, \
+    SharedHolderActor, DataStorageDevice
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())

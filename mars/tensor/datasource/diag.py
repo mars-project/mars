@@ -133,7 +133,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     def _get_chunk(cls, op, chunk_k, chunk_shape, chunk_idx):
         assert chunk_shape[0] == chunk_shape[1]
         input_idx = chunk_idx[1] if op.k < 0 else chunk_idx[0]
-        input_chunk = op.inputs[0].cix[input_idx,]
+        input_chunk = op.inputs[0].cix[input_idx, ]
         op = TensorDiag(k=chunk_k, dtype=op.dtype, gpu=op.gpu, sparse=op.sparse)
         return op.new_chunk([input_chunk], shape=chunk_shape, index=chunk_idx)
 

@@ -72,7 +72,7 @@ class BaseApplication(object):
                 conf_obj = getattr(conf_obj, g)
             try:
                 setattr(conf_obj, conf_parts[-1], json.loads(val))
-            except:
+            except:  # noqa: E722
                 setattr(conf_obj, conf_parts[-1], val)
 
         return self._main(new_argv)
@@ -194,7 +194,7 @@ class BaseApplication(object):
                     endpoint = '{0}:{1}'.format(host, use_port)
                     pool = self.create_pool(address=endpoint, advertise_address=advertise_address)
                     break
-                except:
+                except:  # noqa: E722
                     retrial -= 1
                     if retrial == 0:
                         raise

@@ -37,6 +37,7 @@ class TensorI0(TensorUnaryOp):
             res = res.reshape(op.outputs[0].shape)
         ctx[op.outputs[0].key] = res
 
+
 @infer_dtype(np.i0)
 def i0(x, **kwargs):
     """

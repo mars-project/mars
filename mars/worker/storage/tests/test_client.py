@@ -32,7 +32,8 @@ from mars.utils import get_next_port, build_exc_info
 from mars.worker import WorkerDaemonActor, MemQuotaActor, QuotaActor, DispatchActor
 from mars.worker.utils import WorkerActor
 from mars.worker.tests.base import WorkerCase
-from mars.worker.storage import *
+from mars.worker.storage import StorageManagerActor, IORunnerActor, SharedHolderActor, \
+    PlasmaKeyMapActor, InProcHolderActor, StorageHandler, DataStorageDevice
 
 
 class OtherProcessTestActor(WorkerActor):

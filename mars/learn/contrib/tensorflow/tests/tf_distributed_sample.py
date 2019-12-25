@@ -44,4 +44,3 @@ with multiworker_strategy.scope():
 
     model = get_model()
     model.fit(data, labels, epochs=2, batch_size=32)
-

@@ -493,6 +493,7 @@ class FuseChunkMixin(object):
         return self.new_chunk(head_chunk.inputs, shape=tail_chunk.shape, order=tail_chunk.order,
                               _composed=fuse_chunks, _key=tail_chunk.key)
 
+
 class FetchShuffle(Operand):
     _op_type_ = OperandDef.FETCH_SHUFFLE
 

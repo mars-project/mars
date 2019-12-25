@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import operator
+import unittest
 
 import numpy as np
 import pandas as pd
@@ -536,3 +537,7 @@ class TestUnary(TestBase):
         result = self.executor.execute_dataframe(abs(df1), concat=True)[0]
         expected = data1.abs()
         pd.testing.assert_frame_equal(expected, result)
+
+
+if __name__ == '__main__':  # pragma: no cover
+    unittest.main()

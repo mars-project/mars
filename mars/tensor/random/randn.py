@@ -96,4 +96,3 @@ def randn(random_state, *dn, **kw):
             raise ValueError('randn got unexpected key arguments {0}'.format(key))
 
     return op(chunk_size=chunk_size)
-

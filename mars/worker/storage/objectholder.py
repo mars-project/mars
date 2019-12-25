@@ -21,7 +21,7 @@ from collections import OrderedDict
 from ... import promise
 from ...config import options
 from ...utils import parse_readable_size, log_unhandled, readable_size, tokenize
-from ...errors import *
+from ...errors import SpillNotConfigured, SpillSizeExceeded, NoDataToSpill, PinDataKeyFailed
 from ..utils import WorkerActor
 from .core import DataStorageDevice
 from .manager import StorageManagerActor

@@ -32,8 +32,10 @@ from mars.scheduler.chunkmeta import WorkerMeta
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.tests.core import patch_method, create_actor_pool
 from mars.worker.tests.base import WorkerCase
-from mars.worker import *
-from mars.worker.storage import PlasmaKeyMapActor
+from mars.worker import DispatchActor, ExecutionActor, CpuCalcActor, WorkerDaemonActor, \
+    StorageManagerActor, StatusActor, QuotaActor, MemQuotaActor, IORunnerActor
+from mars.worker.storage import PlasmaKeyMapActor, SharedHolderActor, InProcHolderActor, \
+    DataStorageDevice
 from mars.distributor import MarsDistributor
 from mars.worker.prochelper import ProcessHelperActor
 from mars.worker.utils import WorkerActor, WorkerClusterInfoActor
