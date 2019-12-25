@@ -19,13 +19,11 @@ import pickle
 import weakref
 from collections import OrderedDict
 from io import BytesIO
+import sys
 
 import numpy as np
 cimport numpy as np
-try:
-    import pandas as pd
-except ImportError:  # pragma: no cover
-    pd = None
+import pandas as pd
 
 from .core cimport Provider, ValueType, ProviderType, \
     Field, List, Tuple, Dict, Identity, Reference, KeyPlaceholder, \
@@ -276,7 +274,9 @@ cdef class JsonSerializeProvider(Provider):
         v = base64.b64decode(value)
 
         if v is not None:
-            return np.load(BytesIO(v))
+            # np.load will return a ndarray
+            value = np.load(BytesIO(v))
+            return value.dtype.type(value)
         return None
 
     cdef inline dict _serialize_datetime64(self, value):
@@ -471,7 +471,12 @@ cdef class JsonSerializeProvider(Provider):
                     new_obj.append(None)
         else:
             tag = field.tag_name(self)
-            val = self._on_serial(field, getattr(model_instance, field.attr, None))
+            try:
+                val = self._on_serial(field, getattr(model_instance, field.attr, None))
+            except (AttributeError, TypeError):
+                tp, err, tb = sys.exc_info()
+                raise tp('Fail to serialize field `{}` for {}, reason: {}'.format(
+                    tag, model_instance, err)).with_traceback(tb) from err
             if val is None:
                 return
             obj[tag] = self._serialize_value(val, field.type, weak_ref=field.weak_ref)

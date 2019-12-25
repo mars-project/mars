@@ -18,15 +18,15 @@ import unittest
 
 import numpy as np
 
-from mars.executor import Executor
 from mars.tensor.datasource import tensor
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
+from mars.tests.core import TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testFFTExecution(self):
         raw = np.random.rand(10, 20, 30)

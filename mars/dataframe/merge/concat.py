@@ -154,6 +154,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
 
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.GROUPBY_CONCAT
     _by = AnyField('by')
 
     def __init__(self, by=None, object_type=None, **kw):

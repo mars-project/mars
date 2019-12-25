@@ -15,8 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from mars.executor import Executor
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, TestExecutor
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.utils import sort_dataframe_inplace
 
@@ -24,7 +23,7 @@ from mars.dataframe.utils import sort_dataframe_inplace
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = Executor()
+        self.executor = TestExecutor()
 
     def testMerge(self):
         df1 = pd.DataFrame(np.arange(20).reshape((4, 5)) + 1, columns=['a', 'b', 'c', 'd', 'e'])

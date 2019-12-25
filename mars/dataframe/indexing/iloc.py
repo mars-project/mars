@@ -22,7 +22,7 @@ from pandas.core.dtypes.cast import find_common_type
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape, process_index
-from ...serialize import AnyField, ListField
+from ...serialize import AnyField, TupleField
 from ... import opcodes as OperandDef
 from ..operands import DataFrameOperand, DataFrameOperandMixin, ObjectType, DATAFRAME_TYPE
 from ..utils import indexing_index_value
@@ -55,7 +55,7 @@ class DataFrameIloc(object):
 class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
@@ -207,7 +207,7 @@ class DataFrameIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, object_type=ObjectType.dataframe, **kw):
@@ -272,8 +272,8 @@ class SeriesIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
     _indexes = AnyField('indexes')
 
-    def __init__(self, indexes=None, gpu=False, sparse=False, **kw):
-        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _object_type=ObjectType.series, **kw)
+    def __init__(self, indexes=None, gpu=False, sparse=False, object_type=ObjectType.series, **kw):
+        super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _object_type=object_type, **kw)
 
     @property
     def indexes(self):

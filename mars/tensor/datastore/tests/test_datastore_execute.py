@@ -23,15 +23,14 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
-from mars.executor import Executor
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, TestExecutor
 from mars.tensor import tensor, arange, totiledb
 
 
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = Executor()
+        self.executor = TestExecutor('numpy')
 
     @unittest.skipIf(tiledb is None, 'tiledb not installed')
     def testStoreTileDBExecution(self):

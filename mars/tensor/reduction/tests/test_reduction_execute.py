@@ -19,15 +19,15 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
-from mars.executor import Executor
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
     nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod
+from mars.tests.core import TestExecutor
 
 
 class Test(unittest.TestCase):
     def setUp(self):
-        self.executor = Executor('numpy')
+        self.executor = TestExecutor('numpy')
 
     def testSumProdExecution(self):
         arr = ones((10, 8), chunk_size=3)

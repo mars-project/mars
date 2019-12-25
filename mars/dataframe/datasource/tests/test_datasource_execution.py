@@ -21,8 +21,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.executor import Executor
-from mars.tests.core import TestBase, require_cudf
+from mars.tests.core import TestBase, require_cudf, TestExecutor
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor
@@ -32,7 +31,7 @@ from mars.dataframe.datasource.from_records import from_records
 class Test(TestBase):
     def setUp(self):
         super().setUp()
-        self.executor = Executor()
+        self.executor = TestExecutor()
 
     def testFromPandasDataFrameExecution(self):
         pdf = pd.DataFrame(np.random.rand(20, 30), index=[np.arange(20), np.arange(20, 0, -1)])
